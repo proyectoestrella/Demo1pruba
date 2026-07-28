@@ -8,6 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
+import { useSalonStore } from "@/lib/store";
 
 import appCss from "../styles.css?url";
 
@@ -67,19 +68,21 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
+  head: () => {
+    const fallbackTitle = `${useSalonStore.getState().salonProfile.name} — Premium hair salon booking`;
+    return {
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Los Mosqueteros — Premium hair salon booking" },
+      { title: fallbackTitle },
       {
         name: "description",
         content:
           "Premium booking platform for hair salons and barbershops. Book in seconds, manage your salon like an operating system.",
       },
-      { property: "og:title", content: "Los Mosqueteros — Premium hair salon booking" },
+      { property: "og:title", content: fallbackTitle },
       { property: "og:type", content: "website" },
-      { name: "twitter:title", content: "Los Mosqueteros — Premium hair salon booking" },
+      { name: "twitter:title", content: fallbackTitle },
       { name: "description", content: "Trimly is a barber booking and business dashboard for independent barbers." },
       { property: "og:description", content: "Trimly is a barber booking and business dashboard for independent barbers." },
       { name: "twitter:description", content: "Trimly is a barber booking and business dashboard for independent barbers." },
@@ -96,7 +99,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter+Tight:wght@300;400;500;600;700&display=swap",
       },
     ],
-  }),
+    };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,

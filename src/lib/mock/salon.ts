@@ -6,7 +6,7 @@ import type { Employee, SalonProfile, Service } from "./types";
 export const salon: SalonProfile = {
   id: "los-mosqueteros",
   slug: "los-mosqueteros",
-  name: "Los Mosqueteros",
+  name: "Barbería Pepe",
   tagline: "Hair atelier",
   about:
     "A modern hair atelier in the heart of the city. Three artists, one obsession: making you feel unmistakably yourself.",

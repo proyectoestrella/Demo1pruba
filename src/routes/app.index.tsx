@@ -24,6 +24,7 @@ export const Route = createFileRoute("/app/")({
 
 function Home() {
   const appointments = useSalonStore((s) => s.appointments);
+  const salonName = useSalonStore((s) => s.salonProfile.name);
   const today = todayKpis(appointments);
   const revData = revenueByDay(appointments, 30);
   const [selected, setSelected] = useState<Appointment | null>(null);
@@ -50,7 +51,7 @@ function Home() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl md:text-3xl tracking-tight">Buenos días.</h1>
-        <p className="text-sm text-muted-foreground">Así va Los Mosqueteros hoy.</p>
+        <p className="text-sm text-muted-foreground">Así va {salonName} hoy.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
