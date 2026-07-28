@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { seedAppointments, seedWaitlist, clients as seedClients } from "./mock/seed";
 import { serviceMap, employeeMap, services as seedServices, salon } from "./mock/salon";
 import type {
@@ -42,7 +43,19 @@ interface SalonState {
   updateSalonProfile: (patch: Partial<SalonProfile>) => void;
 }
 
-export const useSalonStore = create<SalonState>((set) => ({
+// Guarded storage: `localStorage` doesn't exist during SSR, so this
+// no-ops on the server and only persists once hydrated in the browser —
+// otherwise every dashboard edit (rename, service CRUD, etc.) would be
+// lost on refresh, which is exactly what looked "broken" before.
+const storage = createJSONStorage<SalonState>(() =>
+  typeof window !== "undefined"
+    ? window.localStorage
+    : { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+);
+
+export const useSalonStore = create<SalonState>()(
+  persist(
+    (set) => ({
   appointments: seedAppointments,
   waitlist: seedWaitlist,
   clients: seedClients,
@@ -119,7 +132,10 @@ export const useSalonStore = create<SalonState>((set) => ({
 
   updateSalonProfile: (patch) =>
     set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } })),
-}));
+    }),
+    { name: "trimly-salon-store", storage },
+  ),
+);
 
 // Derive helpers
 export function isSlotTaken(

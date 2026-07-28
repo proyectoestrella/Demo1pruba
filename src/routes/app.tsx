@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { salon } from "@/lib/mock/salon";
+import { useSalonStore } from "@/lib/store";
 import { ViewSwitcher } from "@/components/ViewSwitcher";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/app")({
   head: () => ({
-    meta: [{ title: "Dashboard · Los Mosqueteros" }],
+    meta: [{ title: `Dashboard · ${useSalonStore.getState().salonProfile.name}` }],
   }),
   component: DashboardLayout,
 });
@@ -69,11 +70,12 @@ function SidebarNav({ path, onNavigate }: { path: string; onNavigate?: () => voi
 }
 
 function SidebarBrand() {
+  const name = useSalonStore((s) => s.salonProfile.name);
   return (
     <div className="flex items-center gap-2 px-6 py-6">
       <div className="h-8 w-8 rounded-full bg-primary" />
       <div className="leading-tight">
-        <p className="font-display text-base">{salon.name}</p>
+        <p className="font-display text-base">{name}</p>
         <p className="text-[10px] uppercase tracking-widest text-sidebar-foreground/60">Salon OS</p>
       </div>
     </div>

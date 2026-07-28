@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Clock, Instagram, MapPin, Phone, Scissors, Star } from "lucide-react";
 import { services, serviceMap, employees, salon, requiresDeposit } from "@/lib/mock/salon";
+import { useSalonStore } from "@/lib/store";
 import heroImg from "@/assets/hero-salon.jpg";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -81,6 +82,7 @@ function fullWeekSchedule(hours: typeof salon.hours) {
 
 function SalonHome() {
   const { salonSlug } = Route.useParams();
+  const profile = useSalonStore((s) => s.salonProfile);
 
   return (
     <>
@@ -94,9 +96,9 @@ function SalonHome() {
               </span>
               <span className="text-muted-foreground">· {REVIEW_COUNT} reseñas</span>
             </div>
-            <h1 className="font-display text-5xl leading-[1.05] md:text-6xl">{salon.name}</h1>
+            <h1 className="font-display text-5xl leading-[1.05] md:text-6xl">{profile.name}</h1>
             <p className="flex items-center gap-2 text-muted-foreground">
-              <MapPin className="h-4 w-4 shrink-0 text-primary" /> {salon.address}
+              <MapPin className="h-4 w-4 shrink-0 text-primary" /> {profile.address}
             </p>
             <p className="max-w-md text-lg text-muted-foreground">{SALON_ABOUT_ES}</p>
             <div className="flex flex-wrap gap-3">
@@ -117,7 +119,7 @@ function SalonHome() {
           </div>
           <div className="relative">
             <div className="aspect-[4/5] overflow-hidden rounded-3xl border border-border shadow-2xl">
-              <img src={heroImg} alt={`Interior de ${salon.name}`} className="h-full w-full object-cover" width={1920} height={1280} />
+              <img src={heroImg} alt={`Interior de ${profile.name}`} className="h-full w-full object-cover" width={1920} height={1280} />
             </div>
           </div>
         </div>
@@ -130,10 +132,10 @@ function SalonHome() {
             <Clock className="h-4 w-4 shrink-0 text-primary" /> {todayOpenInfo(salon.hours)}
           </span>
           <span className="flex items-center gap-2 text-muted-foreground">
-            <MapPin className="h-4 w-4 shrink-0 text-primary" /> {salon.address}
+            <MapPin className="h-4 w-4 shrink-0 text-primary" /> {profile.address}
           </span>
           <span className="flex items-center gap-2 text-muted-foreground">
-            <Phone className="h-4 w-4 shrink-0 text-primary" /> {salon.phone}
+            <Phone className="h-4 w-4 shrink-0 text-primary" /> {profile.phone}
           </span>
         </div>
       </section>
@@ -274,9 +276,9 @@ function SalonHome() {
           </div>
           <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-4 rounded-2xl border border-border/60 bg-background p-6">
-              <p className="flex items-start gap-3 text-sm"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> {salon.address}</p>
-              <p className="flex items-center gap-3 text-sm"><Phone className="h-4 w-4 shrink-0 text-primary" /> {salon.phone}</p>
-              <p className="flex items-center gap-3 text-sm"><Instagram className="h-4 w-4 shrink-0 text-primary" /> {salon.instagram}</p>
+              <p className="flex items-start gap-3 text-sm"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> {profile.address}</p>
+              <p className="flex items-center gap-3 text-sm"><Phone className="h-4 w-4 shrink-0 text-primary" /> {profile.phone}</p>
+              <p className="flex items-center gap-3 text-sm"><Instagram className="h-4 w-4 shrink-0 text-primary" /> {profile.instagram}</p>
             </div>
             <div className="rounded-2xl border border-border/60 bg-background p-6">
               <p className="mb-3 text-xs uppercase tracking-widest text-muted-foreground">Horario</p>

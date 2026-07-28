@@ -2,17 +2,19 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { Lock, ArrowLeft, Loader2 } from "lucide-react";
 import { salon } from "@/lib/mock/salon";
+import { useSalonStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: `Acceso peluquero · ${salon.name}` }] }),
+  head: () => ({ meta: [{ title: `Acceso peluquero · ${useSalonStore.getState().salonProfile.name}` }] }),
   component: LoginPage,
 });
 
 function LoginPage() {
   const navigate = useNavigate();
+  const salonName = useSalonStore((s) => s.salonProfile.name);
   const [email, setEmail] = useState("manuela@losmosqueteros.com");
   const [password, setPassword] = useState("demo1234");
   const [error, setError] = useState("");
@@ -38,7 +40,7 @@ function LoginPage() {
           <Link to="/s/$salonSlug" params={{ salonSlug: salon.slug }} className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-primary" />
             <div className="leading-tight">
-              <p className="font-display text-base">{salon.name}</p>
+              <p className="font-display text-base">{salonName}</p>
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Atelier de peluquería</p>
             </div>
           </Link>

@@ -17,7 +17,6 @@ import { Separator } from "@/components/ui/separator";
 import { Calendar } from "@/components/ui/calendar";
 import { es } from "date-fns/locale";
 import heroImg from "@/assets/hero-salon.jpg";
-import { salon } from "@/lib/mock/salon";
 import { registerBookingClient } from "@/lib/api/clients.functions";
 
 export const Route = createFileRoute("/s/$salonSlug/book")({
@@ -602,6 +601,7 @@ function BookingSummary({
   ctaDisabled: boolean;
   onCta: () => void;
 }) {
+  const salonName = useSalonStore((s) => s.salonProfile.name);
   if (variant === "bar") {
     return (
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 px-5 py-3 backdrop-blur lg:hidden">
@@ -626,7 +626,7 @@ function BookingSummary({
             <img src={heroImg} alt="" className="h-full w-full object-cover" />
           </div>
           <div className="min-w-0">
-            <p className="truncate font-display text-base">{salon.name}</p>
+            <p className="truncate font-display text-base">{salonName}</p>
             <p className="text-xs text-muted-foreground">Resumen de tu reserva</p>
           </div>
         </div>

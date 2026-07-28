@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, CalendarPlus, MapPin } from "lucide-react";
-import { serviceMap, employeeMap, salon, depositFor, requiresDeposit } from "@/lib/mock/salon";
+import { serviceMap, employeeMap, depositFor, requiresDeposit } from "@/lib/mock/salon";
+import { useSalonStore } from "@/lib/store";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { Button } from "@/components/ui/button";
 
@@ -28,6 +29,7 @@ function Confirmation() {
   const { service: sid, employeeId, date, time, name } = Route.useSearch();
   const service = serviceMap[sid];
   const employee = employeeMap[employeeId];
+  const profile = useSalonStore((s) => s.salonProfile);
 
   if (!service || !employee) {
     return (
@@ -56,8 +58,8 @@ function Confirmation() {
       "BEGIN:VEVENT",
       `DTSTART:${fmt(start)}`,
       `DTEND:${fmt(end)}`,
-      `SUMMARY:${service.name} en ${salon.name}`,
-      `LOCATION:${salon.address}`,
+      `SUMMARY:${service.name} en ${profile.name}`,
+      `LOCATION:${profile.address}`,
       "END:VEVENT",
       "END:VCALENDAR",
     ].join("\r\n");
@@ -120,8 +122,8 @@ function Confirmation() {
         <div className="flex items-start gap-3 text-sm text-muted-foreground">
           <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <div>
-            <p className="text-foreground">{salon.name}</p>
-            <p>{salon.address}</p>
+            <p className="text-foreground">{profile.name}</p>
+            <p>{profile.address}</p>
           </div>
         </div>
       </div>
