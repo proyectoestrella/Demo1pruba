@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
-import { employees } from "@/lib/mock/salon";
+import { employees, salon } from "@/lib/mock/salon";
 import type { Appointment, EmployeeId } from "@/lib/mock/types";
+import { registerBookingClient } from "@/lib/api/clients.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -122,6 +123,8 @@ export function NewAppointmentDialog({
 
     let clientId: string;
     let clientName: string;
+    let clientPhone = "";
+    let clientEmail: string | undefined;
     if (clientChoice !== "__new") {
       const existing = clients.find((c) => c.id === clientChoice);
       if (!existing) {
@@ -130,6 +133,8 @@ export function NewAppointmentDialog({
       }
       clientId = existing.id;
       clientName = existing.name;
+      clientPhone = existing.phone;
+      clientEmail = existing.email;
     } else {
       if (!newName.trim()) {
         toast.error("Escribe el nombre del cliente");
@@ -139,22 +144,42 @@ export function NewAppointmentDialog({
       if (phone.trim()) {
         const created = addClient({ name: clientName, phone: phone.trim() });
         clientId = created.id;
+        clientPhone = phone.trim();
       } else {
         clientId = `walkin-${Date.now()}`;
       }
     }
 
     const start = new Date(`${date}T${time}:00`);
+    const startISO = start.toISOString();
     const appt = addAppointment({
       clientId,
       clientName,
       serviceId,
       employeeId,
-      start: start.toISOString(),
+      start: startISO,
       duration: service.durationMin,
       priceEur: service.priceEur,
       status: "confirmed",
     });
+
+    // Only sync when we have a phone (walk-ins without one aren't real client records).
+    if (clientPhone) {
+      registerBookingClient({
+        data: {
+          salonSlug: salon.slug,
+          name: clientName,
+          phone: clientPhone,
+          email: clientEmail,
+          serviceId,
+          employeeId,
+          startISO,
+          durationMin: service.durationMin,
+          priceEur: service.priceEur,
+          note,
+        },
+      }).catch((err) => console.error("Supabase sync failed (appointment still created locally):", err));
+    }
 
     toast.success("Cita creada", { description: `${clientName} · ${service.name}` });
     onCreated?.(appt);
