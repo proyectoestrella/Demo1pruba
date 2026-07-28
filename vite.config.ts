@@ -14,5 +14,15 @@ export default defineConfig({
   },
   nitro: {
     preset: "vercel",
+    // @lovable.dev/vite-tanstack-config hardcodes output.{dir,serverDir,publicDir}
+    // to a plain dist/ folder regardless of preset — that layout isn't the Vercel
+    // Build Output API (v3), so Vercel had nothing to run as a function (404s on
+    // every route, 0 functions listed). Restate the "vercel" preset's own output
+    // paths here so they survive the wrapper's spread.
+    output: {
+      dir: ".vercel/output",
+      serverDir: ".vercel/output/functions/__server.func",
+      publicDir: ".vercel/output/static",
+    },
   },
 });
