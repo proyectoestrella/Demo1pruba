@@ -24,5 +24,23 @@ export default defineConfig({
       serverDir: ".vercel/output/functions/__server.func",
       publicDir: ".vercel/output/static",
     },
-  },
+    // Enables Nitro's own filesystem routing (server/routes/**) for raw HTTP
+    // endpoints (e.g. the .ics calendar feed) that need custom content-type
+    // headers — createServerFn's RPC endpoints aren't suited for URLs meant
+    // to be pasted into an external calendar app. It's a real Nitro option
+    // the wrapper forwards as-is at runtime, but its TS type only models
+    // {preset, output, cloudflare} — cast to bypass that narrow type, not a
+    // runtime workaround.
+    serverDir: "server",
+    // @supabase/supabase-js's client constructor always tries to init its
+    // Realtime (WebSocket) client, even when only REST methods are used.
+    // Node 20 (Vercel's Node default) has no native WebSocket, so any route
+    // calling createClient() 500s with "Node.js detected but native
+    // WebSocket not found". Force Node 22 on all functions instead of
+    // patching every Supabase call site.
+    vercel: {
+      functions: { runtime: "nodejs22.x" },
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any,
 });
