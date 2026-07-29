@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { toast } from "sonner";
 import { useSalonStore } from "@/lib/store";
 import { clientFrequency, mostBookedService } from "@/lib/derive";
 import { PageHeader } from "@/components/PageHeader";
-import { Megaphone, Sparkles, MessageCircle, Gift, Clock, ArrowRight } from "lucide-react";
+import { ComingSoonAction } from "@/components/ComingSoonAction";
+import { Megaphone, Sparkles, MessageCircle, Gift, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/app/marketing")({ component: Marketing });
 
@@ -55,8 +55,11 @@ function Marketing() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs uppercase tracking-widest text-primary">Marketing con IA</p>
-        <PageHeader title="Crece en piloto automático." />
+        <p className="text-xs uppercase tracking-widest text-primary">Marketing</p>
+        <PageHeader title="Ideas basadas en tus datos." />
+        <p className="mt-1 text-sm text-muted-foreground">
+          Sugerencias calculadas a partir de tus reservas. Ponerlas en marcha (envíos, campañas) llega próximamente.
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -67,13 +70,7 @@ function Marketing() {
             </div>
             <h3 className="mt-4 font-display text-xl">{s.title}</h3>
             <p className="mt-2 text-sm text-muted-foreground">{s.body}</p>
-            <button
-              type="button"
-              onClick={() => toast.success("Campaña generada", { description: s.title })}
-              className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              {s.cta} <ArrowRight className="h-3 w-3" />
-            </button>
+            <ComingSoonAction label={s.cta} />
           </div>
         ))}
       </div>

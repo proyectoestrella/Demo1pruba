@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { aiInsights, serviceMix } from "@/lib/derive";
-import { Sparkles, TrendingDown, Heart, CalendarClock, ArrowRight } from "lucide-react";
+import { Sparkles, TrendingDown, Heart, CalendarClock } from "lucide-react";
+import { ComingSoonAction } from "@/components/ComingSoonAction";
 
 export const Route = createFileRoute("/app/insights")({ component: Insights });
 
@@ -16,8 +17,11 @@ function Insights() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs uppercase tracking-widest text-primary">Analítica IA</p>
+        <p className="text-xs uppercase tracking-widest text-primary">Analítica</p>
         <h1 className="font-display text-2xl md:text-3xl tracking-tight">Lo que dicen tus datos.</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Patrones calculados a partir de tus propias reservas — no son predicciones de una IA.
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -29,13 +33,13 @@ function Insights() {
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <Icon className="h-4 w-4" />
                 </div>
-                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-widest text-muted-foreground">IA</span>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-widest text-muted-foreground">
+                  Calculado
+                </span>
               </div>
               <h3 className="mt-4 font-display text-xl">{c.title}</h3>
               <p className="mt-2 text-sm text-muted-foreground">{c.body}</p>
-              <button type="button" className="mt-5 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                {c.action} <ArrowRight className="h-3 w-3" />
-              </button>
+              <ComingSoonAction label={c.action} />
             </div>
           );
         })}

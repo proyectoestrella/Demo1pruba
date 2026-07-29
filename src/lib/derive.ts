@@ -172,3 +172,144 @@ export function aiInsights(appts: Appointment[]) {
     },
   ];
 }
+
+/* ---------------------------------------------------------------------------
+ * KPI trends: current value vs. the equivalent previous period, plus a short
+ * sparkline series. Purely additive — todayKpis/weeklyOccupancy/etc. above
+ * are left untouched since other pages already depend on their exact shape.
+ * ------------------------------------------------------------------------- */
+
+export interface KpiTrend {
+  /** Current-period value (e.g. today, or the last 7 days). */
+  current: number;
+  /** Same-length period immediately before the current one, for comparison. */
+  previous: number;
+  /** % change vs. previous. `null` when previous was 0 and there's nothing to compare against. */
+  deltaPct: number | null;
+  /** Short series (oldest → newest) for a sparkline, same unit as `current`. */
+  spark: number[];
+}
+
+function pctChange(current: number, previous: number): number | null {
+  if (previous === 0) return current === 0 ? 0 : null;
+  return ((current - previous) / previous) * 100;
+}
+
+/** Non-cancelled appointment count + revenue for the single calendar day containing `date`. */
+function dayCountAndRevenue(appts: Appointment[], date: Date) {
+  const dayAppts = appts.filter((a) => isSameDay(new Date(a.start), date) && a.status !== "cancelled");
+  const revenue = dayAppts
+    .filter((a) => a.status !== "no-show")
+    .reduce((sum, a) => sum + a.priceEur, 0);
+  return { count: dayAppts.length, revenue };
+}
+
+/** Booking-count trend: today vs. yesterday, with an 8-day daily sparkline. */
+export function appointmentsTodayTrend(appts: Appointment[]): KpiTrend {
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+
+  const spark: number[] = [];
+  for (let i = 7; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    spark.push(dayCountAndRevenue(appts, d).count);
+  }
+  const current = dayCountAndRevenue(appts, now).count;
+  const previous = dayCountAndRevenue(appts, yesterday).count;
+  return { current, previous, deltaPct: pctChange(current, previous), spark };
+}
+
+/** Revenue trend: today vs. yesterday, with an 8-day daily sparkline. */
+export function revenueTodayTrend(appts: Appointment[]): KpiTrend {
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+
+  const spark: number[] = [];
+  for (let i = 7; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    spark.push(dayCountAndRevenue(appts, d).revenue);
+  }
+  const current = dayCountAndRevenue(appts, now).revenue;
+  const previous = dayCountAndRevenue(appts, yesterday).revenue;
+  return { current, previous, deltaPct: pctChange(current, previous), spark };
+}
+
+const WEEK_MS = 7 * DAY_MS;
+
+/** Total bookable half-hour slots per week across the team — mirrors weeklyOccupancy's denominator. */
+function weeklyCapacitySlots() {
+  return employees.reduce(
+    (sum, e) => sum + e.schedule.reduce((s, day) => s + (day ? day.end - day.start : 0), 0) * 2,
+    0,
+  );
+}
+
+function occupancyPct(appts: Appointment[], start: number, end: number) {
+  const inRange = appts.filter((a) => {
+    const t = +new Date(a.start);
+    return t >= start && t < end && a.status !== "cancelled";
+  });
+  const totalSlots = weeklyCapacitySlots();
+  const used = inRange.reduce((s, a) => s + a.duration / 30, 0);
+  return totalSlots > 0 ? Math.min(100, Math.round((used / totalSlots) * 100)) : 0;
+}
+
+/** Weekly occupancy trend: last 7 days vs. the 7 days before that, with an 8-week sparkline. */
+export function weeklyOccupancyTrend(appts: Appointment[]): KpiTrend {
+  const now = Date.now();
+  const spark: number[] = [];
+  for (let i = 7; i >= 0; i--) {
+    spark.push(occupancyPct(appts, now - (i + 1) * WEEK_MS, now - i * WEEK_MS));
+  }
+  const current = occupancyPct(appts, now - WEEK_MS, now);
+  const previous = occupancyPct(appts, now - 2 * WEEK_MS, now - WEEK_MS);
+  return { current, previous, deltaPct: pctChange(current, previous), spark };
+}
+
+function newClientsInRange(appts: Appointment[], start: number, end: number) {
+  const ids = new Set<string>();
+  appts.forEach((a) => {
+    const t = +new Date(a.start);
+    if (t >= start && t < end) ids.add(a.clientId);
+  });
+  // Mirrors newClientsThisWeek's "new" mock heuristic (~30% of weekly clients).
+  return Math.ceil(ids.size * 0.3);
+}
+
+/** New-clients trend: this week vs. last week, with an 8-week sparkline. */
+export function newClientsTrend(appts: Appointment[]): KpiTrend {
+  const now = Date.now();
+  const spark: number[] = [];
+  for (let i = 7; i >= 0; i--) {
+    spark.push(newClientsInRange(appts, now - (i + 1) * WEEK_MS, now - i * WEEK_MS));
+  }
+  const current = newClientsInRange(appts, now - WEEK_MS, now);
+  const previous = newClientsInRange(appts, now - 2 * WEEK_MS, now - WEEK_MS);
+  return { current, previous, deltaPct: pctChange(current, previous), spark };
+}
+
+function cancellationsInRange(appts: Appointment[], start: number, end: number) {
+  return appts.filter(
+    (a) => a.status === "cancelled" && +new Date(a.start) >= start && +new Date(a.start) < end,
+  ).length;
+}
+
+/**
+ * Cancellations trend: this week vs. last week, with an 8-week sparkline.
+ * Note for callers: unlike the other KPIs, going UP is bad news here — don't
+ * color/sign this one automatically off deltaPct, branch on the metric.
+ */
+export function cancellationsTrend(appts: Appointment[]): KpiTrend {
+  const now = Date.now();
+  const spark: number[] = [];
+  for (let i = 7; i >= 0; i--) {
+    spark.push(cancellationsInRange(appts, now - (i + 1) * WEEK_MS, now - i * WEEK_MS));
+  }
+  const current = cancellationsInRange(appts, now - WEEK_MS, now);
+  const previous = cancellationsInRange(appts, now - 2 * WEEK_MS, now - WEEK_MS);
+  return { current, previous, deltaPct: pctChange(current, previous), spark };
+}

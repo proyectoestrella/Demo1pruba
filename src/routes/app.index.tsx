@@ -2,21 +2,33 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import {
-  cancellationsThisWeek,
+  appointmentsTodayTrend,
+  cancellationsTrend,
   mostBookedService,
-  newClientsThisWeek,
+  newClientsTrend,
   revenueByDay,
-  todayKpis,
-  weeklyOccupancy,
+  revenueTodayTrend,
+  weeklyOccupancyTrend,
+  type KpiTrend,
 } from "@/lib/derive";
-import { Calendar, Euro, Users, TrendingUp, CalendarX } from "lucide-react";
-import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Calendar, Euro, Users, TrendingUp, CalendarX, type LucideIcon } from "lucide-react";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { employeeMap, serviceMap } from "@/lib/mock/salon";
 import type { Appointment } from "@/lib/mock/types";
 import { StylistDot } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
+import { KpiCard } from "@/components/KpiCard";
+
+const CHART_TOOLTIP_STYLE = {
+  background: "var(--color-card)",
+  border: "1px solid var(--color-border)",
+  borderRadius: 12,
+  fontSize: 12,
+  color: "var(--color-foreground)",
+} as const;
+const CHART_LABEL_STYLE = { color: "var(--color-muted-foreground)" } as const;
 
 export const Route = createFileRoute("/app/")({
   component: Home,
@@ -33,19 +45,61 @@ function greetingForHour(hour: number) {
 function Home() {
   const appointments = useSalonStore((s) => s.appointments);
   const salonName = useSalonStore((s) => s.salonProfile.name);
-  const today = todayKpis(appointments);
   const revData = revenueByDay(appointments, 30);
   const [selected, setSelected] = useState<Appointment | null>(null);
   const greeting = greetingForHour(new Date().getHours());
 
-  const kpis = [
-    { label: "Citas hoy", value: today.count.toString(), icon: Calendar },
-    { label: "Ingresos hoy", value: `€${today.revenue}`, icon: Euro },
-    { label: "Ocupación semanal", value: `${weeklyOccupancy(appointments)}%`, icon: TrendingUp },
-    { label: "Clientes nuevos", value: newClientsThisWeek(appointments).toString(), icon: Users },
+  const kpis: {
+    label: string;
+    icon: LucideIcon;
+    trend: KpiTrend;
+    format: (n: number) => string;
+    context: string;
+    goodDirection: "up" | "down";
+  }[] = [
+    {
+      label: "Citas hoy",
+      icon: Calendar,
+      trend: appointmentsTodayTrend(appointments),
+      format: (n) => n.toString(),
+      context: "vs. ayer",
+      goodDirection: "up",
+    },
+    {
+      label: "Ingresos hoy",
+      icon: Euro,
+      trend: revenueTodayTrend(appointments),
+      format: (n) => `€${Math.round(n).toLocaleString("es")}`,
+      context: "vs. ayer",
+      goodDirection: "up",
+    },
+    {
+      label: "Ocupación semanal",
+      icon: TrendingUp,
+      trend: weeklyOccupancyTrend(appointments),
+      format: (n) => `${Math.round(n)}%`,
+      context: "vs. semana pasada",
+      goodDirection: "up",
+    },
+    {
+      label: "Clientes nuevos",
+      icon: Users,
+      trend: newClientsTrend(appointments),
+      format: (n) => n.toString(),
+      context: "vs. semana pasada",
+      goodDirection: "up",
+    },
+    {
+      label: "Cancelaciones",
+      icon: CalendarX,
+      trend: cancellationsTrend(appointments),
+      format: (n) => n.toString(),
+      context: "vs. semana pasada",
+      // Unlike the other KPIs, more cancellations is bad news, not good.
+      goodDirection: "down",
+    },
   ];
 
-  const cancellations = cancellationsThisWeek(appointments);
   const topService = mostBookedService(appointments);
 
   const todayList = appointments
@@ -63,21 +117,21 @@ function Home() {
         <p className="text-sm text-muted-foreground">Así va {salonName} hoy.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         {kpis.map((k) => (
-          <div key={k.label} className="rounded-xl border border-border/60 bg-card p-5">
-            <div className="flex items-center justify-between">
-              <k.icon className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <p className="mt-3 text-3xl font-semibold tabular-nums">{k.value}</p>
-            <p className="text-xs text-muted-foreground">{k.label}</p>
-          </div>
+          <KpiCard
+            key={k.label}
+            label={k.label}
+            icon={k.icon}
+            trend={k.trend}
+            format={k.format}
+            context={k.context}
+            goodDirection={k.goodDirection}
+          />
         ))}
       </div>
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-muted-foreground">
-        <span>{cancellations} cancelaciones esta semana</span>
-        <span className="hidden sm:inline">·</span>
         <span>Servicio más pedido: <span className="font-medium text-foreground">{topService}</span></span>
       </div>
 
@@ -92,17 +146,52 @@ function Home() {
           </div>
           <div className="mt-6 h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revData}>
+              <AreaChart data={revData} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.4} />
                     <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
+                <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 6" vertical={false} opacity={0.7} />
                 <XAxis dataKey="date" stroke="var(--color-muted-foreground)" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} interval={3} />
-                <YAxis stroke="var(--color-muted-foreground)" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, fontSize: 12 }} />
-                <Area type="monotone" dataKey="revenue" stroke="var(--color-primary)" strokeWidth={2} fill="url(#rev)" />
+                <YAxis
+                  stroke="var(--color-muted-foreground)"
+                  tick={{ fontSize: 11 }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={44}
+                  tickFormatter={(v: number) => `€${v}`}
+                />
+                <Tooltip
+                  cursor={{ stroke: "var(--color-border)", strokeWidth: 1 }}
+                  contentStyle={CHART_TOOLTIP_STYLE}
+                  labelStyle={CHART_LABEL_STYLE}
+                  formatter={(value: number) => [`€${value}`, "Ingresos"]}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="var(--color-primary)"
+                  strokeWidth={2}
+                  fill="url(#rev)"
+                  activeDot={{ r: 4, fill: "var(--color-primary)", stroke: "var(--color-card)", strokeWidth: 2 }}
+                  dot={(props: { cx?: number; cy?: number; index?: number }) =>
+                    props.index === revData.length - 1 ? (
+                      <circle
+                        key="last"
+                        cx={props.cx}
+                        cy={props.cy}
+                        r={4}
+                        fill="var(--color-primary)"
+                        stroke="var(--color-card)"
+                        strokeWidth={2}
+                      />
+                    ) : (
+                      <circle key={props.index} r={0} />
+                    )
+                  }
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -113,10 +202,20 @@ function Home() {
           <h2 className="mt-1 font-display text-xl">Volumen</h2>
           <div className="mt-6 h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={revData.slice(-14)}>
+              <BarChart data={revData.slice(-14)} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 6" vertical={false} opacity={0.7} />
                 <XAxis dataKey="date" stroke="var(--color-muted-foreground)" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval={2} />
-                <Tooltip contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, fontSize: 12 }} />
-                <Bar dataKey="bookings" fill="var(--color-primary)" radius={[6, 6, 0, 0]} />
+                <Tooltip
+                  cursor={{ fill: "var(--color-muted)", opacity: 0.5 }}
+                  contentStyle={CHART_TOOLTIP_STYLE}
+                  labelStyle={CHART_LABEL_STYLE}
+                  formatter={(value: number) => [value, "Reservas"]}
+                />
+                <Bar dataKey="bookings" radius={[6, 6, 0, 0]}>
+                  {revData.slice(-14).map((d, i, arr) => (
+                    <Cell key={d.date} fill="var(--color-primary)" fillOpacity={i === arr.length - 1 ? 1 : 0.45} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -5,7 +5,7 @@ import {
   Calendar,
   Users,
   Scissors,
-  Sparkles,
+  ChartColumn,
   Megaphone,
   Clock,
   Settings,
@@ -31,42 +31,81 @@ export const Route = createFileRoute("/app")({
   component: DashboardLayout,
 });
 
-const nav: { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean }[] = [
-  { to: "/app", label: "Inicio", icon: LayoutDashboard, exact: true },
-  { to: "/app/calendar", label: "Calendario", icon: Calendar },
-  { to: "/app/appointments", label: "Citas", icon: ListChecks },
-  { to: "/app/clients", label: "Clientes", icon: Users },
-  { to: "/app/employees", label: "Equipo", icon: Users },
-  { to: "/app/services", label: "Servicios", icon: Scissors },
-  { to: "/app/insights", label: "Analítica IA", icon: Sparkles },
-  { to: "/app/marketing", label: "Marketing", icon: Megaphone },
-  { to: "/app/waitlist", label: "Lista de espera", icon: Clock },
-  { to: "/app/settings", label: "Ajustes", icon: Settings },
+type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
+
+/** Nav grouped into logical clusters, each with its own faint uppercase heading. */
+const navGroups: { label: string; items: NavItem[] }[] = [
+  { label: "General", items: [{ to: "/app", label: "Inicio", icon: LayoutDashboard, exact: true }] },
+  {
+    label: "Agenda",
+    items: [
+      { to: "/app/calendar", label: "Calendario", icon: Calendar },
+      { to: "/app/appointments", label: "Citas", icon: ListChecks },
+      { to: "/app/waitlist", label: "Lista de espera", icon: Clock },
+    ],
+  },
+  {
+    label: "Negocio",
+    items: [
+      { to: "/app/clients", label: "Clientes", icon: Users },
+      { to: "/app/employees", label: "Equipo", icon: Users },
+      { to: "/app/services", label: "Servicios", icon: Scissors },
+    ],
+  },
+  {
+    label: "Crecimiento",
+    items: [
+      { to: "/app/insights", label: "Analítica", icon: ChartColumn },
+      { to: "/app/marketing", label: "Marketing", icon: Megaphone },
+    ],
+  },
 ];
+
+const settingsItem: NavItem = { to: "/app/settings", label: "Ajustes", icon: Settings };
+/** Flat list of every nav item, for matching the active route regardless of grouping. */
+const allNavItems: NavItem[] = [...navGroups.flatMap((g) => g.items), settingsItem];
+
+function isActive(item: NavItem, path: string) {
+  return item.exact ? path === item.to : path === item.to || path.startsWith(item.to + "/");
+}
+
+function NavLink({ item, active, onNavigate }: { item: NavItem; active: boolean; onNavigate?: () => void }) {
+  return (
+    <Link
+      to={item.to}
+      onClick={onNavigate}
+      className={cn(
+        "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+        active
+          ? "bg-sidebar-accent text-primary font-medium"
+          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+      )}
+    >
+      {active && <span className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary" aria-hidden="true" />}
+      <item.icon className="h-4 w-4 shrink-0" />
+      {item.label}
+    </Link>
+  );
+}
 
 function SidebarNav({ path, onNavigate }: { path: string; onNavigate?: () => void }) {
   return (
-    <nav className="flex-1 space-y-1 px-3 py-2">
-      {nav.map((item) => {
-        const active = item.exact ? path === item.to : path === item.to || path.startsWith(item.to + "/");
-        return (
-          <Link
-            key={item.to}
-            to={item.to}
-            onClick={onNavigate}
-            className={cn(
-              "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-              active
-                ? "bg-primary/10 text-primary"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-            )}
-          >
-            {active && <span className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-primary" aria-hidden="true" />}
-            <item.icon className="h-4 w-4 shrink-0" />
-            {item.label}
-          </Link>
-        );
-      })}
+    <nav className="flex flex-1 flex-col space-y-4 overflow-y-auto px-3 py-3">
+      {navGroups.map((group) => (
+        <div key={group.label}>
+          <p className="px-3 pb-1 text-[10px] font-medium uppercase tracking-widest text-sidebar-foreground/35">
+            {group.label}
+          </p>
+          <div className="space-y-0.5">
+            {group.items.map((item) => (
+              <NavLink key={item.to} item={item} active={isActive(item, path)} onNavigate={onNavigate} />
+            ))}
+          </div>
+        </div>
+      ))}
+      <div className="mt-auto border-t border-sidebar-border pt-3">
+        <NavLink item={settingsItem} active={isActive(settingsItem, path)} onNavigate={onNavigate} />
+      </div>
     </nav>
   );
 }
@@ -74,10 +113,10 @@ function SidebarNav({ path, onNavigate }: { path: string; onNavigate?: () => voi
 function SidebarBrand() {
   const name = useSalonStore((s) => s.salonProfile.name);
   return (
-    <div className="flex items-center gap-2 px-6 py-6">
+    <div className="flex items-center gap-2 border-b border-sidebar-border px-6 py-5">
       <Logo />
-      <div className="leading-tight">
-        <p className="font-display text-base">{name}</p>
+      <div className="min-w-0 leading-tight">
+        <p className="truncate font-display text-base">{name}</p>
         <p className="text-[10px] uppercase tracking-widest text-sidebar-foreground/60">Panel de gestión</p>
       </div>
     </div>
@@ -110,7 +149,7 @@ function DashboardLayout() {
     setMobileNavOpen(false);
   }, [path]);
 
-  const activeItem = nav.find((item) => (item.exact ? path === item.to : path === item.to || path.startsWith(item.to + "/")));
+  const activeItem = allNavItems.find((item) => isActive(item, path));
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -157,8 +196,13 @@ function DashboardLayout() {
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Nueva cita</span>
             </Button>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-              {salonInitial}
+            <div className="ml-1 flex items-center border-l border-border pl-2 sm:pl-3">
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground ring-2 ring-border"
+                title={salonName}
+              >
+                {salonInitial}
+              </div>
             </div>
           </div>
         </header>
