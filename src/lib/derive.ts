@@ -143,32 +143,32 @@ export function aiInsights(appts: Appointment[]) {
     {
       icon: "trending-down",
       tone: "warning" as const,
-      title: "Low occupancy window detected",
-      body: `Tuesday afternoons run at ${tueOcc}% occupancy — your lowest window of the week.`,
-      action: "Generate Tuesday promo",
+      title: "Hueco de baja ocupación detectado",
+      body: `Los martes por la tarde la ocupación es del ${tueOcc}% — tu peor franja de la semana.`,
+      action: "Generar promo para el martes",
     },
     {
       icon: "sparkles",
       tone: "primary" as const,
-      title: "Top revenue driver",
+      title: "Servicio estrella",
       body: topService
-        ? `${topService.name} generates ${topPct}% of total revenue this period.`
-        : "Not enough data yet.",
-      action: "View service breakdown",
+        ? `${topService.name} genera el ${topPct}% de la facturación de este periodo.`
+        : "Todavía no hay suficientes datos.",
+      action: "Ver desglose de servicios",
     },
     {
       icon: "heart",
       tone: "success" as const,
-      title: "Retention champion",
-      body: "Luna has the highest client retention on the team — 78% rebooking rate.",
-      action: "See Luna's clients",
+      title: "Campeona en fidelización",
+      body: "Luna tiene la mayor tasa de clientes recurrentes del equipo — 78% de reservas repetidas.",
+      action: "Ver clientes de Luna",
     },
     {
       icon: "calendar-clock",
       tone: "primary" as const,
-      title: "Rebooking pattern",
-      body: "Keratin clients return on average every 8 weeks. 5 are due this week.",
-      action: "Send rebooking nudge",
+      title: "Patrón de reserva recurrente",
+      body: "Los clientes de keratina vuelven cada 8 semanas de media. 5 tienen que volver esta semana.",
+      action: "Enviar recordatorio de reserva",
     },
   ];
 }
