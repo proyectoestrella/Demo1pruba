@@ -3,13 +3,11 @@
 @import "tw-animate-css";
 
 /*
- * Dark mode decision: Trimly ships light-only for now. We deliberately keep this
- * @custom-variant declaration (do NOT delete it) because several shadcn/ui base
- * components (src/components/ui/alert.tsx, chart.tsx) already use `dark:` utility
- * classes — removing the variant would make those classes inert/invalid. We just
- * never define a `.dark { ... }` token block, so the app always renders the
- * `:root` (light) palette regardless of OS/browser preference. If real dark mode
- * is wanted later, add a `.dark { --background: ...; ... }` block mirroring :root.
+ * Dark mode: the app ships dark-by-default (premium barbershop convention),
+ * with a light palette available via the `.dark` class toggle (see
+ * src/components/ThemeToggle.tsx and the inline anti-flash script in
+ * src/routes/__root.tsx). The `.dark { ... }` block below mirrors every
+ * token declared in `:root` — keep both blocks in sync when adding tokens.
  */
 @custom-variant dark (&:is(.dark *));
 
@@ -73,36 +71,36 @@
   --radius: 0.75rem;
 
   /* Warm cream/paper background, ink black foreground */
-  --background: oklch(0.985 0.005 80);
-  --foreground: oklch(0.16 0.01 60);
+  --background: oklch(0.98 0.003 85);
+  --foreground: oklch(0.17 0.01 60);
 
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.16 0.01 60);
+  --card-foreground: oklch(0.17 0.01 60);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.16 0.01 60);
+  --popover-foreground: oklch(0.17 0.01 60);
 
-  /* Oxblood accent */
-  --primary: oklch(0.38 0.13 25);
-  --primary-foreground: oklch(0.985 0.005 80);
+  /* Deep brass accent (carbón + latón palette) */
+  --primary: oklch(0.42 0.09 65);
+  --primary-foreground: oklch(0.98 0.003 85);
 
-  --secondary: oklch(0.95 0.01 80);
-  --secondary-foreground: oklch(0.16 0.01 60);
+  --secondary: oklch(0.95 0.008 65);
+  --secondary-foreground: oklch(0.17 0.01 60);
 
-  --muted: oklch(0.95 0.008 80);
-  --muted-foreground: oklch(0.5 0.015 70);
+  --muted: oklch(0.95 0.007 65);
+  --muted-foreground: oklch(0.48 0.02 65);
 
-  --accent: oklch(0.93 0.02 60);
-  --accent-foreground: oklch(0.16 0.01 60);
+  --accent: oklch(0.92 0.025 65);
+  --accent-foreground: oklch(0.17 0.01 60);
 
   --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.985 0.005 80);
+  --destructive-foreground: oklch(0.98 0.003 85);
 
   --success: oklch(0.62 0.14 150);
   --warning: oklch(0.75 0.15 70);
 
-  --border: oklch(0.9 0.008 75);
-  --input: oklch(0.9 0.008 75);
-  --ring: oklch(0.38 0.13 25);
+  --border: oklch(0.89 0.01 65);
+  --input: oklch(0.89 0.01 65);
+  --ring: oklch(0.42 0.09 65);
 
   /* Per-stylist colors. Lightness is kept <= ~0.58 so white avatar-initial text
      (StylistAvatar, see src/components/StylistAvatar.tsx) stays close to AA
@@ -116,7 +114,7 @@
   --stylist-2: oklch(0.55 0.17 70);           /* amber/ochre */
   --stylist-3: oklch(0.48 0.18 300);          /* plum/violet */
 
-  --chart-1: oklch(0.38 0.13 25);
+  --chart-1: oklch(0.42 0.09 65);
   --chart-2: oklch(0.55 0.16 245);
   --chart-3: oklch(0.7 0.15 0);
   --chart-4: oklch(0.62 0.14 150);
@@ -124,12 +122,73 @@
 
   --sidebar: oklch(0.16 0.01 60);
   --sidebar-foreground: oklch(0.95 0.005 80);
-  --sidebar-primary: oklch(0.38 0.13 25);
-  --sidebar-primary-foreground: oklch(0.985 0.005 80);
+  --sidebar-primary: oklch(0.42 0.09 65);
+  --sidebar-primary-foreground: oklch(0.98 0.003 85);
   --sidebar-accent: oklch(0.22 0.01 60);
   --sidebar-accent-foreground: oklch(0.95 0.005 80);
   --sidebar-border: oklch(0.25 0.01 60);
-  --sidebar-ring: oklch(0.38 0.13 25);
+  --sidebar-ring: oklch(0.42 0.09 65);
+}
+
+.dark {
+  /* Carbón cálido: warm charcoal background, warm off-white foreground */
+  --background: oklch(0.16 0.006 60);
+  --foreground: oklch(0.94 0.004 85);
+
+  --card: oklch(0.21 0.007 60);
+  --card-foreground: oklch(0.94 0.004 85);
+  --popover: oklch(0.21 0.007 60);
+  --popover-foreground: oklch(0.94 0.004 85);
+
+  /* Latón claro accent — legible on carbón background */
+  --primary: oklch(0.72 0.11 75);
+  --primary-foreground: oklch(0.16 0.006 60);
+
+  --secondary: oklch(0.26 0.008 60);
+  --secondary-foreground: oklch(0.94 0.004 85);
+
+  --muted: oklch(0.24 0.007 60);
+  --muted-foreground: oklch(0.7 0.012 70);
+
+  --accent: oklch(0.28 0.012 65);
+  --accent-foreground: oklch(0.94 0.004 85);
+
+  --destructive: oklch(0.6 0.2 25);
+  --destructive-foreground: oklch(0.16 0.006 60);
+
+  --success: oklch(0.68 0.14 150);
+  --warning: oklch(0.78 0.14 70);
+
+  --border: oklch(0.28 0.008 60);
+  --input: oklch(0.28 0.008 60);
+  --ring: oklch(0.72 0.11 75);
+
+  /* Per-stylist colors, brightened relative to :root so they read distinctly
+     against the carbón background while keeping white avatar-initial text
+     (StylistAvatar) at/near AA contrast — none pushed past ~0.62 lightness. */
+  --stylist-ines: oklch(0.6 0.16 10);         /* rose/berry */
+  --stylist-manuela: oklch(0.62 0.14 245);    /* blue */
+  --stylist-luna: oklch(0.4 0.015 60);        /* charcoal-grey (was near-black, unreadable on dark bg) */
+  --stylist-1: oklch(0.58 0.12 165);          /* teal/green */
+  --stylist-2: oklch(0.62 0.15 70);           /* amber/ochre */
+  --stylist-3: oklch(0.56 0.16 300);          /* plum/violet */
+
+  --chart-1: oklch(0.72 0.11 75);
+  --chart-2: oklch(0.62 0.14 245);
+  --chart-3: oklch(0.72 0.15 0);
+  --chart-4: oklch(0.68 0.14 150);
+  --chart-5: oklch(0.78 0.14 70);
+
+  /* Sidebar stays darker than --card so it keeps differentiating itself in
+     dark mode too (not just inverting to lighter-than-content). */
+  --sidebar: oklch(0.12 0.005 60);
+  --sidebar-foreground: oklch(0.92 0.004 85);
+  --sidebar-primary: oklch(0.72 0.11 75);
+  --sidebar-primary-foreground: oklch(0.16 0.006 60);
+  --sidebar-accent: oklch(0.19 0.007 60);
+  --sidebar-accent-foreground: oklch(0.92 0.004 85);
+  --sidebar-border: oklch(0.22 0.008 60);
+  --sidebar-ring: oklch(0.72 0.11 75);
 }
 
 @layer base {

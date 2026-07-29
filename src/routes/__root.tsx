@@ -107,14 +107,29 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+// Runs before hydration to avoid a flash of the wrong theme / SSR-vs-client
+// class mismatch: the server always renders `<html class="dark">` (dark is
+// the default), and this script removes the class as early as possible if
+// the visitor previously chose light mode.
+const THEME_ANTI_FLASH_SCRIPT = `
+(function () {
+  try {
+    if (window.localStorage.getItem("trimly-theme") === "light") {
+      document.documentElement.classList.remove("dark");
+    }
+  } catch (e) {}
+})();
+`;
+
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <head>
         <HeadContent />
       </head>
       <body>
         {children}
+        <script dangerouslySetInnerHTML={{ __html: THEME_ANTI_FLASH_SCRIPT }} />
         <Scripts />
       </body>
     </html>

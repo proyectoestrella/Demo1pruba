@@ -4,6 +4,7 @@ import { serviceMap, employeeMap, depositFor, requiresDeposit } from "@/lib/mock
 import { useSalonStore } from "@/lib/store";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { Button } from "@/components/ui/button";
+import { EMPLOYEE_ES, eur } from "@/lib/copy";
 
 export const Route = createFileRoute("/s/$salonSlug/confirmation")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -15,14 +16,6 @@ export const Route = createFileRoute("/s/$salonSlug/confirmation")({
   }),
   component: Confirmation,
 });
-
-const EMPLOYEE_ES: Record<string, { specialty: string }> = {
-  ines: { specialty: "Especialista en cortes y rizos" },
-  manuela: { specialty: "Color y mechas" },
-  luna: { specialty: "Editorial y tratamientos" },
-};
-
-const eur = (n: number) => `${n.toFixed(2).replace(".", ",")} €`;
 
 function Confirmation() {
   const { salonSlug } = Route.useParams();
@@ -81,7 +74,7 @@ function Confirmation() {
         <h1 className="mt-6 font-display text-4xl">
           Reserva confirmada{name ? `, ${name.split(" ")[0]}` : ""}.
         </h1>
-        <p className="mt-2 text-muted-foreground">Te esperamos. Te hemos enviado los detalles por email.</p>
+        <p className="mt-2 text-muted-foreground">Te esperamos. Guarda la cita en tu calendario con el botón de abajo para no olvidarla.</p>
       </div>
 
       <div className="mt-10 rounded-3xl border border-border bg-card p-8">

@@ -7,12 +7,12 @@ export const salon: SalonProfile = {
   id: "los-mosqueteros",
   slug: "los-mosqueteros",
   name: "Barbería Pepe",
-  tagline: "Hair atelier",
+  tagline: "Barbería clásica",
   about:
-    "A modern hair atelier in the heart of the city. Three artists, one obsession: making you feel unmistakably yourself.",
+    "Barbería de toda la vida en el corazón de la ciudad. Tres profesionales, una misma obsesión: que salgas de aquí sintiéndote como nuevo.",
   address: "Calle del Pez 23, Madrid",
   phone: "+34 910 000 000",
-  instagram: "@losmosqueteros.atelier",
+  instagram: "@barberiapepe",
   hours: [
     { day: "Mon–Fri", value: "10:00 — 20:00" },
     { day: "Saturday", value: "10:00 — 18:00" },
@@ -85,7 +85,7 @@ export const employees: Employee[] = [
   {
     id: "ines",
     name: "Ines",
-    specialty: "Especialista en cortes y rizos",
+    specialty: "Cortes clásicos y degradados",
     yearsExperience: 8,
     photo: inesPhoto,
     colorVar: "--stylist-ines",
@@ -94,7 +94,7 @@ export const employees: Employee[] = [
   {
     id: "manuela",
     name: "Manuela",
-    specialty: "Color y mechas",
+    specialty: "Color y canas",
     yearsExperience: 6,
     photo: manuelaPhoto,
     colorVar: "--stylist-manuela",
@@ -103,7 +103,7 @@ export const employees: Employee[] = [
   {
     id: "luna",
     name: "Luna",
-    specialty: "Editorial y tratamientos",
+    specialty: "Barba y tratamientos",
     yearsExperience: 10,
     photo: lunaPhoto,
     colorVar: "--stylist-luna",

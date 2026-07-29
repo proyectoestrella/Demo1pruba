@@ -133,7 +133,28 @@ export const useSalonStore = create<SalonState>()(
   updateSalonProfile: (patch) =>
     set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } })),
     }),
-    { name: "trimly-salon-store", storage },
+    {
+      name: "trimly-salon-store",
+      storage,
+      // v2: the barbershop identity rewrite (name/tagline/about/instagram,
+      // service copy) needs to actually reach browsers that already
+      // persisted v1 state — otherwise the old salonProfile/services would
+      // win forever. Discard just those two slices on migration and refill
+      // them from the current seed data, keeping everything the shopkeeper
+      // may have actually created (appointments, clients, waitlist).
+      version: 2,
+      migrate: (persistedState, version) => {
+        const state = persistedState as SalonState;
+        if (version < 2) {
+          return {
+            ...state,
+            salonProfile: salon,
+            services: seedServices,
+          };
+        }
+        return state;
+      },
+    },
   ),
 );
 

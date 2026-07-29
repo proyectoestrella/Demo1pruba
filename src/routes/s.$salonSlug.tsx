@@ -2,6 +2,8 @@ import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-r
 import { salon } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
 import { Instagram, MapPin, Phone, Lock } from "lucide-react";
+import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const Route = createFileRoute("/s/$salonSlug")({
   head: () => {
@@ -25,7 +27,7 @@ const DAY_LABEL_ES: Record<string, string> = {
 };
 
 const SALON_ABOUT_ES =
-  "Un atelier de peluquería moderno en el corazón de la ciudad. Tres artistas, una misma obsesión: que salgas siendo inconfundiblemente tú.";
+  "Barbería de toda la vida en el corazón de la ciudad. Tres profesionales, una misma obsesión: que salgas de aquí sintiéndote como nuevo.";
 
 function SalonLayout() {
   const { salonSlug } = Route.useParams();
@@ -39,10 +41,10 @@ function SalonLayout() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
             <Link to="/s/$salonSlug" params={{ salonSlug }} className="flex min-w-0 items-center gap-2">
-              <div className="h-8 w-8 shrink-0 rounded-full bg-primary" />
+              <Logo />
               <div className="min-w-0 leading-tight">
                 <p className="truncate font-display text-base">{profile.name}</p>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Atelier de peluquería</p>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Barbería</p>
               </div>
             </Link>
             <Link
@@ -50,7 +52,7 @@ function SalonLayout() {
               className="ml-2 hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted sm:inline-flex"
             >
               <Lock className="h-3 w-3" />
-              Acceso peluquero
+              Acceso barbero
             </Link>
           </div>
           {!onBooking && (
@@ -61,15 +63,18 @@ function SalonLayout() {
               <a href="#ubicacion" className="text-muted-foreground hover:text-foreground">Cómo llegar</a>
             </nav>
           )}
-          {!onBooking && (
-            <Link
-              to="/s/$salonSlug/book"
-              params={{ salonSlug }}
-              className="shrink-0 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              Reservar
-            </Link>
-          )}
+          <div className="flex shrink-0 items-center gap-3">
+            <ThemeToggle />
+            {!onBooking && (
+              <Link
+                to="/s/$salonSlug/book"
+                params={{ salonSlug }}
+                className="shrink-0 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Reservar
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 
@@ -81,7 +86,7 @@ function SalonLayout() {
         <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 md:grid-cols-4">
           <div className="md:col-span-2">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary" />
+              <Logo />
               <span className="font-display text-lg">{profile.name}</span>
             </div>
             <p className="mt-4 max-w-sm text-sm text-muted-foreground">{SALON_ABOUT_ES}</p>

@@ -3,20 +3,21 @@ import { useState, type FormEvent } from "react";
 import { Lock, ArrowLeft, Loader2 } from "lucide-react";
 import { salon } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
+import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: `Acceso peluquero · ${useSalonStore.getState().salonProfile.name}` }] }),
+  head: () => ({ meta: [{ title: `Acceso barbero · ${useSalonStore.getState().salonProfile.name}` }] }),
   component: LoginPage,
 });
 
 function LoginPage() {
   const navigate = useNavigate();
   const salonName = useSalonStore((s) => s.salonProfile.name);
-  const [email, setEmail] = useState("manuela@losmosqueteros.com");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -38,10 +39,10 @@ function LoginPage() {
       <header className="border-b border-border/60">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
           <Link to="/s/$salonSlug" params={{ salonSlug: salon.slug }} className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-primary" />
+            <Logo />
             <div className="leading-tight">
               <p className="font-display text-base">{salonName}</p>
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Atelier de peluquería</p>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Barbería</p>
             </div>
           </Link>
           <Link
@@ -61,7 +62,7 @@ function LoginPage() {
               <Lock className="h-4 w-4" />
             </div>
             <div>
-              <h1 className="font-display text-xl">Acceso peluquero</h1>
+              <h1 className="font-display text-xl">Acceso barbero</h1>
               <p className="text-xs text-muted-foreground">Entra al panel de gestión del salón</p>
             </div>
           </div>
@@ -102,10 +103,6 @@ function LoginPage() {
               {loading ? "Accediendo…" : "Entrar al panel"}
             </Button>
           </form>
-
-          <p className="mt-6 text-center text-[11px] text-muted-foreground">
-            Las credenciales de demo ya están rellenadas. Pulsa &ldquo;Entrar al panel&rdquo; para continuar.
-          </p>
         </div>
       </main>
     </div>

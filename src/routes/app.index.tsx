@@ -22,12 +22,21 @@ export const Route = createFileRoute("/app/")({
   component: Home,
 });
 
+/** Time-of-day greeting: madrugada (00-06), mañana (06-13), tarde (13-20), noche (20-24). */
+function greetingForHour(hour: number) {
+  if (hour < 6) return "Buenas noches.";
+  if (hour < 13) return "Buenos días.";
+  if (hour < 20) return "Buenas tardes.";
+  return "Buenas noches.";
+}
+
 function Home() {
   const appointments = useSalonStore((s) => s.appointments);
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const today = todayKpis(appointments);
   const revData = revenueByDay(appointments, 30);
   const [selected, setSelected] = useState<Appointment | null>(null);
+  const greeting = greetingForHour(new Date().getHours());
 
   const kpis = [
     { label: "Citas hoy", value: today.count.toString(), icon: Calendar },
@@ -50,7 +59,7 @@ function Home() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl md:text-3xl tracking-tight">Buenos días.</h1>
+        <h1 className="font-display text-2xl md:text-3xl tracking-tight">{greeting}</h1>
         <p className="text-sm text-muted-foreground">Así va {salonName} hoy.</p>
       </div>
 

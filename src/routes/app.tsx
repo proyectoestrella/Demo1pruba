@@ -19,6 +19,8 @@ import { salon } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
 import { ViewSwitcher } from "@/components/ViewSwitcher";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
+import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
@@ -73,10 +75,10 @@ function SidebarBrand() {
   const name = useSalonStore((s) => s.salonProfile.name);
   return (
     <div className="flex items-center gap-2 px-6 py-6">
-      <div className="h-8 w-8 rounded-full bg-primary" />
+      <Logo />
       <div className="leading-tight">
         <p className="font-display text-base">{name}</p>
-        <p className="text-[10px] uppercase tracking-widest text-sidebar-foreground/60">Salon OS</p>
+        <p className="text-[10px] uppercase tracking-widest text-sidebar-foreground/60">Panel de gestión</p>
       </div>
     </div>
   );
@@ -98,6 +100,8 @@ function SidebarFooter() {
 
 function DashboardLayout() {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const salonName = useSalonStore((s) => s.salonProfile.name);
+  const salonInitial = salonName.trim().charAt(0).toUpperCase() || "?";
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [newApptOpen, setNewApptOpen] = useState(false);
 
@@ -148,12 +152,13 @@ function DashboardLayout() {
             <div className="hidden md:block">
               <ViewSwitcher mode="dashboard" />
             </div>
+            <ThemeToggle />
             <Button size="sm" onClick={() => setNewApptOpen(true)} className="gap-1.5">
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Nueva cita</span>
             </Button>
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-              M
+              {salonInitial}
             </div>
           </div>
         </header>

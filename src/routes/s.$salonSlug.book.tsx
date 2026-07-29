@@ -18,6 +18,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { es } from "date-fns/locale";
 import heroImg from "@/assets/hero-salon.jpg";
 import { registerBookingClient } from "@/lib/api/clients.functions";
+import { SERVICE_ES, CATEGORY_LABELS, CATEGORY_ORDER, EMPLOYEE_ES, eur } from "@/lib/copy";
 
 export const Route = createFileRoute("/s/$salonSlug/book")({
   validateSearch: (search: Record<string, unknown>): { service?: string } => ({
@@ -25,33 +26,6 @@ export const Route = createFileRoute("/s/$salonSlug/book")({
   }),
   component: BookingWizard,
 });
-
-const SERVICE_ES: Record<string, { name: string; description: string }> = {
-  haircut: { name: "Corte de caballero", description: "Lavado, corte de firma y acabado." },
-  beard: { name: "Arreglo de barba", description: "Toalla caliente, perfilado y cuidado." },
-  color: { name: "Color", description: "Color de un tono, brillo y matiz final." },
-  highlights: { name: "Mechas", description: "Iluminación pintada a mano, tono y tratamiento." },
-  keratin: { name: "Tratamiento de keratina", description: "Alisado con proteína, dura 12 semanas." },
-  styling: { name: "Peinado", description: "Secado o peinado para eventos especiales." },
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  haircut: "Cortes",
-  styling: "Cortes",
-  beard: "Barbería",
-  color: "Color",
-  highlights: "Color",
-  keratin: "Tratamientos",
-};
-const CATEGORY_ORDER = ["Cortes", "Barbería", "Color", "Tratamientos"];
-
-const EMPLOYEE_ES: Record<string, { specialty: string }> = {
-  ines: { specialty: "Especialista en cortes y rizos" },
-  manuela: { specialty: "Color y mechas" },
-  luna: { specialty: "Editorial y tratamientos" },
-};
-
-const eur = (n: number) => `${n.toFixed(2).replace(".", ",")} €`;
 
 function toDateKey(d: Date) {
   const y = d.getFullYear();
@@ -366,7 +340,7 @@ function ServiceStep({ selected, onSelect }: { selected?: string; onSelect: (id:
 
 function StylistStep({ selected, onSelect }: { selected?: EmployeeId | "any"; onSelect: (id: EmployeeId | "any") => void }) {
   return (
-    <Step title="Elige un estilista">
+    <Step title="Elige tu barbero">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <button
           onClick={() => onSelect("any")}

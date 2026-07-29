@@ -6,38 +6,14 @@ import heroImg from "@/assets/hero-salon.jpg";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
+import { SERVICE_ES, CATEGORY_LABELS, CATEGORY_ORDER, EMPLOYEE_ES, eur } from "@/lib/copy";
 
 export const Route = createFileRoute("/s/$salonSlug/")({
   component: SalonHome,
 });
 
 const SALON_ABOUT_ES =
-  "Un atelier de peluquería moderno en el corazón de la ciudad. Tres artistas, una misma obsesión: que salgas siendo inconfundiblemente tú.";
-
-const SERVICE_ES: Record<string, { name: string; description: string }> = {
-  haircut: { name: "Corte de caballero", description: "Lavado, corte de firma y acabado." },
-  beard: { name: "Arreglo de barba", description: "Toalla caliente, perfilado y cuidado." },
-  color: { name: "Color", description: "Color de un tono, brillo y matiz final." },
-  highlights: { name: "Mechas", description: "Iluminación pintada a mano, tono y tratamiento." },
-  keratin: { name: "Tratamiento de keratina", description: "Alisado con proteína, dura 12 semanas." },
-  styling: { name: "Peinado", description: "Secado o peinado para eventos especiales." },
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  haircut: "Cortes",
-  styling: "Cortes",
-  beard: "Barbería",
-  color: "Color",
-  highlights: "Color",
-  keratin: "Tratamientos",
-};
-const CATEGORY_ORDER = ["Cortes", "Barbería", "Color", "Tratamientos"];
-
-const EMPLOYEE_ES: Record<string, { specialty: string }> = {
-  ines: { specialty: "Especialista en cortes y rizos" },
-  manuela: { specialty: "Color y mechas" },
-  luna: { specialty: "Editorial y tratamientos" },
-};
+  "Barbería de toda la vida en el corazón de la ciudad. Tres profesionales, una misma obsesión: que salgas de aquí sintiéndote como nuevo.";
 
 const FEATURED_IDS = ["haircut", "color", "highlights", "keratin"];
 
@@ -50,8 +26,6 @@ const AGGREGATE_RATING = 4.8;
 const REVIEW_COUNT = 312;
 
 const WEEK_DAYS_ES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-
-const eur = (n: number) => `${n.toFixed(2).replace(".", ",")} €`;
 
 function todayOpenInfo(hours: typeof salon.hours) {
   const dow = new Date().getDay();
@@ -224,7 +198,7 @@ function SalonHome() {
         <div className="mx-auto max-w-5xl px-6 py-16 md:py-24">
           <div className="mb-12">
             <p className="text-xs uppercase tracking-[0.25em] text-primary">Equipo</p>
-            <h2 className="mt-2 font-display text-3xl md:text-4xl">Los mosqueteros</h2>
+            <h2 className="mt-2 font-display text-3xl md:text-4xl">El equipo</h2>
           </div>
           <div className="grid gap-6 sm:grid-cols-3">
             {employees.map((e) => (
@@ -297,7 +271,7 @@ function SalonHome() {
 
       {/* CTA final */}
       <section className="mx-auto max-w-5xl px-6 py-16 text-center md:py-24">
-        <h2 className="font-display text-3xl md:text-4xl">¿Lista para tu próxima cita?</h2>
+        <h2 className="font-display text-3xl md:text-4xl">¿Nos vemos pronto?</h2>
         <p className="mt-3 text-muted-foreground">Elige servicio, estilista y hora en menos de un minuto.</p>
         <Link
           to="/s/$salonSlug/book"
