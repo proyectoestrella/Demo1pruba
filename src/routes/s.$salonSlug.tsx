@@ -32,7 +32,8 @@ const SALON_ABOUT_ES =
 function SalonLayout() {
   const { salonSlug } = Route.useParams();
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const onBooking = path.includes("/book") || path.includes("/confirmation") || path.includes("/waitlist");
+  const onBooking =
+    path.includes("/book") || path.includes("/confirmation") || path.includes("/waitlist");
   const profile = useSalonStore((s) => s.salonProfile);
 
   return (
@@ -40,11 +41,17 @@ function SalonLayout() {
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
-            <Link to="/s/$salonSlug" params={{ salonSlug }} className="flex min-w-0 items-center gap-2">
+            <Link
+              to="/s/$salonSlug"
+              params={{ salonSlug }}
+              className="flex min-w-0 items-center gap-2"
+            >
               <Logo />
               <div className="min-w-0 leading-tight">
                 <p className="truncate font-display text-base">{profile.name}</p>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Barbería</p>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  Barbería
+                </p>
               </div>
             </Link>
             <Link
@@ -57,10 +64,21 @@ function SalonLayout() {
           </div>
           {!onBooking && (
             <nav className="hidden items-center gap-7 text-sm md:flex">
-              <a href="#servicios" className="text-muted-foreground hover:text-foreground">Servicios</a>
-              <a href="#equipo" className="text-muted-foreground hover:text-foreground">Equipo</a>
-              <a href="#resenas" className="text-muted-foreground hover:text-foreground">Reseñas</a>
-              <a href="#ubicacion" className="text-muted-foreground hover:text-foreground">Cómo llegar</a>
+              <a href="#servicios" className="text-muted-foreground hover:text-foreground">
+                Servicios
+              </a>
+              <a href="#galeria" className="text-muted-foreground hover:text-foreground">
+                Galería
+              </a>
+              <a href="#equipo" className="text-muted-foreground hover:text-foreground">
+                Equipo
+              </a>
+              <a href="#resenas" className="text-muted-foreground hover:text-foreground">
+                Reseñas
+              </a>
+              <a href="#ubicacion" className="text-muted-foreground hover:text-foreground">
+                Cómo llegar
+              </a>
             </nav>
           )}
           <div className="flex shrink-0 items-center gap-3">
@@ -93,9 +111,18 @@ function SalonLayout() {
           </div>
           <div>
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Visítanos</p>
-            <p className="mt-3 flex items-start gap-2 text-sm"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />{profile.address}</p>
-            <p className="mt-2 flex items-center gap-2 text-sm"><Phone className="h-4 w-4 shrink-0 text-primary" />{profile.phone}</p>
-            <p className="mt-2 flex items-center gap-2 text-sm"><Instagram className="h-4 w-4 shrink-0 text-primary" />{profile.instagram}</p>
+            <p className="mt-3 flex items-start gap-2 text-sm">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              {profile.address}
+            </p>
+            <p className="mt-2 flex items-center gap-2 text-sm">
+              <Phone className="h-4 w-4 shrink-0 text-primary" />
+              {profile.phone}
+            </p>
+            <p className="mt-2 flex items-center gap-2 text-sm">
+              <Instagram className="h-4 w-4 shrink-0 text-primary" />
+              {profile.instagram}
+            </p>
           </div>
           <div>
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Horario</p>
