@@ -13,6 +13,8 @@ import {
   ArrowUpRight,
   Menu,
   Plus,
+  Compass,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { salon } from "@/lib/mock/salon";
@@ -21,8 +23,16 @@ import { ViewSwitcher } from "@/components/ViewSwitcher";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AssistantPanel } from "@/components/assistant/AssistantPanel";
+import { hasSeenTour, startTour } from "@/lib/tour";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/app")({
   head: () => ({
@@ -90,7 +100,7 @@ function NavLink({ item, active, onNavigate }: { item: NavItem; active: boolean;
 
 function SidebarNav({ path, onNavigate }: { path: string; onNavigate?: () => void }) {
   return (
-    <nav className="flex flex-1 flex-col space-y-4 overflow-y-auto px-3 py-3">
+    <nav data-tour="nav" className="flex flex-1 flex-col space-y-4 overflow-y-auto px-3 py-3">
       {navGroups.map((group) => (
         <div key={group.label}>
           <p className="px-3 pb-1 text-[10px] font-medium uppercase tracking-widest text-sidebar-foreground/35">
@@ -143,10 +153,20 @@ function DashboardLayout() {
   const salonInitial = salonName.trim().charAt(0).toUpperCase() || "?";
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [newApptOpen, setNewApptOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
 
   // Close the mobile drawer whenever the route changes.
   useEffect(() => {
     setMobileNavOpen(false);
+  }, [path]);
+
+  // Primera visita al panel: se ofrece el tour una sola vez. Solo en la home
+  // (/app), que es donde están anclados casi todos los pasos, y con un respiro
+  // para que los KPIs y los gráficos ya estén montados.
+  useEffect(() => {
+    if (path !== "/app" || hasSeenTour()) return;
+    const t = setTimeout(startTour, 900);
+    return () => clearTimeout(t);
   }, [path]);
 
   const activeItem = allNavItems.find((item) => isActive(item, path));
@@ -191,8 +211,33 @@ function DashboardLayout() {
             <div className="hidden md:block">
               <ViewSwitcher mode="dashboard" />
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden sm:inline-flex"
+              onClick={startTour}
+              title="Ver el tour guiado del panel"
+              aria-label="Ver el tour guiado del panel"
+            >
+              <Compass className="h-4 w-4" />
+            </Button>
+            <Button
+              data-tour="assistant"
+              variant="outline"
+              size="sm"
+              onClick={() => setAssistantOpen(true)}
+              className="gap-1.5"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden md:inline">Asistente</span>
+            </Button>
             <ThemeToggle />
-            <Button size="sm" onClick={() => setNewApptOpen(true)} className="gap-1.5">
+            <Button
+              data-tour="new-appointment"
+              size="sm"
+              onClick={() => setNewApptOpen(true)}
+              className="gap-1.5"
+            >
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Nueva cita</span>
             </Button>
@@ -212,6 +257,22 @@ function DashboardLayout() {
       </div>
 
       <NewAppointmentDialog open={newApptOpen} onOpenChange={setNewApptOpen} />
+
+      <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
+        >
+          <SheetHeader className="border-b border-border/60 px-4 py-4 text-left">
+            <SheetTitle className="font-display text-lg">Asistente del salón</SheetTitle>
+            <SheetDescription>
+              Consulta tus datos en lenguaje natural. Calcula sobre tus reservas
+              reales: no es un modelo de lenguaje y no inventa cifras.
+            </SheetDescription>
+          </SheetHeader>
+          <AssistantPanel className="flex-1" />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

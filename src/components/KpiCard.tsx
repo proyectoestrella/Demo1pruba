@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { KpiTrend } from "@/lib/derive";
 import { Sparkline } from "@/components/Sparkline";
+import { CountUp } from "@/components/reactbits/CountUp";
 
 export interface KpiCardProps {
   label: string;
@@ -51,7 +52,12 @@ export function KpiCard({ label, icon: Icon, trend, format, context, goodDirecti
           {rounded === null ? "Sin datos previos" : `${rounded > 0 ? "+" : ""}${rounded}%`}
         </div>
       </div>
-      <p className="mt-3 text-3xl font-semibold tabular-nums">{format(trend.current)}</p>
+      <CountUp
+        className="mt-3 block text-3xl font-semibold tabular-nums"
+        to={trend.current}
+        format={format}
+        duration={1.2}
+      />
       <div className="mt-0.5 flex items-baseline justify-between gap-2">
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className="shrink-0 text-[10px] text-muted-foreground/70">{context}</p>

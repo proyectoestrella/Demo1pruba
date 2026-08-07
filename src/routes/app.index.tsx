@@ -20,6 +20,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { KpiCard } from "@/components/KpiCard";
+import { CountUp } from "@/components/reactbits/CountUp";
 
 const CHART_TOOLTIP_STYLE = {
   background: "var(--color-card)",
@@ -117,7 +118,7 @@ function Home() {
         <p className="text-sm text-muted-foreground">Así va {salonName} hoy.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+      <div data-tour="kpis" className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         {kpis.map((k) => (
           <KpiCard
             key={k.label}
@@ -136,13 +137,20 @@ function Home() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="min-w-0 rounded-xl border border-border/60 bg-card p-6 lg:col-span-2">
+        <div
+          data-tour="revenue-chart"
+          className="min-w-0 rounded-xl border border-border/60 bg-card p-6 lg:col-span-2"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-widest text-muted-foreground">Ingresos</p>
               <h2 className="mt-1 font-display text-xl">Últimos 30 días</h2>
             </div>
-            <p className="font-display text-2xl">€{revData.reduce((s, d) => s + d.revenue, 0).toLocaleString("es")}</p>
+            <CountUp
+              className="font-display text-2xl"
+              to={revData.reduce((s, d) => s + d.revenue, 0)}
+              format={(v) => `€${Math.round(v).toLocaleString("es")}`}
+            />
           </div>
           <div className="mt-6 h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -222,7 +230,7 @@ function Home() {
         </div>
       </div>
 
-      <div className="min-w-0 rounded-xl border border-border/60 bg-card">
+      <div data-tour="today-list" className="min-w-0 rounded-xl border border-border/60 bg-card">
         <div className="flex items-center justify-between border-b border-border/60 px-6 py-4">
           <h2 className="font-display text-lg">Citas de hoy</h2>
           <span className="text-xs text-muted-foreground">{todayList.length} programadas</span>

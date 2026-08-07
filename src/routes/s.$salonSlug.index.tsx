@@ -1,18 +1,50 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Clock, Info, Instagram, MapPin, Phone, Scissors, Star } from "lucide-react";
-import { services, serviceMap, employees, salon, requiresDeposit } from "@/lib/mock/salon";
+import {
+  ArrowRight,
+  Clock,
+  Info,
+  Instagram,
+  MapPin,
+  Phone,
+  Quote,
+  Scissors,
+  Star,
+} from "lucide-react";
+import {
+  services,
+  serviceMap,
+  employees,
+  salon,
+  requiresDeposit,
+  DEPOSIT_RATE,
+  DEPOSIT_THRESHOLD_MIN,
+} from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
 import heroImg from "@/assets/hero-salon.jpg";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { WorkGallery } from "@/components/WorkGallery";
 import { MobileBookingBar } from "@/components/MobileBookingBar";
 import { Reveal } from "@/components/Reveal";
+import { TextEffect } from "@/components/motion-primitives/text-effect";
+import { AnimatedGroup } from "@/components/motion-primitives/animated-group";
+import { CountUp } from "@/components/reactbits/CountUp";
+import { ShinyText } from "@/components/reactbits/ShinyText";
+import { SpotlightCard } from "@/components/reactbits/SpotlightCard";
+import { ScrollVelocity } from "@/components/reactbits/ScrollVelocity";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 import { SERVICE_ES, CATEGORY_LABELS, CATEGORY_ORDER, EMPLOYEE_ES, eur } from "@/lib/copy";
 
@@ -42,6 +74,16 @@ const REVIEWS = [
     rating: 5,
     quote: "Ambiente cuidado y muy puntuales con la hora de la cita.",
   },
+  {
+    name: "Javier P.",
+    rating: 5,
+    quote: "Reservé desde el móvil en un minuto y a la hora exacta estaba en la silla.",
+  },
+  {
+    name: "Nuria S.",
+    rating: 4,
+    quote: "El color quedó justo como lo habíamos hablado. Repetiré sin dudarlo.",
+  },
 ];
 const AGGREGATE_RATING = 4.8;
 const REVIEW_COUNT = 312;
@@ -51,6 +93,44 @@ const WEEK_DAYS_ES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sá
 /** Card hover lift, gated so it's fully inert under prefers-reduced-motion. */
 const CARD_HOVER =
   "transition-all duration-300 hover:-translate-y-1 motion-reduce:hover:translate-y-0";
+
+/** Variantes de entrada del hero — el patrón de los bloques de Tailark. */
+const HERO_IN = {
+  container: {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.12, delayChildren: 0.4 } },
+  },
+  item: {
+    hidden: { opacity: 0, y: 24, filter: "blur(8px)" },
+    visible: {
+      opacity: 1,
+      y: 0,
+      filter: "blur(0px)",
+      transition: { type: "spring" as const, bounce: 0.3, duration: 1.4 },
+    },
+  },
+};
+
+const FAQ = [
+  {
+    q: "¿Puedo cancelar o cambiar la cita?",
+    a: "Sí. Hasta 24 horas antes puedes cancelar o mover la cita sin coste desde el enlace que recibes al reservar.",
+  },
+  {
+    q: "¿Hace falta pagar por adelantado?",
+    a: `Solo en los servicios largos, de más de ${DEPOSIT_THRESHOLD_MIN} minutos: se pide un depósito del ${Math.round(
+      DEPOSIT_RATE * 100,
+    )}% que se descuenta del total y se abona en el salón.`,
+  },
+  {
+    q: "¿Atendéis sin cita previa?",
+    a: "Si hay hueco, sí — pero la agenda suele ir llena. Reservar online es la forma segura de tener sitio.",
+  },
+  {
+    q: "¿Puedo elegir barbero?",
+    a: "Claro. En el paso 2 de la reserva eliges profesional, o dejas «cualquiera disponible» si lo que te corre prisa es la hora.",
+  },
+];
 
 function todayOpenInfo(hours: typeof salon.hours) {
   const dow = new Date().getDay();
@@ -73,6 +153,10 @@ function todayOpenInfo(hours: typeof salon.hours) {
   return `Abierto · cierra a las ${endStr}`;
 }
 
+function isOpenNow(hours: typeof salon.hours) {
+  return todayOpenInfo(hours).startsWith("Abierto");
+}
+
 function fullWeekSchedule(hours: typeof salon.hours) {
   const weekday = hours.find((h) => h.day === "Mon–Fri")?.value ?? "—";
   const sat = hours.find((h) => h.day === "Saturday")?.value ?? "—";
@@ -83,54 +167,123 @@ function fullWeekSchedule(hours: typeof salon.hours) {
   }));
 }
 
+/** Encabezado de sección: cintillo en latón + titular display. */
+function SectionHeading({
+  eyebrow,
+  title,
+  className,
+}: {
+  eyebrow: string;
+  title: string;
+  className?: string;
+}) {
+  return (
+    <Reveal className={cn("mb-10", className)}>
+      <p className="text-xs uppercase tracking-[0.25em] text-primary">{eyebrow}</p>
+      <h2 className="mt-2 font-display text-3xl md:text-4xl">{title}</h2>
+    </Reveal>
+  );
+}
+
 function SalonHome() {
   const { salonSlug } = Route.useParams();
   const profile = useSalonStore((s) => s.salonProfile);
   const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(profile.address)}&output=embed`;
 
+  const activeServices = services.filter((s) => s.active !== false);
+  const openNow = isOpenNow(salon.hours);
+  // Cifras sacadas del propio catálogo/equipo, no inventadas.
+  const stats = [
+    { value: employees.length, suffix: "", label: "barberos en plantilla" },
+    {
+      value: Math.max(...employees.map((e) => e.yearsExperience)),
+      suffix: "+",
+      label: "años de oficio",
+    },
+    { value: activeServices.length, suffix: "", label: "servicios en carta" },
+    {
+      value: Math.min(...activeServices.map((s) => s.durationMin)),
+      suffix: " min",
+      label: "el servicio más rápido",
+    },
+  ];
+
   return (
     <>
-      {/* Hero a sangre: foto de fondo + degradado, legible en claro y oscuro */}
-      <section className="relative isolate flex min-h-[80vh] items-end overflow-hidden text-white sm:min-h-[85vh] sm:items-center">
+      {/* ------------------------------------------------------------------
+       * Hero a sangre. Foto + doble degradado para que el texto sea legible
+       * pase lo que pase con la imagen, y entrada escalonada al estilo de
+       * los bloques de Tailark.
+       * ---------------------------------------------------------------- */}
+      <section className="relative isolate flex min-h-[85vh] items-end overflow-hidden text-white sm:items-center">
         <img
           src={heroImg}
           alt={`Interior de ${profile.name}`}
-          className="absolute inset-0 -z-10 h-full w-full object-cover"
+          className="absolute inset-0 -z-20 h-full w-full object-cover"
           width={1920}
           height={1280}
+          fetchPriority="high"
         />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/60 to-black/25" />
-        <div className="mx-auto w-full max-w-6xl px-5 py-16 sm:py-24 md:py-32">
-          <div className="max-w-2xl space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1.5 text-sm backdrop-blur-sm">
-              <span className="flex items-center gap-1 font-medium">
-                <Star className="h-4 w-4 fill-primary text-primary" /> {AGGREGATE_RATING}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/92 via-black/60 to-black/25" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(75%_60%_at_15%_50%,rgba(0,0,0,0.55),transparent_70%)]" />
+
+        <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:py-24 md:py-32">
+          <AnimatedGroup variants={HERO_IN} className="max-w-2xl space-y-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-sm backdrop-blur-sm">
+              <span
+                className={cn(
+                  "size-1.5 rounded-full",
+                  openNow ? "bg-success animate-pulse motion-reduce:animate-none" : "bg-white/40",
+                )}
+                aria-hidden="true"
+              />
+              <ShinyText
+                text={todayOpenInfo(salon.hours)}
+                baseColor="rgb(255 255 255 / 0.92)"
+                className="font-medium"
+                speed={5}
+              />
+              <span className="text-white/40" aria-hidden="true">
+                ·
               </span>
-              <span className="text-white/70">· {REVIEW_COUNT} reseñas</span>
+              <span className="flex items-center gap-1">
+                <Star className="h-3.5 w-3.5 fill-primary text-primary" />
+                <span className="font-medium">{AGGREGATE_RATING}</span>
+              </span>
             </div>
-            <h1 className="font-display text-5xl leading-[1.05] sm:text-6xl md:text-7xl">
+
+            <TextEffect
+              as="h1"
+              per="char"
+              preset="fade-in-blur"
+              speedSegment={2.4}
+              delay={0.2}
+              className="font-display text-5xl leading-[1.05] sm:text-6xl md:text-7xl"
+            >
               {profile.name}
-            </h1>
+            </TextEffect>
+
             <p className="flex items-center gap-2 text-white/85">
               <MapPin className="h-4 w-4 shrink-0 text-primary" /> {profile.address}
             </p>
             <p className="max-w-md text-lg text-white/80">{SALON_ABOUT_ES}</p>
+
             <div className="flex flex-wrap gap-3 pt-2">
-              <Link
-                to="/s/$salonSlug/book"
-                params={{ salonSlug }}
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              <Button asChild size="lg" className="rounded-full px-7">
+                <Link to="/s/$salonSlug/book" params={{ salonSlug }}>
+                  Reservar cita <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="rounded-full border-white/30 bg-white/10 px-7 text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"
               >
-                Reservar <ArrowRight className="h-4 w-4" />
-              </Link>
-              <a
-                href="#servicios"
-                className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm hover:bg-white/20"
-              >
-                Ver servicios
-              </a>
+                <a href="#servicios">Ver la carta</a>
+              </Button>
             </div>
-          </div>
+          </AnimatedGroup>
         </div>
       </section>
 
@@ -143,44 +296,73 @@ function SalonHome() {
           <span className="flex items-center gap-2 text-muted-foreground">
             <MapPin className="h-4 w-4 shrink-0 text-primary" /> {profile.address}
           </span>
-          <span className="flex items-center gap-2 text-muted-foreground">
+          <a
+            href={`tel:${profile.phone.replace(/\s/g, "")}`}
+            className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
+          >
             <Phone className="h-4 w-4 shrink-0 text-primary" /> {profile.phone}
-          </span>
+          </a>
+        </div>
+      </section>
+
+      {/* Cinta que reacciona al scroll */}
+      <div className="overflow-hidden border-b border-border/40 bg-background py-4">
+        <ScrollVelocity
+          items={["Degradados", "Barba a navaja", "Toalla caliente", "Color", "Sin esperas"]}
+          velocity={28}
+          className="font-display text-xl text-muted-foreground/70 sm:text-2xl"
+        />
+      </div>
+
+      {/* Cifras del salón */}
+      <section className="border-b border-border/40">
+        <div className="mx-auto grid max-w-5xl grid-cols-2 gap-y-8 px-6 py-12 md:grid-cols-4">
+          {stats.map((s, i) => (
+            <Reveal key={s.label} delay={i * 80} className="text-center">
+              <p className="font-display text-4xl text-foreground md:text-5xl">
+                <CountUp to={s.value} format={(v) => `${Math.round(v)}${s.suffix}`} />
+              </p>
+              <p className="mt-1 text-xs uppercase tracking-widest text-muted-foreground">
+                {s.label}
+              </p>
+            </Reveal>
+          ))}
         </div>
       </section>
 
       {/* Servicios destacados */}
       <section id="servicios" className="mx-auto max-w-5xl px-6 py-16 md:py-24">
-        <Reveal className="mb-10">
-          <p className="text-xs uppercase tracking-[0.25em] text-primary">Más reservados</p>
-          <h2 className="mt-2 font-display text-3xl md:text-4xl">Servicios destacados</h2>
-        </Reveal>
+        <SectionHeading eyebrow="Más reservados" title="Servicios destacados" />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURED_IDS.map((id, i) => {
             const s = serviceMap[id];
             if (!s) return null;
             const label = SERVICE_ES[id] ?? { name: s.name, description: s.description };
             return (
-              <Reveal key={id} delay={i * 70}>
-                <Link
-                  to="/s/$salonSlug/book"
-                  params={{ salonSlug }}
-                  search={{ service: id }}
+              <Reveal key={id} delay={i * 70} className="h-full">
+                <SpotlightCard
                   className={cn(
-                    "group flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 hover:border-primary/40 hover:bg-muted/20",
+                    "group h-full rounded-2xl border border-border/60 bg-card hover:border-primary/40",
                     CARD_HOVER,
                   )}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <Scissors className="h-5 w-5 text-primary" />
-                    <span className="font-display text-xl">{eur(s.priceEur)}</span>
-                  </div>
-                  <h3 className="mt-5 text-base font-semibold">{label.name}</h3>
-                  <p className="mt-1 flex-1 text-sm text-muted-foreground">{label.description}</p>
-                  <span className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Clock className="h-3.5 w-3.5" /> {s.durationMin} min
-                  </span>
-                </Link>
+                  <Link
+                    to="/s/$salonSlug/book"
+                    params={{ salonSlug }}
+                    search={{ service: id }}
+                    className="relative flex h-full flex-col p-6"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <Scissors className="h-5 w-5 text-primary" />
+                      <span className="font-display text-xl">{eur(s.priceEur)}</span>
+                    </div>
+                    <h3 className="mt-5 text-base font-semibold">{label.name}</h3>
+                    <p className="mt-1 flex-1 text-sm text-muted-foreground">{label.description}</p>
+                    <span className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" /> {s.durationMin} min
+                    </span>
+                  </Link>
+                </SpotlightCard>
               </Reveal>
             );
           })}
@@ -190,10 +372,7 @@ function SalonHome() {
       {/* Catálogo completo */}
       <section className="border-t border-border/40">
         <div className="mx-auto max-w-5xl px-6 py-16 md:py-24">
-          <Reveal className="mb-10">
-            <p className="text-xs uppercase tracking-[0.25em] text-primary">El menú completo</p>
-            <h2 className="mt-2 font-display text-3xl md:text-4xl">Todos los servicios</h2>
-          </Reveal>
+          <SectionHeading eyebrow="El menú completo" title="Todos los servicios" />
           <Reveal>
             <Accordion
               type="single"
@@ -202,14 +381,17 @@ function SalonHome() {
               className="divide-y divide-border/40"
             >
               {CATEGORY_ORDER.map((cat) => {
-                const items = services.filter(
-                  (s) => s.active !== false && (CATEGORY_LABELS[s.id] ?? "Otros") === cat,
+                const items = activeServices.filter(
+                  (s) => (CATEGORY_LABELS[s.id] ?? "Otros") === cat,
                 );
                 if (!items.length) return null;
                 return (
                   <AccordionItem key={cat} value={cat} className="border-b-0">
                     <AccordionTrigger className="py-4 text-base font-display font-medium hover:no-underline">
                       {cat}
+                      <span className="ml-auto mr-3 text-xs font-normal text-muted-foreground">
+                        {items.length}
+                      </span>
                     </AccordionTrigger>
                     <AccordionContent>
                       <div className="space-y-2 pb-2">
@@ -224,7 +406,7 @@ function SalonHome() {
                               to="/s/$salonSlug/book"
                               params={{ salonSlug }}
                               search={{ service: s.id }}
-                              className="flex items-center justify-between gap-4 rounded-lg border border-border/60 px-4 py-3.5 transition-colors hover:border-primary/40 hover:bg-muted/30"
+                              className="group flex items-center justify-between gap-4 rounded-lg border border-border/60 px-4 py-3.5 transition-colors hover:border-primary/40 hover:bg-muted/30"
                             >
                               <div className="min-w-0">
                                 <p className="font-medium">{label.name}</p>
@@ -233,8 +415,9 @@ function SalonHome() {
                                   {requiresDeposit(s.durationMin) ? " · requiere depósito" : ""}
                                 </p>
                               </div>
-                              <span className="shrink-0 font-display text-lg">
+                              <span className="flex shrink-0 items-center gap-2 font-display text-lg">
                                 {eur(s.priceEur)}
+                                <ArrowRight className="h-4 w-4 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
                               </span>
                             </Link>
                           );
@@ -255,14 +438,11 @@ function SalonHome() {
       {/* Equipo */}
       <section id="equipo" className="border-t border-border/40 bg-card">
         <div className="mx-auto max-w-5xl px-6 py-16 md:py-24">
-          <Reveal className="mb-12">
-            <p className="text-xs uppercase tracking-[0.25em] text-primary">Equipo</p>
-            <h2 className="mt-2 font-display text-3xl md:text-4xl">El equipo</h2>
-          </Reveal>
+          <SectionHeading eyebrow="Equipo" title="Quién te va a atender" className="mb-12" />
           <div className="grid gap-6 sm:grid-cols-3">
             {employees.map((e, i) => (
               <Reveal key={e.id} delay={i * 90} className="h-full">
-                <div
+                <SpotlightCard
                   className={cn(
                     "group flex h-full flex-col items-center rounded-2xl border border-border/60 bg-background p-8 text-center hover:border-primary/40",
                     CARD_HOVER,
@@ -278,7 +458,7 @@ function SalonHome() {
                   <p className="mt-4 text-xs uppercase tracking-widest text-primary">
                     {e.yearsExperience} años de experiencia
                   </p>
-                </div>
+                </SpotlightCard>
               </Reveal>
             ))}
           </div>
@@ -304,50 +484,83 @@ function SalonHome() {
           <Info className="h-3.5 w-3.5 shrink-0" /> Reseñas de ejemplo — sustitúyelas por las
           reseñas reales de tu salón.
         </Reveal>
-        <div className="grid gap-5 md:grid-cols-3">
-          {REVIEWS.map((r, i) => (
-            <Reveal key={r.name} delay={i * 80}>
-              <div className="relative h-full rounded-2xl border border-border/60 bg-card p-6">
-                <span className="absolute right-4 top-4 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Ejemplo
-                </span>
-                <div className="flex gap-0.5">
-                  {Array.from({ length: 5 }).map((_, j) => (
-                    <Star
-                      key={j}
-                      className={cn(
-                        "h-3.5 w-3.5",
-                        j < r.rating ? "fill-primary text-primary" : "text-muted-foreground/30",
-                      )}
-                    />
-                  ))}
-                </div>
-                <p className="mt-4 pr-10 text-sm leading-relaxed text-foreground">
-                  &ldquo;{r.quote}&rdquo;
-                </p>
-                <p className="mt-4 text-xs font-medium text-muted-foreground">{r.name}</p>
-              </div>
-            </Reveal>
-          ))}
+
+        <Reveal>
+          <Carousel opts={{ align: "start", loop: true }} className="mx-auto md:px-14">
+            <CarouselContent>
+              {REVIEWS.map((r) => (
+                <CarouselItem key={r.name} className="sm:basis-1/2 lg:basis-1/3">
+                  <figure className="relative flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6">
+                    <span className="absolute right-4 top-4 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Ejemplo
+                    </span>
+                    <Quote className="h-5 w-5 text-primary/40" aria-hidden="true" />
+                    <blockquote className="mt-3 flex-1 pr-10 text-sm leading-relaxed text-foreground">
+                      &ldquo;{r.quote}&rdquo;
+                    </blockquote>
+                    <figcaption className="mt-5 flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">{r.name}</span>
+                      <span className="flex gap-0.5" aria-label={`${r.rating} de 5 estrellas`}>
+                        {Array.from({ length: 5 }).map((_, j) => (
+                          <Star
+                            key={j}
+                            className={cn(
+                              "h-3.5 w-3.5",
+                              j < r.rating
+                                ? "fill-primary text-primary"
+                                : "text-muted-foreground/30",
+                            )}
+                          />
+                        ))}
+                      </span>
+                    </figcaption>
+                  </figure>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="hidden md:flex" />
+            <CarouselNext className="hidden md:flex" />
+          </Carousel>
+        </Reveal>
+      </section>
+
+      {/* Preguntas frecuentes */}
+      <section id="faq" className="border-t border-border/40 bg-card">
+        <div className="mx-auto max-w-3xl px-6 py-16 md:py-24">
+          <SectionHeading eyebrow="Antes de venir" title="Preguntas frecuentes" />
+          <Reveal>
+            <Accordion type="single" collapsible className="divide-y divide-border/40">
+              {FAQ.map((item) => (
+                <AccordionItem key={item.q} value={item.q} className="border-b-0">
+                  <AccordionTrigger className="py-4 text-left text-base font-medium hover:no-underline">
+                    {item.q}
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-4 text-sm leading-relaxed text-muted-foreground">
+                    {item.a}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </Reveal>
         </div>
       </section>
 
       {/* Ubicación + horario */}
-      <section id="ubicacion" className="border-t border-border/40 bg-card">
+      <section id="ubicacion" className="border-t border-border/40">
         <div className="mx-auto max-w-5xl px-6 py-16 md:py-24">
-          <Reveal className="mb-12">
-            <p className="text-xs uppercase tracking-[0.25em] text-primary">Ubicación y horario</p>
-            <h2 className="mt-2 font-display text-3xl md:text-4xl">Te esperamos aquí</h2>
-          </Reveal>
+          <SectionHeading eyebrow="Ubicación y horario" title="Te esperamos aquí" className="mb-12" />
           <div className="grid gap-6 md:grid-cols-2">
             <Reveal className="space-y-6">
-              <div className="space-y-4 rounded-2xl border border-border/60 bg-background p-6">
+              <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-6">
                 <p className="flex items-start gap-3 text-sm">
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> {profile.address}
                 </p>
-                <p className="flex items-center gap-3 text-sm">
+                <a
+                  href={`tel:${profile.phone.replace(/\s/g, "")}`}
+                  className="flex items-center gap-3 text-sm transition-colors hover:text-primary"
+                >
                   <Phone className="h-4 w-4 shrink-0 text-primary" /> {profile.phone}
-                </p>
+                </a>
                 <p className="flex items-center gap-3 text-sm">
                   <Instagram className="h-4 w-4 shrink-0 text-primary" /> {profile.instagram}
                 </p>
@@ -362,17 +575,27 @@ function SalonHome() {
                 />
               </div>
             </Reveal>
-            <Reveal delay={100} className="rounded-2xl border border-border/60 bg-background p-6">
+            <Reveal delay={100} className="rounded-2xl border border-border/60 bg-card p-6">
               <p className="mb-3 text-xs uppercase tracking-widest text-muted-foreground">
                 Horario
               </p>
               <div className="divide-y divide-border/40">
-                {fullWeekSchedule(salon.hours).map((d) => (
-                  <div key={d.label} className="flex justify-between py-2 text-sm">
-                    <span className="text-muted-foreground">{d.label}</span>
-                    <span className="font-medium">{d.value}</span>
-                  </div>
-                ))}
+                {fullWeekSchedule(salon.hours).map((d, i) => {
+                  // Domingo es el índice 6 de WEEK_DAYS_ES, pero el 0 de getDay().
+                  const isToday = (new Date().getDay() + 6) % 7 === i;
+                  return (
+                    <div
+                      key={d.label}
+                      className={cn(
+                        "flex justify-between py-2 text-sm",
+                        isToday && "font-medium text-primary",
+                      )}
+                    >
+                      <span className={cn(!isToday && "text-muted-foreground")}>{d.label}</span>
+                      <span className={cn(!isToday && "font-medium")}>{d.value}</span>
+                    </div>
+                  );
+                })}
               </div>
             </Reveal>
           </div>
@@ -380,20 +603,24 @@ function SalonHome() {
       </section>
 
       {/* CTA final */}
-      <section className="mx-auto max-w-5xl px-6 py-16 text-center md:py-24">
-        <Reveal>
-          <h2 className="font-display text-3xl md:text-4xl">¿Nos vemos pronto?</h2>
-          <p className="mt-3 text-muted-foreground">
-            Elige servicio, estilista y hora en menos de un minuto.
-          </p>
-          <Link
-            to="/s/$salonSlug/book"
-            params={{ salonSlug }}
-            className="mt-8 inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Reservar ahora <ArrowRight className="h-4 w-4" />
-          </Link>
-        </Reveal>
+      <section className="relative isolate overflow-hidden border-t border-border/40">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 bg-[radial-gradient(60%_80%_at_50%_0%,color-mix(in_oklab,var(--color-primary)_18%,transparent),transparent)]"
+        />
+        <div className="mx-auto max-w-5xl px-6 py-20 text-center md:py-28">
+          <Reveal>
+            <h2 className="font-display text-3xl md:text-5xl">¿Nos vemos pronto?</h2>
+            <p className="mt-3 text-muted-foreground">
+              Elige servicio, barbero y hora en menos de un minuto.
+            </p>
+            <Button asChild size="lg" className="mt-8 rounded-full px-8">
+              <Link to="/s/$salonSlug/book" params={{ salonSlug }}>
+                Reservar ahora <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </Reveal>
+        </div>
       </section>
 
       {/* Espaciador para que la barra fija móvil no tape el CTA final en pantallas pequeñas */}

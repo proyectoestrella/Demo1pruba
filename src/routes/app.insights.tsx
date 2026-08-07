@@ -3,6 +3,7 @@ import { useSalonStore } from "@/lib/store";
 import { aiInsights, serviceMix } from "@/lib/derive";
 import { Sparkles, TrendingDown, Heart, CalendarClock } from "lucide-react";
 import { ComingSoonAction } from "@/components/ComingSoonAction";
+import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 
 export const Route = createFileRoute("/app/insights")({ component: Insights });
 
@@ -11,8 +12,12 @@ const ICONS = { sparkles: Sparkles, "trending-down": TrendingDown, heart: Heart,
 function Insights() {
   const appointments = useSalonStore((s) => s.appointments);
   const cards = aiInsights(appointments);
-  const mix = serviceMix(appointments).slice(0, 5);
-  const totalRev = mix.reduce((s, m) => s + m.revenue, 0);
+  const fullMix = serviceMix(appointments);
+  // El total se calcula sobre TODOS los servicios, no solo sobre los cinco que
+  // se listan: si no, los porcentajes salen inflados y contradicen los de la
+  // tarjeta "Servicio estrella", que sí usa la mezcla completa.
+  const totalRev = fullMix.reduce((s, m) => s + m.revenue, 0);
+  const mix = fullMix.slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -45,23 +50,40 @@ function Insights() {
         })}
       </div>
 
-      <div className="min-w-0 rounded-xl border border-border/60 bg-card p-6">
-        <h2 className="font-display text-xl">Mezcla de ingresos por servicio</h2>
-        <div className="mt-5 space-y-3">
-          {mix.map((m) => {
-            const pct = Math.round((m.revenue / totalRev) * 100);
-            return (
-              <div key={m.name}>
-                <div className="mb-1 flex justify-between text-sm">
-                  <span>{m.name}</span>
-                  <span className="text-muted-foreground">€{m.revenue.toLocaleString()} · {pct}%</span>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="min-w-0 rounded-xl border border-border/60 bg-card p-6">
+          <h2 className="font-display text-xl">Mezcla de ingresos por servicio</h2>
+          <div className="mt-5 space-y-3">
+            {mix.map((m) => {
+              const pct = Math.round((m.revenue / totalRev) * 100);
+              return (
+                <div key={m.name}>
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span>{m.name}</span>
+                    <span className="text-muted-foreground">€{m.revenue.toLocaleString()} · {pct}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full bg-primary transition-[width] duration-700 ease-out motion-reduce:transition-none"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Consulta libre sobre los mismos datos, sin salir de la pantalla. */}
+        <div className="flex min-h-[26rem] min-w-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-card">
+          <div className="border-b border-border/60 px-6 py-4">
+            <h2 className="font-display text-xl">Pregúntale a tus datos</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Responde calculando sobre tus reservas. No es un modelo de lenguaje: si no
+              sabe algo, lo dice.
+            </p>
+          </div>
+          <AssistantPanel className="flex-1" />
         </div>
       </div>
     </div>
