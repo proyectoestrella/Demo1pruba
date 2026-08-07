@@ -159,9 +159,9 @@ export function aiInsights(appts: Appointment[]) {
     {
       icon: "heart",
       tone: "success" as const,
-      title: "Campeona en fidelización",
-      body: "Luna tiene la mayor tasa de clientes recurrentes del equipo — 78% de reservas repetidas.",
-      action: "Ver clientes de Luna",
+      title: "Campeón en fidelización",
+      body: "Rubén tiene la mayor tasa de clientes recurrentes del equipo — 78% de reservas repetidas.",
+      action: "Ver clientes de Rubén",
     },
     {
       icon: "calendar-clock",

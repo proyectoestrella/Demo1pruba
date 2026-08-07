@@ -30,9 +30,9 @@ export const CATEGORY_ORDER = ["Cortes", "Barbería", "Color", "Tratamientos"];
 
 /** Spanish specialty copy for employees, keyed by employee id (barbershop language). */
 export const EMPLOYEE_ES: Record<string, { specialty: string }> = {
-  ines: { specialty: "Cortes clásicos y degradados" },
-  manuela: { specialty: "Color y canas" },
-  luna: { specialty: "Barba y tratamientos" },
+  mario: { specialty: "Cortes clásicos y degradados" },
+  diego: { specialty: "Color y canas" },
+  ruben: { specialty: "Barba y tratamientos" },
 };
 
 /** Formats a euro amount as Spanish currency, e.g. 38 -> "38,00 €". */

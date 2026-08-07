@@ -9,7 +9,7 @@ import { EMPLOYEE_ES, eur } from "@/lib/copy";
 export const Route = createFileRoute("/s/$salonSlug/confirmation")({
   validateSearch: (search: Record<string, unknown>) => ({
     service: String(search.service ?? ""),
-    employeeId: String(search.employeeId ?? "ines"),
+    employeeId: String(search.employeeId ?? "mario"),
     date: String(search.date ?? ""),
     time: String(search.time ?? ""),
     name: String(search.name ?? ""),

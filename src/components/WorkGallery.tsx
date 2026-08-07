@@ -2,30 +2,19 @@ import { useState } from "react";
 import { Expand } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Reveal } from "@/components/Reveal";
-import heroSalon from "@/assets/hero-salon.jpg";
-import inesPhoto from "@/assets/stylist-ines.jpg";
-import manuelaPhoto from "@/assets/stylist-manuela.jpg";
-import lunaPhoto from "@/assets/stylist-luna.jpg";
+import galleryRecorte from "@/assets/gallery-recorte.jpg";
+import galleryDegradado from "@/assets/gallery-degradado.jpg";
+import galleryDetalle from "@/assets/gallery-detalle.jpg";
 
 /**
- * Imágenes de la galería de trabajos.
- *
- * OJO: en `src/assets/` solo existen 4 imágenes reales en todo el proyecto,
- * y ya se usan en el hero y en las fichas del equipo. Todavía no hay fotos
- * reales de trabajos terminados (cortes, barbas, color), así que de momento
- * esta galería reutiliza esas 4 imágenes a modo de ejemplo — es preferible a
- * inventar rutas de imágenes que no existen o repetir una foto varias veces
- * para fingir más volumen del que hay.
- *
- * Cuando el barbero tenga fotos reales de trabajos, sustituye las entradas
- * de este array por las suyas (mismo formato: import + { src, alt }). El
- * grid está pensado para exactamente 4 fotos.
+ * Imágenes de la galería de trabajos: fotos reales de barbería en acción.
+ * La rejilla está pensada para exactamente 3 fotos (2 columnas en móvil, 3 en escritorio).
+ * ⚠️ TEMPORAL: gallery-detalle.jpg lleva marca de agua de Unsplash+ visible — sustituir por una foto con licencia antes de mostrarla a un cliente real o pasar a producción.
  */
 const GALLERY_IMAGES: { src: string; alt: string }[] = [
-  { src: heroSalon, alt: "Interior del salón" },
-  { src: inesPhoto, alt: "Trabajo de Inés" },
-  { src: manuelaPhoto, alt: "Trabajo de Manuela" },
-  { src: lunaPhoto, alt: "Trabajo de Luna" },
+  { src: galleryRecorte, alt: "Repasado de barba con tijera" },
+  { src: galleryDegradado, alt: "Degradado con máquina y peine" },
+  { src: galleryDetalle, alt: "Acabado y detalle de corte" },
 ];
 
 export function WorkGallery() {
@@ -39,7 +28,7 @@ export function WorkGallery() {
           <p className="text-xs uppercase tracking-[0.25em] text-primary">Nuestro trabajo</p>
           <h2 className="mt-2 font-display text-3xl md:text-4xl">Galería</h2>
         </Reveal>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
           {GALLERY_IMAGES.map((img, i) => (
             <Reveal key={img.src} delay={i * 80}>
               <button

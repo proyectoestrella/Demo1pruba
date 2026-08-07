@@ -104,8 +104,8 @@ function genAppointments(): Appointment[] {
 export const seedAppointments: Appointment[] = genAppointments();
 
 export const seedWaitlist: WaitlistEntry[] = [
-  { id: "w1", clientName: "Marta Vidal", phone: "+34 611 111 222", serviceId: "highlights", preferredEmployeeId: "manuela", preferredRange: "Sat morning", createdAt: new Date(Date.now() - 86400_000).toISOString() },
+  { id: "w1", clientName: "Marta Vidal", phone: "+34 611 111 222", serviceId: "highlights", preferredEmployeeId: "diego", preferredRange: "Sat morning", createdAt: new Date(Date.now() - 86400_000).toISOString() },
   { id: "w2", clientName: "Pedro Sanz", phone: "+34 622 333 444", serviceId: "haircut", preferredEmployeeId: "any", preferredRange: "Tue afternoon", createdAt: new Date(Date.now() - 2 * 86400_000).toISOString() },
-  { id: "w3", clientName: "Aitana Roca", phone: "+34 633 555 666", serviceId: "keratin", preferredEmployeeId: "luna", preferredRange: "Fri after 17:00", createdAt: new Date(Date.now() - 3 * 86400_000).toISOString() },
-  { id: "w4", clientName: "Iker Mora", phone: "+34 644 777 888", serviceId: "beard", preferredEmployeeId: "ines", preferredRange: "Anytime this week", createdAt: new Date(Date.now() - 5 * 86400_000).toISOString() },
+  { id: "w3", clientName: "Aitana Roca", phone: "+34 633 555 666", serviceId: "keratin", preferredEmployeeId: "ruben", preferredRange: "Fri after 17:00", createdAt: new Date(Date.now() - 3 * 86400_000).toISOString() },
+  { id: "w4", clientName: "Iker Mora", phone: "+34 644 777 888", serviceId: "beard", preferredEmployeeId: "mario", preferredRange: "Anytime this week", createdAt: new Date(Date.now() - 5 * 86400_000).toISOString() },
 ];

@@ -1,6 +1,6 @@
-import inesPhoto from "@/assets/stylist-ines.jpg";
-import manuelaPhoto from "@/assets/stylist-manuela.jpg";
-import lunaPhoto from "@/assets/stylist-luna.jpg";
+import marioPhoto from "@/assets/stylist-mario.jpg";
+import diegoPhoto from "@/assets/stylist-diego.jpg";
+import rubenPhoto from "@/assets/stylist-ruben.jpg";
 import type { Employee, SalonProfile, Service } from "./types";
 
 export const salon: SalonProfile = {
@@ -83,30 +83,30 @@ const fullWeek = [
 
 export const employees: Employee[] = [
   {
-    id: "ines",
-    name: "Ines",
+    id: "mario",
+    name: "Mario",
     specialty: "Cortes clásicos y degradados",
     yearsExperience: 8,
-    photo: inesPhoto,
-    colorVar: "--stylist-ines",
+    photo: marioPhoto,
+    colorVar: "--stylist-mario",
     schedule: fullWeek,
   },
   {
-    id: "manuela",
-    name: "Manuela",
+    id: "diego",
+    name: "Diego",
     specialty: "Color y canas",
     yearsExperience: 6,
-    photo: manuelaPhoto,
-    colorVar: "--stylist-manuela",
+    photo: diegoPhoto,
+    colorVar: "--stylist-diego",
     schedule: [null, null, { start: 10, end: 20 }, { start: 10, end: 20 }, { start: 10, end: 20 }, { start: 10, end: 20 }, { start: 10, end: 18 }],
   },
   {
-    id: "luna",
-    name: "Luna",
+    id: "ruben",
+    name: "Ruben",
     specialty: "Barba y tratamientos",
     yearsExperience: 10,
-    photo: lunaPhoto,
-    colorVar: "--stylist-luna",
+    photo: rubenPhoto,
+    colorVar: "--stylist-ruben",
     schedule: [null, { start: 12, end: 20 }, { start: 12, end: 20 }, null, { start: 12, end: 20 }, { start: 12, end: 20 }, { start: 10, end: 18 }],
   },
 ];

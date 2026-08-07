@@ -34,7 +34,7 @@ const REVIEWS = [
   {
     name: "Marta R.",
     rating: 5,
-    quote: "Salgo distinta cada vez. Inés entiende exactamente lo que le pido.",
+    quote: "Salgo distinta cada vez. Mario entiende exactamente lo que le pido.",
   },
   { name: "Carlos M.", rating: 5, quote: "El mejor arreglo de barba de Madrid, sin discusión." },
   {

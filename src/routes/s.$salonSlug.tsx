@@ -1,9 +1,11 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { salon } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
-import { Instagram, MapPin, Phone, Lock } from "lucide-react";
+import { Instagram, MapPin, Phone, Lock, Menu, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useState } from "react";
 
 export const Route = createFileRoute("/s/$salonSlug")({
   head: () => {
@@ -35,6 +37,7 @@ function SalonLayout() {
   const onBooking =
     path.includes("/book") || path.includes("/confirmation") || path.includes("/waitlist");
   const profile = useSalonStore((s) => s.salonProfile);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -83,6 +86,60 @@ function SalonLayout() {
           )}
           <div className="flex shrink-0 items-center gap-3">
             <ThemeToggle />
+            {!onBooking && (
+              <>
+                {/* Botón hamburguesa móvil */}
+                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                  <SheetTrigger asChild>
+                    <button
+                      className="md:hidden inline-flex items-center justify-center rounded-md p-2 text-foreground hover:bg-muted"
+                      aria-label="Abrir menú"
+                    >
+                      <Menu className="h-5 w-5" />
+                    </button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[250px] sm:w-[300px]">
+                    <nav className="flex flex-col gap-4 pt-8">
+                      <a
+                        href="#servicios"
+                        className="text-base text-foreground hover:text-primary transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Servicios
+                      </a>
+                      <a
+                        href="#galeria"
+                        className="text-base text-foreground hover:text-primary transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Galería
+                      </a>
+                      <a
+                        href="#equipo"
+                        className="text-base text-foreground hover:text-primary transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Equipo
+                      </a>
+                      <a
+                        href="#resenas"
+                        className="text-base text-foreground hover:text-primary transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Reseñas
+                      </a>
+                      <a
+                        href="#ubicacion"
+                        className="text-base text-foreground hover:text-primary transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Cómo llegar
+                      </a>
+                    </nav>
+                  </SheetContent>
+                </Sheet>
+              </>
+            )}
             {!onBooking && (
               <Link
                 to="/s/$salonSlug/book"

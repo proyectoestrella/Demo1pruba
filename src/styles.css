@@ -44,9 +44,9 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
 
-  --color-stylist-ines: var(--stylist-ines);
-  --color-stylist-manuela: var(--stylist-manuela);
-  --color-stylist-luna: var(--stylist-luna);
+  --color-stylist-mario: var(--stylist-mario);
+  --color-stylist-diego: var(--stylist-diego);
+  --color-stylist-ruben: var(--stylist-ruben);
   --color-stylist-1: var(--stylist-1);
   --color-stylist-2: var(--stylist-2);
   --color-stylist-3: var(--stylist-3);
@@ -104,12 +104,12 @@
 
   /* Per-stylist colors. Lightness is kept <= ~0.58 so white avatar-initial text
      (StylistAvatar, see src/components/StylistAvatar.tsx) stays close to AA
-     contrast; --stylist-ines was oklch(0.7 ...) originally which was too light
+     contrast; --stylist-mario was oklch(0.7 ...) originally which was too light
      for white text and has been deepened here. */
-  --stylist-ines: oklch(0.55 0.17 10);        /* rose/berry (was too-light pink) */
-  --stylist-manuela: oklch(0.55 0.16 245);    /* blue */
-  --stylist-luna: oklch(0.25 0.01 60);        /* near-black */
-  /* Extra generic stylist tones for additional team members beyond ines/manuela/luna. */
+  --stylist-mario: oklch(0.55 0.17 10);        /* rose/berry (was too-light pink) */
+  --stylist-diego: oklch(0.55 0.16 245);    /* blue */
+  --stylist-ruben: oklch(0.25 0.01 60);        /* near-black */
+  /* Extra generic stylist tones for additional team members beyond mario/diego/ruben. */
   --stylist-1: oklch(0.5 0.13 165);           /* teal/green */
   --stylist-2: oklch(0.55 0.17 70);           /* amber/ochre */
   --stylist-3: oklch(0.48 0.18 300);          /* plum/violet */
@@ -166,9 +166,9 @@
   /* Per-stylist colors, brightened relative to :root so they read distinctly
      against the carbón background while keeping white avatar-initial text
      (StylistAvatar) at/near AA contrast — none pushed past ~0.62 lightness. */
-  --stylist-ines: oklch(0.6 0.16 10);         /* rose/berry */
-  --stylist-manuela: oklch(0.62 0.14 245);    /* blue */
-  --stylist-luna: oklch(0.4 0.015 60);        /* charcoal-grey (was near-black, unreadable on dark bg) */
+  --stylist-mario: oklch(0.6 0.16 10);         /* rose/berry */
+  --stylist-diego: oklch(0.62 0.14 245);    /* blue */
+  --stylist-ruben: oklch(0.4 0.015 60);        /* charcoal-grey (was near-black, unreadable on dark bg) */
   --stylist-1: oklch(0.58 0.12 165);          /* teal/green */
   --stylist-2: oklch(0.62 0.15 70);           /* amber/ochre */
   --stylist-3: oklch(0.56 0.16 300);          /* plum/violet */

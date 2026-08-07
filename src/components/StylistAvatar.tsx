@@ -12,7 +12,7 @@ const AVATAR_SIZE_CLASSES: Record<StylistAvatarSize, string> = {
 };
 
 /** Fallback color token used when neither `colorVar` nor a resolvable `employeeId` is given. */
-const FALLBACK_COLOR_VAR = "--stylist-luna";
+const FALLBACK_COLOR_VAR = "--stylist-ruben";
 
 function initialsFor(name: string) {
   return name
@@ -25,7 +25,7 @@ function initialsFor(name: string) {
     .toUpperCase();
 }
 
-/** Accepts "stylist-ines" or "--stylist-ines" and always returns the full CSS custom-property name. */
+/** Accepts "stylist-mario" or "--stylist-mario" and always returns the full CSS custom-property name. */
 function normalizeColorVar(colorVar?: string): string | undefined {
   if (!colorVar) return undefined;
   return colorVar.startsWith("--") ? colorVar : `--${colorVar}`;
@@ -42,7 +42,7 @@ function resolveColorVar(colorVar?: string, employeeId?: EmployeeId): string {
 export interface StylistAvatarProps {
   /** Full name used to derive the 1-2 letter initials shown in the circle. */
   name: string;
-  /** Stylist color token, e.g. "stylist-ines" or "--stylist-ines". Takes precedence over `employeeId`. */
+  /** Stylist color token, e.g. "stylist-mario" or "--stylist-mario". Takes precedence over `employeeId`. */
   colorVar?: string;
   /** Employee id used to auto-resolve the color token from mock/salon.ts when `colorVar` is not passed. */
   employeeId?: EmployeeId;

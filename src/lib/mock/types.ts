@@ -1,4 +1,4 @@
-export type EmployeeId = "ines" | "manuela" | "luna";
+export type EmployeeId = "mario" | "diego" | "ruben";
 
 export type AppointmentStatus =
   | "confirmed"
@@ -24,7 +24,7 @@ export interface Employee {
   specialty: string;
   yearsExperience: number;
   photo: string;
-  /** CSS variable name like --stylist-ines */
+  /** CSS variable name like --stylist-mario */
   colorVar: string;
   /** working hours per weekday 0-6 (Sun-Sat). null = day off */
   schedule: Array<{ start: number; end: number } | null>;
