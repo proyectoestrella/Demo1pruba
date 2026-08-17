@@ -344,7 +344,11 @@ function SalonHome() {
               </div>
 
               <div className="inline-flex items-center rounded-full border border-white/15 bg-white/5 backdrop-blur-sm">
-                <AnimatedShinyText className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-white/70">
+                {/* El color base tiene que ir con la variante `dark:` puesta:
+                    el componente trae `dark:text-neutral-400/70` y esa variante
+                    le gana a un `text-white/70` a secas por especificidad, no
+                    por orden — quedaba gris ilegible sobre la foto del hero. */}
+                <AnimatedShinyText className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-white/85 dark:text-white/85">
                   <Sparkles className="h-3.5 w-3.5" />
                   Reservas en menos de un minuto
                 </AnimatedShinyText>
