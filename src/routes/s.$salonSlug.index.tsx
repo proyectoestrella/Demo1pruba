@@ -25,7 +25,6 @@ import {
 } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
 import heroImg from "@/assets/hero-salon.jpg";
-import { StylistAvatar } from "@/components/StylistAvatar";
 import { WorkGallery } from "@/components/WorkGallery";
 import { MobileBookingBar } from "@/components/MobileBookingBar";
 import { Reveal } from "@/components/Reveal";
@@ -51,6 +50,7 @@ import { DotPattern } from "@/components/magicui/dot-pattern";
 import { Marquee } from "@/components/magicui/marquee";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import { WordRotate } from "@/components/magicui/word-rotate";
+import { TeamShowcase } from "@/components/twentyfirst/team-showcase";
 import { cn } from "@/lib/utils";
 import { SERVICE_ES, CATEGORY_LABELS, CATEGORY_ORDER, EMPLOYEE_ES, eur } from "@/lib/copy";
 
@@ -604,29 +604,18 @@ function SalonHome() {
       <section id="equipo" className="border-t border-border/40 bg-card">
         <div className="mx-auto max-w-5xl px-6 py-16 md:py-24">
           <SectionHeading eyebrow="Equipo" title="Quién te va a atender" className="mb-12" />
-          <div className="grid gap-6 sm:grid-cols-3">
-            {employees.map((e, i) => (
-              <Reveal key={e.id} delay={i * 90} className="h-full">
-                <SpotlightCard
-                  className={cn(
-                    "group flex h-full flex-col items-center rounded-2xl border border-border/60 bg-background p-8 text-center hover:border-primary/40",
-                    CARD_HOVER,
-                  )}
-                >
-                  <div className="transition-transform duration-300 group-hover:scale-105 motion-reduce:group-hover:scale-100">
-                    <StylistAvatar name={e.name} employeeId={e.id} photo={e.photo} size="xl" />
-                  </div>
-                  <h3 className="mt-5 font-display text-xl">{e.name}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {EMPLOYEE_ES[e.id]?.specialty ?? e.specialty}
-                  </p>
-                  <p className="mt-4 text-xs uppercase tracking-widest text-primary">
-                    {e.yearsExperience} años de experiencia
-                  </p>
-                </SpotlightCard>
-              </Reveal>
-            ))}
-          </div>
+          {/* Retratos grandes en vez de avatares pequeños: en una barbería la
+              cara del que te va a cortar es parte de lo que se vende. */}
+          <Reveal>
+            <TeamShowcase
+              members={employees.map((e) => ({
+                id: e.id,
+                name: e.name,
+                role: `${EMPLOYEE_ES[e.id]?.specialty ?? e.specialty} · ${e.yearsExperience} años`,
+                image: e.photo,
+              }))}
+            />
+          </Reveal>
         </div>
       </section>
 

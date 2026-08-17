@@ -1,13 +1,25 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, Sparkles } from "lucide-react";
-import { services, employees, serviceMap, employeeMap, depositFor, requiresDeposit } from "@/lib/mock/salon";
+import {
+  services,
+  employees,
+  serviceMap,
+  employeeMap,
+  depositFor,
+  requiresDeposit,
+} from "@/lib/mock/salon";
 import type { Appointment, EmployeeId, Service } from "@/lib/mock/types";
 import { useSalonStore, isSlotTaken } from "@/lib/store";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +30,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { es } from "date-fns/locale";
 import heroImg from "@/assets/hero-salon.jpg";
 import { registerBookingClient } from "@/lib/api/clients.functions";
+import { FluidSteps } from "@/components/twentyfirst/fluid-steps";
 import { SERVICE_ES, CATEGORY_LABELS, CATEGORY_ORDER, EMPLOYEE_ES, eur } from "@/lib/copy";
 
 export const Route = createFileRoute("/s/$salonSlug/book")({
@@ -75,8 +88,16 @@ function BookingWizard() {
 
   const service = data.serviceId ? serviceMap[data.serviceId] : undefined;
   const stylistChoice = data.employeeId;
-  const employeeName = stylistChoice === "any" ? "Cualquiera disponible" : stylistChoice ? employeeMap[stylistChoice]?.name : undefined;
-  const depositEur = service && requiresDeposit(service.durationMin) ? depositFor(service.priceEur, service.durationMin) : 0;
+  const employeeName =
+    stylistChoice === "any"
+      ? "Cualquiera disponible"
+      : stylistChoice
+        ? employeeMap[stylistChoice]?.name
+        : undefined;
+  const depositEur =
+    service && requiresDeposit(service.durationMin)
+      ? depositFor(service.priceEur, service.durationMin)
+      : 0;
   const total = service?.priceEur ?? 0;
 
   function next() {
@@ -87,8 +108,15 @@ function BookingWizard() {
   }
 
   function confirm() {
-    if (!service || !data.date || !data.time || !data.name || !data.phone || !data.acceptedPolicy) return;
-    const employeeId = resolveEmployee(stylistChoice, data.date, data.time, service.durationMin, appointments);
+    if (!service || !data.date || !data.time || !data.name || !data.phone || !data.acceptedPolicy)
+      return;
+    const employeeId = resolveEmployee(
+      stylistChoice,
+      data.date,
+      data.time,
+      service.durationMin,
+      appointments,
+    );
     const startISO = new Date(`${data.date}T${data.time}:00`).toISOString();
     addAppointment({
       clientId: `c-walkin-${Date.now()}`,
@@ -114,8 +142,12 @@ function BookingWizard() {
         priceEur: service.priceEur,
         note: data.note,
       },
-    }).catch((err) => console.error("Supabase sync failed (booking still confirmed locally):", err));
-    toast.success("Reserva confirmada", { description: `${service.name} · ${data.date} a las ${data.time}` });
+    }).catch((err) =>
+      console.error("Supabase sync failed (booking still confirmed locally):", err),
+    );
+    toast.success("Reserva confirmada", {
+      description: `${service.name} · ${data.date} a las ${data.time}`,
+    });
     navigate({
       to: "/s/$salonSlug/confirmation",
       params: { salonSlug },
@@ -130,7 +162,13 @@ function BookingWizard() {
   }
 
   const ctaDisabled =
-    step === 1 ? !data.serviceId : step === 2 ? !data.employeeId : step === 3 ? !data.date || !data.time : !data.name || !data.phone || !data.acceptedPolicy;
+    step === 1
+      ? !data.serviceId
+      : step === 2
+        ? !data.employeeId
+        : step === 3
+          ? !data.date || !data.time
+          : !data.name || !data.phone || !data.acceptedPolicy;
 
   const ctaLabel = step < 4 ? "Continuar" : `Confirmar reserva — ${eur(total)}`;
 
@@ -140,7 +178,11 @@ function BookingWizard() {
   }
 
   const dateLabel = data.date
-    ? new Date(`${data.date}T00:00`).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" })
+    ? new Date(`${data.date}T00:00`).toLocaleDateString("es-ES", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      })
     : undefined;
 
   return (
@@ -149,9 +191,19 @@ function BookingWizard() {
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
         <div className="min-w-0">
-          {step === 1 && <ServiceStep selected={data.serviceId} onSelect={(id) => setData((d) => ({ ...d, serviceId: id }))} />}
+          {step === 1 && (
+            <ServiceStep
+              selected={data.serviceId}
+              onSelect={(id) => setData((d) => ({ ...d, serviceId: id }))}
+            />
+          )}
 
-          {step === 2 && <StylistStep selected={data.employeeId} onSelect={(id) => setData((d) => ({ ...d, employeeId: id }))} />}
+          {step === 2 && (
+            <StylistStep
+              selected={data.employeeId}
+              onSelect={(id) => setData((d) => ({ ...d, employeeId: id }))}
+            />
+          )}
 
           {step === 3 && service && (
             <DateTimeStep
@@ -208,7 +260,8 @@ function BookingWizard() {
 
                 {service && requiresDeposit(service.durationMin) && (
                   <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm text-primary">
-                    Este servicio requiere un depósito de {eur(depositEur)} que se cobrará en el salón.
+                    Este servicio requiere un depósito de {eur(depositEur)} que se cobrará en el
+                    salón.
                   </div>
                 )}
 
@@ -218,7 +271,9 @@ function BookingWizard() {
                     checked={data.acceptedPolicy ?? false}
                     onCheckedChange={(v) => setData((d) => ({ ...d, acceptedPolicy: v === true }))}
                   />
-                  <span>Acepto la política de cancelación: gratuita hasta 24 h antes de la cita.</span>
+                  <span>
+                    Acepto la política de cancelación: gratuita hasta 24 h antes de la cita.
+                  </span>
                 </label>
               </div>
             </Step>
@@ -226,7 +281,10 @@ function BookingWizard() {
 
           <div className="mt-10 flex items-center justify-between">
             {step > 1 ? (
-              <button onClick={prev} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+              <button
+                onClick={prev}
+                className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+              >
                 <ArrowLeft className="h-4 w-4" /> Atrás
               </button>
             ) : (
@@ -270,14 +328,12 @@ function BookingWizard() {
 function StepIndicator({ step }: { step: 1 | 2 | 3 | 4 }) {
   const labels = ["Servicio", "Estilista", "Fecha y hora", "Tus datos"];
   return (
-    <div>
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>Paso {step} de 4</span>
-        <span className="font-medium text-foreground">{labels[step - 1]}</span>
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center gap-4">
+        <FluidSteps step={step} total={4} />
+        <span className="text-xs text-muted-foreground">Paso {step} de 4</span>
       </div>
-      <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${(step / 4) * 100}%` }} />
-      </div>
+      <span className="text-sm font-medium text-foreground">{labels[step - 1]}</span>
     </div>
   );
 }
@@ -291,16 +347,31 @@ function Step({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
-function ServiceStep({ selected, onSelect }: { selected?: string; onSelect: (id: string) => void }) {
+function ServiceStep({
+  selected,
+  onSelect,
+}: {
+  selected?: string;
+  onSelect: (id: string) => void;
+}) {
   return (
     <Step title="Elige un servicio">
-      <Accordion type="single" collapsible defaultValue={CATEGORY_ORDER[0]} className="divide-y divide-border/40">
+      <Accordion
+        type="single"
+        collapsible
+        defaultValue={CATEGORY_ORDER[0]}
+        className="divide-y divide-border/40"
+      >
         {CATEGORY_ORDER.map((cat) => {
-          const items = services.filter((s) => s.active !== false && (CATEGORY_LABELS[s.id] ?? "Otros") === cat);
+          const items = services.filter(
+            (s) => s.active !== false && (CATEGORY_LABELS[s.id] ?? "Otros") === cat,
+          );
           if (!items.length) return null;
           return (
             <AccordionItem key={cat} value={cat} className="border-b-0">
-              <AccordionTrigger className="py-4 text-base font-display font-medium hover:no-underline">{cat}</AccordionTrigger>
+              <AccordionTrigger className="py-4 text-base font-display font-medium hover:no-underline">
+                {cat}
+              </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-2 pb-2">
                   {items.map((s) => {
@@ -312,13 +383,16 @@ function ServiceStep({ selected, onSelect }: { selected?: string; onSelect: (id:
                         onClick={() => onSelect(s.id)}
                         className={cn(
                           "flex w-full items-center justify-between gap-4 rounded-lg border px-4 py-3.5 text-left transition-colors",
-                          isSelected ? "border-primary bg-primary/10" : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
+                          isSelected
+                            ? "border-primary bg-primary/10"
+                            : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
                         )}
                       >
                         <div className="min-w-0">
                           <p className="font-medium">{label.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            {s.durationMin} min{requiresDeposit(s.durationMin) ? " · requiere depósito" : ""}
+                            {s.durationMin} min
+                            {requiresDeposit(s.durationMin) ? " · requiere depósito" : ""}
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
@@ -338,7 +412,13 @@ function ServiceStep({ selected, onSelect }: { selected?: string; onSelect: (id:
   );
 }
 
-function StylistStep({ selected, onSelect }: { selected?: EmployeeId | "any"; onSelect: (id: EmployeeId | "any") => void }) {
+function StylistStep({
+  selected,
+  onSelect,
+}: {
+  selected?: EmployeeId | "any";
+  onSelect: (id: EmployeeId | "any") => void;
+}) {
   return (
     <Step title="Elige tu barbero">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -346,7 +426,9 @@ function StylistStep({ selected, onSelect }: { selected?: EmployeeId | "any"; on
           onClick={() => onSelect("any")}
           className={cn(
             "flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed bg-card px-4 py-6 text-center transition-colors",
-            selected === "any" ? "border-primary bg-primary/5 ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border/60 hover:border-primary/40",
+            selected === "any"
+              ? "border-primary bg-primary/5 ring-2 ring-primary ring-offset-2 ring-offset-background"
+              : "border-border/60 hover:border-primary/40",
           )}
         >
           <span className="flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -363,13 +445,17 @@ function StylistStep({ selected, onSelect }: { selected?: EmployeeId | "any"; on
             onClick={() => onSelect(e.id)}
             className={cn(
               "flex flex-col items-center gap-3 rounded-2xl border bg-card px-4 py-6 text-center transition-colors",
-              selected === e.id ? "border-primary bg-primary/5 ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-border/60 hover:border-primary/40",
+              selected === e.id
+                ? "border-primary bg-primary/5 ring-2 ring-primary ring-offset-2 ring-offset-background"
+                : "border-border/60 hover:border-primary/40",
             )}
           >
             <StylistAvatar name={e.name} employeeId={e.id} size="lg" />
             <div>
               <p className="text-sm font-medium">{e.name}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">{EMPLOYEE_ES[e.id]?.specialty ?? e.specialty}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {EMPLOYEE_ES[e.id]?.specialty ?? e.specialty}
+              </p>
             </div>
           </button>
         ))}
@@ -405,7 +491,10 @@ function DateTimeStep({
   }, []);
 
   function scheduleForWeekday(weekday: number) {
-    return relevantEmployees.map((e) => e.schedule[weekday]).filter(Boolean) as { start: number; end: number }[];
+    return relevantEmployees.map((e) => e.schedule[weekday]).filter(Boolean) as {
+      start: number;
+      end: number;
+    }[];
   }
 
   function isDayDisabled(date: Date) {
@@ -425,14 +514,18 @@ function DateTimeStep({
         });
         if (!open) continue;
         const iso = new Date(`${dateKey}T${timeStr}:00`).toISOString();
-        const free = relevantEmployees.some((e) => !isSlotTaken(appointments, e.id, iso, service.durationMin));
+        const free = relevantEmployees.some(
+          (e) => !isSlotTaken(appointments, e.id, iso, service.durationMin),
+        );
         if (free) return false;
       }
     }
     return true;
   }
 
-  const [activeDate, setActiveDate] = useState<Date | undefined>(selectedDate ? new Date(`${selectedDate}T00:00`) : undefined);
+  const [activeDate, setActiveDate] = useState<Date | undefined>(
+    selectedDate ? new Date(`${selectedDate}T00:00`) : undefined,
+  );
 
   useEffect(() => {
     if (activeDate) return;
@@ -465,7 +558,9 @@ function DateTimeStep({
         });
         if (!open) continue;
         const iso = new Date(`${dateKey}T${timeStr}:00`).toISOString();
-        const available = relevantEmployees.some((e) => !isSlotTaken(appointments, e.id, iso, service.durationMin));
+        const available = relevantEmployees.some(
+          (e) => !isSlotTaken(appointments, e.id, iso, service.durationMin),
+        );
         out.push({ time: timeStr, available });
       }
     }
@@ -493,24 +588,39 @@ function DateTimeStep({
     <Step title="Fecha y hora">
       <div className="grid gap-8 md:grid-cols-[auto_1fr]">
         <div className="self-start rounded-2xl border border-border/60 bg-card p-1">
-          <Calendar mode="single" locale={es} selected={activeDate} onSelect={(d) => d && setActiveDate(d)} disabled={isDayDisabled} />
+          <Calendar
+            mode="single"
+            locale={es}
+            selected={activeDate}
+            onSelect={(d) => d && setActiveDate(d)}
+            disabled={isDayDisabled}
+          />
         </div>
         <div>
           {activeDate ? (
             <>
               <p className="mb-4 font-display text-lg capitalize">
-                {activeDate.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}
+                {activeDate.toLocaleDateString("es-ES", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                })}
               </p>
               {groups.length === 0 && (
-                <p className="text-sm text-muted-foreground">No hay horas disponibles este día. Prueba con otra fecha.</p>
+                <p className="text-sm text-muted-foreground">
+                  No hay horas disponibles este día. Prueba con otra fecha.
+                </p>
               )}
               <div className="space-y-5">
                 {groups.map((g) => (
                   <div key={g.label}>
-                    <p className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">{g.label}</p>
+                    <p className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">
+                      {g.label}
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {g.items.map((s) => {
-                        const isSelected = selectedDate === activeDateKey && selectedTime === s.time;
+                        const isSelected =
+                          selectedDate === activeDateKey && selectedTime === s.time;
                         return (
                           <button
                             key={s.time}
@@ -518,9 +628,14 @@ function DateTimeStep({
                             onClick={() => activeDateKey && onPick(activeDateKey, s.time)}
                             className={cn(
                               "rounded-full border px-4 py-2 text-sm transition-colors",
-                              !s.available && "cursor-not-allowed border-border/40 text-muted-foreground/50 line-through",
-                              s.available && isSelected && "border-primary bg-primary text-primary-foreground",
-                              s.available && !isSelected && "border-border hover:border-primary/50 hover:bg-primary/5",
+                              !s.available &&
+                                "cursor-not-allowed border-border/40 text-muted-foreground/50 line-through",
+                              s.available &&
+                                isSelected &&
+                                "border-primary bg-primary text-primary-foreground",
+                              s.available &&
+                                !isSelected &&
+                                "border-border hover:border-primary/50 hover:bg-primary/5",
                             )}
                           >
                             {s.time}
@@ -533,7 +648,9 @@ function DateTimeStep({
               </div>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">Elige un día en el calendario para ver las horas disponibles.</p>
+            <p className="text-sm text-muted-foreground">
+              Elige un día en el calendario para ver las horas disponibles.
+            </p>
           )}
         </div>
       </div>
@@ -620,10 +737,16 @@ function BookingSummary({
           <span className="font-display text-2xl">{eur(total)}</span>
         </div>
         {depositEur > 0 && (
-          <p className="mt-2 text-xs text-muted-foreground">Incluye depósito de {eur(depositEur)} a pagar en el salón.</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Incluye depósito de {eur(depositEur)} a pagar en el salón.
+          </p>
         )}
 
-        <Button onClick={onCta} disabled={ctaDisabled} className="mt-6 w-full rounded-full py-6 text-sm">
+        <Button
+          onClick={onCta}
+          disabled={ctaDisabled}
+          className="mt-6 w-full rounded-full py-6 text-sm"
+        >
           {ctaLabel}
         </Button>
       </div>
