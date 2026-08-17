@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowRight,
+  CalendarCheck,
   Clock,
   Info,
   Instagram,
@@ -8,7 +9,10 @@ import {
   Phone,
   Quote,
   Scissors,
+  ShieldCheck,
+  Sparkles,
   Star,
+  Users,
 } from "lucide-react";
 import {
   services,
@@ -38,13 +42,15 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
+import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
+import { AuroraText } from "@/components/magicui/aurora-text";
+import { AvatarCircles } from "@/components/magicui/avatar-circles";
+import { BentoCard, BentoGrid } from "@/components/magicui/bento-grid";
+import { BorderBeam } from "@/components/magicui/border-beam";
+import { DotPattern } from "@/components/magicui/dot-pattern";
+import { Marquee } from "@/components/magicui/marquee";
+import { ShimmerButton } from "@/components/magicui/shimmer-button";
+import { WordRotate } from "@/components/magicui/word-rotate";
 import { cn } from "@/lib/utils";
 import { SERVICE_ES, CATEGORY_LABELS, CATEGORY_ORDER, EMPLOYEE_ES, eur } from "@/lib/copy";
 
@@ -111,6 +117,53 @@ const HERO_IN = {
   },
 };
 
+/**
+ * Celdas de la rejilla bento. Todo lo que se afirma aquí es cierto en la app:
+ * el equipo son tres, la cancelación gratuita es de 24 h y los precios y
+ * duraciones salen del catálogo.
+ *
+ * Los destinos son anclas de esta misma página a propósito: `BentoCard`
+ * renderiza un `<a href>` normal y una ruta real forzaría recarga completa en
+ * vez de navegar por el router. Para reservar ya están los botones de arriba,
+ * el de la cabecera y la barra fija del móvil.
+ */
+const BENTO_ITEMS = [
+  {
+    Icon: CalendarCheck,
+    name: "Reserva sin llamar",
+    description:
+      "Eliges servicio, barbero y hora desde el móvil. Sin teléfono y sin esperar a que abramos.",
+    href: "#servicios",
+    cta: "Empezar por la carta",
+    className: "lg:col-span-2",
+  },
+  {
+    Icon: Users,
+    name: "Eliges barbero",
+    description: "Mario, Diego o Rubén. O el primero que tenga hueco, si lo que corre es la hora.",
+    href: "#equipo",
+    cta: "Ver el equipo",
+    className: "lg:col-span-1",
+  },
+  {
+    Icon: ShieldCheck,
+    name: "Cancelas gratis",
+    description: "Hasta 24 horas antes, sin coste y sin dar explicaciones.",
+    href: "#faq",
+    cta: "Ver condiciones",
+    className: "lg:col-span-1",
+  },
+  {
+    Icon: Scissors,
+    name: "Nuestro trabajo, de cerca",
+    description:
+      "Pasa la lupa por las fotos de la galería y mira el degradado y el remate al detalle.",
+    href: "#galeria",
+    cta: "Ver la galería",
+    className: "lg:col-span-2",
+  },
+];
+
 const FAQ = [
   {
     q: "¿Puedo cancelar o cambiar la cita?",
@@ -167,6 +220,35 @@ function fullWeekSchedule(hours: typeof salon.hours) {
   }));
 }
 
+/** Tarjeta de reseña del muro. Ancho fijo: es lo que espera un marquee. */
+function ReviewCard({ name, rating, quote }: (typeof REVIEWS)[number]) {
+  return (
+    <figure className="relative flex w-72 shrink-0 flex-col rounded-2xl border border-border/60 bg-card p-5 transition-colors hover:border-primary/40 sm:w-80">
+      <span className="absolute right-4 top-4 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        Ejemplo
+      </span>
+      <Quote className="h-5 w-5 text-primary/40" aria-hidden="true" />
+      <blockquote className="mt-3 flex-1 pr-10 text-sm leading-relaxed text-foreground">
+        &ldquo;{quote}&rdquo;
+      </blockquote>
+      <figcaption className="mt-5 flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">{name}</span>
+        <span className="flex gap-0.5" aria-label={`${rating} de 5 estrellas`}>
+          {Array.from({ length: 5 }).map((_, j) => (
+            <Star
+              key={j}
+              className={cn(
+                "h-3.5 w-3.5",
+                j < rating ? "fill-primary text-primary" : "text-muted-foreground/30",
+              )}
+            />
+          ))}
+        </span>
+      </figcaption>
+    </figure>
+  );
+}
+
 /** Encabezado de sección: cintillo en latón + titular display. */
 function SectionHeading({
   eyebrow,
@@ -192,6 +274,12 @@ function SalonHome() {
 
   const activeServices = services.filter((s) => s.active !== false);
   const openNow = isOpenNow(salon.hours);
+  // Las fotos del equipo ya están importadas en mock/salon: no hay avatares de stock.
+  const TEAM_AVATARS = employees.map((e) => ({
+    imageUrl: e.photo,
+    profileUrl: `/s/${salonSlug}#equipo`,
+  }));
+  const totalTeamYears = employees.reduce((sum, e) => sum + e.yearsExperience, 0);
   // Cifras sacadas del propio catálogo/equipo, no inventadas.
   const stats = [
     { value: employees.length, suffix: "", label: "barberos en plantilla" },
@@ -229,51 +317,84 @@ function SalonHome() {
 
         <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:py-24 md:py-32">
           <AnimatedGroup variants={HERO_IN} className="max-w-2xl space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-sm backdrop-blur-sm">
-              <span
-                className={cn(
-                  "size-1.5 rounded-full",
-                  openNow ? "bg-success animate-pulse motion-reduce:animate-none" : "bg-white/40",
-                )}
-                aria-hidden="true"
-              />
-              <ShinyText
-                text={todayOpenInfo(salon.hours)}
-                baseColor="rgb(255 255 255 / 0.92)"
-                className="font-medium"
-                speed={5}
-              />
-              <span className="text-white/40" aria-hidden="true">
-                ·
-              </span>
-              <span className="flex items-center gap-1">
-                <Star className="h-3.5 w-3.5 fill-primary text-primary" />
-                <span className="font-medium">{AGGREGATE_RATING}</span>
-              </span>
+            {/* Dos píldoras en una sola fila: estado real del salón a la
+                izquierda y el reclamo a la derecha. Apiladas competían entre sí. */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-sm backdrop-blur-sm">
+                <span
+                  className={cn(
+                    "size-1.5 rounded-full",
+                    openNow ? "bg-success animate-pulse motion-reduce:animate-none" : "bg-white/40",
+                  )}
+                  aria-hidden="true"
+                />
+                <ShinyText
+                  text={todayOpenInfo(salon.hours)}
+                  baseColor="rgb(255 255 255 / 0.92)"
+                  className="font-medium"
+                  speed={5}
+                />
+                <span className="text-white/40" aria-hidden="true">
+                  ·
+                </span>
+                <span className="flex items-center gap-1">
+                  <Star className="h-3.5 w-3.5 fill-primary text-primary" />
+                  <span className="font-medium">{AGGREGATE_RATING}</span>
+                </span>
+              </div>
+
+              <div className="inline-flex items-center rounded-full border border-white/15 bg-white/5 backdrop-blur-sm">
+                <AnimatedShinyText className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-white/70">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Reservas en menos de un minuto
+                </AnimatedShinyText>
+              </div>
             </div>
 
-            <TextEffect
-              as="h1"
-              per="char"
-              preset="fade-in-blur"
-              speedSegment={2.4}
-              delay={0.2}
-              className="font-display text-5xl leading-[1.05] sm:text-6xl md:text-7xl"
-            >
-              {profile.name}
-            </TextEffect>
+            <h1 className="font-display text-5xl leading-[1.05] sm:text-6xl md:text-7xl">
+              <TextEffect
+                as="span"
+                per="char"
+                preset="fade-in-blur"
+                speedSegment={2.4}
+                delay={0.2}
+                className="block"
+              >
+                {profile.name}
+              </TextEffect>
+            </h1>
+
+            {/* La palabra que va rotando cuenta lo que se hace aquí sin ocupar
+                cuatro líneas de texto. */}
+            <div className="flex flex-wrap items-baseline gap-x-2 text-lg text-white/80">
+              <span>Especialistas en</span>
+              <WordRotate
+                words={["degradados", "barba a navaja", "color", "mechas", "keratina"]}
+                duration={2200}
+                className="font-display text-2xl text-primary"
+              />
+            </div>
 
             <p className="flex items-center gap-2 text-white/85">
               <MapPin className="h-4 w-4 shrink-0 text-primary" /> {profile.address}
             </p>
-            <p className="max-w-md text-lg text-white/80">{SALON_ABOUT_ES}</p>
+            <p className="max-w-md text-white/70">{SALON_ABOUT_ES}</p>
 
-            <div className="flex flex-wrap gap-3 pt-2">
-              <Button asChild size="lg" className="rounded-full px-7">
-                <Link to="/s/$salonSlug/book" params={{ salonSlug }}>
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <ShimmerButton
+                asChild
+                shimmerColor="#f5e6c8"
+                background="var(--color-primary)"
+                className="px-7 py-3 font-medium"
+              >
+                <Link
+                  to="/s/$salonSlug/book"
+                  params={{ salonSlug }}
+                  className="flex items-center gap-2 text-[color:var(--color-primary-foreground)]"
+                >
                   Reservar cita <ArrowRight className="h-4 w-4" />
                 </Link>
-              </Button>
+              </ShimmerButton>
               <Button
                 asChild
                 size="lg"
@@ -342,7 +463,7 @@ function SalonHome() {
               <Reveal key={id} delay={i * 70} className="h-full">
                 <SpotlightCard
                   className={cn(
-                    "group h-full rounded-2xl border border-border/60 bg-card hover:border-primary/40",
+                    "group relative h-full rounded-2xl border border-border/60 bg-card hover:border-primary/40",
                     CARD_HOVER,
                   )}
                 >
@@ -362,10 +483,54 @@ function SalonHome() {
                       <Clock className="h-3.5 w-3.5" /> {s.durationMin} min
                     </span>
                   </Link>
+                  {/* Haz de luz recorriendo el borde, desfasado por tarjeta para
+                      que no vayan las cuatro a la vez. */}
+                  <BorderBeam
+                    size={70}
+                    duration={9}
+                    delay={i * 2.2}
+                    colorFrom="var(--color-primary)"
+                    colorTo="transparent"
+                    className="opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                  />
                 </SpotlightCard>
               </Reveal>
             );
           })}
+        </div>
+      </section>
+
+      {/* Por qué aquí — rejilla bento */}
+      <section className="relative border-t border-border/40">
+        <DotPattern
+          width={22}
+          height={22}
+          cr={1}
+          className="[mask-image:radial-gradient(500px_circle_at_center,white,transparent)] fill-primary/25"
+        />
+        <div className="relative mx-auto max-w-5xl px-6 py-16 md:py-24">
+          <SectionHeading eyebrow="Por qué aquí" title="Lo que te vas a encontrar" />
+          <Reveal>
+            <BentoGrid className="md:grid-rows-2 lg:grid-cols-3">
+              {BENTO_ITEMS.map((item) => (
+                <BentoCard
+                  key={item.name}
+                  name={item.name}
+                  description={item.description}
+                  Icon={item.Icon}
+                  className={item.className}
+                  href={item.href}
+                  cta={item.cta}
+                  background={
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-0 bg-gradient-to-br from-primary/12 via-transparent to-transparent"
+                    />
+                  }
+                />
+              ))}
+            </BentoGrid>
+          </Reveal>
         </div>
       </section>
 
@@ -485,42 +650,22 @@ function SalonHome() {
           reseñas reales de tu salón.
         </Reveal>
 
-        <Reveal>
-          <Carousel opts={{ align: "start", loop: true }} className="mx-auto md:px-14">
-            <CarouselContent>
-              {REVIEWS.map((r) => (
-                <CarouselItem key={r.name} className="sm:basis-1/2 lg:basis-1/3">
-                  <figure className="relative flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6">
-                    <span className="absolute right-4 top-4 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Ejemplo
-                    </span>
-                    <Quote className="h-5 w-5 text-primary/40" aria-hidden="true" />
-                    <blockquote className="mt-3 flex-1 pr-10 text-sm leading-relaxed text-foreground">
-                      &ldquo;{r.quote}&rdquo;
-                    </blockquote>
-                    <figcaption className="mt-5 flex items-center justify-between">
-                      <span className="text-xs font-medium text-muted-foreground">{r.name}</span>
-                      <span className="flex gap-0.5" aria-label={`${r.rating} de 5 estrellas`}>
-                        {Array.from({ length: 5 }).map((_, j) => (
-                          <Star
-                            key={j}
-                            className={cn(
-                              "h-3.5 w-3.5",
-                              j < r.rating
-                                ? "fill-primary text-primary"
-                                : "text-muted-foreground/30",
-                            )}
-                          />
-                        ))}
-                      </span>
-                    </figcaption>
-                  </figure>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious className="hidden md:flex" />
-            <CarouselNext className="hidden md:flex" />
-          </Carousel>
+        {/* Muro en dos filas que se cruzan. Se para al pasar el ratón para
+            poder leer la que te interese. */}
+        <Reveal className="relative">
+          <Marquee pauseOnHover className="[--duration:38s] [--gap:1.25rem]">
+            {REVIEWS.map((r) => (
+              <ReviewCard key={r.name} {...r} />
+            ))}
+          </Marquee>
+          <Marquee reverse pauseOnHover className="mt-5 [--duration:44s] [--gap:1.25rem]">
+            {[...REVIEWS].reverse().map((r) => (
+              <ReviewCard key={r.name} {...r} />
+            ))}
+          </Marquee>
+          {/* Desvanecido lateral para que las tarjetas no se corten en seco. */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-background sm:w-28" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background sm:w-28" />
         </Reveal>
       </section>
 
@@ -548,7 +693,11 @@ function SalonHome() {
       {/* Ubicación + horario */}
       <section id="ubicacion" className="border-t border-border/40">
         <div className="mx-auto max-w-5xl px-6 py-16 md:py-24">
-          <SectionHeading eyebrow="Ubicación y horario" title="Te esperamos aquí" className="mb-12" />
+          <SectionHeading
+            eyebrow="Ubicación y horario"
+            title="Te esperamos aquí"
+            className="mb-12"
+          />
           <div className="grid gap-6 md:grid-cols-2">
             <Reveal className="space-y-6">
               <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-6">
@@ -609,16 +758,36 @@ function SalonHome() {
           className="absolute inset-0 -z-10 bg-[radial-gradient(60%_80%_at_50%_0%,color-mix(in_oklab,var(--color-primary)_18%,transparent),transparent)]"
         />
         <div className="mx-auto max-w-5xl px-6 py-20 text-center md:py-28">
-          <Reveal>
-            <h2 className="font-display text-3xl md:text-5xl">¿Nos vemos pronto?</h2>
+          <Reveal className="flex flex-col items-center">
+            <h2 className="font-display text-3xl md:text-5xl">
+              ¿Nos vemos <AuroraText colors={["#d6ab68", "#f0e6d2", "#b98a4d"]}>pronto</AuroraText>?
+            </h2>
             <p className="mt-3 text-muted-foreground">
               Elige servicio, barbero y hora en menos de un minuto.
             </p>
-            <Button asChild size="lg" className="mt-8 rounded-full px-8">
-              <Link to="/s/$salonSlug/book" params={{ salonSlug }}>
+
+            {/* Caras reales del equipo, no stock. */}
+            <div className="mt-7 flex flex-col items-center gap-2">
+              <AvatarCircles avatarUrls={TEAM_AVATARS} />
+              <p className="text-xs text-muted-foreground">
+                {employees.length} barberos · {totalTeamYears} años de oficio entre los tres
+              </p>
+            </div>
+
+            <ShimmerButton
+              asChild
+              shimmerColor="#f5e6c8"
+              background="var(--color-primary)"
+              className="mt-8 px-8 py-3.5 font-medium"
+            >
+              <Link
+                to="/s/$salonSlug/book"
+                params={{ salonSlug }}
+                className="flex items-center gap-2 text-[color:var(--color-primary-foreground)]"
+              >
                 Reservar ahora <ArrowRight className="h-4 w-4" />
               </Link>
-            </Button>
+            </ShimmerButton>
           </Reveal>
         </div>
       </section>

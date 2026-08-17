@@ -21,6 +21,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { KpiCard } from "@/components/KpiCard";
 import { CountUp } from "@/components/reactbits/CountUp";
+import { BorderBeam } from "@/components/magicui/border-beam";
 
 const CHART_TOOLTIP_STYLE = {
   background: "var(--color-card)",
@@ -139,8 +140,11 @@ function Home() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div
           data-tour="revenue-chart"
-          className="min-w-0 rounded-xl border border-border/60 bg-card p-6 lg:col-span-2"
+          className="relative min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card p-6 lg:col-span-2"
         >
+          {/* Un haz recorriendo el borde marca cuál es la tarjeta principal
+              del panel sin recurrir a más color ni a más peso tipográfico. */}
+          <BorderBeam size={110} duration={14} colorFrom="var(--color-primary)" colorTo="transparent" />
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-widest text-muted-foreground">Ingresos</p>

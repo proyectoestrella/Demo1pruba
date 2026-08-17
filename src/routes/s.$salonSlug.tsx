@@ -6,6 +6,7 @@ import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { ScrollProgress } from "@/components/magicui/scroll-progress";
 import { useState } from "react";
 
 export const Route = createFileRoute("/s/$salonSlug")({
@@ -53,6 +54,8 @@ function SalonLayout() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
+        {/* Barra de avance de lectura, pegada al borde inferior de la cabecera. */}
+        <ScrollProgress className="absolute inset-x-0 bottom-0 top-auto h-0.5 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
             <Link

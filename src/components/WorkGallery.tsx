@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Expand } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Reveal } from "@/components/Reveal";
+import { Lens } from "@/components/magicui/lens";
 import galleryRecorte from "@/assets/gallery-recorte.jpg";
 import galleryDegradado from "@/assets/gallery-degradado.jpg";
 import galleryDetalle from "@/assets/gallery-detalle.jpg";
@@ -31,20 +32,20 @@ export function WorkGallery() {
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
           {GALLERY_IMAGES.map((img, i) => (
             <Reveal key={img.src} delay={i * 80}>
-              <button
-                type="button"
-                onClick={() => setOpenIndex(i)}
-                className="group relative block aspect-square w-full overflow-hidden rounded-2xl border border-border/60 transition-colors hover:border-primary/40"
-              >
-                <img
-                  src={img.src}
-                  alt={img.alt}
-                  className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-                />
-                <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/30 group-hover:opacity-100">
-                  <Expand className="h-5 w-5 text-white" />
-                </span>
-              </button>
+              {/* La lupa deja mirar el degradado y el remate de cerca sin salir
+                  de la página; el clic sigue abriendo la foto a tamaño grande. */}
+              <Lens zoomFactor={1.6} lensSize={140} ariaLabel={`Ampliar: ${img.alt}`}>
+                <button
+                  type="button"
+                  onClick={() => setOpenIndex(i)}
+                  className="group relative block aspect-square w-full overflow-hidden rounded-2xl border border-border/60 transition-colors hover:border-primary/40"
+                >
+                  <img src={img.src} alt={img.alt} className="h-full w-full object-cover" />
+                  <span className="absolute bottom-2 right-2 flex size-7 items-center justify-center rounded-full bg-black/50 text-white opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
+                    <Expand className="h-3.5 w-3.5" />
+                  </span>
+                </button>
+              </Lens>
             </Reveal>
           ))}
         </div>
