@@ -14,8 +14,7 @@ import {
   Menu,
   Plus,
   Compass,
-  Sparkles,
-} from "lucide-react";
+  Sparkles, Presentation } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { salon } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
@@ -67,6 +66,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { to: "/app/insights", label: "Analítica", icon: ChartColumn },
       { to: "/app/marketing", label: "Marketing", icon: Megaphone },
+      { to: "/app/demos", label: "Demos", icon: Presentation },
     ],
   },
 ];

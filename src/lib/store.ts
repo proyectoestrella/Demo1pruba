@@ -10,6 +10,7 @@ import type {
   Service,
   SalonProfile,
 } from "./mock/types";
+import type { DemoProfile } from "./demo-profile";
 
 interface SalonState {
   appointments: Appointment[];
@@ -17,6 +18,8 @@ interface SalonState {
   clients: Client[];
   services: Service[];
   salonProfile: SalonProfile;
+  /** Salones preparados para enseñar en visitas — ver demo-profile.ts. */
+  savedDemos: SavedDemo[];
 
   // Appointments
   addAppointment: (a: Omit<Appointment, "id">) => Appointment;
@@ -41,6 +44,18 @@ interface SalonState {
 
   // Salon profile (Settings)
   updateSalonProfile: (patch: Partial<SalonProfile>) => void;
+
+  // Demos guardadas
+  saveDemo: (demo: DemoProfile, id?: string) => SavedDemo;
+  deleteDemo: (id: string) => void;
+  /** Vuelca una demo guardada sobre el perfil activo del panel. */
+  applyDemo: (id: string) => void;
+}
+
+/** Una demo guardada es un perfil con identidad propia para poder editarla. */
+export interface SavedDemo extends DemoProfile {
+  id: string;
+  savedAt: string;
 }
 
 // Guarded storage: `localStorage` doesn't exist during SSR, so this
@@ -61,6 +76,7 @@ export const useSalonStore = create<SalonState>()(
   clients: seedClients,
   services: seedServices,
   salonProfile: salon,
+  savedDemos: [],
 
   addAppointment: (a) => {
     const appt: Appointment = { ...a, id: `a-new-${Date.now()}` };
@@ -132,6 +148,35 @@ export const useSalonStore = create<SalonState>()(
 
   updateSalonProfile: (patch) =>
     set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } })),
+
+  saveDemo: (demo, id) => {
+    const entry: SavedDemo = {
+      ...demo,
+      id: id ?? `demo-${Date.now()}`,
+      savedAt: new Date().toISOString(),
+    };
+    set((s) => {
+      const existing = s.savedDemos.findIndex((d) => d.id === entry.id);
+      if (existing >= 0) {
+        const next = [...s.savedDemos];
+        next[existing] = entry;
+        return { savedDemos: next };
+      }
+      return { savedDemos: [entry, ...s.savedDemos] };
+    });
+    return entry;
+  },
+
+  deleteDemo: (id) => set((s) => ({ savedDemos: s.savedDemos.filter((d) => d.id !== id) })),
+
+  applyDemo: (id) =>
+    set((s) => {
+      const demo = s.savedDemos.find((d) => d.id === id);
+      if (!demo) return {};
+      // `id` y `savedAt` son de la demo, no del salón: no deben colarse en el perfil.
+      const { id: _id, savedAt: _savedAt, ...profileFields } = demo;
+      return { salonProfile: { ...s.salonProfile, ...profileFields } };
+    }),
     }),
     {
       name: "trimly-salon-store",
@@ -142,7 +187,11 @@ export const useSalonStore = create<SalonState>()(
       // win forever. Discard just those two slices on migration and refill
       // them from the current seed data, keeping everything the shopkeeper
       // may have actually created (appointments, clients, waitlist).
-      version: 2,
+      //
+      // v3: el perfil gana nota, número de reseñas y especialidades. Un estado
+      // v2 no los trae, y sin ellos el hero renderiza "undefined" — se
+      // rellenan desde el seed conservando lo que el usuario ya había escrito.
+      version: 3,
       migrate: (persistedState, version) => {
         const state = persistedState as SalonState;
         if (version < 2) {
@@ -150,6 +199,20 @@ export const useSalonStore = create<SalonState>()(
             ...state,
             salonProfile: salon,
             services: seedServices,
+          };
+        }
+        if (version < 3) {
+          return {
+            ...state,
+            salonProfile: {
+              ...salon,
+              ...state.salonProfile,
+              rating: state.salonProfile?.rating ?? salon.rating,
+              reviewCount: state.salonProfile?.reviewCount ?? salon.reviewCount,
+              specialties: state.salonProfile?.specialties?.length
+                ? state.salonProfile.specialties
+                : salon.specialties,
+            },
           };
         }
         return state;

@@ -38,3 +38,6 @@ dist-ssr
 *.sln
 *.sw?
 .env*
+
+# Caché local de Vite
+.vite

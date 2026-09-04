@@ -81,4 +81,10 @@ export interface SalonProfile {
   phone: string;
   instagram: string;
   hours: SalonHours[];
+  /** Nota media mostrada en el hero y en la sección de reseñas. */
+  rating: number;
+  /** Número de reseñas que acompaña a la nota. */
+  reviewCount: number;
+  /** Palabras que rotan tras "Especialistas en" — lo que se hace en ESTE salón. */
+  specialties: string[];
 }

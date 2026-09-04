@@ -18,12 +18,13 @@ import {
   services,
   serviceMap,
   employees,
-  salon,
   requiresDeposit,
   DEPOSIT_RATE,
   DEPOSIT_THRESHOLD_MIN,
 } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
+import { useDisplayProfile } from "@/lib/use-display-profile";
+import type { SalonHours } from "@/lib/mock/types";
 import heroImg from "@/assets/hero-salon.jpg";
 import { WorkGallery } from "@/components/WorkGallery";
 import { MobileBookingBar } from "@/components/MobileBookingBar";
@@ -58,9 +59,6 @@ export const Route = createFileRoute("/s/$salonSlug/")({
   component: SalonHome,
 });
 
-const SALON_ABOUT_ES =
-  "Barbería de toda la vida en el corazón de la ciudad. Tres profesionales, una misma obsesión: que salgas de aquí sintiéndote como nuevo.";
-
 const FEATURED_IDS = ["haircut", "color", "highlights", "keratin"];
 
 /**
@@ -91,8 +89,6 @@ const REVIEWS = [
     quote: "El color quedó justo como lo habíamos hablado. Repetiré sin dudarlo.",
   },
 ];
-const AGGREGATE_RATING = 4.8;
-const REVIEW_COUNT = 312;
 
 const WEEK_DAYS_ES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
@@ -185,7 +181,7 @@ const FAQ = [
   },
 ];
 
-function todayOpenInfo(hours: typeof salon.hours) {
+function todayOpenInfo(hours: SalonHours[]) {
   const dow = new Date().getDay();
   const entry =
     dow === 0
@@ -206,11 +202,11 @@ function todayOpenInfo(hours: typeof salon.hours) {
   return `Abierto · cierra a las ${endStr}`;
 }
 
-function isOpenNow(hours: typeof salon.hours) {
+function isOpenNow(hours: SalonHours[]) {
   return todayOpenInfo(hours).startsWith("Abierto");
 }
 
-function fullWeekSchedule(hours: typeof salon.hours) {
+function fullWeekSchedule(hours: SalonHours[]) {
   const weekday = hours.find((h) => h.day === "Mon–Fri")?.value ?? "—";
   const sat = hours.find((h) => h.day === "Saturday")?.value ?? "—";
   const sun = hours.find((h) => h.day === "Sunday")?.value ?? "—";
@@ -269,11 +265,11 @@ function SectionHeading({
 
 function SalonHome() {
   const { salonSlug } = Route.useParams();
-  const profile = useSalonStore((s) => s.salonProfile);
+  const profile = useDisplayProfile();
   const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(profile.address)}&output=embed`;
 
   const activeServices = services.filter((s) => s.active !== false);
-  const openNow = isOpenNow(salon.hours);
+  const openNow = isOpenNow(profile.hours);
   // Las fotos del equipo ya están importadas en mock/salon: no hay avatares de stock.
   const TEAM_AVATARS = employees.map((e) => ({
     imageUrl: e.photo,
@@ -329,7 +325,7 @@ function SalonHome() {
                   aria-hidden="true"
                 />
                 <ShinyText
-                  text={todayOpenInfo(salon.hours)}
+                  text={todayOpenInfo(profile.hours)}
                   baseColor="rgb(255 255 255 / 0.92)"
                   className="font-medium"
                   speed={5}
@@ -339,7 +335,7 @@ function SalonHome() {
                 </span>
                 <span className="flex items-center gap-1">
                   <Star className="h-3.5 w-3.5 fill-primary text-primary" />
-                  <span className="font-medium">{AGGREGATE_RATING}</span>
+                  <span className="font-medium">{profile.rating}</span>
                 </span>
               </div>
 
@@ -355,7 +351,19 @@ function SalonHome() {
               </div>
             </div>
 
-            <h1 className="font-display text-5xl leading-[1.05] sm:text-6xl md:text-7xl">
+            <h1
+              className={cn(
+                "font-display leading-[1.05] text-balance",
+                // El tamaño baja con la longitud del nombre: "Pepe" merece el
+                // titular grande, pero "Peluquería y Estética Los Ángeles" a
+                // 7xl parte por la mitad y deja letras sueltas colgando.
+                profile.name.length > 28
+                  ? "text-3xl sm:text-4xl md:text-5xl"
+                  : profile.name.length > 18
+                    ? "text-4xl sm:text-5xl md:text-6xl"
+                    : "text-5xl sm:text-6xl md:text-7xl",
+              )}
+            >
               <TextEffect
                 as="span"
                 per="char"
@@ -369,20 +377,25 @@ function SalonHome() {
             </h1>
 
             {/* La palabra que va rotando cuenta lo que se hace aquí sin ocupar
-                cuatro líneas de texto. */}
-            <div className="flex flex-wrap items-baseline gap-x-2 text-lg text-white/80">
-              <span>Especialistas en</span>
-              <WordRotate
-                words={["degradados", "barba a navaja", "color", "mechas", "keratina"]}
-                duration={2200}
-                className="font-display text-2xl text-primary"
-              />
-            </div>
+                cuatro líneas de texto. Sin especialidades no hay frase: un
+                "Especialistas en" a medias es peor que no decir nada. */}
+            {profile.specialties.length > 0 && (
+              <div className="flex flex-wrap items-baseline gap-x-2 text-lg text-white/80">
+                <span>Especialistas en</span>
+                <WordRotate
+                  words={profile.specialties}
+                  duration={2200}
+                  className="font-display text-2xl text-primary"
+                />
+              </div>
+            )}
 
             <p className="flex items-center gap-2 text-white/85">
               <MapPin className="h-4 w-4 shrink-0 text-primary" /> {profile.address}
             </p>
-            <p className="max-w-md text-white/70">{SALON_ABOUT_ES}</p>
+            {profile.about ? (
+              <p className="max-w-md text-white/70">{profile.about}</p>
+            ) : null}
 
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <ShimmerButton
@@ -416,7 +429,7 @@ function SalonHome() {
       <section className="border-y border-border/60 bg-card">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-8 gap-y-3 px-5 py-4 text-sm">
           <span className="flex items-center gap-2 font-medium text-foreground">
-            <Clock className="h-4 w-4 shrink-0 text-primary" /> {todayOpenInfo(salon.hours)}
+            <Clock className="h-4 w-4 shrink-0 text-primary" /> {todayOpenInfo(profile.hours)}
           </span>
           <span className="flex items-center gap-2 text-muted-foreground">
             <MapPin className="h-4 w-4 shrink-0 text-primary" /> {profile.address}
@@ -634,8 +647,8 @@ function SalonHome() {
           </div>
           <div className="flex items-center gap-1.5 text-sm">
             <Star className="h-4 w-4 fill-primary text-primary" />
-            <span className="font-medium">{AGGREGATE_RATING}</span>
-            <span className="text-muted-foreground">· {REVIEW_COUNT} reseñas</span>
+            <span className="font-medium">{profile.rating}</span>
+            <span className="text-muted-foreground">· {profile.reviewCount} reseñas</span>
           </div>
         </Reveal>
         <Reveal className="mb-8 inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground">
@@ -722,7 +735,7 @@ function SalonHome() {
                 Horario
               </p>
               <div className="divide-y divide-border/40">
-                {fullWeekSchedule(salon.hours).map((d, i) => {
+                {fullWeekSchedule(profile.hours).map((d, i) => {
                   // Domingo es el índice 6 de WEEK_DAYS_ES, pero el 0 de getDay().
                   const isToday = (new Date().getDay() + 6) % 7 === i;
                   return (

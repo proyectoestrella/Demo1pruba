@@ -1,13 +1,13 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { salon } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
+import { useDisplayProfile } from "@/lib/use-display-profile";
 import { Instagram, MapPin, Phone, Lock, Menu } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollProgress } from "@/components/magicui/scroll-progress";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/s/$salonSlug")({
   head: () => {
@@ -30,9 +30,6 @@ const DAY_LABEL_ES: Record<string, string> = {
   Sunday: "Domingo",
 };
 
-const SALON_ABOUT_ES =
-  "Barbería de toda la vida en el corazón de la ciudad. Tres profesionales, una misma obsesión: que salgas de aquí sintiéndote como nuevo.";
-
 /** Anclas de la home pública. Una sola fuente para el menú de escritorio y el de móvil. */
 const NAV_LINKS = [
   { href: "#servicios", label: "Servicios" },
@@ -48,8 +45,12 @@ function SalonLayout() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const onBooking =
     path.includes("/book") || path.includes("/confirmation") || path.includes("/waitlist");
-  const profile = useSalonStore((s) => s.salonProfile);
+  const profile = useDisplayProfile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    document.title = `${profile.name} — Reserva online`;
+  }, [profile.name]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -66,9 +67,11 @@ function SalonLayout() {
               <Logo />
               <div className="min-w-0 leading-tight">
                 <p className="truncate font-display text-base">{profile.name}</p>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Barbería
-                </p>
+                {profile.tagline ? (
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {profile.tagline}
+                  </p>
+                ) : null}
               </div>
             </Link>
             <Link
@@ -142,7 +145,9 @@ function SalonLayout() {
               <Logo />
               <span className="font-display text-lg">{profile.name}</span>
             </div>
-            <p className="mt-4 max-w-sm text-sm text-muted-foreground">{SALON_ABOUT_ES}</p>
+            {profile.about ? (
+              <p className="mt-4 max-w-sm text-sm text-muted-foreground">{profile.about}</p>
+            ) : null}
           </div>
           <div>
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Visítanos</p>
@@ -161,7 +166,7 @@ function SalonLayout() {
           </div>
           <div>
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Horario</p>
-            {salon.hours.map((h) => (
+            {profile.hours.map((h) => (
               <p key={h.day} className="mt-2 flex justify-between gap-4 text-sm">
                 <span className="text-muted-foreground">{DAY_LABEL_ES[h.day] ?? h.day}</span>
                 <span>{h.value === "Closed" ? "Cerrado" : h.value}</span>

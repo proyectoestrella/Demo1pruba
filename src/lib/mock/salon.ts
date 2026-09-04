@@ -18,6 +18,9 @@ export const salon: SalonProfile = {
     { day: "Saturday", value: "10:00 — 18:00" },
     { day: "Sunday", value: "Closed" },
   ],
+  rating: 4.8,
+  reviewCount: 312,
+  specialties: ["degradados", "barba a navaja", "color", "mechas", "keratina"],
 };
 
 export const services: Service[] = [
