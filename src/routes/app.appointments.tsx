@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { STATUS_OPTIONS } from "@/lib/appointment-status";
 import { useSalonStore } from "@/lib/store";
 import { employeeMap, serviceMap, employees } from "@/lib/mock/salon";
 import type { Appointment, AppointmentStatus } from "@/lib/mock/types";
@@ -11,7 +12,14 @@ import { EmptyState } from "@/components/EmptyState";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -45,12 +53,6 @@ import { CalendarX, MoreHorizontal, Plus } from "lucide-react";
 export const Route = createFileRoute("/app/appointments")({
   component: Appointments,
 });
-
-const STATUS_CHOICES: { value: AppointmentStatus; label: string }[] = [
-  { value: "confirmed", label: "Confirmada" },
-  { value: "completed", label: "Completada" },
-  { value: "no-show", label: "No asistió" },
-];
 
 function Appointments() {
   const appointments = useSalonStore((s) => s.appointments);
@@ -149,9 +151,18 @@ function Appointments() {
                   const e = employeeMap[a.employeeId];
                   const s = serviceMap[a.serviceId];
                   return (
-                    <TableRow key={a.id} className="cursor-pointer hover:bg-muted/40" onClick={() => setSelected(a)}>
+                    <TableRow
+                      key={a.id}
+                      className="cursor-pointer hover:bg-muted/40"
+                      onClick={() => setSelected(a)}
+                    >
                       <TableCell className="whitespace-nowrap text-muted-foreground">
-                        {new Date(a.start).toLocaleString("es", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        {new Date(a.start).toLocaleString("es", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </TableCell>
                       <TableCell className="font-medium">{a.clientName}</TableCell>
                       <TableCell className="text-muted-foreground">{s?.name}</TableCell>
@@ -173,12 +184,17 @@ function Appointments() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setSelected(a)}>Ver detalle</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSelected(a)}>
+                              Ver detalle
+                            </DropdownMenuItem>
                             <DropdownMenuSub>
                               <DropdownMenuSubTrigger>Cambiar estado</DropdownMenuSubTrigger>
                               <DropdownMenuSubContent>
-                                {STATUS_CHOICES.map((c) => (
-                                  <DropdownMenuItem key={c.value} onClick={() => handleStatusChange(a, c.value)}>
+                                {STATUS_OPTIONS.map((c) => (
+                                  <DropdownMenuItem
+                                    key={c.value}
+                                    onClick={() => handleStatusChange(a, c.value)}
+                                  >
                                     {c.label}
                                   </DropdownMenuItem>
                                 ))}
@@ -208,11 +224,18 @@ function Appointments() {
               const e = employeeMap[a.employeeId];
               const s = serviceMap[a.serviceId];
               return (
-                <div key={a.id} className="rounded-xl border border-border/60 bg-card p-4" onClick={() => setSelected(a)}>
+                <div
+                  key={a.id}
+                  className="rounded-xl border border-border/60 bg-card p-4"
+                  onClick={() => setSelected(a)}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-display text-lg leading-none">
-                        {new Date(a.start).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(a.start).toLocaleTimeString("es", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </p>
                       <p className="mt-1 truncate font-medium">{a.clientName}</p>
                     </div>
@@ -224,13 +247,20 @@ function Appointments() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuLabel className="text-xs text-muted-foreground">{a.clientName}</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => setSelected(a)}>Ver detalle</DropdownMenuItem>
+                          <DropdownMenuLabel className="text-xs text-muted-foreground">
+                            {a.clientName}
+                          </DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => setSelected(a)}>
+                            Ver detalle
+                          </DropdownMenuItem>
                           <DropdownMenuSub>
                             <DropdownMenuSubTrigger>Cambiar estado</DropdownMenuSubTrigger>
                             <DropdownMenuSubContent>
-                              {STATUS_CHOICES.map((c) => (
-                                <DropdownMenuItem key={c.value} onClick={() => handleStatusChange(a, c.value)}>
+                              {STATUS_OPTIONS.map((c) => (
+                                <DropdownMenuItem
+                                  key={c.value}
+                                  onClick={() => handleStatusChange(a, c.value)}
+                                >
                                   {c.label}
                                 </DropdownMenuItem>
                               ))}
@@ -251,7 +281,9 @@ function Appointments() {
                   <div className="mt-3 flex items-center justify-between text-sm">
                     <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-muted-foreground">
                       <StylistDot employeeId={a.employeeId} />
-                      <span className="truncate">{s?.name} · {e.name}</span>
+                      <span className="truncate">
+                        {s?.name} · {e.name}
+                      </span>
                     </span>
                     <span className="shrink-0 font-medium">€{a.priceEur}</span>
                   </div>
@@ -265,7 +297,11 @@ function Appointments() {
         </>
       )}
 
-      <AppointmentDetailSheet appointment={selected} open={!!selected} onOpenChange={(o) => !o && setSelected(null)} />
+      <AppointmentDetailSheet
+        appointment={selected}
+        open={!!selected}
+        onOpenChange={(o) => !o && setSelected(null)}
+      />
       <NewAppointmentDialog open={newApptOpen} onOpenChange={setNewApptOpen} />
 
       <AlertDialog open={!!cancelTarget} onOpenChange={(o) => !o && setCancelTarget(null)}>
@@ -273,12 +309,16 @@ function Appointments() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Cancelar esta cita?</AlertDialogTitle>
             <AlertDialogDescription>
-              {cancelTarget && `Se marcará como cancelada para ${cancelTarget.clientName}. Esta acción no se puede deshacer.`}
+              {cancelTarget &&
+                `Se marcará como cancelada para ${cancelTarget.clientName}. Esta acción no se puede deshacer.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Volver</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCancelConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleCancelConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Sí, cancelar
             </AlertDialogAction>
           </AlertDialogFooter>

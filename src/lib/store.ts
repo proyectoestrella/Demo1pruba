@@ -25,6 +25,12 @@ interface SalonState {
   addAppointment: (a: Omit<Appointment, "id">) => Appointment;
   updateAppointment: (id: string, patch: Partial<Appointment>) => void;
   cancelAppointment: (id: string) => void;
+  /**
+   * Punto único por el que entra "el cliente confirma que viene".
+   * Hoy se dispara a mano desde el panel; cuando exista canal (WhatsApp, SMS o
+   * email) lo llamará el webhook y no habrá que tocar nada más.
+   */
+  markClientConfirmed: (id: string, confirmed: boolean) => void;
   deleteAppointment: (id: string) => void;
 
   // Waitlist
@@ -73,114 +79,123 @@ const storage = createJSONStorage<SalonState>(() =>
 export const useSalonStore = create<SalonState>()(
   persist(
     (set) => ({
-  appointments: seedAppointments,
-  waitlist: seedWaitlist,
-  clients: seedClients,
-  services: seedServices,
-  salonProfile: salon,
-  savedDemos: [],
+      appointments: seedAppointments,
+      waitlist: seedWaitlist,
+      clients: seedClients,
+      services: seedServices,
+      salonProfile: salon,
+      savedDemos: [],
 
-  addAppointment: (a) => {
-    const appt: Appointment = { ...a, id: `a-new-${Date.now()}` };
-    set((s) => ({ appointments: [...s.appointments, appt] }));
-    return appt;
-  },
-  updateAppointment: (id, patch) =>
-    set((s) => ({
-      appointments: s.appointments.map((a) => (a.id === id ? { ...a, ...patch } : a)),
-    })),
-  cancelAppointment: (id) =>
-    set((s) => ({
-      appointments: s.appointments.map((a) =>
-        a.id === id ? { ...a, status: "cancelled" } : a,
-      ),
-    })),
-  deleteAppointment: (id) =>
-    set((s) => ({
-      appointments: s.appointments.filter((a) => a.id !== id),
-    })),
+      addAppointment: (a) => {
+        const appt: Appointment = { ...a, id: `a-new-${Date.now()}` };
+        set((s) => ({ appointments: [...s.appointments, appt] }));
+        return appt;
+      },
+      updateAppointment: (id, patch) =>
+        set((s) => ({
+          appointments: s.appointments.map((a) => (a.id === id ? { ...a, ...patch } : a)),
+        })),
+      cancelAppointment: (id) =>
+        set((s) => ({
+          appointments: s.appointments.map((a) =>
+            a.id === id ? { ...a, status: "cancelled" } : a,
+          ),
+        })),
 
-  addWaitlist: (w) =>
-    set((s) => ({
-      waitlist: [
-        ...s.waitlist,
-        { ...w, id: `w-${Date.now()}`, createdAt: new Date().toISOString() },
-      ],
-    })),
-  updateWaitlist: (id, patch) =>
-    set((s) => ({
-      waitlist: s.waitlist.map((w) => (w.id === id ? { ...w, ...patch } : w)),
-    })),
-  deleteWaitlist: (id) =>
-    set((s) => ({
-      waitlist: s.waitlist.filter((w) => w.id !== id),
-    })),
+      markClientConfirmed: (id, confirmed) =>
+        set((s) => ({
+          appointments: s.appointments.map((a) =>
+            a.id === id
+              ? { ...a, clientConfirmedAt: confirmed ? new Date().toISOString() : undefined }
+              : a,
+          ),
+        })),
+      deleteAppointment: (id) =>
+        set((s) => ({
+          appointments: s.appointments.filter((a) => a.id !== id),
+        })),
 
-  addClient: (c) => {
-    const client: Client = {
-      ...c,
-      id: `c-new-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    };
-    set((s) => ({ clients: [...s.clients, client] }));
-    return client;
-  },
-  updateClient: (id, patch) =>
-    set((s) => ({
-      clients: s.clients.map((c) => (c.id === id ? { ...c, ...patch } : c)),
-    })),
-  deleteClient: (id) =>
-    set((s) => ({
-      clients: s.clients.filter((c) => c.id !== id),
-    })),
+      addWaitlist: (w) =>
+        set((s) => ({
+          waitlist: [
+            ...s.waitlist,
+            { ...w, id: `w-${Date.now()}`, createdAt: new Date().toISOString() },
+          ],
+        })),
+      updateWaitlist: (id, patch) =>
+        set((s) => ({
+          waitlist: s.waitlist.map((w) => (w.id === id ? { ...w, ...patch } : w)),
+        })),
+      deleteWaitlist: (id) =>
+        set((s) => ({
+          waitlist: s.waitlist.filter((w) => w.id !== id),
+        })),
 
-  addService: (svc) => {
-    const service: Service = { ...svc, id: `svc-${Date.now()}` };
-    set((s) => ({ services: [...s.services, service] }));
-    return service;
-  },
-  updateService: (id, patch) =>
-    set((s) => ({
-      services: s.services.map((sv) => (sv.id === id ? { ...sv, ...patch } : sv)),
-    })),
-  deleteService: (id) =>
-    set((s) => ({
-      services: s.services.filter((sv) => sv.id !== id),
-    })),
+      addClient: (c) => {
+        const client: Client = {
+          ...c,
+          id: `c-new-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+        };
+        set((s) => ({ clients: [...s.clients, client] }));
+        return client;
+      },
+      updateClient: (id, patch) =>
+        set((s) => ({
+          clients: s.clients.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+        })),
+      deleteClient: (id) =>
+        set((s) => ({
+          clients: s.clients.filter((c) => c.id !== id),
+        })),
 
-  updateSalonProfile: (patch) =>
-    set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } })),
+      addService: (svc) => {
+        const service: Service = { ...svc, id: `svc-${Date.now()}` };
+        set((s) => ({ services: [...s.services, service] }));
+        return service;
+      },
+      updateService: (id, patch) =>
+        set((s) => ({
+          services: s.services.map((sv) => (sv.id === id ? { ...sv, ...patch } : sv)),
+        })),
+      deleteService: (id) =>
+        set((s) => ({
+          services: s.services.filter((sv) => sv.id !== id),
+        })),
 
-  saveDemo: (demo, id) => {
-    const entry: SavedDemo = {
-      ...demo,
-      id: id ?? `demo-${Date.now()}`,
-      savedAt: new Date().toISOString(),
-    };
-    set((s) => {
-      const existing = s.savedDemos.findIndex((d) => d.id === entry.id);
-      if (existing >= 0) {
-        const next = [...s.savedDemos];
-        next[existing] = entry;
-        return { savedDemos: next };
-      }
-      return { savedDemos: [entry, ...s.savedDemos] };
-    });
-    return entry;
-  },
+      updateSalonProfile: (patch) =>
+        set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } })),
 
-  deleteDemo: (id) => set((s) => ({ savedDemos: s.savedDemos.filter((d) => d.id !== id) })),
+      saveDemo: (demo, id) => {
+        const entry: SavedDemo = {
+          ...demo,
+          id: id ?? `demo-${Date.now()}`,
+          savedAt: new Date().toISOString(),
+        };
+        set((s) => {
+          const existing = s.savedDemos.findIndex((d) => d.id === entry.id);
+          if (existing >= 0) {
+            const next = [...s.savedDemos];
+            next[existing] = entry;
+            return { savedDemos: next };
+          }
+          return { savedDemos: [entry, ...s.savedDemos] };
+        });
+        return entry;
+      },
 
-  applyDemo: (id) =>
-    set((s) => {
-      const demo = s.savedDemos.find((d) => d.id === id);
-      if (!demo) return {};
-      // `id` y `savedAt` son de la demo, no del salón: no deben colarse en el perfil.
-      const { id: _id, savedAt: _savedAt, ...profileFields } = demo;
-      return { salonProfile: { ...s.salonProfile, ...profileFields } };
-    }),
+      deleteDemo: (id) => set((s) => ({ savedDemos: s.savedDemos.filter((d) => d.id !== id) })),
 
-  resetSalonProfile: () => set({ salonProfile: salon }),
+      applyDemo: (id) =>
+        set((s) => {
+          const demo = s.savedDemos.find((d) => d.id === id);
+          if (!demo) return {};
+          // `id` y `savedAt` son de la demo, no del salón: no deben colarse en el perfil.
+          const { id: _id, savedAt: _savedAt, ...profileFields } = demo;
+          return { salonProfile: { ...s.salonProfile, ...profileFields } };
+        }),
+
+      resetSalonProfile: () => set({ salonProfile: salon }),
     }),
     {
       name: "trimly-salon-store",

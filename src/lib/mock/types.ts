@@ -52,6 +52,15 @@ export interface Appointment {
   duration: number;
   priceEur: number;
   status: AppointmentStatus;
+  /**
+   * Cuándo confirmó el CLIENTE que viene (ISO). Es distinto de `status`, que es
+   * lo que gestiona el salón: "confirmada" en la agenda solo significa que está
+   * puesta, no que el cliente haya dicho nada.
+   *
+   * Hoy solo se marca a mano desde el panel — no hay canal (WhatsApp, SMS ni
+   * email) por el que el cliente pueda confirmar. Ver `markClientConfirmed`.
+   */
+  clientConfirmedAt?: string;
   /** Title for blocked time entries */
   note?: string;
 }

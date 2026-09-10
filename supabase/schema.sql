@@ -22,6 +22,7 @@ create table if not exists appointments (
   duration_min integer not null,
   price_eur numeric not null,
   status text not null default 'confirmed',
+  client_confirmed_at timestamptz,
   note text,
   created_at timestamptz not null default now()
 );
