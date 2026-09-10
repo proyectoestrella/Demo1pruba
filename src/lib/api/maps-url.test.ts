@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { parseMapsUrl } from "./maps.functions";
+import { limpiarNombre, parseMapsUrl } from "./maps.functions";
 
 describe("parseMapsUrl", () => {
   it("saca nombre y coordenadas de un enlace largo", () => {
@@ -48,5 +48,20 @@ describe("parseMapsUrl", () => {
   it("no revienta con una dirección mal codificada", () => {
     const out = parseMapsUrl("https://www.google.com/maps/place/%E0%A4%A/@40.4,-3.7,17z");
     expect(out.lat).toBeCloseTo(40.4, 3);
+  });
+});
+
+describe("limpiarNombre", () => {
+  it("quita la coletilla de posicionamiento que muchos ponen en la ficha", () => {
+    expect(limpiarNombre("HTB HAIR SALON | Barbería Alcalá de Henares")).toBe("HTB HAIR SALON");
+    expect(limpiarNombre("Peluquería Ruiz · Estética y uñas")).toBe("Peluquería Ruiz");
+  });
+
+  it("deja en paz un nombre normal", () => {
+    expect(limpiarNombre("Barbería Pepe")).toBe("Barbería Pepe");
+  });
+
+  it("no se queda con un trozo inútil si el nombre empieza por el separador", () => {
+    expect(limpiarNombre("A | Barbería del Centro")).toBe("A | Barbería del Centro");
   });
 });

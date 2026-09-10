@@ -73,6 +73,17 @@ export function parseMapsUrl(url: string): { name?: string; lat?: number; lng?: 
   return out;
 }
 
+/**
+ * Muchos negocios meten su posicionamiento en el nombre de la ficha:
+ * "HTB HAIR SALON | Barbería Alcalá de Henares". En el titular de la demo eso
+ * se lee fatal y ocupa dos líneas, así que se corta por el separador y se deja
+ * el nombre de verdad. Editable después a mano, como todo lo demás.
+ */
+export function limpiarNombre(nombre: string): string {
+  const corte = nombre.split(/\s*[|·–—]\s*/)[0].trim();
+  return corte.length >= 3 ? corte : nombre.trim();
+}
+
 /** Busca el sitio en Places y devuelve sus datos. Requiere clave. */
 async function fromPlaces(
   key: string,
@@ -127,7 +138,7 @@ async function fromPlaces(
 
   return {
     source: "places",
-    name: place.displayName?.text ?? hint.name,
+    name: place.displayName?.text ? limpiarNombre(place.displayName.text) : hint.name,
     address: place.formattedAddress,
     phone: place.nationalPhoneNumber,
     rating: place.rating,

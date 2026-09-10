@@ -364,9 +364,12 @@ function SalonHome() {
                     : "text-5xl sm:text-6xl md:text-7xl",
               )}
             >
+              {/* Anima por palabras y no por letras: con `per="char"` cada letra es
+                  un span suelto y un nombre largo se parte por la mitad
+                  ("Bar/bería" en una barbería real de Alcalá). */}
               <TextEffect
                 as="span"
-                per="char"
+                per="word"
                 preset="fade-in-blur"
                 speedSegment={2.4}
                 delay={0.2}
@@ -393,9 +396,7 @@ function SalonHome() {
             <p className="flex items-center gap-2 text-white/85">
               <MapPin className="h-4 w-4 shrink-0 text-primary" /> {profile.address}
             </p>
-            {profile.about ? (
-              <p className="max-w-md text-white/70">{profile.about}</p>
-            ) : null}
+            {profile.about ? <p className="max-w-md text-white/70">{profile.about}</p> : null}
 
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <ShimmerButton
