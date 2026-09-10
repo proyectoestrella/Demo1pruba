@@ -36,6 +36,8 @@ export interface Client {
   phone: string;
   email?: string;
   createdAt: string; // ISO
+  /** Indicaciones del salón sobre este cliente ("usa el número 8"). Del cliente, no de una cita. */
+  notes?: string;
 }
 
 export interface Appointment {

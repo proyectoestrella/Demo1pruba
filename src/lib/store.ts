@@ -50,6 +50,8 @@ interface SalonState {
   deleteDemo: (id: string) => void;
   /** Vuelca una demo guardada sobre el perfil activo del panel. */
   applyDemo: (id: string) => void;
+  /** Devuelve el panel al salón de ejemplo sin borrar las demos guardadas. */
+  resetSalonProfile: () => void;
 }
 
 /** Una demo guardada es un perfil con identidad propia para poder editarla. */
@@ -177,6 +179,8 @@ export const useSalonStore = create<SalonState>()(
       const { id: _id, savedAt: _savedAt, ...profileFields } = demo;
       return { salonProfile: { ...s.salonProfile, ...profileFields } };
     }),
+
+  resetSalonProfile: () => set({ salonProfile: salon }),
     }),
     {
       name: "trimly-salon-store",

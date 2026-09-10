@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Check, Copy, ExternalLink, Plus, Trash2, Wand2 } from "lucide-react";
+import { Check, Copy, ExternalLink, Plus, RotateCcw, Trash2, Wand2 } from "lucide-react";
 import { useSalonStore, type SavedDemo } from "@/lib/store";
 import {
   blankDemoProfile,
@@ -63,6 +63,7 @@ function Demos() {
   const saveDemo = useSalonStore((s) => s.saveDemo);
   const deleteDemo = useSalonStore((s) => s.deleteDemo);
   const applyDemo = useSalonStore((s) => s.applyDemo);
+  const resetSalonProfile = useSalonStore((s) => s.resetSalonProfile);
   const activeName = useSalonStore((s) => s.salonProfile.name);
 
   const [draft, setDraft] = useState<DraftDemo | null>(null);
@@ -164,6 +165,16 @@ function Demos() {
           <Button onClick={() => setDraft(draftFrom(blankDemoProfile()))}>
             <Plus className="mr-2 h-4 w-4" />
             Nueva demo
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              resetSalonProfile();
+              toast.success("Panel y web pública vuelven al salón de ejemplo");
+            }}
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Restaurar salón de ejemplo
           </Button>
         </div>
       ) : (
@@ -369,6 +380,14 @@ function Demos() {
             <strong className="text-foreground">Enlace</strong> copia una dirección que lleva los
             datos dentro. Quien la abra verá ese salón aunque no tenga nada guardado — es la que
             mandas por WhatsApp.
+          </li>
+          <li>
+            <strong className="text-foreground">Restaurar</strong> devuelve el panel al salón de
+            ejemplo. No borra ninguna demo: siguen aquí para volver a activarlas.
+          </li>
+          <li>
+            Esta página no aparece en el menú a propósito, para que no se vea mientras enseñas el
+            producto. Se llega escribiendo <code className="text-foreground">/app/demos</code>.
           </li>
         </ul>
       </div>

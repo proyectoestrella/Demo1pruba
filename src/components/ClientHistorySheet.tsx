@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { useSalonStore } from "@/lib/store";
+import { Textarea } from "@/components/ui/textarea";
 import { clientFrequency } from "@/lib/derive";
 import { serviceMap, employeeMap } from "@/lib/mock/salon";
 import type { Client } from "@/lib/mock/types";
@@ -23,7 +25,21 @@ export interface ClientHistorySheetProps {
 /** Client history drawer: visits, spend and favorite service (DESIGN-DIRECTION, RECON §6 app.clients). */
 export function ClientHistorySheet({ client, open, onOpenChange }: ClientHistorySheetProps) {
   const appointments = useSalonStore((s) => s.appointments);
+  const updateClient = useSalonStore((s) => s.updateClient);
   const stats = client ? clientFrequency(appointments, client.id) : null;
+
+  // Borrador local para no reescribir el store en cada tecla: se guarda al salir del campo.
+  const [notes, setNotes] = useState(client?.notes ?? "");
+  useEffect(() => {
+    setNotes(client?.notes ?? "");
+  }, [client?.id, client?.notes]);
+
+  function saveNotes() {
+    if (!client) return;
+    const trimmed = notes.trim();
+    if (trimmed === (client.notes ?? "")) return;
+    updateClient(client.id, { notes: trimmed });
+  }
   const history = client
     ? appointments
         .filter((a) => a.clientId === client.id)
@@ -52,6 +68,20 @@ export function ClientHistorySheet({ client, open, onOpenChange }: ClientHistory
               <p className="truncate font-display text-xl">{stats.favoriteService ?? "—"}</p>
               <p className="text-xs text-muted-foreground">Favorito</p>
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Observaciones
+            </p>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              onBlur={saveNotes}
+              rows={3}
+              placeholder="Usa el número 8 · Le vendimos el champú de árbol de té, preguntar qué tal"
+              className="resize-y text-sm"
+            />
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">

@@ -7,6 +7,7 @@ create table if not exists clients (
   name text not null,
   phone text not null,
   email text,
+  notes text,
   created_at timestamptz not null default now(),
   unique (salon_slug, phone)
 );

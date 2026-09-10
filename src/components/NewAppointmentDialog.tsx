@@ -161,6 +161,7 @@ export function NewAppointmentDialog({
       duration: service.durationMin,
       priceEur: service.priceEur,
       status: "confirmed",
+      note,
     });
 
     // Only sync when we have a phone (walk-ins without one aren't real client records).
