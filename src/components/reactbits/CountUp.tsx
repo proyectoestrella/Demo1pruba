@@ -23,7 +23,13 @@ export interface CountUpProps {
   /** Duración aproximada, en segundos. */
   duration?: number;
   className?: string;
-  /** Formateador del valor intermedio. Por defecto, entero con separador español. */
+  /**
+   * Formateador del valor intermedio. Por defecto, entero con separador español.
+   *
+   * OJO: recibe el valor del muelle, que es fraccionario mientras anima. Si no
+   * se redondea, un `n.toString()` imprime "1.364765066679471", que en español
+   * se lee como un número de millones: los KPIs parecen dispararse y volver.
+   */
   format?: (value: number) => string;
 }
 

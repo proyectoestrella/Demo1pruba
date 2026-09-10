@@ -59,7 +59,7 @@ export const Route = createFileRoute("/s/$salonSlug/")({
   component: SalonHome,
 });
 
-const FEATURED_IDS = ["haircut", "color", "highlights", "keratin"];
+const FEATURED_IDS = ["corte", "corte-barba", "barba", "afeitado"];
 
 /**
  * Reseñas de ejemplo. No hay reseñas reales todavía — se muestran marcadas

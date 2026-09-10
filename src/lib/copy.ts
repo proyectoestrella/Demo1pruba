@@ -7,32 +7,38 @@
 
 /** Spanish name/description overrides for services, keyed by service id. */
 export const SERVICE_ES: Record<string, { name: string; description: string }> = {
-  haircut: { name: "Corte de caballero", description: "Lavado, corte de firma y acabado." },
-  beard: { name: "Arreglo de barba", description: "Toalla caliente, perfilado y cuidado." },
-  color: { name: "Color", description: "Color de un tono, brillo y matiz final." },
-  highlights: { name: "Mechas", description: "Iluminación pintada a mano, tono y tratamiento." },
-  keratin: { name: "Tratamiento de keratina", description: "Alisado con proteína, dura 12 semanas." },
-  styling: { name: "Peinado", description: "Secado o peinado para eventos especiales." },
+  corte: { name: "Corte de caballero", description: "Lavado, corte y acabado." },
+  "corte-barba": {
+    name: "Corte y barba",
+    description: "El corte completo más el arreglo de barba.",
+  },
+  barba: { name: "Arreglo de barba", description: "Toalla caliente, perfilado y aceite." },
+  afeitado: {
+    name: "Afeitado a navaja",
+    description: "Afeitado clásico con toalla caliente y bálsamo.",
+  },
+  infantil: { name: "Corte infantil", description: "Hasta 12 años, sin prisa." },
+  cejas: { name: "Perfilado de cejas", description: "Con navaja o pinza." },
 };
 
 /** Maps a service id to the display category it belongs to in the menu. */
 export const CATEGORY_LABELS: Record<string, string> = {
-  haircut: "Cortes",
-  styling: "Cortes",
-  beard: "Barbería",
-  color: "Color",
-  highlights: "Color",
-  keratin: "Tratamientos",
+  corte: "Cortes",
+  "corte-barba": "Cortes",
+  infantil: "Cortes",
+  barba: "Barba y afeitado",
+  afeitado: "Barba y afeitado",
+  cejas: "Barba y afeitado",
 };
 
 /** Display order for service categories throughout the booking flow. */
-export const CATEGORY_ORDER = ["Cortes", "Barbería", "Color", "Tratamientos"];
+export const CATEGORY_ORDER = ["Cortes", "Barba y afeitado"];
 
 /** Spanish specialty copy for employees, keyed by employee id (barbershop language). */
 export const EMPLOYEE_ES: Record<string, { specialty: string }> = {
   mario: { specialty: "Cortes clásicos y degradados" },
-  diego: { specialty: "Color y canas" },
-  ruben: { specialty: "Barba y tratamientos" },
+  diego: { specialty: "Degradados y diseño" },
+  ruben: { specialty: "Barba y afeitado a navaja" },
 };
 
 /** Formats a euro amount as Spanish currency, e.g. 38 -> "38,00 €". */

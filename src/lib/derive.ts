@@ -167,7 +167,7 @@ export function aiInsights(appts: Appointment[]) {
       icon: "calendar-clock",
       tone: "primary" as const,
       title: "Patrón de reserva recurrente",
-      body: "Los clientes de keratina vuelven cada 8 semanas de media. 5 tienen que volver esta semana.",
+      body: "Los clientes de corte y barba vuelven cada 4 semanas de media. 5 tienen que volver esta semana.",
       action: "Enviar recordatorio de reserva",
     },
   ];

@@ -160,11 +160,16 @@ function DashboardLayout() {
   }, [path]);
 
   // Primera visita al panel: se ofrece el tour una sola vez. Solo en la home
-  // (/app), que es donde están anclados casi todos los pasos, y con un respiro
-  // para que los KPIs y los gráficos ya estén montados.
+  // (/app), que es donde están anclados casi todos los pasos.
+  //
+  // La espera no es un respiro cualquiera: los KPIs cuentan hasta su cifra
+  // durante ~1,2 s, y mientras cuentan cambian de ancho. Si el tour abre su
+  // foco encima de una tarjeta que todavía se está moviendo, el recuadro
+  // resaltado queda descuadrado respecto al elemento. Se arranca cuando los
+  // números ya se han asentado.
   useEffect(() => {
     if (path !== "/app" || hasSeenTour()) return;
-    const t = setTimeout(startTour, 900);
+    const t = setTimeout(startTour, 1900);
     return () => clearTimeout(t);
   }, [path]);
 
