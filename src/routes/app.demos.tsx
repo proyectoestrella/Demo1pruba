@@ -1,7 +1,17 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Check, Copy, ExternalLink, Plus, RotateCcw, Trash2, Wand2 } from "lucide-react";
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  Loader2,
+  MapPin,
+  Plus,
+  RotateCcw,
+  Trash2,
+  Wand2,
+} from "lucide-react";
 import { useSalonStore, type SavedDemo } from "@/lib/store";
 import {
   blankDemoProfile,
@@ -10,6 +20,7 @@ import {
   slugify,
   type DemoProfile,
 } from "@/lib/demo-profile";
+import { lookupGoogleMaps } from "@/lib/api/maps.functions";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,10 +81,50 @@ function Demos() {
 
   const [draft, setDraft] = useState<DraftDemo | null>(null);
   const [paste, setPaste] = useState("");
+  const [mapsUrl, setMapsUrl] = useState("");
+  const [buscando, setBuscando] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   function field<K extends keyof DraftDemo>(key: K, value: DraftDemo[K]) {
     setDraft((d) => (d ? { ...d, [key]: value } : d));
+  }
+
+  async function handleMapsLookup() {
+    const url = mapsUrl.trim();
+    if (!url) return;
+    setBuscando(true);
+    try {
+      const r = await lookupGoogleMaps({ data: { url } });
+      const traidos = (
+        ["name", "address", "phone", "rating", "reviewCount", "heroImage"] as const
+      ).filter((k) => r[k] !== undefined && r[k] !== "");
+
+      if (traidos.length === 0) {
+        toast.error(r.notice ?? "No he podido sacar nada de ese enlace");
+        return;
+      }
+
+      setDraft((d) => {
+        const base = d ?? draftFrom(blankDemoProfile());
+        return {
+          ...base,
+          ...(r.name ? { name: r.name } : {}),
+          ...(r.address ? { address: r.address } : {}),
+          ...(r.phone ? { phone: r.phone } : {}),
+          ...(r.rating !== undefined ? { rating: String(r.rating) } : {}),
+          ...(r.reviewCount !== undefined ? { reviewCount: String(r.reviewCount) } : {}),
+          ...(r.heroImage ? { heroImage: r.heroImage } : {}),
+        };
+      });
+      setMapsUrl("");
+      toast.success(`He traído ${traidos.length} campo${traidos.length === 1 ? "" : "s"}`, {
+        description: r.notice,
+      });
+    } catch {
+      toast.error("No he podido consultar ese enlace");
+    } finally {
+      setBuscando(false);
+    }
   }
 
   function handleImport() {
@@ -184,7 +235,45 @@ function Demos() {
         <div className="space-y-4 rounded-xl border border-border/60 bg-card p-6">
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-widest text-muted-foreground">
-              Pegar desde Google Maps
+              Enlace de Google Maps
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                value={mapsUrl}
+                onChange={(e) => setMapsUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void handleMapsLookup();
+                  }
+                }}
+                placeholder="Pega aquí el enlace de «Compartir» de Maps"
+                className="font-mono text-xs"
+              />
+              <Button
+                variant="outline"
+                onClick={() => void handleMapsLookup()}
+                disabled={!mapsUrl.trim() || buscando}
+              >
+                {buscando ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <MapPin className="mr-2 h-4 w-4" />
+                )}
+                Traer
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              En Maps: abre la ficha del salón → <strong>Compartir</strong> →{" "}
+              <strong>Copiar vínculo</strong>. Y pégalo aquí.
+            </p>
+          </div>
+
+          <div className="h-px bg-border/60" />
+
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+              O pegar la ficha copiada
             </Label>
             <Textarea
               value={paste}
