@@ -133,9 +133,10 @@ async function fromPlaces(
     phone: place.nationalPhoneNumber,
     rating: place.rating,
     reviewCount: place.userRatingCount,
-    heroImage: photo
-      ? `https://places.googleapis.com/v1/${photo}/media?maxWidthPx=1600&key=${key}`
-      : undefined,
+    // Se apunta a NUESTRO proxy, no a Google. La URL de Google lleva la clave
+    // dentro, y esta dirección acaba viajando en el enlace que se manda por
+    // WhatsApp: sería repartir la clave de facturación por ahí.
+    heroImage: photo ? `/api/foto?ref=${encodeURIComponent(photo)}` : undefined,
   };
 }
 
