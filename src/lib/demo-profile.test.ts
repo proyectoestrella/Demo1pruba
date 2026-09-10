@@ -23,6 +23,17 @@ describe("encode / decode", () => {
     expect(decodeDemoProfile(encodeDemoProfile(profile))).toEqual(profile);
   });
 
+  it("lleva la foto de portada dentro del enlace", () => {
+    const url = "https://ejemplo.test/fotos/local.jpg";
+    const encoded = encodeDemoProfile({ name: "Barbería Sur", heroImage: url });
+    expect(decodeDemoProfile(encoded)?.heroImage).toBe(url);
+  });
+
+  it("omite la foto cuando está vacía", () => {
+    const encoded = encodeDemoProfile({ name: "Barbería Sur", heroImage: "" });
+    expect(decodeDemoProfile(encoded)).toEqual({ name: "Barbería Sur" });
+  });
+
   it("conserva acentos y eñes", () => {
     const encoded = encodeDemoProfile({ name: "Peluquería Señor Muñoz" });
     expect(decodeDemoProfile(encoded)?.name).toBe("Peluquería Señor Muñoz");

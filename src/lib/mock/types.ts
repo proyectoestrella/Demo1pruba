@@ -98,4 +98,10 @@ export interface SalonProfile {
   reviewCount: number;
   /** Palabras que rotan tras "Especialistas en" — lo que se hace en ESTE salón. */
   specialties: string[];
+  /**
+   * URL de la foto de portada. Vacío = la foto de ejemplo que trae la app.
+   * Es una URL y no un fichero subido a propósito: así viaja dentro del enlace
+   * de la demo y el salón la ve en su móvil, que es de lo que se trata.
+   */
+  heroImage?: string;
 }

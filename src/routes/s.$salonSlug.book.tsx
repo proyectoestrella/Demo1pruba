@@ -11,6 +11,7 @@ import {
 } from "@/lib/mock/salon";
 import type { Appointment, EmployeeId, Service } from "@/lib/mock/types";
 import { useSalonStore, isSlotTaken } from "@/lib/store";
+import { useDisplayProfile } from "@/lib/use-display-profile";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -692,6 +693,7 @@ function BookingSummary({
   ctaDisabled: boolean;
   onCta: () => void;
 }) {
+  const profile = useDisplayProfile();
   const salonName = useSalonStore((s) => s.salonProfile.name);
   if (variant === "bar") {
     return (
@@ -714,7 +716,7 @@ function BookingSummary({
       <div className="sticky top-24 rounded-2xl border border-border/60 bg-card p-6">
         <div className="mb-4 flex items-center gap-3">
           <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg">
-            <img src={heroImg} alt="" className="h-full w-full object-cover" />
+            <img src={profile.heroImage || heroImg} alt="" className="h-full w-full object-cover" />
           </div>
           <div className="min-w-0">
             <p className="truncate font-display text-base">{salonName}</p>

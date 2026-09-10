@@ -21,6 +21,7 @@ export const salon: SalonProfile = {
   rating: 4.8,
   reviewCount: 312,
   specialties: ["degradados", "barba a navaja", "afeitado clásico", "cortes de tijera"],
+  heroImage: "",
 };
 
 export const services: Service[] = [

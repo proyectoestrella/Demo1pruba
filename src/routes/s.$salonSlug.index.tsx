@@ -301,7 +301,7 @@ function SalonHome() {
        * ---------------------------------------------------------------- */}
       <section className="relative isolate flex min-h-[85vh] items-end overflow-hidden text-white sm:items-center">
         <img
-          src={heroImg}
+          src={profile.heroImage || heroImg}
           alt={`Interior de ${profile.name}`}
           className="absolute inset-0 -z-20 h-full w-full object-cover"
           width={1920}

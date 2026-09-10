@@ -29,6 +29,7 @@ export type DemoProfile = Pick<
   | "rating"
   | "reviewCount"
   | "specialties"
+  | "heroImage"
 >;
 
 const KEYS: Record<keyof DemoProfile, string> = {
@@ -41,6 +42,7 @@ const KEYS: Record<keyof DemoProfile, string> = {
   rating: "r",
   reviewCount: "c",
   specialties: "s",
+  heroImage: "h",
 };
 
 /** Nombre del search param que lleva el perfil en las rutas públicas. */
@@ -65,6 +67,7 @@ export function blankDemoProfile(): DemoProfile {
     rating: seedSalon.rating,
     reviewCount: seedSalon.reviewCount,
     specialties: [],
+    heroImage: "",
   };
 }
 

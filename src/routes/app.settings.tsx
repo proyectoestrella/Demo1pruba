@@ -23,6 +23,7 @@ function Settings() {
   const [rating, setRating] = useState(String(salonProfile.rating));
   const [reviewCount, setReviewCount] = useState(String(salonProfile.reviewCount));
   const [specialties, setSpecialties] = useState(salonProfile.specialties.join(", "));
+  const [heroImage, setHeroImage] = useState(salonProfile.heroImage ?? "");
 
   // Keep the form in sync if the profile changes from elsewhere (e.g. reset).
   useEffect(() => {
@@ -35,6 +36,7 @@ function Settings() {
     setRating(String(salonProfile.rating));
     setReviewCount(String(salonProfile.reviewCount));
     setSpecialties(salonProfile.specialties.join(", "));
+    setHeroImage(salonProfile.heroImage ?? "");
   }, [salonProfile]);
 
   function handleSave() {
@@ -61,6 +63,7 @@ function Settings() {
         .split(",")
         .map((w) => w.trim())
         .filter(Boolean),
+      heroImage: heroImage.trim(),
     });
     toast.success("Cambios guardados");
   }
@@ -96,6 +99,13 @@ function Settings() {
           value={specialties}
           onChange={setSpecialties}
           hint="Separadas por comas. Van rotando tras «Especialistas en»."
+        />
+
+        <Field
+          label="Foto de portada (URL)"
+          value={heroImage}
+          onChange={setHeroImage}
+          hint="Vacío usa la foto de ejemplo. Debe acabar en .jpg, .png o .webp."
         />
 
         <div className="space-y-1.5">

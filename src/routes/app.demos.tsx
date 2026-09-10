@@ -41,6 +41,7 @@ interface DraftDemo {
   rating: string;
   reviewCount: string;
   specialties: string;
+  heroImage: string;
 }
 
 function draftFrom(demo: DemoProfile & { id?: string }): DraftDemo {
@@ -55,6 +56,7 @@ function draftFrom(demo: DemoProfile & { id?: string }): DraftDemo {
     rating: String(demo.rating),
     reviewCount: String(demo.reviewCount),
     specialties: demo.specialties.join(", "),
+    heroImage: demo.heroImage ?? "",
   };
 }
 
@@ -124,6 +126,7 @@ function Demos() {
           .split(",")
           .map((w) => w.trim())
           .filter(Boolean),
+        heroImage: draft.heroImage.trim(),
       },
       draft.id,
     );
@@ -248,6 +251,39 @@ function Demos() {
             onChange={(v) => field("specialties", v)}
             hint="Separadas por comas. Rotan tras «Especialistas en»."
           />
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+              Foto de portada (URL)
+            </Label>
+            <Input
+              value={draft.heroImage}
+              onChange={(e) => field("heroImage", e.target.value)}
+              placeholder="https://…  ·  vacío = la foto de ejemplo"
+            />
+            {draft.heroImage.trim() ? (
+              <div className="overflow-hidden rounded-lg border border-border/60">
+                {/* La vista previa no es un adorno: una URL rota se descubre aquí
+                    y no delante del peluquero. */}
+                <img
+                  src={draft.heroImage}
+                  alt="Vista previa de la portada"
+                  className="h-32 w-full bg-muted object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                    e.currentTarget.insertAdjacentHTML(
+                      "afterend",
+                      '<p class="p-3 text-xs text-destructive">No se puede cargar esa imagen. Comprueba la dirección.</p>',
+                    );
+                  }}
+                />
+              </div>
+            ) : null}
+            <p className="text-xs text-muted-foreground">
+              Botón derecho sobre una foto de su web o su Instagram → «Copiar dirección de la
+              imagen». Tiene que acabar en .jpg, .png o .webp.
+            </p>
+          </div>
+
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-widest text-muted-foreground">
               Presentación
