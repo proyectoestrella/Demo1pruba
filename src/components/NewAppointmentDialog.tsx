@@ -9,6 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { ChevronsUpDown } from "lucide-react";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -83,6 +94,7 @@ export function NewAppointmentDialog({
   const serviceMap = selectServiceMap(services);
 
   const [clientChoice, setClientChoice] = useState<string>("__new");
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [newName, setNewName] = useState(defaultClientName ?? "");
   const [phone, setPhone] = useState(defaultPhone ?? "");
   const [serviceId, setServiceId] = useState(defaultServiceId ?? activeServices[0]?.id ?? "");
@@ -179,7 +191,9 @@ export function NewAppointmentDialog({
           priceEur: service.priceEur,
           note,
         },
-      }).catch((err) => console.error("Supabase sync failed (appointment still created locally):", err));
+      }).catch((err) =>
+        console.error("Supabase sync failed (appointment still created locally):", err),
+      );
     }
 
     toast.success("Cita creada", { description: `${clientName} · ${service.name}` });
@@ -191,19 +205,62 @@ export function NewAppointmentDialog({
     <div className="space-y-4 px-4 sm:px-0">
       <div className="space-y-1.5">
         <Label>Cliente</Label>
-        <Select value={clientChoice} onValueChange={setClientChoice}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__new">+ Cliente nuevo</SelectItem>
-            {clients.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Buscador y no desplegable: con 300 clientes reales, una lista plana
+            obliga a bajar a rueda hasta encontrarlo. Se filtra por nombre y por
+            teléfono, que es como se busca a alguien en un salón. */}
+        <Popover open={clientPickerOpen} onOpenChange={setClientPickerOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={clientPickerOpen}
+              className="w-full justify-between font-normal"
+            >
+              <span className={cn(clientChoice === "__new" && "text-muted-foreground")}>
+                {clientChoice === "__new"
+                  ? "+ Cliente nuevo"
+                  : (clients.find((c) => c.id === clientChoice)?.name ?? "Elegir cliente")}
+              </span>
+              <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+            <Command
+              filter={(value, search) =>
+                value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+              }
+            >
+              <CommandInput placeholder="Nombre o teléfono…" />
+              <CommandList>
+                <CommandEmpty>Ningún cliente con ese nombre o teléfono.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem
+                    value="+ Cliente nuevo"
+                    onSelect={() => {
+                      setClientChoice("__new");
+                      setClientPickerOpen(false);
+                    }}
+                  >
+                    + Cliente nuevo
+                  </CommandItem>
+                  {clients.map((c) => (
+                    <CommandItem
+                      key={c.id}
+                      value={`${c.name} ${c.phone}`}
+                      onSelect={() => {
+                        setClientChoice(c.id);
+                        setClientPickerOpen(false);
+                      }}
+                    >
+                      <span className="flex-1 truncate">{c.name}</span>
+                      <span className="ml-2 shrink-0 text-xs text-muted-foreground">{c.phone}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {clientChoice === "__new" && (
@@ -275,7 +332,12 @@ export function NewAppointmentDialog({
 
       <div className="space-y-1.5">
         <Label htmlFor="na-note">Nota (opcional)</Label>
-        <Input id="na-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Alergias, preferencias..." />
+        <Input
+          id="na-note"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Alergias, preferencias..."
+        />
       </div>
     </div>
   );

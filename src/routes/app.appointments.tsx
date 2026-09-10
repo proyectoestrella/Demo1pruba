@@ -5,6 +5,7 @@ import { STATUS_OPTIONS } from "@/lib/appointment-status";
 import { useSalonStore } from "@/lib/store";
 import { employeeMap, serviceMap, employees } from "@/lib/mock/salon";
 import type { Appointment, AppointmentStatus } from "@/lib/mock/types";
+import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { StylistDot } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -48,7 +49,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarX, MoreHorizontal, Plus } from "lucide-react";
+import { CalendarX, MoreHorizontal, Plus, Search } from "lucide-react";
 
 export const Route = createFileRoute("/app/appointments")({
   component: Appointments,
@@ -60,13 +61,18 @@ function Appointments() {
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const [status, setStatus] = useState<string>("all");
   const [emp, setEmp] = useState<string>("all");
+  const [busqueda, setBusqueda] = useState("");
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
   const [newApptOpen, setNewApptOpen] = useState(false);
 
+  // El recorte va al final: si se aplicara antes, buscar solo miraría dentro de
+  // las 60 citas más recientes.
+  const termino = busqueda.trim().toLowerCase();
   const filtered = appointments
     .filter((a) => (status === "all" ? true : a.status === status))
     .filter((a) => (emp === "all" ? true : a.employeeId === emp))
+    .filter((a) => (termino === "" ? true : a.clientName.toLowerCase().includes(termino)))
     .sort((a, b) => +new Date(b.start) - +new Date(a.start))
     .slice(0, 60);
 
@@ -95,6 +101,16 @@ function Appointments() {
       />
 
       <div className="flex flex-wrap gap-2">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+
+          <Input
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar por cliente…"
+            className="pl-9"
+          />
+        </div>
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Estado" />

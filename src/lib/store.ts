@@ -210,7 +210,13 @@ export const useSalonStore = create<SalonState>()(
       // v3: el perfil gana nota, número de reseñas y especialidades. Un estado
       // v2 no los trae, y sin ellos el hero renderiza "undefined" — se
       // rellenan desde el seed conservando lo que el usuario ya había escrito.
-      version: 3,
+      //
+      // v4: el catálogo pasa de peluquería (mechas, keratina, color) a barbería.
+      // Los ids cambian, así que un estado v3 se queda con servicios que ya no
+      // existen en `copy.ts` y la tabla de citas pinta el nombre en blanco. Se
+      // sustituye el catálogo y se remapean las citas ya guardadas en vez de
+      // tirarlas: el historial de la demo es parte de lo que se enseña.
+      version: 4,
       migrate: (persistedState, version) => {
         const state = persistedState as SalonState;
         if (version < 2) {
@@ -219,6 +225,34 @@ export const useSalonStore = create<SalonState>()(
             salonProfile: salon,
             services: seedServices,
           };
+        }
+        if (version < 4) {
+          const equivalencias: Record<string, string> = {
+            haircut: "corte",
+            beard: "barba",
+            color: "corte-barba",
+            highlights: "afeitado",
+            keratin: "corte-barba",
+            styling: "cejas",
+          };
+          const porId = new Map(seedServices.map((sv) => [sv.id, sv]));
+          const migrado = {
+            ...state,
+            services: seedServices,
+            salonProfile: { ...salon, ...state.salonProfile, specialties: salon.specialties },
+            appointments: (state.appointments ?? []).map((a) => {
+              const nuevoId = equivalencias[a.serviceId] ?? a.serviceId;
+              const sv = porId.get(nuevoId);
+              return sv
+                ? { ...a, serviceId: nuevoId, priceEur: sv.priceEur, duration: sv.durationMin }
+                : a;
+            }),
+            waitlist: (state.waitlist ?? []).map((w) => ({
+              ...w,
+              serviceId: equivalencias[w.serviceId] ?? w.serviceId,
+            })),
+          };
+          return migrado as SalonState;
         }
         if (version < 3) {
           return {
