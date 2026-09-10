@@ -98,7 +98,7 @@ async function fromPlaces(
       "Content-Type": "application/json",
       "X-Goog-Api-Key": key,
       "X-Goog-FieldMask":
-        "places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating,places.userRatingCount,places.photos",
+        "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating,places.userRatingCount",
     },
     body: JSON.stringify(body),
   });
@@ -113,19 +113,18 @@ async function fromPlaces(
 
   const json = (await res.json()) as {
     places?: Array<{
+      id?: string;
       displayName?: { text?: string };
       formattedAddress?: string;
       nationalPhoneNumber?: string;
       rating?: number;
       userRatingCount?: number;
-      photos?: Array<{ name?: string }>;
     }>;
   };
 
   const place = json.places?.[0];
   if (!place) return { source: "url", name: hint.name, notice: "Google no encontró ese sitio." };
 
-  const photo = place.photos?.[0]?.name;
   return {
     source: "places",
     name: place.displayName?.text ?? hint.name,
@@ -133,10 +132,12 @@ async function fromPlaces(
     phone: place.nationalPhoneNumber,
     rating: place.rating,
     reviewCount: place.userRatingCount,
-    // Se apunta a NUESTRO proxy, no a Google. La URL de Google lleva la clave
-    // dentro, y esta dirección acaba viajando en el enlace que se manda por
-    // WhatsApp: sería repartir la clave de facturación por ahí.
-    heroImage: photo ? `/api/foto?ref=${encodeURIComponent(photo)}` : undefined,
+    // Se guarda el id del sitio (27 caracteres), no la referencia de la foto
+    // (casi 500): la dirección va dentro del enlace que se manda por WhatsApp
+    // y con la referencia entera el enlace se vuelve impresentable. El proxy
+    // resuelve la foto a partir del id, y de paso la clave no sale del
+    // servidor.
+    heroImage: place.id ? `/api/foto?place=${encodeURIComponent(place.id)}` : undefined,
   };
 }
 
