@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useSalonStore } from "@/lib/store";
 import { Textarea } from "@/components/ui/textarea";
 import { clientFrequency } from "@/lib/derive";
-import { serviceMap, employeeMap } from "@/lib/mock/salon";
+import { employeeMap } from "@/lib/mock/salon";
+import { serviceLabelOf } from "@/lib/appointment-services";
 import type { Client } from "@/lib/mock/types";
 import { StylistDot } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -52,7 +53,10 @@ export function ClientHistorySheet({ client, open, onOpenChange }: ClientHistory
         <SheetContent className="flex flex-col gap-6 sm:max-w-md">
           <SheetHeader>
             <SheetTitle>{client.name}</SheetTitle>
-            <SheetDescription>{client.phone}{client.email ? ` · ${client.email}` : ""}</SheetDescription>
+            <SheetDescription>
+              {client.phone}
+              {client.email ? ` · ${client.email}` : ""}
+            </SheetDescription>
           </SheetHeader>
 
           <div className="grid grid-cols-3 gap-3">
@@ -85,22 +89,30 @@ export function ClientHistorySheet({ client, open, onOpenChange }: ClientHistory
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Historial de citas</p>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Historial de citas
+            </p>
             {history.length === 0 ? (
-              <EmptyState icon={CalendarX} title="Sin citas todavía" description="Este cliente aún no tiene reservas registradas." />
+              <EmptyState
+                icon={CalendarX}
+                title="Sin citas todavía"
+                description="Este cliente aún no tiene reservas registradas."
+              />
             ) : (
               <div className="divide-y divide-border/60">
                 {history.map((a) => {
-                  const svc = serviceMap[a.serviceId];
                   const emp = employeeMap[a.employeeId];
                   return (
                     <div key={a.id} className="flex items-center gap-3 py-3 text-sm">
                       <div className="w-16 shrink-0 text-xs text-muted-foreground">
-                        {new Date(a.start).toLocaleDateString("es", { day: "2-digit", month: "short" })}
+                        {new Date(a.start).toLocaleDateString("es", {
+                          day: "2-digit",
+                          month: "short",
+                        })}
                       </div>
                       <StylistDot employeeId={a.employeeId} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{svc?.name ?? "—"}</p>
+                        <p className="truncate font-medium">{serviceLabelOf(a) || "—"}</p>
                         <p className="text-xs text-muted-foreground">con {emp?.name}</p>
                       </div>
                       <span className="text-sm font-medium">€{a.priceEur}</span>

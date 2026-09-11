@@ -27,7 +27,7 @@ function appt(over: Partial<Appointment> = {}): Appointment {
     id: `a-${seq++}`,
     clientId: "c1",
     clientName: "Ana",
-    serviceId: "corte",
+    serviceIds: ["corte"],
     employeeId: "mario",
     start: todayAt(11),
     duration: 45,

@@ -12,10 +12,52 @@ function mulberry32(seed: number) {
 }
 
 const rand = mulberry32(42);
-const pick = <T,>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
+const pick = <T>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
 
-const FIRST = ["Sofia", "Lucia", "Mateo", "Diego", "Carmen", "Alejandro", "Valentina", "Pablo", "Elena", "Hugo", "Martina", "Bruno", "Adriana", "Nicolas", "Camila", "Javier", "Paula", "Marcos", "Daniela", "Andres", "Isabella", "Tomas", "Renata", "Emilio"];
-const LAST = ["Garcia", "Lopez", "Martin", "Ruiz", "Vega", "Torres", "Romero", "Castillo", "Navarro", "Iglesias", "Serrano", "Mendoza", "Reyes", "Ortega", "Delgado", "Cortes"];
+const FIRST = [
+  "Sofia",
+  "Lucia",
+  "Mateo",
+  "Diego",
+  "Carmen",
+  "Alejandro",
+  "Valentina",
+  "Pablo",
+  "Elena",
+  "Hugo",
+  "Martina",
+  "Bruno",
+  "Adriana",
+  "Nicolas",
+  "Camila",
+  "Javier",
+  "Paula",
+  "Marcos",
+  "Daniela",
+  "Andres",
+  "Isabella",
+  "Tomas",
+  "Renata",
+  "Emilio",
+];
+const LAST = [
+  "Garcia",
+  "Lopez",
+  "Martin",
+  "Ruiz",
+  "Vega",
+  "Torres",
+  "Romero",
+  "Castillo",
+  "Navarro",
+  "Iglesias",
+  "Serrano",
+  "Mendoza",
+  "Reyes",
+  "Ortega",
+  "Delgado",
+  "Cortes",
+];
 
 export const clients: Client[] = Array.from({ length: 52 }, (_, i) => {
   const first = FIRST[i % FIRST.length];
@@ -59,15 +101,18 @@ function genAppointments(): Appointment[] {
 
       const slotsUsed: number[] = [];
       for (let i = 0; i < count; i++) {
+        // Una de cada cinco citas lleva un segundo servicio ("corte y luego
+        // barba"): así la demo enseña la suma de tiempo y precio sin buscarla.
         const service = pick(services);
-        const durationSlots = Math.ceil(service.durationMin / 30);
+        const extra = rand() < 0.2 ? pick(services.filter((s) => s.id !== service.id)) : undefined;
+        const chosen = extra ? [service, extra] : [service];
+        const durationMin = chosen.reduce((s, sv) => s + sv.durationMin, 0);
+        const priceEur = chosen.reduce((s, sv) => s + sv.priceEur, 0);
+        const durationSlots = Math.ceil(durationMin / 30);
 
         let startHour = sched.start + Math.floor(rand() * (sched.end - sched.start - 1));
         let attempts = 0;
-        while (
-          slotsUsed.some((u) => Math.abs(u - startHour) < durationSlots / 2) &&
-          attempts < 5
-        ) {
+        while (slotsUsed.some((u) => Math.abs(u - startHour) < durationSlots / 2) && attempts < 5) {
           startHour = sched.start + Math.floor(rand() * (sched.end - sched.start - 1));
           attempts++;
         }
@@ -88,11 +133,11 @@ function genAppointments(): Appointment[] {
           id: `a${nextId++}`,
           clientId: client.id,
           clientName: client.name,
-          serviceId: service.id,
+          serviceIds: chosen.map((sv) => sv.id),
           employeeId: emp.id as EmployeeId,
           start: isoAt(day, startHour, minute),
-          duration: service.durationMin,
-          priceEur: service.priceEur,
+          duration: durationMin,
+          priceEur,
           status,
         });
       }
@@ -104,8 +149,40 @@ function genAppointments(): Appointment[] {
 export const seedAppointments: Appointment[] = genAppointments();
 
 export const seedWaitlist: WaitlistEntry[] = [
-  { id: "w1", clientName: "Marta Vidal", phone: "+34 611 111 222", serviceId: "corte-barba", preferredEmployeeId: "diego", preferredRange: "Sat morning", createdAt: new Date(Date.now() - 86400_000).toISOString() },
-  { id: "w2", clientName: "Pedro Sanz", phone: "+34 622 333 444", serviceId: "corte", preferredEmployeeId: "any", preferredRange: "Tue afternoon", createdAt: new Date(Date.now() - 2 * 86400_000).toISOString() },
-  { id: "w3", clientName: "Aitana Roca", phone: "+34 633 555 666", serviceId: "afeitado", preferredEmployeeId: "ruben", preferredRange: "Fri after 17:00", createdAt: new Date(Date.now() - 3 * 86400_000).toISOString() },
-  { id: "w4", clientName: "Iker Mora", phone: "+34 644 777 888", serviceId: "barba", preferredEmployeeId: "mario", preferredRange: "Anytime this week", createdAt: new Date(Date.now() - 5 * 86400_000).toISOString() },
+  {
+    id: "w1",
+    clientName: "Marta Vidal",
+    phone: "+34 611 111 222",
+    serviceId: "corte-barba",
+    preferredEmployeeId: "diego",
+    preferredRange: "Sat morning",
+    createdAt: new Date(Date.now() - 86400_000).toISOString(),
+  },
+  {
+    id: "w2",
+    clientName: "Pedro Sanz",
+    phone: "+34 622 333 444",
+    serviceId: "corte",
+    preferredEmployeeId: "any",
+    preferredRange: "Tue afternoon",
+    createdAt: new Date(Date.now() - 2 * 86400_000).toISOString(),
+  },
+  {
+    id: "w3",
+    clientName: "Aitana Roca",
+    phone: "+34 633 555 666",
+    serviceId: "afeitado",
+    preferredEmployeeId: "ruben",
+    preferredRange: "Fri after 17:00",
+    createdAt: new Date(Date.now() - 3 * 86400_000).toISOString(),
+  },
+  {
+    id: "w4",
+    clientName: "Iker Mora",
+    phone: "+34 644 777 888",
+    serviceId: "barba",
+    preferredEmployeeId: "mario",
+    preferredRange: "Anytime this week",
+    createdAt: new Date(Date.now() - 5 * 86400_000).toISOString(),
+  },
 ];

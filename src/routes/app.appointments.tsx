@@ -3,7 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
 import { useSalonStore } from "@/lib/store";
-import { employeeMap, serviceMap, employees } from "@/lib/mock/salon";
+import { employeeMap, employees } from "@/lib/mock/salon";
+import { serviceLabelOf } from "@/lib/appointment-services";
 import type { Appointment, AppointmentStatus } from "@/lib/mock/types";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
@@ -165,7 +166,6 @@ function Appointments() {
               <TableBody className="divide-y divide-border/50">
                 {filtered.map((a) => {
                   const e = employeeMap[a.employeeId];
-                  const s = serviceMap[a.serviceId];
                   return (
                     <TableRow
                       key={a.id}
@@ -181,7 +181,7 @@ function Appointments() {
                         })}
                       </TableCell>
                       <TableCell className="font-medium">{a.clientName}</TableCell>
-                      <TableCell className="text-muted-foreground">{s?.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{serviceLabelOf(a)}</TableCell>
                       <TableCell>
                         <span className="inline-flex items-center gap-1.5">
                           <StylistDot employeeId={a.employeeId} />
@@ -238,7 +238,6 @@ function Appointments() {
           <div className="space-y-3 md:hidden">
             {filtered.map((a) => {
               const e = employeeMap[a.employeeId];
-              const s = serviceMap[a.serviceId];
               return (
                 <div
                   key={a.id}
@@ -298,7 +297,7 @@ function Appointments() {
                     <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-muted-foreground">
                       <StylistDot employeeId={a.employeeId} />
                       <span className="truncate">
-                        {s?.name} · {e.name}
+                        {serviceLabelOf(a)} · {e.name}
                       </span>
                     </span>
                     <span className="shrink-0 font-medium">€{a.priceEur}</span>

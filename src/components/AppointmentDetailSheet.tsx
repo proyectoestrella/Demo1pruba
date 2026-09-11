@@ -3,7 +3,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
 import { useSalonStore } from "@/lib/store";
-import { serviceMap, employeeMap } from "@/lib/mock/salon";
+import { employeeMap } from "@/lib/mock/salon";
+import { serviceNamesOf } from "@/lib/appointment-services";
 import type { Appointment, AppointmentStatus } from "@/lib/mock/types";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -66,7 +67,7 @@ export function AppointmentDetailSheet({
   const markClientConfirmed = useSalonStore((s) => s.markClientConfirmed);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const service = appointment ? serviceMap[appointment.serviceId] : undefined;
+  const serviceNames = appointment ? serviceNamesOf(appointment) : [];
   const start = appointment ? new Date(appointment.start) : null;
 
   function handleCancel() {
@@ -110,11 +111,22 @@ export function AppointmentDetailSheet({
                 · {start.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <Clock className="size-4 text-muted-foreground" />
-              <span>
-                {service?.name ?? "Servicio"} · {appointment.duration} min
-              </span>
+            <div className="flex items-start gap-2">
+              <Clock className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0">
+                {serviceNames.length > 1 ? (
+                  <ul className="space-y-0.5">
+                    {serviceNames.map((name) => (
+                      <li key={name}>{name}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span>{serviceNames[0] ?? "Servicio"}</span>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {appointment.duration} min{serviceNames.length > 1 ? " en total" : ""}
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Euro className="size-4 text-muted-foreground" />

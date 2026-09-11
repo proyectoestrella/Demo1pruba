@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { ChevronsUpDown } from "lucide-react";
+import { sumServices } from "@/lib/appointment-services";
+import { Check, ChevronsUpDown } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -97,7 +98,9 @@ export function NewAppointmentDialog({
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [newName, setNewName] = useState(defaultClientName ?? "");
   const [phone, setPhone] = useState(defaultPhone ?? "");
-  const [serviceId, setServiceId] = useState(defaultServiceId ?? activeServices[0]?.id ?? "");
+  const [serviceIds, setServiceIds] = useState<string[]>(() =>
+    [defaultServiceId ?? activeServices[0]?.id].filter((id): id is string => !!id),
+  );
   const [employeeId, setEmployeeId] = useState<EmployeeId>(defaultEmployeeId ?? employees[0].id);
   const [date, setDate] = useState(toDateInput(defaultDate ?? new Date()));
   const [time, setTime] = useState(toTimeInput(defaultDate ?? new Date()));
@@ -109,7 +112,7 @@ export function NewAppointmentDialog({
     setClientChoice("__new");
     setNewName(defaultClientName ?? "");
     setPhone(defaultPhone ?? "");
-    setServiceId(defaultServiceId ?? activeServices[0]?.id ?? "");
+    setServiceIds([defaultServiceId ?? activeServices[0]?.id].filter((id): id is string => !!id));
     setEmployeeId(defaultEmployeeId ?? employees[0].id);
     setDate(toDateInput(defaultDate ?? new Date()));
     setTime(toTimeInput(defaultDate ?? new Date()));
@@ -121,11 +124,18 @@ export function NewAppointmentDialog({
     onOpenChange(false);
   }
 
+  function toggleService(id: string) {
+    setServiceIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  }
+
+  const chosen = serviceIds.map((id) => serviceMap[id]).filter(Boolean);
+  // La cita bloquea y cobra la suma de todos los servicios elegidos.
+  const { durationMin: totalMin, priceEur: total } = sumServices(chosen);
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const service = serviceMap[serviceId];
-    if (!service) {
-      toast.error("Elige un servicio válido");
+    if (!chosen.length) {
+      toast.error("Elige al menos un servicio");
       return;
     }
     if (!date || !time) {
@@ -167,11 +177,11 @@ export function NewAppointmentDialog({
     const appt = addAppointment({
       clientId,
       clientName,
-      serviceId,
+      serviceIds: chosen.map((s) => s.id),
       employeeId,
       start: startISO,
-      duration: service.durationMin,
-      priceEur: service.priceEur,
+      duration: totalMin,
+      priceEur: total,
       status: "confirmed",
       note,
     });
@@ -184,11 +194,11 @@ export function NewAppointmentDialog({
           name: clientName,
           phone: clientPhone,
           email: clientEmail,
-          serviceId,
+          serviceIds: chosen.map((s) => s.id),
           employeeId,
           startISO,
-          durationMin: service.durationMin,
-          priceEur: service.priceEur,
+          durationMin: totalMin,
+          priceEur: total,
           note,
         },
       }).catch((err) =>
@@ -196,7 +206,9 @@ export function NewAppointmentDialog({
       );
     }
 
-    toast.success("Cita creada", { description: `${clientName} · ${service.name}` });
+    toast.success("Cita creada", {
+      description: `${clientName} · ${chosen.map((s) => s.name).join(" + ")}`,
+    });
     onCreated?.(appt);
     reset();
   }
@@ -286,22 +298,47 @@ export function NewAppointmentDialog({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label>Servicio</Label>
-          <Select value={serviceId} onValueChange={setServiceId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Elige un servicio" />
-            </SelectTrigger>
-            <SelectContent>
-              {activeServices.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.name} · €{s.priceEur}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="space-y-1.5">
+        <div className="flex items-baseline justify-between">
+          <Label>Servicios</Label>
+          <span className="text-xs text-muted-foreground" aria-live="polite">
+            {chosen.length === 0
+              ? "Elige uno o varios"
+              : `${chosen.length} ${chosen.length === 1 ? "elegido" : "elegidos"} · ${totalMin} min · €${total}`}
+          </span>
         </div>
+        {/* Misma mecánica que el paso 1 de la reserva pública: cada pulsación
+            añade o quita, y la cita se lleva la suma. */}
+        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+          {activeServices.map((s) => {
+            const isSelected = serviceIds.includes(s.id);
+            return (
+              <button
+                key={s.id}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => toggleService(s.id)}
+                className={cn(
+                  "flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                  isSelected
+                    ? "border-primary bg-primary/10"
+                    : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{s.name}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {s.durationMin} min · €{s.priceEur}
+                  </span>
+                </span>
+                {isSelected && <Check className="size-4 shrink-0 text-primary" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label>Estilista</Label>
           <Select value={employeeId} onValueChange={(v) => setEmployeeId(v as EmployeeId)}>

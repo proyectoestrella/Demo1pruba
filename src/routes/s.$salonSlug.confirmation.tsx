@@ -6,7 +6,8 @@ import { useSalonStore } from "@/lib/store";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { Button } from "@/components/ui/button";
 import { Confetti, type ConfettiRef } from "@/components/magicui/confetti";
-import { EMPLOYEE_ES, eur } from "@/lib/copy";
+import { EMPLOYEE_ES, SERVICE_ES, eur } from "@/lib/copy";
+import { sumServices } from "@/lib/appointment-services";
 
 export const Route = createFileRoute("/s/$salonSlug/confirmation")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -22,7 +23,13 @@ export const Route = createFileRoute("/s/$salonSlug/confirmation")({
 function Confirmation() {
   const { salonSlug } = Route.useParams();
   const { service: sid, employeeId, date, time, name } = Route.useSearch();
-  const service = serviceMap[sid];
+  // `service` trae uno o varios ids separados por comas, tal y como los deja el wizard.
+  const chosen = sid
+    .split(",")
+    .map((id) => serviceMap[id.trim()])
+    .filter(Boolean);
+  const serviceNames = chosen.map((s) => SERVICE_ES[s.id]?.name ?? s.name);
+  const { durationMin: totalMin, priceEur: total } = sumServices(chosen);
   const employee = employeeMap[employeeId];
   const profile = useSalonStore((s) => s.salonProfile);
   const confettiRef = useRef<ConfettiRef>(null);
@@ -43,7 +50,7 @@ function Confirmation() {
     return () => clearTimeout(t);
   }, []);
 
-  if (!service || !employee) {
+  if (!chosen.length || !employee) {
     return (
       <section className="mx-auto max-w-md px-5 py-24 text-center">
         <p className="text-muted-foreground">Faltan datos de la reserva.</p>
@@ -58,7 +65,7 @@ function Confirmation() {
     );
   }
 
-  const deposit = depositFor(service.priceEur, service.durationMin);
+  const deposit = depositFor(total, totalMin);
   const dateLabel = date
     ? new Date(`${date}T${time || "00:00"}`).toLocaleDateString("es-ES", {
         weekday: "long",
@@ -68,9 +75,9 @@ function Confirmation() {
     : "—";
 
   function downloadIcs() {
-    if (!service || !date || !time) return;
+    if (!chosen.length || !date || !time) return;
     const start = new Date(`${date}T${time}:00`);
-    const end = new Date(start.getTime() + service.durationMin * 60_000);
+    const end = new Date(start.getTime() + totalMin * 60_000);
     const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
     const ics = [
       "BEGIN:VCALENDAR",
@@ -78,7 +85,7 @@ function Confirmation() {
       "BEGIN:VEVENT",
       `DTSTART:${fmt(start)}`,
       `DTEND:${fmt(end)}`,
-      `SUMMARY:${service.name} en ${profile.name}`,
+      `SUMMARY:${serviceNames.join(" + ")} en ${profile.name}`,
       `LOCATION:${profile.address}`,
       "END:VEVENT",
       "END:VCALENDAR",
@@ -125,7 +132,7 @@ function Confirmation() {
         <div className="mt-4 flex items-center gap-3">
           <StylistAvatar name={employee.name} employeeId={employee.id} size="md" />
           <div className="min-w-0">
-            <h2 className="font-display text-2xl">{service.name}</h2>
+            <h2 className="font-display text-2xl">{serviceNames.join(" + ")}</h2>
             <p className="text-sm text-muted-foreground">
               con {employee.name} · {EMPLOYEE_ES[employee.id]?.specialty ?? employee.specialty}
             </p>
@@ -137,9 +144,13 @@ function Confirmation() {
         <div className="space-y-3 text-sm">
           <Row k="Fecha" v={dateLabel} />
           <Row k="Hora" v={time || "—"} />
-          <Row k="Duración" v={`${service.durationMin} min`} />
-          <Row k="Precio del servicio" v={eur(service.priceEur)} />
-          {requiresDeposit(service.durationMin) && (
+          <Row k={chosen.length > 1 ? "Duración total" : "Duración"} v={`${totalMin} min`} />
+          {chosen.length > 1 ? (
+            chosen.map((s, i) => <Row key={s.id} k={serviceNames[i]} v={eur(s.priceEur)} />)
+          ) : (
+            <Row k="Precio del servicio" v={eur(total)} />
+          )}
+          {requiresDeposit(totalMin) && (
             <Row k="Depósito a pagar en el salón" v={eur(deposit)} accent />
           )}
         </div>
@@ -148,7 +159,7 @@ function Confirmation() {
 
         <div className="flex items-baseline justify-between">
           <span className="text-sm text-muted-foreground">Total</span>
-          <span className="font-display text-2xl">{eur(service.priceEur)}</span>
+          <span className="font-display text-2xl">{eur(total)}</span>
         </div>
 
         <div className="my-6 border-t border-dashed border-border" />

@@ -31,6 +31,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { es } from "date-fns/locale";
 import heroImg from "@/assets/hero-salon.jpg";
 import { registerBookingClient } from "@/lib/api/clients.functions";
+import { sumServices } from "@/lib/appointment-services";
 import { FluidSteps } from "@/components/twentyfirst/fluid-steps";
 import { SERVICE_ES, CATEGORY_LABELS, CATEGORY_ORDER, EMPLOYEE_ES, eur } from "@/lib/copy";
 
@@ -66,8 +67,22 @@ function resolveEmployee(
   return candidate?.id ?? employees[0].id;
 }
 
+/** Nombre en español del catálogo público, con el del seed como respaldo. */
+function nameOf(s: Service) {
+  return SERVICE_ES[s.id]?.name ?? s.name;
+}
+
+/** `?service=corte` o `?service=corte,barba`: solo cuentan los ids que existen. */
+function parseServiceIds(param: string | undefined): string[] {
+  return (param ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => id && serviceMap[id]);
+}
+
 type WizardData = {
-  serviceId?: string;
+  /** En el orden en que se eligieron; el precio y la duración son la suma. */
+  serviceIds: string[];
   employeeId?: EmployeeId | "any";
   date?: string; // YYYY-MM-DD
   time?: string; // HH:mm
@@ -82,12 +97,18 @@ function BookingWizard() {
   const { salonSlug } = Route.useParams();
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(search.service ? 2 : 1);
-  const [data, setData] = useState<WizardData>({ serviceId: search.service });
+  const [data, setData] = useState<WizardData>(() => ({
+    serviceIds: parseServiceIds(search.service),
+  }));
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(data.serviceIds.length ? 2 : 1);
   const appointments = useSalonStore((s) => s.appointments);
   const addAppointment = useSalonStore((s) => s.addAppointment);
 
-  const service = data.serviceId ? serviceMap[data.serviceId] : undefined;
+  const selectedServices = data.serviceIds.map((id) => serviceMap[id]).filter(Boolean);
+  const serviceNames = selectedServices.map(nameOf);
+  // Precio y duración de la cita son la suma: el hueco que se reserva y el
+  // umbral del depósito miran el total, no el primer servicio.
+  const { durationMin: totalMin, priceEur: total } = sumServices(selectedServices);
   const stylistChoice = data.employeeId;
   const employeeName =
     stylistChoice === "any"
@@ -95,11 +116,20 @@ function BookingWizard() {
       : stylistChoice
         ? employeeMap[stylistChoice]?.name
         : undefined;
-  const depositEur =
-    service && requiresDeposit(service.durationMin)
-      ? depositFor(service.priceEur, service.durationMin)
-      : 0;
-  const total = service?.priceEur ?? 0;
+  const depositEur = depositFor(total, totalMin);
+
+  function toggleService(id: string) {
+    setData((d) => ({
+      ...d,
+      serviceIds: d.serviceIds.includes(id)
+        ? d.serviceIds.filter((x) => x !== id)
+        : [...d.serviceIds, id],
+      // Al cambiar los servicios cambia la duración y la hora elegida puede
+      // dejar de caber: se vuelve a pedir.
+      date: undefined,
+      time: undefined,
+    }));
+  }
 
   function next() {
     setStep((s) => Math.min(4, s + 1) as 1 | 2 | 3 | 4);
@@ -109,24 +139,26 @@ function BookingWizard() {
   }
 
   function confirm() {
-    if (!service || !data.date || !data.time || !data.name || !data.phone || !data.acceptedPolicy)
+    if (
+      !selectedServices.length ||
+      !data.date ||
+      !data.time ||
+      !data.name ||
+      !data.phone ||
+      !data.acceptedPolicy
+    )
       return;
-    const employeeId = resolveEmployee(
-      stylistChoice,
-      data.date,
-      data.time,
-      service.durationMin,
-      appointments,
-    );
+    const serviceIds = selectedServices.map((s) => s.id);
+    const employeeId = resolveEmployee(stylistChoice, data.date, data.time, totalMin, appointments);
     const startISO = new Date(`${data.date}T${data.time}:00`).toISOString();
     addAppointment({
       clientId: `c-walkin-${Date.now()}`,
       clientName: data.name,
-      serviceId: service.id,
+      serviceIds,
       employeeId,
       start: startISO,
-      duration: service.durationMin,
-      priceEur: service.priceEur,
+      duration: totalMin,
+      priceEur: total,
       status: "confirmed",
       note: data.note,
     });
@@ -136,24 +168,24 @@ function BookingWizard() {
         name: data.name,
         phone: data.phone,
         email: data.email,
-        serviceId: service.id,
+        serviceIds,
         employeeId,
         startISO,
-        durationMin: service.durationMin,
-        priceEur: service.priceEur,
+        durationMin: totalMin,
+        priceEur: total,
         note: data.note,
       },
     }).catch((err) =>
       console.error("Supabase sync failed (booking still confirmed locally):", err),
     );
     toast.success("Reserva confirmada", {
-      description: `${service.name} · ${data.date} a las ${data.time}`,
+      description: `${serviceNames.join(" + ")} · ${data.date} a las ${data.time}`,
     });
     navigate({
       to: "/s/$salonSlug/confirmation",
       params: { salonSlug },
       search: {
-        service: service.id,
+        service: serviceIds.join(","),
         employeeId,
         date: data.date,
         time: data.time,
@@ -164,7 +196,7 @@ function BookingWizard() {
 
   const ctaDisabled =
     step === 1
-      ? !data.serviceId
+      ? selectedServices.length === 0
       : step === 2
         ? !data.employeeId
         : step === 3
@@ -193,10 +225,7 @@ function BookingWizard() {
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
         <div className="min-w-0">
           {step === 1 && (
-            <ServiceStep
-              selected={data.serviceId}
-              onSelect={(id) => setData((d) => ({ ...d, serviceId: id }))}
-            />
+            <ServiceStep selected={data.serviceIds} totalMin={totalMin} onToggle={toggleService} />
           )}
 
           {step === 2 && (
@@ -206,9 +235,9 @@ function BookingWizard() {
             />
           )}
 
-          {step === 3 && service && (
+          {step === 3 && selectedServices.length > 0 && (
             <DateTimeStep
-              service={service}
+              durationMin={totalMin}
               stylistChoice={data.employeeId ?? "any"}
               appointments={appointments}
               selectedDate={data.date}
@@ -259,9 +288,9 @@ function BookingWizard() {
                   />
                 </div>
 
-                {service && requiresDeposit(service.durationMin) && (
+                {requiresDeposit(totalMin) && (
                   <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm text-primary">
-                    Este servicio requiere un depósito de {eur(depositEur)} que se cobrará en el
+                    Esta reserva requiere un depósito de {eur(depositEur)} que se cobrará en el
                     salón.
                   </div>
                 )}
@@ -296,8 +325,8 @@ function BookingWizard() {
 
         <BookingSummary
           variant="sidebar"
-          serviceName={service ? (SERVICE_ES[service.id]?.name ?? service.name) : undefined}
-          durationMin={service?.durationMin}
+          serviceNames={serviceNames}
+          durationMin={totalMin}
           employeeName={employeeName}
           dateLabel={dateLabel}
           timeLabel={data.time}
@@ -311,8 +340,8 @@ function BookingWizard() {
 
       <BookingSummary
         variant="bar"
-        serviceName={service ? (SERVICE_ES[service.id]?.name ?? service.name) : undefined}
-        durationMin={service?.durationMin}
+        serviceNames={serviceNames}
+        durationMin={totalMin}
         employeeName={employeeName}
         dateLabel={dateLabel}
         timeLabel={data.time}
@@ -350,13 +379,21 @@ function Step({ title, children }: { title: string; children: React.ReactNode })
 
 function ServiceStep({
   selected,
-  onSelect,
+  totalMin,
+  onToggle,
 }: {
-  selected?: string;
-  onSelect: (id: string) => void;
+  selected: string[];
+  totalMin: number;
+  onToggle: (id: string) => void;
 }) {
+  const count = selected.length;
   return (
-    <Step title="Elige un servicio">
+    <Step title="Elige uno o varios servicios">
+      <p className="-mt-4 mb-6 text-sm text-muted-foreground" aria-live="polite">
+        {count === 0
+          ? "Puedes combinar varios en la misma cita, por ejemplo corte y barba."
+          : `${count} ${count === 1 ? "servicio elegido" : "servicios elegidos"} · ${totalMin} min en total`}
+      </p>
       <Accordion
         type="single"
         collapsible
@@ -377,11 +414,13 @@ function ServiceStep({
                 <div className="space-y-2 pb-2">
                   {items.map((s) => {
                     const label = SERVICE_ES[s.id] ?? { name: s.name, description: s.description };
-                    const isSelected = selected === s.id;
+                    const isSelected = selected.includes(s.id);
                     return (
                       <button
                         key={s.id}
-                        onClick={() => onSelect(s.id)}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => onToggle(s.id)}
                         className={cn(
                           "flex w-full items-center justify-between gap-4 rounded-lg border px-4 py-3.5 text-left transition-colors",
                           isSelected
@@ -466,14 +505,15 @@ function StylistStep({
 }
 
 function DateTimeStep({
-  service,
+  durationMin,
   stylistChoice,
   appointments,
   selectedDate,
   selectedTime,
   onPick,
 }: {
-  service: Service;
+  /** Duración total de la cita: el hueco que hay que encontrar libre. */
+  durationMin: number;
   stylistChoice: EmployeeId | "any";
   appointments: Appointment[];
   selectedDate?: string;
@@ -511,12 +551,12 @@ function DateTimeStep({
         const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
         const open = relevantEmployees.some((e) => {
           const sched = e.schedule[weekday];
-          return sched && h >= sched.start && h + service.durationMin / 60 <= sched.end;
+          return sched && h >= sched.start && h + durationMin / 60 <= sched.end;
         });
         if (!open) continue;
         const iso = new Date(`${dateKey}T${timeStr}:00`).toISOString();
         const free = relevantEmployees.some(
-          (e) => !isSlotTaken(appointments, e.id, iso, service.durationMin),
+          (e) => !isSlotTaken(appointments, e.id, iso, durationMin),
         );
         if (free) return false;
       }
@@ -555,19 +595,19 @@ function DateTimeStep({
         const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
         const open = relevantEmployees.some((e) => {
           const sched = e.schedule[weekday];
-          return sched && h >= sched.start && h + service.durationMin / 60 <= sched.end;
+          return sched && h >= sched.start && h + durationMin / 60 <= sched.end;
         });
         if (!open) continue;
         const iso = new Date(`${dateKey}T${timeStr}:00`).toISOString();
         const available = relevantEmployees.some(
-          (e) => !isSlotTaken(appointments, e.id, iso, service.durationMin),
+          (e) => !isSlotTaken(appointments, e.id, iso, durationMin),
         );
         out.push({ time: timeStr, available });
       }
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDate, relevantEmployees, appointments, service.durationMin]);
+  }, [activeDate, relevantEmployees, appointments, durationMin]);
 
   const groups = useMemo(() => {
     const morning = slots.filter((s) => Number(s.time.split(":")[0]) < 14);
@@ -670,7 +710,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 
 function BookingSummary({
   variant,
-  serviceName,
+  serviceNames,
   durationMin,
   employeeName,
   dateLabel,
@@ -682,8 +722,8 @@ function BookingSummary({
   onCta,
 }: {
   variant: "sidebar" | "bar";
-  serviceName?: string;
-  durationMin?: number;
+  serviceNames: string[];
+  durationMin: number;
   employeeName?: string;
   dateLabel?: string;
   timeLabel?: string;
@@ -700,8 +740,17 @@ function BookingSummary({
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 px-5 py-3 backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{serviceName ?? "Elige un servicio"}</p>
-            <p className="font-display text-lg">{eur(total)}</p>
+            <p className="truncate text-sm font-medium">
+              {serviceNames.length ? serviceNames.join(" + ") : "Elige un servicio"}
+            </p>
+            <p className="font-display text-lg">
+              {eur(total)}
+              {serviceNames.length > 0 && (
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  {durationMin} min
+                </span>
+              )}
+            </p>
           </div>
           <Button onClick={onCta} disabled={ctaDisabled} className="shrink-0 rounded-full px-6">
             {ctaLabel}
@@ -725,8 +774,26 @@ function BookingSummary({
         </div>
 
         <div className="space-y-2.5 text-sm">
-          <SummaryRow label="Servicio" value={serviceName ?? "—"} />
-          {durationMin && <SummaryRow label="Duración" value={`${durationMin} min`} />}
+          {serviceNames.length > 1 ? (
+            <div className="flex justify-between gap-3">
+              <span className="text-muted-foreground">Servicios</span>
+              <ul className="text-right font-medium">
+                {serviceNames.map((name) => (
+                  <li key={name} className="truncate">
+                    {name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <SummaryRow label="Servicio" value={serviceNames[0] ?? "—"} />
+          )}
+          {durationMin > 0 && (
+            <SummaryRow
+              label={serviceNames.length > 1 ? "Duración total" : "Duración"}
+              value={`${durationMin} min`}
+            />
+          )}
           <SummaryRow label="Estilista" value={employeeName ?? "—"} />
           <SummaryRow label="Fecha" value={dateLabel ?? "—"} />
           <SummaryRow label="Hora" value={timeLabel ?? "—"} />
