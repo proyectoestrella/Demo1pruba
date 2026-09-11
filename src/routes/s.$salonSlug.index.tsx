@@ -25,6 +25,7 @@ import {
 import { useSalonStore } from "@/lib/store";
 import { useDisplayProfile } from "@/lib/use-display-profile";
 import { isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
+import { useClientNow } from "@/lib/use-client-now";
 import { galleryPhotosFor } from "@/lib/demo-photos";
 import heroImg from "@/assets/hero-salon.jpg";
 import { WorkGallery } from "@/components/WorkGallery";
@@ -233,7 +234,10 @@ function SalonHome() {
   const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(profile.address)}&output=embed`;
 
   const activeServices = services.filter((s) => s.active !== false);
-  const openNow = isOpenNow(profile.openingHours);
+  // Hora del navegador: en el servidor no se sabe qué hora es en el salón.
+  const now = useClientNow();
+  const openNow = now ? isOpenNow(profile.openingHours, now) : false;
+  const estadoHoy = now ? todayOpenInfo(profile.openingHours, now) : "Horario";
   // Las fotos del equipo ya están importadas en mock/salon: no hay avatares de stock.
   const TEAM_AVATARS = employees.map((e) => ({
     imageUrl: e.photo,
@@ -289,7 +293,7 @@ function SalonHome() {
                   aria-hidden="true"
                 />
                 <ShinyText
-                  text={todayOpenInfo(profile.openingHours)}
+                  text={estadoHoy}
                   baseColor="rgb(255 255 255 / 0.92)"
                   className="font-medium"
                   speed={5}
@@ -394,8 +398,7 @@ function SalonHome() {
       <section className="border-y border-border/60 bg-card">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-8 gap-y-3 px-5 py-4 text-sm">
           <span className="flex items-center gap-2 font-medium text-foreground">
-            <Clock className="h-4 w-4 shrink-0 text-primary" />{" "}
-            {todayOpenInfo(profile.openingHours)}
+            <Clock className="h-4 w-4 shrink-0 text-primary" /> {estadoHoy}
           </span>
           <span className="flex items-center gap-2 text-muted-foreground">
             <MapPin className="h-4 w-4 shrink-0 text-primary" /> {profile.address}
