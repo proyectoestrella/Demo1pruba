@@ -20,7 +20,8 @@ import {
   slugify,
   type DemoProfile,
 } from "@/lib/demo-profile";
-import { lookupGoogleMaps } from "@/lib/api/maps.functions";
+import { lookupGoogleMaps, type MapsLookup } from "@/lib/api/maps.functions";
+import { DAY_LABELS_ES, DEFAULT_OPENING_HOURS, normalizeDay } from "@/lib/opening-hours";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +54,8 @@ interface DraftDemo {
   reviewCount: string;
   specialties: string;
   heroImage: string;
+  openingHours: string[];
+  photoCount: number;
 }
 
 function draftFrom(demo: DemoProfile & { id?: string }): DraftDemo {
@@ -68,6 +71,9 @@ function draftFrom(demo: DemoProfile & { id?: string }): DraftDemo {
     reviewCount: String(demo.reviewCount),
     specialties: demo.specialties.join(", "),
     heroImage: demo.heroImage ?? "",
+    openingHours:
+      demo.openingHours?.length === 7 ? [...demo.openingHours] : [...DEFAULT_OPENING_HOURS],
+    photoCount: demo.photoCount ?? 0,
   };
 }
 
@@ -83,6 +89,9 @@ function Demos() {
   const [paste, setPaste] = useState("");
   const [mapsUrl, setMapsUrl] = useState("");
   const [buscando, setBuscando] = useState(false);
+  const [lote, setLote] = useState("");
+  const [loteTipo, setLoteTipo] = useState("Barbería");
+  const [loteProgreso, setLoteProgreso] = useState<{ hecho: number; total: number } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   function field<K extends keyof DraftDemo>(key: K, value: DraftDemo[K]) {
@@ -96,7 +105,7 @@ function Demos() {
     try {
       const r = await lookupGoogleMaps({ data: { url } });
       const traidos = (
-        ["name", "address", "phone", "rating", "reviewCount", "heroImage"] as const
+        ["name", "address", "phone", "rating", "reviewCount", "heroImage", "openingHours"] as const
       ).filter((k) => r[k] !== undefined && r[k] !== "");
 
       if (traidos.length === 0) {
@@ -114,6 +123,8 @@ function Demos() {
           ...(r.rating !== undefined ? { rating: String(r.rating) } : {}),
           ...(r.reviewCount !== undefined ? { reviewCount: String(r.reviewCount) } : {}),
           ...(r.heroImage ? { heroImage: r.heroImage } : {}),
+          ...(r.openingHours ? { openingHours: r.openingHours } : {}),
+          photoCount: r.photoCount ?? 0,
         };
       });
       setMapsUrl("");
@@ -124,6 +135,65 @@ function Demos() {
       toast.error("No he podido consultar ese enlace");
     } finally {
       setBuscando(false);
+    }
+  }
+
+  /** Convierte lo que devuelve Google en una demo lista para guardar. */
+  function demoFromLookup(r: MapsLookup, tipo: string): DemoProfile | null {
+    if (!r.name) return null;
+    return {
+      ...blankDemoProfile(),
+      name: r.name,
+      tagline: tipo,
+      address: r.address ?? "",
+      phone: r.phone ?? "",
+      rating: r.rating ?? blankDemoProfile().rating,
+      reviewCount: r.reviewCount ?? 0,
+      heroImage: r.heroImage ?? "",
+      openingHours: r.openingHours ?? [...DEFAULT_OPENING_HOURS],
+      photoCount: r.photoCount ?? 0,
+    };
+  }
+
+  /**
+   * Una demo por línea: enlace de Maps o "Nombre, Dirección". Pensado para
+   * pegar la columna del rutero entera la noche antes y no en la puerta.
+   * Va en serie y no en paralelo a propósito: son 50 llamadas a Google y la
+   * cuota por minuto está capada.
+   */
+  async function handleLote() {
+    const lineas = lote
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (lineas.length === 0) return;
+    setLoteProgreso({ hecho: 0, total: lineas.length });
+    let creadas = 0;
+    const fallidas: string[] = [];
+    for (const [i, linea] of lineas.entries()) {
+      try {
+        const r = await lookupGoogleMaps({ data: { url: linea } });
+        const demo = demoFromLookup(r, loteTipo.trim());
+        if (demo) {
+          saveDemo(demo);
+          creadas++;
+        } else {
+          fallidas.push(linea.slice(0, 60));
+        }
+      } catch {
+        fallidas.push(linea.slice(0, 60));
+      }
+      setLoteProgreso({ hecho: i + 1, total: lineas.length });
+    }
+    setLoteProgreso(null);
+    setLote("");
+    if (fallidas.length === 0) {
+      toast.success(`${creadas} demos creadas`);
+    } else {
+      toast.warning(`${creadas} creadas · ${fallidas.length} sin resolver`, {
+        description: fallidas.slice(0, 3).join(" · ") + (fallidas.length > 3 ? " …" : ""),
+        duration: 12000,
+      });
     }
   }
 
@@ -178,6 +248,8 @@ function Demos() {
           .map((w) => w.trim())
           .filter(Boolean),
         heroImage: draft.heroImage.trim(),
+        openingHours: draft.openingHours.map(normalizeDay),
+        photoCount: draft.photoCount,
       },
       draft.id,
     );
@@ -342,6 +414,36 @@ function Demos() {
           />
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+              Horario
+            </Label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {DAY_LABELS_ES.map((label, i) => (
+                <div key={label} className="flex items-center gap-2">
+                  <span className="w-20 shrink-0 text-xs text-muted-foreground">{label}</span>
+                  <Input
+                    value={draft.openingHours[i] ?? ""}
+                    onChange={(e) =>
+                      setDraft((d) => {
+                        if (!d) return d;
+                        const next = [...d.openingHours];
+                        next[i] = e.target.value;
+                        return { ...d, openingHours: next };
+                      })
+                    }
+                    placeholder="10:00–14:00, 16:00–20:00 · o Cerrado"
+                    className="font-mono text-xs"
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Se rellena solo desde Google si la ficha lo publica. Formato: «10:00–13:30,
+              17:00–20:00» o «Cerrado».
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-widest text-muted-foreground">
               Foto de portada (URL)
             </Label>
             <Input
@@ -394,6 +496,61 @@ function Demos() {
         </div>
       )}
 
+      {draft === null && (
+        <details className="rounded-xl border border-border/60 bg-card p-6">
+          <summary className="cursor-pointer text-sm font-medium">
+            Cargar el rutero en lote
+            <span className="ml-2 text-xs font-normal text-muted-foreground">
+              una demo por línea: enlace de Maps o «Nombre, Dirección»
+            </span>
+          </summary>
+          <div className="mt-4 space-y-3">
+            <Textarea
+              value={lote}
+              onChange={(e) => setLote(e.target.value)}
+              rows={6}
+              placeholder={
+                "https://www.google.com/maps/search/?api=1&query=Barber%20Hamza…\nVannity Peluquería, Calle Burguete 38, 28050 Madrid\n…"
+              }
+              className="resize-y font-mono text-xs"
+              disabled={loteProgreso !== null}
+            />
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+                  Tipo de negocio para todas
+                </Label>
+                <Input
+                  value={loteTipo}
+                  onChange={(e) => setLoteTipo(e.target.value)}
+                  className="w-56"
+                />
+              </div>
+              <Button
+                onClick={() => void handleLote()}
+                disabled={!lote.trim() || loteProgreso !== null}
+              >
+                {loteProgreso ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {loteProgreso.hecho} / {loteProgreso.total}
+                  </>
+                ) : (
+                  <>
+                    <MapPin className="mr-2 h-4 w-4" />
+                    Crear demos
+                  </>
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Google da nombre, dirección, teléfono, nota, reseñas, horario y fotos. Especialidades
+              y presentación se completan después: el aviso de cada demo dice cuáles faltan.
+            </p>
+          </div>
+        </details>
+      )}
+
       {savedDemos.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/60 p-8 text-center">
           <p className="text-sm text-muted-foreground">
@@ -423,7 +580,9 @@ function Demos() {
                     {[demo.tagline, demo.address].filter(Boolean).join(" · ")}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {demo.rating} ★ · {demo.reviewCount} reseñas · /s/{slugify(demo.name)}
+                    {demo.rating} ★ · {demo.reviewCount} reseñas
+                    {demo.photoCount ? ` · ${demo.photoCount} fotos de Google` : ""} · /s/
+                    {slugify(demo.name)}
                   </p>
                   {missingBits(demo).length > 0 && (
                     <p className="text-xs text-amber-500/90">

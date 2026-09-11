@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import process from "node:process";
 import { z } from "zod";
+import { fromGoogleWeekdayDescriptions } from "../opening-hours";
 
 /**
  * Rellena una demo a partir de un enlace de Google Maps.
@@ -29,6 +30,10 @@ export interface MapsLookup {
   rating?: number;
   reviewCount?: number;
   heroImage?: string;
+  /** Lunes a domingo, en el formato de lib/opening-hours.ts. */
+  openingHours?: string[];
+  /** Cuántas fotos tiene el local en Google. */
+  photoCount?: number;
   /** Qué se ha podido averiguar y qué no, para decirlo en la interfaz. */
   source: "url" | "places";
   /** Motivo por el que no se han traído todos los campos, si aplica. */
@@ -38,6 +43,7 @@ export interface MapsLookup {
 /** Sigue la redirección de maps.app.goo.gl hasta la dirección larga. */
 async function expandShortLink(url: string): Promise<string> {
   if (!/goo\.gl|maps\.app/.test(url)) return url;
+  // Las URLs de búsqueda no redirigen a una ficha: no hay nada que expandir.
   try {
     const res = await fetch(url, { redirect: "follow" });
     return res.url || url;
@@ -52,6 +58,28 @@ async function expandShortLink(url: string): Promise<string> {
  */
 export function parseMapsUrl(url: string): { name?: string; lat?: number; lng?: number } {
   const out: { name?: string; lat?: number; lng?: number } = {};
+
+  // Enlaces "de búsqueda" y "cómo llegar": el texto de la consulta va en un
+  // parámetro y suele ser "Nombre, Dirección", que es la consulta ideal para
+  // Places. Son los que genera el rutero y los que da Google al compartir una
+  // ficha desde algunas apps.
+  try {
+    const u = new URL(url);
+    const q =
+      u.searchParams.get("query") ?? u.searchParams.get("destination") ?? u.searchParams.get("q");
+    if (q && q.trim()) {
+      out.name = q.trim();
+      const coords = q.match(/^(-?\d+\.\d+),\s*(-?\d+\.\d+)$/);
+      if (coords) {
+        out.lat = Number(coords[1]);
+        out.lng = Number(coords[2]);
+        delete out.name;
+      }
+      return out;
+    }
+  } catch {
+    // No es una URL: se trata como texto libre "Nombre, Dirección" más abajo.
+  }
 
   const place = url.match(/\/maps\/place\/([^/@?]+)/);
   if (place?.[1]) {
@@ -68,6 +96,16 @@ export function parseMapsUrl(url: string): { name?: string; lat?: number; lng?: 
   if (coords) {
     out.lat = Number(coords[1]);
     out.lng = Number(coords[2]);
+  }
+
+  // "Barbería Pepe, Calle del Pez 23, Madrid" escrito a mano también vale.
+  if (
+    !out.name &&
+    out.lat === undefined &&
+    !/^https?:\/\//i.test(url) &&
+    /[a-záéíóúñ]/i.test(url)
+  ) {
+    out.name = url.trim();
   }
 
   return out;
@@ -109,7 +147,7 @@ async function fromPlaces(
       "Content-Type": "application/json",
       "X-Goog-Api-Key": key,
       "X-Goog-FieldMask":
-        "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating,places.userRatingCount",
+        "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating,places.userRatingCount,places.regularOpeningHours.weekdayDescriptions,places.photos.name",
     },
     body: JSON.stringify(body),
   });
@@ -130,6 +168,8 @@ async function fromPlaces(
       nationalPhoneNumber?: string;
       rating?: number;
       userRatingCount?: number;
+      regularOpeningHours?: { weekdayDescriptions?: string[] };
+      photos?: Array<{ name?: string }>;
     }>;
   };
 
@@ -148,7 +188,12 @@ async function fromPlaces(
     // y con la referencia entera el enlace se vuelve impresentable. El proxy
     // resuelve la foto a partir del id, y de paso la clave no sale del
     // servidor.
-    heroImage: place.id ? `/api/foto?place=${encodeURIComponent(place.id)}` : undefined,
+    heroImage:
+      place.id && (place.photos?.length ?? 0) > 0
+        ? `/api/foto?place=${encodeURIComponent(place.id)}`
+        : undefined,
+    openingHours: fromGoogleWeekdayDescriptions(place.regularOpeningHours?.weekdayDescriptions),
+    photoCount: place.photos?.length ?? 0,
   };
 }
 

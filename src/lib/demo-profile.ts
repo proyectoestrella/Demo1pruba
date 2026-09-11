@@ -1,5 +1,6 @@
 import type { SalonProfile } from "./mock/types";
 import { salon as seedSalon } from "./mock/salon";
+import { DEFAULT_OPENING_HOURS } from "./opening-hours";
 
 /**
  * Perfiles de demo transportados en la URL.
@@ -30,6 +31,8 @@ export type DemoProfile = Pick<
   | "reviewCount"
   | "specialties"
   | "heroImage"
+  | "openingHours"
+  | "photoCount"
 >;
 
 const KEYS: Record<keyof DemoProfile, string> = {
@@ -43,6 +46,8 @@ const KEYS: Record<keyof DemoProfile, string> = {
   reviewCount: "c",
   specialties: "s",
   heroImage: "h",
+  openingHours: "o",
+  photoCount: "f",
 };
 
 /** Nombre del search param que lleva el perfil en las rutas públicas. */
@@ -68,6 +73,8 @@ export function blankDemoProfile(): DemoProfile {
     reviewCount: seedSalon.reviewCount,
     specialties: [],
     heroImage: "",
+    openingHours: [...DEFAULT_OPENING_HOURS],
+    photoCount: 0,
   };
 }
 
@@ -110,6 +117,7 @@ export function encodeDemoProfile(profile: Partial<DemoProfile>): string {
     const value = profile[field];
     if (value === undefined || value === null) continue;
     if (typeof value === "string" && value.trim() === "") continue;
+    if (field === "photoCount" && value === 0) continue;
     if (Array.isArray(value)) {
       const clean = value.map((v) => String(v).trim()).filter(Boolean);
       if (clean.length === 0) continue;
@@ -152,6 +160,13 @@ export function decodeDemoProfile(raw: string | undefined | null): Partial<DemoP
     } else if (field === "reviewCount") {
       const n = Number(value);
       if (Number.isFinite(n) && n >= 0) out.reviewCount = Math.round(n);
+    } else if (field === "openingHours") {
+      if (Array.isArray(value) && value.length === 7) {
+        out.openingHours = value.map((v) => String(v).trim().slice(0, 60));
+      }
+    } else if (field === "photoCount") {
+      const n = Number(value);
+      if (Number.isFinite(n) && n >= 0) out.photoCount = Math.min(Math.round(n), 10);
     } else if (field === "specialties") {
       if (Array.isArray(value)) {
         const clean = value

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DAY_LABELS_ES, DEFAULT_OPENING_HOURS, normalizeDay } from "@/lib/opening-hours";
 
 export const Route = createFileRoute("/app/settings")({ component: Settings });
 
@@ -24,6 +25,9 @@ function Settings() {
   const [reviewCount, setReviewCount] = useState(String(salonProfile.reviewCount));
   const [specialties, setSpecialties] = useState(salonProfile.specialties.join(", "));
   const [heroImage, setHeroImage] = useState(salonProfile.heroImage ?? "");
+  const [openingHours, setOpeningHours] = useState<string[]>(
+    salonProfile.openingHours?.length === 7 ? salonProfile.openingHours : DEFAULT_OPENING_HOURS,
+  );
 
   // Keep the form in sync if the profile changes from elsewhere (e.g. reset).
   useEffect(() => {
@@ -37,6 +41,9 @@ function Settings() {
     setReviewCount(String(salonProfile.reviewCount));
     setSpecialties(salonProfile.specialties.join(", "));
     setHeroImage(salonProfile.heroImage ?? "");
+    setOpeningHours(
+      salonProfile.openingHours?.length === 7 ? salonProfile.openingHours : DEFAULT_OPENING_HOURS,
+    );
   }, [salonProfile]);
 
   function handleSave() {
@@ -64,6 +71,7 @@ function Settings() {
         .map((w) => w.trim())
         .filter(Boolean),
       heroImage: heroImage.trim(),
+      openingHours: openingHours.map(normalizeDay),
     });
     toast.success("Cambios guardados");
   }
@@ -100,6 +108,32 @@ function Settings() {
           onChange={setSpecialties}
           hint="Separadas por comas. Van rotando tras «Especialistas en»."
         />
+
+        <div className="space-y-1.5">
+          <Label className="text-xs uppercase tracking-widest text-muted-foreground">Horario</Label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {DAY_LABELS_ES.map((label, i) => (
+              <div key={label} className="flex items-center gap-2">
+                <span className="w-20 shrink-0 text-xs text-muted-foreground">{label}</span>
+                <Input
+                  value={openingHours[i] ?? ""}
+                  onChange={(e) =>
+                    setOpeningHours((h) => {
+                      const next = [...h];
+                      next[i] = e.target.value;
+                      return next;
+                    })
+                  }
+                  placeholder="10:00–14:00, 16:00–20:00 · o Cerrado"
+                  className="font-mono text-xs"
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Sale en la píldora «Abierto · cierra a las…», en «Cómo llegar» y en el pie de la web.
+          </p>
+        </div>
 
         <Field
           label="Foto de portada (URL)"

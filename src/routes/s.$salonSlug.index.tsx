@@ -24,7 +24,8 @@ import {
 } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
 import { useDisplayProfile } from "@/lib/use-display-profile";
-import type { SalonHours } from "@/lib/mock/types";
+import { isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
+import { galleryPhotosFor } from "@/lib/demo-photos";
 import heroImg from "@/assets/hero-salon.jpg";
 import { WorkGallery } from "@/components/WorkGallery";
 import { MobileBookingBar } from "@/components/MobileBookingBar";
@@ -89,8 +90,6 @@ const REVIEWS = [
     quote: "El color quedó justo como lo habíamos hablado. Repetiré sin dudarlo.",
   },
 ];
-
-const WEEK_DAYS_ES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
 /** Card hover lift, gated so it's fully inert under prefers-reduced-motion. */
 const CARD_HOVER =
@@ -181,41 +180,6 @@ const FAQ = [
   },
 ];
 
-function todayOpenInfo(hours: SalonHours[]) {
-  const dow = new Date().getDay();
-  const entry =
-    dow === 0
-      ? hours.find((h) => h.day === "Sunday")
-      : dow === 6
-        ? hours.find((h) => h.day === "Saturday")
-        : hours.find((h) => h.day === "Mon–Fri");
-  if (!entry || entry.value === "Closed") return "Cerrado hoy";
-  const [startStr, endStr] = entry.value.split("—").map((s) => s.trim());
-  const [sh, sm] = startStr.split(":").map(Number);
-  const [eh, em] = endStr.split(":").map(Number);
-  const now = new Date();
-  const nowMin = now.getHours() * 60 + now.getMinutes();
-  const startMin = sh * 60 + sm;
-  const endMin = eh * 60 + em;
-  if (nowMin < startMin) return `Cerrado · abre a las ${startStr}`;
-  if (nowMin >= endMin) return "Cerrado hoy";
-  return `Abierto · cierra a las ${endStr}`;
-}
-
-function isOpenNow(hours: SalonHours[]) {
-  return todayOpenInfo(hours).startsWith("Abierto");
-}
-
-function fullWeekSchedule(hours: SalonHours[]) {
-  const weekday = hours.find((h) => h.day === "Mon–Fri")?.value ?? "—";
-  const sat = hours.find((h) => h.day === "Saturday")?.value ?? "—";
-  const sun = hours.find((h) => h.day === "Sunday")?.value ?? "—";
-  return WEEK_DAYS_ES.map((label, i) => ({
-    label,
-    value: i < 5 ? weekday : i === 5 ? sat : sun === "Closed" ? "Cerrado" : sun,
-  }));
-}
-
 /** Tarjeta de reseña del muro. Ancho fijo: es lo que espera un marquee. */
 function ReviewCard({ name, rating, quote }: (typeof REVIEWS)[number]) {
   return (
@@ -269,7 +233,7 @@ function SalonHome() {
   const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(profile.address)}&output=embed`;
 
   const activeServices = services.filter((s) => s.active !== false);
-  const openNow = isOpenNow(profile.hours);
+  const openNow = isOpenNow(profile.openingHours);
   // Las fotos del equipo ya están importadas en mock/salon: no hay avatares de stock.
   const TEAM_AVATARS = employees.map((e) => ({
     imageUrl: e.photo,
@@ -325,7 +289,7 @@ function SalonHome() {
                   aria-hidden="true"
                 />
                 <ShinyText
-                  text={todayOpenInfo(profile.hours)}
+                  text={todayOpenInfo(profile.openingHours)}
                   baseColor="rgb(255 255 255 / 0.92)"
                   className="font-medium"
                   speed={5}
@@ -430,7 +394,8 @@ function SalonHome() {
       <section className="border-y border-border/60 bg-card">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-8 gap-y-3 px-5 py-4 text-sm">
           <span className="flex items-center gap-2 font-medium text-foreground">
-            <Clock className="h-4 w-4 shrink-0 text-primary" /> {todayOpenInfo(profile.hours)}
+            <Clock className="h-4 w-4 shrink-0 text-primary" />{" "}
+            {todayOpenInfo(profile.openingHours)}
           </span>
           <span className="flex items-center gap-2 text-muted-foreground">
             <MapPin className="h-4 w-4 shrink-0 text-primary" /> {profile.address}
@@ -616,7 +581,7 @@ function SalonHome() {
       </section>
 
       {/* Galería de trabajos */}
-      <WorkGallery />
+      <WorkGallery photos={galleryPhotosFor(profile)} />
 
       {/* Equipo */}
       <section id="equipo" className="border-t border-border/40 bg-card">
@@ -736,7 +701,7 @@ function SalonHome() {
                 Horario
               </p>
               <div className="divide-y divide-border/40">
-                {fullWeekSchedule(profile.hours).map((d, i) => {
+                {weekSchedule(profile.openingHours).map((d, i) => {
                   // Domingo es el índice 6 de WEEK_DAYS_ES, pero el 0 de getDay().
                   const isToday = (new Date().getDay() + 6) % 7 === i;
                   return (

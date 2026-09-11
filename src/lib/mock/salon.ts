@@ -2,6 +2,7 @@ import marioPhoto from "@/assets/stylist-mario.jpg";
 import diegoPhoto from "@/assets/stylist-diego.jpg";
 import rubenPhoto from "@/assets/stylist-ruben.jpg";
 import type { Employee, SalonProfile, Service } from "./types";
+import { DEFAULT_OPENING_HOURS } from "../opening-hours";
 
 export const salon: SalonProfile = {
   id: "los-mosqueteros",
@@ -13,15 +14,12 @@ export const salon: SalonProfile = {
   address: "Calle del Pez 23, Madrid",
   phone: "+34 910 000 000",
   instagram: "@barberiapepe",
-  hours: [
-    { day: "Mon–Fri", value: "10:00 — 20:00" },
-    { day: "Saturday", value: "10:00 — 18:00" },
-    { day: "Sunday", value: "Closed" },
-  ],
+  openingHours: DEFAULT_OPENING_HOURS,
   rating: 4.8,
   reviewCount: 312,
   specialties: ["degradados", "barba a navaja", "afeitado clásico", "cortes de tijera"],
   heroImage: "",
+  photoCount: 0,
 };
 
 export const services: Service[] = [

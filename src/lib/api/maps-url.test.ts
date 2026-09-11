@@ -34,6 +34,26 @@ describe("parseMapsUrl", () => {
     expect(out.lat).toBeCloseTo(40.4, 3);
   });
 
+  it("entiende los enlaces de búsqueda del rutero (?api=1&query=Nombre, Dirección)", () => {
+    const out = parseMapsUrl(
+      "https://www.google.com/maps/search/?api=1&query=Artes%27ll%20barber%20shop%2C%20Calle%20de%20Mar%C3%ADa%20Tubau%2C%2019%2C%2028050%20Madrid",
+    );
+    expect(out.name).toBe("Artes'll barber shop, Calle de María Tubau, 19, 28050 Madrid");
+  });
+
+  it("entiende los enlaces de cómo llegar (?destination=)", () => {
+    const out = parseMapsUrl(
+      "https://www.google.com/maps/dir/?api=1&destination=Calle%20de%20Burguete%2C%2010%2C%2028050%20Madrid&travelmode=walking",
+    );
+    expect(out.name).toBe("Calle de Burguete, 10, 28050 Madrid");
+  });
+
+  it("acepta texto libre 'Nombre, Dirección' sin ser URL", () => {
+    expect(parseMapsUrl("Barbería Pepe, Calle del Pez 23, Madrid").name).toBe(
+      "Barbería Pepe, Calle del Pez 23, Madrid",
+    );
+  });
+
   it("funciona aunque falten las coordenadas", () => {
     const out = parseMapsUrl("https://www.google.com/maps/place/Barberia+Sur/");
     expect(out.name).toBe("Barberia Sur");

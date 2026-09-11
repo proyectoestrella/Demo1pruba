@@ -18,9 +18,16 @@ const GALLERY_IMAGES: { src: string; alt: string }[] = [
   { src: galleryDetalle, alt: "Acabado y detalle de corte" },
 ];
 
-export function WorkGallery() {
+export function WorkGallery({ photos = [] }: { photos?: string[] }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
-  const openImage = openIndex !== null ? GALLERY_IMAGES[openIndex] : null;
+  // Con fotos del propio local (las de su ficha de Google) se enseñan esas;
+  // sin ellas, las de ejemplo. Los textos alternativos genéricos no describen
+  // una foto ajena, así que ahí se usa uno neutro.
+  const images =
+    photos.length > 0
+      ? photos.map((src, i) => ({ src, alt: `Foto ${i + 1} del local` }))
+      : GALLERY_IMAGES;
+  const openImage = openIndex !== null ? images[openIndex] : null;
 
   return (
     <section id="galeria" className="border-t border-border/40">
@@ -30,7 +37,7 @@ export function WorkGallery() {
           <h2 className="mt-2 font-display text-3xl md:text-4xl">Galería</h2>
         </Reveal>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-          {GALLERY_IMAGES.map((img, i) => (
+          {images.map((img, i) => (
             <Reveal key={img.src} delay={i * 80}>
               {/* La lupa deja mirar el degradado y el remate de cerca sin salir
                   de la página; el clic sigue abriendo la foto a tamaño grande. */}

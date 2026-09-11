@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { useDisplayProfile } from "@/lib/use-display-profile";
+import { weekSchedule } from "@/lib/opening-hours";
 import { Instagram, MapPin, Phone, Lock, Menu } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -23,12 +24,6 @@ export const Route = createFileRoute("/s/$salonSlug")({
   },
   component: SalonLayout,
 });
-
-const DAY_LABEL_ES: Record<string, string> = {
-  "Mon–Fri": "Lunes a viernes",
-  Saturday: "Sábado",
-  Sunday: "Domingo",
-};
 
 /** Anclas de la home pública. Una sola fuente para el menú de escritorio y el de móvil. */
 const NAV_LINKS = [
@@ -102,7 +97,12 @@ function SalonLayout() {
                 {/* Menú móvil */}
                 <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                   <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir menú">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="lg:hidden"
+                      aria-label="Abrir menú"
+                    >
                       <Menu className="h-5 w-5" />
                     </Button>
                   </SheetTrigger>
@@ -166,10 +166,10 @@ function SalonLayout() {
           </div>
           <div>
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Horario</p>
-            {profile.hours.map((h) => (
-              <p key={h.day} className="mt-2 flex justify-between gap-4 text-sm">
-                <span className="text-muted-foreground">{DAY_LABEL_ES[h.day] ?? h.day}</span>
-                <span>{h.value === "Closed" ? "Cerrado" : h.value}</span>
+            {weekSchedule(profile.openingHours).map((d) => (
+              <p key={d.label} className="mt-2 flex justify-between gap-4 text-sm">
+                <span className="text-muted-foreground">{d.label}</span>
+                <span>{d.value}</span>
               </p>
             ))}
           </div>

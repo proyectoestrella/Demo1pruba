@@ -35,7 +35,10 @@ export const Route = createFileRoute("/api/foto")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const placeId = new URL(request.url).searchParams.get("place");
+        const params = new URL(request.url).searchParams;
+        const placeId = params.get("place");
+        // Qué foto de las que tiene el local: 0 es la portada, el resto la galería.
+        const index = Math.min(Math.max(Number(params.get("i") ?? 0) || 0, 0), 9);
 
         // Se valida la forma antes de reenviar nada: sin esta comprobación el
         // parámetro sería una vía para lanzar peticiones arbitrarias firmadas
@@ -63,8 +66,8 @@ export const Route = createFileRoute("/api/foto")({
         }
 
         const json = (await detalles.json()) as { photos?: Array<{ name?: string }> };
-        const referencia = json.photos?.[0]?.name;
-        if (!referencia) return error("Ese sitio no tiene fotos en Google", 404);
+        const referencia = json.photos?.[index]?.name;
+        if (!referencia) return error("Ese sitio no tiene esa foto en Google", 404);
 
         // Paso 2: traer la imagen y devolverla tal cual.
         const imagen = await fetch(

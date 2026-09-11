@@ -216,14 +216,33 @@ export const useSalonStore = create<SalonState>()(
       // existen en `copy.ts` y la tabla de citas pinta el nombre en blanco. Se
       // sustituye el catálogo y se remapean las citas ya guardadas en vez de
       // tirarlas: el historial de la demo es parte de lo que se enseña.
-      version: 4,
+      //
+      // v6: el horario pasa de tres filas de texto ("Mon–Fri") a siete cadenas
+      // por día, para admitir jornada partida. Un estado anterior no lo trae.
+      // (La v5 la ocupa el cambio a varios servicios por cita.)
+      version: 6,
       migrate: (persistedState, version) => {
-        const state = persistedState as SalonState;
+        let state = persistedState as SalonState;
         if (version < 2) {
           return {
             ...state,
             salonProfile: salon,
             services: seedServices,
+          };
+        }
+        if (version < 6) {
+          const perfil = (state.salonProfile ?? {}) as Partial<SalonProfile> & { hours?: unknown };
+          const { hours: _viejo, ...resto } = perfil;
+          state = {
+            ...state,
+            salonProfile: {
+              ...salon,
+              ...resto,
+              openingHours:
+                Array.isArray(resto.openingHours) && resto.openingHours.length === 7
+                  ? resto.openingHours
+                  : salon.openingHours,
+            } as SalonProfile,
           };
         }
         if (version < 4) {
