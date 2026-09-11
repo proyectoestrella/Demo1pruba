@@ -122,7 +122,7 @@ function BookingWizard() {
     addAppointment({
       clientId: `c-walkin-${Date.now()}`,
       clientName: data.name,
-      serviceId: service.id,
+      serviceIds: [service.id],
       employeeId,
       start: startISO,
       duration: service.durationMin,
@@ -136,7 +136,7 @@ function BookingWizard() {
         name: data.name,
         phone: data.phone,
         email: data.email,
-        serviceId: service.id,
+        serviceIds: [service.id],
         employeeId,
         startISO,
         durationMin: service.durationMin,

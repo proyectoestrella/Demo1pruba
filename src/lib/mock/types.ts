@@ -1,11 +1,6 @@
 export type EmployeeId = "mario" | "diego" | "ruben";
 
-export type AppointmentStatus =
-  | "confirmed"
-  | "completed"
-  | "cancelled"
-  | "no-show"
-  | "blocked";
+export type AppointmentStatus = "confirmed" | "completed" | "cancelled" | "no-show" | "blocked";
 
 export interface Service {
   id: string;
@@ -44,7 +39,11 @@ export interface Appointment {
   id: string;
   clientId: string;
   clientName: string;
-  serviceId: string;
+  /**
+   * Servicios reservados, en el orden en que se eligieron. Casi siempre uno;
+   * "corte y luego barba" son dos. `duration` y `priceEur` ya llevan la suma.
+   */
+  serviceIds: string[];
   employeeId: EmployeeId;
   /** ISO start datetime */
   start: string;

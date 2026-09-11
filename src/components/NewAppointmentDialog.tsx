@@ -167,7 +167,7 @@ export function NewAppointmentDialog({
     const appt = addAppointment({
       clientId,
       clientName,
-      serviceId,
+      serviceIds: [serviceId],
       employeeId,
       start: startISO,
       duration: service.durationMin,
@@ -184,7 +184,7 @@ export function NewAppointmentDialog({
           name: clientName,
           phone: clientPhone,
           email: clientEmail,
-          serviceId,
+          serviceIds: [serviceId],
           employeeId,
           startISO,
           durationMin: service.durationMin,

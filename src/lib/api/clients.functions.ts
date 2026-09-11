@@ -13,7 +13,7 @@ export const registerBookingClient = createServerFn({ method: "POST" })
       name: z.string().min(1),
       phone: z.string().min(1),
       email: z.string().email().optional(),
-      serviceId: z.string().min(1),
+      serviceIds: z.array(z.string().min(1)).min(1),
       employeeId: z.string().min(1),
       startISO: z.string().min(1),
       durationMin: z.number().positive(),
@@ -43,7 +43,9 @@ export const registerBookingClient = createServerFn({ method: "POST" })
     const { error: appointmentError } = await supabase.from("appointments").insert({
       salon_slug: data.salonSlug,
       client_id: client.id,
-      service_id: data.serviceId,
+      // Varios servicios en una cita sin tocar la tabla: van separados por
+      // comas en la misma columna. Ver el comentario en supabase/schema.sql.
+      service_id: data.serviceIds.join(","),
       employee_id: data.employeeId,
       start_at: data.startISO,
       duration_min: data.durationMin,
@@ -52,7 +54,8 @@ export const registerBookingClient = createServerFn({ method: "POST" })
       note: data.note,
     });
 
-    if (appointmentError) throw new Error(`Supabase appointment insert failed: ${appointmentError.message}`);
+    if (appointmentError)
+      throw new Error(`Supabase appointment insert failed: ${appointmentError.message}`);
 
     return { synced: true as const, clientId: client.id as string };
   });

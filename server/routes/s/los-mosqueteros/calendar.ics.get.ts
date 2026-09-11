@@ -15,7 +15,11 @@ const salonSlug = salon.slug;
 // (blocking availability from the barber's own calendar) is a separate,
 // heavier integration — this only covers "see the salon's bookings".
 function icsEscape(text: string) {
-  return text.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\n/g, "\\n");
 }
 
 function fmtDate(d: Date) {
@@ -47,7 +51,11 @@ export default defineHandler(async () => {
       for (const a of appointments) {
         const start = new Date(a.start_at);
         const end = new Date(start.getTime() + a.duration_min * 60_000);
-        const service = serviceMap[a.service_id];
+        // `service_id` puede traer varios ids separados por comas.
+        const serviceNames = String(a.service_id)
+          .split(",")
+          .map((id: string) => serviceMap[id]?.name ?? id)
+          .join(" + ");
         const employee = employeeMap[a.employee_id];
         const clientName = (a.clients as unknown as { name?: string } | null)?.name ?? "Cliente";
         const description = `Con ${employee?.name ?? a.employee_id}.${a.note ? ` ${a.note}` : ""}`;
@@ -57,7 +65,7 @@ export default defineHandler(async () => {
           `DTSTAMP:${now}`,
           `DTSTART:${fmtDate(start)}`,
           `DTEND:${fmtDate(end)}`,
-          `SUMMARY:${icsEscape(`${service?.name ?? a.service_id} — ${clientName}`)}`,
+          `SUMMARY:${icsEscape(`${serviceNames} — ${clientName}`)}`,
           `DESCRIPTION:${icsEscape(description)}`,
           "END:VEVENT",
         );

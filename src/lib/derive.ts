@@ -35,10 +35,7 @@ export function weeklyOccupancy(appts: Appointment[]) {
     return d >= start && d <= now && a.status !== "cancelled";
   });
   const totalSlots = employees.reduce((sum, e) => {
-    return (
-      sum +
-      e.schedule.reduce((s, day) => s + (day ? day.end - day.start : 0), 0) * 2
-    );
+    return sum + e.schedule.reduce((s, day) => s + (day ? day.end - day.start : 0), 0) * 2;
   }, 0); // 2 per hour
   const used = inWeek.reduce((s, a) => s + a.duration / 30, 0);
   return Math.min(100, Math.round((used / totalSlots) * 100));
@@ -57,19 +54,17 @@ export function newClientsThisWeek(appts: Appointment[]) {
 
 export function cancellationsThisWeek(appts: Appointment[]) {
   const start = Date.now() - 7 * DAY_MS;
-  return appts.filter(
-    (a) => a.status === "cancelled" && +new Date(a.start) >= start,
-  ).length;
+  return appts.filter((a) => a.status === "cancelled" && +new Date(a.start) >= start).length;
 }
 
 export function mostBookedService(appts: Appointment[]) {
   const counts: Record<string, number> = {};
   appts.forEach((a) => {
     if (a.status === "cancelled") return;
-    counts[a.serviceId] = (counts[a.serviceId] ?? 0) + 1;
+    a.serviceIds.forEach((id) => (counts[id] = (counts[id] ?? 0) + 1));
   });
   const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  return top ? serviceMap[top[0]]?.name ?? top[0] : "—";
+  return top ? (serviceMap[top[0]]?.name ?? top[0]) : "—";
 }
 
 export function revenueByDay(appts: Appointment[], days = 30) {
@@ -96,27 +91,28 @@ export function serviceMix(appts: Appointment[]) {
   const counts: Record<string, { name: string; bookings: number; revenue: number }> = {};
   appts.forEach((a) => {
     if (a.status === "cancelled") return;
-    const s = serviceMap[a.serviceId];
-    if (!s) return;
-    if (!counts[a.serviceId]) counts[a.serviceId] = { name: s.name, bookings: 0, revenue: 0 };
-    counts[a.serviceId].bookings += 1;
-    counts[a.serviceId].revenue += a.priceEur;
+    const own = a.serviceIds.map((id) => serviceMap[id]).filter(Boolean);
+    if (!own.length) return;
+    // El precio de la cita es la suma de sus servicios; se reparte entre ellos
+    // en proporción a su precio de catálogo para que la facturación por
+    // servicio siga cuadrando con la total aunque la cita lleve varios.
+    const catalogo = own.reduce((s, sv) => s + sv.priceEur, 0);
+    own.forEach((s) => {
+      if (!counts[s.id]) counts[s.id] = { name: s.name, bookings: 0, revenue: 0 };
+      counts[s.id].bookings += 1;
+      counts[s.id].revenue += catalogo > 0 ? (a.priceEur * s.priceEur) / catalogo : 0;
+    });
   });
   return Object.values(counts).sort((a, b) => b.bookings - a.bookings);
 }
 
-export function clientFrequency(
-  appts: Appointment[],
-  clientId: string,
-) {
+export function clientFrequency(appts: Appointment[], clientId: string) {
   const own = appts
     .filter((a) => a.clientId === clientId && a.status !== "cancelled")
     .sort((a, b) => +new Date(a.start) - +new Date(b.start));
-  const totalSpent = own
-    .filter((a) => a.status !== "no-show")
-    .reduce((s, a) => s + a.priceEur, 0);
+  const totalSpent = own.filter((a) => a.status !== "no-show").reduce((s, a) => s + a.priceEur, 0);
   const fav: Record<string, number> = {};
-  own.forEach((a) => (fav[a.serviceId] = (fav[a.serviceId] ?? 0) + 1));
+  own.forEach((a) => a.serviceIds.forEach((id) => (fav[id] = (fav[id] ?? 0) + 1)));
   const favoriteService = Object.entries(fav).sort((a, b) => b[1] - a[1])[0]?.[0];
   return {
     visits: own.length,
@@ -197,7 +193,9 @@ function pctChange(current: number, previous: number): number | null {
 
 /** Non-cancelled appointment count + revenue for the single calendar day containing `date`. */
 function dayCountAndRevenue(appts: Appointment[], date: Date) {
-  const dayAppts = appts.filter((a) => isSameDay(new Date(a.start), date) && a.status !== "cancelled");
+  const dayAppts = appts.filter(
+    (a) => isSameDay(new Date(a.start), date) && a.status !== "cancelled",
+  );
   const revenue = dayAppts
     .filter((a) => a.status !== "no-show")
     .reduce((sum, a) => sum + a.priceEur, 0);

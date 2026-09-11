@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useSalonStore } from "@/lib/store";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { employees, employeeMap, serviceMap } from "@/lib/mock/salon";
+import { employees, employeeMap } from "@/lib/mock/salon";
+import { serviceLabelOf } from "@/lib/appointment-services";
 import type { Appointment, EmployeeId } from "@/lib/mock/types";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -251,7 +252,6 @@ function CalendarView() {
                         const top = (minutes / 60) * 64;
                         const height = (a.duration / 60) * 64;
                         const emp = employeeMap[a.employeeId];
-                        const svc = serviceMap[a.serviceId];
                         return (
                           <button
                             key={a.id}
@@ -268,7 +268,7 @@ function CalendarView() {
                             <p className="truncate font-medium leading-tight text-foreground">
                               {a.clientName}
                             </p>
-                            <p className="truncate text-muted-foreground">{svc?.name}</p>
+                            <p className="truncate text-muted-foreground">{serviceLabelOf(a)}</p>
                           </button>
                         );
                       })}
@@ -387,6 +387,7 @@ function MonthGrid({
                 {dayAppts.slice(0, 2).map((a) => (
                   <span
                     key={a.id}
+                    title={`${a.clientName} · ${serviceLabelOf(a)}`}
                     className="flex items-center gap-1 truncate rounded bg-muted/60 px-1 py-0.5 text-[10px]"
                   >
                     <StylistDot employeeId={a.employeeId} />
@@ -396,6 +397,7 @@ function MonthGrid({
                         minute: "2-digit",
                       })}{" "}
                       {a.clientName}
+                      <span className="text-muted-foreground"> · {serviceLabelOf(a)}</span>
                     </span>
                   </span>
                 ))}

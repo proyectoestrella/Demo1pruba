@@ -216,46 +216,28 @@ export const useSalonStore = create<SalonState>()(
       // existen en `copy.ts` y la tabla de citas pinta el nombre en blanco. Se
       // sustituye el catálogo y se remapean las citas ya guardadas en vez de
       // tirarlas: el historial de la demo es parte de lo que se enseña.
-      version: 4,
+      //
+      // v5: una cita pasa de un servicio (`serviceId`) a una lista
+      // (`serviceIds`). Se envuelve el que había para no perder ninguna cita.
+      //
+      // Los pasos se encadenan en orden en vez de devolver al primero que
+      // aplica: un estado v3 tiene que pasar por el v4 y por el v5.
+      version: 5,
       migrate: (persistedState, version) => {
-        const state = persistedState as SalonState;
+        // Forma de una cita tal y como pudo quedar guardada en cualquier
+        // versión anterior: con `serviceId` suelto o ya con la lista.
+        type CitaGuardada = Omit<Appointment, "serviceIds"> & {
+          serviceId?: string;
+          serviceIds?: string[];
+        };
+        type EstadoGuardado = Omit<SalonState, "appointments"> & { appointments?: CitaGuardada[] };
+        let state = persistedState as EstadoGuardado;
+
         if (version < 2) {
-          return {
-            ...state,
-            salonProfile: salon,
-            services: seedServices,
-          };
-        }
-        if (version < 4) {
-          const equivalencias: Record<string, string> = {
-            haircut: "corte",
-            beard: "barba",
-            color: "corte-barba",
-            highlights: "afeitado",
-            keratin: "corte-barba",
-            styling: "cejas",
-          };
-          const porId = new Map(seedServices.map((sv) => [sv.id, sv]));
-          const migrado = {
-            ...state,
-            services: seedServices,
-            salonProfile: { ...salon, ...state.salonProfile, specialties: salon.specialties },
-            appointments: (state.appointments ?? []).map((a) => {
-              const nuevoId = equivalencias[a.serviceId] ?? a.serviceId;
-              const sv = porId.get(nuevoId);
-              return sv
-                ? { ...a, serviceId: nuevoId, priceEur: sv.priceEur, duration: sv.durationMin }
-                : a;
-            }),
-            waitlist: (state.waitlist ?? []).map((w) => ({
-              ...w,
-              serviceId: equivalencias[w.serviceId] ?? w.serviceId,
-            })),
-          };
-          return migrado as SalonState;
+          state = { ...state, salonProfile: salon, services: seedServices };
         }
         if (version < 3) {
-          return {
+          state = {
             ...state,
             salonProfile: {
               ...salon,
@@ -268,7 +250,43 @@ export const useSalonStore = create<SalonState>()(
             },
           };
         }
-        return state;
+        if (version < 4) {
+          const equivalencias: Record<string, string> = {
+            haircut: "corte",
+            beard: "barba",
+            color: "corte-barba",
+            highlights: "afeitado",
+            keratin: "corte-barba",
+            styling: "cejas",
+          };
+          const porId = new Map(seedServices.map((sv) => [sv.id, sv]));
+          state = {
+            ...state,
+            services: seedServices,
+            salonProfile: { ...salon, ...state.salonProfile, specialties: salon.specialties },
+            appointments: (state.appointments ?? []).map((a) => {
+              const nuevoId = equivalencias[a.serviceId ?? ""] ?? a.serviceId;
+              const sv = nuevoId ? porId.get(nuevoId) : undefined;
+              return sv
+                ? { ...a, serviceId: nuevoId, priceEur: sv.priceEur, duration: sv.durationMin }
+                : a;
+            }),
+            waitlist: (state.waitlist ?? []).map((w) => ({
+              ...w,
+              serviceId: equivalencias[w.serviceId] ?? w.serviceId,
+            })),
+          };
+        }
+        if (version < 5) {
+          state = {
+            ...state,
+            appointments: (state.appointments ?? []).map(({ serviceId, serviceIds, ...resto }) => ({
+              ...resto,
+              serviceIds: serviceIds?.length ? serviceIds : serviceId ? [serviceId] : [],
+            })),
+          };
+        }
+        return state as unknown as SalonState;
       },
     },
   ),

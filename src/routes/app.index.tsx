@@ -24,7 +24,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { employeeMap, serviceMap } from "@/lib/mock/salon";
+import { employeeMap } from "@/lib/mock/salon";
+import { serviceLabelOf } from "@/lib/appointment-services";
 import type { Appointment } from "@/lib/mock/types";
 import { StylistDot } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -307,7 +308,6 @@ function Home() {
           <div className="divide-y divide-border/60">
             {todayList.map((a) => {
               const emp = employeeMap[a.employeeId];
-              const svc = serviceMap[a.serviceId];
               return (
                 <button
                   key={a.id}
@@ -326,7 +326,7 @@ function Home() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{a.clientName}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {svc?.name} · {a.duration} min · con {emp.name}
+                      {serviceLabelOf(a)} · {a.duration} min · con {emp.name}
                     </p>
                   </div>
                   <span className="shrink-0 text-sm font-medium">€{a.priceEur}</span>

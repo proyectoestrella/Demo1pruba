@@ -16,6 +16,9 @@ create table if not exists appointments (
   id uuid primary key default gen_random_uuid(),
   salon_slug text not null,
   client_id uuid not null references clients (id) on delete cascade,
+  -- Ids de servicio separados por comas cuando la cita lleva varios
+  -- ("corte,barba"). Se eligio esto antes que una tabla appointment_services
+  -- para no migrar: el panel no lee de aqui todavia.
   service_id text not null,
   employee_id text not null,
   start_at timestamptz not null,
