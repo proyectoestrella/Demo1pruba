@@ -118,8 +118,24 @@ export function parseMapsUrl(url: string): { name?: string; lat?: number; lng?: 
  * el nombre de verdad. Editable después a mano, como todo lo demás.
  */
 export function limpiarNombre(nombre: string): string {
-  const corte = nombre.split(/\s*[|·–—]\s*/)[0].trim();
+  // "|", "·", rayas, o un guion corto con espacios a ambos lados ("Quka Perez - Peluquería").
+  const corte = nombre.split(/\s*(?:[|·–—]|\s-\s)\s*/)[0].trim();
   return corte.length >= 3 ? corte : nombre.trim();
+}
+
+/**
+ * Tipo de negocio deducido del nombre. Es lo primero que se lee bajo el nombre
+ * en la demo y Google no lo da: sin esto, el lote lo pone igual para todas y
+ * una "Peluquería de Señoras" sale rotulada como barbería. Se puede corregir
+ * a mano; esto solo evita el error más frecuente.
+ */
+export function inferTipo(nombre: string): string {
+  const n = nombre.toLowerCase();
+  if (/barber|barbería|barberia|caballeros|shave/.test(n)) return "Barbería";
+  if (/señoras|senoras/.test(n)) return "Peluquería de señoras";
+  if (/est[ée]tica|nails|uñas|belleza|beauty|spa/.test(n)) return "Peluquería y estética";
+  if (/peluquer|estilista|hair|salon|salón/.test(n)) return "Peluquería";
+  return "";
 }
 
 /** Busca el sitio en Places y devuelve sus datos. Requiere clave. */

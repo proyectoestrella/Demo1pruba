@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { limpiarNombre, parseMapsUrl } from "./maps.functions";
+import { inferTipo, limpiarNombre, parseMapsUrl } from "./maps.functions";
 
 describe("parseMapsUrl", () => {
   it("saca nombre y coordenadas de un enlace largo", () => {
@@ -77,11 +77,29 @@ describe("limpiarNombre", () => {
     expect(limpiarNombre("Peluquería Ruiz · Estética y uñas")).toBe("Peluquería Ruiz");
   });
 
+  it("corta también el guion con espacios, pero no el de dentro de una palabra", () => {
+    expect(limpiarNombre("Quka Perez - Peluquería")).toBe("Quka Perez");
+    expect(limpiarNombre("Silvia García Nails-Hair-Beauty")).toBe(
+      "Silvia García Nails-Hair-Beauty",
+    );
+  });
+
   it("deja en paz un nombre normal", () => {
     expect(limpiarNombre("Barbería Pepe")).toBe("Barbería Pepe");
   });
 
   it("no se queda con un trozo inútil si el nombre empieza por el separador", () => {
     expect(limpiarNombre("A | Barbería del Centro")).toBe("A | Barbería del Centro");
+  });
+});
+
+describe("inferTipo", () => {
+  it("deduce el tipo de negocio del nombre", () => {
+    expect(inferTipo("Barber Hamza for Men")).toBe("Barbería");
+    expect(inferTipo("Peluquería Caballeros Jesús Moreno")).toBe("Barbería");
+    expect(inferTipo("Chispi Peluqueria de Señoras")).toBe("Peluquería de señoras");
+    expect(inferTipo("A.R peluquería y estética")).toBe("Peluquería y estética");
+    expect(inferTipo("JF estilistas")).toBe("Peluquería");
+    expect(inferTipo("Zitada")).toBe("");
   });
 });

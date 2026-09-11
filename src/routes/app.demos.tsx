@@ -20,7 +20,7 @@ import {
   slugify,
   type DemoProfile,
 } from "@/lib/demo-profile";
-import { lookupGoogleMaps, type MapsLookup } from "@/lib/api/maps.functions";
+import { inferTipo, lookupGoogleMaps, type MapsLookup } from "@/lib/api/maps.functions";
 import { DAY_LABELS_ES, DEFAULT_OPENING_HOURS, normalizeDay } from "@/lib/opening-hours";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -90,7 +90,7 @@ function Demos() {
   const [mapsUrl, setMapsUrl] = useState("");
   const [buscando, setBuscando] = useState(false);
   const [lote, setLote] = useState("");
-  const [loteTipo, setLoteTipo] = useState("Barbería");
+  const [loteTipo, setLoteTipo] = useState("");
   const [loteProgreso, setLoteProgreso] = useState<{ hecho: number; total: number } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -118,6 +118,7 @@ function Demos() {
         return {
           ...base,
           ...(r.name ? { name: r.name } : {}),
+          ...(r.name && !base.tagline.trim() ? { tagline: inferTipo(r.name) } : {}),
           ...(r.address ? { address: r.address } : {}),
           ...(r.phone ? { phone: r.phone } : {}),
           ...(r.rating !== undefined ? { rating: String(r.rating) } : {}),
@@ -144,7 +145,7 @@ function Demos() {
     return {
       ...blankDemoProfile(),
       name: r.name,
-      tagline: tipo,
+      tagline: tipo || inferTipo(r.name),
       address: r.address ?? "",
       phone: r.phone ?? "",
       rating: r.rating ?? blankDemoProfile().rating,
@@ -523,6 +524,7 @@ function Demos() {
                 <Input
                   value={loteTipo}
                   onChange={(e) => setLoteTipo(e.target.value)}
+                  placeholder="vacío = deducir del nombre"
                   className="w-56"
                 />
               </div>
