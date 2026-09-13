@@ -28,6 +28,7 @@ import { isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
 import { useClientNow } from "@/lib/use-client-now";
 import { galleryPhotosFor } from "@/lib/demo-photos";
 import heroImg from "@/assets/hero-salon.jpg";
+import heroSalonImg from "@/assets/gallery-salon.jpg";
 import { WorkGallery } from "@/components/WorkGallery";
 import { MobileBookingBar } from "@/components/MobileBookingBar";
 import { Reveal } from "@/components/Reveal";
@@ -270,7 +271,14 @@ function SalonHome() {
        * ---------------------------------------------------------------- */}
       <section className="relative isolate flex min-h-[85vh] items-end overflow-hidden text-white sm:items-center">
         <img
-          src={profile.heroImage || heroImg}
+          src={
+            profile.heroImage ||
+            // Sin foto propia (hay dos locales del rutero cuya ficha de Google
+            // está vacía) se usa una de ejemplo, pero no la misma para todos:
+            // un sillón de barbero de portada en una peluquería de señoras
+            // canta tanto como una foto mala.
+            (/barber|caballero|shave/i.test(profile.tagline ?? "") ? heroImg : heroSalonImg)
+          }
           alt={`Interior de ${profile.name}`}
           className="absolute inset-0 -z-20 h-full w-full object-cover"
           width={1920}
