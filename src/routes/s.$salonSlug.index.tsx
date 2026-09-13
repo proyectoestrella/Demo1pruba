@@ -51,6 +51,7 @@ import { BentoCard, BentoGrid } from "@/components/magicui/bento-grid";
 import { BorderBeam } from "@/components/magicui/border-beam";
 import { DotPattern } from "@/components/magicui/dot-pattern";
 import { Marquee } from "@/components/magicui/marquee";
+import { cintaDeSalon } from "@/lib/salon-words";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import { WordRotate } from "@/components/magicui/word-rotate";
 import { TeamShowcase } from "@/components/twentyfirst/team-showcase";
@@ -415,7 +416,7 @@ function SalonHome() {
       {/* Cinta que reacciona al scroll */}
       <div className="overflow-hidden border-b border-border/40 bg-background py-4">
         <ScrollVelocity
-          items={["Degradados", "Barba a navaja", "Toalla caliente", "Color", "Sin esperas"]}
+          items={cintaDeSalon(profile.tagline, profile.specialties)}
           velocity={28}
           className="font-display text-xl text-muted-foreground/70 sm:text-2xl"
         />
