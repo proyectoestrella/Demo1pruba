@@ -5,28 +5,42 @@ import { Reveal } from "@/components/Reveal";
 import { Lens } from "@/components/magicui/lens";
 import galleryRecorte from "@/assets/gallery-recorte.jpg";
 import galleryDegradado from "@/assets/gallery-degradado.jpg";
-import galleryDetalle from "@/assets/gallery-detalle.jpg";
+import gallerySalon from "@/assets/gallery-salon.jpg";
 
 /**
- * Imágenes de la galería de trabajos: fotos reales de barbería en acción.
- * La rejilla está pensada para exactamente 3 fotos (2 columnas en móvil, 3 en escritorio).
- * ⚠️ TEMPORAL: gallery-detalle.jpg lleva marca de agua de Unsplash+ visible — sustituir por una foto con licencia antes de mostrarla a un cliente real o pasar a producción.
+ * Fotos de relleno, para cuando el local no tiene suficientes suyas.
+ * La rejilla es de 3 columnas, así que 3 es el mínimo para que no quede coja.
+ *
+ * gallery-salon.jpg es "Hair salon - Arlington, MA" de Wikimedia Commons, CC0:
+ * dominio público, sin atribución obligatoria. Sustituye a la anterior, que
+ * llevaba la marca de agua de Unsplash+ repetida por toda la imagen y llegó a
+ * verse en producción.
  */
-const GALLERY_IMAGES: { src: string; alt: string }[] = [
+const RELLENO_SALON = { src: gallerySalon, alt: "Interior de un salón de peluquería" };
+const RELLENO_BARBERIA = [
   { src: galleryRecorte, alt: "Repasado de barba con tijera" },
   { src: galleryDegradado, alt: "Degradado con máquina y peine" },
-  { src: galleryDetalle, alt: "Acabado y detalle de corte" },
 ];
 
-export function WorkGallery({ photos = [] }: { photos?: string[] }) {
+/** El relleno arranca por lo que se parece más a este negocio. */
+function relleno(tipo: string | undefined) {
+  const esBarberia = /barber/i.test(tipo ?? "");
+  return esBarberia ? [...RELLENO_BARBERIA, RELLENO_SALON] : [RELLENO_SALON, ...RELLENO_BARBERIA];
+}
+
+/** Con menos de esto la fila se ve incompleta y la página parece a medio hacer. */
+const MINIMO_EN_REJILLA = 3;
+
+export function WorkGallery({ photos = [], tipo }: { photos?: string[]; tipo?: string }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
-  // Con fotos del propio local (las de su ficha de Google) se enseñan esas;
-  // sin ellas, las de ejemplo. Los textos alternativos genéricos no describen
-  // una foto ajena, así que ahí se usa uno neutro.
-  const images =
-    photos.length > 0
-      ? photos.map((src, i) => ({ src, alt: `Foto ${i + 1} del local` }))
-      : GALLERY_IMAGES;
+  // Se enseñan las fotos del propio local. Cuando tiene una o dos —hay locales
+  // del rutero con una sola foto en Google, y alguno con ninguna— se completa
+  // la fila con las de ejemplo: una rejilla con un hueco se lee como error, y
+  // lo que se está enseñando es cómo quedaría su web, no un inventario de su
+  // ficha. Las suyas van primero, que son las que le van a llamar la atención.
+  const propias = photos.map((src, i) => ({ src, alt: `Foto ${i + 1} del local` }));
+  const faltan = Math.max(0, MINIMO_EN_REJILLA - propias.length);
+  const images = [...propias, ...relleno(tipo).slice(0, faltan)];
   const openImage = openIndex !== null ? images[openIndex] : null;
 
   return (

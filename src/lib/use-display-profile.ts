@@ -24,6 +24,11 @@ export function useDisplayProfile(): SalonProfile {
 
   return useMemo(() => {
     const fromUrl = decodeDemoProfile(raw);
-    return fromUrl ? { ...stored, ...fromUrl } : stored;
+    if (!fromUrl) return stored;
+    // Si el enlace trae su propia portada, cualquier selección de galería
+    // guardada en este navegador es de otro local: sus índices apuntarían, en
+    // esta ficha, a fotos que no tienen nada que ver.
+    const galeriaAjena = fromUrl.heroImage && !fromUrl.galleryPhotos;
+    return { ...stored, ...fromUrl, ...(galeriaAjena ? { galleryPhotos: [] } : {}) };
   }, [stored, raw]);
 }

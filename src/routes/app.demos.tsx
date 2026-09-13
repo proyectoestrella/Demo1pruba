@@ -56,6 +56,7 @@ interface DraftDemo {
   heroImage: string;
   openingHours: string[];
   photoCount: number;
+  galleryPhotos: string[];
 }
 
 function draftFrom(demo: DemoProfile & { id?: string }): DraftDemo {
@@ -74,6 +75,7 @@ function draftFrom(demo: DemoProfile & { id?: string }): DraftDemo {
     openingHours:
       demo.openingHours?.length === 7 ? [...demo.openingHours] : [...DEFAULT_OPENING_HOURS],
     photoCount: demo.photoCount ?? 0,
+    galleryPhotos: demo.galleryPhotos ?? [],
   };
 }
 
@@ -126,6 +128,7 @@ function Demos() {
           ...(r.heroImage ? { heroImage: r.heroImage } : {}),
           ...(r.openingHours ? { openingHours: r.openingHours } : {}),
           photoCount: r.photoCount ?? 0,
+          galleryPhotos: r.galleryPhotos ?? [],
         };
       });
       setMapsUrl("");
@@ -153,6 +156,7 @@ function Demos() {
       heroImage: r.heroImage ?? "",
       openingHours: r.openingHours ?? [...DEFAULT_OPENING_HOURS],
       photoCount: r.photoCount ?? 0,
+      galleryPhotos: r.galleryPhotos ?? [],
     };
   }
 
@@ -251,6 +255,7 @@ function Demos() {
         heroImage: draft.heroImage.trim(),
         openingHours: draft.openingHours.map(normalizeDay),
         photoCount: draft.photoCount,
+        galleryPhotos: draft.galleryPhotos,
       },
       draft.id,
     );

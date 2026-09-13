@@ -33,6 +33,7 @@ export type DemoProfile = Pick<
   | "heroImage"
   | "openingHours"
   | "photoCount"
+  | "galleryPhotos"
 >;
 
 const KEYS: Record<keyof DemoProfile, string> = {
@@ -48,6 +49,7 @@ const KEYS: Record<keyof DemoProfile, string> = {
   heroImage: "h",
   openingHours: "o",
   photoCount: "f",
+  galleryPhotos: "g",
 };
 
 /** Nombre del search param que lleva el perfil en las rutas públicas. */
@@ -75,6 +77,7 @@ export function blankDemoProfile(): DemoProfile {
     heroImage: "",
     openingHours: [...DEFAULT_OPENING_HOURS],
     photoCount: 0,
+    galleryPhotos: [],
   };
 }
 
@@ -167,6 +170,16 @@ export function decodeDemoProfile(raw: string | undefined | null): Partial<DemoP
     } else if (field === "photoCount") {
       const n = Number(value);
       if (Number.isFinite(n) && n >= 0) out.photoCount = Math.min(Math.round(n), 10);
+    } else if (field === "galleryPhotos") {
+      if (Array.isArray(value)) {
+        // Cada entrada es "<índice>~<pista>"; se descarta lo que no lo parezca
+        // para que un enlace manipulado no llegue al proxy de fotos.
+        const clean = value
+          .map((v) => String(v).trim())
+          .filter((v) => /^\d{1,2}(~[A-Za-z0-9_-]{1,40})?$/.test(v))
+          .slice(0, 6);
+        if (clean.length) out.galleryPhotos = clean;
+      }
     } else if (field === "specialties") {
       if (Array.isArray(value)) {
         const clean = value

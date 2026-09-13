@@ -23,6 +23,24 @@ import process from "node:process";
 /** Los IDs de Places son alfanuméricos con guiones; nada más entra aquí. */
 const ID_VALIDO = /^[A-Za-z0-9_-]{5,300}$/;
 
+/**
+ * Elige qué foto del local se sirve.
+ *
+ * El índice por sí solo no basta: Google no promete que el orden de `photos` se
+ * mantenga, y basta con que el negocio suba una foto nueva para que la portada
+ * que elegimos ayer sea otra cosa mañana — con las demos ya repartidas y sin
+ * forma de enterarnos. Por eso la demo lleva también una pista, los primeros
+ * caracteres del identificador de la foto. Si la pista aparece, manda ella; si
+ * no aparece (la foto ya no está), se cae al índice, que siempre da algo.
+ */
+function elegirFoto(nombres: string[], index: number, pista: string | null) {
+  if (pista) {
+    const encontrada = nombres.find((n) => n.includes(pista));
+    if (encontrada) return encontrada;
+  }
+  return nombres[index];
+}
+
 /** Respuesta de error que no se cachea, para poder reintentar al arreglarlo. */
 function error(mensaje: string, status: number) {
   return new Response(mensaje, {
@@ -39,6 +57,9 @@ export const Route = createFileRoute("/api/foto")({
         const placeId = params.get("place");
         // Qué foto de las que tiene el local: 0 es la portada, el resto la galería.
         const index = Math.min(Math.max(Number(params.get("i") ?? 0) || 0, 0), 9);
+        // Pista opcional con el principio del identificador de la foto elegida.
+        const pistaCruda = params.get("k");
+        const pista = pistaCruda && ID_VALIDO.test(pistaCruda) ? pistaCruda : null;
 
         // Se valida la forma antes de reenviar nada: sin esta comprobación el
         // parámetro sería una vía para lanzar peticiones arbitrarias firmadas
@@ -66,7 +87,8 @@ export const Route = createFileRoute("/api/foto")({
         }
 
         const json = (await detalles.json()) as { photos?: Array<{ name?: string }> };
-        const referencia = json.photos?.[index]?.name;
+        const nombres = (json.photos ?? []).map((p) => p.name).filter((n): n is string => !!n);
+        const referencia = elegirFoto(nombres, index, pista);
         if (!referencia) return error("Ese sitio no tiene esa foto en Google", 404);
 
         // Paso 2: traer la imagen y devolverla tal cual.

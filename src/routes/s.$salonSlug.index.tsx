@@ -584,7 +584,7 @@ function SalonHome() {
       </section>
 
       {/* Galería de trabajos */}
-      <WorkGallery photos={galleryPhotosFor(profile)} />
+      <WorkGallery photos={galleryPhotosFor(profile)} tipo={profile.tagline} />
 
       {/* Equipo */}
       <section id="equipo" className="border-t border-border/40 bg-card">

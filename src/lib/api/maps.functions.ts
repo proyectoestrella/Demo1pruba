@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import process from "node:process";
 import { z } from "zod";
 import { fromGoogleWeekdayDescriptions } from "../opening-hours";
+import { GALLERY_MAX, hintFromPhotoName, photoSpec } from "../demo-photos";
 
 /**
  * Rellena una demo a partir de un enlace de Google Maps.
@@ -34,6 +35,8 @@ export interface MapsLookup {
   openingHours?: string[];
   /** Cuántas fotos tiene el local en Google. */
   photoCount?: number;
+  /** Fotos elegidas para la galería, en el formato de lib/demo-photos.ts. */
+  galleryPhotos?: string[];
   /** Qué se ha podido averiguar y qué no, para decirlo en la interfaz. */
   source: "url" | "places";
   /** Motivo por el que no se han traído todos los campos, si aplica. */
@@ -139,6 +142,65 @@ export function inferTipo(nombre: string): string {
 }
 
 /** Busca el sitio en Places y devuelve sus datos. Requiere clave. */
+/** Foto de Google con lo que hace falta para juzgarla sin descargarla. */
+type FotoPlaces = { name?: string; widthPx?: number; heightPx?: number };
+
+/** Por debajo de esto la portada se ve blanda en una pantalla retina. */
+const ANCHO_MINIMO_PORTADA = 1200;
+/** En la galería cada foto ocupa un cuadrado pequeño y se perdona más. */
+const LADO_MINIMO_GALERIA = 700;
+
+/**
+ * Elige la foto de portada entre las que tiene el local.
+ *
+ * La primera que devuelve Google no sirve como portada tan a menudo como
+ * parece: al repasar los 54 locales del rutero, la primera era un cartel de
+ * "NUEVO HORARIO", un primer plano de raíces con canas o una captura de Street
+ * View con un teléfono sobreimpreso. No se puede juzgar el contenido sin verla,
+ * pero sí el formato, y con eso se descartan los peores casos: se exige tamaño
+ * suficiente para un hero y se penaliza lo que no encaja en una banda ancha —
+ * las panorámicas de escaparate y los retratos verticales se recortan fatal.
+ */
+function elegirPortada(photos: FotoPlaces[]): { index: number; hint: string } | null {
+  type Candidata = { index: number; hint: string; puntos: number };
+  const candidatas: Candidata[] = [];
+
+  photos.forEach((foto, index) => {
+    if (!foto.name) return;
+    const w = foto.widthPx ?? 0;
+    const h = foto.heightPx ?? 0;
+    if (!w || !h) return;
+
+    const ratio = w / h;
+    let puntos = 0;
+    if (w >= ANCHO_MINIMO_PORTADA) puntos += 3;
+    if (w >= 2400) puntos += 1;
+    // Entre cuadrada y 16:9 es lo que mejor entra en el hero.
+    if (ratio >= 0.9 && ratio <= 1.9) puntos += 3;
+    else if (ratio > 1.9 && ratio <= 2.6) puntos += 1;
+    // Google tiende a poner primero las más representativas: a igualdad de
+    // formato, gana la que venía antes.
+    puntos += Math.max(0, 5 - index) / 10;
+
+    candidatas.push({ index, hint: hintFromPhotoName(foto.name), puntos });
+  });
+
+  const mejor = candidatas.sort((a, b) => b.puntos - a.puntos)[0];
+  return mejor ? { index: mejor.index, hint: mejor.hint } : null;
+}
+
+/** Las demás fotos que dan la talla, saltándose la que se usa de portada. */
+function elegirGaleria(photos: FotoPlaces[], portada: number | undefined): string[] {
+  const out: string[] = [];
+  photos.forEach((foto, index) => {
+    if (index === portada || !foto.name || out.length >= GALLERY_MAX) return;
+    const lado = Math.min(foto.widthPx ?? 0, foto.heightPx ?? 0);
+    if (lado < LADO_MINIMO_GALERIA) return;
+    out.push(photoSpec(index, foto.name));
+  });
+  return out;
+}
+
 async function fromPlaces(
   key: string,
   hint: { name?: string; lat?: number; lng?: number },
@@ -163,7 +225,7 @@ async function fromPlaces(
       "Content-Type": "application/json",
       "X-Goog-Api-Key": key,
       "X-Goog-FieldMask":
-        "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating,places.userRatingCount,places.regularOpeningHours.weekdayDescriptions,places.photos.name",
+        "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating,places.userRatingCount,places.regularOpeningHours.weekdayDescriptions,places.photos.name,places.photos.widthPx,places.photos.heightPx",
     },
     body: JSON.stringify(body),
   });
@@ -185,12 +247,15 @@ async function fromPlaces(
       rating?: number;
       userRatingCount?: number;
       regularOpeningHours?: { weekdayDescriptions?: string[] };
-      photos?: Array<{ name?: string }>;
+      photos?: Array<{ name?: string; widthPx?: number; heightPx?: number }>;
     }>;
   };
 
   const place = json.places?.[0];
   if (!place) return { source: "url", name: hint.name, notice: "Google no encontró ese sitio." };
+
+  const portada = elegirPortada(place.photos ?? []);
+  const galeria = elegirGaleria(place.photos ?? [], portada?.index);
 
   return {
     source: "places",
@@ -205,11 +270,12 @@ async function fromPlaces(
     // resuelve la foto a partir del id, y de paso la clave no sale del
     // servidor.
     heroImage:
-      place.id && (place.photos?.length ?? 0) > 0
-        ? `/api/foto?place=${encodeURIComponent(place.id)}`
+      place.id && portada
+        ? `/api/foto?place=${encodeURIComponent(place.id)}&i=${portada.index}&k=${portada.hint}`
         : undefined,
     openingHours: fromGoogleWeekdayDescriptions(place.regularOpeningHours?.weekdayDescriptions),
     photoCount: place.photos?.length ?? 0,
+    galleryPhotos: galeria,
   };
 }
 

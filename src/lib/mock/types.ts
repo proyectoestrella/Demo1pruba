@@ -97,6 +97,12 @@ export interface SalonProfile {
    * La primera es la portada; el resto alimentan la galería a través de /api/foto.
    */
   photoCount?: number;
+  /**
+   * Qué fotos de la ficha de Google van a la galería, y en qué orden.
+   * Cada entrada es `"<índice>~<pista>"` (ver lib/demo-photos.ts). Vacío = se
+   * usan las de Google por orden, saltando la portada.
+   */
+  galleryPhotos?: string[];
   /** Nota media mostrada en el hero y en la sección de reseñas. */
   rating: number;
   /** Número de reseñas que acompaña a la nota. */
