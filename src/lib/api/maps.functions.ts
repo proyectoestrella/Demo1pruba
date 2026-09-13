@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import process from "node:process";
 import { z } from "zod";
 import { fromGoogleWeekdayDescriptions } from "../opening-hours";
-import { GALLERY_MAX, hintFromPhotoName, photoSpec } from "../demo-photos";
+import { GALLERY_MAX } from "../demo-photos";
 
 /**
  * Rellena una demo a partir de un enlace de Google Maps.
@@ -161,8 +161,8 @@ const LADO_MINIMO_GALERIA = 700;
  * suficiente para un hero y se penaliza lo que no encaja en una banda ancha —
  * las panorámicas de escaparate y los retratos verticales se recortan fatal.
  */
-function elegirPortada(photos: FotoPlaces[]): { index: number; hint: string } | null {
-  type Candidata = { index: number; hint: string; puntos: number };
+function elegirPortada(photos: FotoPlaces[]): number | null {
+  type Candidata = { index: number; puntos: number };
   const candidatas: Candidata[] = [];
 
   photos.forEach((foto, index) => {
@@ -182,11 +182,11 @@ function elegirPortada(photos: FotoPlaces[]): { index: number; hint: string } | 
     // formato, gana la que venía antes.
     puntos += Math.max(0, 5 - index) / 10;
 
-    candidatas.push({ index, hint: hintFromPhotoName(foto.name), puntos });
+    candidatas.push({ index, puntos });
   });
 
   const mejor = candidatas.sort((a, b) => b.puntos - a.puntos)[0];
-  return mejor ? { index: mejor.index, hint: mejor.hint } : null;
+  return mejor ? mejor.index : null;
 }
 
 /** Las demás fotos que dan la talla, saltándose la que se usa de portada. */
@@ -196,7 +196,7 @@ function elegirGaleria(photos: FotoPlaces[], portada: number | undefined): strin
     if (index === portada || !foto.name || out.length >= GALLERY_MAX) return;
     const lado = Math.min(foto.widthPx ?? 0, foto.heightPx ?? 0);
     if (lado < LADO_MINIMO_GALERIA) return;
-    out.push(photoSpec(index, foto.name));
+    out.push(String(index));
   });
   return out;
 }
@@ -255,7 +255,7 @@ async function fromPlaces(
   if (!place) return { source: "url", name: hint.name, notice: "Google no encontró ese sitio." };
 
   const portada = elegirPortada(place.photos ?? []);
-  const galeria = elegirGaleria(place.photos ?? [], portada?.index);
+  const galeria = elegirGaleria(place.photos ?? [], portada ?? undefined);
 
   return {
     source: "places",
@@ -270,8 +270,8 @@ async function fromPlaces(
     // resuelve la foto a partir del id, y de paso la clave no sale del
     // servidor.
     heroImage:
-      place.id && portada
-        ? `/api/foto?place=${encodeURIComponent(place.id)}&i=${portada.index}&k=${portada.hint}`
+      place.id && portada !== null
+        ? `/api/foto?place=${encodeURIComponent(place.id)}&i=${portada}`
         : undefined,
     openingHours: fromGoogleWeekdayDescriptions(place.regularOpeningHours?.weekdayDescriptions),
     photoCount: place.photos?.length ?? 0,

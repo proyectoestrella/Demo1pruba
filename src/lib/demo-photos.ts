@@ -4,40 +4,25 @@ import type { SalonProfile } from "./mock/types";
 export const GALLERY_MAX = 6;
 
 /**
- * Una foto elegida de la ficha de Google, escrita como `"<índice>~<pista>"`.
+ * Una foto elegida de la ficha de Google, identificada por su posición.
  *
- * El índice dice en qué posición estaba cuando se preparó la demo y la pista
- * son los primeros caracteres de su identificador, para reconocerla aunque
- * Google reordene las fotos del local. La pista es opcional: `"3"` también vale.
- */
-export type PhotoSpec = string;
-
-/** Longitud de la pista. Suficiente para distinguir, corta para el enlace. */
-export const HINT_LENGTH = 14;
-
-/** Saca la pista del nombre completo del recurso, `places/X/photos/<id>`. */
-export function hintFromPhotoName(name: string): string {
-  const id = name.split("/photos/")[1] ?? "";
-  return id.slice(0, HINT_LENGTH);
-}
-
-/** Escribe la especificación que viaja en la demo. */
-export function photoSpec(index: number, photoName?: string): PhotoSpec {
-  const hint = photoName ? hintFromPhotoName(photoName) : "";
-  return hint ? `${index}~${hint}` : String(index);
-}
-
-/**
- * URL de una foto elegida, servida por nuestro proxy.
+ * Se guarda la posición y no el identificador de la foto porque **los nombres
+ * de foto que da Places son tokens de un solo uso**: comprobado el 14/09 sobre
+ * seis locales, ninguno de los identificadores obtenidos el día anterior seguía
+ * existiendo, ni en la misma posición ni en otra. El orden, en cambio, sí se
+ * mantuvo: las diez fotos de cada local aparecieron en la misma posición y con
+ * las mismas dimensiones. Por eso la posición es lo único a lo que agarrarse, y
+ * por eso no hay que volver a intentar guardar el identificador.
  *
- * Se acepta tanto un número suelto (fotos de demos antiguas, sin pista) como la
- * forma con pista: los enlaces ya repartidos tienen que seguir funcionando.
+ * Se acepta también la forma `"3~loquesea"` porque hubo enlaces generados con
+ * un sufijo que ya no se usa; se ignora lo que va detrás de la virgulilla.
  */
-export function placePhotoUrl(placeId: string, spec: PhotoSpec | number): string {
-  const [rawIndex, hint] = String(spec).split("~");
-  const index = Math.max(0, Number(rawIndex) || 0);
-  const base = `/api/foto?place=${encodeURIComponent(placeId)}&i=${index}`;
-  return hint ? `${base}&k=${encodeURIComponent(hint)}` : base;
+export type PhotoSpec = string | number;
+
+/** URL de una foto elegida, servida por nuestro proxy. */
+export function placePhotoUrl(placeId: string, spec: PhotoSpec): string {
+  const index = Math.max(0, Number(String(spec).split("~")[0]) || 0);
+  return `/api/foto?place=${encodeURIComponent(placeId)}&i=${index}`;
 }
 
 /** Saca el id del local de una URL de portada generada por nosotros, o null. */
