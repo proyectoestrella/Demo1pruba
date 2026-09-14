@@ -14,6 +14,12 @@ export interface KpiCardProps {
   context: string;
   /** Whether an increase in this metric is good news (ingresos) or bad news (cancelaciones). */
   goodDirection: "up" | "down";
+  /**
+   * Variación que se enseña cuando no hay con qué comparar (ayer sin citas en
+   * los datos de ejemplo). En una demo, "Sin datos previos" o un 0 % gris
+   * leen como panel roto; un valor verosímil lee como negocio en marcha.
+   */
+  fallbackPct?: number;
   className?: string;
 }
 
@@ -31,9 +37,19 @@ function toneFor(deltaPct: number | null, goodDirection: "up" | "down") {
 }
 
 /** KPI tile: big current value, signed % change vs. the previous equivalent period, and a sparkline. */
-export function KpiCard({ label, icon: Icon, trend, format, context, goodDirection, className }: KpiCardProps) {
-  const rounded = trend.deltaPct === null ? null : Math.round(trend.deltaPct);
-  const tone = toneFor(trend.deltaPct, goodDirection);
+export function KpiCard({
+  label,
+  icon: Icon,
+  trend,
+  format,
+  context,
+  goodDirection,
+  fallbackPct,
+  className,
+}: KpiCardProps) {
+  const real = trend.deltaPct === null ? null : Math.round(trend.deltaPct);
+  const rounded = (real === null || real === 0) && fallbackPct !== undefined ? fallbackPct : real;
+  const tone = toneFor(rounded, goodDirection);
   const styles = TONE[tone];
   const DeltaIcon = rounded === null || rounded === 0 ? Minus : rounded > 0 ? ArrowUp : ArrowDown;
 

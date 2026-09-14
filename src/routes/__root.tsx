@@ -6,7 +6,10 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { LayoutGrid } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { useSalonStore } from "@/lib/store";
 
@@ -42,9 +45,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold">This page didn't load</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong. Try refreshing.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">Something went wrong. Try refreshing.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -71,34 +72,60 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => {
     const fallbackTitle = `${useSalonStore.getState().salonProfile.name} — Premium hair salon booking`;
     return {
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: fallbackTitle },
-      {
-        name: "description",
-        content:
-          "Premium booking platform for hair salons and barbershops. Book in seconds, manage your salon like an operating system.",
-      },
-      { property: "og:title", content: fallbackTitle },
-      { property: "og:type", content: "website" },
-      { name: "twitter:title", content: fallbackTitle },
-      { name: "description", content: "Trimly is a barber booking and business dashboard for independent barbers." },
-      { property: "og:description", content: "Trimly is a barber booking and business dashboard for independent barbers." },
-      { name: "twitter:description", content: "Trimly is a barber booking and business dashboard for independent barbers." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1f9f21d7-b627-4fc9-a76d-ebf1f67d7d96/id-preview-8062d78c--8482e4c5-95d6-4696-a2e1-c9514fc10a7b.lovable.app-1779993805471.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1f9f21d7-b627-4fc9-a76d-ebf1f67d7d96/id-preview-8062d78c--8482e4c5-95d6-4696-a2e1-c9514fc10a7b.lovable.app-1779993805471.png" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-    links: [
-      { rel: "stylesheet", href: appCss },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter+Tight:wght@300;400;500;600;700&display=swap",
-      },
-    ],
+      meta: [
+        { charSet: "utf-8" },
+        { name: "viewport", content: "width=device-width, initial-scale=1" },
+        // Instalable en el iPad desde "Añadir a pantalla de inicio": se abre a
+        // pantalla completa, sin barra del navegador ni el dominio de pruebas.
+        { name: "apple-mobile-web-app-capable", content: "yes" },
+        { name: "mobile-web-app-capable", content: "yes" },
+        { name: "apple-mobile-web-app-status-bar-style", content: "black" },
+        { name: "apple-mobile-web-app-title", content: "Trimly" },
+        { name: "theme-color", content: "#111113" },
+        { title: fallbackTitle },
+        {
+          name: "description",
+          content:
+            "Premium booking platform for hair salons and barbershops. Book in seconds, manage your salon like an operating system.",
+        },
+        { property: "og:title", content: fallbackTitle },
+        { property: "og:type", content: "website" },
+        { name: "twitter:title", content: fallbackTitle },
+        {
+          name: "description",
+          content: "Trimly is a barber booking and business dashboard for independent barbers.",
+        },
+        {
+          property: "og:description",
+          content: "Trimly is a barber booking and business dashboard for independent barbers.",
+        },
+        {
+          name: "twitter:description",
+          content: "Trimly is a barber booking and business dashboard for independent barbers.",
+        },
+        {
+          property: "og:image",
+          content:
+            "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1f9f21d7-b627-4fc9-a76d-ebf1f67d7d96/id-preview-8062d78c--8482e4c5-95d6-4696-a2e1-c9514fc10a7b.lovable.app-1779993805471.png",
+        },
+        {
+          name: "twitter:image",
+          content:
+            "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1f9f21d7-b627-4fc9-a76d-ebf1f67d7d96/id-preview-8062d78c--8482e4c5-95d6-4696-a2e1-c9514fc10a7b.lovable.app-1779993805471.png",
+        },
+        { name: "twitter:card", content: "summary_large_image" },
+      ],
+      links: [
+        { rel: "stylesheet", href: appCss },
+        { rel: "manifest", href: "/manifest.webmanifest" },
+        { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+        { rel: "preconnect", href: "https://fonts.googleapis.com" },
+        { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+        {
+          rel: "stylesheet",
+          href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter+Tight:wght@300;400;500;600;700&display=swap",
+        },
+      ],
     };
   },
   shellComponent: RootShell,
@@ -142,7 +169,33 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      <VolverAlRutero />
       <Toaster position="top-center" />
     </QueryClientProvider>
+  );
+}
+
+/**
+ * Instalada como app no hay barra del navegador, y por tanto tampoco botón de
+ * atrás: sin esto, una vez dentro de una demo no habría forma de pasar a la
+ * siguiente parada. Solo aparece en ese modo, pequeño y en una esquina, para no
+ * estorbar lo que se le está enseñando al cliente.
+ */
+function VolverAlRutero() {
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const [app, setApp] = useState(false);
+  useEffect(() => {
+    const nav = window.navigator as Navigator & { standalone?: boolean };
+    setApp(window.matchMedia("(display-mode: standalone)").matches || nav.standalone === true);
+  }, []);
+  if (!app || path === "/rutero") return null;
+  return (
+    <a
+      href="/rutero"
+      aria-label="Volver al rutero"
+      className="fixed bottom-4 left-4 z-[60] flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white/70 backdrop-blur transition-opacity hover:opacity-100 opacity-60"
+    >
+      <LayoutGrid className="h-4 w-4" />
+    </a>
   );
 }

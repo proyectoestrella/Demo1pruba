@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RuteroRouteImport } from './routes/rutero'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AppRouteImport } from './routes/app'
@@ -30,6 +31,11 @@ import { Route as SSalonSlugIndexRouteImport } from './routes/s.$salonSlug.index
 import { Route as SSalonSlugConfirmationRouteImport } from './routes/s.$salonSlug.confirmation'
 import { Route as SSalonSlugBookRouteImport } from './routes/s.$salonSlug.book'
 
+const RuteroRoute = RuteroRouteImport.update({
+  id: '/rutero',
+  path: '/rutero',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/rutero': typeof RuteroRoute
   '/api/foto': typeof ApiFotoRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/calendar': typeof AppCalendarRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/rutero': typeof RuteroRoute
   '/api/foto': typeof ApiFotoRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/calendar': typeof AppCalendarRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/rutero': typeof RuteroRoute
   '/api/foto': typeof ApiFotoRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/calendar': typeof AppCalendarRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/dashboard'
     | '/login'
+    | '/rutero'
     | '/api/foto'
     | '/app/appointments'
     | '/app/calendar'
@@ -224,6 +234,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/login'
+    | '/rutero'
     | '/api/foto'
     | '/app/appointments'
     | '/app/calendar'
@@ -245,6 +256,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/dashboard'
     | '/login'
+    | '/rutero'
     | '/api/foto'
     | '/app/appointments'
     | '/app/calendar'
@@ -268,12 +280,20 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
+  RuteroRoute: typeof RuteroRoute
   ApiFotoRoute: typeof ApiFotoRoute
   SSalonSlugRoute: typeof SSalonSlugRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/rutero': {
+      id: '/rutero'
+      path: '/rutero'
+      fullPath: '/rutero'
+      preLoaderRoute: typeof RuteroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -468,6 +488,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
+  RuteroRoute: RuteroRoute,
   ApiFotoRoute: ApiFotoRoute,
   SSalonSlugRoute: SSalonSlugRouteWithChildren,
 }

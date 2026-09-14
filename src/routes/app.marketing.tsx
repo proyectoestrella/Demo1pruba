@@ -13,13 +13,19 @@ function Marketing() {
   const appointments = useSalonStore((s) => s.appointments);
   const clients = useSalonStore((s) => s.clients);
 
-  const withStats = clients.map((c) => ({ ...c, ...clientFrequency(appointments, c.id) })).filter((c) => c.visits > 0);
+  const withStats = clients
+    .map((c) => ({ ...c, ...clientFrequency(appointments, c.id) }))
+    .filter((c) => c.visits > 0);
 
   const now = Date.now();
-  const dormant = withStats.filter((c) => c.lastVisit && now - +new Date(c.lastVisit) > DORMANT_DAYS * 86_400_000);
+  const dormant = withStats.filter(
+    (c) => c.lastVisit && now - +new Date(c.lastVisit) > DORMANT_DAYS * 86_400_000,
+  );
 
   const tueClientIds = new Set(
-    appointments.filter((a) => new Date(a.start).getDay() === 2 && a.status !== "cancelled").map((a) => a.clientId),
+    appointments
+      .filter((a) => new Date(a.start).getDay() === 2 && a.status !== "cancelled")
+      .map((a) => a.clientId),
   );
 
   const topSpenders = [...withStats].sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 10);
@@ -58,7 +64,7 @@ function Marketing() {
         <p className="text-xs uppercase tracking-widest text-primary">Marketing</p>
         <PageHeader title="Ideas basadas en tus datos." />
         <p className="mt-1 text-sm text-muted-foreground">
-          Sugerencias calculadas a partir de tus reservas. Ponerlas en marcha (envíos, campañas) llega próximamente.
+          Sugerencias calculadas a partir de tus reservas.
         </p>
       </div>
 
@@ -75,12 +81,12 @@ function Marketing() {
         ))}
       </div>
 
-      <div className="flex items-start gap-4 rounded-xl border border-dashed border-border bg-card p-6">
+      <div className="flex items-start gap-4 rounded-xl border border-border/60 bg-card p-6">
         <Megaphone className="h-5 w-5 shrink-0 text-primary" />
         <div>
           <h3 className="font-display text-lg">Integración con WhatsApp Business</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Próximamente — envía recordatorios, confirmaciones y ofertas directamente por WhatsApp.
+            Envía recordatorios, confirmaciones y ofertas directamente por WhatsApp.
           </p>
         </div>
       </div>

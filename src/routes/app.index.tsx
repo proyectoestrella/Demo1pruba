@@ -70,6 +70,7 @@ function Home() {
     format: (n: number) => string;
     context: string;
     goodDirection: "up" | "down";
+    fallbackPct?: number;
   }[] = [
     {
       label: "Citas hoy",
@@ -78,6 +79,7 @@ function Home() {
       format: (n) => Math.round(n).toString(),
       context: "vs. ayer",
       goodDirection: "up",
+      fallbackPct: 12,
     },
     {
       label: "Ingresos hoy",
@@ -86,6 +88,7 @@ function Home() {
       format: (n) => `€${Math.round(n).toLocaleString("es")}`,
       context: "vs. ayer",
       goodDirection: "up",
+      fallbackPct: 9,
     },
     {
       label: "Ocupación semanal",
@@ -146,6 +149,7 @@ function Home() {
             format={k.format}
             context={k.context}
             goodDirection={k.goodDirection}
+            fallbackPct={k.fallbackPct}
           />
         ))}
       </div>
