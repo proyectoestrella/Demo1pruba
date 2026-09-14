@@ -81,7 +81,7 @@ export function KpiCard({
       />
       {/* Etiqueta y comparación en dos líneas: en cinco columnas, "Cancelaciones"
           y "vs. semana pasada" no caben lado a lado y la segunda se salía. */}
-      <p className="mt-0.5 truncate text-xs text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-xs leading-tight text-muted-foreground">{label}</p>
       <p className="truncate text-[10px] text-muted-foreground/70">{context}</p>
       <div className="mt-3">
         <Sparkline data={trend.spark} color={styles.line} />

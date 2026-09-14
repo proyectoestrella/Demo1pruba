@@ -208,7 +208,10 @@ function ControlesIpad() {
     const nav = window.navigator as Navigator & { standalone?: boolean };
     setApp(window.matchMedia("(display-mode: standalone)").matches || nav.standalone === true);
     // iPadOS se presenta como Mac: se distingue por la pantalla táctil.
-    setTablet(navigator.maxTouchPoints > 1 && window.innerWidth >= 700);
+    setTablet(
+      (navigator.maxTouchPoints > 1 || window.matchMedia("(any-pointer: coarse)").matches) &&
+        window.innerWidth >= 700,
+    );
     setPuede(Boolean(d.fullscreenEnabled || d.webkitFullscreenEnabled));
     const sync = () =>
       setEnPantallaCompleta(Boolean(d.fullscreenElement || d.webkitFullscreenElement));
