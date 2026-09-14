@@ -9,7 +9,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { LayoutGrid } from "lucide-react";
+import { LayoutGrid, Maximize, Minimize } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { useSalonStore } from "@/lib/store";
 
@@ -169,33 +169,98 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
-      <VolverAlRutero />
+      <ControlesIpad />
       <Toaster position="top-center" />
     </QueryClientProvider>
   );
 }
 
 /**
- * Instalada como app no hay barra del navegador, y por tanto tampoco botón de
- * atrás: sin esto, una vez dentro de una demo no habría forma de pasar a la
- * siguiente parada. Solo aparece en ese modo, pequeño y en una esquina, para no
- * estorbar lo que se le está enseñando al cliente.
+ * Controles para enseñar las demos en el iPad sin la barra del navegador.
+ *
+ * Dos vías, porque en el iPad cada una falla por un motivo distinto:
+ * - Instalada desde "Añadir a pantalla de inicio" ya se abre sin barra, pero
+ *   no tiene botón de atrás: aquí se ofrece volver a la lista del rutero.
+ * - Abierta en Safari o Chrome, un toque en el botón pide pantalla completa al
+ *   navegador (API Fullscreen, disponible en iPadOS). Se mantiene mientras se
+ *   navega dentro de la web, y se pierde si la página se recarga entera.
+ *
+ * Solo aparecen en tablet o en modo app: quien abre el enlace en su móvil no
+ * ve nada.
  */
-function VolverAlRutero() {
+type DocFs = Document & {
+  webkitFullscreenElement?: Element | null;
+  webkitFullscreenEnabled?: boolean;
+  webkitExitFullscreen?: () => void;
+};
+type ElFs = HTMLElement & { webkitRequestFullscreen?: () => void };
+
+function ControlesIpad() {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const router = useRouter();
   const [app, setApp] = useState(false);
+  const [tablet, setTablet] = useState(false);
+  const [puede, setPuede] = useState(false);
+  const [enPantallaCompleta, setEnPantallaCompleta] = useState(false);
+
   useEffect(() => {
+    const d = document as DocFs;
     const nav = window.navigator as Navigator & { standalone?: boolean };
     setApp(window.matchMedia("(display-mode: standalone)").matches || nav.standalone === true);
+    // iPadOS se presenta como Mac: se distingue por la pantalla táctil.
+    setTablet(navigator.maxTouchPoints > 1 && window.innerWidth >= 700);
+    setPuede(Boolean(d.fullscreenEnabled || d.webkitFullscreenEnabled));
+    const sync = () =>
+      setEnPantallaCompleta(Boolean(d.fullscreenElement || d.webkitFullscreenElement));
+    document.addEventListener("fullscreenchange", sync);
+    document.addEventListener("webkitfullscreenchange", sync);
+    return () => {
+      document.removeEventListener("fullscreenchange", sync);
+      document.removeEventListener("webkitfullscreenchange", sync);
+    };
   }, []);
-  if (!app || path === "/rutero") return null;
+
+  const alternar = () => {
+    const d = document as DocFs;
+    const el = document.documentElement as ElFs;
+    if (d.fullscreenElement || d.webkitFullscreenElement) {
+      if (document.exitFullscreen) void document.exitFullscreen();
+      else d.webkitExitFullscreen?.();
+    } else if (el.requestFullscreen) {
+      void el.requestFullscreen().catch(() => el.webkitRequestFullscreen?.());
+    } else {
+      el.webkitRequestFullscreen?.();
+    }
+  };
+
+  const verVolver = (app || enPantallaCompleta) && path !== "/rutero";
+  const verPantalla = !app && tablet && puede;
+  if (!verVolver && !verPantalla) return null;
+
+  const boton =
+    "flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white/70 opacity-60 backdrop-blur transition-opacity hover:opacity-100";
   return (
-    <a
-      href="/rutero"
-      aria-label="Volver al rutero"
-      className="fixed bottom-4 left-4 z-[60] flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white/70 backdrop-blur transition-opacity hover:opacity-100 opacity-60"
-    >
-      <LayoutGrid className="h-4 w-4" />
-    </a>
+    <div className="fixed bottom-4 left-4 z-[60] flex gap-2">
+      {verVolver && (
+        <button
+          type="button"
+          aria-label="Volver al rutero"
+          className={boton}
+          onClick={() => void router.navigate({ to: "/rutero" })}
+        >
+          <LayoutGrid className="h-4 w-4" />
+        </button>
+      )}
+      {verPantalla && (
+        <button
+          type="button"
+          aria-label={enPantallaCompleta ? "Salir de pantalla completa" : "Pantalla completa"}
+          className={boton}
+          onClick={alternar}
+        >
+          {enPantallaCompleta ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+        </button>
+      )}
+    </div>
   );
 }

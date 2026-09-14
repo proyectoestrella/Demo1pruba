@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { RUTERO } from "@/lib/rutero";
@@ -32,6 +32,7 @@ function portada(path: string, tipo: string) {
 }
 
 function Rutero() {
+  const router = useRouter();
   const [q, setQ] = useState("");
   const paradas = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -75,6 +76,12 @@ function Rutero() {
                 <a
                   key={p.parada}
                   href={p.path}
+                  onClick={(e) => {
+                    // Navegar sin recargar: una recarga completa saca al iPad de
+                    // la pantalla completa.
+                    e.preventDefault();
+                    void router.navigate({ href: p.path });
+                  }}
                   className="group flex items-center gap-3 rounded-xl border border-border/60 bg-card p-2.5 transition-colors hover:border-primary/50"
                 >
                   <img

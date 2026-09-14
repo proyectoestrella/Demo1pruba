@@ -54,7 +54,12 @@ export function KpiCard({
   const DeltaIcon = rounded === null || rounded === 0 ? Minus : rounded > 0 ? ArrowUp : ArrowDown;
 
   return (
-    <div className={cn("rounded-xl border border-border/60 bg-card p-4", className)}>
+    <div
+      className={cn(
+        "min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card p-4",
+        className,
+      )}
+    >
       <div className="flex items-center justify-between gap-2">
         <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
         <div
@@ -74,10 +79,10 @@ export function KpiCard({
         format={format}
         duration={1.2}
       />
-      <div className="mt-0.5 flex items-baseline justify-between gap-2">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="shrink-0 text-[10px] text-muted-foreground/70">{context}</p>
-      </div>
+      {/* Etiqueta y comparación en dos líneas: en cinco columnas, "Cancelaciones"
+          y "vs. semana pasada" no caben lado a lado y la segunda se salía. */}
+      <p className="mt-0.5 truncate text-xs text-muted-foreground">{label}</p>
+      <p className="truncate text-[10px] text-muted-foreground/70">{context}</p>
       <div className="mt-3">
         <Sparkline data={trend.spark} color={styles.line} />
       </div>
