@@ -34,7 +34,6 @@ import { MobileBookingBar } from "@/components/MobileBookingBar";
 import { Reveal } from "@/components/Reveal";
 import { TextEffect } from "@/components/motion-primitives/text-effect";
 import { AnimatedGroup } from "@/components/motion-primitives/animated-group";
-import { CountUp } from "@/components/reactbits/CountUp";
 import { ShinyText } from "@/components/reactbits/ShinyText";
 import { SpotlightCard } from "@/components/reactbits/SpotlightCard";
 import { ScrollVelocity } from "@/components/reactbits/ScrollVelocity";
@@ -247,20 +246,6 @@ function SalonHome() {
   }));
   const totalTeamYears = employees.reduce((sum, e) => sum + e.yearsExperience, 0);
   // Cifras sacadas del propio catálogo/equipo, no inventadas.
-  const stats = [
-    { value: employees.length, suffix: "", label: "barberos en plantilla" },
-    {
-      value: Math.max(...employees.map((e) => e.yearsExperience)),
-      suffix: "+",
-      label: "años de oficio",
-    },
-    { value: activeServices.length, suffix: "", label: "servicios en carta" },
-    {
-      value: Math.min(...activeServices.map((s) => s.durationMin)),
-      suffix: " min",
-      label: "el servicio más rápido",
-    },
-  ];
 
   return (
     <>
@@ -429,22 +414,6 @@ function SalonHome() {
           className="font-display text-xl text-muted-foreground/70 sm:text-2xl"
         />
       </div>
-
-      {/* Cifras del salón */}
-      <section className="border-b border-border/40">
-        <div className="mx-auto grid max-w-5xl grid-cols-2 gap-y-8 px-6 py-12 md:grid-cols-4">
-          {stats.map((s, i) => (
-            <Reveal key={s.label} delay={i * 80} className="text-center">
-              <p className="font-display text-4xl text-foreground md:text-5xl">
-                <CountUp to={s.value} format={(v) => `${Math.round(v)}${s.suffix}`} />
-              </p>
-              <p className="mt-1 text-xs uppercase tracking-widest text-muted-foreground">
-                {s.label}
-              </p>
-            </Reveal>
-          ))}
-        </div>
-      </section>
 
       {/* Servicios destacados */}
       <section id="servicios" className="mx-auto max-w-5xl px-6 py-16 md:py-24">

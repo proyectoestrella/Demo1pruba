@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { useDisplayProfile } from "@/lib/use-display-profile";
+import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "@/lib/demo-profile";
 import { weekSchedule } from "@/lib/opening-hours";
 import { Instagram, MapPin, Phone, Lock, Menu } from "lucide-react";
 import { Logo } from "@/components/Logo";
@@ -42,6 +43,19 @@ function SalonLayout() {
     path.includes("/book") || path.includes("/confirmation") || path.includes("/waitlist");
   const profile = useDisplayProfile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const demoRaw = useRouterState({
+    select: (s) => (s.location.search as Record<string, unknown>)?.[DEMO_PARAM],
+  });
+  const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
+
+  // Abrir el enlace de una demo la convierte en el salón activo de este
+  // navegador. La personalización viaja en el enlace, pero el acceso barbero,
+  // el panel y la vuelta a la web no lo llevan: sin esto, en cuanto se pulsaba
+  // "Acceso barbero" todo volvía a ser el salón de ejemplo delante del cliente.
+  useEffect(() => {
+    const fromUrl = decodeDemoProfile(typeof demoRaw === "string" ? demoRaw : undefined);
+    if (fromUrl) updateSalonProfile({ ...blankDemoProfile(), ...fromUrl });
+  }, [demoRaw, updateSalonProfile]);
 
   useEffect(() => {
     document.title = `${profile.name} — Reserva online`;
