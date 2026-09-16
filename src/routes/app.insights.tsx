@@ -75,12 +75,12 @@ function Insights() {
         </div>
 
         {/* Consulta libre sobre los mismos datos, sin salir de la pantalla. */}
-        <div className="flex min-h-[26rem] min-w-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-card">
+        <div className="flex min-h-[32rem] min-w-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-card">
           <div className="border-b border-border/60 px-6 py-4">
             <h2 className="font-display text-xl">Pregúntale a tus datos</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Responde calculando sobre tus reservas. No es un modelo de lenguaje: si no
-              sabe algo, lo dice.
+              Responde calculando sobre tus reservas: ingresos, ocupación, clientes, agenda y
+              recomendaciones. No es un modelo de lenguaje: si no sabe algo, lo dice.
             </p>
           </div>
           <AssistantPanel className="flex-1" />

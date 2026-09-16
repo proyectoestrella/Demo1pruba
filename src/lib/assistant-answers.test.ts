@@ -7,7 +7,7 @@
 import { expect, test } from "bun:test";
 import { answerFor } from "./assistant-answers";
 import { employees, services } from "./mock/salon";
-import type { Appointment } from "./mock/types";
+import type { Appointment, Client } from "./mock/types";
 
 /**
  * Las citas se fechan hoy a propósito: las intenciones de ingresos y ocupación
@@ -16,6 +16,22 @@ import type { Appointment } from "./mock/types";
  */
 function todayAt(hour: number) {
   const d = new Date();
+  d.setHours(hour, 0, 0, 0);
+  return d.toISOString();
+}
+
+function daysAgoAt(days: number, hour: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  d.setHours(hour, 0, 0, 0);
+  return d.toISOString();
+}
+
+/** Día 15 del mes actual menos `n` meses — evita líos de fin de mes. */
+function monthsAgoAt(monthsAgo: number, hour: number) {
+  const d = new Date();
+  d.setDate(15);
+  d.setMonth(d.getMonth() - monthsAgo);
   d.setHours(hour, 0, 0, 0);
   return d.toISOString();
 }
@@ -37,8 +53,18 @@ function appt(over: Partial<Appointment> = {}): Appointment {
   };
 }
 
-function ctx(appointments: Appointment[]) {
-  return { appointments, services, employees, waitlist: [], salonName: "Test" };
+function client(over: Partial<Client> = {}): Client {
+  return {
+    id: `c-${seq++}`,
+    name: "Cliente",
+    phone: "600000000",
+    createdAt: daysAgoAt(200, 10),
+    ...over,
+  };
+}
+
+function ctx(appointments: Appointment[], clients: Client[] = []) {
+  return { appointments, services, employees, waitlist: [], clients, salonName: "Test" };
 }
 
 test("cuenta las citas de hoy e ignora las canceladas", () => {
@@ -72,4 +98,61 @@ test("las tildes y mayúsculas no rompen el reconocimiento", () => {
 test("una pregunta que no entiende se admite en vez de inventarse una respuesta", () => {
   const answer = answerFor("¿va a llover mañana?", ctx([appt()]));
   expect(answer).toContain("No sé responder");
+});
+
+test("la tasa de cancelaciones y de no-shows se calcula sobre el total de citas", () => {
+  const answer = answerFor(
+    "¿cuál es mi tasa de cancelaciones?",
+    ctx([appt(), appt(), appt({ status: "cancelled" }), appt({ status: "no-show" })]),
+  );
+  expect(answer).toContain("25%");
+});
+
+test("detecta clientes inactivos por su última visita, no a los que acaban de venir", () => {
+  const oldClient = client({ id: "old", name: "Elena" });
+  const recentClient = client({ id: "recent", name: "Marta" });
+  const answer = answerFor(
+    "¿qué clientes están inactivos?",
+    ctx(
+      [
+        appt({ clientId: "old", clientName: "Elena", start: daysAgoAt(90, 10) }),
+        appt({ clientId: "recent", clientName: "Marta", start: daysAgoAt(2, 10) }),
+      ],
+      [oldClient, recentClient],
+    ),
+  );
+  expect(answer).toContain("Elena");
+  expect(answer).not.toContain("Marta");
+});
+
+test("la ocupación por profesional desglosa cada nombre del equipo", () => {
+  const answer = answerFor(
+    "¿cómo va la ocupación de cada profesional?",
+    ctx([appt({ employeeId: "mario" }), appt({ employeeId: "diego" })]),
+  );
+  expect(answer).toContain("Mario");
+  expect(answer).toContain("Diego");
+});
+
+test("el servicio más rentable por hora sale de precio y duración del catálogo, no de reservas", () => {
+  const answer = answerFor("¿qué servicio es más rentable por hora?", ctx([]));
+  // Afeitado a navaja: 16€ / 30 min = 32€/hora, el más alto del catálogo de ejemplo.
+  expect(answer).toContain("Afeitado a navaja");
+});
+
+test("compara los ingresos del mes con el mes anterior", () => {
+  const answer = answerFor(
+    "¿cómo va este mes comparado con el anterior?",
+    ctx([
+      appt({ start: monthsAgoAt(0, 10), priceEur: 40 }),
+      appt({ start: monthsAgoAt(1, 10), priceEur: 20 }),
+    ]),
+  );
+  expect(answer).toMatch(/€/);
+  expect(answer.toLowerCase()).toContain("mes pasado");
+});
+
+test("la recomendación general no inventa nada cuando no hay datos", () => {
+  const answer = answerFor("dame una recomendación para hoy", ctx([]));
+  expect(answer.length).toBeGreaterThan(0);
 });
