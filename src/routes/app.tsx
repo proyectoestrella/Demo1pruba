@@ -18,11 +18,13 @@ import {
 import { cn } from "@/lib/utils";
 import { salon } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
+import { useSyncPanelV2FromUrl, usePanelV2 } from "@/lib/use-panel-v2";
 import { ViewSwitcher } from "@/components/ViewSwitcher";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
+import { PanelV2Shell } from "@/components/PanelV2Shell";
 import { hasSeenTour, startTour } from "@/lib/tour";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +38,11 @@ import {
 export const Route = createFileRoute("/app")({
   head: () => ({
     meta: [{ title: `Dashboard · ${useSalonStore.getState().salonProfile.name}` }],
+    // Manifest propio del panel ("siShow · Panel", start_url /app?v=2) además
+    // del de la web pública en __root.tsx, que se queda tal cual. Solo cambia
+    // qué icono de "Añadir a pantalla de inicio" instala quien lo abre desde
+    // aquí — no afecta a nada de /s/*.
+    links: [{ rel: "manifest", href: "/manifest-panel.webmanifest" }],
   }),
   component: DashboardLayout,
 });
@@ -147,6 +154,17 @@ function SidebarFooter() {
 }
 
 function DashboardLayout() {
+  // Sincroniza `?v=2`/`?v=1` con la preferencia guardada del panel — tiene
+  // que correr para TODAS las rutas /app/*, entren o no por aquí primero.
+  useSyncPanelV2FromUrl();
+  const panelV2 = usePanelV2();
+
+  if (panelV2) return <PanelV2Shell />;
+  return <DashboardLayoutV1 />;
+}
+
+/** El panel de siempre, sin tocar — se activa cuando `panelV2` está desactivado. */
+function DashboardLayoutV1() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const salonInitial = salonName.trim().charAt(0).toUpperCase() || "?";
