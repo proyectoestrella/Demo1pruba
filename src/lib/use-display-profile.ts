@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "./demo-profile";
 import { useSalonStore } from "./store";
 import type { SalonProfile } from "./mock/types";
+import { inferBusinessType, type BusinessType } from "./business-type";
 
 /**
  * El perfil que deben pintar las páginas públicas.
@@ -32,4 +33,17 @@ export function useDisplayProfile(): SalonProfile {
     // eran suyos y el discurso de otro, que es peor que no decir nada.
     return { ...stored, ...blankDemoProfile(), ...fromUrl };
   }, [stored, raw]);
+}
+
+/**
+ * El tipo de negocio del perfil que se está mostrando (ver `useDisplayProfile`),
+ * deducido una sola vez aquí y consumido por todas las pantallas públicas en
+ * vez de que cada una vuelva a mirar el tagline con su propia regla.
+ */
+export function useBusinessType(): BusinessType {
+  const profile = useDisplayProfile();
+  return useMemo(
+    () => inferBusinessType(profile.tagline, profile.name),
+    [profile.tagline, profile.name],
+  );
 }

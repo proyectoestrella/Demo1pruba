@@ -3,6 +3,7 @@ import process from "node:process";
 import { z } from "zod";
 import { fromGoogleWeekdayDescriptions } from "../opening-hours";
 import { GALLERY_MAX } from "../demo-photos";
+import { BUSINESS_LABEL, inferBusinessType } from "../business-type";
 
 /**
  * Rellena una demo a partir de un enlace de Google Maps.
@@ -131,14 +132,13 @@ export function limpiarNombre(nombre: string): string {
  * en la demo y Google no lo da: sin esto, el lote lo pone igual para todas y
  * una "Peluquería de Señoras" sale rotulada como barbería. Se puede corregir
  * a mano; esto solo evita el error más frecuente.
+ *
+ * La deducción en sí vive en `lib/business-type.ts` — única fuente para toda
+ * la app — y nunca cae en "Barbería" por defecto: sin pistas se asume
+ * "Peluquería", que es el oficio más frecuente del rutero.
  */
 export function inferTipo(nombre: string): string {
-  const n = nombre.toLowerCase();
-  if (/barber|barbería|barberia|caballeros|shave/.test(n)) return "Barbería";
-  if (/señoras|senoras/.test(n)) return "Peluquería de señoras";
-  if (/est[ée]tica|nails|uñas|belleza|beauty|spa/.test(n)) return "Peluquería y estética";
-  if (/peluquer|estilista|hair|salon|salón/.test(n)) return "Peluquería";
-  return "";
+  return BUSINESS_LABEL[inferBusinessType(nombre)];
 }
 
 /** Busca el sitio en Places y devuelve sus datos. Requiere clave. */

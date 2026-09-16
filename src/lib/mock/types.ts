@@ -11,6 +11,8 @@ export interface Service {
   image?: string;
   /** Whether the service is currently offered / bookable. Defaults to true when absent. */
   active?: boolean;
+  /** Grupo del menú público ("Cortes", "Color"…). Ver lib/business-type.ts. */
+  category?: string;
 }
 
 export interface Employee {

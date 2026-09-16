@@ -3,19 +3,26 @@ import { useState, type FormEvent } from "react";
 import { Lock, ArrowLeft, Loader2 } from "lucide-react";
 import { salon } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
+import { BUSINESS_LABEL, inferBusinessType, professionalWord } from "@/lib/business-type";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: `Acceso barbero · ${useSalonStore.getState().salonProfile.name}` }] }),
+  head: () => {
+    const profile = useSalonStore.getState().salonProfile;
+    const tipo = inferBusinessType(profile.tagline, profile.name);
+    return { meta: [{ title: `Acceso ${professionalWord(tipo)} · ${profile.name}` }] };
+  },
   component: LoginPage,
 });
 
 function LoginPage() {
   const navigate = useNavigate();
-  const salonName = useSalonStore((s) => s.salonProfile.name);
+  const profile = useSalonStore((s) => s.salonProfile);
+  const salonName = profile.name;
+  const tipo = inferBusinessType(profile.tagline, profile.name);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -42,7 +49,9 @@ function LoginPage() {
             <Logo />
             <div className="leading-tight">
               <p className="font-display text-base">{salonName}</p>
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Barbería</p>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                {BUSINESS_LABEL[tipo]}
+              </p>
             </div>
           </Link>
           <Link
@@ -62,7 +71,7 @@ function LoginPage() {
               <Lock className="h-4 w-4" />
             </div>
             <div>
-              <h1 className="font-display text-xl">Acceso barbero</h1>
+              <h1 className="font-display text-xl">Acceso {professionalWord(tipo)}</h1>
               <p className="text-xs text-muted-foreground">Entra al panel de gestión del salón</p>
             </div>
           </div>

@@ -6,6 +6,7 @@ import { Lens } from "@/components/magicui/lens";
 import galleryRecorte from "@/assets/gallery-recorte.jpg";
 import galleryDegradado from "@/assets/gallery-degradado.jpg";
 import gallerySalon from "@/assets/gallery-salon.jpg";
+import { inferBusinessType } from "@/lib/business-type";
 
 /**
  * Fotos de relleno, para cuando el local no tiene suficientes suyas.
@@ -24,7 +25,7 @@ const RELLENO_BARBERIA = [
 
 /** El relleno arranca por lo que se parece más a este negocio. */
 function relleno(tipo: string | undefined) {
-  const esBarberia = /barber/i.test(tipo ?? "");
+  const esBarberia = inferBusinessType(tipo) === "barberia";
   return esBarberia ? [...RELLENO_BARBERIA, RELLENO_SALON] : [RELLENO_SALON, ...RELLENO_BARBERIA];
 }
 

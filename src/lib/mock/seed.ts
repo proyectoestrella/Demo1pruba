@@ -1,5 +1,6 @@
-import { employees, services } from "./salon";
-import type { Appointment, Client, EmployeeId, WaitlistEntry } from "./types";
+import { employees as defaultEmployees, services as defaultServices } from "./salon";
+import type { Appointment, Client, Employee, EmployeeId, Service, WaitlistEntry } from "./types";
+import { FIRST_NAMES_BY_TYPE, LAST_NAMES, withExampleNotes, type BusinessType } from "../business-type";
 
 // Deterministic pseudo-random
 function mulberry32(seed: number) {
@@ -11,66 +12,26 @@ function mulberry32(seed: number) {
   };
 }
 
-const rand = mulberry32(42);
-const pick = <T>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
+function buildClients(type: BusinessType): Client[] {
+  const rand = mulberry32(42);
+  const pick = <T,>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
+  const FIRST = FIRST_NAMES_BY_TYPE[type];
 
-const FIRST = [
-  "Sofia",
-  "Lucia",
-  "Mateo",
-  "Diego",
-  "Carmen",
-  "Alejandro",
-  "Valentina",
-  "Pablo",
-  "Elena",
-  "Hugo",
-  "Martina",
-  "Bruno",
-  "Adriana",
-  "Nicolas",
-  "Camila",
-  "Javier",
-  "Paula",
-  "Marcos",
-  "Daniela",
-  "Andres",
-  "Isabella",
-  "Tomas",
-  "Renata",
-  "Emilio",
-];
-const LAST = [
-  "Garcia",
-  "Lopez",
-  "Martin",
-  "Ruiz",
-  "Vega",
-  "Torres",
-  "Romero",
-  "Castillo",
-  "Navarro",
-  "Iglesias",
-  "Serrano",
-  "Mendoza",
-  "Reyes",
-  "Ortega",
-  "Delgado",
-  "Cortes",
-];
+  const clients: Client[] = Array.from({ length: 52 }, (_, i) => {
+    const first = FIRST[i % FIRST.length];
+    const last = pick(LAST_NAMES);
+    const daysAgo = Math.floor(rand() * 400);
+    return {
+      id: `c${i + 1}`,
+      name: `${first} ${last}`,
+      phone: `+34 6${String(10 + i).padStart(2, "0")} ${String(100 + Math.floor(rand() * 800)).padStart(3, "0")} ${String(100 + Math.floor(rand() * 800)).padStart(3, "0")}`,
+      email: `${first.toLowerCase()}.${last.toLowerCase()}@mail.com`,
+      createdAt: new Date(Date.now() - daysAgo * 86400_000).toISOString(),
+    };
+  });
 
-export const clients: Client[] = Array.from({ length: 52 }, (_, i) => {
-  const first = FIRST[i % FIRST.length];
-  const last = pick(LAST);
-  const daysAgo = Math.floor(rand() * 400);
-  return {
-    id: `c${i + 1}`,
-    name: `${first} ${last}`,
-    phone: `+34 6${String(10 + i).padStart(2, "0")} ${String(100 + Math.floor(rand() * 800)).padStart(3, "0")} ${String(100 + Math.floor(rand() * 800)).padStart(3, "0")}`,
-    email: `${first.toLowerCase()}.${last.toLowerCase()}@mail.com`,
-    createdAt: new Date(Date.now() - daysAgo * 86400_000).toISOString(),
-  };
-});
+  return withExampleNotes(clients, type);
+}
 
 function isoAt(daysFromToday: number, hour: number, minute = 0) {
   const d = new Date();
@@ -80,7 +41,13 @@ function isoAt(daysFromToday: number, hour: number, minute = 0) {
   return d.toISOString();
 }
 
-function genAppointments(): Appointment[] {
+function buildAppointments(
+  clients: Client[],
+  employees: Employee[],
+  services: Service[],
+): Appointment[] {
+  const rand = mulberry32(1042);
+  const pick = <T,>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
   const out: Appointment[] = [];
   let nextId = 1;
 
@@ -146,43 +113,76 @@ function genAppointments(): Appointment[] {
   return out;
 }
 
-export const seedAppointments: Appointment[] = genAppointments();
+/**
+ * Cuatro entradas fijas de lista de espera. Los ids de servicio ("corte",
+ * "corte-barba", "barba", "afeitado") son de los que existen en los cuatro
+ * catálogos — ver `business-type.ts` — así que resuelven a un nombre válido
+ * sea cual sea el tipo activo, y los nombres de ejemplo son suficientemente
+ * neutros para cualquier tipo de salón.
+ */
+function buildWaitlist(): WaitlistEntry[] {
+  return [
+    {
+      id: "w1",
+      clientName: "Marta Vidal",
+      phone: "+34 611 111 222",
+      serviceId: "corte-barba",
+      preferredEmployeeId: "diego",
+      preferredRange: "Sat morning",
+      createdAt: new Date(Date.now() - 86400_000).toISOString(),
+    },
+    {
+      id: "w2",
+      clientName: "Pedro Sanz",
+      phone: "+34 622 333 444",
+      serviceId: "corte",
+      preferredEmployeeId: "any",
+      preferredRange: "Tue afternoon",
+      createdAt: new Date(Date.now() - 2 * 86400_000).toISOString(),
+    },
+    {
+      id: "w3",
+      clientName: "Aitana Roca",
+      phone: "+34 633 555 666",
+      serviceId: "afeitado",
+      preferredEmployeeId: "ruben",
+      preferredRange: "Fri after 17:00",
+      createdAt: new Date(Date.now() - 3 * 86400_000).toISOString(),
+    },
+    {
+      id: "w4",
+      clientName: "Iker Mora",
+      phone: "+34 644 777 888",
+      serviceId: "barba",
+      preferredEmployeeId: "mario",
+      preferredRange: "Anytime this week",
+      createdAt: new Date(Date.now() - 5 * 86400_000).toISOString(),
+    },
+  ];
+}
 
-export const seedWaitlist: WaitlistEntry[] = [
-  {
-    id: "w1",
-    clientName: "Marta Vidal",
-    phone: "+34 611 111 222",
-    serviceId: "corte-barba",
-    preferredEmployeeId: "diego",
-    preferredRange: "Sat morning",
-    createdAt: new Date(Date.now() - 86400_000).toISOString(),
-  },
-  {
-    id: "w2",
-    clientName: "Pedro Sanz",
-    phone: "+34 622 333 444",
-    serviceId: "corte",
-    preferredEmployeeId: "any",
-    preferredRange: "Tue afternoon",
-    createdAt: new Date(Date.now() - 2 * 86400_000).toISOString(),
-  },
-  {
-    id: "w3",
-    clientName: "Aitana Roca",
-    phone: "+34 633 555 666",
-    serviceId: "afeitado",
-    preferredEmployeeId: "ruben",
-    preferredRange: "Fri after 17:00",
-    createdAt: new Date(Date.now() - 3 * 86400_000).toISOString(),
-  },
-  {
-    id: "w4",
-    clientName: "Iker Mora",
-    phone: "+34 644 777 888",
-    serviceId: "barba",
-    preferredEmployeeId: "mario",
-    preferredRange: "Anytime this week",
-    createdAt: new Date(Date.now() - 5 * 86400_000).toISOString(),
-  },
-];
+export interface DemoSeed {
+  clients: Client[];
+  appointments: Appointment[];
+  waitlist: WaitlistEntry[];
+}
+
+/**
+ * Genera clientes, citas y lista de espera coherentes con un tipo de negocio
+ * y su equipo/catálogo activos. Determinista (misma semilla siempre) para
+ * que la demo no cambie de una recarga a otra dentro del mismo tipo.
+ */
+export function buildSeed(type: BusinessType, employees: Employee[], services: Service[]): DemoSeed {
+  const clients = buildClients(type);
+  return {
+    clients,
+    appointments: buildAppointments(clients, employees, services),
+    waitlist: buildWaitlist(),
+  };
+}
+
+const DEFAULT_SEED = buildSeed("barberia", defaultEmployees, defaultServices);
+
+export const clients: Client[] = DEFAULT_SEED.clients;
+export const seedAppointments: Appointment[] = DEFAULT_SEED.appointments;
+export const seedWaitlist: WaitlistEntry[] = DEFAULT_SEED.waitlist;

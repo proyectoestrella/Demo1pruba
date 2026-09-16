@@ -97,9 +97,14 @@ describe("inferTipo", () => {
   it("deduce el tipo de negocio del nombre", () => {
     expect(inferTipo("Barber Hamza for Men")).toBe("Barbería");
     expect(inferTipo("Peluquería Caballeros Jesús Moreno")).toBe("Barbería");
-    expect(inferTipo("Chispi Peluqueria de Señoras")).toBe("Peluquería de señoras");
+    // "Peluquería de señoras" se normaliza a la etiqueta canónica "Peluquería"
+    // (ver lib/business-type.ts) en vez de a un rótulo aparte solo para ella.
+    expect(inferTipo("Chispi Peluqueria de Señoras")).toBe("Peluquería");
     expect(inferTipo("A.R peluquería y estética")).toBe("Peluquería y estética");
     expect(inferTipo("JF estilistas")).toBe("Peluquería");
-    expect(inferTipo("Zitada")).toBe("");
+    expect(inferTipo("Nails & Body")).toBe("Peluquería y estética");
+    expect(inferTipo("Salón unisex Los Ángeles")).toBe("Peluquería unisex");
+    // Sin ninguna pista, nunca "Barbería" por defecto.
+    expect(inferTipo("Zitada")).toBe("Peluquería");
   });
 });

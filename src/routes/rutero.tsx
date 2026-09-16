@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { RUTERO } from "@/lib/rutero";
 import { decodeDemoProfile, DEMO_PARAM } from "@/lib/demo-profile";
+import { inferBusinessType } from "@/lib/business-type";
 import heroBarberia from "@/assets/hero-salon.jpg";
 import heroSalon from "@/assets/gallery-salon.jpg";
 
@@ -28,7 +29,7 @@ function portada(path: string, tipo: string) {
   const raw = new URLSearchParams(query).get(DEMO_PARAM);
   const hero = decodeDemoProfile(raw)?.heroImage;
   if (hero) return hero;
-  return /barber|caballero/i.test(tipo) ? heroBarberia : heroSalon;
+  return inferBusinessType(tipo) === "barberia" ? heroBarberia : heroSalon;
 }
 
 function Rutero() {

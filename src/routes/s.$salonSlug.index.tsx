@@ -14,16 +14,17 @@ import {
   Star,
   Users,
 } from "lucide-react";
-import {
-  services,
-  serviceMap,
-  employees,
-  requiresDeposit,
-  DEPOSIT_RATE,
-  DEPOSIT_THRESHOLD_MIN,
-} from "@/lib/mock/salon";
+import { employeesForType, requiresDeposit, DEPOSIT_RATE, DEPOSIT_THRESHOLD_MIN } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
-import { useDisplayProfile } from "@/lib/use-display-profile";
+import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
+import {
+  categoryOrderFor,
+  FEATURED_IDS_BY_TYPE,
+  professionalWord,
+  SERVICE_CATALOG,
+  type BusinessType,
+} from "@/lib/business-type";
+import { useMemo } from "react";
 import { isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
 import { useClientNow } from "@/lib/use-client-now";
 import { galleryPhotosFor } from "@/lib/demo-photos";
@@ -56,42 +57,115 @@ import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import { WordRotate } from "@/components/magicui/word-rotate";
 import { TeamShowcase } from "@/components/twentyfirst/team-showcase";
 import { cn } from "@/lib/utils";
-import { SERVICE_ES, CATEGORY_LABELS, CATEGORY_ORDER, EMPLOYEE_ES, eur } from "@/lib/copy";
+import { eur } from "@/lib/copy";
 
 export const Route = createFileRoute("/s/$salonSlug/")({
   component: SalonHome,
 });
 
-const FEATURED_IDS = ["corte", "corte-barba", "barba", "afeitado"];
+type Review = { name: string; rating: number; quote: string };
 
 /**
  * Reseñas de ejemplo. No hay reseñas reales todavía — se muestran marcadas
  * como ejemplo (ver nota junto al título de la sección y la etiqueta en cada
- * tarjeta) para que quede claro que hay que sustituirlas.
+ * tarjeta) para que quede claro que hay que sustituirlas. Cambian con el tipo
+ * de negocio: una peluquería de señoras no debe enseñar una reseña alabando
+ * "el mejor arreglo de barba".
  */
-const REVIEWS = [
-  {
-    name: "Marta R.",
-    rating: 5,
-    quote: "Salgo distinta cada vez. Mario entiende exactamente lo que le pido.",
-  },
-  { name: "Carlos M.", rating: 5, quote: "El mejor arreglo de barba de Madrid, sin discusión." },
-  {
-    name: "Elena G.",
-    rating: 5,
-    quote: "Ambiente cuidado y muy puntuales con la hora de la cita.",
-  },
-  {
-    name: "Javier P.",
-    rating: 5,
-    quote: "Reservé desde el móvil en un minuto y a la hora exacta estaba en la silla.",
-  },
-  {
-    name: "Nuria S.",
-    rating: 4,
-    quote: "El color quedó justo como lo habíamos hablado. Repetiré sin dudarlo.",
-  },
-];
+const REVIEWS_BY_TYPE: Record<BusinessType, Review[]> = {
+  barberia: [
+    {
+      name: "Marta R.",
+      rating: 5,
+      quote: "Salgo distinta cada vez. Mario entiende exactamente lo que le pido.",
+    },
+    { name: "Carlos M.", rating: 5, quote: "El mejor arreglo de barba de Madrid, sin discusión." },
+    {
+      name: "Elena G.",
+      rating: 5,
+      quote: "Ambiente cuidado y muy puntuales con la hora de la cita.",
+    },
+    {
+      name: "Javier P.",
+      rating: 5,
+      quote: "Reservé desde el móvil en un minuto y a la hora exacta estaba en la silla.",
+    },
+    {
+      name: "Nuria S.",
+      rating: 4,
+      quote: "El degradado quedó justo como lo habíamos hablado. Repetiré sin dudarlo.",
+    },
+  ],
+  peluqueria: [
+    {
+      name: "Marta R.",
+      rating: 5,
+      quote: "Salgo distinta cada vez. Entienden exactamente lo que les pido.",
+    },
+    { name: "Carmen M.", rating: 5, quote: "Las mejores mechas de Madrid, sin discusión." },
+    {
+      name: "Elena G.",
+      rating: 5,
+      quote: "Ambiente cuidado y muy puntuales con la hora de la cita.",
+    },
+    {
+      name: "Javier P.",
+      rating: 5,
+      quote: "Reservé desde el móvil en un minuto y a la hora exacta estaba en el sillón.",
+    },
+    {
+      name: "Nuria S.",
+      rating: 4,
+      quote: "El color quedó justo como lo habíamos hablado. Repetiré sin dudarlo.",
+    },
+  ],
+  estetica: [
+    {
+      name: "Marta R.",
+      rating: 5,
+      quote: "Salgo distinta cada vez. Entienden exactamente lo que les pido.",
+    },
+    { name: "Carmen M.", rating: 5, quote: "La mejor manicura de Madrid, sin discusión." },
+    {
+      name: "Elena G.",
+      rating: 5,
+      quote: "Ambiente cuidado y muy puntuales con la hora de la cita.",
+    },
+    {
+      name: "Javier P.",
+      rating: 5,
+      quote: "Reservé desde el móvil en un minuto y a la hora exacta estaba en el sillón.",
+    },
+    {
+      name: "Nuria S.",
+      rating: 4,
+      quote: "El color quedó justo como lo habíamos hablado. Repetiré sin dudarlo.",
+    },
+  ],
+  unisex: [
+    {
+      name: "Marta R.",
+      rating: 5,
+      quote: "Salgo distinta cada vez. Entienden exactamente lo que les pido.",
+    },
+    { name: "Carlos M.", rating: 5, quote: "El mejor arreglo de barba de Madrid, sin discusión." },
+    {
+      name: "Elena G.",
+      rating: 5,
+      quote: "Ambiente cuidado y muy puntuales con la hora de la cita.",
+    },
+    {
+      name: "Javier P.",
+      rating: 5,
+      quote: "Reservé desde el móvil en un minuto y a la hora exacta estaba en la silla.",
+    },
+    {
+      name: "Nuria S.",
+      rating: 4,
+      quote: "El color quedó justo como lo habíamos hablado. Repetiré sin dudarlo.",
+    },
+  ],
+};
 
 /** Card hover lift, gated so it's fully inert under prefers-reduced-motion. */
 const CARD_HOVER =
@@ -124,66 +198,70 @@ const HERO_IN = {
  * vez de navegar por el router. Para reservar ya están los botones de arriba,
  * el de la cabecera y la barra fija del móvil.
  */
-const BENTO_ITEMS = [
-  {
-    Icon: CalendarCheck,
-    name: "Reserva sin llamar",
-    description:
-      "Eliges servicio, barbero y hora desde el móvil. Sin teléfono y sin esperar a que abramos.",
-    href: "#servicios",
-    cta: "Empezar por la carta",
-    className: "lg:col-span-2",
-  },
-  {
-    Icon: Users,
-    name: "Eliges barbero",
-    description: "Mario, Diego o Rubén. O el primero que tenga hueco, si lo que corre es la hora.",
-    href: "#equipo",
-    cta: "Ver el equipo",
-    className: "lg:col-span-1",
-  },
-  {
-    Icon: ShieldCheck,
-    name: "Cancelas gratis",
-    description: "Hasta 24 horas antes, sin coste y sin dar explicaciones.",
-    href: "#faq",
-    cta: "Ver condiciones",
-    className: "lg:col-span-1",
-  },
-  {
-    Icon: Scissors,
-    name: "Nuestro trabajo, de cerca",
-    description:
-      "Pasa la lupa por las fotos de la galería y mira el degradado y el remate al detalle.",
-    href: "#galeria",
-    cta: "Ver la galería",
-    className: "lg:col-span-2",
-  },
-];
+function bentoItemsFor(tipo: BusinessType) {
+  const palabra = professionalWord(tipo);
+  return [
+    {
+      Icon: CalendarCheck,
+      name: "Reserva sin llamar",
+      description: `Eliges servicio, ${palabra} y hora desde el móvil. Sin teléfono y sin esperar a que abramos.`,
+      href: "#servicios",
+      cta: "Empezar por la carta",
+      className: "lg:col-span-2",
+    },
+    {
+      Icon: Users,
+      name: `Eliges ${palabra}`,
+      description: "El equipo que prefieras. O el primero que tenga hueco, si lo que corre es la hora.",
+      href: "#equipo",
+      cta: "Ver el equipo",
+      className: "lg:col-span-1",
+    },
+    {
+      Icon: ShieldCheck,
+      name: "Cancelas gratis",
+      description: "Hasta 24 horas antes, sin coste y sin dar explicaciones.",
+      href: "#faq",
+      cta: "Ver condiciones",
+      className: "lg:col-span-1",
+    },
+    {
+      Icon: Scissors,
+      name: "Nuestro trabajo, de cerca",
+      description: "Pasa la lupa por las fotos de la galería y mira el detalle de cada servicio.",
+      href: "#galeria",
+      cta: "Ver la galería",
+      className: "lg:col-span-2",
+    },
+  ];
+}
 
-const FAQ = [
-  {
-    q: "¿Puedo cancelar o cambiar la cita?",
-    a: "Sí. Hasta 24 horas antes puedes cancelar o mover la cita sin coste desde el enlace que recibes al reservar.",
-  },
-  {
-    q: "¿Hace falta pagar por adelantado?",
-    a: `Solo en los servicios largos, de más de ${DEPOSIT_THRESHOLD_MIN} minutos: se pide un depósito del ${Math.round(
-      DEPOSIT_RATE * 100,
-    )}% que se descuenta del total y se abona en el salón.`,
-  },
-  {
-    q: "¿Atendéis sin cita previa?",
-    a: "Si hay hueco, sí — pero la agenda suele ir llena. Reservar online es la forma segura de tener sitio.",
-  },
-  {
-    q: "¿Puedo elegir barbero?",
-    a: "Claro. En el paso 2 de la reserva eliges profesional, o dejas «cualquiera disponible» si lo que te corre prisa es la hora.",
-  },
-];
+function faqFor(tipo: BusinessType) {
+  const palabra = professionalWord(tipo);
+  return [
+    {
+      q: "¿Puedo cancelar o cambiar la cita?",
+      a: "Sí. Hasta 24 horas antes puedes cancelar o mover la cita sin coste desde el enlace que recibes al reservar.",
+    },
+    {
+      q: "¿Hace falta pagar por adelantado?",
+      a: `Solo en los servicios largos, de más de ${DEPOSIT_THRESHOLD_MIN} minutos: se pide un depósito del ${Math.round(
+        DEPOSIT_RATE * 100,
+      )}% que se descuenta del total y se abona en el salón.`,
+    },
+    {
+      q: "¿Atendéis sin cita previa?",
+      a: "Si hay hueco, sí — pero la agenda suele ir llena. Reservar online es la forma segura de tener sitio.",
+    },
+    {
+      q: `¿Puedo elegir ${palabra}?`,
+      a: "Claro. En el paso 2 de la reserva eliges profesional, o dejas «cualquiera disponible» si lo que te corre prisa es la hora.",
+    },
+  ];
+}
 
 /** Tarjeta de reseña del muro. Ancho fijo: es lo que espera un marquee. */
-function ReviewCard({ name, rating, quote }: (typeof REVIEWS)[number]) {
+function ReviewCard({ name, rating, quote }: Review) {
   return (
     <figure className="relative flex w-72 shrink-0 flex-col rounded-2xl border border-border/60 bg-card p-5 transition-colors hover:border-primary/40 sm:w-80">
       <span className="absolute right-4 top-4 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -232,14 +310,32 @@ function SectionHeading({
 function SalonHome() {
   const { salonSlug } = Route.useParams();
   const profile = useDisplayProfile();
+  const tipo = useBusinessType();
   const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(profile.address)}&output=embed`;
 
+  // Catálogo y equipo calculados a partir del tipo deducido del enlace —no
+  // del catálogo/equipo "activo" mutado en mock/salon.ts, que solo se
+  // actualiza tras un efecto de cliente— para que el primer render (incluido
+  // el del servidor) ya salga en el idioma correcto.
+  const services = useMemo(() => SERVICE_CATALOG[tipo], [tipo]);
+  const serviceMap = useMemo(
+    () => Object.fromEntries(services.map((s) => [s.id, s])),
+    [services],
+  );
+  const employees = useMemo(() => employeesForType(tipo), [tipo]);
+
   const activeServices = services.filter((s) => s.active !== false);
+  const categoryOrder = categoryOrderFor(tipo);
+  const featuredIds = FEATURED_IDS_BY_TYPE[tipo];
+  const bentoItems = bentoItemsFor(tipo);
+  const faq = faqFor(tipo);
+  const reviews = REVIEWS_BY_TYPE[tipo];
   // Hora del navegador: en el servidor no se sabe qué hora es en el salón.
   const now = useClientNow();
   const openNow = now ? isOpenNow(profile.openingHours, now) : false;
   const estadoHoy = now ? todayOpenInfo(profile.openingHours, now) : "Horario";
-  // Las fotos del equipo ya están importadas en mock/salon: no hay avatares de stock.
+  // Las fotos del equipo salen de employeesForType: reales en barbería,
+  // avatar de iniciales en el resto (ver placeholderAvatar en business-type.ts).
   const TEAM_AVATARS = employees.map((e) => ({
     imageUrl: e.photo,
     profileUrl: `/s/${salonSlug}#equipo`,
@@ -262,7 +358,7 @@ function SalonHome() {
             // está vacía) se usa una de ejemplo, pero no la misma para todos:
             // un sillón de barbero de portada en una peluquería de señoras
             // canta tanto como una foto mala.
-            (/barber|caballero|shave/i.test(profile.tagline ?? "") ? heroImg : heroSalonImg)
+            (tipo === "barberia" ? heroImg : heroSalonImg)
           }
           alt={`Interior de ${profile.name}`}
           className="absolute inset-0 -z-20 h-full w-full object-cover"
@@ -419,10 +515,10 @@ function SalonHome() {
       <section id="servicios" className="mx-auto max-w-5xl px-6 py-16 md:py-24">
         <SectionHeading eyebrow="Más reservados" title="Servicios destacados" />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {FEATURED_IDS.map((id, i) => {
+          {featuredIds.map((id, i) => {
             const s = serviceMap[id];
             if (!s) return null;
-            const label = SERVICE_ES[id] ?? { name: s.name, description: s.description };
+            const label = { name: s.name, description: s.description };
             return (
               <Reveal key={id} delay={i * 70} className="h-full">
                 <SpotlightCard
@@ -476,7 +572,7 @@ function SalonHome() {
           <SectionHeading eyebrow="Por qué aquí" title="Lo que te vas a encontrar" />
           <Reveal>
             <BentoGrid className="md:grid-rows-2 lg:grid-cols-3">
-              {BENTO_ITEMS.map((item) => (
+              {bentoItems.map((item) => (
                 <BentoCard
                   key={item.name}
                   name={item.name}
@@ -506,13 +602,11 @@ function SalonHome() {
             <Accordion
               type="single"
               collapsible
-              defaultValue={CATEGORY_ORDER[0]}
+              defaultValue={categoryOrder[0]}
               className="divide-y divide-border/40"
             >
-              {CATEGORY_ORDER.map((cat) => {
-                const items = activeServices.filter(
-                  (s) => (CATEGORY_LABELS[s.id] ?? "Otros") === cat,
-                );
+              {categoryOrder.map((cat) => {
+                const items = activeServices.filter((s) => (s.category ?? "Otros") === cat);
                 if (!items.length) return null;
                 return (
                   <AccordionItem key={cat} value={cat} className="border-b-0">
@@ -525,10 +619,7 @@ function SalonHome() {
                     <AccordionContent>
                       <div className="space-y-2 pb-2">
                         {items.map((s) => {
-                          const label = SERVICE_ES[s.id] ?? {
-                            name: s.name,
-                            description: s.description,
-                          };
+                          const label = { name: s.name, description: s.description };
                           return (
                             <Link
                               key={s.id}
@@ -575,7 +666,7 @@ function SalonHome() {
               members={employees.map((e) => ({
                 id: e.id,
                 name: e.name,
-                role: `${EMPLOYEE_ES[e.id]?.specialty ?? e.specialty} · ${e.yearsExperience} años`,
+                role: `${e.specialty} · ${e.yearsExperience} años`,
                 image: e.photo,
               }))}
             />
@@ -607,12 +698,12 @@ function SalonHome() {
             poder leer la que te interese. */}
         <Reveal className="relative">
           <Marquee pauseOnHover className="[--duration:38s] [--gap:1.25rem]">
-            {REVIEWS.map((r) => (
+            {reviews.map((r) => (
               <ReviewCard key={r.name} {...r} />
             ))}
           </Marquee>
           <Marquee reverse pauseOnHover className="mt-5 [--duration:44s] [--gap:1.25rem]">
-            {[...REVIEWS].reverse().map((r) => (
+            {[...reviews].reverse().map((r) => (
               <ReviewCard key={r.name} {...r} />
             ))}
           </Marquee>
@@ -628,7 +719,7 @@ function SalonHome() {
           <SectionHeading eyebrow="Antes de venir" title="Preguntas frecuentes" />
           <Reveal>
             <Accordion type="single" collapsible className="divide-y divide-border/40">
-              {FAQ.map((item) => (
+              {faq.map((item) => (
                 <AccordionItem key={item.q} value={item.q} className="border-b-0">
                   <AccordionTrigger className="py-4 text-left text-base font-medium hover:no-underline">
                     {item.q}
@@ -716,14 +807,15 @@ function SalonHome() {
               ¿Nos vemos <AuroraText colors={["#d6ab68", "#f0e6d2", "#b98a4d"]}>pronto</AuroraText>?
             </h2>
             <p className="mt-3 text-muted-foreground">
-              Elige servicio, barbero y hora en menos de un minuto.
+              Elige servicio, {professionalWord(tipo)} y hora en menos de un minuto.
             </p>
 
-            {/* Caras reales del equipo, no stock. */}
+            {/* Caras reales del equipo en barbería; avatar de iniciales en el resto. */}
             <div className="mt-7 flex flex-col items-center gap-2">
               <AvatarCircles avatarUrls={TEAM_AVATARS} />
               <p className="text-xs text-muted-foreground">
-                {employees.length} barberos · {totalTeamYears} años de oficio entre los tres
+                {employees.length} {professionalWord(tipo, true)} · {totalTeamYears} años de
+                oficio entre los tres
               </p>
             </div>
 

@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Check, CalendarPlus, MapPin } from "lucide-react";
-import { serviceMap, employeeMap, depositFor, requiresDeposit } from "@/lib/mock/salon";
-import { useSalonStore } from "@/lib/store";
+import { employeesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
+import { SERVICE_CATALOG } from "@/lib/business-type";
+import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { Button } from "@/components/ui/button";
 import { Confetti, type ConfettiRef } from "@/components/magicui/confetti";
-import { EMPLOYEE_ES, SERVICE_ES, eur } from "@/lib/copy";
+import { eur } from "@/lib/copy";
 import { sumServices } from "@/lib/appointment-services";
 
 export const Route = createFileRoute("/s/$salonSlug/confirmation")({
@@ -23,15 +24,28 @@ export const Route = createFileRoute("/s/$salonSlug/confirmation")({
 function Confirmation() {
   const { salonSlug } = Route.useParams();
   const { service: sid, employeeId, date, time, name } = Route.useSearch();
+  // El tipo se deduce del mismo enlace de demo que ya venía leyendo la
+  // cabecera (useDisplayProfile lee el `?d=` de la URL actual si lo hay, y
+  // si no, el perfil guardado del navegador) — así el catálogo y el equipo
+  // salen bien en el primer render, sin depender de un efecto de cliente.
+  const profile = useDisplayProfile();
+  const tipo = useBusinessType();
+  const serviceMap = useMemo(
+    () => Object.fromEntries(SERVICE_CATALOG[tipo].map((s) => [s.id, s])),
+    [tipo],
+  );
+  const employeeMap = useMemo(
+    () => Object.fromEntries(employeesForType(tipo).map((e) => [e.id, e])),
+    [tipo],
+  );
   // `service` trae uno o varios ids separados por comas, tal y como los deja el wizard.
   const chosen = sid
     .split(",")
     .map((id) => serviceMap[id.trim()])
     .filter(Boolean);
-  const serviceNames = chosen.map((s) => SERVICE_ES[s.id]?.name ?? s.name);
+  const serviceNames = chosen.map((s) => s.name);
   const { durationMin: totalMin, priceEur: total } = sumServices(chosen);
   const employee = employeeMap[employeeId];
-  const profile = useSalonStore((s) => s.salonProfile);
   const confettiRef = useRef<ConfettiRef>(null);
 
   // Un disparo al aterrizar en la confirmación. Se respeta
@@ -134,7 +148,7 @@ function Confirmation() {
           <div className="min-w-0">
             <h2 className="font-display text-2xl">{serviceNames.join(" + ")}</h2>
             <p className="text-sm text-muted-foreground">
-              con {employee.name} · {EMPLOYEE_ES[employee.id]?.specialty ?? employee.specialty}
+              con {employee.name} · {employee.specialty}
             </p>
           </div>
         </div>

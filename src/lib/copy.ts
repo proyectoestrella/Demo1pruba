@@ -1,45 +1,15 @@
 /**
- * Centralized Spanish copy shared across the public booking pages
+ * Copy compartida por las páginas públicas de reserva
  * (s.$salonSlug.index.tsx, s.$salonSlug.book.tsx, s.$salonSlug.confirmation.tsx).
- * Previously duplicated verbatim in each of those files — keep it here and
- * import from here instead of re-declaring local copies.
+ *
+ * Antes este fichero llevaba el catálogo de servicios y de empleados en
+ * español, todo en la variante de barbería (SERVICE_ES, CATEGORY_LABELS,
+ * EMPLOYEE_ES). Ya no hace falta: el catálogo y el equipo activos —
+ * lib/mock/salon.ts, mutados por tipo desde lib/business-type.ts— llevan su
+ * nombre, descripción y categoría correctos de origen, así que las tres
+ * páginas leen `service.name`/`service.category`/`employee.specialty`
+ * directamente en vez de pasarlos por un diccionario aparte.
  */
-
-/** Spanish name/description overrides for services, keyed by service id. */
-export const SERVICE_ES: Record<string, { name: string; description: string }> = {
-  corte: { name: "Corte de caballero", description: "Lavado, corte y acabado." },
-  "corte-barba": {
-    name: "Corte y barba",
-    description: "El corte completo más el arreglo de barba.",
-  },
-  barba: { name: "Arreglo de barba", description: "Toalla caliente, perfilado y aceite." },
-  afeitado: {
-    name: "Afeitado a navaja",
-    description: "Afeitado clásico con toalla caliente y bálsamo.",
-  },
-  infantil: { name: "Corte infantil", description: "Hasta 12 años, sin prisa." },
-  cejas: { name: "Perfilado de cejas", description: "Con navaja o pinza." },
-};
-
-/** Maps a service id to the display category it belongs to in the menu. */
-export const CATEGORY_LABELS: Record<string, string> = {
-  corte: "Cortes",
-  "corte-barba": "Cortes",
-  infantil: "Cortes",
-  barba: "Barba y afeitado",
-  afeitado: "Barba y afeitado",
-  cejas: "Barba y afeitado",
-};
-
-/** Display order for service categories throughout the booking flow. */
-export const CATEGORY_ORDER = ["Cortes", "Barba y afeitado"];
-
-/** Spanish specialty copy for employees, keyed by employee id (barbershop language). */
-export const EMPLOYEE_ES: Record<string, { specialty: string }> = {
-  mario: { specialty: "Cortes clásicos y degradados" },
-  diego: { specialty: "Degradados y diseño" },
-  ruben: { specialty: "Barba y afeitado a navaja" },
-};
 
 /** Formats a euro amount as Spanish currency, e.g. 38 -> "38,00 €". */
 export const eur = (n: number) => `${n.toFixed(2).replace(".", ",")} €`;

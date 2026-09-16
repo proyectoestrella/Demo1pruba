@@ -384,7 +384,7 @@ function Demos() {
             label="Tipo de negocio"
             value={draft.tagline}
             onChange={(v) => field("tagline", v)}
-            hint="«Barbería clásica», «Peluquería y estética»…"
+            hint="«Barbería clásica», «Peluquería y estética», «Peluquería unisex»…"
           />
           <DraftField
             label="Dirección"
