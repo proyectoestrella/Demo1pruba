@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, Sparkles } from "lucide-react";
 import { employeesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
@@ -96,6 +96,13 @@ function BookingWizard() {
   const { salonSlug } = Route.useParams();
   const search = Route.useSearch();
   const navigate = useNavigate();
+  // v2: "Cualquier profesional" preseleccionado (cambio priorizado #2 del
+  // informe) — en v1 el paso 2 sigue sin preselección, igual que siempre.
+  // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
+  // en la cadena "2" — de ahí el `String(...)` antes de comparar.
+  const isV2 = useRouterState({
+    select: (s) => String((s.location.search as Record<string, unknown>)?.v) === "2",
+  });
 
   // Catálogo y equipo, calculados a partir del tipo de negocio deducido del
   // enlace de esta demo — no del equipo/catálogo "activo" mutado en
@@ -116,6 +123,7 @@ function BookingWizard() {
 
   const [data, setData] = useState<WizardData>(() => ({
     serviceIds: parseServiceIds(search.service, serviceMap),
+    employeeId: isV2 ? "any" : undefined,
   }));
   const [step, setStep] = useState<1 | 2 | 3 | 4>(data.serviceIds.length ? 2 : 1);
   const appointments = useSalonStore((s) => s.appointments);

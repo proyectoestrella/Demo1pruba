@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import {
   ArrowRight,
   CalendarCheck,
@@ -6,6 +6,7 @@ import {
   Info,
   Instagram,
   MapPin,
+  Navigation,
   Phone,
   Quote,
   Scissors,
@@ -311,7 +312,13 @@ function SalonHome() {
   const { salonSlug } = Route.useParams();
   const profile = useDisplayProfile();
   const tipo = useBusinessType();
+  // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
+  // en la cadena "2" — de ahí el `String(...)` antes de comparar.
+  const isV2 = useRouterState({
+    select: (s) => String((s.location.search as Record<string, unknown>)?.v) === "2",
+  });
   const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(profile.address)}&output=embed`;
+  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(profile.address)}`;
 
   // Catálogo y equipo calculados a partir del tipo deducido del enlace —no
   // del catálogo/equipo "activo" mutado en mock/salon.ts, que solo se
@@ -329,7 +336,10 @@ function SalonHome() {
   const featuredIds = FEATURED_IDS_BY_TYPE[tipo];
   const bentoItems = bentoItemsFor(tipo);
   const faq = faqFor(tipo);
-  const reviews = REVIEWS_BY_TYPE[tipo];
+  // v2: como mucho dos reseñas de ejemplo, y ya van marcadas "Ejemplo" — el
+  // cambio priorizado #9 del informe pide "copy del salón real, nunca
+  // genérico"; cinco reseñas inventadas pesan más que dos.
+  const reviews = isV2 ? REVIEWS_BY_TYPE[tipo].slice(0, 2) : REVIEWS_BY_TYPE[tipo];
   // Hora del navegador: en el servidor no se sabe qué hora es en el salón.
   const now = useClientNow();
   const openNow = now ? isOpenNow(profile.openingHours, now) : false;
@@ -456,30 +466,77 @@ function SalonHome() {
             </p>
             {profile.about ? <p className="max-w-md text-white/70">{profile.about}</p> : null}
 
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <ShimmerButton
-                asChild
-                shimmerColor="#f5e6c8"
-                background="var(--color-primary)"
-                className="px-7 py-3 font-medium"
-              >
-                <Link
-                  to="/s/$salonSlug/book"
-                  params={{ salonSlug }}
-                  className="flex items-center gap-2 text-[color:var(--color-primary-foreground)]"
+            {isV2 ? (
+              // v2: tres botones del mismo peso — reservar, llamar, cómo
+              // llegar. Cambio priorizado del informe: el dueño quiere que
+              // sin cita y por teléfono sigan siendo caminos igual de
+              // válidos, no un botón grande y dos enlaces sueltos.
+              <div className="grid grid-cols-1 gap-2.5 pt-2 sm:grid-cols-3 sm:gap-3">
+                <Button
+                  asChild
+                  size="lg"
+                  className="w-full rounded-full px-6 font-medium"
                 >
-                  Reservar cita <ArrowRight className="h-4 w-4" />
-                </Link>
-              </ShimmerButton>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="rounded-full border-white/30 bg-white/10 px-7 text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"
-              >
-                <a href="#servicios">Ver la carta</a>
-              </Button>
-            </div>
+                  <Link to="/s/$salonSlug/book" params={{ salonSlug }} className="gap-2">
+                    Reservar online <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="w-full rounded-full border-white/30 bg-white/10 px-6 text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"
+                >
+                  <a href={`tel:${profile.phone.replace(/\s/g, "")}`} className="gap-2">
+                    <Phone className="h-4 w-4" /> Llamar
+                  </a>
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="w-full rounded-full border-white/30 bg-white/10 px-6 text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"
+                >
+                  <a href={directionsUrl} target="_blank" rel="noreferrer" className="gap-2">
+                    <Navigation className="h-4 w-4" /> Cómo llegar
+                  </a>
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <ShimmerButton
+                  asChild
+                  shimmerColor="#f5e6c8"
+                  background="var(--color-primary)"
+                  className="px-7 py-3 font-medium"
+                >
+                  <Link
+                    to="/s/$salonSlug/book"
+                    params={{ salonSlug }}
+                    className="flex items-center gap-2 text-[color:var(--color-primary-foreground)]"
+                  >
+                    Reservar cita <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </ShimmerButton>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="rounded-full border-white/30 bg-white/10 px-7 text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"
+                >
+                  <a href="#servicios">Ver la carta</a>
+                </Button>
+              </div>
+            )}
+
+            {/* Línea honesta: quien atiende sin cita y por teléfono no debe
+                leer la web como si eso no contara. */}
+            {isV2 && (
+              <p className="pt-1 text-sm text-white/65">
+                También puedes venir sin cita o llamar: la agenda la lleva el equipo de{" "}
+                {profile.name}.
+              </p>
+            )}
           </AnimatedGroup>
         </div>
       </section>
