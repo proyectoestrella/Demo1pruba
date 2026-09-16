@@ -1,5 +1,5 @@
 import { employees, serviceMap } from "./mock/salon";
-import type { Appointment } from "./mock/types";
+import type { Appointment, Employee } from "./mock/types";
 
 const DAY_MS = 86400_000;
 
@@ -122,7 +122,28 @@ export function clientFrequency(appts: Appointment[], clientId: string) {
   };
 }
 
-export function aiInsights(appts: Appointment[]) {
+/** Profesional con más clientes que repiten (dos o más citas con la misma persona). */
+function loyaltyChampion(appts: Appointment[], employees: Employee[]) {
+  const byEmp = new Map<string, Map<string, number>>();
+  for (const a of appts) {
+    if (a.status === "cancelled") continue;
+    const m = byEmp.get(a.employeeId) ?? new Map<string, number>();
+    m.set(a.clientId, (m.get(a.clientId) ?? 0) + 1);
+    byEmp.set(a.employeeId, m);
+  }
+  let best: { name: string; pct: number } | null = null;
+  for (const e of employees) {
+    const m = byEmp.get(e.id);
+    if (!m || m.size < 3) continue;
+    const repeat = [...m.values()].filter((n) => n >= 2).length;
+    const pct = Math.round((repeat / m.size) * 100);
+    if (!best || pct > best.pct) best = { name: e.name, pct };
+  }
+  return best;
+}
+
+export function aiInsights(appts: Appointment[], employees: Employee[] = []) {
+  const champion = loyaltyChampion(appts, employees);
   const mix = serviceMix(appts);
   const totalRev = mix.reduce((s, m) => s + m.revenue, 0);
   const topService = mix[0];
@@ -156,14 +177,18 @@ export function aiInsights(appts: Appointment[]) {
       icon: "heart",
       tone: "success" as const,
       title: "Campeón en fidelización",
-      body: "Rubén tiene la mayor tasa de clientes recurrentes del equipo — 78% de reservas repetidas.",
-      action: "Ver clientes de Rubén",
+      body: champion
+        ? `${champion.name} tiene la mayor tasa de clientes que repiten del equipo — ${champion.pct}% vuelven.`
+        : "Todavía no hay suficientes datos de clientes que repiten.",
+      action: champion ? `Ver clientes de ${champion.name}` : "Ver clientes",
     },
     {
       icon: "calendar-clock",
       tone: "primary" as const,
       title: "Patrón de reserva recurrente",
-      body: "Los clientes de corte y barba vuelven cada 4 semanas de media. 5 tienen que volver esta semana.",
+      body: topService
+        ? `Los clientes de ${topService.name.toLowerCase()} vuelven cada 4 semanas de media. 5 tienen que volver esta semana.`
+        : "Todavía no hay suficientes datos.",
       action: "Enviar recordatorio de reserva",
     },
   ];

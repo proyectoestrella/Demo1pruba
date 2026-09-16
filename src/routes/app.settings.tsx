@@ -86,7 +86,7 @@ function Settings() {
           label="Tipo de negocio"
           value={tagline}
           onChange={setTagline}
-          hint="El rótulo bajo el nombre: «Barbería clásica», «Peluquería y estética»…"
+          hint="El rótulo bajo el nombre, p. ej. «Peluquería y estética» o «Salón unisex»."
         />
         <Field
           label="Dirección"

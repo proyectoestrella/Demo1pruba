@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { aiInsights, serviceMix } from "@/lib/derive";
+import { employees } from "@/lib/mock/salon";
 import { Sparkles, TrendingDown, Heart, CalendarClock } from "lucide-react";
 import { ComingSoonAction } from "@/components/ComingSoonAction";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
@@ -11,7 +12,7 @@ const ICONS = { sparkles: Sparkles, "trending-down": TrendingDown, heart: Heart,
 
 function Insights() {
   const appointments = useSalonStore((s) => s.appointments);
-  const cards = aiInsights(appointments);
+  const cards = aiInsights(appointments, employees);
   const fullMix = serviceMix(appointments);
   // El total se calcula sobre TODOS los servicios, no solo sobre los cinco que
   // se listan: si no, los porcentajes salen inflados y contradicen los de la

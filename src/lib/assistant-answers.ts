@@ -510,11 +510,11 @@ const INTENTS: Intent[] = [
     },
   },
   {
-    keywords: ["equipo", "barbero", "quien factura", "mario", "diego", "ruben"],
+    keywords: ["equipo", "barbero", "estilista", "profesional", "quien factura", "mario", "diego", "ruben"],
     answer: ({ appointments, employees, now }) => {
       const rows = revenueByEmployee(appointments, employees, +now - 30 * 86400_000);
-      if (!rows.length) return "No hay barberos dados de alta.";
-      return `Facturación por barbero en los últimos 30 días: ${rows
+      if (!rows.length) return "No hay profesionales dados de alta.";
+      return `Facturación por profesional en los últimos 30 días: ${rows
         .map((r) => `${r.name} ${eur(r.revenue)}`)
         .join(" · ")}.`;
     },
