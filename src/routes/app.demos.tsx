@@ -5,6 +5,7 @@ import {
   Check,
   Copy,
   ExternalLink,
+  FileText,
   Loader2,
   MapPin,
   Plus,
@@ -16,6 +17,7 @@ import { useSalonStore, type SavedDemo } from "@/lib/store";
 import {
   blankDemoProfile,
   demoUrl,
+  dosierUrl,
   parseGoogleMapsPaste,
   slugify,
   type DemoProfile,
@@ -606,6 +608,19 @@ function Demos() {
                       <Copy className="mr-2 h-4 w-4" />
                     )}
                     Enlace
+                  </Button>
+                  <Button size="sm" variant="outline" asChild>
+                    <a
+                      href={dosierUrl(
+                        demo,
+                        typeof window !== "undefined" ? window.location.origin : "",
+                      )}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Dosier
+                    </a>
                   </Button>
                   <Button size="sm" variant="outline" asChild>
                     <a
