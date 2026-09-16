@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSalonStore } from "@/lib/store";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { employees, employeeMap } from "@/lib/mock/salon";
@@ -62,6 +62,14 @@ function CalendarView() {
     null,
   );
   const [newApptOpen, setNewApptOpen] = useState(false);
+
+  // Reloj para la línea de "ahora": solo repinta cada minuto, no cada segundo —
+  // es un indicador visual, no un cronómetro.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   // Mobile always shows a single day, regardless of the desktop day/week toggle.
   const effectiveView = isMobile ? "day" : view;
@@ -205,17 +213,38 @@ function CalendarView() {
                 style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0, 1fr))` }}
               >
                 <div />
-                {days.map((d) => (
-                  <div
-                    key={d.toISOString()}
-                    className="border-l border-border/60 px-3 py-3 text-center text-xs"
-                  >
-                    <p className="uppercase tracking-widest text-muted-foreground">
-                      {d.toLocaleDateString("es", { weekday: "short" })}
-                    </p>
-                    <p className="mt-1 font-display text-lg">{d.getDate()}</p>
-                  </div>
-                ))}
+                {days.map((d) => {
+                  const today = isSameDate(d, now);
+                  const weekend = d.getDay() === 0 || d.getDay() === 6;
+                  return (
+                    <div
+                      key={d.toISOString()}
+                      className={cn(
+                        "border-l border-border/60 px-3 py-3 text-center text-xs",
+                        weekend && !today && "bg-muted/30",
+                        today && "bg-primary/10",
+                      )}
+                    >
+                      <p
+                        className={cn(
+                          "uppercase tracking-widest text-muted-foreground",
+                          today && "text-primary",
+                        )}
+                      >
+                        {d.toLocaleDateString("es", { weekday: "short" })}
+                      </p>
+                      <p
+                        className={cn(
+                          "mt-1 font-display text-lg",
+                          today &&
+                            "mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm text-primary-foreground",
+                        )}
+                      >
+                        {d.getDate()}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
 
               <div
@@ -234,8 +263,21 @@ function CalendarView() {
                     const ad = new Date(a.start);
                     return isSameDate(ad, day) && a.status !== "cancelled";
                   });
+                  const isToday = isSameDate(day, now);
+                  const weekend = day.getDay() === 0 || day.getDay() === 6;
+                  // Línea de "ahora mismo", solo en la columna de hoy y dentro del rango horario visible.
+                  const nowMinutes = (now.getHours() - HOURS[0]) * 60 + now.getMinutes();
+                  const showNowLine = isToday && nowMinutes >= 0 && nowMinutes <= HOURS.length * 60;
+                  const nowTop = (nowMinutes / 60) * 64;
                   return (
-                    <div key={day.toISOString()} className="relative border-l border-border/60">
+                    <div
+                      key={day.toISOString()}
+                      className={cn(
+                        "relative border-l border-border/60",
+                        weekend && !isToday && "bg-muted/10",
+                        isToday && "bg-primary/[0.03]",
+                      )}
+                    >
                       {HOURS.map((h) => (
                         <button
                           key={h}
@@ -245,6 +287,16 @@ function CalendarView() {
                           aria-label={`Crear cita el ${day.toLocaleDateString("es")} a las ${h}:00`}
                         />
                       ))}
+                      {showNowLine && (
+                        <div
+                          className="pointer-events-none absolute left-0 right-0 z-10 flex items-center"
+                          style={{ top: nowTop }}
+                          aria-hidden="true"
+                        >
+                          <span className="-ml-1 size-2 shrink-0 rounded-full bg-destructive" />
+                          <span className="h-px flex-1 bg-destructive/70" />
+                        </div>
+                      )}
                       {dayAppts.map((a) => {
                         const start = new Date(a.start);
                         const minutes = (start.getHours() - HOURS[0]) * 60 + start.getMinutes();
@@ -252,12 +304,20 @@ function CalendarView() {
                         const top = (minutes / 60) * 64;
                         const height = (a.duration / 60) * 64;
                         const emp = employeeMap[a.employeeId];
+                        // El color de fondo marca el profesional; el estado se lee en el
+                        // borde y la opacidad, sin tocar la lógica de qué citas se pintan.
+                        const isNoShow = a.status === "no-show";
+                        const isCompleted = a.status === "completed";
                         return (
                           <button
                             key={a.id}
                             type="button"
                             onClick={() => setSelected(a)}
-                            className="absolute left-1 right-1 overflow-hidden rounded-md border-l-[3px] px-2 py-1 text-left text-[10px] shadow-sm transition-transform hover:-translate-y-0.5"
+                            className={cn(
+                              "absolute left-1 right-1 overflow-hidden rounded-lg border-l-[3px] px-2 py-1 text-left text-[10px] shadow-sm transition-transform hover:-translate-y-0.5 hover:shadow-md",
+                              isNoShow && "border-dashed opacity-70",
+                              isCompleted && "opacity-80",
+                            )}
                             style={{
                               top,
                               height: Math.max(28, height - 2),
@@ -339,10 +399,13 @@ function MonthGrid({
   return (
     <div className="min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card">
       <div className="grid grid-cols-7 border-b border-border/60">
-        {WEEKDAY_LABELS.map((label) => (
+        {WEEKDAY_LABELS.map((label, i) => (
           <div
             key={label}
-            className="border-l border-border/60 px-2 py-2 text-center text-[10px] uppercase tracking-widest text-muted-foreground first:border-l-0"
+            className={cn(
+              "border-l border-border/60 px-2 py-2 text-center text-[10px] uppercase tracking-widest text-muted-foreground first:border-l-0",
+              i >= 5 && "bg-muted/30",
+            )}
           >
             {label}
           </div>
@@ -354,6 +417,7 @@ function MonthGrid({
           const dayAppts = byDay.get(day.toDateString()) ?? [];
           const outsideMonth = day.getMonth() !== anchor.getMonth();
           const isToday = isSameDate(day, today);
+          const weekend = day.getDay() === 0 || day.getDay() === 6;
 
           return (
             <button
@@ -362,7 +426,9 @@ function MonthGrid({
               onClick={() => onPickDay(day)}
               className={cn(
                 "flex h-28 flex-col items-stretch gap-1 border-l border-t border-border/60 p-1.5 text-left transition-colors first:border-l-0 hover:bg-muted/50",
+                weekend && !outsideMonth && "bg-muted/10",
                 outsideMonth && "bg-muted/20 text-muted-foreground",
+                isToday && "ring-1 ring-inset ring-primary/40",
               )}
               aria-label={`${day.toLocaleDateString("es", { day: "numeric", month: "long" })}, ${dayAppts.length} citas`}
             >
