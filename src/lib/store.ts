@@ -1,7 +1,15 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { seedAppointments, seedWaitlist, clients as seedClients } from "./mock/seed";
-import { serviceMap, employeeMap, services as seedServices, salon } from "./mock/salon";
+import { seedAppointments, seedWaitlist, clients as seedClients, buildSeed } from "./mock/seed";
+import {
+  serviceMap,
+  employeeMap,
+  services as seedServices,
+  salon,
+  setEmployeesForType,
+  setServicesForType,
+  employees as liveEmployees,
+} from "./mock/salon";
 import type {
   Appointment,
   Client,
@@ -11,6 +19,7 @@ import type {
   SalonProfile,
 } from "./mock/types";
 import type { DemoProfile } from "./demo-profile";
+import { inferBusinessType, type BusinessType } from "./business-type";
 
 interface SalonState {
   appointments: Appointment[];
@@ -51,6 +60,15 @@ interface SalonState {
   // Salon profile (Settings)
   updateSalonProfile: (patch: Partial<SalonProfile>) => void;
 
+  /**
+   * Cambia el equipo, el catálogo de servicios, los clientes, las citas y la
+   * lista de espera de ejemplo para que hablen el idioma de este tipo de
+   * negocio. Se llama al abrir un enlace de demo (ver s.$salonSlug.tsx) y al
+   * aplicar una demo guardada — nunca al editar Ajustes a mano, para no
+   * borrar el trabajo de un negocio real que ya tiene su propio catálogo.
+   */
+  applyBusinessType: (type: BusinessType) => void;
+
   // Demos guardadas
   saveDemo: (demo: DemoProfile, id?: string) => SavedDemo;
   deleteDemo: (id: string) => void;
@@ -78,7 +96,7 @@ const storage = createJSONStorage<SalonState>(() =>
 
 export const useSalonStore = create<SalonState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       appointments: seedAppointments,
       waitlist: seedWaitlist,
       clients: seedClients,
@@ -166,6 +184,23 @@ export const useSalonStore = create<SalonState>()(
       updateSalonProfile: (patch) =>
         set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } })),
 
+      applyBusinessType: (type) => {
+        // Mutan en sitio los arrays/objetos que exporta mock/salon.ts: las
+        // pantallas que los importan de forma estática (la carta pública, la
+        // lista de espera del panel, el diálogo de nueva cita…) los leen de
+        // nuevo en el siguiente render, que llega enseguida porque el `set`
+        // de abajo notifica a todo lo que esté suscrito a la store.
+        setEmployeesForType(type);
+        setServicesForType(type);
+        const seed = buildSeed(type, liveEmployees, [...seedServices]);
+        set(() => ({
+          services: [...seedServices],
+          clients: seed.clients,
+          appointments: seed.appointments,
+          waitlist: seed.waitlist,
+        }));
+      },
+
       saveDemo: (demo, id) => {
         const entry: SavedDemo = {
           ...demo,
@@ -186,16 +221,19 @@ export const useSalonStore = create<SalonState>()(
 
       deleteDemo: (id) => set((s) => ({ savedDemos: s.savedDemos.filter((d) => d.id !== id) })),
 
-      applyDemo: (id) =>
-        set((s) => {
-          const demo = s.savedDemos.find((d) => d.id === id);
-          if (!demo) return {};
-          // `id` y `savedAt` son de la demo, no del salón: no deben colarse en el perfil.
-          const { id: _id, savedAt: _savedAt, ...profileFields } = demo;
-          return { salonProfile: { ...s.salonProfile, ...profileFields } };
-        }),
+      applyDemo: (id) => {
+        const demo = get().savedDemos.find((d) => d.id === id);
+        if (!demo) return;
+        // `id` y `savedAt` son de la demo, no del salón: no deben colarse en el perfil.
+        const { id: _id, savedAt: _savedAt, ...profileFields } = demo;
+        set((s) => ({ salonProfile: { ...s.salonProfile, ...profileFields } }));
+        get().applyBusinessType(inferBusinessType(profileFields.tagline, profileFields.name));
+      },
 
-      resetSalonProfile: () => set({ salonProfile: salon }),
+      resetSalonProfile: () => {
+        set({ salonProfile: salon });
+        get().applyBusinessType("barberia");
+      },
     }),
     {
       name: "trimly-salon-store",
@@ -222,9 +260,15 @@ export const useSalonStore = create<SalonState>()(
       // v6: el horario pasa de tres filas de texto ("Mon–Fri") a siete cadenas
       // por día, para admitir jornada partida. Un estado anterior no lo trae.
       //
+      // v7: los servicios y el equipo pasan a variar por tipo de negocio
+      // (ver lib/business-type.ts) y el catálogo de barbería gana el id
+      // "degradado". Un estado v6 se queda con el catálogo viejo — se
+      // sustituye por el de barbería (el tipo por defecto) y `onRehydrateStorage`,
+      // más abajo, lo corrige al tipo real en cuanto se conoce el perfil.
+      //
       // Los pasos se encadenan en orden en vez de devolver al primero que
       // aplica: un estado v3 tiene que pasar por el v4, el v5 y el v6.
-      version: 6,
+      version: 7,
       migrate: (persistedState, version) => {
         // Forma de una cita tal y como pudo quedar guardada en cualquier
         // versión anterior: con `serviceId` suelto o ya con la lista.
@@ -303,7 +347,22 @@ export const useSalonStore = create<SalonState>()(
             } as SalonProfile,
           };
         }
+        if (version < 7) {
+          state = { ...state, services: seedServices };
+        }
         return state as unknown as SalonState;
+      },
+      // Al recargar la pestaña, el estado persistido (servicios, clientes,
+      // citas) vuelve tal cual se guardó, pero `employees`/`employeeMap` de
+      // mock/salon.ts son un módulo nuevo: arrancan siempre en barbería. Sin
+      // esto, un panel recargado directamente en /app (sin pasar antes por el
+      // enlace público) mostraría el equipo de barbería con un perfil de
+      // peluquería. Se corrige aquí, una vez, nada más hidratar.
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        const type = inferBusinessType(state.salonProfile?.tagline, state.salonProfile?.name);
+        setEmployeesForType(type);
+        setServicesForType(type);
       },
     },
   ),
