@@ -22,7 +22,7 @@ import {
 import { ArrowUp, Bot, Square, User } from "lucide-react";
 import { employees } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
-import { answerFor, SUGGESTIONS } from "@/lib/assistant-answers";
+import { answerFor, SUGGESTION_GROUPS } from "@/lib/assistant-answers";
 import { cn } from "@/lib/utils";
 
 function useSalonAdapter(): ChatModelAdapter {
@@ -44,6 +44,7 @@ function useSalonAdapter(): ChatModelAdapter {
           services: s.services,
           employees,
           waitlist: s.waitlist,
+          clients: s.clients,
           salonName: s.salonProfile.name,
         });
 
@@ -109,21 +110,33 @@ function Welcome() {
   const isEmpty = useAuiState((s) => s.thread.isEmpty);
   if (!isEmpty) return null;
   return (
-    <div className="flex flex-col items-start gap-4 py-4">
+    <div className="flex flex-col items-start gap-5 py-4">
       <div className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-sm text-muted-foreground">
-        Pregúntame por los números de tu salón. Respondo con tus propias reservas — no invento nada
-        ni consulto fuera.
+        Pregúntame por los números de tu salón: ingresos, ocupación, clientes, agenda o una
+        recomendación. Respondo calculando sobre tus propias reservas — no invento nada ni
+        consulto fuera.
       </div>
-      <div className="flex flex-wrap gap-2">
-        {SUGGESTIONS.map((s) => (
-          <ThreadPrimitive.Suggestion
-            key={s}
-            prompt={s}
-            send
-            className="rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-          >
-            {s}
-          </ThreadPrimitive.Suggestion>
+      {/* Sugerencias agrupadas por tema: más preguntas que antes, organizadas
+          para que se lean de un vistazo en vez de una fila plana de chips. */}
+      <div className="w-full space-y-3.5">
+        {SUGGESTION_GROUPS.map((group) => (
+          <div key={group.topic}>
+            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/80">
+              {group.topic}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {group.items.map((s) => (
+                <ThreadPrimitive.Suggestion
+                  key={s}
+                  prompt={s}
+                  send
+                  className="rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+                >
+                  {s}
+                </ThreadPrimitive.Suggestion>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </div>
