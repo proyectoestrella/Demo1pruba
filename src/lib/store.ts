@@ -29,6 +29,20 @@ interface SalonState {
   salonProfile: SalonProfile;
   /** Salones preparados para enseñar en visitas — ver demo-profile.ts. */
   savedDemos: SavedDemo[];
+  /**
+   * Rediseño v2 del panel (`/app/*`). Se activa con `?v=2` en cualquier ruta
+   * de `/app` y queda guardado aquí para que el resto de `/app/*` lo respete
+   * sin tener que repetir el parámetro en cada enlace — ver
+   * `lib/use-panel-v2.ts`. `?v=1` lo desactiva.
+   */
+  panelV2: boolean;
+  /**
+   * Se ha abierto un enlace de demo (`/s/<slug>?d=…`) en este navegador. Lo
+   * usa `login.tsx` para ofrecer "Entrar como [salón]" sin pedir credenciales
+   * — el fallo del botón "Acceso barbero" que no respondió en el iPad no
+   * puede volver a dejar a alguien tecleando un email en mitad de una demo.
+   */
+  demoActive: boolean;
 
   // Appointments
   addAppointment: (a: Omit<Appointment, "id">) => Appointment;
@@ -69,6 +83,11 @@ interface SalonState {
    */
   applyBusinessType: (type: BusinessType) => void;
 
+  /** Activa/desactiva el rediseño v2 del panel — ver `panelV2` arriba. */
+  setPanelV2: (v: boolean) => void;
+  /** Marca que esta demo se abrió desde un enlace público — ver `demoActive` arriba. */
+  markDemoActive: () => void;
+
   // Demos guardadas
   saveDemo: (demo: DemoProfile, id?: string) => SavedDemo;
   deleteDemo: (id: string) => void;
@@ -103,6 +122,8 @@ export const useSalonStore = create<SalonState>()(
       services: seedServices,
       salonProfile: salon,
       savedDemos: [],
+      panelV2: false,
+      demoActive: false,
 
       addAppointment: (a) => {
         const appt: Appointment = { ...a, id: `a-new-${Date.now()}` };
@@ -201,6 +222,9 @@ export const useSalonStore = create<SalonState>()(
         }));
       },
 
+      setPanelV2: (v) => set({ panelV2: v }),
+      markDemoActive: () => set({ demoActive: true }),
+
       saveDemo: (demo, id) => {
         const entry: SavedDemo = {
           ...demo,
@@ -231,7 +255,7 @@ export const useSalonStore = create<SalonState>()(
       },
 
       resetSalonProfile: () => {
-        set({ salonProfile: salon });
+        set({ salonProfile: salon, demoActive: false });
         get().applyBusinessType("barberia");
       },
     }),
