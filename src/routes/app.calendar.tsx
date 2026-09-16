@@ -12,10 +12,18 @@ import { StylistDot } from "@/components/StylistAvatar";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { Button } from "@/components/ui/button";
+import { usePanelV2 } from "@/lib/use-panel-v2";
+import { AgendaColumns } from "@/components/AgendaColumns";
 
 export const Route = createFileRoute("/app/calendar")({
-  component: CalendarView,
+  component: CalendarRoute,
 });
+
+function CalendarRoute() {
+  const panelV2 = usePanelV2();
+  if (panelV2) return <AgendaColumns />;
+  return <CalendarView />;
+}
 
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 9); // 9 — 19
 
