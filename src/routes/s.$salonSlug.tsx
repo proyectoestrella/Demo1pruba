@@ -60,8 +60,16 @@ function SalonLayout() {
   const demoRaw = useRouterState({
     select: (s) => (s.location.search as Record<string, unknown>)?.[DEMO_PARAM],
   });
+  // El rediseño v2 de la web pública se activa por enlace (`&v=2`), no se
+  // guarda: quien abre el mismo enlace sin el parámetro ve la web de siempre.
+  // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
+  // en la cadena "2" — de ahí el `String(...)` antes de comparar.
+  const publicV2 = useRouterState({
+    select: (s) => String((s.location.search as Record<string, unknown>)?.v) === "2",
+  });
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
   const applyBusinessType = useSalonStore((s) => s.applyBusinessType);
+  const markDemoActive = useSalonStore((s) => s.markDemoActive);
   const tipo = useBusinessType();
 
   // Abrir el enlace de una demo la convierte en el salón activo de este
@@ -77,7 +85,8 @@ function SalonLayout() {
     if (!fromUrl) return;
     updateSalonProfile({ ...blankDemoProfile(), ...fromUrl });
     applyBusinessType(inferBusinessType(fromUrl.tagline, fromUrl.name));
-  }, [demoRaw, updateSalonProfile, applyBusinessType]);
+    markDemoActive();
+  }, [demoRaw, updateSalonProfile, applyBusinessType, markDemoActive]);
 
   useEffect(() => {
     document.title = `${profile.name} — Reserva online`;
@@ -114,13 +123,26 @@ function SalonLayout() {
                 ) : null}
               </div>
             </Link>
-            <Link
-              to="/login"
-              className="ml-2 hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted sm:inline-flex"
-            >
-              <Lock className="h-3 w-3" />
-              Acceso {professionalWord(tipo)}
-            </Link>
+            {/* v2: entra directo al panel, sin pasar por /login — es el botón que
+                ayer no respondió en el iPad durante la demo. v1 sigue yendo a
+                /login exactamente igual que siempre. */}
+            {publicV2 ? (
+              <a
+                href="/app?v=2&acceso=demo"
+                className="ml-2 hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted sm:inline-flex"
+              >
+                <Lock className="h-3 w-3" />
+                Acceso {professionalWord(tipo)}
+              </a>
+            ) : (
+              <Link
+                to="/login"
+                className="ml-2 hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted sm:inline-flex"
+              >
+                <Lock className="h-3 w-3" />
+                Acceso {professionalWord(tipo)}
+              </Link>
+            )}
           </div>
           {!onBooking && (
             <nav className="hidden items-center gap-6 text-sm lg:flex">
