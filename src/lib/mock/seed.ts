@@ -50,6 +50,10 @@ function buildAppointments(
   const pick = <T,>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
   const out: Appointment[] = [];
   let nextId = 1;
+  // Un par de solicitudes "de hoy" sin revisar, para que la franja de
+  // pendientes del panel no aparezca vacía en la demo. Determinista: no
+  // depende de qué tipo de negocio esté activo.
+  let pendingHoyAsignados = 0;
 
   // Spread across last 90 days + next 21
   for (let day = -90; day <= 21; day++) {
@@ -94,6 +98,10 @@ function buildAppointments(
           if (r < 0.08) status = "no-show";
           else if (r < 0.13) status = "cancelled";
           else status = "completed";
+        } else if (day === 0 && i === 0 && pendingHoyAsignados < 2) {
+          // Llegó de la web pública y el salón todavía no la ha revisado.
+          status = "pending";
+          pendingHoyAsignados++;
         }
 
         out.push({

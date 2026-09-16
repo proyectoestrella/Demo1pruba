@@ -128,18 +128,19 @@ function Confirmation() {
           <Check className="h-7 w-7" />
         </div>
         <h1 className="mt-6 font-display text-4xl">
-          Reserva confirmada{name ? `, ${name.split(" ")[0]}` : ""}.
+          Solicitud recibida{name ? `, ${name.split(" ")[0]}` : ""}.
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Te esperamos. Guarda la cita en tu calendario con el botón de abajo para no olvidarla.
+          {profile.name} te confirmará la cita en breve. Guarda la fecha en tu calendario con el
+          botón de abajo para no olvidarla.
         </p>
       </div>
 
       <div className="mt-10 rounded-3xl border border-border bg-card p-8">
         <div className="flex items-center justify-between">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Tu cita</p>
-          <span className="rounded-full bg-[var(--success)]/15 px-2.5 py-0.5 text-xs font-medium text-[var(--success)]">
-            Confirmada
+          <span className="rounded-full bg-[var(--warning)]/15 px-2.5 py-0.5 text-xs font-medium text-[var(--warning)]">
+            Pendiente de confirmar
           </span>
         </div>
 

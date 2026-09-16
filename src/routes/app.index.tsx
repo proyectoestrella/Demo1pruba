@@ -31,6 +31,7 @@ import { StylistDot } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
+import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
 import { KpiCard } from "@/components/KpiCard";
 import { CountUp } from "@/components/reactbits/CountUp";
 import { BorderBeam } from "@/components/magicui/border-beam";
@@ -138,6 +139,8 @@ function Home() {
         <h1 className="font-display text-2xl md:text-3xl tracking-tight">{greeting}</h1>
         <p className="text-sm text-muted-foreground">Así va {salonName} hoy.</p>
       </div>
+
+      <PendingRequestsBanner onOpenDetail={setSelected} />
 
       <div data-tour="kpis" className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         {kpis.map((k) => (

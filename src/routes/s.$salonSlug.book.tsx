@@ -183,7 +183,10 @@ function BookingWizard() {
       start: startISO,
       duration: totalMin,
       priceEur: total,
-      status: "confirmed",
+      // Las reservas de la web pública entran como solicitud: las confirma,
+      // cambia o rechaza el salón desde el panel. Las citas creadas a mano
+      // desde el panel (NewAppointmentDialog) siguen naciendo confirmadas.
+      status: "pending",
       note: data.note,
     });
     registerBookingClient({
@@ -202,7 +205,7 @@ function BookingWizard() {
     }).catch((err) =>
       console.error("Supabase sync failed (booking still confirmed locally):", err),
     );
-    toast.success("Reserva confirmada", {
+    toast.success("Solicitud enviada", {
       description: `${serviceNames.join(" + ")} · ${data.date} a las ${data.time}`,
     });
     navigate({

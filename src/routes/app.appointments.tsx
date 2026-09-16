@@ -12,6 +12,7 @@ import { StylistDot } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
+import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -101,6 +102,8 @@ function Appointments() {
         }
       />
 
+      <PendingRequestsBanner onOpenDetail={setSelected} />
+
       <div className="flex flex-wrap gap-2">
         <div className="relative w-full sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -118,6 +121,7 @@ function Appointments() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los estados</SelectItem>
+            <SelectItem value="pending">Pendiente de confirmar</SelectItem>
             <SelectItem value="confirmed">Confirmada</SelectItem>
             <SelectItem value="completed">Completada</SelectItem>
             <SelectItem value="cancelled">Cancelada</SelectItem>

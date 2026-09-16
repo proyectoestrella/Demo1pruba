@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import type { AppointmentStatus } from "@/lib/mock/types";
 
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; className: string }> = {
+  pending: { label: "Pendiente de confirmar", className: "bg-[var(--warning)]/15 text-[var(--warning)]" },
   confirmed: { label: "Confirmada", className: "bg-primary/10 text-primary" },
   completed: { label: "Completada", className: "bg-muted text-muted-foreground" },
   cancelled: { label: "Cancelada", className: "bg-destructive/10 text-destructive" },

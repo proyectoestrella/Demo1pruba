@@ -9,6 +9,7 @@ import type { Appointment, AppointmentStatus } from "@/lib/mock/types";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
@@ -36,6 +37,15 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Calendar, Clock, Euro, CheckCheck } from "lucide-react";
+
+/** Duraciones que puede elegir el salón al ajustar una cita, en minutos. */
+const DURATION_OPTIONS_MIN = [15, 30, 45, 60, 90, 120, 150, 180];
+
+// Local time components (not toISOString, que es UTC) — igual que en
+// NewAppointmentDialog, para que "09:00" en el input sea "09:00" en la cita.
+function toTimeInputValue(d: Date) {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 
 export interface AppointmentDetailSheetProps {
   appointment: Appointment | null;
@@ -69,6 +79,28 @@ export function AppointmentDetailSheet({
 
   const serviceNames = appointment ? serviceNamesOf(appointment) : [];
   const start = appointment ? new Date(appointment.start) : null;
+  // La cita puede llevar una duración que no está en la lista fija (suma de
+  // varios servicios): se añade como opción propia para que el desplegable
+  // siempre muestre el valor real en vez de quedarse en blanco.
+  const durationOptions =
+    appointment && !DURATION_OPTIONS_MIN.includes(appointment.duration)
+      ? [...DURATION_OPTIONS_MIN, appointment.duration].sort((a, b) => a - b)
+      : DURATION_OPTIONS_MIN;
+
+  function handleDurationChange(minutes: number) {
+    if (!appointment) return;
+    updateAppointment(appointment.id, { duration: minutes });
+    toast.success("Duración actualizada");
+  }
+
+  function handleTimeChange(time: string) {
+    if (!appointment || !start || !time) return;
+    const [hh, mm] = time.split(":").map(Number);
+    const next = new Date(start);
+    next.setHours(hh, mm, 0, 0);
+    updateAppointment(appointment.id, { start: next.toISOString() });
+    toast.success("Hora actualizada");
+  }
 
   function handleCancel() {
     if (!appointment) return;
@@ -137,6 +169,34 @@ export function AppointmentDetailSheet({
                 {appointment.note}
               </p>
             )}
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Duración y hora
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <Select
+                value={String(appointment.duration)}
+                onValueChange={(v) => handleDurationChange(Number(v))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {durationOptions.map((min) => (
+                    <SelectItem key={min} value={String(min)}>
+                      {min} min
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="time"
+                value={toTimeInputValue(start)}
+                onChange={(e) => handleTimeChange(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="space-y-1.5">

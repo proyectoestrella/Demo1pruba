@@ -12,6 +12,7 @@ import type { AppointmentStatus } from "./mock/types";
  * aparte, en `Appointment.clientConfirmedAt`.
  */
 export const STATUS_OPTIONS: { value: AppointmentStatus; label: string }[] = [
+  { value: "pending", label: "Pendiente de confirmar" },
   { value: "confirmed", label: "Confirmada" },
   { value: "completed", label: "Completada" },
   { value: "no-show", label: "No asistió" },

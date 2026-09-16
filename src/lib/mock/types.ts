@@ -1,6 +1,12 @@
 export type EmployeeId = "mario" | "diego" | "ruben";
 
-export type AppointmentStatus = "confirmed" | "completed" | "cancelled" | "no-show" | "blocked";
+export type AppointmentStatus =
+  | "pending"
+  | "confirmed"
+  | "completed"
+  | "cancelled"
+  | "no-show"
+  | "blocked";
 
 export interface Service {
   id: string;
