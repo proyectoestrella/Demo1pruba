@@ -4,7 +4,7 @@ import { useDisplayProfile } from "@/lib/use-display-profile";
 import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "@/lib/demo-profile";
 import { weekSchedule } from "@/lib/opening-hours";
 import { useBusinessType } from "@/lib/use-display-profile";
-import { inferBusinessType, professionalWord } from "@/lib/business-type";
+import { BUSINESS_LABEL, inferBusinessType, professionalWord } from "@/lib/business-type";
 import { Instagram, MapPin, Phone, Lock, Menu } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -14,14 +14,26 @@ import { ScrollProgress } from "@/components/magicui/scroll-progress";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/s/$salonSlug")({
-  head: () => {
-    const name = useSalonStore.getState().salonProfile.name;
+  head: ({ match }) => {
+    // El título y la vista previa del enlace (WhatsApp, iMessage) se generan en
+    // el servidor, antes de que el navegador aplique la demo: hay que leer el
+    // salón del propio enlace, o todas las demos se compartían como el salón de
+    // ejemplo por defecto.
+    const raw = (match.search as Record<string, unknown> | undefined)?.[DEMO_PARAM];
+    const fromUrl = decodeDemoProfile(typeof raw === "string" ? raw : undefined);
+    const name = fromUrl?.name?.trim() || useSalonStore.getState().salonProfile.name;
+    const tipo = BUSINESS_LABEL[inferBusinessType(fromUrl?.tagline, fromUrl?.name)];
+    const description = fromUrl
+      ? `${tipo} · Reserva tu cita en ${name} en segundos, sin llamar.`
+      : `Reserva tu cita en ${name} en segundos.`;
     return {
       meta: [
         { title: `${name} — Reserva online` },
-        { name: "description", content: `Reserva tu cita en ${name} en segundos.` },
+        { name: "description", content: description },
         { property: "og:title", content: name },
-        { property: "og:description", content: `Reserva tu cita en ${name} en segundos.` },
+        { property: "og:description", content: description },
+        { name: "twitter:title", content: name },
+        { name: "twitter:description", content: description },
       ],
     };
   },
