@@ -1,17 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, Sparkles } from "lucide-react";
-import {
-  services,
-  employees,
-  serviceMap,
-  employeeMap,
-  depositFor,
-  requiresDeposit,
-} from "@/lib/mock/salon";
-import type { Appointment, EmployeeId, Service } from "@/lib/mock/types";
+import { employeesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
+import type { Appointment, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { useSalonStore, isSlotTaken } from "@/lib/store";
-import { useDisplayProfile } from "@/lib/use-display-profile";
+import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
+import {
+  categoryOrderFor,
+  professionalWord,
+  showsRealPhotos,
+  SERVICE_CATALOG,
+  type BusinessType,
+} from "@/lib/business-type";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -33,7 +33,7 @@ import heroImg from "@/assets/hero-salon.jpg";
 import { registerBookingClient } from "@/lib/api/clients.functions";
 import { sumServices } from "@/lib/appointment-services";
 import { FluidSteps } from "@/components/twentyfirst/fluid-steps";
-import { SERVICE_ES, CATEGORY_LABELS, CATEGORY_ORDER, EMPLOYEE_ES, eur } from "@/lib/copy";
+import { eur } from "@/lib/copy";
 
 export const Route = createFileRoute("/s/$salonSlug/book")({
   validateSearch: (search: Record<string, unknown>): { service?: string } => ({
@@ -55,6 +55,7 @@ function resolveEmployee(
   time: string,
   durationMin: number,
   appointments: Appointment[],
+  employees: Employee[],
 ): EmployeeId {
   if (stylistChoice && stylistChoice !== "any") return stylistChoice;
   const startISO = new Date(`${date}T${time}:00`).toISOString();
@@ -67,13 +68,11 @@ function resolveEmployee(
   return candidate?.id ?? employees[0].id;
 }
 
-/** Nombre en español del catálogo público, con el del seed como respaldo. */
-function nameOf(s: Service) {
-  return SERVICE_ES[s.id]?.name ?? s.name;
-}
-
-/** `?service=corte` o `?service=corte,barba`: solo cuentan los ids que existen. */
-function parseServiceIds(param: string | undefined): string[] {
+/** `?service=corte` o `?service=corte,barba`: solo cuentan los ids que existen en este catálogo. */
+function parseServiceIds(
+  param: string | undefined,
+  serviceMap: Record<string, Service>,
+): string[] {
   return (param ?? "")
     .split(",")
     .map((id) => id.trim())
@@ -97,15 +96,33 @@ function BookingWizard() {
   const { salonSlug } = Route.useParams();
   const search = Route.useSearch();
   const navigate = useNavigate();
+
+  // Catálogo y equipo, calculados a partir del tipo de negocio deducido del
+  // enlace de esta demo — no del equipo/catálogo "activo" mutado en
+  // mock/salon.ts, que solo se pone al día tras un efecto de cliente. Así el
+  // primer render (incluido el del servidor) ya sale en el idioma correcto,
+  // igual que ya hacía `useDisplayProfile` con el resto del perfil.
+  const tipo = useBusinessType();
+  const services = useMemo(() => SERVICE_CATALOG[tipo], [tipo]);
+  const serviceMap = useMemo(
+    () => Object.fromEntries(services.map((s) => [s.id, s])) as Record<string, Service>,
+    [services],
+  );
+  const employees = useMemo(() => employeesForType(tipo), [tipo]);
+  const employeeMap = useMemo(
+    () => Object.fromEntries(employees.map((e) => [e.id, e])) as Record<string, Employee>,
+    [employees],
+  );
+
   const [data, setData] = useState<WizardData>(() => ({
-    serviceIds: parseServiceIds(search.service),
+    serviceIds: parseServiceIds(search.service, serviceMap),
   }));
   const [step, setStep] = useState<1 | 2 | 3 | 4>(data.serviceIds.length ? 2 : 1);
   const appointments = useSalonStore((s) => s.appointments);
   const addAppointment = useSalonStore((s) => s.addAppointment);
 
   const selectedServices = data.serviceIds.map((id) => serviceMap[id]).filter(Boolean);
-  const serviceNames = selectedServices.map(nameOf);
+  const serviceNames = selectedServices.map((s) => s.name);
   // Precio y duración de la cita son la suma: el hueco que se reserva y el
   // umbral del depósito miran el total, no el primer servicio.
   const { durationMin: totalMin, priceEur: total } = sumServices(selectedServices);
@@ -149,7 +166,14 @@ function BookingWizard() {
     )
       return;
     const serviceIds = selectedServices.map((s) => s.id);
-    const employeeId = resolveEmployee(stylistChoice, data.date, data.time, totalMin, appointments);
+    const employeeId = resolveEmployee(
+      stylistChoice,
+      data.date,
+      data.time,
+      totalMin,
+      appointments,
+      employees,
+    );
     const startISO = new Date(`${data.date}T${data.time}:00`).toISOString();
     addAppointment({
       clientId: `c-walkin-${Date.now()}`,
@@ -225,13 +249,21 @@ function BookingWizard() {
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
         <div className="min-w-0">
           {step === 1 && (
-            <ServiceStep selected={data.serviceIds} totalMin={totalMin} onToggle={toggleService} />
+            <ServiceStep
+              selected={data.serviceIds}
+              totalMin={totalMin}
+              onToggle={toggleService}
+              tipo={tipo}
+              services={services}
+            />
           )}
 
           {step === 2 && (
             <StylistStep
               selected={data.employeeId}
               onSelect={(id) => setData((d) => ({ ...d, employeeId: id }))}
+              tipo={tipo}
+              employees={employees}
             />
           )}
 
@@ -243,6 +275,7 @@ function BookingWizard() {
               selectedDate={data.date}
               selectedTime={data.time}
               onPick={(date, time) => setData((d) => ({ ...d, date, time }))}
+              employees={employees}
             />
           )}
 
@@ -381,29 +414,32 @@ function ServiceStep({
   selected,
   totalMin,
   onToggle,
+  tipo,
+  services,
 }: {
   selected: string[];
   totalMin: number;
   onToggle: (id: string) => void;
+  tipo: BusinessType;
+  services: Service[];
 }) {
   const count = selected.length;
+  const categoryOrder = categoryOrderFor(tipo);
   return (
     <Step title="Elige uno o varios servicios">
       <p className="-mt-4 mb-6 text-sm text-muted-foreground" aria-live="polite">
         {count === 0
-          ? "Puedes combinar varios en la misma cita, por ejemplo corte y barba."
+          ? "Puedes combinar varios en la misma cita."
           : `${count} ${count === 1 ? "servicio elegido" : "servicios elegidos"} · ${totalMin} min en total`}
       </p>
       <Accordion
         type="single"
         collapsible
-        defaultValue={CATEGORY_ORDER[0]}
+        defaultValue={categoryOrder[0]}
         className="divide-y divide-border/40"
       >
-        {CATEGORY_ORDER.map((cat) => {
-          const items = services.filter(
-            (s) => s.active !== false && (CATEGORY_LABELS[s.id] ?? "Otros") === cat,
-          );
+        {categoryOrder.map((cat) => {
+          const items = services.filter((s) => s.active !== false && (s.category ?? "Otros") === cat);
           if (!items.length) return null;
           return (
             <AccordionItem key={cat} value={cat} className="border-b-0">
@@ -413,7 +449,7 @@ function ServiceStep({
               <AccordionContent>
                 <div className="space-y-2 pb-2">
                   {items.map((s) => {
-                    const label = SERVICE_ES[s.id] ?? { name: s.name, description: s.description };
+                    const label = { name: s.name, description: s.description };
                     const isSelected = selected.includes(s.id);
                     return (
                       <button
@@ -455,12 +491,16 @@ function ServiceStep({
 function StylistStep({
   selected,
   onSelect,
+  tipo,
+  employees,
 }: {
   selected?: EmployeeId | "any";
   onSelect: (id: EmployeeId | "any") => void;
+  tipo: BusinessType;
+  employees: Employee[];
 }) {
   return (
-    <Step title="Elige tu barbero">
+    <Step title={`Elige tu ${professionalWord(tipo)}`}>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <button
           onClick={() => onSelect("any")}
@@ -490,12 +530,15 @@ function StylistStep({
                 : "border-border/60 hover:border-primary/40",
             )}
           >
-            <StylistAvatar name={e.name} employeeId={e.id} size="lg" />
+            <StylistAvatar
+              name={e.name}
+              employeeId={e.id}
+              photo={showsRealPhotos(tipo) ? e.photo : undefined}
+              size="lg"
+            />
             <div>
               <p className="text-sm font-medium">{e.name}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {EMPLOYEE_ES[e.id]?.specialty ?? e.specialty}
-              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{e.specialty}</p>
             </div>
           </button>
         ))}
@@ -511,6 +554,7 @@ function DateTimeStep({
   selectedDate,
   selectedTime,
   onPick,
+  employees,
 }: {
   /** Duración total de la cita: el hueco que hay que encontrar libre. */
   durationMin: number;
@@ -519,10 +563,11 @@ function DateTimeStep({
   selectedDate?: string;
   selectedTime?: string;
   onPick: (date: string, time: string) => void;
+  employees: Employee[];
 }) {
   const relevantEmployees = useMemo(
     () => (stylistChoice === "any" ? employees : employees.filter((e) => e.id === stylistChoice)),
-    [stylistChoice],
+    [stylistChoice, employees],
   );
 
   const today = useMemo(() => {
@@ -734,7 +779,7 @@ function BookingSummary({
   onCta: () => void;
 }) {
   const profile = useDisplayProfile();
-  const salonName = useSalonStore((s) => s.salonProfile.name);
+  const salonName = profile.name;
   if (variant === "bar") {
     return (
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 px-5 py-3 backdrop-blur lg:hidden">

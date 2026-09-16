@@ -3,6 +3,8 @@ import { useSalonStore } from "@/lib/store";
 import { useDisplayProfile } from "@/lib/use-display-profile";
 import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "@/lib/demo-profile";
 import { weekSchedule } from "@/lib/opening-hours";
+import { useBusinessType } from "@/lib/use-display-profile";
+import { inferBusinessType, professionalWord } from "@/lib/business-type";
 import { Instagram, MapPin, Phone, Lock, Menu } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -47,15 +49,23 @@ function SalonLayout() {
     select: (s) => (s.location.search as Record<string, unknown>)?.[DEMO_PARAM],
   });
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
+  const applyBusinessType = useSalonStore((s) => s.applyBusinessType);
+  const tipo = useBusinessType();
 
   // Abrir el enlace de una demo la convierte en el salón activo de este
   // navegador. La personalización viaja en el enlace, pero el acceso barbero,
   // el panel y la vuelta a la web no lo llevan: sin esto, en cuanto se pulsaba
   // "Acceso barbero" todo volvía a ser el salón de ejemplo delante del cliente.
+  //
+  // Junto al perfil se aplica también el tipo de negocio: equipo, catálogo,
+  // clientes y citas de ejemplo pasan a hablar el idioma de esta demo (ver
+  // `applyBusinessType` en lib/store.ts) en vez de quedarse en barbería.
   useEffect(() => {
     const fromUrl = decodeDemoProfile(typeof demoRaw === "string" ? demoRaw : undefined);
-    if (fromUrl) updateSalonProfile({ ...blankDemoProfile(), ...fromUrl });
-  }, [demoRaw, updateSalonProfile]);
+    if (!fromUrl) return;
+    updateSalonProfile({ ...blankDemoProfile(), ...fromUrl });
+    applyBusinessType(inferBusinessType(fromUrl.tagline, fromUrl.name));
+  }, [demoRaw, updateSalonProfile, applyBusinessType]);
 
   useEffect(() => {
     document.title = `${profile.name} — Reserva online`;
@@ -88,7 +98,7 @@ function SalonLayout() {
               className="ml-2 hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted sm:inline-flex"
             >
               <Lock className="h-3 w-3" />
-              Acceso barbero
+              Acceso {professionalWord(tipo)}
             </Link>
           </div>
           {!onBooking && (
