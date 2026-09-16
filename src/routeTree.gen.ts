@@ -28,6 +28,7 @@ import { Route as AppCalendarRouteImport } from './routes/app.calendar'
 import { Route as AppAppointmentsRouteImport } from './routes/app.appointments'
 import { Route as ApiFotoRouteImport } from './routes/api.foto'
 import { Route as SSalonSlugIndexRouteImport } from './routes/s.$salonSlug.index'
+import { Route as SSalonSlugDosierRouteImport } from './routes/s.$salonSlug.dosier'
 import { Route as SSalonSlugConfirmationRouteImport } from './routes/s.$salonSlug.confirmation'
 import { Route as SSalonSlugBookRouteImport } from './routes/s.$salonSlug.book'
 
@@ -126,6 +127,11 @@ const SSalonSlugIndexRoute = SSalonSlugIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SSalonSlugRoute,
 } as any)
+const SSalonSlugDosierRoute = SSalonSlugDosierRouteImport.update({
+  id: '/dosier',
+  path: '/dosier',
+  getParentRoute: () => SSalonSlugRoute,
+} as any)
 const SSalonSlugConfirmationRoute = SSalonSlugConfirmationRouteImport.update({
   id: '/confirmation',
   path: '/confirmation',
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/s/$salonSlug/book': typeof SSalonSlugBookRoute
   '/s/$salonSlug/confirmation': typeof SSalonSlugConfirmationRoute
+  '/s/$salonSlug/dosier': typeof SSalonSlugDosierRoute
   '/s/$salonSlug/': typeof SSalonSlugIndexRoute
 }
 export interface FileRoutesByTo {
@@ -179,6 +186,7 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/s/$salonSlug/book': typeof SSalonSlugBookRoute
   '/s/$salonSlug/confirmation': typeof SSalonSlugConfirmationRoute
+  '/s/$salonSlug/dosier': typeof SSalonSlugDosierRoute
   '/s/$salonSlug': typeof SSalonSlugIndexRoute
 }
 export interface FileRoutesById {
@@ -203,6 +211,7 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/s/$salonSlug/book': typeof SSalonSlugBookRoute
   '/s/$salonSlug/confirmation': typeof SSalonSlugConfirmationRoute
+  '/s/$salonSlug/dosier': typeof SSalonSlugDosierRoute
   '/s/$salonSlug/': typeof SSalonSlugIndexRoute
 }
 export interface FileRouteTypes {
@@ -228,6 +237,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/s/$salonSlug/book'
     | '/s/$salonSlug/confirmation'
+    | '/s/$salonSlug/dosier'
     | '/s/$salonSlug/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -249,6 +259,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/s/$salonSlug/book'
     | '/s/$salonSlug/confirmation'
+    | '/s/$salonSlug/dosier'
     | '/s/$salonSlug'
   id:
     | '__root__'
@@ -272,6 +283,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/s/$salonSlug/book'
     | '/s/$salonSlug/confirmation'
+    | '/s/$salonSlug/dosier'
     | '/s/$salonSlug/'
   fileRoutesById: FileRoutesById
 }
@@ -420,6 +432,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSalonSlugIndexRouteImport
       parentRoute: typeof SSalonSlugRoute
     }
+    '/s/$salonSlug/dosier': {
+      id: '/s/$salonSlug/dosier'
+      path: '/dosier'
+      fullPath: '/s/$salonSlug/dosier'
+      preLoaderRoute: typeof SSalonSlugDosierRouteImport
+      parentRoute: typeof SSalonSlugRoute
+    }
     '/s/$salonSlug/confirmation': {
       id: '/s/$salonSlug/confirmation'
       path: '/confirmation'
@@ -470,12 +489,14 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 interface SSalonSlugRouteChildren {
   SSalonSlugBookRoute: typeof SSalonSlugBookRoute
   SSalonSlugConfirmationRoute: typeof SSalonSlugConfirmationRoute
+  SSalonSlugDosierRoute: typeof SSalonSlugDosierRoute
   SSalonSlugIndexRoute: typeof SSalonSlugIndexRoute
 }
 
 const SSalonSlugRouteChildren: SSalonSlugRouteChildren = {
   SSalonSlugBookRoute: SSalonSlugBookRoute,
   SSalonSlugConfirmationRoute: SSalonSlugConfirmationRoute,
+  SSalonSlugDosierRoute: SSalonSlugDosierRoute,
   SSalonSlugIndexRoute: SSalonSlugIndexRoute,
 }
 

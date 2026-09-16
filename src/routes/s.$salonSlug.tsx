@@ -83,6 +83,15 @@ function SalonLayout() {
     document.title = `${profile.name} — Reserva online`;
   }, [profile.name]);
 
+  // El dosier comercial imprimible (`/dosier`) es una página A4 propia, no
+  // una vista más de la web pública: nada de cabecera ni pie de la web, ni en
+  // pantalla ni al imprimir. Los hooks de arriba siguen ejecutándose igual
+  // (el perfil de la demo se aplica al store), solo cambia lo que se pinta.
+  const onDosier = path.includes("/dosier");
+  if (onDosier) {
+    return <Outlet />;
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">

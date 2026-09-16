@@ -202,6 +202,12 @@ export function demoUrl(profile: Partial<DemoProfile>, origin: string): string {
   return `${origin}/s/${slug}?${DEMO_PARAM}=${encodeDemoProfile(profile)}`;
 }
 
+/** Construye el enlace al dosier comercial imprimible de una demo. */
+export function dosierUrl(profile: Partial<DemoProfile>, origin: string): string {
+  const slug = slugify(profile.name ?? "") || "demo";
+  return `${origin}/s/${slug}/dosier?${DEMO_PARAM}=${encodeDemoProfile(profile)}`;
+}
+
 /** Slug legible para que el enlace se reconozca de un vistazo en el chat. */
 export function slugify(value: string): string {
   return value
