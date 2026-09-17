@@ -74,9 +74,10 @@ function Marketing() {
         <div className="flex items-start gap-4 rounded-xl border border-border/60 bg-card p-6">
           <Megaphone className="h-5 w-5 shrink-0 text-primary" />
           <div>
-            <h3 className="font-display text-lg">Integración con WhatsApp Business</h3>
+            <h3 className="font-display text-lg">Recordatorios por WhatsApp</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Envía recordatorios, confirmaciones y ofertas directamente por WhatsApp.
+              Lo estamos terminando: recordatorio y confirmación de cada cita por WhatsApp desde el
+              panel. Hoy las campañas de arriba te dejan lista y mensaje para mandarlos tú.
             </p>
           </div>
         </div>
