@@ -130,10 +130,10 @@ function Appointments() {
         </Select>
         <Select value={emp} onValueChange={setEmp}>
           <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Estilista" />
+            <SelectValue placeholder="Profesional" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todas las estilistas</SelectItem>
+            <SelectItem value="all">Todo el equipo</SelectItem>
             {employees.map((e) => (
               <SelectItem key={e.id} value={e.id}>
                 {e.name}
@@ -148,7 +148,7 @@ function Appointments() {
           <EmptyState
             icon={CalendarX}
             title="Sin citas con estos filtros"
-            description="Prueba a cambiar el estado o la estilista seleccionada."
+            description="Prueba a cambiar el estado o el profesional."
           />
         </div>
       ) : (
