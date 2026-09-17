@@ -1,7 +1,12 @@
 import { useState } from "react";
-import { Calendar, Euro, CalendarX, Phone, UserPlus } from "lucide-react";
+import { Calendar, Euro, CalendarX, Phone, UserPlus, TrendingUp, Users } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
-import { appointmentsTodayTrend, revenueTodayTrend } from "@/lib/derive";
+import {
+  appointmentsTodayTrend,
+  revenueTodayTrend,
+  weeklyOccupancyTrend,
+  newClientsTrend,
+} from "@/lib/derive";
 import { employeeMap } from "@/lib/mock/salon";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import type { Appointment } from "@/lib/mock/types";
@@ -107,6 +112,22 @@ export function HoyV2() {
           context="vs. ayer"
           goodDirection="up"
           fallbackPct={9}
+        />
+        <KpiCard
+          label="Ocupación semanal"
+          icon={TrendingUp}
+          trend={weeklyOccupancyTrend(appointments)}
+          format={(n) => `${Math.round(n)}%`}
+          context="vs. semana pasada"
+          goodDirection="up"
+        />
+        <KpiCard
+          label="Clientes nuevos"
+          icon={Users}
+          trend={newClientsTrend(appointments)}
+          format={(n) => Math.round(n).toString()}
+          context="vs. semana pasada"
+          goodDirection="up"
         />
       </div>
 
