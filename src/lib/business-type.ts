@@ -510,7 +510,9 @@ export function placeholderAvatar(name: string, employeeId: EmployeeId): string 
  * señoras" o "de caballeros" en el panel, no un sorteo.
  */
 export const FIRST_NAMES_BY_TYPE: Record<BusinessType, string[]> = {
-  // ~80% nombres masculinos: coherente con una barbería, sin ser exclusivo.
+  // Solo nombres masculinos: los servicios de barbería (barba, afeitado a
+  // navaja) se asignan al azar y un nombre de mujer con «Arreglo de barba»
+  // delata la demo en la primera pantalla.
   barberia: [
     "Mateo",
     "Diego",
@@ -532,10 +534,10 @@ export const FIRST_NAMES_BY_TYPE: Record<BusinessType, string[]> = {
     "Manuel",
     "Jorge",
     "Raul",
-    "Carmen",
-    "Elena",
-    "Paula",
-    "Daniela",
+    "Alvaro",
+    "Daniel",
+    "David",
+    "Miguel",
   ],
   // ~85% nombres femeninos: mayoría de clientas, como pide una peluquería de señoras.
   peluqueria: [

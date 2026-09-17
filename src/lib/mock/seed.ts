@@ -125,14 +125,17 @@ function buildAppointments(
  * Cuatro entradas fijas de lista de espera. Los ids de servicio ("corte",
  * "corte-barba", "barba", "afeitado") son de los que existen en los cuatro
  * catálogos — ver `business-type.ts` — así que resuelven a un nombre válido
- * sea cual sea el tipo activo, y los nombres de ejemplo son suficientemente
- * neutros para cualquier tipo de salón.
+ * sea cual sea el tipo activo. Los nombres de pila salen de la lista del
+ * tipo (los cuatro primeros): en una barbería «corte y barba» o «afeitado»
+ * no pueden ir a nombre de mujer.
  */
-function buildWaitlist(): WaitlistEntry[] {
+function buildWaitlist(type: BusinessType): WaitlistEntry[] {
+  const FIRST = FIRST_NAMES_BY_TYPE[type];
+  const nombre = (i: number, apellido: string) => `${FIRST[i % FIRST.length]} ${apellido}`;
   return [
     {
       id: "w1",
-      clientName: "Marta Vidal",
+      clientName: nombre(0, "Vidal"),
       phone: "+34 611 111 222",
       serviceId: "corte-barba",
       preferredEmployeeId: "diego",
@@ -141,7 +144,7 @@ function buildWaitlist(): WaitlistEntry[] {
     },
     {
       id: "w2",
-      clientName: "Pedro Sanz",
+      clientName: nombre(1, "Sanz"),
       phone: "+34 622 333 444",
       serviceId: "corte",
       preferredEmployeeId: "any",
@@ -150,7 +153,7 @@ function buildWaitlist(): WaitlistEntry[] {
     },
     {
       id: "w3",
-      clientName: "Aitana Roca",
+      clientName: nombre(2, "Roca"),
       phone: "+34 633 555 666",
       serviceId: "afeitado",
       preferredEmployeeId: "ruben",
@@ -159,7 +162,7 @@ function buildWaitlist(): WaitlistEntry[] {
     },
     {
       id: "w4",
-      clientName: "Iker Mora",
+      clientName: nombre(3, "Mora"),
       phone: "+34 644 777 888",
       serviceId: "barba",
       preferredEmployeeId: "mario",
@@ -185,7 +188,7 @@ export function buildSeed(type: BusinessType, employees: Employee[], services: S
   return {
     clients,
     appointments: buildAppointments(clients, employees, services),
-    waitlist: buildWaitlist(),
+    waitlist: buildWaitlist(type),
   };
 }
 

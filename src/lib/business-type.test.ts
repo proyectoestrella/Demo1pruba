@@ -136,6 +136,35 @@ describe("clientes de ejemplo por tipo", () => {
     expect(femeninos / lista.length).toBeGreaterThan(0.7);
   });
 
+  it("la lista de nombres de barbería no lleva nombres femeninos", () => {
+    // Los servicios de barba y afeitado se reparten al azar entre los
+    // clientes: un nombre de mujer con «Arreglo de barba» delata la demo.
+    const FEMENINOS = [
+      "Sofia",
+      "Lucia",
+      "Carmen",
+      "Valentina",
+      "Elena",
+      "Martina",
+      "Adriana",
+      "Camila",
+      "Paula",
+      "Daniela",
+      "Isabella",
+      "Renata",
+      "Marta",
+      "Nuria",
+      "Cristina",
+      "Alicia",
+      "Laura",
+      "Ana",
+      "Beatriz",
+      "Silvia",
+      "Aitana",
+    ];
+    expect(FIRST_NAMES_BY_TYPE.barberia.filter((n) => FEMENINOS.includes(n))).toEqual([]);
+  });
+
   it("cada tipo trae al menos una nota de cliente de ejemplo", () => {
     for (const tipo of BUSINESS_TYPES) {
       expect(EXAMPLE_CLIENT_NOTES[tipo].length).toBeGreaterThan(0);
