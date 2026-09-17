@@ -35,6 +35,8 @@ import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
 import { KpiCard } from "@/components/KpiCard";
 import { CountUp } from "@/components/reactbits/CountUp";
 import { BorderBeam } from "@/components/magicui/border-beam";
+import { usePanelV2 } from "@/lib/use-panel-v2";
+import { HoyV2 } from "@/components/HoyV2";
 
 const CHART_TOOLTIP_STYLE = {
   background: "var(--color-card)",
@@ -58,6 +60,13 @@ function greetingForHour(hour: number) {
 }
 
 function Home() {
+  const panelV2 = usePanelV2();
+  if (panelV2) return <HoyV2 />;
+  return <HomeV1 />;
+}
+
+/** El "Inicio" de siempre — sin tocar. Se usa cuando el panel v2 está desactivado. */
+function HomeV1() {
   const appointments = useSalonStore((s) => s.appointments);
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const revData = revenueByDay(appointments, 30);

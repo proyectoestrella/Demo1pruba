@@ -21,6 +21,7 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const navigate = useNavigate();
   const profile = useSalonStore((s) => s.salonProfile);
+  const demoActive = useSalonStore((s) => s.demoActive);
   const salonName = profile.name;
   const tipo = inferBusinessType(profile.tagline, profile.name);
   const [email, setEmail] = useState("");
@@ -75,6 +76,27 @@ function LoginPage() {
               <p className="text-xs text-muted-foreground">Entra al panel de gestión del salón</p>
             </div>
           </div>
+
+          {/* Se ha abierto un enlace de demo en este navegador: se ofrece entrar
+              directo, sin credenciales. Es el respaldo del fallo del botón
+              "Acceso barbero" que ayer no respondió en el iPad — el formulario
+              de abajo sigue funcionando exactamente igual, esto es un añadido. */}
+          {demoActive && (
+            <div className="mb-6 space-y-3">
+              <Button
+                type="button"
+                onClick={() => navigate({ to: "/app" })}
+                className="w-full rounded-lg py-6 text-base"
+              >
+                Entrar como {salonName}
+              </Button>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="h-px flex-1 bg-border" />
+                o con tu contraseña
+                <span className="h-px flex-1 bg-border" />
+              </div>
+            </div>
+          )}
 
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-1.5">
