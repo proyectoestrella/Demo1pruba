@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import { salon } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
 import { useSyncPanelV2FromUrl, usePanelV2 } from "@/lib/use-panel-v2";
+import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "@/lib/demo-profile";
+import { inferBusinessType } from "@/lib/business-type";
 import { ViewSwitcher } from "@/components/ViewSwitcher";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { Logo } from "@/components/Logo";
@@ -153,10 +155,34 @@ function SidebarFooter() {
   );
 }
 
+/**
+ * El panel también acepta el negocio en su propio enlace (`/app?d=…`), igual
+ * que la web pública. Hace falta para instalarlo en el iPad como app aparte:
+ * cada icono de «Añadir a pantalla de inicio» tiene su almacenamiento propio,
+ * así que el panel abierto desde su icono no ve el salón que se abrió en la
+ * web, y sin esto saldría el salón de ejemplo delante del cliente.
+ */
+function useApplyDemoFromUrl() {
+  const demoRaw = useRouterState({
+    select: (s) => (s.location.search as Record<string, unknown>)?.[DEMO_PARAM],
+  });
+  const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
+  const applyBusinessType = useSalonStore((s) => s.applyBusinessType);
+  const markDemoActive = useSalonStore((s) => s.markDemoActive);
+  useEffect(() => {
+    const fromUrl = decodeDemoProfile(typeof demoRaw === "string" ? demoRaw : undefined);
+    if (!fromUrl) return;
+    updateSalonProfile({ ...blankDemoProfile(), ...fromUrl });
+    applyBusinessType(inferBusinessType(fromUrl.tagline, fromUrl.name));
+    markDemoActive();
+  }, [demoRaw, updateSalonProfile, applyBusinessType, markDemoActive]);
+}
+
 function DashboardLayout() {
   // Sincroniza `?v=2`/`?v=1` con la preferencia guardada del panel — tiene
   // que correr para TODAS las rutas /app/*, entren o no por aquí primero.
   useSyncPanelV2FromUrl();
+  useApplyDemoFromUrl();
   const panelV2 = usePanelV2();
 
   if (panelV2) return <PanelV2Shell />;
