@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
+import { ExportCsvButtons } from "@/components/campanas/ExportCsvButtons";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -59,6 +60,7 @@ export const Route = createFileRoute("/app/appointments")({
 
 function Appointments() {
   const appointments = useSalonStore((s) => s.appointments);
+  const services = useSalonStore((s) => s.services);
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const [status, setStatus] = useState<string>("all");
@@ -96,9 +98,12 @@ function Appointments() {
         title="Citas"
         description="Todas las reservas de tu equipo."
         actions={
-          <Button size="sm" className="gap-1.5" onClick={() => setNewApptOpen(true)}>
-            <Plus className="h-4 w-4" /> Nueva cita
-          </Button>
+          <>
+            <ExportCsvButtons appointments={appointments} services={services} employees={employees} />
+            <Button size="sm" className="gap-1.5" onClick={() => setNewApptOpen(true)}>
+              <Plus className="h-4 w-4" /> Nueva cita
+            </Button>
+          </>
         }
       />
 
