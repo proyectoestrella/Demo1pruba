@@ -5,6 +5,7 @@ import { employees } from "@/lib/mock/salon";
 import { Sparkles, TrendingDown, Heart, CalendarClock } from "lucide-react";
 import { ComingSoonAction } from "@/components/ComingSoonAction";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
+import { ExportCsvButtons } from "@/components/campanas/ExportCsvButtons";
 
 export const Route = createFileRoute("/app/insights")({ component: Insights });
 
@@ -12,6 +13,7 @@ const ICONS = { sparkles: Sparkles, "trending-down": TrendingDown, heart: Heart,
 
 function Insights() {
   const appointments = useSalonStore((s) => s.appointments);
+  const services = useSalonStore((s) => s.services);
   const cards = aiInsights(appointments, employees);
   const fullMix = serviceMix(appointments);
   // El total se calcula sobre TODOS los servicios, no solo sobre los cinco que
@@ -22,12 +24,15 @@ function Insights() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-xs uppercase tracking-widest text-primary">Analítica</p>
-        <h1 className="font-display text-2xl md:text-3xl tracking-tight">Lo que dicen tus datos.</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Patrones calculados a partir de tus propias reservas — no son predicciones de una IA.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-primary">Analítica</p>
+          <h1 className="font-display text-2xl md:text-3xl tracking-tight">Lo que dicen tus datos.</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Patrones calculados a partir de tus propias reservas — no son predicciones de una IA.
+          </p>
+        </div>
+        <ExportCsvButtons appointments={appointments} services={services} employees={employees} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

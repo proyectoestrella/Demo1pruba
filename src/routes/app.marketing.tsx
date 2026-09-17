@@ -3,11 +3,10 @@ import { useSalonStore } from "@/lib/store";
 import { clientFrequency, mostBookedService } from "@/lib/derive";
 import { PageHeader } from "@/components/PageHeader";
 import { ComingSoonAction } from "@/components/ComingSoonAction";
-import { Megaphone, Sparkles, MessageCircle, Gift, Clock } from "lucide-react";
+import { CampanasPanel } from "@/components/campanas/CampanasPanel";
+import { Megaphone, Sparkles, MessageCircle } from "lucide-react";
 
 export const Route = createFileRoute("/app/marketing")({ component: Marketing });
-
-const DORMANT_DAYS = 42; // ~6 weeks
 
 function Marketing() {
   const appointments = useSalonStore((s) => s.appointments);
@@ -17,37 +16,18 @@ function Marketing() {
     .map((c) => ({ ...c, ...clientFrequency(appointments, c.id) }))
     .filter((c) => c.visits > 0);
 
-  const now = Date.now();
-  const dormant = withStats.filter(
-    (c) => c.lastVisit && now - +new Date(c.lastVisit) > DORMANT_DAYS * 86_400_000,
-  );
-
-  const tueClientIds = new Set(
-    appointments
-      .filter((a) => new Date(a.start).getDay() === 2 && a.status !== "cancelled")
-      .map((a) => a.clientId),
-  );
-
   const topSpenders = [...withStats].sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 10);
   const topService = mostBookedService(appointments);
 
+  // "Llena las tardes de martes" y "Recupera clientes dormidos" ya no van
+  // aquí: son, literalmente, las campañas "Huecos flojos" y "Clientes que no
+  // vuelven" de arriba, ya con lista y mensaje de verdad en vez de un botón
+  // "Próximamente" — mantener las dos versiones confundía más que ayudaba.
   const suggestions = [
-    {
-      icon: Clock,
-      title: "Llena las tardes de martes",
-      body: `${tueClientIds.size} clientes ya han reservado en martes. Envíales un 10% de promo para animar el resto del hueco.`,
-      cta: "Generar campaña",
-    },
-    {
-      icon: Gift,
-      title: "Recupera clientes dormidos",
-      body: `${dormant.length} clientes no reservan desde hace más de 6 semanas. Mándales un recordatorio personalizado.`,
-      cta: "Enviar recordatorio",
-    },
     {
       icon: Sparkles,
       title: "Oferta de fidelidad",
-      body: `Premia a tus ${topSpenders.length} clientes con más gasto con un blow-dry de cortesía.`,
+      body: `Premia a tus ${topSpenders.length} clientes con más gasto con un servicio de cortesía.`,
       cta: "Preparar recompensa",
     },
     {
@@ -59,35 +39,46 @@ function Marketing() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <p className="text-xs uppercase tracking-widest text-primary">Marketing</p>
-        <PageHeader title="Ideas basadas en tus datos." />
+        <PageHeader title="Campañas listas para enviar." />
         <p className="mt-1 text-sm text-muted-foreground">
-          Sugerencias calculadas a partir de tus reservas.
+          Calculadas a partir de tus propias reservas, con la lista y el mensaje ya preparados.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {suggestions.map((s) => (
-          <div key={s.title} className="rounded-xl border border-border/60 bg-card p-6">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <s.icon className="h-4 w-4" />
-            </div>
-            <h3 className="mt-4 font-display text-xl">{s.title}</h3>
-            <p className="mt-2 text-sm text-muted-foreground">{s.body}</p>
-            <ComingSoonAction label={s.cta} />
-          </div>
-        ))}
-      </div>
+      <CampanasPanel />
 
-      <div className="flex items-start gap-4 rounded-xl border border-border/60 bg-card p-6">
-        <Megaphone className="h-5 w-5 shrink-0 text-primary" />
+      <div className="space-y-4 border-t border-border/60 pt-8">
         <div>
-          <h3 className="font-display text-lg">Integración con WhatsApp Business</h3>
+          <h2 className="font-display text-xl">Más ideas para más adelante</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Envía recordatorios, confirmaciones y ofertas directamente por WhatsApp.
+            Sugerencias calculadas a partir de tus reservas, todavía sin lista ni mensaje.
           </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {suggestions.map((s) => (
+            <div key={s.title} className="rounded-xl border border-border/60 bg-card p-6">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <s.icon className="h-4 w-4" />
+              </div>
+              <h3 className="mt-4 font-display text-xl">{s.title}</h3>
+              <p className="mt-2 text-sm text-muted-foreground">{s.body}</p>
+              <ComingSoonAction label={s.cta} />
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-start gap-4 rounded-xl border border-border/60 bg-card p-6">
+          <Megaphone className="h-5 w-5 shrink-0 text-primary" />
+          <div>
+            <h3 className="font-display text-lg">Integración con WhatsApp Business</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Envía recordatorios, confirmaciones y ofertas directamente por WhatsApp.
+            </p>
+          </div>
         </div>
       </div>
     </div>
