@@ -503,7 +503,17 @@ export function resumenDelMes(campanas: Campana[]): { recuperables: number; huec
  * precios que un salón real paga hoy por cada uno de los tres canales.
  */
 export const COMPARATIVA_OTRAS_PLATAFORMAS: { concepto: string; otras: string; siShow: string }[] = [
-  { concepto: "Campaña de email (por 1.000 envíos)", otras: "1 €", siShow: COSTE_INCLUIDO },
-  { concepto: "Campaña de SMS", otras: "25 € cada campaña", siShow: COSTE_INCLUIDO },
-  { concepto: "Recordatorios por WhatsApp", otras: "35 €/mes", siShow: COSTE_INCLUIDO },
+  {
+    concepto: "Campaña de email (por 1.000 envíos)",
+    otras: "1 €",
+    siShow: "Sin coste extra: lista y mensaje desde el panel",
+  },
+  {
+    concepto: "Campaña de SMS",
+    otras: "25 € cada campaña",
+    siShow: "Sin coste extra: la mandas tú por WhatsApp en un toque",
+  },
+  // Lo que no existe no se vende como incluido: el recordatorio automático
+  // está en desarrollo y así se dice también en la pantalla de marketing.
+  { concepto: "Recordatorios por WhatsApp", otras: "35 €/mes", siShow: "En desarrollo" },
 ];

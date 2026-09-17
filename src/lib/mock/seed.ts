@@ -55,6 +55,17 @@ function buildAppointments(
   // depende de qué tipo de negocio esté activo.
   let pendingHoyAsignados = 0;
 
+  // Reparto de clientes pensado para que las campañas de marketing tengan a
+  // quién dirigirse (ver lib/campanas.ts): los 40 primeros son la clientela
+  // habitual; los 8 últimos solo tienen citas de hace más de 6 semanas
+  // («clientes que no vuelven»); los 4 de en medio se añaden a mano al final
+  // con una única cita reciente («segunda visita»). Con 52 clientes y ~1.000
+  // citas al azar nadie llegaba a estar cinco semanas sin venir.
+  const habituales = clients.slice(0, 40);
+  const dormidos = clients.slice(48);
+  const primeraVisita = clients.slice(40, 48);
+  const DIAS_DORMIDO = 42;
+
   // Spread across last 90 days + next 21
   for (let day = -90; day <= 21; day++) {
     const date = new Date();
@@ -90,7 +101,7 @@ function buildAppointments(
         slotsUsed.push(startHour);
 
         const minute = rand() < 0.5 ? 0 : 30;
-        const client = pick(clients);
+        const client = day < -DIAS_DORMIDO ? pick([...habituales, ...dormidos]) : pick(habituales);
 
         let status: Appointment["status"] = "confirmed";
         if (day < 0) {
@@ -118,6 +129,26 @@ function buildAppointments(
       }
     }
   }
+
+  // Una sola cita, ya pasada, por cada cliente de primera visita: entre hace
+  // una y siete semanas, repartidas entre el equipo, a una hora en que todos
+  // trabajan.
+  primeraVisita.forEach((client, i) => {
+    const emp = employees[i % employees.length];
+    const service = services[i % services.length];
+    out.push({
+      id: `a${nextId++}`,
+      clientId: client.id,
+      clientName: client.name,
+      serviceIds: [service.id],
+      employeeId: emp.id as EmployeeId,
+      start: isoAt(-(7 + i * 6), 12, 0),
+      duration: service.durationMin,
+      priceEur: service.priceEur,
+      status: "completed",
+    });
+  });
+
   return out;
 }
 

@@ -118,7 +118,11 @@ function ResumenBanner({ recuperables, huecos }: { recuperables: number; huecos:
 }
 
 function CampanaCard({ campana }: { campana: Campana }) {
-  const [mensaje, setMensaje] = useState(campana.mensaje);
+  // Mientras el dueño no lo edite, el texto sigue al mensaje calculado: si
+  // se fijara al montar, se quedaría con el nombre del salón de ejemplo que
+  // renderiza el servidor antes de que el navegador recupere el perfil real.
+  const [editado, setEditado] = useState<string | null>(null);
+  const mensaje = editado ?? campana.mensaje;
   const Icon = ICONOS[campana.id] ?? Sparkles;
 
   async function copiarMensaje() {
@@ -151,7 +155,7 @@ function CampanaCard({ campana }: { campana: Campana }) {
 
       <Textarea
         value={mensaje}
-        onChange={(e) => setMensaje(e.target.value)}
+        onChange={(e) => setEditado(e.target.value)}
         rows={4}
         className="mt-4 resize-none break-words text-sm"
         aria-label={`Mensaje sugerido para "${campana.titulo}"`}
@@ -240,9 +244,9 @@ function ComparativaCard() {
         {COMPARATIVA_OTRAS_PLATAFORMAS.map((fila) => (
           <div key={fila.concepto} className="rounded-lg border border-border/60 p-3">
             <p className="text-sm font-medium">{fila.concepto}</p>
-            <div className="mt-1.5 flex items-center justify-between text-sm">
+            <div className="mt-1.5 flex flex-col gap-1 text-sm">
               <span className="text-muted-foreground">Otras plataformas: {fila.otras}</span>
-              <span className="font-medium text-primary">{fila.siShow}</span>
+              <span className="font-medium text-primary">Aquí: {fila.siShow}</span>
             </div>
           </div>
         ))}
