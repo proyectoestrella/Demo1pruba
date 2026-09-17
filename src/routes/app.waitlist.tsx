@@ -2,6 +2,8 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useSalonStore } from "@/lib/store";
+import { useBusinessType } from "@/lib/use-display-profile";
+import { professionalWord } from "@/lib/business-type";
 import { serviceMap, employeeMap } from "@/lib/mock/salon";
 import type { WaitlistEntry } from "@/lib/mock/types";
 import { PageHeader } from "@/components/PageHeader";
@@ -25,6 +27,7 @@ export const Route = createFileRoute("/app/waitlist")({ component: Waitlist });
 function Waitlist() {
   const waitlist = useSalonStore((s) => s.waitlist);
   const deleteWaitlist = useSalonStore((s) => s.deleteWaitlist);
+  const tipo = useBusinessType();
 
   const [deleteTarget, setDeleteTarget] = useState<WaitlistEntry | null>(null);
   const [convertTarget, setConvertTarget] = useState<WaitlistEntry | null>(null);
@@ -54,10 +57,10 @@ function Waitlist() {
       <PageHeader title="Lista de espera" description="Clientes esperando un hueco." />
 
       <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 text-sm">
-        <p className="font-medium text-primary">Flujo de autocompletado</p>
+        <p className="font-medium text-primary">Para cuando se libere un hueco</p>
         <p className="mt-1 text-muted-foreground">
-          Cuando un cliente confirma 2 horas antes de su cita por WhatsApp y responde <strong>NO</strong>,
-          avisamos automáticamente al primer cliente compatible de la lista de espera.
+          Si alguien cancela, aquí tienes a quién llamar primero: <strong>Convertir a cita</strong> lo
+          mete en la agenda. Hoy el aviso lo das tú; el aviso automático lo estamos terminando.
         </p>
       </div>
 
@@ -76,7 +79,7 @@ function Waitlist() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{w.clientName}</p>
                   <p className="text-xs text-muted-foreground">
-                    {s?.name} · {e ? `con ${e.name}` : "cualquier estilista"} · {w.preferredRange}
+                    {s?.name} · {e ? `con ${e.name}` : `cualquier ${professionalWord(tipo)}`} · {w.preferredRange}
                   </p>
                 </div>
                 <span className="text-xs text-muted-foreground">{w.phone}</span>

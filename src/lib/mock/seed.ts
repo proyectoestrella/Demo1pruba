@@ -139,7 +139,7 @@ function buildWaitlist(type: BusinessType): WaitlistEntry[] {
       phone: "+34 611 111 222",
       serviceId: "corte-barba",
       preferredEmployeeId: "diego",
-      preferredRange: "Sat morning",
+      preferredRange: "Sábado por la mañana",
       createdAt: new Date(Date.now() - 86400_000).toISOString(),
     },
     {
@@ -148,7 +148,7 @@ function buildWaitlist(type: BusinessType): WaitlistEntry[] {
       phone: "+34 622 333 444",
       serviceId: "corte",
       preferredEmployeeId: "any",
-      preferredRange: "Tue afternoon",
+      preferredRange: "Martes por la tarde",
       createdAt: new Date(Date.now() - 2 * 86400_000).toISOString(),
     },
     {
@@ -157,7 +157,7 @@ function buildWaitlist(type: BusinessType): WaitlistEntry[] {
       phone: "+34 633 555 666",
       serviceId: "afeitado",
       preferredEmployeeId: "ruben",
-      preferredRange: "Fri after 17:00",
+      preferredRange: "Viernes a partir de las 17:00",
       createdAt: new Date(Date.now() - 3 * 86400_000).toISOString(),
     },
     {
@@ -166,7 +166,7 @@ function buildWaitlist(type: BusinessType): WaitlistEntry[] {
       phone: "+34 644 777 888",
       serviceId: "barba",
       preferredEmployeeId: "mario",
-      preferredRange: "Anytime this week",
+      preferredRange: "Cualquier día de esta semana",
       createdAt: new Date(Date.now() - 5 * 86400_000).toISOString(),
     },
   ];
