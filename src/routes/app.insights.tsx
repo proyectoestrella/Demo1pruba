@@ -66,7 +66,7 @@ function Insights() {
                 <div key={m.name}>
                   <div className="mb-1 flex justify-between text-sm">
                     <span>{m.name}</span>
-                    <span className="text-muted-foreground">€{m.revenue.toLocaleString()} · {pct}%</span>
+                    <span className="text-muted-foreground">€{m.revenue.toLocaleString("es")} · {pct}%</span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-muted">
                     <div
