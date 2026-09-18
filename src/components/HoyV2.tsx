@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Calendar, Euro, CalendarX, Phone, UserPlus, TrendingUp, Users } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Calendar, Euro, CalendarX, Phone, UserPlus, TrendingUp, Users, Clock3 } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
 import {
   appointmentsTodayTrend,
@@ -7,8 +7,10 @@ import {
   weeklyOccupancyTrend,
   newClientsTrend,
 } from "@/lib/derive";
-import { employeeMap } from "@/lib/mock/salon";
+import { dayOccupancyBars, toDateKey } from "@/lib/reparto";
+import { employeeMap, employees } from "@/lib/mock/salon";
 import { serviceLabelOf } from "@/lib/appointment-services";
+import { eur } from "@/lib/copy";
 import type { Appointment } from "@/lib/mock/types";
 import { StylistDot } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -19,6 +21,7 @@ import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { WalkInDialog } from "@/components/WalkInDialog";
 import { KpiCard } from "@/components/KpiCard";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /** Buenos días (00-06 se cuenta como "madrugada" pero saluda igual que noche). */
 function greetingForHour(hour: number) {
@@ -37,13 +40,31 @@ function greetingForHour(hour: number) {
  */
 export function HoyV2() {
   const appointments = useSalonStore((s) => s.appointments);
+  const clients = useSalonStore((s) => s.clients);
   const salonName = useSalonStore((s) => s.salonProfile.name);
+  const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur ?? 0);
+  const smartSpread = useSalonStore((s) => s.salonProfile.smartSpread ?? false);
+  const lastSlotBufferMin = useSalonStore((s) => s.salonProfile.lastSlotBufferMin ?? 0);
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [phoneApptOpen, setPhoneApptOpen] = useState(false);
   const greeting = greetingForHour(new Date().getHours());
 
   const now = new Date();
+
+  // Plantones pendientes de cobrar ahora mismo — no es un cierre mensual de
+  // verdad (no hay fecha de cobro guardada), es "cuánto hay sobre la mesa" en
+  // el momento, que es lo que le sirve a Tomás para tantear en 3 segundos.
+  const clientesPenalizados = useMemo(
+    () => clients.filter((c) => (c.penaltyEur ?? 0) > 0).length,
+    [clients],
+  );
+
+  const horasDeHoy = useMemo(
+    () => dayOccupancyBars(appointments, toDateKey(now), employees, lastSlotBufferMin),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [appointments, lastSlotBufferMin],
+  );
   const upcomingToday = appointments
     .filter((a) => {
       const d = new Date(a.start);
@@ -130,6 +151,55 @@ export function HoyV2() {
           goodDirection="up"
         />
       </div>
+
+      {/* Plantones pendientes — solo si la política está activa y hay algo que cobrar. */}
+      {noShowFeeEur > 0 && clientesPenalizados > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3">
+          <Clock3 className="h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
+          <p className="text-sm text-destructive">
+            Plantones este mes: <strong>{clientesPenalizados}</strong> ·{" "}
+            {eur(clientesPenalizados * noShowFeeEur)} pendientes
+          </p>
+        </div>
+      )}
+
+      {/* Reparto de agenda: cómo va cargado el día, hora a hora, todo el equipo. */}
+      {smartSpread && horasDeHoy.length > 0 && (
+        <div className="min-w-0 rounded-xl border border-border/60 bg-card p-5">
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h2 className="font-display text-base">Cómo va el día</h2>
+            <span className="text-xs text-muted-foreground">Ocupación por hora</span>
+          </div>
+          <div className="flex items-end gap-1.5 overflow-x-auto pb-1">
+            {horasDeHoy.map((h) => (
+              <div key={h.hour} className="flex min-w-[28px] flex-1 flex-col items-center gap-1.5">
+                <div className="flex h-20 w-full items-end">
+                  <div
+                    className={cn(
+                      "w-full rounded-t-sm transition-all",
+                      h.busy ? "bg-destructive/60" : "bg-success/60",
+                    )}
+                    style={{ height: `${Math.max(6, h.occupancyPct)}%` }}
+                    title={`${h.occupancyPct}% ocupado`}
+                  />
+                </div>
+                <span
+                  className={cn(
+                    "text-[10px] tabular-nums",
+                    h.busy ? "text-destructive" : "text-muted-foreground",
+                  )}
+                >
+                  {h.hour}h
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            En rojo, las horas "con espera" (12:00–14:00, muy ocupadas o las últimas del día) —
+            ofrécelas después que las demás cuando llamen para reservar.
+          </p>
+        </div>
+      )}
 
       <div className="min-w-0 rounded-xl border border-border/60 bg-card">
         <div className="flex items-center justify-between border-b border-border/60 px-5 py-3.5">
