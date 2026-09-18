@@ -17,6 +17,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { eur } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 import { Users, UserPlus, Repeat, UserX, Search } from "lucide-react";
 
@@ -70,7 +72,7 @@ function Clients() {
   const clients = useSalonStore((s) => s.clients);
   const [selected, setSelected] = useState<Client | null>(null);
   const [busqueda, setBusqueda] = useState("");
-  const [filtro, setFiltro] = useState<"todos" | ClientTag>("todos");
+  const [filtro, setFiltro] = useState<"todos" | ClientTag | "penalizado">("todos");
 
   const now = Date.now();
 
@@ -88,9 +90,16 @@ function Clients() {
     enRiesgo: allRows.filter((r) => r.tag === "inactivo").length,
   };
 
+  // Aparte de si es barato: solo se ofrece el filtro cuando hay a quién
+  // filtrar — una pestaña "Con penalización" vacía es ruido en cualquier
+  // demo que no tenga la política de plantón activa.
+  const hayPenalizados = allRows.some((r) => (r.penaltyEur ?? 0) > 0);
+
   const termino = busqueda.trim().toLowerCase();
   const rows = allRows
-    .filter((c) => (filtro === "todos" ? true : c.tag === filtro))
+    .filter((c) =>
+      filtro === "todos" ? true : filtro === "penalizado" ? (c.penaltyEur ?? 0) > 0 : c.tag === filtro,
+    )
     .filter((c) =>
       termino === ""
         ? true
@@ -136,6 +145,7 @@ function Clients() {
             <TabsTrigger value="nuevo">Nuevos</TabsTrigger>
             <TabsTrigger value="habitual">Habituales</TabsTrigger>
             <TabsTrigger value="inactivo">Inactivos</TabsTrigger>
+            {hayPenalizados && <TabsTrigger value="penalizado">Con penalización</TabsTrigger>}
           </TabsList>
         </Tabs>
       </div>
@@ -175,6 +185,11 @@ function Clients() {
                       <div className="flex items-center gap-3">
                         <ClientAvatar name={c.name} size="sm" />
                         <span className="truncate">{c.name}</span>
+                        {(c.penaltyEur ?? 0) > 0 && (
+                          <Badge variant="destructive" className="shrink-0 text-[10px]">
+                            Debe {eur(c.penaltyEur!)}
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{c.phone}</TableCell>
@@ -216,8 +231,13 @@ function Clients() {
                   <p className="mt-1 truncate text-xs text-muted-foreground">
                     {c.visits} visitas · {c.favoriteService} · {c.phone}
                   </p>
-                  <div className="mt-1.5">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <TagPill tag={c.tag} />
+                    {(c.penaltyEur ?? 0) > 0 && (
+                      <Badge variant="destructive" className="text-[10px]">
+                        Debe {eur(c.penaltyEur!)}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </button>

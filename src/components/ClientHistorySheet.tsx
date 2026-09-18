@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { useSalonStore } from "@/lib/store";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { clientFrequency } from "@/lib/derive";
 import { employeeMap } from "@/lib/mock/salon";
 import { serviceLabelOf } from "@/lib/appointment-services";
+import { eur } from "@/lib/copy";
 import type { Client } from "@/lib/mock/types";
 import { StylistDot } from "@/components/StylistAvatar";
 import { ClientAvatar } from "@/components/ClientAvatar";
@@ -39,11 +41,26 @@ export interface ClientHistorySheetProps {
  * mismo patrón responsive que `NewAppointmentDialog`. Mantiene exactamente
  * el store y los datos existentes: solo cambia la presentación.
  */
-export function ClientHistorySheet({ client, open, onOpenChange }: ClientHistorySheetProps) {
+export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: ClientHistorySheetProps) {
   const isMobile = useIsMobile();
   const appointments = useSalonStore((s) => s.appointments);
   const updateClient = useSalonStore((s) => s.updateClient);
+  const clearPenalty = useSalonStore((s) => s.clearPenalty);
+  // Igual que AppointmentDetailSheet: la prop llega congelada en el momento
+  // del clic (quien abre el sheet guarda una copia). Cobrado/Perdonar cambian
+  // el store desde AQUÍ MISMO, con el sheet todavía abierto — sin releer la
+  // versión viva, el badge de la penalización se habría quedado en rojo tras
+  // pulsar "Perdonar".
+  const stored = useSalonStore((s) =>
+    clientProp ? s.clients.find((c) => c.id === clientProp.id) : undefined,
+  );
+  const client = stored ?? clientProp;
   const stats = client ? clientFrequency(appointments, client.id) : null;
+
+  function handleClearPenalty(motivo: "cobrado" | "perdonado") {
+    if (!client) return;
+    clearPenalty(client.id, motivo);
+  }
 
   // Borrador local para no reescribir el store en cada tecla: se guarda al salir del campo.
   const [notes, setNotes] = useState(client?.notes ?? "");
@@ -100,6 +117,26 @@ export function ClientHistorySheet({ client, open, onOpenChange }: ClientHistory
           </div>
         </div>
       </div>
+
+      {/* Penalización pendiente (política de plantón) — solo si debe algo. */}
+      {(client.penaltyEur ?? 0) > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-destructive">
+              Debe {eur(client.penaltyEur!)}
+              {client.penaltyNote ? ` · ${client.penaltyNote}` : ""}
+            </p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <Button size="sm" variant="outline" onClick={() => handleClearPenalty("cobrado")}>
+              Cobrado
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => handleClearPenalty("perdonado")}>
+              Perdonar
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* KPIs del cliente */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
