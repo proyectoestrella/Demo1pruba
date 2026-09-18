@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { salon } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
+import { useRealSalon } from "@/lib/use-real-salon";
 import { useSyncPanelV2FromUrl, usePanelV2 } from "@/lib/use-panel-v2";
 import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "@/lib/demo-profile";
 import { inferBusinessType } from "@/lib/business-type";
@@ -172,6 +173,9 @@ function useApplyDemoFromUrl() {
   useEffect(() => {
     const fromUrl = decodeDemoProfile(typeof demoRaw === "string" ? demoRaw : undefined);
     if (!fromUrl) return;
+    // Un salón real ya resuelto manda sobre el enlace — ver el mismo guardia en
+    // s.$salonSlug.tsx y `useRealSalon`.
+    if (useSalonStore.getState().realSalonSlug) return;
     updateSalonProfile({ ...blankDemoProfile(), ...fromUrl });
     applyBusinessType(inferBusinessType(fromUrl.tagline, fromUrl.name), {
       team: fromUrl.team,
@@ -181,11 +185,35 @@ function useApplyDemoFromUrl() {
   }, [demoRaw, updateSalonProfile, applyBusinessType, markDemoActive]);
 }
 
+/**
+ * Qué salón está gestionando este panel.
+ *
+ * `/app` no lleva el salón en la ruta, así que se mira, por este orden:
+ *   1. `?s=<slug>` — lo que pone el botón "Acceso barbero" de la web pública.
+ *      Es lo único que funciona en un dispositivo recién estrenado, sin nada
+ *      guardado: la URL estable del panel de un salón real.
+ *   2. El slug del perfil que ya hubiera en este navegador, para que una
+ *      recarga de `/app` a secas siga entrando a la misma agenda.
+ *
+ * Para las demos de venta ninguno de los dos existe en `salons`, así que la
+ * consulta devuelve null y el panel sigue siendo el de siempre.
+ */
+function useSalonSlugDelPanel(): string | undefined {
+  const desdeUrl = useRouterState({
+    select: (s) => (s.location.search as Record<string, unknown>)?.s,
+  });
+  const guardado = useSalonStore((s) => s.salonProfile.slug);
+  return typeof desdeUrl === "string" && desdeUrl ? desdeUrl : guardado || undefined;
+}
+
 function DashboardLayout() {
   // Sincroniza `?v=2`/`?v=1` con la preferencia guardada del panel — tiene
   // que correr para TODAS las rutas /app/*, entren o no por aquí primero.
   useSyncPanelV2FromUrl();
   useApplyDemoFromUrl();
+  // Si este panel gestiona un salón real, aquí es donde deja de ser una copia
+  // local y pasa a leer y escribir en Supabase. Si no, no hace nada.
+  useRealSalon(useSalonSlugDelPanel(), "panel");
   const panelV2 = usePanelV2();
 
   if (panelV2) return <PanelV2Shell />;
