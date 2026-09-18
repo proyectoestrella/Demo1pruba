@@ -23,12 +23,12 @@ import { Client } from "pg";
 const raiz = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
- * Lee `.env.local` directamente en vez de fiarse de `process.env`.
+ * Lee `.env.local` a mano como respaldo de `process.env`.
  *
- * Bun carga `.env.local` solo, pero NO pisa una variable que ya venga del
- * entorno: si la terminal trae `POSTGRES_URL` con otro valor (o censurada), el
- * script se conectaría a la base equivocada sin decir nada. Aquí el fichero es
- * siempre la fuente de verdad.
+ * Bun ya carga `.env.local`, pero solo cuando el script se lanza desde la raíz
+ * del proyecto; leerlo aquí hace que `bun run <ruta absoluta>` funcione igual.
+ * La precedencia es la de siempre: lo que venga explícito en el entorno manda
+ * sobre el fichero, para poder apuntar el script a otra base sin editarlo.
  */
 function envLocal(): Record<string, string> {
   const out: Record<string, string> = {};
@@ -53,7 +53,21 @@ function envLocal(): Record<string, string> {
   return out;
 }
 
-const ENV = { ...process.env, ...envLocal() } as Record<string, string | undefined>;
+const ENV = { ...limpio(envLocal()), ...limpio(process.env) } as Record<string, string | undefined>;
+
+/**
+ * `vercel env pull` escribe el literal "[SENSITIVE]" en las variables marcadas
+ * como sensibles en Vercel: el CLI no puede recuperar su valor. Un valor así no
+ * es una credencial, es un hueco — se descarta para que el mensaje de error sea
+ * "falta la variable" y no un críptico "getaddrinfo EREFUSED".
+ */
+function limpio(env: Record<string, string | undefined>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(env)) {
+    if (typeof v === "string" && v !== "[SENSITIVE]") out[k] = v;
+  }
+  return out;
+}
 
 /**
  * Candidatos de conexión, en orden de preferencia.
@@ -96,6 +110,28 @@ async function conectar() {
 }
 
 async function main() {
+  if (!candidatos().length) {
+    console.error(
+      [
+        "No hay ninguna cadena de conexión a Postgres utilizable.",
+        "",
+        "POSTGRES_URL / POSTGRES_URL_NON_POOLING / POSTGRES_PRISMA_URL de .env.local",
+        'valen el literal "[SENSITIVE]": `vercel env pull` no puede recuperar el valor',
+        "de una variable marcada como sensible en Vercel.",
+        "",
+        "Dos formas de desbloquearlo:",
+        "  a) Pegar supabase/schema.sql en el SQL Editor de Supabase y ejecutarlo.",
+        "  b) Exportar la cadena del POOLER (IPv4) y relanzar este script:",
+        "     POSTGRES_URL='postgresql://postgres.<ref>:<clave>@aws-0-<region>.pooler.supabase.com:5432/postgres' \\",
+        "       bun run scripts/migrate.ts",
+        "",
+        "Ojo: db.<ref>.supabase.co (la directa) solo resuelve a IPv6 y esta máquina",
+        "no tiene ruta IPv6, así que ahí no conecta ni con la clave correcta.",
+      ].join("\n"),
+    );
+    process.exit(1);
+  }
+
   const sql = readFileSync(resolve(raiz, "supabase/schema.sql"), "utf8");
   const client = await conectar();
   try {

@@ -43,7 +43,17 @@ function envLocal(): Record<string, string> {
   return out;
 }
 
-const ENV = { ...process.env, ...envLocal() } as Record<string, string | undefined>;
+/** Precedencia normal: el entorno explícito manda sobre `.env.local`, y el
+ *  literal "[SENSITIVE]" de `vercel env pull` no cuenta como valor. */
+function limpio(env: Record<string, string | undefined>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(env)) {
+    if (typeof v === "string" && v !== "[SENSITIVE]") out[k] = v;
+  }
+  return out;
+}
+
+const ENV = { ...limpio(envLocal()), ...limpio(process.env) } as Record<string, string | undefined>;
 const URL_BASE = ENV.SUPABASE_URL;
 const KEY = ENV.SUPABASE_SERVICE_ROLE_KEY;
 
