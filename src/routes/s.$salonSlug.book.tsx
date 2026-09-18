@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, Sparkles, PhoneCall } from "lucide-react";
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
 import type { Appointment, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { useSalonStore, isSlotTaken } from "@/lib/store";
@@ -11,6 +11,16 @@ import {
   showsRealPhotos,
   type BusinessType,
 } from "@/lib/business-type";
+import { findClientWithPenalty } from "@/lib/no-show";
+import {
+  toDateKey,
+  hourOccupancyPct,
+  offeredCloseMin,
+  lastOfferedHours,
+  isBusyHour,
+  pickAlternativeSlots,
+  type SpreadSlot,
+} from "@/lib/reparto";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -40,13 +50,6 @@ export const Route = createFileRoute("/s/$salonSlug/book")({
   }),
   component: BookingWizard,
 });
-
-function toDateKey(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 function resolveEmployee(
   stylistChoice: EmployeeId | "any" | undefined,
@@ -129,6 +132,15 @@ function BookingWizard() {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(data.serviceIds.length ? 2 : 1);
   const appointments = useSalonStore((s) => s.appointments);
   const addAppointment = useSalonStore((s) => s.addAppointment);
+  const clients = useSalonStore((s) => s.clients);
+
+  // Política de plantón (ver lib/no-show.ts): mientras el teléfono tecleado
+  // coincida con un cliente que debe una penalización, se bloquea el envío —
+  // se recalcula en cada tecla, no solo al perder el foco.
+  const penalizedClient = useMemo(
+    () => findClientWithPenalty(clients, data.phone),
+    [clients, data.phone],
+  );
 
   const selectedServices = data.serviceIds.map((id) => serviceMap[id]).filter(Boolean);
   const serviceNames = selectedServices.map((s) => s.name);
@@ -237,7 +249,7 @@ function BookingWizard() {
         ? !data.employeeId
         : step === 3
           ? !data.date || !data.time
-          : !data.name || !data.phone || !data.acceptedPolicy;
+          : !data.name || !data.phone || !data.acceptedPolicy || !!penalizedClient;
 
   const ctaLabel = step < 4 ? "Continuar" : `Confirmar reserva — ${eur(total)}`;
 
@@ -288,6 +300,8 @@ function BookingWizard() {
               selectedTime={data.time}
               onPick={(date, time) => setData((d) => ({ ...d, date, time }))}
               employees={employees}
+              smartSpread={!!profile.smartSpread}
+              lastSlotBufferMin={profile.lastSlotBufferMin ?? 0}
             />
           )}
 
@@ -312,6 +326,25 @@ function BookingWizard() {
                     placeholder="600 000 000"
                   />
                 </div>
+
+                {penalizedClient && (
+                  <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                    <p>
+                      Tienes pendiente una penalización de {eur(profile.noShowFeeEur ?? 0)} por una
+                      cita a la que no pudiste venir sin avisar. Abónala en {profile.name} y podrás
+                      volver a reservar.
+                    </p>
+                    {profile.phone && (
+                      <Button asChild size="sm" variant="outline" className="mt-3 gap-1.5">
+                        <a href={`tel:${profile.phone.replace(/\s+/g, "")}`}>
+                          <PhoneCall className="h-3.5 w-3.5" />
+                          Llamar
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
                   <Label htmlFor="email">Email (opcional)</Label>
                   <Input
@@ -350,6 +383,14 @@ function BookingWizard() {
                     Acepto la política de cancelación: gratuita hasta 24 h antes de la cita.
                   </span>
                 </label>
+
+                {(profile.noShowFeeEur ?? 0) > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Si no puedes venir, avísanos con {profile.noShowNoticeHours ?? 2} h de
+                    antelación; si no, la siguiente reserva lleva {eur(profile.noShowFeeEur ?? 0)} de
+                    penalización.
+                  </p>
+                )}
               </div>
             </Step>
           )}
@@ -567,6 +608,8 @@ function DateTimeStep({
   selectedTime,
   onPick,
   employees,
+  smartSpread,
+  lastSlotBufferMin,
 }: {
   /** Duración total de la cita: el hueco que hay que encontrar libre. */
   durationMin: number;
@@ -576,6 +619,10 @@ function DateTimeStep({
   selectedTime?: string;
   onPick: (date: string, time: string) => void;
   employees: Employee[];
+  /** Reparto de agenda (clave "k"): etiqueta huecos "con espera" y sugiere una hora más tranquila. */
+  smartSpread: boolean;
+  /** Minutos antes del cierre que dejan de ofertarse (clave "u"). 0 = como siempre. */
+  lastSlotBufferMin: number;
 }) {
   const relevantEmployees = useMemo(
     () => (stylistChoice === "any" ? employees : employees.filter((e) => e.id === stylistChoice)),
@@ -595,6 +642,23 @@ function DateTimeStep({
     }[];
   }
 
+  /**
+   * Cierre "de verdad" del día: el del SALÓN, no el del profesional elegido —
+   * Cardedal cierra a las 20:30 lleve quien lleve la caja, y el colchón de
+   * cierre (`u`) se mide contra eso. Con "any" coincide con `scheduleForWeekday`.
+   */
+  function salonRangeForWeekday(weekday: number) {
+    const opens = employees.map((e) => e.schedule[weekday]).filter(Boolean) as {
+      start: number;
+      end: number;
+    }[];
+    if (opens.length === 0) return null;
+    return {
+      openMin: Math.min(...opens.map((o) => o.start)) * 60,
+      closeMin: Math.max(...opens.map((o) => o.end)) * 60,
+    };
+  }
+
   function isDayDisabled(date: Date) {
     if (date < today) return true;
     const weekday = date.getDay();
@@ -603,8 +667,13 @@ function DateTimeStep({
     const dateKey = toDateKey(date);
     const start = Math.min(...opens.map((o) => o.start));
     const end = Math.max(...opens.map((o) => o.end));
+    const salonRange = salonRangeForWeekday(weekday);
+    const closeMinOffered = salonRange
+      ? offeredCloseMin(salonRange.closeMin, lastSlotBufferMin)
+      : end * 60;
     for (let h = start; h < end; h++) {
       for (const m of [0, 30]) {
+        if (h * 60 + m >= closeMinOffered) continue;
         const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
         const open = relevantEmployees.some((e) => {
           const sched = e.schedule[weekday];
@@ -621,16 +690,23 @@ function DateTimeStep({
     return true;
   }
 
-  const [activeDate, setActiveDate] = useState<Date | undefined>(
+  const [activeDate, setActiveDateRaw] = useState<Date | undefined>(
     selectedDate ? new Date(`${selectedDate}T00:00`) : undefined,
   );
+  // La tarjeta de sugerencia es del día que se está mirando: cambiar de día
+  // sin cerrarla dejaría una sugerencia de ayer sobre una franja de hoy.
+  const [pendingBusyTime, setPendingBusyTime] = useState<string | null>(null);
+  function setActiveDate(d: Date) {
+    setPendingBusyTime(null);
+    setActiveDateRaw(d);
+  }
 
   useEffect(() => {
     if (activeDate) return;
     const d = new Date(today);
     for (let i = 0; i < 60; i++) {
       if (!isDayDisabled(d)) {
-        setActiveDate(new Date(d));
+        setActiveDateRaw(new Date(d));
         break;
       }
       d.setDate(d.getDate() + 1);
@@ -638,7 +714,7 @@ function DateTimeStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const slots = useMemo(() => {
+  const slots = useMemo((): SpreadSlot[] => {
     if (!activeDate) return [];
     const dateKey = toDateKey(activeDate);
     const weekday = activeDate.getDay();
@@ -646,9 +722,24 @@ function DateTimeStep({
     if (opens.length === 0) return [];
     const start = Math.min(...opens.map((o) => o.start));
     const end = Math.max(...opens.map((o) => o.end));
-    const out: { time: string; available: boolean }[] = [];
+
+    const salonRange = salonRangeForWeekday(weekday);
+    const closeMinOffered = salonRange
+      ? offeredCloseMin(salonRange.closeMin, lastSlotBufferMin)
+      : end * 60;
+    const lastHours = salonRange
+      ? lastOfferedHours(salonRange.openMin, closeMinOffered)
+      : [];
+
+    const out: SpreadSlot[] = [];
     for (let h = start; h < end; h++) {
+      const hourOccupancy = smartSpread
+        ? hourOccupancyPct(appointments, dateKey, h, employees)
+        : 0;
+      const busy = smartSpread && isBusyHour(h, hourOccupancy, lastHours);
       for (const m of [0, 30]) {
+        // "No ofrecer los últimos X minutos": el hueco ni se lista.
+        if (h * 60 + m >= closeMinOffered) continue;
         const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
         const open = relevantEmployees.some((e) => {
           const sched = e.schedule[weekday];
@@ -659,12 +750,12 @@ function DateTimeStep({
         const available = relevantEmployees.some(
           (e) => !isSlotTaken(appointments, e.id, iso, durationMin),
         );
-        out.push({ time: timeStr, available });
+        out.push({ time: timeStr, available, busy });
       }
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDate, relevantEmployees, appointments, durationMin]);
+  }, [activeDate, relevantEmployees, employees, appointments, durationMin, smartSpread, lastSlotBufferMin]);
 
   const groups = useMemo(() => {
     const morning = slots.filter((s) => Number(s.time.split(":")[0]) < 14);
@@ -681,6 +772,28 @@ function DateTimeStep({
   }, [slots]);
 
   const activeDateKey = activeDate ? toDateKey(activeDate) : undefined;
+
+  const alternatives = useMemo(
+    () => (pendingBusyTime ? pickAlternativeSlots(slots, pendingBusyTime, 3) : []),
+    [slots, pendingBusyTime],
+  );
+
+  function handleSlotClick(s: SpreadSlot) {
+    if (!s.available || !activeDateKey) return;
+    // Un hueco "con espera": se sugiere antes de reservarlo, nunca se impide.
+    if (smartSpread && s.busy && pendingBusyTime !== s.time) {
+      setPendingBusyTime(s.time);
+      return;
+    }
+    onPick(activeDateKey, s.time);
+    setPendingBusyTime(null);
+  }
+
+  function confirmPending(time: string) {
+    if (!activeDateKey) return;
+    onPick(activeDateKey, time);
+    setPendingBusyTime(null);
+  }
 
   return (
     <Step title="Fecha y hora">
@@ -709,6 +822,36 @@ function DateTimeStep({
                   No hay horas disponibles este día. Prueba con otra fecha.
                 </p>
               )}
+
+              {pendingBusyTime && (
+                <div className="mb-5 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+                  <p className="font-medium">
+                    A esa hora suele haber espera. Te atendemos antes y sin esperar:
+                  </p>
+                  {alternatives.length > 0 && (
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      {alternatives.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => confirmPending(t)}
+                          className="rounded-full border border-primary/40 bg-card px-4 py-1.5 text-sm hover:bg-primary/10"
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => confirmPending(pendingBusyTime)}
+                    className="mt-2.5 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                  >
+                    Prefiero las {pendingBusyTime}
+                  </button>
+                </div>
+              )}
+
               <div className="space-y-5">
                 {groups.map((g) => (
                   <div key={g.label}>
@@ -723,9 +866,10 @@ function DateTimeStep({
                           <button
                             key={s.time}
                             disabled={!s.available}
-                            onClick={() => activeDateKey && onPick(activeDateKey, s.time)}
+                            onClick={() => handleSlotClick(s)}
+                            title={s.busy ? "Suele haber espera" : undefined}
                             className={cn(
-                              "rounded-full border px-4 py-2 text-sm transition-colors",
+                              "relative rounded-full border px-4 py-2 text-sm transition-colors",
                               !s.available &&
                                 "cursor-not-allowed border-border/40 text-muted-foreground/50 line-through",
                               s.available &&
@@ -734,9 +878,19 @@ function DateTimeStep({
                               s.available &&
                                 !isSelected &&
                                 "border-border hover:border-primary/50 hover:bg-primary/5",
+                              s.available && s.busy && !isSelected && "border-amber-500/50",
                             )}
                           >
                             {s.time}
+                            {s.busy && s.available && (
+                              <span
+                                aria-hidden="true"
+                                className={cn(
+                                  "absolute -right-0.5 -top-0.5 size-2 rounded-full",
+                                  isSelected ? "bg-primary-foreground" : "bg-amber-500",
+                                )}
+                              />
+                            )}
                           </button>
                         );
                       })}
@@ -744,6 +898,12 @@ function DateTimeStep({
                   </div>
                 ))}
               </div>
+              {smartSpread && slots.some((s) => s.busy && s.available) && (
+                <p className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span aria-hidden="true" className="size-2 rounded-full bg-amber-500" />
+                  Suele haber espera a esa hora
+                </p>
+              )}
             </>
           ) : (
             <p className="text-sm text-muted-foreground">

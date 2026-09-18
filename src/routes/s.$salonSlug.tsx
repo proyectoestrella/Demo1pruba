@@ -87,6 +87,8 @@ function SalonLayout() {
     applyBusinessType(inferBusinessType(fromUrl.tagline, fromUrl.name), {
       team: fromUrl.team,
       menu: fromUrl.menu,
+      noShowFeeEur: fromUrl.noShowFeeEur,
+      smartSpread: fromUrl.smartSpread,
     });
     markDemoActive();
   }, [demoRaw, updateSalonProfile, applyBusinessType, markDemoActive]);
