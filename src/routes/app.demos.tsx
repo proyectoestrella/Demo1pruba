@@ -22,6 +22,12 @@ import {
   slugify,
   type DemoProfile,
 } from "@/lib/demo-profile";
+import {
+  formatMenuEntry,
+  formatTeamEntry,
+  parseMenuEntry,
+  parseTeamEntry,
+} from "@/lib/business-type";
 import { inferTipo, lookupGoogleMaps, type MapsLookup } from "@/lib/api/maps.functions";
 import { DAY_LABELS_ES, DEFAULT_OPENING_HOURS, normalizeDay } from "@/lib/opening-hours";
 import { PageHeader } from "@/components/PageHeader";
@@ -59,6 +65,60 @@ interface DraftDemo {
   openingHours: string[];
   photoCount: number;
   galleryPhotos: string[];
+  /** Una línea por profesional: "Nombre — Especialidad" (o solo "Nombre"). */
+  team: string;
+  /** Una línea por servicio: "Nombre — minutos — precio — Categoría". */
+  menu: string;
+}
+
+/**
+ * El separador que ve quien rellena el formulario es « — », pero se acepta
+ * "-" o "|" igual de bien — nadie va a teclear un guion largo a propósito.
+ * Internamente todo se guarda con "~" (ver `parseTeamEntry`/`parseMenuEntry`
+ * en business-type.ts), que es el mismo formato que viaja en el enlace.
+ */
+function lineToTilde(line: string): string {
+  const trimmed = line.trim();
+  for (const sep of [" — ", " – ", " | ", "|", " - "]) {
+    if (trimmed.includes(sep)) {
+      return trimmed
+        .split(sep)
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .join("~");
+    }
+  }
+  return trimmed;
+}
+
+/** Cadena canónica "Nombre~Especialidad" → línea legible "Nombre — Especialidad". */
+function tildeToLine(raw: string): string {
+  return raw
+    .split("~")
+    .map((p) => p.trim())
+    .join(" — ");
+}
+
+/** Textarea (una entrada por línea) → array de cadenas canónicas de equipo, validadas. */
+function teamLinesToEntries(text: string): string[] {
+  return text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => parseTeamEntry(lineToTilde(l)))
+    .filter((e): e is NonNullable<typeof e> => e !== null)
+    .map(formatTeamEntry);
+}
+
+/** Textarea (una entrada por línea) → array de cadenas canónicas de carta, validadas. */
+function menuLinesToEntries(text: string): string[] {
+  return text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => parseMenuEntry(lineToTilde(l)))
+    .filter((e): e is NonNullable<typeof e> => e !== null)
+    .map(formatMenuEntry);
 }
 
 function draftFrom(demo: DemoProfile & { id?: string }): DraftDemo {
@@ -78,6 +138,8 @@ function draftFrom(demo: DemoProfile & { id?: string }): DraftDemo {
       demo.openingHours?.length === 7 ? [...demo.openingHours] : [...DEFAULT_OPENING_HOURS],
     photoCount: demo.photoCount ?? 0,
     galleryPhotos: demo.galleryPhotos ?? [],
+    team: (demo.team ?? []).map(tildeToLine).join("\n"),
+    menu: (demo.menu ?? []).map(tildeToLine).join("\n"),
   };
 }
 
@@ -258,6 +320,8 @@ function Demos() {
         openingHours: draft.openingHours.map(normalizeDay),
         photoCount: draft.photoCount,
         galleryPhotos: draft.galleryPhotos,
+        team: teamLinesToEntries(draft.team),
+        menu: menuLinesToEntries(draft.menu),
       },
       draft.id,
     );
@@ -420,6 +484,45 @@ function Demos() {
             onChange={(v) => field("specialties", v)}
             hint="Separadas por comas. Rotan tras «Especialistas en»."
           />
+
+          <div className="h-px bg-border/60" />
+
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+              Equipo (uno por línea: Nombre — especialidad)
+            </Label>
+            <Textarea
+              value={draft.team}
+              onChange={(e) => field("team", e.target.value)}
+              rows={3}
+              placeholder={"Adam — Cortes y afeitado clásico\nLucía — Color y mechas"}
+              className="resize-y font-mono text-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              De 1 a 3 profesionales. La especialidad es opcional. Vacío = el equipo de ejemplo de
+              siempre (tres profesionales).
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+              Carta (uno por línea: Nombre — minutos — precio — categoría)
+            </Label>
+            <Textarea
+              value={draft.menu}
+              onChange={(e) => field("menu", e.target.value)}
+              rows={4}
+              placeholder={"Corte — 30 — 13 — Cortes\nCorte + barba — 45 — 18 — Cortes"}
+              className="resize-y font-mono text-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              De 1 a 12 servicios. La categoría es opcional (por defecto «Servicios»). El precio
+              admite coma decimal. Vacío = la carta de ejemplo del tipo de negocio.
+            </p>
+          </div>
+
+          <div className="h-px bg-border/60" />
+
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-widest text-muted-foreground">
               Horario
