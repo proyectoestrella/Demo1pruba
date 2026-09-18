@@ -65,6 +65,10 @@ interface SalonState {
   addClient: (c: Omit<Client, "id" | "createdAt">) => Client;
   updateClient: (id: string, patch: Partial<Client>) => void;
   deleteClient: (id: string) => void;
+  /** Marca al cliente con una penalización pendiente (política de plantón — ver mock/types.ts). */
+  applyPenalty: (clientId: string, eur: number, note?: string) => void;
+  /** Cierra la penalización: cobrada o perdonada, decide siempre el dueño. */
+  clearPenalty: (clientId: string, motivo: "cobrado" | "perdonado") => void;
 
   // Services (moved from static salon.ts array to reactive store state)
   addService: (s: Omit<Service, "id">) => Service;
@@ -84,8 +88,15 @@ interface SalonState {
    * `overrides.team`/`overrides.menu` son el equipo/carta reales del enlace
    * (claves "e"/"m" — ver demo-profile.ts): si vienen, sustituyen al equipo
    * y catálogo de ejemplo del tipo; si no, todo sigue como siempre.
+   *
+   * `overrides.noShowFeeEur`/`overrides.smartSpread` (claves "q"/"k") ajustan
+   * el seed para poder enseñar la política de plantón y el reparto de
+   * agenda al momento — ver `buildSeed` en mock/seed.ts.
    */
-  applyBusinessType: (type: BusinessType, overrides?: { team?: string[]; menu?: string[] }) => void;
+  applyBusinessType: (
+    type: BusinessType,
+    overrides?: { team?: string[]; menu?: string[]; noShowFeeEur?: number; smartSpread?: boolean },
+  ) => void;
 
   /** Activa/desactiva el rediseño v2 del panel — ver `panelV2` arriba. */
   setPanelV2: (v: boolean) => void;
@@ -192,6 +203,28 @@ export const useSalonStore = create<SalonState>()(
           clients: s.clients.filter((c) => c.id !== id),
         })),
 
+      applyPenalty: (clientId, eur, note) =>
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === clientId ? { ...c, penaltyEur: eur, penaltyNote: note } : c,
+          ),
+        })),
+      clearPenalty: (clientId, motivo) =>
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === clientId
+              ? {
+                  ...c,
+                  penaltyEur: undefined,
+                  penaltyNote:
+                    motivo === "cobrado"
+                      ? `Cobrada el ${new Date().toLocaleDateString("es", { day: "numeric", month: "short" })}`
+                      : `Perdonada el ${new Date().toLocaleDateString("es", { day: "numeric", month: "short" })}`,
+                }
+              : c,
+          ),
+        })),
+
       addService: (svc) => {
         const service: Service = { ...svc, id: `svc-${Date.now()}` };
         set((s) => ({ services: [...s.services, service] }));
@@ -217,7 +250,10 @@ export const useSalonStore = create<SalonState>()(
         // de abajo notifica a todo lo que esté suscrito a la store.
         setEmployeesForType(type, overrides?.team);
         setServicesForType(type, overrides?.menu);
-        const seed = buildSeed(type, liveEmployees, [...seedServices]);
+        const seed = buildSeed(type, liveEmployees, [...seedServices], {
+          noShowFeeEur: overrides?.noShowFeeEur,
+          smartSpread: overrides?.smartSpread,
+        });
         set(() => ({
           services: [...seedServices],
           clients: seed.clients,
@@ -258,6 +294,8 @@ export const useSalonStore = create<SalonState>()(
         get().applyBusinessType(inferBusinessType(profileFields.tagline, profileFields.name), {
           team: profileFields.team,
           menu: profileFields.menu,
+          noShowFeeEur: profileFields.noShowFeeEur,
+          smartSpread: profileFields.smartSpread,
         });
       },
 

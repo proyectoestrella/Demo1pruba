@@ -50,3 +50,42 @@ describe("solicitudes pendientes de confirmar", () => {
     );
   });
 });
+
+/**
+ * Política de plantón (ver AppointmentDetailSheet.tsx y ClientHistorySheet.tsx):
+ * aplicar y cerrar una penalización, probadas aquí sin montar React.
+ */
+describe("penalización por plantón", () => {
+  it("applyPenalty marca al cliente con el importe y la nota", () => {
+    const { addClient, applyPenalty } = useSalonStore.getState();
+    const cliente = addClient({ name: "Cliente Plantón", phone: "+34 600 000 099" });
+
+    applyPenalty(cliente.id, 7, "No vino el 12 sept · Corte");
+
+    const actualizado = useSalonStore.getState().clients.find((c) => c.id === cliente.id);
+    expect(actualizado?.penaltyEur).toBe(7);
+    expect(actualizado?.penaltyNote).toBe("No vino el 12 sept · Corte");
+  });
+
+  it("clearPenalty('perdonado') limpia la deuda del cliente", () => {
+    const { addClient, applyPenalty, clearPenalty } = useSalonStore.getState();
+    const cliente = addClient({ name: "Otro Cliente", phone: "+34 600 000 098" });
+    applyPenalty(cliente.id, 7, "No vino");
+
+    clearPenalty(cliente.id, "perdonado");
+
+    const actualizado = useSalonStore.getState().clients.find((c) => c.id === cliente.id);
+    expect(actualizado?.penaltyEur).toBeUndefined();
+  });
+
+  it("clearPenalty('cobrado') también limpia la deuda", () => {
+    const { addClient, applyPenalty, clearPenalty } = useSalonStore.getState();
+    const cliente = addClient({ name: "Tercer Cliente", phone: "+34 600 000 097" });
+    applyPenalty(cliente.id, 7, "No vino");
+
+    clearPenalty(cliente.id, "cobrado");
+
+    const actualizado = useSalonStore.getState().clients.find((c) => c.id === cliente.id);
+    expect(actualizado?.penaltyEur).toBeUndefined();
+  });
+});
