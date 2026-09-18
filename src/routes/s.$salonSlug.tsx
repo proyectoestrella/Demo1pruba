@@ -84,7 +84,10 @@ function SalonLayout() {
     const fromUrl = decodeDemoProfile(typeof demoRaw === "string" ? demoRaw : undefined);
     if (!fromUrl) return;
     updateSalonProfile({ ...blankDemoProfile(), ...fromUrl });
-    applyBusinessType(inferBusinessType(fromUrl.tagline, fromUrl.name));
+    applyBusinessType(inferBusinessType(fromUrl.tagline, fromUrl.name), {
+      team: fromUrl.team,
+      menu: fromUrl.menu,
+    });
     markDemoActive();
   }, [demoRaw, updateSalonProfile, applyBusinessType, markDemoActive]);
 

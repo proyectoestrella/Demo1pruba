@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
-import { useBusinessType } from "@/lib/use-display-profile";
+import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import { employeesForType } from "@/lib/mock/salon";
 import { professionalWord, showsRealPhotos } from "@/lib/business-type";
 import type { EmployeeId } from "@/lib/mock/types";
@@ -34,11 +34,15 @@ export interface WalkInDialogProps {
  */
 export function WalkInDialog({ open, onOpenChange }: WalkInDialogProps) {
   const tipo = useBusinessType();
+  const profile = useDisplayProfile();
   const services = useSalonStore((s) => s.services);
   const addAppointment = useSalonStore((s) => s.addAppointment);
   const activeServices = services.filter((s) => s.active !== false);
   const serviceMap = selectServiceMap(services);
-  const employees = employeesForType(tipo);
+  // Este diálogo vive en el panel (/app), pero llama a la versión pura para
+  // que respete el equipo real del enlace sin depender de que
+  // `applyBusinessType` ya haya corrido — igual que las páginas públicas.
+  const employees = employeesForType(tipo, profile.team);
 
   const [name, setName] = useState("");
   const [serviceId, setServiceId] = useState<string | undefined>(activeServices[0]?.id);

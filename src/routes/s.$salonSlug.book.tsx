@@ -1,15 +1,14 @@
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, Sparkles } from "lucide-react";
-import { employeesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
+import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
 import type { Appointment, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { useSalonStore, isSlotTaken } from "@/lib/store";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import {
-  categoryOrderFor,
+  categoryOrderOf,
   professionalWord,
   showsRealPhotos,
-  SERVICE_CATALOG,
   type BusinessType,
 } from "@/lib/business-type";
 import { StylistAvatar } from "@/components/StylistAvatar";
@@ -108,14 +107,16 @@ function BookingWizard() {
   // enlace de esta demo — no del equipo/catálogo "activo" mutado en
   // mock/salon.ts, que solo se pone al día tras un efecto de cliente. Así el
   // primer render (incluido el del servidor) ya sale en el idioma correcto,
-  // igual que ya hacía `useDisplayProfile` con el resto del perfil.
+  // igual que ya hacía `useDisplayProfile` con el resto del perfil. Si el
+  // enlace trae carta o equipo reales, sustituyen a los de ejemplo del tipo.
+  const profile = useDisplayProfile();
   const tipo = useBusinessType();
-  const services = useMemo(() => SERVICE_CATALOG[tipo], [tipo]);
+  const services = useMemo(() => servicesForType(tipo, profile.menu), [tipo, profile.menu]);
   const serviceMap = useMemo(
     () => Object.fromEntries(services.map((s) => [s.id, s])) as Record<string, Service>,
     [services],
   );
-  const employees = useMemo(() => employeesForType(tipo), [tipo]);
+  const employees = useMemo(() => employeesForType(tipo, profile.team), [tipo, profile.team]);
   const employeeMap = useMemo(
     () => Object.fromEntries(employees.map((e) => [e.id, e])) as Record<string, Employee>,
     [employees],
@@ -435,7 +436,7 @@ function ServiceStep({
   services: Service[];
 }) {
   const count = selected.length;
-  const categoryOrder = categoryOrderFor(tipo);
+  const categoryOrder = categoryOrderOf(services);
   return (
     <Step title="Elige uno o varios servicios">
       <p className="-mt-4 mb-6 text-sm text-muted-foreground" aria-live="polite">

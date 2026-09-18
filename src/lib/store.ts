@@ -80,8 +80,12 @@ interface SalonState {
    * negocio. Se llama al abrir un enlace de demo (ver s.$salonSlug.tsx) y al
    * aplicar una demo guardada — nunca al editar Ajustes a mano, para no
    * borrar el trabajo de un negocio real que ya tiene su propio catálogo.
+   *
+   * `overrides.team`/`overrides.menu` son el equipo/carta reales del enlace
+   * (claves "e"/"m" — ver demo-profile.ts): si vienen, sustituyen al equipo
+   * y catálogo de ejemplo del tipo; si no, todo sigue como siempre.
    */
-  applyBusinessType: (type: BusinessType) => void;
+  applyBusinessType: (type: BusinessType, overrides?: { team?: string[]; menu?: string[] }) => void;
 
   /** Activa/desactiva el rediseño v2 del panel — ver `panelV2` arriba. */
   setPanelV2: (v: boolean) => void;
@@ -205,14 +209,14 @@ export const useSalonStore = create<SalonState>()(
       updateSalonProfile: (patch) =>
         set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } })),
 
-      applyBusinessType: (type) => {
+      applyBusinessType: (type, overrides) => {
         // Mutan en sitio los arrays/objetos que exporta mock/salon.ts: las
         // pantallas que los importan de forma estática (la carta pública, la
         // lista de espera del panel, el diálogo de nueva cita…) los leen de
         // nuevo en el siguiente render, que llega enseguida porque el `set`
         // de abajo notifica a todo lo que esté suscrito a la store.
-        setEmployeesForType(type);
-        setServicesForType(type);
+        setEmployeesForType(type, overrides?.team);
+        setServicesForType(type, overrides?.menu);
         const seed = buildSeed(type, liveEmployees, [...seedServices]);
         set(() => ({
           services: [...seedServices],
@@ -251,7 +255,10 @@ export const useSalonStore = create<SalonState>()(
         // `id` y `savedAt` son de la demo, no del salón: no deben colarse en el perfil.
         const { id: _id, savedAt: _savedAt, ...profileFields } = demo;
         set((s) => ({ salonProfile: { ...s.salonProfile, ...profileFields } }));
-        get().applyBusinessType(inferBusinessType(profileFields.tagline, profileFields.name));
+        get().applyBusinessType(inferBusinessType(profileFields.tagline, profileFields.name), {
+          team: profileFields.team,
+          menu: profileFields.menu,
+        });
       },
 
       resetSalonProfile: () => {
@@ -385,8 +392,8 @@ export const useSalonStore = create<SalonState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         const type = inferBusinessType(state.salonProfile?.tagline, state.salonProfile?.name);
-        setEmployeesForType(type);
-        setServicesForType(type);
+        setEmployeesForType(type, state.salonProfile?.team);
+        setServicesForType(type, state.salonProfile?.menu);
       },
     },
   ),

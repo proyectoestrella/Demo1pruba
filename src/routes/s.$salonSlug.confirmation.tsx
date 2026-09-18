@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef } from "react";
 import { Check, CalendarPlus, MapPin } from "lucide-react";
-import { employeesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
-import { SERVICE_CATALOG } from "@/lib/business-type";
+import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { Button } from "@/components/ui/button";
@@ -31,12 +30,12 @@ function Confirmation() {
   const profile = useDisplayProfile();
   const tipo = useBusinessType();
   const serviceMap = useMemo(
-    () => Object.fromEntries(SERVICE_CATALOG[tipo].map((s) => [s.id, s])),
-    [tipo],
+    () => Object.fromEntries(servicesForType(tipo, profile.menu).map((s) => [s.id, s])),
+    [tipo, profile.menu],
   );
   const employeeMap = useMemo(
-    () => Object.fromEntries(employeesForType(tipo).map((e) => [e.id, e])),
-    [tipo],
+    () => Object.fromEntries(employeesForType(tipo, profile.team).map((e) => [e.id, e])),
+    [tipo, profile.team],
   );
   // `service` trae uno o varios ids separados por comas, tal y como los deja el wizard.
   const chosen = sid

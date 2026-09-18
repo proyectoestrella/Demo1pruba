@@ -15,14 +15,19 @@ import {
   Star,
   Users,
 } from "lucide-react";
-import { employeesForType, requiresDeposit, DEPOSIT_RATE, DEPOSIT_THRESHOLD_MIN } from "@/lib/mock/salon";
+import {
+  employeesForType,
+  servicesForType,
+  requiresDeposit,
+  DEPOSIT_RATE,
+  DEPOSIT_THRESHOLD_MIN,
+} from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import {
-  categoryOrderFor,
+  categoryOrderOf,
   FEATURED_IDS_BY_TYPE,
   professionalWord,
-  SERVICE_CATALOG,
   type BusinessType,
 } from "@/lib/business-type";
 import { useMemo } from "react";
@@ -323,17 +328,23 @@ function SalonHome() {
   // Catálogo y equipo calculados a partir del tipo deducido del enlace —no
   // del catálogo/equipo "activo" mutado en mock/salon.ts, que solo se
   // actualiza tras un efecto de cliente— para que el primer render (incluido
-  // el del servidor) ya salga en el idioma correcto.
-  const services = useMemo(() => SERVICE_CATALOG[tipo], [tipo]);
+  // el del servidor) ya salga en el idioma correcto. Si el enlace trae carta
+  // o equipo reales (profile.menu/profile.team), sustituyen al catálogo y
+  // equipo de ejemplo del tipo.
+  const services = useMemo(() => servicesForType(tipo, profile.menu), [tipo, profile.menu]);
   const serviceMap = useMemo(
     () => Object.fromEntries(services.map((s) => [s.id, s])),
     [services],
   );
-  const employees = useMemo(() => employeesForType(tipo), [tipo]);
+  const employees = useMemo(() => employeesForType(tipo, profile.team), [tipo, profile.team]);
 
   const activeServices = services.filter((s) => s.active !== false);
-  const categoryOrder = categoryOrderFor(tipo);
-  const featuredIds = FEATURED_IDS_BY_TYPE[tipo];
+  const categoryOrder = categoryOrderOf(services);
+  // Con carta real no hay ids fijos que mapear a "destacados": se enseñan los
+  // cuatro primeros de la carta, en el orden en que se dieron.
+  const featuredIds = profile.menu?.length
+    ? activeServices.slice(0, 4).map((s) => s.id)
+    : FEATURED_IDS_BY_TYPE[tipo];
   const bentoItems = bentoItemsFor(tipo);
   const faq = faqFor(tipo);
   // v2: como mucho dos reseñas de ejemplo, y ya van marcadas "Ejemplo" — el
@@ -351,6 +362,10 @@ function SalonHome() {
     profileUrl: `/s/${salonSlug}#equipo`,
   }));
   const totalTeamYears = employees.reduce((sum, e) => sum + e.yearsExperience, 0);
+  // "entre los tres" solo tiene sentido con equipo de tres; con un enlace de
+  // equipo real puede haber uno o dos. Máximo tres: nunca hay más franjas.
+  const entreElEquipo =
+    employees.length === 1 ? "" : employees.length === 2 ? " entre los dos" : " entre los tres";
   // Cifras sacadas del propio catálogo/equipo, no inventadas.
 
   return (
@@ -871,8 +886,8 @@ function SalonHome() {
             <div className="mt-7 flex flex-col items-center gap-2">
               <AvatarCircles avatarUrls={TEAM_AVATARS} />
               <p className="text-xs text-muted-foreground">
-                {employees.length} {professionalWord(tipo, true)} · {totalTeamYears} años de
-                oficio entre los tres
+                {employees.length} {professionalWord(tipo, employees.length !== 1)} ·{" "}
+                {totalTeamYears} años de oficio{entreElEquipo}
               </p>
             </div>
 
