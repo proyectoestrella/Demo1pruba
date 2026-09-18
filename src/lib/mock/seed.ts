@@ -12,7 +12,13 @@ function mulberry32(seed: number) {
   };
 }
 
-function buildClients(type: BusinessType): Client[] {
+/** Cuántos días atrás se sitúa el plantón del cliente sembrado, y su hueco en la lista (0-based). */
+const PENALIZED_CLIENT_INDEX = 2;
+const PENALIZED_DAYS_AGO = 5;
+/** Teléfono estable y fácil de teclear en la tablet delante del cliente — ver demo-profile.ts. */
+export const PENALIZED_CLIENT_PHONE = "+34 600 000 007";
+
+function buildClients(type: BusinessType, penalizedFeeEur?: number): Client[] {
   const rand = mulberry32(42);
   const pick = <T,>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
   const FIRST = FIRST_NAMES_BY_TYPE[type];
@@ -30,7 +36,32 @@ function buildClients(type: BusinessType): Client[] {
     };
   });
 
-  return withExampleNotes(clients, type);
+  const withNotes = withExampleNotes(clients, type);
+
+  // Con la política de plantón activa (q > 0 en el enlace de demo), el 3er
+  // cliente de la lista se marca con una penalización pendiente — así en 20 s
+  // se puede enseñar el rojo en Clientes y, con SU teléfono, el bloqueo en la
+  // reserva pública. Se le fuerza también el teléfono a uno fácil de teclear
+  // (+34 600 000 007): un número aleatorio del seed vale para enseñar la
+  // ficha, pero no para que Tomás lo teclee delante de un cliente.
+  if (penalizedFeeEur && penalizedFeeEur > 0) {
+    const fechaPlantón = new Date(Date.now() - PENALIZED_DAYS_AGO * 86400_000).toLocaleDateString(
+      "es",
+      { day: "numeric", month: "long" },
+    );
+    return withNotes.map((c, i) =>
+      i === PENALIZED_CLIENT_INDEX
+        ? {
+            ...c,
+            phone: PENALIZED_CLIENT_PHONE,
+            penaltyEur: penalizedFeeEur,
+            penaltyNote: `No vino el ${fechaPlantón} · Corte`,
+          }
+        : c,
+    );
+  }
+
+  return withNotes;
 }
 
 function isoAt(daysFromToday: number, hour: number, minute = 0) {
@@ -41,15 +72,39 @@ function isoAt(daysFromToday: number, hour: number, minute = 0) {
   return d.toISOString();
 }
 
+/**
+ * Con el reparto de agenda activo (`smartSpread`), sesga la hora de inicio
+ * dentro del horario del profesional: nada en 10–11 (la franja floja que
+ * Cardedal quiere ofrecer por teléfono) y el cuádruple de peso en 12–13 (la
+ * franja "por seguridad" que todo el mundo pide) frente al resto. Solo se usa
+ * en los días objetivo (hoy y el próximo sábado) — el resto de la agenda
+ * sigue exactamente igual que sin la función activada.
+ */
+function pickSpreadStartHour(sched: { start: number; end: number }, rand: () => number): number {
+  const pool: number[] = [];
+  for (let h = sched.start; h < sched.end; h++) {
+    if (h === 10 || h === 11) continue;
+    const weight = h === 12 || h === 13 ? 4 : 1;
+    for (let w = 0; w < weight; w++) pool.push(h);
+  }
+  if (pool.length === 0) return sched.start + Math.floor(rand() * (sched.end - sched.start - 1));
+  return pool[Math.floor(rand() * pool.length)];
+}
+
 function buildAppointments(
   clients: Client[],
   employees: Employee[],
   services: Service[],
+  smartSpread?: boolean,
 ): Appointment[] {
   const rand = mulberry32(1042);
   const pick = <T,>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
   const out: Appointment[] = [];
   let nextId = 1;
+  // Próximo sábado (0 si hoy ya lo es): junto con "hoy" (day === 0), son los
+  // dos días que la demo carga a propósito para que "Cómo va el día" y la
+  // reserva pública cuenten la misma historia sin esperar a que pase una semana.
+  const nextSaturdayOffset = (6 - new Date().getDay() + 7) % 7;
   // Un par de solicitudes "de hoy" sin revisar, para que la franja de
   // pendientes del panel no aparezca vacía en la demo. Determinista: no
   // depende de qué tipo de negocio esté activo.
@@ -72,6 +127,9 @@ function buildAppointments(
     date.setDate(date.getDate() + day);
     const weekday = date.getDay();
 
+    // Día objetivo del reparto de agenda: hoy o el próximo sábado (ver arriba).
+    const isSpreadDay = !!smartSpread && (day === 0 || day === nextSaturdayOffset);
+
     for (const emp of employees) {
       const sched = emp.schedule[weekday];
       if (!sched) continue;
@@ -80,6 +138,11 @@ function buildAppointments(
       let count = Math.floor(rand() * 4) + 3;
       if (weekday === 2) count = Math.max(2, count - 2); // Tuesday low
       if (day > 14) count = Math.max(1, count - 2); // sparser future
+      // Más citas en el día objetivo: sin esto, sesgar 12-14 a base de mover
+      // huecos que ya existían dejaría el día igual de flojo en total, solo
+      // que reordenado — hace falta densidad real para que la franja salga
+      // ocupada de verdad, no solo etiquetada.
+      if (isSpreadDay) count = Math.min(sched.end - sched.start, count + 2);
 
       const slotsUsed: number[] = [];
       for (let i = 0; i < count; i++) {
@@ -92,10 +155,14 @@ function buildAppointments(
         const priceEur = chosen.reduce((s, sv) => s + sv.priceEur, 0);
         const durationSlots = Math.ceil(durationMin / 30);
 
-        let startHour = sched.start + Math.floor(rand() * (sched.end - sched.start - 1));
+        let startHour = isSpreadDay
+          ? pickSpreadStartHour(sched, rand)
+          : sched.start + Math.floor(rand() * (sched.end - sched.start - 1));
         let attempts = 0;
         while (slotsUsed.some((u) => Math.abs(u - startHour) < durationSlots / 2) && attempts < 5) {
-          startHour = sched.start + Math.floor(rand() * (sched.end - sched.start - 1));
+          startHour = isSpreadDay
+            ? pickSpreadStartHour(sched, rand)
+            : sched.start + Math.floor(rand() * (sched.end - sched.start - 1));
           attempts++;
         }
         slotsUsed.push(startHour);
@@ -227,12 +294,22 @@ export interface DemoSeed {
  * Genera clientes, citas y lista de espera coherentes con un tipo de negocio
  * y su equipo/catálogo activos. Determinista (misma semilla siempre) para
  * que la demo no cambie de una recarga a otra dentro del mismo tipo.
+ *
+ * `opts.noShowFeeEur` y `opts.smartSpread` vienen del perfil de la demo
+ * (claves "q"/"k" del enlace — ver demo-profile.ts): cuando están activos,
+ * el seed se ajusta para poder enseñar la función en el momento (cliente
+ * penalizado, agenda cargada en 12–14) sin tocar nada a mano.
  */
-export function buildSeed(type: BusinessType, employees: Employee[], services: Service[]): DemoSeed {
-  const clients = buildClients(type);
+export function buildSeed(
+  type: BusinessType,
+  employees: Employee[],
+  services: Service[],
+  opts?: { noShowFeeEur?: number; smartSpread?: boolean },
+): DemoSeed {
+  const clients = buildClients(type, opts?.noShowFeeEur);
   return {
     clients,
-    appointments: buildAppointments(clients, employees, services),
+    appointments: buildAppointments(clients, employees, services, opts?.smartSpread),
     waitlist: buildWaitlist(type, employees, services),
   };
 }
