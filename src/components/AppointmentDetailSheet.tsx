@@ -5,6 +5,8 @@ import { STATUS_OPTIONS } from "@/lib/appointment-status";
 import { useSalonStore } from "@/lib/store";
 import { employeeMap } from "@/lib/mock/salon";
 import { serviceNamesOf } from "@/lib/appointment-services";
+import { isWithinNoticeWindow } from "@/lib/no-show";
+import { eur } from "@/lib/copy";
 import type { Appointment, AppointmentStatus } from "@/lib/mock/types";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -36,6 +38,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Calendar, Clock, Euro, CheckCheck } from "lucide-react";
 
 /** Duraciones que puede elegir el salón al ajustar una cita, en minutos. */
@@ -75,7 +85,43 @@ export function AppointmentDetailSheet({
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const markClientConfirmed = useSalonStore((s) => s.markClientConfirmed);
+  const applyPenalty = useSalonStore((s) => s.applyPenalty);
+  const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur ?? 0);
+  const noShowNoticeHours = useSalonStore((s) => s.salonProfile.noShowNoticeHours ?? 2);
+  // El cliente puede no existir en la store (una cita creada desde la web
+  // pública nace con un `clientId` de walk-in que no tiene ficha propia): sin
+  // ficha no hay a quién marcar, así que la política de plantón se calla.
+  const client = useSalonStore((s) =>
+    appointmentProp ? s.clients.find((c) => c.id === appointmentProp.clientId) : undefined,
+  );
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [penaltyOpen, setPenaltyOpen] = useState(false);
+  const [penaltyReason, setPenaltyReason] = useState("");
+
+  const policyActive = noShowFeeEur > 0 && !!client;
+
+  function maybeAskPenalty() {
+    if (!policyActive) return;
+    setPenaltyReason("");
+    setPenaltyOpen(true);
+  }
+
+  function handleApplyPenalty() {
+    if (!client) return;
+    applyPenalty(
+      client.id,
+      noShowFeeEur,
+      penaltyReason.trim() ||
+        `Plantón del ${new Date().toLocaleDateString("es", { day: "numeric", month: "short" })}`,
+    );
+    toast.success(`Penalización de ${eur(noShowFeeEur)} aplicada a ${client.name}`);
+    setPenaltyOpen(false);
+  }
+
+  function handleForgivePenalty() {
+    toast.success("Sin penalización — se lo has perdonado");
+    setPenaltyOpen(false);
+  }
 
   const serviceNames = appointment ? serviceNamesOf(appointment) : [];
   const start = appointment ? new Date(appointment.start) : null;
@@ -104,10 +150,18 @@ export function AppointmentDetailSheet({
 
   function handleCancel() {
     if (!appointment) return;
+    // Cancelar dentro del margen de aviso cuenta como plantón para Adam
+    // ("The Best Shave & Barber"): igual que "No ha venido", se pregunta
+    // antes de cobrar — nunca se aplica sola.
+    const dentroDeAviso = isWithinNoticeWindow(appointment.start, noShowNoticeHours);
     cancelAppointment(appointment.id);
     toast.success("Cita cancelada", { description: appointment.clientName });
     setConfirmOpen(false);
-    onOpenChange(false);
+    if (dentroDeAviso && policyActive) {
+      maybeAskPenalty();
+    } else {
+      onOpenChange(false);
+    }
   }
 
   return (
@@ -208,6 +262,7 @@ export function AppointmentDetailSheet({
               onValueChange={(v) => {
                 updateAppointment(appointment.id, { status: v as AppointmentStatus });
                 toast.success("Estado actualizado");
+                if (v === "no-show") maybeAskPenalty();
               }}
             >
               <SelectTrigger>
@@ -298,6 +353,32 @@ export function AppointmentDetailSheet({
               </AlertDialogContent>
             </AlertDialog>
           </SheetFooter>
+
+          {/* Política de plantón: nunca se cobra sola. "No ha venido" y
+              cancelar dentro del margen de aviso abren esta misma pregunta —
+              el dueño decide en cada caso si la aplica o la perdona. */}
+          <Dialog open={penaltyOpen} onOpenChange={setPenaltyOpen}>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle>¿Aplicar la penalización de {eur(noShowFeeEur)} a {client?.name}?</DialogTitle>
+                <DialogDescription>
+                  No ha avisado con {noShowNoticeHours} h de antelación. Tú decides si se la cobras
+                  o se la perdonas esta vez.
+                </DialogDescription>
+              </DialogHeader>
+              <Input
+                value={penaltyReason}
+                onChange={(e) => setPenaltyReason(e.target.value)}
+                placeholder="Motivo (opcional)"
+              />
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button variant="outline" onClick={handleForgivePenalty}>
+                  Perdonar
+                </Button>
+                <Button onClick={handleApplyPenalty}>Aplicar</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </SheetContent>
       )}
     </Sheet>
