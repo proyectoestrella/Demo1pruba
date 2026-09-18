@@ -80,10 +80,12 @@ type Review = { name: string; rating: number; quote: string };
  */
 const REVIEWS_BY_TYPE: Record<BusinessType, Review[]> = {
   barberia: [
+    // «{pro}» se sustituye por el primer barbero del equipo activo: si el
+    // enlace trae equipo real (Adam), la reseña no puede alabar a Mario.
     {
-      name: "Marta R.",
+      name: "Dani R.",
       rating: 5,
-      quote: "Salgo distinta cada vez. Mario entiende exactamente lo que le pido.",
+      quote: "{pro} entiende exactamente lo que le pido. Salgo nuevo cada vez.",
     },
     { name: "Carlos M.", rating: 5, quote: "El mejor arreglo de barba de Madrid, sin discusión." },
     {
@@ -350,7 +352,11 @@ function SalonHome() {
   // v2: como mucho dos reseñas de ejemplo, y ya van marcadas "Ejemplo" — el
   // cambio priorizado #9 del informe pide "copy del salón real, nunca
   // genérico"; cinco reseñas inventadas pesan más que dos.
-  const reviews = isV2 ? REVIEWS_BY_TYPE[tipo].slice(0, 2) : REVIEWS_BY_TYPE[tipo];
+  const pro = employees[0]?.name ?? "El equipo";
+  const reviews = (isV2 ? REVIEWS_BY_TYPE[tipo].slice(0, 2) : REVIEWS_BY_TYPE[tipo]).map((r) => ({
+    ...r,
+    quote: r.quote.replace("{pro}", pro),
+  }));
   // Hora del navegador: en el servidor no se sabe qué hora es en el salón.
   const now = useClientNow();
   const openNow = now ? isOpenNow(profile.openingHours, now) : false;
