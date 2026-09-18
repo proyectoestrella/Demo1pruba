@@ -20,6 +20,15 @@ import type {
 } from "./mock/types";
 import type { DemoProfile } from "./demo-profile";
 import { inferBusinessType, type BusinessType } from "./business-type";
+import {
+  pushAppointment,
+  pushAppointmentDeletion,
+  pushClientNotes,
+  pushPenalty,
+  pushPenaltyCleared,
+  pushSalonProfile,
+  type ClienteDeCita,
+} from "./salon-sync";
 
 interface SalonState {
   appointments: Appointment[];
@@ -43,9 +52,29 @@ interface SalonState {
    * puede volver a dejar a alguien tecleando un email en mitad de una demo.
    */
   demoActive: boolean;
+  /**
+   * Slug del salón REAL que se está gestionando, o `null` si esto es una de las
+   * ~54 demos de venta (enlace `?d=…`, sin cuenta).
+   *
+   * Es el interruptor de todo el backend: mientras valga `null`, ni una sola
+   * acción de la store llama a Supabase y el panel se comporta exactamente
+   * como antes. Lo pone `useRealSalon` cuando `getSalonProfile(slug)` devuelve
+   * un perfil, y lo quita cuando devuelve `null`.
+   *
+   * NO se persiste (ver `partialize`): se vuelve a resolver en cada carga
+   * contra Supabase, para que un navegador donde se abrió una vez el panel de
+   * Adam no siga creyéndose su panel al abrir luego una demo cualquiera.
+   */
+  realSalonSlug: string | null;
 
   // Appointments
-  addAppointment: (a: Omit<Appointment, "id">) => Appointment;
+  /**
+   * `cliente` son el nombre/teléfono/email de quien reserva, cuando se
+   * conocen (reserva pública, cita nueva por teléfono). Solo se usan para
+   * crear o enganchar su ficha en Supabase si el salón es real; en local la
+   * cita se crea igual que siempre, la lleve o no.
+   */
+  addAppointment: (a: Omit<Appointment, "id">, cliente?: ClienteDeCita) => Appointment;
   updateAppointment: (id: string, patch: Partial<Appointment>) => void;
   cancelAppointment: (id: string) => void;
   /**
@@ -110,6 +139,15 @@ interface SalonState {
   applyDemo: (id: string) => void;
   /** Devuelve el panel al salón de ejemplo sin borrar las demos guardadas. */
   resetSalonProfile: () => void;
+
+  /** Enciende o apaga el backend para este navegador — ver `realSalonSlug`. */
+  setRealSalonSlug: (slug: string | null) => void;
+  /**
+   * Sustituye citas y clientes por los que vienen de Supabase. Es una
+   * sustitución, no una mezcla: la fuente de verdad de un salón real es la
+   * base, y lo que hubiera en este navegador son datos de ejemplo del seed.
+   */
+  hydrateFromServer: (data: { appointments: Appointment[]; clients: Client[] }) => void;
 }
 
 /** Una demo guardada es un perfil con identidad propia para poder editarla. */
@@ -128,6 +166,29 @@ const storage = createJSONStorage<SalonState>(() =>
     : { getItem: () => null, setItem: () => {}, removeItem: () => {} },
 );
 
+/**
+ * Nombre y teléfono del cliente de una cita, si tiene ficha propia. Un "Sin
+ * cita" no la tiene (entró sin dar teléfono) y entonces solo viaja el nombre
+ * que ya lleva la cita.
+ */
+function clienteDeLaCita(state: SalonState, appt: Appointment): ClienteDeCita | undefined {
+  const c = state.clients.find((x) => x.id === appt.clientId);
+  if (!c?.phone) return undefined;
+  return { name: c.name, phone: c.phone, email: c.email };
+}
+
+/**
+ * Sube al backend la cita `id` tal y como ha quedado DESPUÉS de mutarla.
+ * Es el único punto por el que sincronizan confirmar, rechazar, cambiar hora,
+ * cambiar profesional, marcar plantón y cancelar: todas son la misma fila.
+ */
+function sincronizarCita(state: SalonState, id: string) {
+  if (!state.realSalonSlug) return;
+  const appt = state.appointments.find((a) => a.id === id);
+  if (!appt) return;
+  pushAppointment(state.realSalonSlug, appt, clienteDeLaCita(state, appt));
+}
+
 export const useSalonStore = create<SalonState>()(
   persist(
     (set, get) => ({
@@ -139,35 +200,47 @@ export const useSalonStore = create<SalonState>()(
       savedDemos: [],
       panelV2: false,
       demoActive: false,
+      realSalonSlug: null,
 
-      addAppointment: (a) => {
+      addAppointment: (a, cliente) => {
         const appt: Appointment = { ...a, id: `a-new-${Date.now()}` };
         set((s) => ({ appointments: [...s.appointments, appt] }));
+        // Y además, si el salón es real, súbela. El `push*` no hace nada
+        // cuando `realSalonSlug` es null, que es el caso de todas las demos.
+        pushAppointment(get().realSalonSlug, appt, cliente ?? clienteDeLaCita(get(), appt));
         return appt;
       },
-      updateAppointment: (id, patch) =>
+      updateAppointment: (id, patch) => {
         set((s) => ({
           appointments: s.appointments.map((a) => (a.id === id ? { ...a, ...patch } : a)),
-        })),
-      cancelAppointment: (id) =>
+        }));
+        sincronizarCita(get(), id);
+      },
+      cancelAppointment: (id) => {
         set((s) => ({
           appointments: s.appointments.map((a) =>
             a.id === id ? { ...a, status: "cancelled" } : a,
           ),
-        })),
+        }));
+        sincronizarCita(get(), id);
+      },
 
-      markClientConfirmed: (id, confirmed) =>
+      markClientConfirmed: (id, confirmed) => {
         set((s) => ({
           appointments: s.appointments.map((a) =>
             a.id === id
               ? { ...a, clientConfirmedAt: confirmed ? new Date().toISOString() : undefined }
               : a,
           ),
-        })),
-      deleteAppointment: (id) =>
+        }));
+        sincronizarCita(get(), id);
+      },
+      deleteAppointment: (id) => {
         set((s) => ({
           appointments: s.appointments.filter((a) => a.id !== id),
-        })),
+        }));
+        pushAppointmentDeletion(get().realSalonSlug, id);
+      },
 
       addWaitlist: (w) =>
         set((s) => ({
@@ -194,22 +267,36 @@ export const useSalonStore = create<SalonState>()(
         set((s) => ({ clients: [...s.clients, client] }));
         return client;
       },
-      updateClient: (id, patch) =>
+      updateClient: (id, patch) => {
         set((s) => ({
           clients: s.clients.map((c) => (c.id === id ? { ...c, ...patch } : c)),
-        })),
+        }));
+        if ("notes" in patch) {
+          pushClientNotes(
+            get().realSalonSlug,
+            get().clients.find((c) => c.id === id),
+          );
+        }
+      },
       deleteClient: (id) =>
         set((s) => ({
           clients: s.clients.filter((c) => c.id !== id),
         })),
 
-      applyPenalty: (clientId, eur, note) =>
+      applyPenalty: (clientId, eur, note) => {
         set((s) => ({
           clients: s.clients.map((c) =>
             c.id === clientId ? { ...c, penaltyEur: eur, penaltyNote: note } : c,
           ),
-        })),
-      clearPenalty: (clientId, motivo) =>
+        }));
+        pushPenalty(
+          get().realSalonSlug,
+          get().clients.find((c) => c.id === clientId),
+          eur,
+          note,
+        );
+      },
+      clearPenalty: (clientId, motivo) => {
         set((s) => ({
           clients: s.clients.map((c) =>
             c.id === clientId
@@ -223,7 +310,10 @@ export const useSalonStore = create<SalonState>()(
                 }
               : c,
           ),
-        })),
+        }));
+        const cliente = get().clients.find((c) => c.id === clientId);
+        pushPenaltyCleared(get().realSalonSlug, cliente, cliente?.penaltyNote);
+      },
 
       addService: (svc) => {
         const service: Service = { ...svc, id: `svc-${Date.now()}` };
@@ -239,8 +329,10 @@ export const useSalonStore = create<SalonState>()(
           services: s.services.filter((sv) => sv.id !== id),
         })),
 
-      updateSalonProfile: (patch) =>
-        set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } })),
+      updateSalonProfile: (patch) => {
+        set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } }));
+        pushSalonProfile(get().realSalonSlug, get().salonProfile);
+      },
 
       applyBusinessType: (type, overrides) => {
         // Mutan en sitio los arrays/objetos que exporta mock/salon.ts: las
@@ -285,9 +377,17 @@ export const useSalonStore = create<SalonState>()(
 
       deleteDemo: (id) => set((s) => ({ savedDemos: s.savedDemos.filter((d) => d.id !== id) })),
 
+      setRealSalonSlug: (slug) => set({ realSalonSlug: slug }),
+
+      hydrateFromServer: ({ appointments, clients }) =>
+        set({ appointments, clients }),
+
       applyDemo: (id) => {
         const demo = get().savedDemos.find((d) => d.id === id);
         if (!demo) return;
+        // Aplicar una demo guardada significa dejar de mirar al salón real:
+        // si no, el primer cambio de Ajustes le escribiría la demo encima.
+        set({ realSalonSlug: null });
         // `id` y `savedAt` son de la demo, no del salón: no deben colarse en el perfil.
         const { id: _id, savedAt: _savedAt, ...profileFields } = demo;
         set((s) => ({ salonProfile: { ...s.salonProfile, ...profileFields } }));
@@ -300,13 +400,28 @@ export const useSalonStore = create<SalonState>()(
       },
 
       resetSalonProfile: () => {
-        set({ salonProfile: salon, demoActive: false });
+        set({ salonProfile: salon, demoActive: false, realSalonSlug: null });
         get().applyBusinessType("barberia");
       },
     }),
     {
       name: "trimly-salon-store",
       storage,
+      // Se guarda todo MENOS `realSalonSlug`: saber si este navegador está
+      // gestionando un salón real se vuelve a preguntar a Supabase en cada
+      // carga. Si se persistiera, un navegador que abrió una vez el panel de
+      // un salón real seguiría creyéndose ese panel al abrir después una demo
+      // de venta — y le escribiría la demo encima al primer cambio.
+      partialize: (state) => ({
+        appointments: state.appointments,
+        waitlist: state.waitlist,
+        clients: state.clients,
+        services: state.services,
+        salonProfile: state.salonProfile,
+        savedDemos: state.savedDemos,
+        panelV2: state.panelV2,
+        demoActive: state.demoActive,
+      }) as unknown as SalonState,
       // v2: the barbershop identity rewrite (name/tagline/about/instagram,
       // service copy) needs to actually reach browsers that already
       // persisted v1 state — otherwise the old salonProfile/services would
