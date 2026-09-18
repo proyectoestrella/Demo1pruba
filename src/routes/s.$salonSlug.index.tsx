@@ -198,16 +198,22 @@ const HERO_IN = {
 
 /**
  * Celdas de la rejilla bento. Todo lo que se afirma aquí es cierto en la app:
- * el equipo son tres, la cancelación gratuita es de 24 h y los precios y
- * duraciones salen del catálogo.
+ * el equipo son tres, la cancelación gratuita es la que marca la política de
+ * plantón del salón (24 h por defecto, o las horas pactadas si tiene
+ * penalización activa — ver no-show.ts) y los precios y duraciones salen del
+ * catálogo.
  *
  * Los destinos son anclas de esta misma página a propósito: `BentoCard`
  * renderiza un `<a href>` normal y una ruta real forzaría recarga completa en
  * vez de navegar por el router. Para reservar ya están los botones de arriba,
  * el de la cabecera y la barra fija del móvil.
  */
-function bentoItemsFor(tipo: BusinessType) {
+function bentoItemsFor(tipo: BusinessType, noShowFeeEur: number, noShowNoticeHours: number) {
   const palabra = professionalWord(tipo);
+  const cancelacion =
+    noShowFeeEur > 0
+      ? `Hasta ${noShowNoticeHours} h antes, sin coste. Después, ${eur(noShowFeeEur)} de penalización.`
+      : "Hasta 24 horas antes, sin coste y sin dar explicaciones.";
   return [
     {
       Icon: CalendarCheck,
@@ -228,7 +234,7 @@ function bentoItemsFor(tipo: BusinessType) {
     {
       Icon: ShieldCheck,
       name: "Cancelas gratis",
-      description: "Hasta 24 horas antes, sin coste y sin dar explicaciones.",
+      description: cancelacion,
       href: "#faq",
       cta: "Ver condiciones",
       className: "lg:col-span-1",
@@ -244,12 +250,16 @@ function bentoItemsFor(tipo: BusinessType) {
   ];
 }
 
-function faqFor(tipo: BusinessType) {
+function faqFor(tipo: BusinessType, noShowFeeEur: number, noShowNoticeHours: number) {
   const palabra = professionalWord(tipo);
+  const respuestaCancelacion =
+    noShowFeeEur > 0
+      ? `Sí. Hasta ${noShowNoticeHours} h antes puedes cancelar o mover la cita sin coste desde el enlace que recibes al reservar. Pasada esa hora, la siguiente reserva lleva ${eur(noShowFeeEur)} de penalización.`
+      : "Sí. Hasta 24 horas antes puedes cancelar o mover la cita sin coste desde el enlace que recibes al reservar.";
   return [
     {
       q: "¿Puedo cancelar o cambiar la cita?",
-      a: "Sí. Hasta 24 horas antes puedes cancelar o mover la cita sin coste desde el enlace que recibes al reservar.",
+      a: respuestaCancelacion,
     },
     {
       q: "¿Hace falta pagar por adelantado?",
@@ -347,8 +357,10 @@ function SalonHome() {
   const featuredIds = profile.menu?.length
     ? activeServices.slice(0, 4).map((s) => s.id)
     : FEATURED_IDS_BY_TYPE[tipo];
-  const bentoItems = bentoItemsFor(tipo);
-  const faq = faqFor(tipo);
+  const noShowFeeEur = profile.noShowFeeEur ?? 0;
+  const noShowNoticeHours = profile.noShowNoticeHours ?? 2;
+  const bentoItems = bentoItemsFor(tipo, noShowFeeEur, noShowNoticeHours);
+  const faq = faqFor(tipo, noShowFeeEur, noShowNoticeHours);
   // v2: como mucho dos reseñas de ejemplo, y ya van marcadas "Ejemplo" — el
   // cambio priorizado #9 del informe pide "copy del salón real, nunca
   // genérico"; cinco reseñas inventadas pesan más que dos.
