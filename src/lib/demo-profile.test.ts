@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  blankDemoProfile,
   decodeDemoProfile,
   demoUrl,
   encodeDemoProfile,
@@ -114,6 +115,65 @@ describe("equipo real (\"e\") y carta real (\"m\")", () => {
     const out = decodeDemoProfile(encoded);
     expect(out?.team).toBeUndefined();
     expect(out?.menu).toBeUndefined();
+  });
+});
+
+describe("política de plantón (\"q\"/\"w\") y reparto de agenda (\"k\"/\"u\")", () => {
+  it("viajan y vuelven intactas por la URL", () => {
+    const profile = {
+      name: "The Best Shave & Barber",
+      noShowFeeEur: 7,
+      noShowNoticeHours: 2,
+    };
+    expect(decodeDemoProfile(encodeDemoProfile(profile))).toEqual(profile);
+  });
+
+  it("k y u viajan igual, independientes de q/w", () => {
+    const profile = { name: "Cardedal", smartSpread: true, lastSlotBufferMin: 90 };
+    expect(decodeDemoProfile(encodeDemoProfile(profile))).toEqual(profile);
+  });
+
+  it("0 o ausente en la penalización no ocupa sitio en el enlace", () => {
+    const encoded = encodeDemoProfile({ name: "Bar", noShowFeeEur: 0 });
+    const out = decodeDemoProfile(encoded);
+    expect(out?.noShowFeeEur).toBeUndefined();
+    expect(out).toEqual({ name: "Bar" });
+  });
+
+  it("el aviso mínimo no viaja si la penalización está desactivada", () => {
+    const encoded = encodeDemoProfile({ name: "Bar", noShowNoticeHours: 3 });
+    expect(decodeDemoProfile(encoded)?.noShowNoticeHours).toBeUndefined();
+  });
+
+  it("smartSpread en false no ocupa sitio en el enlace", () => {
+    const encoded = encodeDemoProfile({ name: "Bar", smartSpread: false });
+    expect(decodeDemoProfile(encoded)?.smartSpread).toBeUndefined();
+  });
+
+  it("descarta una penalización fuera de rango (0-50€)", () => {
+    const encoded = btoa(JSON.stringify({ n: "Bar", q: 999 }));
+    expect(decodeDemoProfile(encoded)?.noShowFeeEur).toBeUndefined();
+  });
+
+  it("descarta un colchón de cierre fuera de rango (0-240min)", () => {
+    const encoded = btoa(JSON.stringify({ n: "Bar", u: 500 }));
+    expect(decodeDemoProfile(encoded)?.lastSlotBufferMin).toBeUndefined();
+  });
+
+  it("un enlace sin q/w/k/u no trae ninguno de los cuatro campos", () => {
+    const out = decodeDemoProfile(encodeDemoProfile({ name: "Bar" }));
+    expect(out?.noShowFeeEur).toBeUndefined();
+    expect(out?.noShowNoticeHours).toBeUndefined();
+    expect(out?.smartSpread).toBeUndefined();
+    expect(out?.lastSlotBufferMin).toBeUndefined();
+  });
+});
+
+describe("blankDemoProfile apaga q/w/k/u por defecto", () => {
+  it("no hereda la política de plantón ni el reparto de una demo anterior", () => {
+    const blank = blankDemoProfile();
+    expect(blank.noShowFeeEur).toBe(0);
+    expect(blank.smartSpread).toBe(false);
   });
 });
 

@@ -44,6 +44,10 @@ export type DemoProfile = Pick<
   | "galleryPhotos"
   | "team"
   | "menu"
+  | "noShowFeeEur"
+  | "noShowNoticeHours"
+  | "smartSpread"
+  | "lastSlotBufferMin"
 >;
 
 const KEYS: Record<keyof DemoProfile, string> = {
@@ -62,6 +66,10 @@ const KEYS: Record<keyof DemoProfile, string> = {
   galleryPhotos: "g",
   team: "e",
   menu: "m",
+  noShowFeeEur: "q",
+  noShowNoticeHours: "w",
+  smartSpread: "k",
+  lastSlotBufferMin: "u",
 };
 
 /** Nombre del search param que lleva el perfil en las rutas públicas. */
@@ -92,6 +100,15 @@ export function blankDemoProfile(): DemoProfile {
     galleryPhotos: [],
     team: [],
     menu: [],
+    // Ausentes/0 = desactivadas — igual que team/menu arriba, hay que
+    // ponerlas EXPLÍCITAS a "apagado" y no simplemente omitirlas: si no, al
+    // abrir un enlace sin "q"/"k" tras haber tenido activa la demo anterior
+    // (mismo navegador), `useDisplayProfile` conservaría la política o el
+    // reparto de la demo previa en vez de apagarlos.
+    noShowFeeEur: 0,
+    noShowNoticeHours: 2,
+    smartSpread: false,
+    lastSlotBufferMin: 0,
   };
 }
 
@@ -135,6 +152,32 @@ export function encodeDemoProfile(profile: Partial<DemoProfile>): string {
     if (value === undefined || value === null) continue;
     if (typeof value === "string" && value.trim() === "") continue;
     if (field === "photoCount" && value === 0) continue;
+    if (field === "noShowFeeEur") {
+      const n = Number(value);
+      // 0 o inválido = política desactivada: no ocupa sitio en el enlace.
+      if (!Number.isFinite(n) || n <= 0) continue;
+      compact[short] = Math.min(50, Math.round(n * 100) / 100);
+      continue;
+    }
+    if (field === "noShowNoticeHours") {
+      const n = Number(value);
+      const fee = Number(profile.noShowFeeEur ?? 0);
+      // Las horas de aviso no significan nada sin penalización activa.
+      if (!Number.isFinite(n) || n <= 0 || !(fee > 0)) continue;
+      compact[short] = Math.min(48, Math.max(1, Math.round(n)));
+      continue;
+    }
+    if (field === "smartSpread") {
+      if (value !== true) continue;
+      compact[short] = 1;
+      continue;
+    }
+    if (field === "lastSlotBufferMin") {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n <= 0) continue;
+      compact[short] = Math.min(240, Math.round(n));
+      continue;
+    }
     if (field === "team" && Array.isArray(value)) {
       // Se valida igual que al descodificar: un equipo con una entrada
       // corrupta ("~~~") no debe colarse en el enlace tal cual.
@@ -234,6 +277,17 @@ export function decodeDemoProfile(raw: string | undefined | null): Partial<DemoP
           .map(formatTeamEntry);
         if (clean.length) out.team = clean;
       }
+    } else if (field === "noShowFeeEur") {
+      const n = Number(value);
+      if (Number.isFinite(n) && n > 0 && n <= 50) out.noShowFeeEur = n;
+    } else if (field === "noShowNoticeHours") {
+      const n = Number(value);
+      if (Number.isFinite(n) && n >= 1 && n <= 48) out.noShowNoticeHours = Math.round(n);
+    } else if (field === "smartSpread") {
+      out.smartSpread = value === 1 || value === true || value === "1";
+    } else if (field === "lastSlotBufferMin") {
+      const n = Number(value);
+      if (Number.isFinite(n) && n >= 0 && n <= 240) out.lastSlotBufferMin = Math.round(n);
     } else if (field === "menu") {
       // "Nombre~minutos~precio" o "...~Categoría", de 1 a 12 — el resto se corta.
       if (Array.isArray(value)) {

@@ -41,6 +41,14 @@ export interface Client {
   createdAt: string; // ISO
   /** Indicaciones del salón sobre este cliente ("usa el número 8"). Del cliente, no de una cita. */
   notes?: string;
+  /**
+   * Política de plantón (ver `SalonProfile.noShowFeeEur`): importe pendiente
+   * de cobrar, en euros. `undefined` o 0 = no debe nada. El dueño decide si
+   * lo cobra o lo perdona — nunca se descuenta solo.
+   */
+  penaltyEur?: number;
+  /** Motivo/fecha de la penalización, para enseñarlo junto al importe ("No vino el 12 sept · Corte"). */
+  penaltyNote?: string;
 }
 
 export interface Appointment {
@@ -135,4 +143,21 @@ export interface SalonProfile {
    * ausente = el catálogo de ejemplo del tipo de negocio (`SERVICE_CATALOG`).
    */
   menu?: string[];
+  /**
+   * Política de plantón: importe en euros que se pide antes de poder volver a
+   * reservar tras cancelar tarde o no presentarse. `undefined` o 0 =
+   * desactivada — nada cambia respecto a como funcionaba antes. Ver
+   * `Client.penaltyEur` y `AppointmentDetailSheet`.
+   */
+  noShowFeeEur?: number;
+  /** Horas de antelación por debajo de las cuales cancelar cuenta como plantón. Por defecto 2. */
+  noShowNoticeHours?: number;
+  /**
+   * Reparto de agenda: sugiere una hora más tranquila cuando el cliente elige
+   * una franja "con espera" (12:00–14:00 o las últimas horas del día). `false`
+   * o ausente = todo como siempre, sin etiquetas ni sugerencias.
+   */
+  smartSpread?: boolean;
+  /** Minutos antes del cierre que dejan de ofertarse (0-240). Solo tiene efecto con `smartSpread`. */
+  lastSlotBufferMin?: number;
 }
