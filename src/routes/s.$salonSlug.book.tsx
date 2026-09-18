@@ -380,7 +380,9 @@ function BookingWizard() {
                     onCheckedChange={(v) => setData((d) => ({ ...d, acceptedPolicy: v === true }))}
                   />
                   <span>
-                    Acepto la política de cancelación: gratuita hasta 24 h antes de la cita.
+                    Acepto la política de cancelación: gratuita hasta{" "}
+                    {(profile.noShowFeeEur ?? 0) > 0 ? `${profile.noShowNoticeHours ?? 2} h` : "24 h"}{" "}
+                    antes de la cita.
                   </span>
                 </label>
 
@@ -441,8 +443,15 @@ function BookingWizard() {
   );
 }
 
+function cap(w: string) {
+  return w.charAt(0).toUpperCase() + w.slice(1);
+}
+
 function StepIndicator({ step }: { step: 1 | 2 | 3 | 4 }) {
-  const labels = ["Servicio", "Estilista", "Fecha y hora", "Tus datos"];
+  // «Barbero» en barberías, «Profesional» en unisex: el rótulo del paso no
+  // puede contradecir al título «Elige tu barbero» de la propia pantalla.
+  const tipo = useBusinessType();
+  const labels = ["Servicio", cap(professionalWord(tipo)), "Fecha y hora", "Tus datos"];
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="flex items-center gap-4">
@@ -950,6 +959,7 @@ function BookingSummary({
   ctaDisabled: boolean;
   onCta: () => void;
 }) {
+  const tipo = useBusinessType();
   const profile = useDisplayProfile();
   const salonName = profile.name;
   if (variant === "bar") {
@@ -1011,7 +1021,7 @@ function BookingSummary({
               value={`${durationMin} min`}
             />
           )}
-          <SummaryRow label="Estilista" value={employeeName ?? "—"} />
+          <SummaryRow label={cap(professionalWord(tipo))} value={employeeName ?? "—"} />
           <SummaryRow label="Fecha" value={dateLabel ?? "—"} />
           <SummaryRow label="Hora" value={timeLabel ?? "—"} />
         </div>
