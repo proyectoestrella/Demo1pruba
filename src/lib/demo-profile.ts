@@ -1,6 +1,14 @@
 import type { SalonProfile } from "./mock/types";
 import { salon as seedSalon } from "./mock/salon";
 import { DEFAULT_OPENING_HOURS } from "./opening-hours";
+import {
+  MAX_MENU_ENTRIES,
+  MAX_TEAM_ENTRIES,
+  formatMenuEntry,
+  formatTeamEntry,
+  parseMenuEntry,
+  parseTeamEntry,
+} from "./business-type";
 
 /**
  * Perfiles de demo transportados en la URL.
@@ -34,6 +42,8 @@ export type DemoProfile = Pick<
   | "openingHours"
   | "photoCount"
   | "galleryPhotos"
+  | "team"
+  | "menu"
 >;
 
 const KEYS: Record<keyof DemoProfile, string> = {
@@ -50,6 +60,8 @@ const KEYS: Record<keyof DemoProfile, string> = {
   openingHours: "o",
   photoCount: "f",
   galleryPhotos: "g",
+  team: "e",
+  menu: "m",
 };
 
 /** Nombre del search param que lleva el perfil en las rutas públicas. */
@@ -78,6 +90,8 @@ export function blankDemoProfile(): DemoProfile {
     openingHours: [...DEFAULT_OPENING_HOURS],
     photoCount: 0,
     galleryPhotos: [],
+    team: [],
+    menu: [],
   };
 }
 
@@ -121,6 +135,28 @@ export function encodeDemoProfile(profile: Partial<DemoProfile>): string {
     if (value === undefined || value === null) continue;
     if (typeof value === "string" && value.trim() === "") continue;
     if (field === "photoCount" && value === 0) continue;
+    if (field === "team" && Array.isArray(value)) {
+      // Se valida igual que al descodificar: un equipo con una entrada
+      // corrupta ("~~~") no debe colarse en el enlace tal cual.
+      const clean = value
+        .map((v) => parseTeamEntry(String(v)))
+        .filter((v): v is NonNullable<typeof v> => v !== null)
+        .slice(0, MAX_TEAM_ENTRIES)
+        .map(formatTeamEntry);
+      if (clean.length === 0) continue;
+      compact[short] = clean;
+      continue;
+    }
+    if (field === "menu" && Array.isArray(value)) {
+      const clean = value
+        .map((v) => parseMenuEntry(String(v)))
+        .filter((v): v is NonNullable<typeof v> => v !== null)
+        .slice(0, MAX_MENU_ENTRIES)
+        .map(formatMenuEntry);
+      if (clean.length === 0) continue;
+      compact[short] = clean;
+      continue;
+    }
     if (Array.isArray(value)) {
       const clean = value.map((v) => String(v).trim()).filter(Boolean);
       if (clean.length === 0) continue;
@@ -187,6 +223,26 @@ export function decodeDemoProfile(raw: string | undefined | null): Partial<DemoP
           .filter(Boolean)
           .slice(0, 8);
         if (clean.length) out.specialties = clean;
+      }
+    } else if (field === "team") {
+      // "Nombre" o "Nombre~Especialidad", de 1 a 3 — el resto se corta.
+      if (Array.isArray(value)) {
+        const clean = value
+          .map((v) => parseTeamEntry(String(v)))
+          .filter((v): v is NonNullable<typeof v> => v !== null)
+          .slice(0, MAX_TEAM_ENTRIES)
+          .map(formatTeamEntry);
+        if (clean.length) out.team = clean;
+      }
+    } else if (field === "menu") {
+      // "Nombre~minutos~precio" o "...~Categoría", de 1 a 12 — el resto se corta.
+      if (Array.isArray(value)) {
+        const clean = value
+          .map((v) => parseMenuEntry(String(v)))
+          .filter((v): v is NonNullable<typeof v> => v !== null)
+          .slice(0, MAX_MENU_ENTRIES)
+          .map(formatMenuEntry);
+        if (clean.length) out.menu = clean;
       }
     } else if (typeof value === "string" && value.trim() !== "") {
       out[field] = value.trim() as never;

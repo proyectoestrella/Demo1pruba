@@ -65,6 +65,58 @@ describe("encode / decode", () => {
   });
 });
 
+describe("equipo real (\"e\") y carta real (\"m\")", () => {
+  it("viajan y vuelven intactos por la URL", () => {
+    const profile = {
+      name: "The Best Shave & Barber",
+      team: ["Adam~Cortes y afeitado clásico"],
+      menu: ["Corte~30~13", "Corte + barba~45~18", "Arreglo de barba~20~8"],
+    };
+    expect(decodeDemoProfile(encodeDemoProfile(profile))).toEqual(profile);
+  });
+
+  it("acepta un nombre de equipo sin especialidad", () => {
+    const encoded = encodeDemoProfile({ name: "Bar", team: ["Adam"] });
+    expect(decodeDemoProfile(encoded)?.team).toEqual(["Adam"]);
+  });
+
+  it("corta el equipo a 3 entradas", () => {
+    const encoded = encodeDemoProfile({
+      name: "Bar",
+      team: ["Adam", "Bruno", "Carlos", "Diego"],
+    });
+    expect(decodeDemoProfile(encoded)?.team).toEqual(["Adam", "Bruno", "Carlos"]);
+  });
+
+  it("corta la carta a 12 entradas", () => {
+    const catorce = Array.from({ length: 14 }, (_, i) => `Servicio ${i}~30~10`);
+    const encoded = encodeDemoProfile({ name: "Bar", menu: catorce });
+    expect(decodeDemoProfile(encoded)?.menu?.length).toBe(12);
+  });
+
+  it("descarta en silencio una entrada de carta con minutos o precio inválidos", () => {
+    const encoded = btoa(
+      JSON.stringify({
+        n: "Bar",
+        m: ["Corte~30~13", "Rapado~3~5", "Tinte~30~-4", "Peinado~40~20"],
+      }),
+    );
+    expect(decodeDemoProfile(encoded)?.menu).toEqual(["Corte~30~13", "Peinado~40~20"]);
+  });
+
+  it("descarta en silencio una entrada de equipo sin nombre", () => {
+    const encoded = btoa(JSON.stringify({ n: "Bar", e: ["Adam", "~Sin nombre", "Bruno"] }));
+    expect(decodeDemoProfile(encoded)?.team).toEqual(["Adam", "Bruno"]);
+  });
+
+  it("sin \"e\" ni \"m\" no aparecen en el perfil decodificado", () => {
+    const encoded = encodeDemoProfile({ name: "Bar" });
+    const out = decodeDemoProfile(encoded);
+    expect(out?.team).toBeUndefined();
+    expect(out?.menu).toBeUndefined();
+  });
+});
+
 describe("decode tolera basura", () => {
   it("devuelve null sin parámetro", () => {
     expect(decodeDemoProfile(undefined)).toBeNull();

@@ -5,10 +5,17 @@ import type { Employee, EmployeeId, SalonProfile, Service } from "./types";
 import { DEFAULT_OPENING_HOURS } from "../opening-hours";
 import {
   EMPLOYEE_OVERLAY,
+  MAX_MENU_ENTRIES,
+  MAX_TEAM_ENTRIES,
   SERVICE_CATALOG,
+  parseMenuEntry,
+  parseTeamEntry,
   placeholderAvatar,
   showsRealPhotos,
+  slugForId,
   type BusinessType,
+  type MenuOverrideEntry,
+  type TeamOverrideEntry,
 } from "../business-type";
 
 export const salon: SalonProfile = {
@@ -86,26 +93,54 @@ const BASE_EMPLOYEES: Array<Omit<Employee, "name" | "specialty">> = [
 ];
 
 /**
- * Versión pura, sin mutación: dado un tipo, el equipo que le corresponde.
- * La usan las páginas públicas (s.$salonSlug.*) para que el equipo salga
- * bien en el primer render del servidor — antes de que corra ningún efecto
- * de cliente — igual que ya hace `useDisplayProfile` con el resto del perfil.
+ * Equipo real de un enlace de demo (clave "e"): de 1 a 3 nombres, en el orden
+ * en que se dieron. Se valida y recorta aquí también (no solo al decodificar
+ * el enlace en demo-profile.ts) porque `team` puede llegar de otras fuentes
+ * — una demo guardada, el formulario de app.demos.tsx — que no pasan por esa
+ * validación. `null` si no hay ningún nombre aprovechable: el llamante debe
+ * tratarlo como "sin equipo real", igual que si `team` no viniera.
  */
-export function employeesForType(type: BusinessType): Employee[] {
-  return buildEmployees(type);
+function resolveTeamOverrides(team?: string[]): TeamOverrideEntry[] | null {
+  if (!team?.length) return null;
+  const clean = team
+    .map((t) => parseTeamEntry(t))
+    .filter((t): t is TeamOverrideEntry => t !== null)
+    .slice(0, MAX_TEAM_ENTRIES);
+  return clean.length ? clean : null;
 }
 
-function buildEmployees(type: BusinessType): Employee[] {
-  return BASE_EMPLOYEES.map((base) => {
-    const overlay = EMPLOYEE_OVERLAY[type][base.id as EmployeeId];
+/**
+ * Versión pura, sin mutación: dado un tipo (y, si el enlace trae equipo
+ * real, el equipo), el equipo que le corresponde. La usan las páginas
+ * públicas (s.$salonSlug.*) para que el equipo salga bien en el primer
+ * render del servidor — antes de que corra ningún efecto de cliente — igual
+ * que ya hace `useDisplayProfile` con el resto del perfil.
+ */
+export function employeesForType(type: BusinessType, team?: string[]): Employee[] {
+  return buildEmployees(type, team);
+}
+
+function buildEmployees(type: BusinessType, team?: string[]): Employee[] {
+  // Equipo real: define cuántos profesionales tiene el salón. Los ids,
+  // colores y horarios se toman de BASE_EMPLOYEES por orden (mario, diego,
+  // ruben) — solo cambian nombre y especialidad, y sobra el resto del equipo
+  // de ejemplo si el enlace trae menos de tres.
+  const overrides = resolveTeamOverrides(team);
+  const base = overrides ? BASE_EMPLOYEES.slice(0, overrides.length) : BASE_EMPLOYEES;
+
+  return base.map((baseEmp, i) => {
+    const overlay = EMPLOYEE_OVERLAY[type][baseEmp.id as EmployeeId];
+    const name = overrides?.[i]?.name ?? overlay.name;
+    const specialty = overrides?.[i]?.specialty ?? overlay.specialty;
     return {
-      ...base,
-      name: overlay.name,
-      specialty: overlay.specialty,
+      ...baseEmp,
+      name,
+      specialty,
       // Las tres fotos de stock son barberos con navaja: fuera de barbería se
       // sustituyen por un avatar de iniciales, nunca por una cara que no
-      // corresponde al oficio ni al género del nombre que se está mostrando.
-      photo: showsRealPhotos(type) ? base.photo : placeholderAvatar(overlay.name, base.id),
+      // corresponde al oficio ni al género del nombre que se está mostrando
+      // (sea de ejemplo o real, venga del enlace).
+      photo: showsRealPhotos(type) ? baseEmp.photo : placeholderAvatar(name, baseEmp.id),
     };
   });
 }
@@ -122,12 +157,57 @@ export const employeeMap: Record<string, Employee> = Object.fromEntries(
   employees.map((e) => [e.id, e]),
 );
 
-export function setEmployeesForType(type: BusinessType) {
-  const next = buildEmployees(type);
+export function setEmployeesForType(type: BusinessType, team?: string[]) {
+  const next = buildEmployees(type, team);
   employees.length = 0;
   employees.push(...next);
   for (const key of Object.keys(employeeMap)) delete employeeMap[key];
   for (const e of employees) employeeMap[e.id] = e;
+}
+
+/**
+ * Carta real de un enlace de demo (clave "m"): de 1 a 12 servicios, en el
+ * orden en que se dieron. Igual que `resolveTeamOverrides`, se valida aquí
+ * también por si `menu` llega de una fuente que no pasó por demo-profile.ts.
+ */
+function resolveMenuOverrides(menu?: string[]): MenuOverrideEntry[] | null {
+  if (!menu?.length) return null;
+  const clean = menu
+    .map((m) => parseMenuEntry(m))
+    .filter((m): m is MenuOverrideEntry => m !== null)
+    .slice(0, MAX_MENU_ENTRIES);
+  return clean.length ? clean : null;
+}
+
+/**
+ * Versión pura, sin mutación: dado un tipo (y, si el enlace trae carta real,
+ * la carta), el catálogo que le corresponde. Igual que `employeesForType`,
+ * la usan las páginas públicas para que el primer render — incluido el del
+ * servidor — ya salga con la carta correcta.
+ */
+export function servicesForType(type: BusinessType, menu?: string[]): Service[] {
+  const overrides = resolveMenuOverrides(menu);
+  if (!overrides) return SERVICE_CATALOG[type];
+
+  // Ids a partir del nombre, únicos por si dos servicios de la carta se
+  // llaman igual — sin eso el segundo pisaría al primero en serviceMap.
+  const usedIds = new Set<string>();
+  return overrides.map((entry) => {
+    const base = slugForId(entry.name);
+    let id = base;
+    let n = 2;
+    while (usedIds.has(id)) id = `${base}-${n++}`;
+    usedIds.add(id);
+    return {
+      id,
+      name: entry.name,
+      description: "",
+      durationMin: entry.durationMin,
+      priceEur: entry.priceEur,
+      category: entry.category ?? "Servicios",
+      active: true,
+    };
+  });
 }
 
 /**
@@ -141,8 +221,8 @@ export const serviceMap: Record<string, Service> = Object.fromEntries(
   services.map((s) => [s.id, s]),
 );
 
-export function setServicesForType(type: BusinessType) {
-  const next = SERVICE_CATALOG[type].map((s) => ({ ...s }));
+export function setServicesForType(type: BusinessType, menu?: string[]) {
+  const next = servicesForType(type, menu).map((s) => ({ ...s }));
   services.length = 0;
   services.push(...next);
   for (const key of Object.keys(serviceMap)) delete serviceMap[key];

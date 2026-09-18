@@ -415,11 +415,11 @@ export const SERVICE_CATALOG: Record<BusinessType, Service[]> = {
   ],
 };
 
-/** Orden de categorías al mostrar el catálogo: el orden en que aparecen en el array de arriba. */
-export function categoryOrderFor(type: BusinessType): string[] {
+/** Orden de categorías de una lista de servicios: el orden en que aparecen en ella. */
+export function categoryOrderOf(services: Service[]): string[] {
   const seen = new Set<string>();
   const order: string[] = [];
-  for (const s of SERVICE_CATALOG[type]) {
+  for (const s of services) {
     const cat = s.category ?? "Otros";
     if (!seen.has(cat)) {
       seen.add(cat);
@@ -427,6 +427,11 @@ export function categoryOrderFor(type: BusinessType): string[] {
     }
   }
   return order;
+}
+
+/** Orden de categorías al mostrar el catálogo de un tipo: el orden en que aparecen en el array de arriba. */
+export function categoryOrderFor(type: BusinessType): string[] {
+  return categoryOrderOf(SERVICE_CATALOG[type]);
 }
 
 /** Cuatro servicios representativos para la sección "Servicios destacados" de la home. */
@@ -498,6 +503,92 @@ export function placeholderAvatar(name: string, employeeId: EmployeeId): string 
   const label = initialsOf(name);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240"><rect width="240" height="240" rx="120" fill="${hex}"/><text x="120" y="136" font-family="system-ui,-apple-system,sans-serif" font-size="88" font-weight="600" fill="#fff" text-anchor="middle">${label}</text></svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Equipo y carta reales (enlaces de demo con "e"/"m")                    */
+/* ---------------------------------------------------------------------- */
+
+/**
+ * Un enlace de demo puede traer el equipo y la carta reales de un salón (ver
+ * `demo-profile.ts`, claves "e"/"m"). Viajan como arrays de cadenas cortas
+ * separadas por "~" para no engordar la URL con JSON anidado. Este módulo es
+ * el único sitio que sabe parsear y validar ese formato: lo usan tanto
+ * `demo-profile.ts` (al decodificar el enlace) como `mock/salon.ts` (al
+ * construir el equipo/catálogo activos) — así los dos coinciden siempre en
+ * qué cuenta como una entrada válida.
+ */
+export const MAX_TEAM_ENTRIES = 3;
+export const MAX_MENU_ENTRIES = 12;
+const MENU_DURATION_MIN = 5;
+const MENU_DURATION_MAX = 240;
+const TEAM_NAME_MAX = 60;
+const TEAM_SPECIALTY_MAX = 80;
+const MENU_NAME_MAX = 60;
+const MENU_CATEGORY_MAX = 40;
+
+export interface TeamOverrideEntry {
+  name: string;
+  specialty?: string;
+}
+
+export interface MenuOverrideEntry {
+  name: string;
+  durationMin: number;
+  priceEur: number;
+  category?: string;
+}
+
+/** "Nombre" o "Nombre~Especialidad" → entrada válida, o `null` si no hay nombre. */
+export function parseTeamEntry(raw: string): TeamOverrideEntry | null {
+  const parts = raw.split("~");
+  const name = (parts[0] ?? "").trim().slice(0, TEAM_NAME_MAX);
+  if (!name) return null;
+  const specialty = parts[1]?.trim().slice(0, TEAM_SPECIALTY_MAX);
+  return specialty ? { name, specialty } : { name };
+}
+
+/** Cadena canónica de una entrada de equipo, para guardar en el perfil/enlace. */
+export function formatTeamEntry(entry: TeamOverrideEntry): string {
+  return entry.specialty ? `${entry.name}~${entry.specialty}` : entry.name;
+}
+
+/**
+ * "Nombre~minutos~precio" o "Nombre~minutos~precio~Categoría" → entrada
+ * válida, o `null` si falta el nombre, los minutos no son 5–240 o el precio
+ * no es un número ≥ 0. El precio admite coma decimal ("13,5").
+ */
+export function parseMenuEntry(raw: string): MenuOverrideEntry | null {
+  const parts = raw.split("~");
+  if (parts.length < 3) return null;
+  const name = (parts[0] ?? "").trim().slice(0, MENU_NAME_MAX);
+  if (!name) return null;
+  const durationMin = Math.round(Number(parts[1]));
+  if (!Number.isFinite(durationMin) || durationMin < MENU_DURATION_MIN || durationMin > MENU_DURATION_MAX) {
+    return null;
+  }
+  const priceEur = Number(String(parts[2]).trim().replace(",", "."));
+  if (!Number.isFinite(priceEur) || priceEur < 0) return null;
+  const category = parts[3]?.trim().slice(0, MENU_CATEGORY_MAX);
+  return { name, durationMin, priceEur, category: category || undefined };
+}
+
+/** Cadena canónica de una entrada de carta, para guardar en el perfil/enlace. */
+export function formatMenuEntry(entry: MenuOverrideEntry): string {
+  const base = `${entry.name}~${entry.durationMin}~${entry.priceEur}`;
+  return entry.category ? `${base}~${entry.category}` : base;
+}
+
+/** Id estable a partir de un nombre de servicio: minúsculas, sin acentos ni símbolos. */
+export function slugForId(value: string): string {
+  return (
+    value
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "servicio"
+  );
 }
 
 /* ---------------------------------------------------------------------- */

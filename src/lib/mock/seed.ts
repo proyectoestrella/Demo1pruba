@@ -155,21 +155,35 @@ function buildAppointments(
 /**
  * Cuatro entradas fijas de lista de espera. Los ids de servicio ("corte",
  * "corte-barba", "barba", "afeitado") son de los que existen en los cuatro
- * catálogos — ver `business-type.ts` — así que resuelven a un nombre válido
- * sea cual sea el tipo activo. Los nombres de pila salen de la lista del
- * tipo (los cuatro primeros): en una barbería «corte y barba» o «afeitado»
- * no pueden ir a nombre de mujer.
+ * catálogos de ejemplo — ver `business-type.ts` — así que resuelven a un
+ * nombre válido sea cual sea el tipo activo. Los nombres de pila salen de la
+ * lista del tipo (los cuatro primeros): en una barbería «corte y barba» o
+ * «afeitado» no pueden ir a nombre de mujer.
+ *
+ * Cuando el enlace trae una carta o un equipo reales (`servicesForType`/
+ * `employeesForType` con overrides) esos ids fijos pueden no existir: se
+ * sustituyen por los primeros de la carta/equipo activos, nunca por un id
+ * inexistente que dejaría el nombre del servicio o del profesional en blanco.
  */
-function buildWaitlist(type: BusinessType): WaitlistEntry[] {
+function buildWaitlist(type: BusinessType, employees: Employee[], services: Service[]): WaitlistEntry[] {
   const FIRST = FIRST_NAMES_BY_TYPE[type];
   const nombre = (i: number, apellido: string) => `${FIRST[i % FIRST.length]} ${apellido}`;
+  const serviceIds = new Set(services.map((s) => s.id));
+  const resolveService = (preferido: string, i: number) =>
+    serviceIds.has(preferido) ? preferido : (services[i % services.length]?.id ?? preferido);
+  const employeeIds = new Set(employees.map((e) => e.id));
+  const resolveEmployee = (preferido: EmployeeId | "any", i: number): EmployeeId | "any" =>
+    preferido === "any" || employeeIds.has(preferido)
+      ? preferido
+      : (employees[i % employees.length]?.id ?? preferido);
+
   return [
     {
       id: "w1",
       clientName: nombre(0, "Vidal"),
       phone: "+34 611 111 222",
-      serviceId: "corte-barba",
-      preferredEmployeeId: "diego",
+      serviceId: resolveService("corte-barba", 0),
+      preferredEmployeeId: resolveEmployee("diego", 1),
       preferredRange: "Sábado por la mañana",
       createdAt: new Date(Date.now() - 86400_000).toISOString(),
     },
@@ -177,7 +191,7 @@ function buildWaitlist(type: BusinessType): WaitlistEntry[] {
       id: "w2",
       clientName: nombre(1, "Sanz"),
       phone: "+34 622 333 444",
-      serviceId: "corte",
+      serviceId: resolveService("corte", 1),
       preferredEmployeeId: "any",
       preferredRange: "Martes por la tarde",
       createdAt: new Date(Date.now() - 2 * 86400_000).toISOString(),
@@ -186,8 +200,8 @@ function buildWaitlist(type: BusinessType): WaitlistEntry[] {
       id: "w3",
       clientName: nombre(2, "Roca"),
       phone: "+34 633 555 666",
-      serviceId: "afeitado",
-      preferredEmployeeId: "ruben",
+      serviceId: resolveService("afeitado", 2),
+      preferredEmployeeId: resolveEmployee("ruben", 2),
       preferredRange: "Viernes a partir de las 17:00",
       createdAt: new Date(Date.now() - 3 * 86400_000).toISOString(),
     },
@@ -195,8 +209,8 @@ function buildWaitlist(type: BusinessType): WaitlistEntry[] {
       id: "w4",
       clientName: nombre(3, "Mora"),
       phone: "+34 644 777 888",
-      serviceId: "barba",
-      preferredEmployeeId: "mario",
+      serviceId: resolveService("barba", 3),
+      preferredEmployeeId: resolveEmployee("mario", 0),
       preferredRange: "Cualquier día de esta semana",
       createdAt: new Date(Date.now() - 5 * 86400_000).toISOString(),
     },
@@ -219,7 +233,7 @@ export function buildSeed(type: BusinessType, employees: Employee[], services: S
   return {
     clients,
     appointments: buildAppointments(clients, employees, services),
-    waitlist: buildWaitlist(type),
+    waitlist: buildWaitlist(type, employees, services),
   };
 }
 

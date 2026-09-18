@@ -3,14 +3,20 @@ import {
   BUSINESS_LABEL,
   BUSINESS_TYPES,
   categoryOrderFor,
+  categoryOrderOf,
   EMPLOYEE_OVERLAY,
   EXAMPLE_CLIENT_NOTES,
   FEATURED_IDS_BY_TYPE,
   FIRST_NAMES_BY_TYPE,
+  formatMenuEntry,
+  formatTeamEntry,
   inferBusinessType,
+  parseMenuEntry,
+  parseTeamEntry,
   professionalWord,
   SERVICE_CATALOG,
   showsRealPhotos,
+  slugForId,
 } from "./business-type";
 
 describe("inferBusinessType", () => {
@@ -186,5 +192,98 @@ describe("palabras y rótulos", () => {
     expect(BUSINESS_LABEL.peluqueria).toBe("Peluquería");
     expect(BUSINESS_LABEL.estetica).toBe("Peluquería y estética");
     expect(BUSINESS_LABEL.unisex).toBe("Peluquería unisex");
+  });
+});
+
+describe("categoryOrderOf", () => {
+  it("da el mismo resultado que categoryOrderFor para el catálogo de un tipo", () => {
+    for (const tipo of BUSINESS_TYPES) {
+      expect(categoryOrderOf(SERVICE_CATALOG[tipo])).toEqual(categoryOrderFor(tipo));
+    }
+  });
+});
+
+describe("parseTeamEntry / formatTeamEntry", () => {
+  it("acepta solo el nombre", () => {
+    expect(parseTeamEntry("Adam")).toEqual({ name: "Adam" });
+  });
+
+  it("acepta nombre y especialidad", () => {
+    expect(parseTeamEntry("Adam~Cortes y afeitado clásico")).toEqual({
+      name: "Adam",
+      specialty: "Cortes y afeitado clásico",
+    });
+  });
+
+  it("descarta una entrada sin nombre", () => {
+    expect(parseTeamEntry("")).toBeNull();
+    expect(parseTeamEntry("~Especialidad sin nombre")).toBeNull();
+  });
+
+  it("recorta nombre y especialidad a una longitud razonable", () => {
+    const nombreLargo = "A".repeat(200);
+    const entry = parseTeamEntry(`${nombreLargo}~${"B".repeat(200)}`);
+    expect(entry?.name.length).toBeLessThanOrEqual(60);
+    expect(entry?.specialty?.length).toBeLessThanOrEqual(80);
+  });
+
+  it("formatTeamEntry es el inverso de parseTeamEntry", () => {
+    expect(formatTeamEntry({ name: "Adam" })).toBe("Adam");
+    expect(formatTeamEntry({ name: "Adam", specialty: "Navaja" })).toBe("Adam~Navaja");
+  });
+});
+
+describe("parseMenuEntry / formatMenuEntry", () => {
+  it("acepta nombre, minutos y precio", () => {
+    expect(parseMenuEntry("Corte~30~13")).toEqual({
+      name: "Corte",
+      durationMin: 30,
+      priceEur: 13,
+      category: undefined,
+    });
+  });
+
+  it("acepta categoría y precio con coma decimal", () => {
+    expect(parseMenuEntry("Corte~30~13,5~Cortes")).toEqual({
+      name: "Corte",
+      durationMin: 30,
+      priceEur: 13.5,
+      category: "Cortes",
+    });
+  });
+
+  it("descarta minutos fuera de 5–240", () => {
+    expect(parseMenuEntry("Corte~4~13")).toBeNull();
+    expect(parseMenuEntry("Corte~241~13")).toBeNull();
+    expect(parseMenuEntry("Corte~30~13")).not.toBeNull();
+  });
+
+  it("descarta un precio negativo o no numérico", () => {
+    expect(parseMenuEntry("Corte~30~-1")).toBeNull();
+    expect(parseMenuEntry("Corte~30~gratis")).toBeNull();
+  });
+
+  it("descarta una entrada sin los tres campos mínimos", () => {
+    expect(parseMenuEntry("Corte~30")).toBeNull();
+    expect(parseMenuEntry("Corte")).toBeNull();
+  });
+
+  it("formatMenuEntry es el inverso de parseMenuEntry", () => {
+    expect(formatMenuEntry({ name: "Corte", durationMin: 30, priceEur: 13 })).toBe("Corte~30~13");
+    expect(
+      formatMenuEntry({ name: "Corte", durationMin: 30, priceEur: 13, category: "Cortes" }),
+    ).toBe("Corte~30~13~Cortes");
+  });
+});
+
+describe("slugForId", () => {
+  it("genera un id legible sin acentos ni símbolos", () => {
+    expect(slugForId("Corte + barba")).toBe("corte-barba");
+    expect(slugForId("Afeitado a navaja")).toBe("afeitado-a-navaja");
+    expect(slugForId("  ¡Peinado!  ")).toBe("peinado");
+  });
+
+  it("nunca devuelve una cadena vacía", () => {
+    expect(slugForId("!!!")).toBe("servicio");
   });
 });

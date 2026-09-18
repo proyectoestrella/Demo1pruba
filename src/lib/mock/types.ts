@@ -123,4 +123,16 @@ export interface SalonProfile {
    * de la demo y el salón la ve en su móvil, que es de lo que se trata.
    */
   heroImage?: string;
+  /**
+   * Equipo real del salón, de 1 a 3 entradas ("Nombre" o "Nombre~Especialidad"
+   * — ver `parseTeamEntry` en business-type.ts). Vacío o ausente = el equipo
+   * de ejemplo de tres profesionales de siempre (`EMPLOYEE_OVERLAY`).
+   */
+  team?: string[];
+  /**
+   * Carta real del salón, de 1 a 12 entradas ("Nombre~minutos~precio" o
+   * "...~Categoría" — ver `parseMenuEntry` en business-type.ts). Vacío o
+   * ausente = el catálogo de ejemplo del tipo de negocio (`SERVICE_CATALOG`).
+   */
+  menu?: string[];
 }
