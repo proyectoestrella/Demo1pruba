@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { DAY_LABELS_ES, DEFAULT_OPENING_HOURS, normalizeDay } from "@/lib/opening-hours";
 
 export const Route = createFileRoute("/app/settings")({ component: Settings });
@@ -29,6 +30,19 @@ function Settings() {
     salonProfile.openingHours?.length === 7 ? salonProfile.openingHours : DEFAULT_OPENING_HOURS,
   );
 
+  // Plantones — política de penalización por cancelar tarde o no presentarse.
+  const [noShowEnabled, setNoShowEnabled] = useState((salonProfile.noShowFeeEur ?? 0) > 0);
+  const [noShowFeeEur, setNoShowFeeEur] = useState(String(salonProfile.noShowFeeEur || 7));
+  const [noShowNoticeHours, setNoShowNoticeHours] = useState(
+    String(salonProfile.noShowNoticeHours ?? 2),
+  );
+
+  // Reparto de agenda — hora sugerida y colchón antes del cierre.
+  const [smartSpreadEnabled, setSmartSpreadEnabled] = useState(!!salonProfile.smartSpread);
+  const [lastSlotBufferMin, setLastSlotBufferMin] = useState(
+    String(salonProfile.lastSlotBufferMin || 90),
+  );
+
   // Keep the form in sync if the profile changes from elsewhere (e.g. reset).
   useEffect(() => {
     setName(salonProfile.name);
@@ -44,6 +58,11 @@ function Settings() {
     setOpeningHours(
       salonProfile.openingHours?.length === 7 ? salonProfile.openingHours : DEFAULT_OPENING_HOURS,
     );
+    setNoShowEnabled((salonProfile.noShowFeeEur ?? 0) > 0);
+    setNoShowFeeEur(String(salonProfile.noShowFeeEur || 7));
+    setNoShowNoticeHours(String(salonProfile.noShowNoticeHours ?? 2));
+    setSmartSpreadEnabled(!!salonProfile.smartSpread);
+    setLastSlotBufferMin(String(salonProfile.lastSlotBufferMin || 90));
   }, [salonProfile]);
 
   function handleSave() {
@@ -54,6 +73,25 @@ function Settings() {
     // guardar algo que deje la demo en evidencia delante del cliente.
     if (!Number.isFinite(parsedRating) || parsedRating < 0 || parsedRating > 5) {
       toast.error("La nota tiene que estar entre 0 y 5");
+      return;
+    }
+
+    const parsedFee = Number(noShowFeeEur.replace(",", "."));
+    if (noShowEnabled && (!Number.isFinite(parsedFee) || parsedFee <= 0 || parsedFee > 50)) {
+      toast.error("La penalización tiene que estar entre 0 y 50 €");
+      return;
+    }
+    const parsedNotice = Number(noShowNoticeHours);
+    if (noShowEnabled && (!Number.isFinite(parsedNotice) || parsedNotice < 1 || parsedNotice > 48)) {
+      toast.error("El aviso mínimo tiene que estar entre 1 y 48 horas");
+      return;
+    }
+    const parsedBuffer = Number(lastSlotBufferMin);
+    if (
+      smartSpreadEnabled &&
+      (!Number.isFinite(parsedBuffer) || parsedBuffer < 0 || parsedBuffer > 240)
+    ) {
+      toast.error("Los minutos antes del cierre tienen que estar entre 0 y 240");
       return;
     }
 
@@ -72,6 +110,10 @@ function Settings() {
         .filter(Boolean),
       heroImage: heroImage.trim(),
       openingHours: openingHours.map(normalizeDay),
+      noShowFeeEur: noShowEnabled ? Math.min(50, Math.max(0, parsedFee)) : 0,
+      noShowNoticeHours: Math.min(48, Math.max(1, Math.round(parsedNotice) || 2)),
+      smartSpread: smartSpreadEnabled,
+      lastSlotBufferMin: smartSpreadEnabled ? Math.min(240, Math.max(0, Math.round(parsedBuffer))) : 0,
     });
     toast.success("Cambios guardados");
   }
@@ -157,6 +199,66 @@ function Settings() {
           </p>
         </div>
 
+        <div className="flex justify-end pt-2">
+          <Button onClick={handleSave}>Guardar cambios</Button>
+        </div>
+      </div>
+
+      <div className="space-y-4 rounded-xl border border-border/60 bg-card p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+              Plantones
+            </Label>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Cobra una penalización a quien cancela tarde o no viene, antes de que pueda volver a
+              reservar. Tú decides en cada caso si la aplicas o la perdonas.
+            </p>
+          </div>
+          <Switch checked={noShowEnabled} onCheckedChange={setNoShowEnabled} />
+        </div>
+        {noShowEnabled && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Penalización (€)"
+              value={noShowFeeEur}
+              onChange={setNoShowFeeEur}
+              hint="De 0 a 50 €."
+            />
+            <Field
+              label="Aviso mínimo (h)"
+              value={noShowNoticeHours}
+              onChange={setNoShowNoticeHours}
+              hint="Cancelar con menos margen cuenta como plantón. De 1 a 48 horas."
+            />
+          </div>
+        )}
+        <div className="flex justify-end pt-2">
+          <Button onClick={handleSave}>Guardar cambios</Button>
+        </div>
+      </div>
+
+      <div className="space-y-4 rounded-xl border border-border/60 bg-card p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+              Reparto de agenda
+            </Label>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Sugiere una hora más tranquila cuando alguien elige una franja con espera (12:00–14:00
+              o las últimas horas del día). Nunca le impide elegir la suya.
+            </p>
+          </div>
+          <Switch checked={smartSpreadEnabled} onCheckedChange={setSmartSpreadEnabled} />
+        </div>
+        {smartSpreadEnabled && (
+          <Field
+            label="No ofrecer los últimos (min)"
+            value={lastSlotBufferMin}
+            onChange={setLastSlotBufferMin}
+            hint="Minutos antes del cierre que dejan de ofertarse. De 0 a 240."
+          />
+        )}
         <div className="flex justify-end pt-2">
           <Button onClick={handleSave}>Guardar cambios</Button>
         </div>
