@@ -14,6 +14,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { useSalonStore, type SavedDemo } from "@/lib/store";
+import { Switch } from "@/components/ui/switch";
 import {
   blankDemoProfile,
   demoUrl,
@@ -69,6 +70,13 @@ interface DraftDemo {
   team: string;
   /** Una línea por servicio: "Nombre — minutos — precio — Categoría". */
   menu: string;
+  /** Política de plantón — campos de texto, se validan al guardar (0 = desactivada). */
+  noShowEnabled: boolean;
+  noShowFeeEur: string;
+  noShowNoticeHours: string;
+  /** Reparto de agenda. */
+  smartSpread: boolean;
+  lastSlotBufferMin: string;
 }
 
 /**
@@ -140,6 +148,11 @@ function draftFrom(demo: DemoProfile & { id?: string }): DraftDemo {
     galleryPhotos: demo.galleryPhotos ?? [],
     team: (demo.team ?? []).map(tildeToLine).join("\n"),
     menu: (demo.menu ?? []).map(tildeToLine).join("\n"),
+    noShowEnabled: (demo.noShowFeeEur ?? 0) > 0,
+    noShowFeeEur: String(demo.noShowFeeEur || 7),
+    noShowNoticeHours: String(demo.noShowNoticeHours ?? 2),
+    smartSpread: demo.smartSpread ?? false,
+    lastSlotBufferMin: String(demo.lastSlotBufferMin || 90),
   };
 }
 
@@ -302,6 +315,22 @@ function Demos() {
     }
     const count = Number(draft.reviewCount.replace(/[^\d]/g, ""));
 
+    const fee = Number(draft.noShowFeeEur.replace(",", "."));
+    if (draft.noShowEnabled && (!Number.isFinite(fee) || fee <= 0 || fee > 50)) {
+      toast.error("La penalización tiene que estar entre 0 y 50 €");
+      return;
+    }
+    const notice = Number(draft.noShowNoticeHours);
+    if (draft.noShowEnabled && (!Number.isFinite(notice) || notice < 1 || notice > 48)) {
+      toast.error("El aviso mínimo tiene que estar entre 1 y 48 horas");
+      return;
+    }
+    const buffer = Number(draft.lastSlotBufferMin);
+    if (draft.smartSpread && (!Number.isFinite(buffer) || buffer < 0 || buffer > 240)) {
+      toast.error("Los minutos antes del cierre tienen que estar entre 0 y 240");
+      return;
+    }
+
     saveDemo(
       {
         name: draft.name.trim(),
@@ -322,6 +351,10 @@ function Demos() {
         galleryPhotos: draft.galleryPhotos,
         team: teamLinesToEntries(draft.team),
         menu: menuLinesToEntries(draft.menu),
+        noShowFeeEur: draft.noShowEnabled ? Math.min(50, Math.max(0, fee)) : 0,
+        noShowNoticeHours: Math.min(48, Math.max(1, Math.round(notice) || 2)),
+        smartSpread: draft.smartSpread,
+        lastSlotBufferMin: draft.smartSpread ? Math.min(240, Math.max(0, Math.round(buffer))) : 0,
       },
       draft.id,
     );
@@ -519,6 +552,51 @@ function Demos() {
               De 1 a 12 servicios. La categoría es opcional (por defecto «Servicios»). El precio
               admite coma decimal. Vacío = la carta de ejemplo del tipo de negocio.
             </p>
+          </div>
+
+          <div className="h-px bg-border/60" />
+
+          <div className="space-y-4 rounded-lg border border-border/60 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+                Penalización por plantón
+              </Label>
+              <Switch
+                checked={draft.noShowEnabled}
+                onCheckedChange={(v) => field("noShowEnabled", v)}
+              />
+            </div>
+            {draft.noShowEnabled && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <DraftField
+                  label="Penalización por plantón (€)"
+                  value={draft.noShowFeeEur}
+                  onChange={(v) => field("noShowFeeEur", v)}
+                  hint="De 0 a 50 €."
+                />
+                <DraftField
+                  label="Aviso mínimo (h)"
+                  value={draft.noShowNoticeHours}
+                  onChange={(v) => field("noShowNoticeHours", v)}
+                  hint="De 1 a 48 horas."
+                />
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-4">
+              <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+                Hora sugerida (reparto de agenda)
+              </Label>
+              <Switch checked={draft.smartSpread} onCheckedChange={(v) => field("smartSpread", v)} />
+            </div>
+            {draft.smartSpread && (
+              <DraftField
+                label="No ofrecer los últimos (min)"
+                value={draft.lastSlotBufferMin}
+                onChange={(v) => field("lastSlotBufferMin", v)}
+                hint="Minutos antes del cierre que dejan de ofertarse. De 0 a 240."
+              />
+            )}
           </div>
 
           <div className="h-px bg-border/60" />
