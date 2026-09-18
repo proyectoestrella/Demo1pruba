@@ -494,7 +494,11 @@ function ServiceStep({
           ? "Puedes combinar varios en la misma cita."
           : `${count} ${count === 1 ? "servicio elegido" : "servicios elegidos"} · ${totalMin} min en total`}
       </p>
+      {/* `key`: cuando la carta llega del enlace después del primer render, las
+          categorías cambian («Cortes» → «Servicios») y un defaultValue ya
+          montado dejaría el acordeón cerrado sin ningún servicio a la vista. */}
       <Accordion
+        key={categoryOrder.join("|")}
         type="single"
         collapsible
         defaultValue={categoryOrder[0]}
