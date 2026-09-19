@@ -49,7 +49,32 @@ export interface Client {
   penaltyEur?: number;
   /** Motivo/fecha de la penalización, para enseñarlo junto al importe ("No vino el 12 sept · Corte"). */
   penaltyNote?: string;
+  /**
+   * Cuándo se aplicó la penalización (ISO). El bloqueo para volver a reservar
+   * caduca solo a los 30 días contados desde aquí — ver `PENALTY_EXPIRY_DAYS`
+   * en lib/plantones.ts. Una ficha sin esta fecha (las de antes de esto) se
+   * comporta como siempre: el bloqueo no caduca hasta que el dueño lo cierre.
+   */
+  penaltyAt?: string;
+  /**
+   * El dueño ha decidido mantener el bloqueo más allá de los 30 días. Es una
+   * decisión suya y explícita: por defecto el bloqueo se levanta solo.
+   */
+  penaltyKeep?: boolean;
 }
+
+/**
+ * Cómo se cobró una cita. Lo elige el dueño a mano en el cierre de caja: aquí
+ * no se procesa ningún pago ni se conecta con ninguna pasarela.
+ */
+export type PaymentMethod = "efectivo" | "bizum" | "tarjeta";
+
+/** Etiquetas en español de cada forma de cobro, en un solo sitio. */
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  efectivo: "Efectivo",
+  bizum: "Bizum",
+  tarjeta: "Tarjeta",
+};
 
 export interface Appointment {
   id: string;
@@ -78,6 +103,23 @@ export interface Appointment {
   clientConfirmedAt?: string;
   /** Title for blocked time entries */
   note?: string;
+  /**
+   * Cierre de caja: cómo se cobró esta cita y cuándo se marcó como cobrada.
+   * Las dos van juntas — marcar cobrada obliga a elegir forma de cobro. Nada
+   * de esto mueve dinero: es el cuaderno del mostrador, en digital.
+   */
+  paymentMethod?: PaymentMethod;
+  paidAt?: string;
+  /**
+   * Fianza por Bizum (PeluChic): cuándo se abrió el WhatsApp para pedirla y
+   * cuándo el salón marcó a mano que la señal había llegado. No hay pasarela
+   * de pago ni comprobación automática: lo confirma una persona mirando su
+   * banco.
+   */
+  depositRequestedAt?: string;
+  depositReceivedAt?: string;
+  /** Importe de la señal pedida, en euros — se congela al pedirla por si luego cambia en Ajustes. */
+  depositEur?: number;
 }
 
 export interface WaitlistEntry {
@@ -160,4 +202,15 @@ export interface SalonProfile {
   smartSpread?: boolean;
   /** Minutos antes del cierre que dejan de ofertarse (0-240). Solo tiene efecto con `smartSpread`. */
   lastSlotBufferMin?: number;
+  /**
+   * Fianza por Bizum (María, PeluChic): pedir una señal por WhatsApp antes de
+   * confirmar la cita de una clienta nueva. `false` o ausente = el botón no
+   * aparece y nada cambia. No hay pasarela: se abre WhatsApp con el mensaje
+   * escrito y el salón marca a mano cuando el Bizum llega.
+   */
+  depositEnabled?: boolean;
+  /** Número al que se pide el Bizum. Va escrito en el mensaje de WhatsApp. */
+  depositBizumPhone?: string;
+  /** Importe de la señal en euros. Por defecto 10. */
+  depositAmountEur?: number;
 }

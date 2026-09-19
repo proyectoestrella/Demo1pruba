@@ -88,3 +88,57 @@ create unique index if not exists appointments_salon_local_idx on appointments (
 -- pintar su nombre igual — de ahí también que client_id deje de ser obligatorio.
 alter table appointments add column if not exists client_name text;
 alter table appointments alter column client_id drop not null;
+
+-- ---------------------------------------------------------------------------
+-- 20/09/2026 — lista de espera, cierre de caja, fianza por Bizum y caducidad
+-- del bloqueo por plantón.
+--
+-- PENDIENTE DE APLICAR EN PRODUCCIÓN. El código que lo usa ya está desplegado
+-- y aguanta sin esto: si una columna o la tabla no existen, se avisa por
+-- consola y se guarda sin esos campos (ver `faltaEsquema` en
+-- src/lib/api/salons.functions.ts). Lo único que NO funciona hasta aplicarlo
+-- es que la lista de espera persista entre recargas.
+-- ---------------------------------------------------------------------------
+
+-- Lista de espera del salón. Antes solo existía en el navegador, con el
+-- resultado de que un salón REAL veía las cuatro entradas de ejemplo del seed
+-- (+34 611 111 222, 622 333 444...) como si fueran clientes suyos, y lo que
+-- apuntaba de verdad se perdía al recargar.
+--
+-- Misma mecánica que appointments: la clave de upsert es (salon_slug,
+-- local_id) porque la entrada nace con un id del navegador ("w-1758...").
+create table if not exists waitlist (
+  id uuid primary key default gen_random_uuid(),
+  salon_slug text not null,
+  local_id text,
+  client_name text not null,
+  phone text not null default '',
+  service_id text not null default '',
+  preferred_employee_id text not null default 'any',
+  preferred_range text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists waitlist_salon_slug_idx on waitlist (salon_slug);
+update waitlist set local_id = id::text where local_id is null;
+create unique index if not exists waitlist_salon_local_idx on waitlist (salon_slug, local_id);
+
+-- Cierre de caja: cómo se cobró cada cita y cuándo se marcó. Lo elige el
+-- dueño a mano (efectivo / Bizum / tarjeta): aquí no se procesa ningún pago.
+alter table appointments add column if not exists payment_method text;
+alter table appointments add column if not exists paid_at timestamptz;
+
+-- Fianza por Bizum (PeluChic): cuándo se pidió por WhatsApp, cuándo el salón
+-- confirmó A MANO que había llegado, y por cuánto. Tampoco hay pasarela aquí.
+alter table appointments add column if not exists deposit_requested_at timestamptz;
+alter table appointments add column if not exists deposit_received_at timestamptz;
+alter table appointments add column if not exists deposit_eur numeric;
+
+-- Caducidad del bloqueo por plantón: a los 30 días de `penalty_at` el cliente
+-- vuelve a poder reservar solo, salvo que el dueño marque `penalty_keep`. La
+-- deuda (`penalty_eur`) sigue anotada: lo que caduca es el bloqueo, no el cobro.
+alter table clients add column if not exists penalty_at timestamptz;
+alter table clients add column if not exists penalty_keep boolean not null default false;
+-- Las penalizaciones que ya existían no tienen fecha: se les pone la de ahora
+-- para que también empiecen a caducar en vez de quedarse bloqueadas para siempre.
+update clients set penalty_at = now() where penalty_eur is not null and penalty_at is null;

@@ -20,14 +20,65 @@ import {
   phoneKey,
   rowToAppointment,
   rowToClient,
+  rowToWaitlist,
   type AppointmentRow,
   type ClientRow,
+  type WaitlistRow,
 } from "../salon-rows";
-import type { Appointment, Client, SalonProfile } from "../mock/types";
+import type { Appointment, Client, SalonProfile, WaitlistEntry } from "../mock/types";
 
-const APPOINTMENT_COLS =
+/**
+ * Columnas de siempre, y columnas que solo existen si se ha aplicado el DDL
+ * más reciente de `supabase/schema.sql`.
+ *
+ * Van separadas porque un `select` con UNA columna inexistente falla entero:
+ * la agenda de un salón real no puede dejar de cargar porque todavía no se
+ * haya ejecutado una migración. Ver `faltaEsquema` justo debajo.
+ */
+const APPOINTMENT_COLS_BASE =
   "id, local_id, client_id, client_name, service_id, employee_id, start_at, duration_min, price_eur, status, client_confirmed_at, note";
-const CLIENT_COLS = "id, name, phone, email, notes, penalty_eur, penalty_note, created_at";
+const APPOINTMENT_COLS_NUEVAS =
+  "payment_method, paid_at, deposit_requested_at, deposit_received_at, deposit_eur";
+const CLIENT_COLS_BASE = "id, name, phone, email, notes, penalty_eur, penalty_note, created_at";
+const CLIENT_COLS_NUEVAS = "penalty_at, penalty_keep";
+const WAITLIST_COLS =
+  "id, local_id, client_name, phone, service_id, preferred_employee_id, preferred_range, created_at";
+
+/** Campos de una cita o una ficha que solo existen tras el DDL de caja, fianzas y caducidad. */
+const CAMPOS_NUEVOS_CITA = [
+  "payment_method",
+  "paid_at",
+  "deposit_requested_at",
+  "deposit_received_at",
+  "deposit_eur",
+];
+const CAMPOS_NUEVOS_CLIENTE = ["penalty_at", "penalty_keep"];
+
+/**
+ * ¿Ha fallado esto porque una columna o una tabla todavía no existen?
+ *
+ * PostgREST responde `PGRST204`/`42703` para una columna desconocida y
+ * `PGRST205`/`42P01` para una tabla que no está en el esquema. En los dos
+ * casos la respuesta correcta es la misma: seguir sin eso, no tumbar el panel
+ * de quien está delante de un cliente.
+ */
+function faltaEsquema(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  if (["PGRST204", "PGRST205", "42703", "42P01"].includes(error.code ?? "")) return true;
+  const msg = (error.message ?? "").toLowerCase();
+  return (
+    msg.includes("does not exist") ||
+    msg.includes("could not find") ||
+    msg.includes("schema cache")
+  );
+}
+
+/** Quita del objeto las claves indicadas — para reintentar sin las columnas que aún no existen. */
+function sinCampos<T extends Record<string, unknown>>(fila: T, campos: string[]): T {
+  const copia = { ...fila };
+  for (const c of campos) delete copia[c];
+  return copia;
+}
 
 const slug = z.string().min(1).max(120);
 
@@ -98,28 +149,128 @@ export const saveSalonProfile = createServerFn({ method: "POST" })
  */
 export const listSalonData = createServerFn({ method: "GET" })
   .inputValidator(z.object({ slug, scope: z.enum(["panel", "publica"]).default("panel") }))
-  .handler(async ({ data }): Promise<{ appointments: Appointment[]; clients: Client[] }> => {
+  .handler(
+    async ({
+      data,
+    }): Promise<{ appointments: Appointment[]; clients: Client[]; waitlist: WaitlistEntry[] }> => {
+      const supabase = getSupabaseServerClient();
+      if (!supabase) return { appointments: [], clients: [], waitlist: [] };
+
+      const publica = data.scope === "publica";
+
+      /**
+       * Un `select` con las columnas nuevas y, si el esquema todavía no las
+       * tiene, el mismo `select` solo con las de siempre. Sin esto, aplicar
+       * este código antes que el DDL dejaría la agenda en blanco.
+       */
+      async function traer<T>(tabla: string, base: string, nuevas: string) {
+        const conNuevas = await supabase!
+          .from(tabla)
+          .select(`${base}, ${nuevas}`)
+          .eq("salon_slug", data.slug);
+        if (!conNuevas.error) return { data: (conNuevas.data ?? []) as unknown as T[], error: null };
+        if (!faltaEsquema(conNuevas.error)) return { data: [] as T[], error: conNuevas.error };
+        console.warn(
+          `listSalonData: ${tabla} todavía sin las columnas nuevas (${nuevas}); falta aplicar supabase/schema.sql`,
+        );
+        const soloBase = await supabase!.from(tabla).select(base).eq("salon_slug", data.slug);
+        return {
+          data: (soloBase.data ?? []) as unknown as T[],
+          error: soloBase.error,
+        };
+      }
+
+      const [citas, fichas, espera] = await Promise.all([
+        traer<AppointmentRow>("appointments", APPOINTMENT_COLS_BASE, APPOINTMENT_COLS_NUEVAS),
+        publica
+          ? Promise.resolve({ data: [] as ClientRow[], error: null })
+          : traer<ClientRow>("clients", CLIENT_COLS_BASE, CLIENT_COLS_NUEVAS),
+        // La lista de espera es del dueño: la web pública ni la pide. Y si la
+        // tabla todavía no existe, se responde vacía — que es justo lo que
+        // debe ver un salón real, en vez de las 4 entradas de ejemplo del seed.
+        publica
+          ? Promise.resolve({ data: [] as WaitlistRow[], error: null })
+          : supabase
+              .from("waitlist")
+              .select(WAITLIST_COLS)
+              .eq("salon_slug", data.slug)
+              .then((r) => ({
+                data: (r.data ?? []) as unknown as WaitlistRow[],
+                error: faltaEsquema(r.error) ? null : r.error,
+              })),
+      ]);
+
+      if (citas.error) throw new Error(`listSalonData (citas): ${citas.error.message}`);
+      if (fichas.error) throw new Error(`listSalonData (clientes): ${fichas.error.message}`);
+      if (espera.error) throw new Error(`listSalonData (lista de espera): ${espera.error.message}`);
+
+      return {
+        appointments: (citas.data ?? []).map((r) => rowToAppointment(r, publica)),
+        clients: (fichas.data ?? []).map(rowToClient),
+        waitlist: (espera.data ?? []).map(rowToWaitlist),
+      };
+    },
+  );
+
+/* ---------------------------------------------------------------------- */
+/* Lista de espera                                                         */
+/* ---------------------------------------------------------------------- */
+
+/**
+ * Upsert de UNA entrada de la lista de espera, con la misma mecánica que las
+ * citas: la clave es `(salon_slug, local_id)` porque la entrada nace en el
+ * navegador. Si la tabla todavía no existe, no revienta: se avisa por consola
+ * y la lista sigue funcionando en local, como antes de esto.
+ */
+export const syncWaitlistEntry = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      slug,
+      localId: z.string().min(1),
+      clientName: z.string().min(1),
+      phone: z.string().default(""),
+      serviceId: z.string().default(""),
+      preferredEmployeeId: z.string().default("any"),
+      preferredRange: z.string().default(""),
+    }),
+  )
+  .handler(async ({ data }) => {
     const supabase = getSupabaseServerClient();
-    if (!supabase) return { appointments: [], clients: [] };
+    if (!supabase) return { synced: false as const };
+    const { error } = await supabase.from("waitlist").upsert(
+      {
+        salon_slug: data.slug,
+        local_id: data.localId,
+        client_name: data.clientName,
+        phone: data.phone,
+        service_id: data.serviceId,
+        preferred_employee_id: data.preferredEmployeeId,
+        preferred_range: data.preferredRange,
+      },
+      { onConflict: "salon_slug,local_id" },
+    );
+    if (faltaEsquema(error)) {
+      console.warn("syncWaitlistEntry: falta la tabla `waitlist` (aplica supabase/schema.sql)");
+      return { synced: false as const };
+    }
+    if (error) throw new Error(`syncWaitlistEntry: ${error.message}`);
+    return { synced: true as const };
+  });
 
-    const publica = data.scope === "publica";
-
-    const [citas, fichas] = await Promise.all([
-      supabase.from("appointments").select(APPOINTMENT_COLS).eq("salon_slug", data.slug),
-      publica
-        ? Promise.resolve({ data: [] as ClientRow[], error: null })
-        : supabase.from("clients").select(CLIENT_COLS).eq("salon_slug", data.slug),
-    ]);
-
-    if (citas.error) throw new Error(`listSalonData (citas): ${citas.error.message}`);
-    if (fichas.error) throw new Error(`listSalonData (clientes): ${fichas.error.message}`);
-
-    return {
-      appointments: ((citas.data ?? []) as unknown as AppointmentRow[]).map((r) =>
-        rowToAppointment(r, publica),
-      ),
-      clients: ((fichas.data ?? []) as unknown as ClientRow[]).map(rowToClient),
-    };
+/** Quita una entrada de la lista de espera (la quitó el dueño, o se convirtió en cita). */
+export const deleteWaitlistEntry = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ slug, localId: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    const supabase = getSupabaseServerClient();
+    if (!supabase) return { synced: false as const };
+    const { error } = await supabase
+      .from("waitlist")
+      .delete()
+      .eq("salon_slug", data.slug)
+      .eq("local_id", data.localId);
+    if (faltaEsquema(error)) return { synced: false as const };
+    if (error) throw new Error(`deleteWaitlistEntry: ${error.message}`);
+    return { synced: true as const };
   });
 
 /**
@@ -152,6 +303,11 @@ export const syncAppointment = createServerFn({ method: "POST" })
       status: z.string().min(1),
       clientConfirmedAt: z.string().nullable().optional(),
       note: z.string().nullable().optional(),
+      paymentMethod: z.string().nullable().optional(),
+      paidAt: z.string().nullable().optional(),
+      depositRequestedAt: z.string().nullable().optional(),
+      depositReceivedAt: z.string().nullable().optional(),
+      depositEur: z.number().nullable().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -191,6 +347,11 @@ export const syncAppointment = createServerFn({ method: "POST" })
       status: data.status,
       client_confirmed_at: data.clientConfirmedAt ?? null,
       note: data.note ?? null,
+      payment_method: data.paymentMethod ?? null,
+      paid_at: data.paidAt ?? null,
+      deposit_requested_at: data.depositRequestedAt ?? null,
+      deposit_received_at: data.depositReceivedAt ?? null,
+      deposit_eur: data.depositEur ?? null,
     };
     // Solo se toca `client_id` cuando esta llamada sabe de qué cliente habla.
     // Un "confirmar" desde el panel no lleva teléfono, y machacar la columna
@@ -200,6 +361,19 @@ export const syncAppointment = createServerFn({ method: "POST" })
     const { error } = await supabase
       .from("appointments")
       .upsert(fila, { onConflict: "salon_slug,local_id" });
+    if (faltaEsquema(error)) {
+      // El DDL de caja y fianzas todavía no está aplicado: se guarda la cita
+      // sin esos campos antes que perder el cambio entero. Confirmar una cita
+      // delante de un cliente no puede depender de una migración pendiente.
+      console.warn(
+        "syncAppointment: faltan las columnas de caja/fianza (aplica supabase/schema.sql); la cita se guarda sin ellas",
+      );
+      const { error: err2 } = await supabase
+        .from("appointments")
+        .upsert(sinCampos(fila, CAMPOS_NUEVOS_CITA), { onConflict: "salon_slug,local_id" });
+      if (err2) throw new Error(`syncAppointment: ${err2.message}`);
+      return { synced: true as const };
+    }
     if (error) throw new Error(`syncAppointment: ${error.message}`);
 
     return { synced: true as const };
@@ -256,23 +430,40 @@ export const applyClientPenalty = createServerFn({ method: "POST" })
       name: z.string().optional(),
       eur: z.number().nonnegative(),
       note: z.string().optional(),
+      /** Cuándo se aplicó: es desde donde cuentan los 30 días de caducidad del bloqueo. */
+      penaltyAt: z.string().nullable().optional(),
+      /** El dueño mantiene el bloqueo más allá de los 30 días. */
+      penaltyKeep: z.boolean().optional(),
     }),
   )
   .handler(async ({ data }) => {
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
 
-    const { error } = await supabase.from("clients").upsert(
-      {
-        salon_slug: data.slug,
-        name: data.name ?? "Cliente",
-        phone: data.phone,
-        phone_key: phoneKey(data.phone),
-        penalty_eur: data.eur,
-        penalty_note: data.note ?? null,
-      },
-      { onConflict: "salon_slug,phone_key" },
-    );
+    const fila: Record<string, unknown> = {
+      salon_slug: data.slug,
+      name: data.name ?? "Cliente",
+      phone: data.phone,
+      phone_key: phoneKey(data.phone),
+      penalty_eur: data.eur,
+      penalty_note: data.note ?? null,
+      penalty_at: data.penaltyAt ?? null,
+      penalty_keep: data.penaltyKeep ?? false,
+    };
+
+    const { error } = await supabase
+      .from("clients")
+      .upsert(fila, { onConflict: "salon_slug,phone_key" });
+    if (faltaEsquema(error)) {
+      console.warn(
+        "applyClientPenalty: faltan `penalty_at`/`penalty_keep` (aplica supabase/schema.sql); se guarda sin caducidad",
+      );
+      const { error: err2 } = await supabase
+        .from("clients")
+        .upsert(sinCampos(fila, CAMPOS_NUEVOS_CLIENTE), { onConflict: "salon_slug,phone_key" });
+      if (err2) throw new Error(`applyClientPenalty: ${err2.message}`);
+      return { synced: true as const };
+    }
     if (error) throw new Error(`applyClientPenalty: ${error.message}`);
     return { synced: true as const };
   });
@@ -294,10 +485,21 @@ export const clearClientPenalty = createServerFn({ method: "POST" })
     const id = await localizarCliente(supabase, data.slug, data.phone);
     if (!id) return { synced: false as const };
 
-    const { error } = await supabase
-      .from("clients")
-      .update({ penalty_eur: null, penalty_note: data.note ?? null })
-      .eq("id", id);
+    const parche: Record<string, unknown> = {
+      penalty_eur: null,
+      penalty_note: data.note ?? null,
+      penalty_at: null,
+      penalty_keep: false,
+    };
+    const { error } = await supabase.from("clients").update(parche).eq("id", id);
+    if (faltaEsquema(error)) {
+      const { error: err2 } = await supabase
+        .from("clients")
+        .update(sinCampos(parche, CAMPOS_NUEVOS_CLIENTE))
+        .eq("id", id);
+      if (err2) throw new Error(`clearClientPenalty: ${err2.message}`);
+      return { synced: true as const };
+    }
     if (error) throw new Error(`clearClientPenalty: ${error.message}`);
     return { synced: true as const };
   });
@@ -328,14 +530,31 @@ export const checkClientPenalty = createServerFn({ method: "GET" })
     if (!supabase) return { client: null };
     if (phoneKey(data.phone).length < 9) return { client: null };
 
-    const { data: rows, error } = await supabase
+    // Con las columnas de caducidad si existen; si no, sin ellas (y entonces
+    // el bloqueo no caduca, exactamente como se comportaba antes).
+    let rows: unknown[] | null = null;
+    const conNuevas = await supabase
       .from("clients")
-      .select(CLIENT_COLS)
+      .select(`${CLIENT_COLS_BASE}, ${CLIENT_COLS_NUEVAS}`)
       .eq("salon_slug", data.slug)
       .not("penalty_eur", "is", null);
-    if (error) {
-      console.error("checkClientPenalty:", error.message);
+    if (conNuevas.error && !faltaEsquema(conNuevas.error)) {
+      console.error("checkClientPenalty:", conNuevas.error.message);
       return { client: null };
+    }
+    if (conNuevas.error) {
+      const soloBase = await supabase
+        .from("clients")
+        .select(CLIENT_COLS_BASE)
+        .eq("salon_slug", data.slug)
+        .not("penalty_eur", "is", null);
+      if (soloBase.error) {
+        console.error("checkClientPenalty:", soloBase.error.message);
+        return { client: null };
+      }
+      rows = soloBase.data ?? [];
+    } else {
+      rows = conNuevas.data ?? [];
     }
 
     const fila = findPenaltyRow((rows ?? []) as unknown as ClientRow[], data.phone);

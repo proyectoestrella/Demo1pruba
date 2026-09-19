@@ -8,7 +8,16 @@
  * puede probar con `bun test` sin levantar nada, y así el navegador puede usar
  * las mismas funciones que el servidor sin arrastrarse la service role key.
  */
-import type { Appointment, AppointmentStatus, Client, EmployeeId, SalonProfile } from "./mock/types";
+import type {
+  Appointment,
+  AppointmentStatus,
+  Client,
+  EmployeeId,
+  PaymentMethod,
+  SalonProfile,
+  WaitlistEntry,
+} from "./mock/types";
+import { isPenaltyActive } from "./plantones";
 
 /** Fila de `appointments` tal y como la devuelve PostgREST. */
 export interface AppointmentRow {
@@ -24,6 +33,17 @@ export interface AppointmentRow {
   status: string;
   client_confirmed_at: string | null;
   note: string | null;
+  /**
+   * Columnas nuevas (cierre de caja y fianza por Bizum). Son opcionales en el
+   * tipo a propósito: mientras el DDL no esté aplicado en producción,
+   * PostgREST no las devuelve y la fila llega sin ellas — la agenda tiene que
+   * seguir cargando igual.
+   */
+  payment_method?: string | null;
+  paid_at?: string | null;
+  deposit_requested_at?: string | null;
+  deposit_received_at?: string | null;
+  deposit_eur?: number | string | null;
 }
 
 /** Fila de `clients` tal y como la devuelve PostgREST. */
@@ -35,6 +55,21 @@ export interface ClientRow {
   notes: string | null;
   penalty_eur: number | string | null;
   penalty_note: string | null;
+  created_at: string;
+  /** Igual que arriba: opcionales hasta que el DDL de la caducidad esté aplicado. */
+  penalty_at?: string | null;
+  penalty_keep?: boolean | null;
+}
+
+/** Fila de `waitlist` tal y como la devuelve PostgREST. */
+export interface WaitlistRow {
+  id: string;
+  local_id: string | null;
+  client_name: string;
+  phone: string;
+  service_id: string;
+  preferred_employee_id: string;
+  preferred_range: string;
   created_at: string;
 }
 
@@ -76,6 +111,29 @@ export function rowToAppointment(row: AppointmentRow, anonimo = false): Appointm
     status: row.status as AppointmentStatus,
     clientConfirmedAt: row.client_confirmed_at ?? undefined,
     note: anonimo ? undefined : (row.note ?? undefined),
+    // Cómo se cobró y si hubo señal son cosa del salón: no viajan a la web
+    // pública, igual que el nombre y la nota.
+    paymentMethod: anonimo ? undefined : ((row.payment_method as PaymentMethod) ?? undefined),
+    paidAt: anonimo ? undefined : (row.paid_at ?? undefined),
+    depositRequestedAt: anonimo ? undefined : (row.deposit_requested_at ?? undefined),
+    depositReceivedAt: anonimo ? undefined : (row.deposit_received_at ?? undefined),
+    depositEur: anonimo ? undefined : (row.deposit_eur == null ? undefined : num(row.deposit_eur)),
+  };
+}
+
+/**
+ * Fila → `WaitlistEntry`. Igual que en las citas, el id que conoce el
+ * navegador es `local_id`; las filas sin él caen a su uuid.
+ */
+export function rowToWaitlist(row: WaitlistRow): WaitlistEntry {
+  return {
+    id: row.local_id ?? row.id,
+    clientName: row.client_name,
+    phone: row.phone,
+    serviceId: row.service_id,
+    preferredEmployeeId: (row.preferred_employee_id || "any") as WaitlistEntry["preferredEmployeeId"],
+    preferredRange: row.preferred_range ?? "",
+    createdAt: row.created_at,
   };
 }
 
@@ -91,6 +149,8 @@ export function rowToClient(row: ClientRow): Client {
     notes: row.notes ?? undefined,
     penaltyEur: penalty > 0 ? penalty : undefined,
     penaltyNote: row.penalty_note ?? undefined,
+    penaltyAt: row.penalty_at ?? undefined,
+    penaltyKeep: row.penalty_keep ?? undefined,
   };
 }
 
@@ -122,8 +182,16 @@ export function resolveActiveProfile(
  * por teléfono normalizado. Lo usa el servidor para responder a la reserva
  * pública sin mandarle la agenda de clientes entera a un desconocido.
  */
-export function findPenaltyRow(rows: ClientRow[], phone: string): ClientRow | undefined {
+export function findPenaltyRow(
+  rows: ClientRow[],
+  phone: string,
+  now: Date = new Date(),
+): ClientRow | undefined {
   const target = phoneKey(phone);
   if (target.length < 9) return undefined;
-  return rows.find((r) => num(r.penalty_eur, 0) > 0 && phoneKey(r.phone) === target);
+  // El bloqueo caduca solo a los 30 días (ver lib/plantones.ts): la deuda
+  // sigue en la ficha, pero a partir de ahí esta persona vuelve a poder
+  // reservar sola. Se comprueba con la MISMA función que usa el panel, para
+  // que la web pública y la ficha no puedan decir cosas distintas.
+  return rows.find((r) => phoneKey(r.phone) === target && isPenaltyActive(rowToClient(r), now));
 }

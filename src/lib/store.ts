@@ -15,6 +15,7 @@ import type {
   Client,
   WaitlistEntry,
   EmployeeId,
+  PaymentMethod,
   Service,
   SalonProfile,
 } from "./mock/types";
@@ -27,6 +28,8 @@ import {
   pushPenalty,
   pushPenaltyCleared,
   pushSalonProfile,
+  pushWaitlistDeletion,
+  pushWaitlistEntry,
   type ClienteDeCita,
 } from "./salon-sync";
 
@@ -66,6 +69,17 @@ interface SalonState {
    * Adam no siga creyéndose su panel al abrir luego una demo cualquiera.
    */
   realSalonSlug: string | null;
+  /**
+   * Hora de la última cita que se ha cancelado en esta sesión (ISO), o `null`.
+   *
+   * Es el puente entre "se me ha caído la de las 17:00" y "a quién aviso":
+   * la pantalla de lista de espera la usa para prerrellenar el mensaje de
+   * WhatsApp con la hora concreta, que es lo único que hace que el aviso
+   * sirva de algo. No se persiste: un hueco de ayer no es un hueco.
+   */
+  lastFreedSlot: string | null;
+  /** Apunta (o borra) el hueco que se acaba de liberar — ver `lastFreedSlot`. */
+  setLastFreedSlot: (startISO: string | null) => void;
 
   // Appointments
   /**
@@ -86,9 +100,20 @@ interface SalonState {
   deleteAppointment: (id: string) => void;
 
   // Waitlist
-  addWaitlist: (w: Omit<WaitlistEntry, "id" | "createdAt">) => void;
+  addWaitlist: (w: Omit<WaitlistEntry, "id" | "createdAt">) => WaitlistEntry;
   updateWaitlist: (id: string, patch: Partial<WaitlistEntry>) => void;
   deleteWaitlist: (id: string) => void;
+
+  /**
+   * Cierre de caja: marca una cita como cobrada con la forma de cobro que
+   * diga el dueño, o la desmarca (`null`). No mueve dinero ni habla con
+   * ninguna pasarela — ver lib/caja.ts.
+   */
+  markPaid: (id: string, method: PaymentMethod | null) => void;
+  /** Deja constancia de que se ha pedido la señal por Bizum de esta cita. */
+  markDepositRequested: (id: string, eur: number) => void;
+  /** El dueño confirma a mano que el Bizum llegó (o se desdice). */
+  markDepositReceived: (id: string, recibido: boolean) => void;
 
   // Clients
   addClient: (c: Omit<Client, "id" | "createdAt">) => Client;
@@ -98,6 +123,11 @@ interface SalonState {
   applyPenalty: (clientId: string, eur: number, note?: string) => void;
   /** Cierra la penalización: cobrada o perdonada, decide siempre el dueño. */
   clearPenalty: (clientId: string, motivo: "cobrado" | "perdonado") => void;
+  /**
+   * El bloqueo por plantón caduca solo a los 30 días. Esto es el "no, a este
+   * lo mantengo" del dueño (o su marcha atrás) — ver lib/plantones.ts.
+   */
+  setPenaltyKeep: (clientId: string, mantener: boolean) => void;
 
   // Services (moved from static salon.ts array to reactive store state)
   addService: (s: Omit<Service, "id">) => Service;
@@ -143,11 +173,23 @@ interface SalonState {
   /** Enciende o apaga el backend para este navegador — ver `realSalonSlug`. */
   setRealSalonSlug: (slug: string | null) => void;
   /**
-   * Sustituye citas y clientes por los que vienen de Supabase. Es una
-   * sustitución, no una mezcla: la fuente de verdad de un salón real es la
-   * base, y lo que hubiera en este navegador son datos de ejemplo del seed.
+   * Sustituye citas, clientes y lista de espera por los que vienen de
+   * Supabase. Es una sustitución, no una mezcla: la fuente de verdad de un
+   * salón real es la base, y lo que hubiera en este navegador son datos de
+   * ejemplo del seed.
+   *
+   * La lista de espera entró aquí tarde y costó caro: `hydrateFromServer`
+   * solo sustituía citas y clientes, así que el panel de un salón REAL seguía
+   * enseñando las cuatro entradas de ejemplo del seed —con sus teléfonos
+   * +34 611 111 222, 622 333 444…— como si fueran clientes suyos. Ahora la
+   * lista llega siempre del servidor: vacía si allí no hay nada, que es lo
+   * correcto para un salón que acaba de empezar.
    */
-  hydrateFromServer: (data: { appointments: Appointment[]; clients: Client[] }) => void;
+  hydrateFromServer: (data: {
+    appointments: Appointment[];
+    clients: Client[];
+    waitlist: WaitlistEntry[];
+  }) => void;
 }
 
 /** Una demo guardada es un perfil con identidad propia para poder editarla. */
@@ -201,6 +243,9 @@ export const useSalonStore = create<SalonState>()(
       panelV2: false,
       demoActive: false,
       realSalonSlug: null,
+      lastFreedSlot: null,
+
+      setLastFreedSlot: (startISO) => set({ lastFreedSlot: startISO }),
 
       addAppointment: (a, cliente) => {
         const appt: Appointment = { ...a, id: `a-new-${Date.now()}` };
@@ -217,10 +262,14 @@ export const useSalonStore = create<SalonState>()(
         sincronizarCita(get(), id);
       },
       cancelAppointment: (id) => {
+        const hueco = get().appointments.find((a) => a.id === id)?.start ?? null;
         set((s) => ({
           appointments: s.appointments.map((a) =>
             a.id === id ? { ...a, status: "cancelled" } : a,
           ),
+          // Se queda apuntado el hueco que acaba de quedar libre, para poder
+          // avisar al siguiente de la lista de espera con la hora concreta.
+          lastFreedSlot: hueco,
         }));
         sincronizarCita(get(), id);
       },
@@ -242,21 +291,64 @@ export const useSalonStore = create<SalonState>()(
         pushAppointmentDeletion(get().realSalonSlug, id);
       },
 
-      addWaitlist: (w) =>
-        set((s) => ({
-          waitlist: [
-            ...s.waitlist,
-            { ...w, id: `w-${Date.now()}`, createdAt: new Date().toISOString() },
-          ],
-        })),
-      updateWaitlist: (id, patch) =>
+      addWaitlist: (w) => {
+        const entry: WaitlistEntry = {
+          ...w,
+          id: `w-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+        };
+        set((s) => ({ waitlist: [...s.waitlist, entry] }));
+        pushWaitlistEntry(get().realSalonSlug, entry);
+        return entry;
+      },
+      updateWaitlist: (id, patch) => {
         set((s) => ({
           waitlist: s.waitlist.map((w) => (w.id === id ? { ...w, ...patch } : w)),
-        })),
-      deleteWaitlist: (id) =>
+        }));
+        pushWaitlistEntry(
+          get().realSalonSlug,
+          get().waitlist.find((w) => w.id === id),
+        );
+      },
+      deleteWaitlist: (id) => {
         set((s) => ({
           waitlist: s.waitlist.filter((w) => w.id !== id),
-        })),
+        }));
+        pushWaitlistDeletion(get().realSalonSlug, id);
+      },
+
+      markPaid: (id, method) => {
+        set((s) => ({
+          appointments: s.appointments.map((a) =>
+            a.id === id
+              ? method
+                ? { ...a, paymentMethod: method, paidAt: new Date().toISOString() }
+                : { ...a, paymentMethod: undefined, paidAt: undefined }
+              : a,
+          ),
+        }));
+        sincronizarCita(get(), id);
+      },
+
+      markDepositRequested: (id, eur) => {
+        set((s) => ({
+          appointments: s.appointments.map((a) =>
+            a.id === id ? { ...a, depositRequestedAt: new Date().toISOString(), depositEur: eur } : a,
+          ),
+        }));
+        sincronizarCita(get(), id);
+      },
+
+      markDepositReceived: (id, recibido) => {
+        set((s) => ({
+          appointments: s.appointments.map((a) =>
+            a.id === id
+              ? { ...a, depositReceivedAt: recibido ? new Date().toISOString() : undefined }
+              : a,
+          ),
+        }));
+        sincronizarCita(get(), id);
+      },
 
       addClient: (c) => {
         const client: Client = {
@@ -284,9 +376,14 @@ export const useSalonStore = create<SalonState>()(
         })),
 
       applyPenalty: (clientId, eur, note) => {
+        // La fecha es lo que hace que el bloqueo pueda caducar solo a los 30
+        // días (ver lib/plantones.ts): sin ella no hay desde cuándo contar.
+        const ahora = new Date().toISOString();
         set((s) => ({
           clients: s.clients.map((c) =>
-            c.id === clientId ? { ...c, penaltyEur: eur, penaltyNote: note } : c,
+            c.id === clientId
+              ? { ...c, penaltyEur: eur, penaltyNote: note, penaltyAt: ahora, penaltyKeep: false }
+              : c,
           ),
         }));
         pushPenalty(
@@ -303,6 +400,8 @@ export const useSalonStore = create<SalonState>()(
               ? {
                   ...c,
                   penaltyEur: undefined,
+                  penaltyAt: undefined,
+                  penaltyKeep: undefined,
                   penaltyNote:
                     motivo === "cobrado"
                       ? `Cobrada el ${new Date().toLocaleDateString("es", { day: "numeric", month: "short" })}`
@@ -313,6 +412,19 @@ export const useSalonStore = create<SalonState>()(
         }));
         const cliente = get().clients.find((c) => c.id === clientId);
         pushPenaltyCleared(get().realSalonSlug, cliente, cliente?.penaltyNote);
+      },
+
+      setPenaltyKeep: (clientId, mantener) => {
+        set((s) => ({
+          clients: s.clients.map((c) => (c.id === clientId ? { ...c, penaltyKeep: mantener } : c)),
+        }));
+        const cliente = get().clients.find((c) => c.id === clientId);
+        pushPenalty(
+          get().realSalonSlug,
+          cliente,
+          cliente?.penaltyEur ?? 0,
+          cliente?.penaltyNote,
+        );
       },
 
       addService: (svc) => {
@@ -379,8 +491,8 @@ export const useSalonStore = create<SalonState>()(
 
       setRealSalonSlug: (slug) => set({ realSalonSlug: slug }),
 
-      hydrateFromServer: ({ appointments, clients }) =>
-        set({ appointments, clients }),
+      hydrateFromServer: ({ appointments, clients, waitlist }) =>
+        set({ appointments, clients, waitlist }),
 
       applyDemo: (id) => {
         const demo = get().savedDemos.find((d) => d.id === id);

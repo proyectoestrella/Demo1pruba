@@ -106,7 +106,20 @@ export function serviceMix(appts: Appointment[]) {
   return Object.values(counts).sort((a, b) => b.bookings - a.bookings);
 }
 
-export function clientFrequency(appts: Appointment[], clientId: string) {
+/**
+ * ¿Cuenta esta cita como una visita que OCURRIÓ?
+ *
+ * Una cancelada no ocurrió, un plantón tampoco (llegó la hora, no la persona)
+ * y `blocked` no es un cliente. Lo demás, si ya pasó, sí: el salón no va
+ * marcando "completada" una por una, así que exigir ese estado dejaría la
+ * última visita casi siempre vacía.
+ */
+function cuentaComoVisita(a: Appointment): boolean {
+  return a.status !== "cancelled" && a.status !== "no-show" && a.status !== "blocked";
+}
+
+export function clientFrequency(appts: Appointment[], clientId: string, now: Date = new Date()) {
+  const ahora = now.getTime();
   const own = appts
     .filter((a) => a.clientId === clientId && a.status !== "cancelled")
     .sort((a, b) => +new Date(a.start) - +new Date(b.start));
@@ -114,12 +127,62 @@ export function clientFrequency(appts: Appointment[], clientId: string) {
   const fav: Record<string, number> = {};
   own.forEach((a) => a.serviceIds.forEach((id) => (fav[id] = (fav[id] ?? 0) + 1)));
   const favoriteService = Object.entries(fav).sort((a, b) => b[1] - a[1])[0]?.[0];
+
+  // "Última visita" es la última cita PASADA que además cuenta como visita.
+  // Antes era `own[own.length - 1]`: el último elemento de la lista ordenada
+  // ascendente, futuras incluidas. En una ficha con cita para la semana que
+  // viene, "Última visita" enseñaba esa fecha futura — y es justo el dato con
+  // el que se decide a quién hay que reactivar.
+  const pasadas = own.filter((a) => +new Date(a.start) <= ahora && cuentaComoVisita(a));
+  const futuras = own.filter((a) => +new Date(a.start) > ahora && a.status !== "no-show");
+
   return {
     visits: own.length,
+    /** Visitas que ya ocurrieron de verdad — sin futuras ni plantones. */
+    pastVisits: pasadas.length,
     totalSpent,
     favoriteService: favoriteService ? serviceMap[favoriteService]?.name : "—",
-    lastVisit: own[own.length - 1]?.start,
+    lastVisit: pasadas[pasadas.length - 1]?.start,
+    /** La próxima cita que tiene puesta, si tiene alguna. */
+    nextVisit: futuras[0]?.start,
   };
+}
+
+/**
+ * Cuánto tardó de verdad la última vez que este cliente vino a por estos
+ * mismos servicios.
+ *
+ * María (PeluChic) lo dijo tal cual: «el tiempo de cada cita lo decido yo».
+ * A una clienta el mismo corte le lleva 75 minutos y a otra 45, y el catálogo
+ * solo conoce el número de la carta. Esto mira lo que pasó de verdad y lo
+ * propone — nunca lo impone.
+ *
+ * Devuelve `null` si no hay historial con esa misma combinación de servicios,
+ * o si la última vez tardó exactamente lo del catálogo: no hay nada que decir.
+ */
+export function duracionRecordada(
+  appts: Appointment[],
+  clientId: string | undefined,
+  serviceIds: string[],
+  duracionDeCatalogo: number,
+  now: Date = new Date(),
+): { minutos: number; cuando: string } | null {
+  if (!clientId || serviceIds.length === 0) return null;
+  const clave = [...serviceIds].sort().join(",");
+  const ahora = now.getTime();
+  const previas = appts
+    .filter(
+      (a) =>
+        a.clientId === clientId &&
+        +new Date(a.start) <= ahora &&
+        cuentaComoVisita(a) &&
+        [...a.serviceIds].sort().join(",") === clave,
+    )
+    .sort((a, b) => +new Date(a.start) - +new Date(b.start));
+  const ultima = previas[previas.length - 1];
+  if (!ultima) return null;
+  if (ultima.duration === duracionDeCatalogo) return null;
+  return { minutos: ultima.duration, cuando: ultima.start };
 }
 
 /** Profesional con más clientes que repiten (dos o más citas con la misma persona). */
@@ -142,27 +205,129 @@ function loyaltyChampion(appts: Appointment[], employees: Employee[]) {
   return best;
 }
 
-export function aiInsights(appts: Appointment[], employees: Employee[] = []) {
+/**
+ * Mínimo de citas pasadas para que una media signifique algo. Por debajo de
+ * esto la analítica dice que no hay datos en vez de inventarse un número.
+ */
+export const MIN_CITAS_PARA_ANALIZAR = 10;
+/** Y de clientes distintos: una media de "cada cuánto vuelven" con 2 personas no es una media. */
+export const MIN_CLIENTES_PARA_ANALIZAR = 5;
+
+/** Frase única para cuando no hay con qué calcular. Se repite a propósito: es la misma verdad. */
+const SIN_DATOS = "Todavía no hay suficientes reservas para sacar un patrón de aquí.";
+
+/** Citas pasadas que cuentan para analizar: ni canceladas, ni futuras, ni bloqueos. */
+function citasAnalizables(appts: Appointment[], now: Date) {
+  const ahora = now.getTime();
+  return appts.filter(
+    (a) => a.status !== "cancelled" && a.status !== "blocked" && +new Date(a.start) <= ahora,
+  );
+}
+
+/**
+ * Cada cuánto vuelve la gente, de media, y cuántos tocan esta semana.
+ *
+ * Se mide cliente a cliente: el hueco medio entre sus visitas pasadas. Solo
+ * entran los que tienen 2 o más, porque con una visita no hay hueco que medir.
+ * "Le toca esta semana" = su última visita más su propio hueco medio cae
+ * dentro de los próximos 7 días y no tiene ya otra cita puesta.
+ *
+ * Devuelve `null` cuando no hay material suficiente — que es exactamente lo
+ * que pasaba en el panel de Adam, con 1 cliente y un cartel que anunciaba
+ * "5 tienen que volver esta semana".
+ */
+export function patronDeRegreso(
+  appts: Appointment[],
+  now: Date = new Date(),
+): { semanasMedia: number; tocanEstaSemana: number } | null {
+  const ahora = now.getTime();
+  const pasadas = citasAnalizables(appts, now).filter((a) => a.status !== "no-show");
+  const porCliente = new Map<string, number[]>();
+  for (const a of pasadas) {
+    if (!a.clientId) continue;
+    const lista = porCliente.get(a.clientId) ?? [];
+    lista.push(+new Date(a.start));
+    porCliente.set(a.clientId, lista);
+  }
+  if (pasadas.length < MIN_CITAS_PARA_ANALIZAR) return null;
+  if (porCliente.size < MIN_CLIENTES_PARA_ANALIZAR) return null;
+
+  const conCitaFutura = new Set(
+    appts
+      .filter((a) => +new Date(a.start) > ahora && a.status !== "cancelled")
+      .map((a) => a.clientId),
+  );
+
+  const huecos: number[] = [];
+  let tocanEstaSemana = 0;
+  for (const [clientId, fechas] of porCliente) {
+    if (fechas.length < 2) continue;
+    fechas.sort((x, y) => x - y);
+    const propios: number[] = [];
+    for (let i = 1; i < fechas.length; i++) propios.push(fechas[i] - fechas[i - 1]);
+    const medio = propios.reduce((s, n) => s + n, 0) / propios.length;
+    huecos.push(medio);
+    const toca = fechas[fechas.length - 1] + medio;
+    if (!conCitaFutura.has(clientId) && toca >= ahora - WEEK_MS && toca <= ahora + WEEK_MS) {
+      tocanEstaSemana += 1;
+    }
+  }
+  if (huecos.length < 3) return null;
+
+  const medioGlobal = huecos.reduce((s, n) => s + n, 0) / huecos.length;
+  return { semanasMedia: Math.max(1, Math.round(medioGlobal / WEEK_MS)), tocanEstaSemana };
+}
+
+/**
+ * La franja más floja de la semana, medida de verdad: se cuentan las citas
+ * pasadas por (día de la semana × mañana/tarde) y gana la que menos tiene,
+ * siempre que haya con qué comparar.
+ *
+ * Antes esto era un `Math.max(20, ...)` sobre los martes por la tarde: aunque
+ * el salón no hubiera abierto nunca un martes, la tarjeta anunciaba un 20%.
+ */
+export function franjaMasFloja(
+  appts: Appointment[],
+  now: Date = new Date(),
+): { dia: string; franja: string; citas: number } | null {
+  const pasadas = citasAnalizables(appts, now);
+  if (pasadas.length < MIN_CITAS_PARA_ANALIZAR) return null;
+
+  const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  const conteo = new Map<string, number>();
+  const vistos = new Set<string>();
+  for (const a of pasadas) {
+    const d = new Date(a.start);
+    const clave = `${d.getDay()}|${d.getHours() < 14 ? "mañana" : "tarde"}`;
+    conteo.set(clave, (conteo.get(clave) ?? 0) + 1);
+    vistos.add(clave);
+  }
+  // Con una sola franja abierta no hay "la más floja": no hay con qué comparar.
+  if (vistos.size < 3) return null;
+
+  const [clave, citas] = [...conteo.entries()].sort((a, b) => a[1] - b[1])[0];
+  const [dia, franja] = clave.split("|");
+  return { dia: DIAS[Number(dia)], franja, citas };
+}
+
+export function aiInsights(appts: Appointment[], employees: Employee[] = [], now: Date = new Date()) {
   const champion = loyaltyChampion(appts, employees);
   const mix = serviceMix(appts);
   const totalRev = mix.reduce((s, m) => s + m.revenue, 0);
-  const topService = mix[0];
+  const topService = totalRev > 0 ? mix[0] : undefined;
   const topPct = topService ? Math.round((topService.revenue / totalRev) * 100) : 0;
-
-  // Tuesday afternoon occupancy
-  const tueAfternoons = appts.filter((a) => {
-    const d = new Date(a.start);
-    return d.getDay() === 2 && d.getHours() >= 14 && a.status !== "cancelled";
-  });
-  const tueOcc = Math.max(20, Math.min(45, Math.round((tueAfternoons.length / 40) * 100)));
+  const floja = franjaMasFloja(appts, now);
+  const regreso = patronDeRegreso(appts, now);
 
   return [
     {
       icon: "trending-down",
       tone: "warning" as const,
-      title: "Hueco de baja ocupación detectado",
-      body: `Los martes por la tarde la ocupación es del ${tueOcc}% — tu peor franja de la semana.`,
-      action: "Generar promo para el martes",
+      title: floja ? "Tu franja más floja" : "Franja más floja",
+      body: floja
+        ? `Los ${floja.dia} por la ${floja.franja} son la franja con menos citas de tu semana: ${floja.citas} en todo el histórico.`
+        : SIN_DATOS,
+      action: "Generar promo para esa franja",
     },
     {
       icon: "sparkles",
@@ -170,7 +335,7 @@ export function aiInsights(appts: Appointment[], employees: Employee[] = []) {
       title: "Servicio estrella",
       body: topService
         ? `${topService.name} genera el ${topPct}% de la facturación de este periodo.`
-        : "Todavía no hay suficientes datos.",
+        : SIN_DATOS,
       action: "Ver desglose de servicios",
     },
     {
@@ -179,16 +344,20 @@ export function aiInsights(appts: Appointment[], employees: Employee[] = []) {
       title: "Campeón en fidelización",
       body: champion
         ? `${champion.name} tiene la mayor tasa de clientes que repiten del equipo — ${champion.pct}% vuelven.`
-        : "Todavía no hay suficientes datos de clientes que repiten.",
+        : "Todavía no hay suficientes clientes con dos visitas como para comparar al equipo.",
       action: champion ? `Ver clientes de ${champion.name}` : "Ver clientes",
     },
     {
       icon: "calendar-clock",
       tone: "primary" as const,
       title: "Patrón de reserva recurrente",
-      body: topService
-        ? `Los clientes de ${topService.name.toLowerCase()} vuelven cada 4 semanas de media. 5 tienen que volver esta semana.`
-        : "Todavía no hay suficientes datos.",
+      body: regreso
+        ? `Tus clientes vuelven cada ${regreso.semanasMedia} ${regreso.semanasMedia === 1 ? "semana" : "semanas"} de media. ${
+            regreso.tocanEstaSemana === 0
+              ? "Ninguno tiene que volver esta semana."
+              : `${regreso.tocanEstaSemana} ${regreso.tocanEstaSemana === 1 ? "tendría" : "tendrían"} que volver esta semana y no ${regreso.tocanEstaSemana === 1 ? "tiene" : "tienen"} cita puesta.`
+          }`
+        : SIN_DATOS,
       action: "Enviar recordatorio de reserva",
     },
   ];
