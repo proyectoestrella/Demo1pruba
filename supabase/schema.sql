@@ -54,6 +54,14 @@ create table if not exists salons (
   updated_at timestamptz not null default now()
 );
 
+-- Columnas que el `create table if not exists` de arriba NO añade cuando la
+-- tabla ya existía de una versión anterior (fue el caso en producción el
+-- 19/09/2026: `client_confirmed_at` y `notes` faltaban y el panel no cargaba).
+alter table appointments add column if not exists client_confirmed_at timestamptz;
+alter table appointments add column if not exists note text;
+alter table clients add column if not exists email text;
+alter table clients add column if not exists notes text;
+
 -- Penalización por plantón: ya existe en el modelo TS (Client.penaltyEur /
 -- penaltyNote, del feature de plantón) pero solo vivía en local.
 alter table clients add column if not exists penalty_eur numeric;
