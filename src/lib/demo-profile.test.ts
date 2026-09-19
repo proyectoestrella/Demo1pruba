@@ -175,6 +175,45 @@ describe("blankDemoProfile apaga q/w/k/u por defecto", () => {
     expect(blank.noShowFeeEur).toBe(0);
     expect(blank.smartSpread).toBe(false);
   });
+
+  it("tampoco hereda las franjas prioritarias de una demo anterior", () => {
+    expect(blankDemoProfile().priorityHours).toEqual([]);
+  });
+});
+
+describe("franjas prioritarias (\"y\")", () => {
+  it("viajan y vuelven intactas por la URL", () => {
+    const profile = { name: "Cardedal", priorityHours: ["09:00-11:00", "17:00-18:30"] };
+    expect(decodeDemoProfile(encodeDemoProfile(profile))).toEqual(profile);
+  });
+
+  it("se cortan a 3 rangos", () => {
+    const encoded = encodeDemoProfile({
+      name: "Bar",
+      priorityHours: ["09:00-10:00", "10:00-11:00", "11:00-12:00", "12:00-13:00"],
+    });
+    expect(decodeDemoProfile(encoded)?.priorityHours).toEqual([
+      "09:00-10:00",
+      "10:00-11:00",
+      "11:00-12:00",
+    ]);
+  });
+
+  it("descarta en silencio un rango corrupto o al revés", () => {
+    const encoded = btoa(
+      JSON.stringify({ n: "Bar", y: ["09:00-11:00", "no-es-un-rango", "15:00-14:00"] }),
+    );
+    expect(decodeDemoProfile(encoded)?.priorityHours).toEqual(["09:00-11:00"]);
+  });
+
+  it("vacío no ocupa sitio en el enlace", () => {
+    const encoded = encodeDemoProfile({ name: "Bar", priorityHours: [] });
+    expect(decodeDemoProfile(encoded)).toEqual({ name: "Bar" });
+  });
+
+  it("sin \"y\" no aparece en el perfil decodificado", () => {
+    expect(decodeDemoProfile(encodeDemoProfile({ name: "Bar" }))?.priorityHours).toBeUndefined();
+  });
 });
 
 describe("decode tolera basura", () => {

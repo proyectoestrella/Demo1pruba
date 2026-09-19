@@ -9,6 +9,7 @@ import {
   parseMenuEntry,
   parseTeamEntry,
 } from "./business-type";
+import { MAX_PRIORITY_RANGES, formatPriorityRange, parsePriorityRange } from "./reparto";
 
 /**
  * Perfiles de demo transportados en la URL.
@@ -48,6 +49,7 @@ export type DemoProfile = Pick<
   | "noShowNoticeHours"
   | "smartSpread"
   | "lastSlotBufferMin"
+  | "priorityHours"
 >;
 
 const KEYS: Record<keyof DemoProfile, string> = {
@@ -70,6 +72,7 @@ const KEYS: Record<keyof DemoProfile, string> = {
   noShowNoticeHours: "w",
   smartSpread: "k",
   lastSlotBufferMin: "u",
+  priorityHours: "y",
 };
 
 /** Nombre del search param que lleva el perfil en las rutas públicas. */
@@ -109,6 +112,7 @@ export function blankDemoProfile(): DemoProfile {
     noShowNoticeHours: 2,
     smartSpread: false,
     lastSlotBufferMin: 0,
+    priorityHours: [],
   };
 }
 
@@ -196,6 +200,18 @@ export function encodeDemoProfile(profile: Partial<DemoProfile>): string {
         .filter((v): v is NonNullable<typeof v> => v !== null)
         .slice(0, MAX_MENU_ENTRIES)
         .map(formatMenuEntry);
+      if (clean.length === 0) continue;
+      compact[short] = clean;
+      continue;
+    }
+    if (field === "priorityHours" && Array.isArray(value)) {
+      // Igual que team/menu: se valida al codificar con la misma regla que
+      // al descodificar, para que un rango corrupto no se cuele en el enlace.
+      const clean = value
+        .map((v) => parsePriorityRange(String(v)))
+        .filter((v): v is NonNullable<typeof v> => v !== null)
+        .slice(0, MAX_PRIORITY_RANGES)
+        .map(formatPriorityRange);
       if (clean.length === 0) continue;
       compact[short] = clean;
       continue;
@@ -297,6 +313,16 @@ export function decodeDemoProfile(raw: string | undefined | null): Partial<DemoP
           .slice(0, MAX_MENU_ENTRIES)
           .map(formatMenuEntry);
         if (clean.length) out.menu = clean;
+      }
+    } else if (field === "priorityHours") {
+      // "HH:mm-HH:mm", de 0 a 3 — un rango corrupto o al revés se descarta.
+      if (Array.isArray(value)) {
+        const clean = value
+          .map((v) => parsePriorityRange(String(v)))
+          .filter((v): v is NonNullable<typeof v> => v !== null)
+          .slice(0, MAX_PRIORITY_RANGES)
+          .map(formatPriorityRange);
+        if (clean.length) out.priorityHours = clean;
       }
     } else if (typeof value === "string" && value.trim() !== "") {
       out[field] = value.trim() as never;

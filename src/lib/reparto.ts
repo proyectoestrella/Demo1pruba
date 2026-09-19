@@ -138,6 +138,165 @@ export interface HourBar {
   busy: boolean;
 }
 
+/* ------------------------------------------------------------------------
+ * Franjas prioritarias del dueño (clave "y" del enlace de demo — ver
+ * demo-profile.ts). Cardedal quiere poder marcar, por ejemplo, "9:00-11:00"
+ * como el hueco que se enseña primero en el paso 3 ("te atendemos antes y
+ * sin esperar"), con el resto de horas siempre accesibles detrás de un "Ver
+ * todas las horas" — nunca ocultas del todo, para no perder la reserva.
+ * ---------------------------------------------------------------------- */
+
+export interface PriorityRange {
+  startMin: number;
+  endMin: number;
+}
+
+/** Como máximo 3 franjas: más que eso deja de ser "prioridad" y vuelve a ser "todo el horario". */
+export const MAX_PRIORITY_RANGES = 3;
+
+const PRIORITY_RANGE_RE = /^([01]\d|2[0-3]):([0-5]\d)-([01]\d|2[0-3]):([0-5]\d)$/;
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/** "09:00-11:00" → minutos desde medianoche. `null` si el formato es inválido o el rango está al revés/vacío. */
+export function parsePriorityRange(raw: string): PriorityRange | null {
+  const m = PRIORITY_RANGE_RE.exec(raw.trim());
+  if (!m) return null;
+  const startMin = Number(m[1]) * 60 + Number(m[2]);
+  const endMin = Number(m[3]) * 60 + Number(m[4]);
+  if (endMin <= startMin) return null;
+  return { startMin, endMin };
+}
+
+/** Inverso de `parsePriorityRange`, para volver a dejarlo en forma "HH:mm-HH:mm" tras validar. */
+export function formatPriorityRange(r: PriorityRange): string {
+  const fmt = (min: number) => `${pad2(Math.floor(min / 60))}:${pad2(min % 60)}`;
+  return `${fmt(r.startMin)}-${fmt(r.endMin)}`;
+}
+
+/** ¿Cae la hora "HH:mm" dentro de alguna de las franjas prioritarias del dueño? */
+export function isPriorityTime(time: string, ranges: string[] | undefined): boolean {
+  if (!ranges?.length) return false;
+  const [h, m] = time.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return false;
+  const minutes = h * 60 + m;
+  return ranges.some((raw) => {
+    const r = parsePriorityRange(raw);
+    return r ? minutes >= r.startMin && minutes < r.endMin : false;
+  });
+}
+
+/* ------------------------------------------------------------------------
+ * "Repetir mi última cita" (patrón Booksy): hace falta saber, sin que el
+ * cliente pase por los pasos 1-3, cuál es el próximo hueco libre para el
+ * mismo servicio y profesional que la última vez. Es la misma cuenta que ya
+ * hace `DateTimeStep` día a día dentro del componente — aquí en forma pura
+ * para poder llamarla antes de montar el wizard y para poder probarla.
+ * ---------------------------------------------------------------------- */
+
+export interface NextSlot {
+  dateKey: string; // "2026-09-25"
+  time: string; // "HH:mm"
+}
+
+/**
+ * Primer hueco libre, a partir de `fromDate` (hoy si no se indica), para un
+ * profesional concreto o "any" (cualquiera del equipo). Recorre como mucho
+ * `maxDays` días; `undefined` si no encuentra nada en ese horizonte (agenda
+ * llena o el profesional/franja ya no existen).
+ */
+export function findNextAvailableSlot(
+  employees: Employee[],
+  appointments: Appointment[],
+  durationMin: number,
+  employeeChoice: string | "any",
+  opts: {
+    smartSpread?: boolean;
+    lastSlotBufferMin?: number;
+    fromDate?: Date;
+    maxDays?: number;
+  } = {},
+): NextSlot | undefined {
+  const relevantEmployees =
+    employeeChoice === "any" ? employees : employees.filter((e) => e.id === employeeChoice);
+  if (relevantEmployees.length === 0) return undefined;
+
+  const lastSlotBufferMin = opts.lastSlotBufferMin ?? 0;
+  const maxDays = opts.maxDays ?? 30;
+  const start = opts.fromDate ? new Date(opts.fromDate) : new Date();
+  start.setHours(0, 0, 0, 0);
+
+  for (let dayOffset = 0; dayOffset < maxDays; dayOffset++) {
+    const date = new Date(start);
+    date.setDate(date.getDate() + dayOffset);
+    const weekday = date.getDay();
+    const dateKey = toDateKey(date);
+
+    const opens = relevantEmployees.map((e) => e.schedule[weekday]).filter(Boolean) as {
+      start: number;
+      end: number;
+    }[];
+    if (opens.length === 0) continue;
+
+    // Cierre "de verdad": el del salón (todo el equipo), no solo el del
+    // profesional elegido — igual que en DateTimeStep.
+    const salonOpens = employees.map((e) => e.schedule[weekday]).filter(Boolean) as {
+      start: number;
+      end: number;
+    }[];
+    const salonCloseMin =
+      salonOpens.length > 0 ? Math.max(...salonOpens.map((o) => o.end)) * 60 : undefined;
+    const closeMinOffered =
+      salonCloseMin !== undefined ? offeredCloseMin(salonCloseMin, lastSlotBufferMin) : undefined;
+
+    const startHour = Math.min(...opens.map((o) => o.start));
+    const endHour = Math.max(...opens.map((o) => o.end));
+
+    for (let h = startHour; h < endHour; h++) {
+      for (const m of [0, 30]) {
+        const minutesOfDay = h * 60 + m;
+        if (closeMinOffered !== undefined && minutesOfDay >= closeMinOffered) continue;
+        const timeStr = `${pad2(h)}:${pad2(m)}`;
+        const open = relevantEmployees.some((e) => {
+          const sched = e.schedule[weekday];
+          return sched && h >= sched.start && h + durationMin / 60 <= sched.end;
+        });
+        if (!open) continue;
+        const iso = new Date(`${dateKey}T${timeStr}:00`).toISOString();
+        const free = relevantEmployees.some(
+          (e) => !isSlotTakenLocal(appointments, e.id, iso, durationMin),
+        );
+        if (free) return { dateKey, time: timeStr };
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Copia local de `isSlotTaken` (lib/store.ts): mismas reglas — una cita
+ * "cancelled" o "no-show" no ocupa hueco — pero sin importar la store, para
+ * que este módulo se pueda probar con `bun test` sin levantar zustand.
+ */
+function isSlotTakenLocal(
+  appointments: Appointment[],
+  employeeId: string,
+  startISO: string,
+  durationMin: number,
+): boolean {
+  const start = +new Date(startISO);
+  const end = start + durationMin * 60_000;
+  return appointments.some((a) => {
+    if (a.employeeId !== employeeId) return false;
+    if (a.status === "cancelled" || a.status === "no-show") return false;
+    const aStart = +new Date(a.start);
+    const aEnd = aStart + a.duration * 60_000;
+    return aStart < end && aEnd > start;
+  });
+}
+
 /** Las barras hora a hora de "Cómo va el día" (panel Hoy), en el rango horario en que trabaja alguien del equipo. */
 export function dayOccupancyBars(
   appointments: Appointment[],

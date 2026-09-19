@@ -160,4 +160,11 @@ export interface SalonProfile {
   smartSpread?: boolean;
   /** Minutos antes del cierre que dejan de ofertarse (0-240). Solo tiene efecto con `smartSpread`. */
   lastSlotBufferMin?: number;
+  /**
+   * Franjas prioritarias del dueño (paso 3 de la reserva): rangos "HH:mm-HH:mm"
+   * que se muestran primero, con el resto de horas detrás de "Ver todas las
+   * horas". De 0 a 3 rangos — ver `parsePriorityRange` en lib/reparto.ts.
+   * Vacío o ausente = todas las horas se ven igual, como siempre.
+   */
+  priorityHours?: string[];
 }

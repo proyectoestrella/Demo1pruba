@@ -9,6 +9,10 @@ import {
   toDateKey,
   SECURITY_WINDOW,
   HIGH_OCCUPANCY_PCT,
+  parsePriorityRange,
+  formatPriorityRange,
+  isPriorityTime,
+  findNextAvailableSlot,
   type SpreadSlot,
 } from "./reparto";
 import type { Appointment, Employee } from "./mock/types";
@@ -165,5 +169,116 @@ describe("dayOccupancyBars", () => {
     const empleadoLibre = employee("a", 10, 13);
     empleadoLibre.schedule[1] = null; // cierra el lunes
     expect(dayOccupancyBars([], MONDAY, [empleadoLibre])).toEqual([]);
+  });
+});
+
+describe("parsePriorityRange / formatPriorityRange", () => {
+  it("acepta un rango válido y lo convierte a minutos", () => {
+    expect(parsePriorityRange("09:00-11:00")).toEqual({ startMin: 540, endMin: 660 });
+  });
+
+  it("rechaza un rango al revés o vacío", () => {
+    expect(parsePriorityRange("11:00-09:00")).toBeNull();
+    expect(parsePriorityRange("10:00-10:00")).toBeNull();
+  });
+
+  it("rechaza un formato que no es HH:mm-HH:mm", () => {
+    expect(parsePriorityRange("9-11")).toBeNull();
+    expect(parsePriorityRange("09:00 a 11:00")).toBeNull();
+    expect(parsePriorityRange("25:00-26:00")).toBeNull();
+  });
+
+  it("format es el inverso exacto de parse", () => {
+    const r = parsePriorityRange("09:05-11:30");
+    expect(r).not.toBeNull();
+    expect(formatPriorityRange(r!)).toBe("09:05-11:30");
+  });
+});
+
+describe("isPriorityTime", () => {
+  const ranges = ["09:00-11:00", "17:00-18:00"];
+
+  it("dentro de una franja prioritaria", () => {
+    expect(isPriorityTime("09:00", ranges)).toBe(true);
+    expect(isPriorityTime("10:30", ranges)).toBe(true);
+    expect(isPriorityTime("17:30", ranges)).toBe(true);
+  });
+
+  it("el final del rango no cuenta (medio-abierto)", () => {
+    expect(isPriorityTime("11:00", ranges)).toBe(false);
+  });
+
+  it("fuera de cualquier franja", () => {
+    expect(isPriorityTime("12:00", ranges)).toBe(false);
+  });
+
+  it("sin franjas configuradas, nunca es prioritaria", () => {
+    expect(isPriorityTime("09:00", undefined)).toBe(false);
+    expect(isPriorityTime("09:00", [])).toBe(false);
+  });
+
+  it("ignora una franja corrupta en vez de romper", () => {
+    expect(isPriorityTime("09:00", ["no-es-un-rango"])).toBe(false);
+  });
+});
+
+describe("findNextAvailableSlot", () => {
+  const fromDate = new Date(2026, 8, 21); // lunes 21-sep-2026
+
+  it("da la primera media hora libre del día si nadie tiene cita", () => {
+    const employees = [employee("a", 10, 14)];
+    const next = findNextAvailableSlot(employees, [], 30, "a", { fromDate });
+    expect(next).toEqual({ dateKey: MONDAY, time: "10:00" });
+  });
+
+  it("salta al siguiente hueco si el primero está ocupado", () => {
+    const employees = [employee("a", 10, 14)];
+    const appts = [appt("a", 10, 0, 30)];
+    const next = findNextAvailableSlot(employees, appts, 30, "a", { fromDate });
+    expect(next).toEqual({ dateKey: MONDAY, time: "10:30" });
+  });
+
+  it('"any" mira a todo el equipo, no solo al primero', () => {
+    const a = employee("a", 10, 11); // solo una hora, se llena enseguida
+    const b = employee("b", 10, 14);
+    const appts = [appt("a", 10, 0, 60)];
+    const next = findNextAvailableSlot([a, b], appts, 30, "any", { fromDate });
+    expect(next).toEqual({ dateKey: MONDAY, time: "10:00" }); // libre con "b"
+  });
+
+  it("pasa al día siguiente si hoy no hay hueco para ese profesional", () => {
+    const a = employee("a", 10, 14);
+    a.schedule[2] = { start: 10, end: 14 }; // también trabaja el martes
+    const appts = [appt("a", 10, 0, 240)]; // ocupa todo el lunes
+    const next = findNextAvailableSlot([a], appts, 30, "a", { fromDate });
+    expect(next?.dateKey).toBe("2026-09-22");
+  });
+
+  it("respeta el colchón de cierre (lastSlotBufferMin)", () => {
+    const employees = [employee("a", 19, 20)]; // 19:00-20:00
+    const appts = [appt("a", 19, 0, 30)]; // ocupa el primer hueco
+    // Sin colchón, quedaría libre a las 19:30. Con 30 min de colchón, ese
+    // hueco deja de ofertarse y no hay ninguno más ese día.
+    const next = findNextAvailableSlot(employees, appts, 30, "a", {
+      fromDate,
+      lastSlotBufferMin: 30,
+      maxDays: 1,
+    });
+    expect(next).toBeUndefined();
+  });
+
+  it("undefined si el profesional elegido no existe en el equipo", () => {
+    const employees = [employee("a", 10, 14)];
+    expect(findNextAvailableSlot(employees, [], 30, "zzz", { fromDate })).toBeUndefined();
+  });
+
+  it("undefined si no hay hueco en todo el horizonte de búsqueda", () => {
+    const employees = [employee("a", 10, 11)];
+    // Cita de 24h que se repite conceptualmente: basta con que el único
+    // hueco del único día que trabaja esté ocupado y el horizonte sea de 1 día.
+    const appts = [appt("a", 10, 0, 60)];
+    expect(
+      findNextAvailableSlot(employees, appts, 30, "a", { fromDate, maxDays: 1 }),
+    ).toBeUndefined();
   });
 });
