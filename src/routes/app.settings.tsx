@@ -37,6 +37,13 @@ function Settings() {
     String(salonProfile.noShowNoticeHours ?? 2),
   );
 
+  // Fianza por Bizum — número al que se pide y cuánto. Ver lib/avisos.ts.
+  const [depositEnabled, setDepositEnabled] = useState(!!salonProfile.depositEnabled);
+  const [depositBizumPhone, setDepositBizumPhone] = useState(salonProfile.depositBizumPhone ?? "");
+  const [depositAmountEur, setDepositAmountEur] = useState(
+    String(salonProfile.depositAmountEur || 10),
+  );
+
   // Reparto de agenda — hora sugerida y colchón antes del cierre.
   const [smartSpreadEnabled, setSmartSpreadEnabled] = useState(!!salonProfile.smartSpread);
   const [lastSlotBufferMin, setLastSlotBufferMin] = useState(
@@ -63,6 +70,9 @@ function Settings() {
     setNoShowNoticeHours(String(salonProfile.noShowNoticeHours ?? 2));
     setSmartSpreadEnabled(!!salonProfile.smartSpread);
     setLastSlotBufferMin(String(salonProfile.lastSlotBufferMin || 90));
+    setDepositEnabled(!!salonProfile.depositEnabled);
+    setDepositBizumPhone(salonProfile.depositBizumPhone ?? "");
+    setDepositAmountEur(String(salonProfile.depositAmountEur || 10));
   }, [salonProfile]);
 
   function handleSave() {
@@ -86,6 +96,16 @@ function Settings() {
       toast.error("El aviso mínimo tiene que estar entre 1 y 48 horas");
       return;
     }
+    const parsedDeposit = Number(depositAmountEur.replace(",", "."));
+    if (depositEnabled && (!Number.isFinite(parsedDeposit) || parsedDeposit <= 0 || parsedDeposit > 200)) {
+      toast.error("La señal tiene que estar entre 0 y 200 €");
+      return;
+    }
+    if (depositEnabled && depositBizumPhone.replace(/\D/g, "").length < 9) {
+      toast.error("Escribe el número de Bizum al que te tienen que pagar la señal");
+      return;
+    }
+
     const parsedBuffer = Number(lastSlotBufferMin);
     if (
       smartSpreadEnabled &&
@@ -114,6 +134,9 @@ function Settings() {
       noShowNoticeHours: Math.min(48, Math.max(1, Math.round(parsedNotice) || 2)),
       smartSpread: smartSpreadEnabled,
       lastSlotBufferMin: smartSpreadEnabled ? Math.min(240, Math.max(0, Math.round(parsedBuffer))) : 0,
+      depositEnabled,
+      depositBizumPhone: depositBizumPhone.trim(),
+      depositAmountEur: depositEnabled ? Math.min(200, Math.max(1, parsedDeposit)) : 0,
     });
     toast.success("Cambios guardados");
   }
@@ -230,6 +253,43 @@ function Settings() {
               value={noShowNoticeHours}
               onChange={setNoShowNoticeHours}
               hint="Cancelar con menos margen cuenta como plantón. De 1 a 48 horas."
+            />
+          </div>
+        )}
+        <div className="flex justify-end pt-2">
+          <Button onClick={handleSave}>Guardar cambios</Button>
+        </div>
+      </div>
+
+      {/* Fianza por Bizum — lo pidió María (PeluChic) para clientas nuevas.
+          Se configura aquí y solo aquí: nada depende de tocar la URL. */}
+      <div className="space-y-4 rounded-xl border border-border/60 bg-card p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+              Señal por Bizum
+            </Label>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Añade un botón en cada solicitud pendiente que abre tu WhatsApp con el mensaje ya
+              escrito para pedir la señal. El Bizum llega a tu banco y lo marcas tú a mano:{" "}
+              <strong>siShow no cobra ni comprueba ningún pago.</strong>
+            </p>
+          </div>
+          <Switch checked={depositEnabled} onCheckedChange={setDepositEnabled} />
+        </div>
+        {depositEnabled && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Número de Bizum"
+              value={depositBizumPhone}
+              onChange={setDepositBizumPhone}
+              hint="El que aparecerá escrito en el mensaje."
+            />
+            <Field
+              label="Importe de la señal (€)"
+              value={depositAmountEur}
+              onChange={setDepositAmountEur}
+              hint="De 1 a 200 €."
             />
           </div>
         )}
