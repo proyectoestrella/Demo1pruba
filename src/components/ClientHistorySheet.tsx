@@ -4,6 +4,12 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { clientFrequency } from "@/lib/derive";
+import {
+  daysUntilPenaltyExpiry,
+  isPenaltyActive,
+  noShowSummary,
+  penaltyExpiresAt,
+} from "@/lib/plantones";
 import { employeeMap } from "@/lib/mock/salon";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { eur } from "@/lib/copy";
@@ -26,7 +32,7 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
-import { CalendarX, Mail, Phone, CalendarClock } from "lucide-react";
+import { CalendarX, Mail, Phone, CalendarClock, TriangleAlert } from "lucide-react";
 
 export interface ClientHistorySheetProps {
   client: Client | null;
@@ -46,6 +52,7 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
   const appointments = useSalonStore((s) => s.appointments);
   const updateClient = useSalonStore((s) => s.updateClient);
   const clearPenalty = useSalonStore((s) => s.clearPenalty);
+  const setPenaltyKeep = useSalonStore((s) => s.setPenaltyKeep);
   // Igual que AppointmentDetailSheet: la prop llega congelada en el momento
   // del clic (quien abre el sheet guarda una copia). Cobrado/Perdonar cambian
   // el store desde AQUÍ MISMO, con el sheet todavía abierto — sin releer la
@@ -56,6 +63,11 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
   );
   const client = stored ?? clientProp;
   const stats = client ? clientFrequency(appointments, client.id) : null;
+  // Plantones y caducidad del bloqueo — ver lib/plantones.ts.
+  const plantones = client ? noShowSummary(appointments, client.id) : null;
+  const bloqueado = isPenaltyActive(client ?? undefined);
+  const caducaEl = penaltyExpiresAt(client ?? undefined);
+  const diasRestantes = daysUntilPenaltyExpiry(client ?? undefined);
 
   function handleClearPenalty(motivo: "cobrado" | "perdonado") {
     if (!client) return;
@@ -118,30 +130,65 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
         </div>
       </div>
 
+      {/* Contador de plantones — el contexto antes que la deuda: saber que
+          alguien ha fallado dos veces en tres meses cambia la decisión aunque
+          ya te haya pagado la penalización. */}
+      {plantones && (
+        <div className="flex items-center gap-2 rounded-xl border border-[var(--warning)]/40 bg-[var(--warning)]/10 px-4 py-3">
+          <TriangleAlert className="size-4 shrink-0 text-[var(--warning)]" aria-hidden="true" />
+          <p className="text-sm">{plantones}</p>
+        </div>
+      )}
+
       {/* Penalización pendiente (política de plantón) — solo si debe algo. */}
       {(client.penaltyEur ?? 0) > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-destructive">
-              Debe {eur(client.penaltyEur!)}
-              {client.penaltyNote ? ` · ${client.penaltyNote}` : ""}
-            </p>
+        <div className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-destructive">
+                Debe {eur(client.penaltyEur!)}
+                {client.penaltyNote ? ` · ${client.penaltyNote}` : ""}
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Button size="sm" variant="outline" onClick={() => handleClearPenalty("cobrado")}>
+                Cobrado
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => handleClearPenalty("perdonado")}>
+                Perdonar
+              </Button>
+            </div>
           </div>
-          <div className="flex shrink-0 gap-2">
-            <Button size="sm" variant="outline" onClick={() => handleClearPenalty("cobrado")}>
-              Cobrado
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => handleClearPenalty("perdonado")}>
-              Perdonar
+
+          {/* El bloqueo para volver a reservar caduca solo a los 30 días. La
+              deuda no: sigue aquí hasta que el dueño la cobre o la perdone. */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-destructive/20 pt-3">
+            <p className="text-xs text-muted-foreground">
+              {client.penaltyKeep
+                ? "Bloqueo mantenido por ti: no se levanta solo."
+                : bloqueado && caducaEl
+                  ? `No puede reservar online hasta el ${caducaEl.toLocaleDateString("es", { day: "numeric", month: "long" })}${diasRestantes ? ` (${diasRestantes} ${diasRestantes === 1 ? "día" : "días"})` : ""}.`
+                  : bloqueado
+                    ? "No puede reservar online mientras deba esta cantidad."
+                    : "El bloqueo ya se ha levantado solo: puede volver a reservar online."}
+            </p>
+            <Button
+              size="sm"
+              variant={client.penaltyKeep ? "secondary" : "outline"}
+              onClick={() => {
+                setPenaltyKeep(client.id, !client.penaltyKeep);
+              }}
+            >
+              {client.penaltyKeep ? "Dejar que caduque" : "Mantener el bloqueo"}
             </Button>
           </div>
         </div>
       )}
 
       {/* KPIs del cliente */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
-          <p className="font-display text-xl">{stats.visits}</p>
+          <p className="font-display text-xl">{stats.pastVisits}</p>
           <p className="text-xs text-muted-foreground">Visitas</p>
         </div>
         <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
@@ -150,7 +197,7 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
         </div>
         <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
           <p className="truncate font-display text-xl">{stats.favoriteService ?? "—"}</p>
-          <p className="text-xs text-muted-foreground">Favorito</p>
+          <p className="text-xs text-muted-foreground">Servicio favorito</p>
         </div>
         <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
           <p className="font-display text-xl">
@@ -159,6 +206,14 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
               : "—"}
           </p>
           <p className="text-xs text-muted-foreground">Última visita</p>
+        </div>
+        <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
+          <p className="font-display text-xl">
+            {stats.nextVisit
+              ? new Date(stats.nextVisit).toLocaleDateString("es", { day: "2-digit", month: "short" })
+              : "—"}
+          </p>
+          <p className="text-xs text-muted-foreground">Próxima cita</p>
         </div>
       </div>
 

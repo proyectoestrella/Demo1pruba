@@ -31,15 +31,31 @@ import {
 } from "@/components/ui/sheet";
 
 /**
- * Cromo v2 del panel: barra inferior de 4 iconos en móvil/iPad, sidebar
- * estrecha en escritorio (patrón Squire/Treatwell Pro — ver el informe de
+ * Cromo v2 del panel: barra inferior de 4 iconos en móvil, sidebar estrecha
+ * a partir de tablet (patrón Squire/Treatwell Pro — ver el informe de
  * referencias). Envuelve TODAS las rutas `/app/*`; el contenido de cada
  * pantalla (Hoy, Agenda, Clientes…) decide su propia acción principal, así
  * que este cromo no añade más botones que el cambio de tema y el asistente.
  *
  * Solo se monta cuando `panelV2` está activo (ver routes/app.tsx) — el
  * `DashboardLayout` de siempre no se toca.
+ *
+ * El corte está en `lg` (1024 px) y no en `xl` (1280) a propósito: un iPad en
+ * vertical mide exactamente 1024 y es donde más se usa este panel. Con el
+ * corte en `xl`, ese mismo iPad enseñaba barra inferior en v2 y barra lateral
+ * en v1, así que el layout parecía depender de por dónde habías entrado
+ * (salón real con `?s=` o demo con `?d=`) en vez de del ancho de la pantalla.
+ * Ahora los dos cromos cambian en el mismo punto: solo manda el ancho.
  */
+
+/**
+ * Alto real de la barra inferior fija, con el hueco del gesto de iOS dentro.
+ * Se declara aquí y se aplica como `padding-bottom` del contenido de TODAS
+ * las pantallas: es lo que impide que el último botón de cualquiera de ellas
+ * (el "Guardar cambios" de Ajustes fue el que lo destapó) acabe debajo de la
+ * barra en un iPad.
+ */
+const ALTO_BARRA_INFERIOR = "calc(4.5rem + env(safe-area-inset-bottom, 0px))";
 
 type NavItem = { to: string; label: string; icon: LucideIcon; exact?: boolean };
 
@@ -75,9 +91,8 @@ export function PanelV2Shell() {
 
   return (
     <div className="flex min-h-screen w-full bg-background">
-      {/* Sidebar estrecha — solo escritorio (≥1280px). En iPad (1024) se
-          queda con la barra inferior a propósito, ver el flag de arriba. */}
-      <aside className="hidden w-20 shrink-0 flex-col items-center border-r border-sidebar-border bg-sidebar py-4 text-sidebar-foreground xl:flex">
+      {/* Sidebar estrecha — de iPad (≥1024px) para arriba. */}
+      <aside className="hidden w-20 shrink-0 flex-col items-center border-r border-sidebar-border bg-sidebar py-4 text-sidebar-foreground lg:flex">
         <Link to="/app" className="mb-6 flex items-center justify-center" title={salonName}>
           <Logo />
         </Link>
@@ -131,13 +146,20 @@ export function PanelV2Shell() {
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 px-4 py-5 pb-24 sm:px-6 xl:pb-6">
+        {/* El hueco de abajo es exactamente el alto de la barra fija (clase,
+            no `style`, para que `lg:pb-6` pueda quitarlo cuando la barra
+            desaparece). Vale para TODAS las pantallas del panel, no solo
+            Ajustes: cualquiera puede acabar con un botón en la última línea. */}
+        <main className="min-w-0 flex-1 px-4 py-5 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:px-6 lg:pb-6">
           <Outlet />
         </main>
       </div>
 
-      {/* Barra inferior — móvil e iPad (<1280px). */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-border bg-background/95 backdrop-blur xl:hidden">
+      {/* Barra inferior — solo móvil y tablet pequeña (<1024px). */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur lg:hidden"
+        style={{ minHeight: ALTO_BARRA_INFERIOR }}
+      >
         {MAIN_ITEMS.map((item) => {
           const active = isActive(item.to, path, item.exact);
           return (

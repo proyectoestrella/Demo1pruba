@@ -1,8 +1,10 @@
 import { toast } from "sonner";
-import { Clock } from "lucide-react";
+import { Clock, MessageCircle } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
 import { employeeMap } from "@/lib/mock/salon";
 import { serviceLabelOf } from "@/lib/appointment-services";
+import { enlaceDeFianza } from "@/lib/avisos";
+import { eur } from "@/lib/copy";
 import type { Appointment } from "@/lib/mock/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { StylistDot } from "@/components/StylistAvatar";
@@ -22,8 +24,15 @@ export interface PendingRequestsBannerProps {
  */
 export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerProps) {
   const appointments = useSalonStore((s) => s.appointments);
+  const clients = useSalonStore((s) => s.clients);
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
+  const markDepositRequested = useSalonStore((s) => s.markDepositRequested);
+  const salonName = useSalonStore((s) => s.salonProfile.name);
+  const depositEnabled = useSalonStore((s) => !!s.salonProfile.depositEnabled);
+  const depositBizumPhone = useSalonStore((s) => s.salonProfile.depositBizumPhone ?? "");
+  const depositAmountEur = useSalonStore((s) => s.salonProfile.depositAmountEur ?? 10);
+  const pideFianza = depositEnabled && !!depositBizumPhone.trim();
 
   const pending = appointments
     .filter((a) => a.status === "pending")
@@ -36,9 +45,48 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
     toast.success("Cita confirmada", { description: a.clientName });
   }
 
+  /**
+   * Rechazar era un toque, irreversible y sin red: si te equivocabas de fila
+   * habías rechazado a un cliente de verdad y no había forma de volver atrás
+   * desde la interfaz. Ahora el toast trae "Deshacer" durante unos segundos y
+   * devuelve la solicitud exactamente al estado que tenía.
+   */
   function handleReject(a: Appointment) {
+    const estadoPrevio = a.status;
     cancelAppointment(a.id);
-    toast.success("Solicitud rechazada", { description: a.clientName });
+    toast.success("Solicitud rechazada", {
+      description: a.clientName,
+      duration: 8000,
+      action: {
+        label: "Deshacer",
+        onClick: () => {
+          updateAppointment(a.id, { status: estadoPrevio });
+          toast.success("Solicitud recuperada", { description: a.clientName });
+        },
+      },
+    });
+  }
+
+  /**
+   * Pedir la señal por Bizum sin abrir el detalle: María (PeluChic) la pide a
+   * toda clienta nueva, así que tiene que estar en la misma fila donde ve la
+   * solicitud. Abre WhatsApp con el mensaje escrito — lo envía ella.
+   */
+  function handleFianza(a: Appointment) {
+    const telefono = clients.find((c) => c.id === a.clientId)?.phone ?? "";
+    if (!telefono) {
+      toast.error("Esta solicitud no trae teléfono al que escribir");
+      return;
+    }
+    const url = enlaceDeFianza(telefono, {
+      clientName: a.clientName,
+      startISO: a.start,
+      salonName,
+      bizumPhone: depositBizumPhone,
+      importeEur: depositAmountEur,
+    });
+    markDepositRequested(a.id, depositAmountEur);
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -79,8 +127,23 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                 <Button size="sm" onClick={() => handleConfirm(a)}>
                   Confirmar
                 </Button>
+                {pideFianza && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={() => handleFianza(a)}
+                  >
+                    <MessageCircle className="size-3.5" />
+                    {a.depositReceivedAt
+                      ? "Señal recibida"
+                      : a.depositRequestedAt
+                        ? "Reenviar señal"
+                        : `Pedir ${eur(depositAmountEur)} de señal`}
+                  </Button>
+                )}
                 <Button size="sm" variant="outline" onClick={() => onOpenDetail(a)}>
-                  Cambiar duración/hora
+                  Cambiar fecha/hora
                 </Button>
                 <Button
                   size="sm"
