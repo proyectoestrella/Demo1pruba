@@ -182,7 +182,7 @@ export function AppointmentDetailSheet({
               <p className="truncate text-sm font-medium">
                 {employeeMap[appointment.employeeId].name}
               </p>
-              <p className="text-xs text-muted-foreground">Estilista asignada</p>
+              <p className="text-xs text-muted-foreground">Quién atiende</p>
             </div>
             <div className="ml-auto">
               <StatusBadge status={appointment.status} />
