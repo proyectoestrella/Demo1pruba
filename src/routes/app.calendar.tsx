@@ -212,6 +212,24 @@ function CalendarView() {
             setView("day");
           }}
         />
+      ) : effectiveView === "day" ? (
+        /* Vista Día: una columna por profesional, igual que hace Semana con
+           los días. Antes las citas de los tres barberos se apilaban en la
+           misma columna, se solapaban y el texto se cortaba — y cuanta más
+           plantilla, peor. Es la misma rejilla de AgendaColumns (el panel v2)
+           para que las dos versiones cuenten lo mismo. */
+        <DayByEmployee
+          day={anchor}
+          appointments={appointments}
+          now={now}
+          onSelect={setSelected}
+          onOpenSlot={(employeeId, hour) => {
+            const date = new Date(anchor);
+            date.setHours(hour, 0, 0, 0);
+            setSlotPrefill({ date, employeeId });
+            setNewApptOpen(true);
+          }}
+        />
       ) : (
         <div className="min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card">
           <div className="overflow-x-auto">
@@ -484,6 +502,129 @@ function MonthGrid({
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Vista Día separada por profesional.
+ *
+ * La rejilla es la misma que la de Semana (misma altura de hora, mismo
+ * bloque de cita, misma línea de "ahora"), pero las columnas son personas en
+ * vez de días: con tres barberos, apilar todo en una sola columna hacía que
+ * las citas se taparan entre ellas y que los nombres salieran cortados.
+ *
+ * En móvil no cabe una columna por persona, así que se mantiene el scroll
+ * horizontal con un ancho mínimo por columna en vez de encogerlas.
+ */
+function DayByEmployee({
+  day,
+  appointments,
+  now,
+  onSelect,
+  onOpenSlot,
+}: {
+  day: Date;
+  appointments: Appointment[];
+  now: Date;
+  onSelect: (a: Appointment) => void;
+  onOpenSlot: (employeeId: EmployeeId, hour: number) => void;
+}) {
+  const dayAppts = useMemo(
+    () =>
+      appointments.filter((a) => isSameDate(new Date(a.start), day) && a.status !== "cancelled"),
+    [appointments, day],
+  );
+
+  const isToday = isSameDate(day, now);
+  const nowMinutes = (now.getHours() - HOURS[0]) * 60 + now.getMinutes();
+  const showNowLine = isToday && nowMinutes >= 0 && nowMinutes <= HOURS.length * 60;
+  const nowTop = (nowMinutes / 60) * 64;
+  const columnas = `56px repeat(${employees.length}, minmax(140px, 1fr))`;
+
+  return (
+    <div className="min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card">
+      <div className="overflow-x-auto">
+        <div className="min-w-max">
+          <div className="grid border-b border-border/60" style={{ gridTemplateColumns: columnas }}>
+            <div />
+            {employees.map((e) => (
+              <div
+                key={e.id}
+                className="flex items-center justify-center gap-1.5 border-l border-border/60 px-2 py-3 text-xs"
+              >
+                <StylistDot employeeId={e.id} />
+                <span className="truncate font-medium">{e.name}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="relative grid" style={{ gridTemplateColumns: columnas }}>
+            <div className="border-r border-border/60">
+              {HOURS.map((h) => (
+                <div key={h} className="h-16 px-2 pt-1 text-[10px] text-muted-foreground">
+                  {String(h).padStart(2, "0")}:00
+                </div>
+              ))}
+            </div>
+            {employees.map((e) => {
+              const own = dayAppts.filter((a) => a.employeeId === e.id);
+              return (
+                <div key={e.id} className="relative border-l border-border/60">
+                  {HOURS.map((h) => (
+                    <button
+                      key={h}
+                      type="button"
+                      onClick={() => onOpenSlot(e.id, h)}
+                      className="block h-16 w-full border-b border-border/50 transition-colors hover:bg-primary/5"
+                      aria-label={`Crear cita con ${e.name} el ${day.toLocaleDateString("es")} a las ${h}:00`}
+                    />
+                  ))}
+                  {showNowLine && (
+                    <div
+                      className="pointer-events-none absolute left-0 right-0 z-10 flex items-center"
+                      style={{ top: nowTop }}
+                      aria-hidden="true"
+                    >
+                      <span className="-ml-1 size-2 shrink-0 rounded-full bg-destructive" />
+                      <span className="h-px flex-1 bg-destructive/70" />
+                    </div>
+                  )}
+                  {own.map((a) => {
+                    const start = new Date(a.start);
+                    const minutes = (start.getHours() - HOURS[0]) * 60 + start.getMinutes();
+                    if (minutes < 0) return null;
+                    const emp = employeeMap[a.employeeId];
+                    return (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => onSelect(a)}
+                        className={cn(
+                          "absolute left-1 right-1 overflow-hidden rounded-lg border-l-[3px] px-2 py-1 text-left text-[11px] shadow-sm transition-transform hover:-translate-y-0.5 hover:shadow-md",
+                          a.status === "no-show" && "border-dashed opacity-70",
+                          a.status === "completed" && "opacity-80",
+                        )}
+                        style={{
+                          top: (minutes / 60) * 64,
+                          height: Math.max(30, (a.duration / 60) * 64 - 2),
+                          background: `color-mix(in oklch, var(${emp.colorVar}) 18%, var(--color-card))`,
+                          borderLeftColor: `var(${emp.colorVar})`,
+                        }}
+                      >
+                        <p className="truncate font-medium leading-tight text-foreground">
+                          {a.clientName}
+                        </p>
+                        <p className="truncate text-muted-foreground">{serviceLabelOf(a)}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

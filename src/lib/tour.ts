@@ -86,6 +86,17 @@ export function startTour() {
     doneBtnText: "Entendido",
     progressText: "{{current}} de {{total}}",
     steps,
+    // driver.js crea su aspa con `aria-label="Close"` escrito a fuego y no
+    // ofrece ninguna opción para cambiarlo: un lector de pantalla anunciaba
+    // "Close" en medio de un tour que dice "Atrás" y "Siguiente". Este gancho
+    // corre cada vez que se pinta el globo, así que arregla todos los pasos y
+    // no solo el primero.
+    onPopoverRender: (popover) => {
+      const cerrar = popover.closeButton;
+      if (!cerrar) return;
+      cerrar.setAttribute("aria-label", "Cerrar");
+      cerrar.setAttribute("title", "Cerrar");
+    },
     onDestroyed: markTourSeen,
   });
   d.drive();

@@ -18,7 +18,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { sumServices } from "@/lib/appointment-services";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { duracionRecordada } from "@/lib/derive";
+import { Check, ChevronsUpDown, Clock3 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -68,6 +69,13 @@ export interface NewAppointmentDialogProps {
   defaultClientName?: string;
   defaultPhone?: string;
   onCreated?: (appt: Appointment) => void;
+  /**
+   * Los sábados de Cardedal son 55-60 clientes que llaman esa misma mañana,
+   * uno detrás de otro. Con esto el formulario ofrece "Guardar y crear otra":
+   * se queda abierto y limpio para la siguiente llamada en vez de obligar a
+   * volver a la agenda y abrirlo otra vez.
+   */
+  allowChaining?: boolean;
 }
 
 /**
@@ -84,10 +92,12 @@ export function NewAppointmentDialog({
   defaultClientName,
   defaultPhone,
   onCreated,
+  allowChaining = false,
 }: NewAppointmentDialogProps) {
   const isMobile = useIsMobile();
   const services = useSalonStore((s) => s.services);
   const clients = useSalonStore((s) => s.clients);
+  const appointments = useSalonStore((s) => s.appointments);
   const addAppointment = useSalonStore((s) => s.addAppointment);
   const addClient = useSalonStore((s) => s.addClient);
   const activeServices = services.filter((s) => s.active !== false);
@@ -104,6 +114,14 @@ export function NewAppointmentDialog({
   const [date, setDate] = useState(toDateInput(defaultDate ?? new Date()));
   const [time, setTime] = useState(toTimeInput(defaultDate ?? new Date()));
   const [note, setNote] = useState("");
+  /**
+   * Duración elegida a mano, en minutos. `null` = la que sale del catálogo
+   * (o la recordada, si la hay). María (PeluChic) lo dijo tal cual: "el
+   * tiempo de cada cita lo decido yo".
+   */
+  const [duracionManual, setDuracionManual] = useState<number | null>(null);
+  /** Cuántas citas seguidas se llevan creadas sin cerrar el formulario. */
+  const [encadenadas, setEncadenadas] = useState(0);
 
   // Re-sync prefill whenever the dialog is (re)opened with new defaults.
   useEffect(() => {
@@ -116,6 +134,8 @@ export function NewAppointmentDialog({
     setDate(toDateInput(defaultDate ?? new Date()));
     setTime(toTimeInput(defaultDate ?? new Date()));
     setNote("");
+    setDuracionManual(null);
+    setEncadenadas(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -129,9 +149,25 @@ export function NewAppointmentDialog({
 
   const chosen = serviceIds.map((id) => serviceMap[id]).filter(Boolean);
   // La cita bloquea y cobra la suma de todos los servicios elegidos.
-  const { durationMin: totalMin, priceEur: total } = sumServices(chosen);
+  const { durationMin: catalogoMin, priceEur: total } = sumServices(chosen);
 
-  function handleSubmit(e: React.FormEvent) {
+  // Si a esta persona estos mismos servicios le llevaron otra cosa la última
+  // vez, se propone ESO y se dice por qué. El catálogo sabe cuánto dura un
+  // corte; no sabe cuánto dura el corte de esta clienta.
+  const recordada = duracionRecordada(
+    appointments,
+    clientChoice !== "__new" ? clientChoice : undefined,
+    serviceIds,
+    catalogoMin,
+  );
+  const totalMin = duracionManual ?? recordada?.minutos ?? catalogoMin;
+  // Duraciones a elegir: las de siempre más la del catálogo y la recordada,
+  // para que el desplegable nunca se quede en blanco.
+  const opcionesDuracion = [
+    ...new Set([15, 30, 45, 60, 75, 90, 120, 150, 180, catalogoMin, totalMin].filter((n) => n > 0)),
+  ].sort((a, b) => a - b);
+
+  function handleSubmit(e: React.FormEvent, encadenar = false) {
     e.preventDefault();
     if (!chosen.length) {
       toast.error("Elige al menos un servicio");
@@ -198,6 +234,20 @@ export function NewAppointmentDialog({
       description: `${clientName} · ${chosen.map((s) => s.name).join(" + ")}`,
     });
     onCreated?.(appt);
+
+    if (encadenar) {
+      // Se queda abierto y en blanco, con la fecha puesta donde estaba: es la
+      // diferencia entre 60 llamadas de un sábado y 60 idas y venidas a la
+      // agenda. Solo se limpia lo que cambia de un cliente al siguiente.
+      setEncadenadas((n) => n + 1);
+      setClientChoice("__new");
+      setNewName("");
+      setPhone("");
+      setNote("");
+      setDuracionManual(null);
+      setServiceIds([activeServices[0]?.id].filter((id): id is string => !!id));
+      return;
+    }
     reset();
   }
 
@@ -326,6 +376,45 @@ export function NewAppointmentDialog({
         </div>
       </div>
 
+      {/* Duración de la cita — editable siempre, y con aviso cuando la última
+          vez tardó otra cosa. */}
+      <div className="space-y-1.5">
+        <Label>Duración</Label>
+        <Select
+          value={String(totalMin)}
+          onValueChange={(v) => setDuracionManual(Number(v))}
+        >
+          <SelectTrigger aria-label="Duración de la cita">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {opcionesDuracion.map((min) => (
+              <SelectItem key={min} value={String(min)}>
+                {min} min
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {recordada && duracionManual === null && (
+          <p className="flex items-start gap-1.5 text-xs text-primary">
+            <Clock3 className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+            <span>
+              La última vez tardó {recordada.minutos} min (
+              {new Date(recordada.cuando).toLocaleDateString("es", {
+                day: "numeric",
+                month: "long",
+              })}
+              ), no los {catalogoMin} de la carta. Te proponemos {recordada.minutos}.
+            </span>
+          </p>
+        )}
+        {duracionManual !== null && duracionManual !== catalogoMin && (
+          <p className="text-xs text-muted-foreground">
+            La carta dice {catalogoMin} min: esta cita va con {duracionManual}.
+          </p>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label>Estilista</Label>
@@ -378,7 +467,18 @@ export function NewAppointmentDialog({
             </DrawerHeader>
             <div className="max-h-[55vh] overflow-y-auto pb-2">{formBody}</div>
             <DrawerFooter>
+              {encadenadas > 0 && (
+                <p className="text-center text-xs text-muted-foreground">
+                  {encadenadas} {encadenadas === 1 ? "cita creada" : "citas creadas"} sin salir de
+                  aquí.
+                </p>
+              )}
               <Button type="submit">Crear cita</Button>
+              {allowChaining && (
+                <Button type="button" variant="secondary" onClick={(e) => handleSubmit(e, true)}>
+                  Guardar y crear otra
+                </Button>
+              )}
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
@@ -398,10 +498,21 @@ export function NewAppointmentDialog({
             <DialogDescription>Rellena los datos para reservar un hueco.</DialogDescription>
           </DialogHeader>
           <div className="mt-4">{formBody}</div>
-          <DialogFooter className="mt-6">
+          <DialogFooter className="mt-6 gap-2 sm:gap-2">
+            {encadenadas > 0 && (
+              <p className="mr-auto self-center text-xs text-muted-foreground">
+                {encadenadas} {encadenadas === 1 ? "cita creada" : "citas creadas"} sin salir de
+                aquí.
+              </p>
+            )}
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
+            {allowChaining && (
+              <Button type="button" variant="secondary" onClick={(e) => handleSubmit(e, true)}>
+                Guardar y crear otra
+              </Button>
+            )}
             <Button type="submit">Crear cita</Button>
           </DialogFooter>
         </form>

@@ -206,11 +206,30 @@ function useSalonSlugDelPanel(): string | undefined {
   return typeof desdeUrl === "string" && desdeUrl ? desdeUrl : guardado || undefined;
 }
 
+/**
+ * Mantiene el `<title>` de la pestaña al día con el salón que hay cargado.
+ *
+ * El `head()` de la ruta se evalúa UNA sola vez, al definirse el módulo, con
+ * lo que hubiera en la store en ese momento — que en una pestaña recién
+ * abierta es siempre el salón de ejemplo. Resultado: el panel de un salón
+ * real se quedaba anunciando "Dashboard · Barbería Pepe" en la pestaña, en
+ * los enlaces compartidos y en cualquier captura, aunque llevara rato
+ * enseñando los datos correctos. Aquí se corrige en cuanto llega el nombre.
+ */
+function useTituloDelPanel() {
+  const salonName = useSalonStore((s) => s.salonProfile.name);
+  useEffect(() => {
+    if (typeof document === "undefined" || !salonName) return;
+    document.title = `Panel · ${salonName}`;
+  }, [salonName]);
+}
+
 function DashboardLayout() {
   // Sincroniza `?v=2`/`?v=1` con la preferencia guardada del panel — tiene
   // que correr para TODAS las rutas /app/*, entren o no por aquí primero.
   useSyncPanelV2FromUrl();
   useApplyDemoFromUrl();
+  useTituloDelPanel();
   // Si este panel gestiona un salón real, aquí es donde deja de ser una copia
   // local y pasa a leer y escribir en Supabase. Si no, no hace nada.
   useRealSalon(useSalonSlugDelPanel(), "panel");

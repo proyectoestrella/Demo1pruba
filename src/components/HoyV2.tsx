@@ -1,5 +1,15 @@
 import { useMemo, useState } from "react";
-import { Calendar, Euro, CalendarX, Phone, UserPlus, TrendingUp, Users, Clock3 } from "lucide-react";
+import {
+  Calendar,
+  Euro,
+  CalendarX,
+  Phone,
+  UserPlus,
+  TrendingUp,
+  Users,
+  Clock3,
+  Wallet,
+} from "lucide-react";
 import { useSalonStore } from "@/lib/store";
 import {
   appointmentsTodayTrend,
@@ -8,10 +18,11 @@ import {
   newClientsTrend,
 } from "@/lib/derive";
 import { dayOccupancyBars, toDateKey } from "@/lib/reparto";
+import { cierreDelDia } from "@/lib/caja";
 import { employeeMap, employees } from "@/lib/mock/salon";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { eur } from "@/lib/copy";
-import type { Appointment } from "@/lib/mock/types";
+import { PAYMENT_METHOD_LABELS, type Appointment } from "@/lib/mock/types";
 import { StylistDot } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
@@ -65,6 +76,13 @@ export function HoyV2() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [appointments, lastSlotBufferMin],
   );
+  // Cierre de caja del día — lo apuntado a mano, nada de pagos de verdad.
+  const caja = useMemo(
+    () => cierreDelDia(appointments, employees, now),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [appointments],
+  );
+
   const upcomingToday = appointments
     .filter((a) => {
       const d = new Date(a.start);
@@ -201,6 +219,86 @@ export function HoyV2() {
         </div>
       )}
 
+      {/* Cierre de caja del día. Aparece en cuanto hay algo que cobrar: es lo
+          que Cardedal lleva 26 años haciendo en papel y lo que Alfredo
+          (6TREINTA) quiere ver repartido por profesional. Los importes salen
+          de lo que se ha marcado a mano en cada cita — aquí no se procesa
+          ningún pago. */}
+      {(caja.cobradas.length > 0 || caja.pendientes.length > 0) && (
+        <div className="min-w-0 rounded-xl border border-border/60 bg-card">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-5 py-3.5">
+            <h2 className="flex items-center gap-2 font-display text-base">
+              <Wallet className="size-4 text-muted-foreground" aria-hidden="true" />
+              Cierre de caja de hoy
+            </h2>
+            <span className="font-display text-lg tabular-nums">{eur(caja.total)}</span>
+          </div>
+          <div className="space-y-4 px-5 py-4">
+            <div className="grid grid-cols-3 gap-3">
+              {(["efectivo", "bizum", "tarjeta"] as const).map((m) => (
+                <div key={m} className="rounded-lg border border-border/60 px-3 py-2 text-center">
+                  <p className="font-display text-base tabular-nums">{eur(caja.porMetodo[m])}</p>
+                  <p className="text-xs text-muted-foreground">{PAYMENT_METHOD_LABELS[m]}</p>
+                </div>
+              ))}
+            </div>
+
+            {caja.porProfesional.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Por profesional
+                </p>
+                {caja.porProfesional.map((p) => (
+                  <div key={p.employeeId} className="flex items-center gap-2 text-sm">
+                    <StylistDot employeeId={p.employeeId as Appointment["employeeId"]} />
+                    <span className="min-w-0 flex-1 truncate">{p.nombre}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {p.citas} {p.citas === 1 ? "cita" : "citas"}
+                    </span>
+                    <span className="tabular-nums font-medium">{eur(p.total)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {caja.pendientes.length > 0 ? (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Sin marcar todavía ({caja.pendientes.length})
+                </p>
+                {caja.pendientes.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => setSelected(a)}
+                    className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border/60 px-3 py-2 text-left text-sm transition-colors hover:bg-muted/40"
+                  >
+                    <span className="w-12 shrink-0 tabular-nums text-muted-foreground">
+                      {new Date(a.start).toLocaleTimeString("es", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{a.clientName}</span>
+                    <span className="shrink-0 tabular-nums text-muted-foreground">
+                      {eur(a.priceEur)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Día cerrado: todo marcado como cobrado.</p>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              Estas cifras son lo que has marcado tú en cada cita. siShow no cobra ni comprueba
+              ningún pago.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="min-w-0 rounded-xl border border-border/60 bg-card">
         <div className="flex items-center justify-between border-b border-border/60 px-5 py-3.5">
           <h2 className="font-display text-base">Próximas citas</h2>
@@ -258,7 +356,12 @@ export function HoyV2() {
         onOpenChange={(o) => !o && setSelected(null)}
       />
       <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
-      <NewAppointmentDialog open={phoneApptOpen} onOpenChange={setPhoneApptOpen} />
+      {/* `allowChaining`: los sábados de Cardedal son 60 llamadas seguidas. */}
+      <NewAppointmentDialog
+        open={phoneApptOpen}
+        onOpenChange={setPhoneApptOpen}
+        allowChaining
+      />
     </div>
   );
 }

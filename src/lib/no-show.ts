@@ -1,4 +1,5 @@
 import type { Client } from "./mock/types";
+import { isPenaltyActive } from "./plantones";
 
 /**
  * Política de plantón (enlace de demo, claves "q"/"w" — ver demo-profile.ts).
@@ -24,18 +25,24 @@ export function normalizePhone(phone: string | undefined | null): string {
 }
 
 /**
- * Cliente con una penalización pendiente (`penaltyEur > 0`) cuyo teléfono
- * coincide con el tecleado. `undefined` si no hay coincidencia o el teléfono
- * tecleado aún no tiene 9 dígitos — no tiene sentido bloquear mientras la
- * persona sigue escribiendo.
+ * Cliente con una penalización pendiente cuyo teléfono coincide con el
+ * tecleado. `undefined` si no hay coincidencia o el teléfono tecleado aún no
+ * tiene 9 dígitos — no tiene sentido bloquear mientras la persona sigue
+ * escribiendo.
+ *
+ * "Pendiente" ya no es solo `penaltyEur > 0`: a los 30 días el bloqueo se
+ * levanta solo (ver `isPenaltyActive` en plantones.ts), salvo que el dueño
+ * haya decidido mantenerlo. La deuda sigue anotada en la ficha; lo que caduca
+ * es el "no puedes volver a reservar".
  */
 export function findClientWithPenalty(
   clients: Client[],
   phoneInput: string | undefined | null,
+  now: Date = new Date(),
 ): Client | undefined {
   const target = normalizePhone(phoneInput);
   if (target.length < 9) return undefined;
-  return clients.find((c) => (c.penaltyEur ?? 0) > 0 && normalizePhone(c.phone) === target);
+  return clients.find((c) => isPenaltyActive(c, now) && normalizePhone(c.phone) === target);
 }
 
 /** ¿Empieza la cita dentro de las próximas `noticeHours`? Cancelar dentro de ese margen cuenta como plantón. */

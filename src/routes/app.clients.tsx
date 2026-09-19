@@ -45,10 +45,16 @@ type Row = Client & ReturnType<typeof clientFrequency>;
 
 function tagFor(row: Row, now: number): ClientTag {
   const isRecent = now - +new Date(row.createdAt) < NEW_DAYS * DAY_MS;
-  if (row.visits === 0) return isRecent ? "nuevo" : "inactivo";
-  const daysSinceLast = row.lastVisit ? (now - +new Date(row.lastVisit)) / DAY_MS : Infinity;
+  // Desde que "última visita" solo cuenta las citas pasadas, un cliente que
+  // acaba de reservar para la semana que viene se quedaba sin ninguna: sin
+  // esta salida caía en "inactivo", que es justo lo contrario de lo que es.
+  if (!row.lastVisit) {
+    if (isRecent) return "nuevo";
+    return row.nextVisit ? "activo" : "inactivo";
+  }
+  const daysSinceLast = (now - +new Date(row.lastVisit)) / DAY_MS;
   if (daysSinceLast > INACTIVE_DAYS) return "inactivo";
-  if (row.visits >= REGULAR_VISITS) return "habitual";
+  if (row.pastVisits >= REGULAR_VISITS) return "habitual";
   if (isRecent) return "nuevo";
   return "activo";
 }
@@ -168,8 +174,9 @@ function Clients() {
                   <TableHead>Cliente</TableHead>
                   <TableHead>Teléfono</TableHead>
                   <TableHead>Visitas</TableHead>
-                  <TableHead>Favorito</TableHead>
+                  <TableHead>Servicio favorito</TableHead>
                   <TableHead>Última visita</TableHead>
+                  <TableHead>Próxima cita</TableHead>
                   <TableHead className="text-right">Gasto total</TableHead>
                   <TableHead>Estado</TableHead>
                 </TableRow>
@@ -193,11 +200,22 @@ function Clients() {
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{c.phone}</TableCell>
-                    <TableCell>{c.visits}</TableCell>
+                    <TableCell>{c.pastVisits}</TableCell>
                     <TableCell className="text-muted-foreground">{c.favoriteService}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {c.lastVisit
                         ? new Date(c.lastVisit).toLocaleDateString("es", {
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : "—"}
+                    </TableCell>
+                    {/* "Próxima cita" existe porque hasta ahora era lo que
+                        enseñaba "Última visita" sin decirlo: el dato hacía
+                        falta, solo que en su propia columna. */}
+                    <TableCell className="text-muted-foreground">
+                      {c.nextVisit
+                        ? new Date(c.nextVisit).toLocaleDateString("es", {
                             month: "short",
                             day: "numeric",
                           })
@@ -229,7 +247,24 @@ function Clients() {
                     <span className="shrink-0 font-medium">€{c.totalSpent}</span>
                   </div>
                   <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {c.visits} visitas · {c.favoriteService} · {c.phone}
+                    {c.pastVisits} {c.pastVisits === 1 ? "visita" : "visitas"} · {c.favoriteService} ·{" "}
+                    {c.phone}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    Última visita:{" "}
+                    {c.lastVisit
+                      ? new Date(c.lastVisit).toLocaleDateString("es", {
+                          month: "short",
+                          day: "numeric",
+                        })
+                      : "—"}
+                    {" · Próxima: "}
+                    {c.nextVisit
+                      ? new Date(c.nextVisit).toLocaleDateString("es", {
+                          month: "short",
+                          day: "numeric",
+                        })
+                      : "—"}
                   </p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <TagPill tag={c.tag} />
