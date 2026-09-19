@@ -23,6 +23,7 @@ import {
   DEPOSIT_THRESHOLD_MIN,
 } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
+import { useRealSalonSlug } from "@/lib/use-real-salon";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import {
   categoryOrderOf,
@@ -334,8 +335,20 @@ function SalonHome() {
   const isV2 = useRouterState({
     select: (s) => String((s.location.search as Record<string, unknown>)?.v) === "2",
   });
-  const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(profile.address)}&output=embed`;
+  // `hl=es`: sin él el iframe de Google Maps sale en inglés ("Open in Maps",
+  // "Keyboard shortcuts") dentro de una web en español (auditoría, hallazgo C6).
+  const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(profile.address)}&output=embed&hl=es`;
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(profile.address)}`;
+  // Enlace a la ficha de Google del salón, para las reseñas reales (ver
+  // sección de Reseñas más abajo). No hay un id de ficha guardado en el
+  // perfil, así que se busca por nombre + dirección: honesto y sin inventar
+  // una URL que pueda no ser la suya.
+  const googleReviewsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${profile.name} ${profile.address}`)}`;
+  // Auditoría, hallazgo C3: un salón REAL no puede enseñar reseñas
+  // inventadas con la etiqueta "Ejemplo" a su propio cliente. Las demos de
+  // venta (el resto de esta condición) siguen exactamente igual que hoy.
+  const isRealSalon = useRealSalonSlug() === salonSlug;
+  const hasGoogleReviews = isRealSalon && profile.rating > 0 && profile.reviewCount > 0;
 
   // Catálogo y equipo calculados a partir del tipo deducido del enlace —no
   // del catálogo/equipo "activo" mutado en mock/salon.ts, que solo se
@@ -764,44 +777,88 @@ function SalonHome() {
         </div>
       </section>
 
-      {/* Reseñas */}
-      <section id="resenas" className="mx-auto max-w-5xl px-6 py-16 md:py-24">
-        <Reveal className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-primary">Reseñas</p>
-            <h2 className="mt-2 font-display text-3xl md:text-4xl">
-              Lo que dicen nuestros clientes
-            </h2>
-          </div>
-          <div className="flex items-center gap-1.5 text-sm">
-            <Star className="h-4 w-4 fill-primary text-primary" />
-            <span className="font-medium">{profile.rating}</span>
-            <span className="text-muted-foreground">· {profile.reviewCount} reseñas</span>
-          </div>
-        </Reveal>
-        <Reveal className="mb-8 inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground">
-          <Info className="h-3.5 w-3.5 shrink-0" /> Reseñas de ejemplo — sustitúyelas por las
-          reseñas reales de tu salón.
-        </Reveal>
+      {/* Reseñas.
+          Auditoría de UX, hallazgo C3: la web de un salón REAL no puede
+          enseñar dos reseñas inventadas con la etiqueta "Ejemplo" a su propio
+          cliente — es lo que le pasaba a Adam, que en Google tiene 132
+          reseñas de verdad. Un salón real usa la nota y el número que ya trae
+          su perfil, con un enlace a su ficha; si no tiene ninguno, no se
+          enseña nada inventado. Las demos de venta (más abajo) siguen
+          exactamente igual que siempre: las siguen enseñando, marcadas. */}
+      {isRealSalon ? (
+        hasGoogleReviews ? (
+          <section id="resenas" className="border-t border-border/40 bg-card">
+            <div className="mx-auto max-w-3xl px-6 py-16 text-center md:py-24">
+              <p className="text-xs uppercase tracking-[0.25em] text-primary">Reseñas</p>
+              <h2 className="mt-2 font-display text-3xl md:text-4xl">
+                Lo que dicen en Google
+              </h2>
+              <div className="mt-6 flex items-center justify-center gap-2">
+                <span className="flex" aria-hidden="true">
+                  {Array.from({ length: 5 }).map((_, j) => (
+                    <Star
+                      key={j}
+                      className={cn(
+                        "h-5 w-5",
+                        j < Math.round(profile.rating)
+                          ? "fill-primary text-primary"
+                          : "text-muted-foreground/30",
+                      )}
+                    />
+                  ))}
+                </span>
+                <span className="font-display text-2xl">{profile.rating}</span>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {profile.reviewCount} reseñas en Google
+              </p>
+              <Button asChild variant="outline" className="mt-6 rounded-full">
+                <a href={googleReviewsUrl} target="_blank" rel="noreferrer">
+                  Ver reseñas en Google
+                </a>
+              </Button>
+            </div>
+          </section>
+        ) : null
+      ) : (
+        <section id="resenas" className="mx-auto max-w-5xl px-6 py-16 md:py-24">
+          <Reveal className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.25em] text-primary">Reseñas</p>
+              <h2 className="mt-2 font-display text-3xl md:text-4xl">
+                Lo que dicen nuestros clientes
+              </h2>
+            </div>
+            <div className="flex items-center gap-1.5 text-sm">
+              <Star className="h-4 w-4 fill-primary text-primary" />
+              <span className="font-medium">{profile.rating}</span>
+              <span className="text-muted-foreground">· {profile.reviewCount} reseñas</span>
+            </div>
+          </Reveal>
+          <Reveal className="mb-8 inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground">
+            <Info className="h-3.5 w-3.5 shrink-0" /> Reseñas de ejemplo — sustitúyelas por las
+            reseñas reales de tu salón.
+          </Reveal>
 
-        {/* Muro en dos filas que se cruzan. Se para al pasar el ratón para
-            poder leer la que te interese. */}
-        <Reveal className="relative">
-          <Marquee pauseOnHover className="[--duration:38s] [--gap:1.25rem]">
-            {reviews.map((r) => (
-              <ReviewCard key={r.name} {...r} />
-            ))}
-          </Marquee>
-          <Marquee reverse pauseOnHover className="mt-5 [--duration:44s] [--gap:1.25rem]">
-            {[...reviews].reverse().map((r) => (
-              <ReviewCard key={r.name} {...r} />
-            ))}
-          </Marquee>
-          {/* Desvanecido lateral para que las tarjetas no se corten en seco. */}
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-background sm:w-28" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background sm:w-28" />
-        </Reveal>
-      </section>
+          {/* Muro en dos filas que se cruzan. Se para al pasar el ratón para
+              poder leer la que te interese. */}
+          <Reveal className="relative">
+            <Marquee pauseOnHover className="[--duration:38s] [--gap:1.25rem]">
+              {reviews.map((r) => (
+                <ReviewCard key={r.name} {...r} />
+              ))}
+            </Marquee>
+            <Marquee reverse pauseOnHover className="mt-5 [--duration:44s] [--gap:1.25rem]">
+              {[...reviews].reverse().map((r) => (
+                <ReviewCard key={r.name} {...r} />
+              ))}
+            </Marquee>
+            {/* Desvanecido lateral para que las tarjetas no se corten en seco. */}
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-background sm:w-28" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background sm:w-28" />
+          </Reveal>
+        </section>
+      )}
 
       {/* Preguntas frecuentes */}
       <section id="faq" className="border-t border-border/40 bg-card">
