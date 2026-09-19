@@ -6,6 +6,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       className="toaster group"
+      // sonner etiqueta su contenedor como "Notifications alt+T" en inglés y
+      // eso es lo que anuncia un lector de pantalla en medio de una app en
+      // español. Es lo único que se puede traducir de su cromo.
+      containerAriaLabel="Avisos"
       toastOptions={{
         classNames: {
           toast:
