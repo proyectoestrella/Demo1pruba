@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
-import { employees, salon } from "@/lib/mock/salon";
+import { employees } from "@/lib/mock/salon";
 import type { Appointment, EmployeeId } from "@/lib/mock/types";
-import { registerBookingClient } from "@/lib/api/clients.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -174,37 +173,26 @@ export function NewAppointmentDialog({
 
     const start = new Date(`${date}T${time}:00`);
     const startISO = start.toISOString();
-    const appt = addAppointment({
-      clientId,
-      clientName,
-      serviceIds: chosen.map((s) => s.id),
-      employeeId,
-      start: startISO,
-      duration: totalMin,
-      priceEur: total,
-      status: "confirmed",
-      note,
-    });
-
-    // Only sync when we have a phone (walk-ins without one aren't real client records).
-    if (clientPhone) {
-      registerBookingClient({
-        data: {
-          salonSlug: salon.slug,
-          name: clientName,
-          phone: clientPhone,
-          email: clientEmail,
-          serviceIds: chosen.map((s) => s.id),
-          employeeId,
-          startISO,
-          durationMin: totalMin,
-          priceEur: total,
-          note,
-        },
-      }).catch((err) =>
-        console.error("Supabase sync failed (appointment still created locally):", err),
-      );
-    }
+    const appt = addAppointment(
+      {
+        clientId,
+        clientName,
+        serviceIds: chosen.map((s) => s.id),
+        employeeId,
+        start: startISO,
+        duration: totalMin,
+        priceEur: total,
+        status: "confirmed",
+        note,
+      },
+      // Con teléfono se crea/reconoce la ficha del cliente; sin él es un "Sin
+      // cita" y la cita sube igual, solo que sin ficha. Antes esto llamaba a
+      // `registerBookingClient` con `salon.slug` — el slug ESTÁTICO del salón
+      // de ejemplo, no el del salón abierto —, así que la fila acababa siempre
+      // en "los-mosqueteros". Ahora lo lleva la store, que sí sabe qué salón
+      // está gestionando este panel (y no llama a nada si es una demo).
+      clientPhone ? { name: clientName, phone: clientPhone, email: clientEmail } : undefined,
+    );
 
     toast.success("Cita creada", {
       description: `${clientName} · ${chosen.map((s) => s.name).join(" + ")}`,

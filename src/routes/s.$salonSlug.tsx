@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
+import { useRealSalon } from "@/lib/use-real-salon";
 import { useDisplayProfile } from "@/lib/use-display-profile";
 import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "@/lib/demo-profile";
 import { weekSchedule } from "@/lib/opening-hours";
@@ -83,6 +84,11 @@ function SalonLayout() {
   useEffect(() => {
     const fromUrl = decodeDemoProfile(typeof demoRaw === "string" ? demoRaw : undefined);
     if (!fromUrl) return;
+    // Si este slug ya se ha resuelto como salón REAL, su perfil manda sobre el
+    // del enlace: aplicar aquí el `?d=` lo pisaría y — peor — se lo escribiría
+    // encima en Supabase. El enlace de demo de Adam sigue abriendo, pero
+    // enseñando su salón de verdad. Ver `useRealSalon`.
+    if (useSalonStore.getState().realSalonSlug === salonSlug) return;
     updateSalonProfile({ ...blankDemoProfile(), ...fromUrl });
     applyBusinessType(inferBusinessType(fromUrl.tagline, fromUrl.name), {
       team: fromUrl.team,
@@ -91,7 +97,12 @@ function SalonLayout() {
       smartSpread: fromUrl.smartSpread,
     });
     markDemoActive();
-  }, [demoRaw, updateSalonProfile, applyBusinessType, markDemoActive]);
+  }, [demoRaw, salonSlug, updateSalonProfile, applyBusinessType, markDemoActive]);
+
+  // ¿Es este slug un salón real (una fila en `salons`) o una demo de venta?
+  // Si es real, su perfil y su agenda vienen de Supabase y pisan el `?d=`; si
+  // no, esto no hace nada más y la página se comporta igual que siempre.
+  useRealSalon(salonSlug, "publica");
 
   useEffect(() => {
     document.title = `${profile.name} — Reserva online`;
@@ -133,7 +144,11 @@ function SalonLayout() {
                 /login exactamente igual que siempre. */}
             {publicV2 ? (
               <a
-                href="/app?v=2&acceso=demo"
+                // El slug viaja al panel (`?s=`) para que un salón real pueda
+                // entrar a SU agenda desde un móvil recién estrenado, sin nada
+                // guardado. Para una demo de venta el parámetro no existe en
+                // `salons` y el panel se comporta exactamente como siempre.
+                href={`/app?v=2&acceso=demo&s=${encodeURIComponent(salonSlug)}`}
                 className="ml-2 hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted sm:inline-flex"
               >
                 <Lock className="h-3 w-3" />

@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-ro
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, Sparkles, PhoneCall } from "lucide-react";
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
-import type { Appointment, Employee, EmployeeId, Service } from "@/lib/mock/types";
+import type { Appointment, Client, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { useSalonStore, isSlotTaken } from "@/lib/store";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import {
@@ -40,6 +40,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { es } from "date-fns/locale";
 import heroImg from "@/assets/hero-salon.jpg";
 import { registerBookingClient } from "@/lib/api/clients.functions";
+import { checkClientPenalty } from "@/lib/api/salons.functions";
 import { sumServices } from "@/lib/appointment-services";
 import { FluidSteps } from "@/components/twentyfirst/fluid-steps";
 import { eur } from "@/lib/copy";
@@ -137,10 +138,38 @@ function BookingWizard() {
   // Política de plantón (ver lib/no-show.ts): mientras el teléfono tecleado
   // coincida con un cliente que debe una penalización, se bloquea el envío —
   // se recalcula en cada tecla, no solo al perder el foco.
-  const penalizedClient = useMemo(
+  const penalizedLocal = useMemo(
     () => findClientWithPenalty(clients, data.phone),
     [clients, data.phone],
   );
+
+  // En un salón REAL la ficha del cliente vive en Supabase, no en el navegador
+  // de quien reserva: la comprobación la hace el servidor y solo devuelve el
+  // importe, nunca la lista de clientes del salón. Va con retardo porque se
+  // dispara mientras se teclea el teléfono.
+  const realSlug = useSalonStore((s) => s.realSalonSlug);
+  const [penalizedRemote, setPenalizedRemote] = useState<Client | null>(null);
+  useEffect(() => {
+    if (!realSlug) {
+      setPenalizedRemote(null);
+      return;
+    }
+    const phone = data.phone ?? "";
+    let cancelado = false;
+    const t = setTimeout(() => {
+      checkClientPenalty({ data: { slug: realSlug, phone } })
+        .then((r) => {
+          if (!cancelado) setPenalizedRemote(r.client);
+        })
+        .catch((err) => console.error("No se pudo comprobar la penalización:", err));
+    }, 350);
+    return () => {
+      cancelado = true;
+      clearTimeout(t);
+    };
+  }, [realSlug, data.phone]);
+
+  const penalizedClient = realSlug ? penalizedRemote : penalizedLocal;
 
   const selectedServices = data.serviceIds.map((id) => serviceMap[id]).filter(Boolean);
   const serviceNames = selectedServices.map((s) => s.name);
@@ -196,36 +225,48 @@ function BookingWizard() {
       employees,
     );
     const startISO = new Date(`${data.date}T${data.time}:00`).toISOString();
-    addAppointment({
-      clientId: `c-walkin-${Date.now()}`,
-      clientName: data.name,
-      serviceIds,
-      employeeId,
-      start: startISO,
-      duration: totalMin,
-      priceEur: total,
-      // Las reservas de la web pública entran como solicitud: las confirma,
-      // cambia o rechaza el salón desde el panel. Las citas creadas a mano
-      // desde el panel (NewAppointmentDialog) siguen naciendo confirmadas.
-      status: "pending",
-      note: data.note,
-    });
-    registerBookingClient({
-      data: {
-        salonSlug,
-        name: data.name,
-        phone: data.phone,
-        email: data.email,
+    addAppointment(
+      {
+        clientId: `c-walkin-${Date.now()}`,
+        clientName: data.name,
         serviceIds,
         employeeId,
-        startISO,
-        durationMin: totalMin,
+        start: startISO,
+        duration: totalMin,
         priceEur: total,
+        // Las reservas de la web pública entran como solicitud: las confirma,
+        // cambia o rechaza el salón desde el panel. Las citas creadas a mano
+        // desde el panel (NewAppointmentDialog) siguen naciendo confirmadas.
+        status: "pending",
         note: data.note,
       },
-    }).catch((err) =>
-      console.error("Supabase sync failed (booking still confirmed locally):", err),
+      // En un salón real esto es lo que crea (o reconoce) la ficha del cliente
+      // en Supabase y engancha la cita: la store lo sube sola. En una demo de
+      // venta `realSalonSlug` es null y estos datos no salen del navegador.
+      { name: data.name, phone: data.phone, email: data.email },
     );
+    if (!realSlug) {
+      // Demo de venta: se conserva tal cual estaba — la reserva queda
+      // registrada en Supabase como lead, con el status "confirmed" de
+      // siempre. En un salón real no se llama, porque `addAppointment` ya ha
+      // subido la MISMA cita con su estado "pending" y se duplicaría.
+      registerBookingClient({
+        data: {
+          salonSlug,
+          name: data.name,
+          phone: data.phone,
+          email: data.email,
+          serviceIds,
+          employeeId,
+          startISO,
+          durationMin: totalMin,
+          priceEur: total,
+          note: data.note,
+        },
+      }).catch((err) =>
+        console.error("Supabase sync failed (booking still confirmed locally):", err),
+      );
+    }
     toast.success("Solicitud enviada", {
       description: `${serviceNames.join(" + ")} · ${data.date} a las ${data.time}`,
     });
