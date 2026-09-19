@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, Sparkles, PhoneCall } from "lucide-react";
+import { ArrowLeft, Check, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
 import type { Appointment, Client, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { useSalonStore, isSlotTaken } from "@/lib/store";
@@ -19,6 +19,8 @@ import {
   lastOfferedHours,
   isBusyHour,
   pickAlternativeSlots,
+  isPriorityTime,
+  findNextAvailableSlot,
   type SpreadSlot,
 } from "@/lib/reparto";
 import { StylistAvatar } from "@/components/StylistAvatar";
@@ -80,6 +82,78 @@ function parseServiceIds(
     .split(",")
     .map((id) => id.trim())
     .filter((id) => id && serviceMap[id]);
+}
+
+/* --------------------------------------------------------------------------
+ * "Repetir mi última cita" (patrón Booksy, sin cuentas — mejora B1 de la
+ * investigación externa). Se guarda lo MÍNIMO en localStorage, por salón,
+ * para poder ofrecer un atajo de un toque la próxima vez que alguien reserve
+ * desde este mismo navegador: qué servicios y con quién, nunca datos
+ * personales (el nombre/teléfono ya viven, si acaso, en Supabase del lado del
+ * salón — no aquí). Con forma de borrarlo: el aviso trae una "x".
+ * ---------------------------------------------------------------------- */
+
+interface LastBooking {
+  serviceIds: string[];
+  employeeId: string;
+  savedAt: number;
+}
+
+function lastBookingKey(salonSlug: string): string {
+  return `trimly-last-booking:${salonSlug}`;
+}
+
+function readLastBooking(salonSlug: string): LastBooking | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(lastBookingKey(salonSlug));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<LastBooking>;
+    if (!Array.isArray(parsed.serviceIds) || parsed.serviceIds.length === 0) return null;
+    if (typeof parsed.employeeId !== "string" || !parsed.employeeId) return null;
+    return {
+      serviceIds: parsed.serviceIds.filter((id): id is string => typeof id === "string"),
+      employeeId: parsed.employeeId,
+      savedAt: typeof parsed.savedAt === "number" ? parsed.savedAt : Date.now(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeLastBooking(salonSlug: string, booking: LastBooking) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(lastBookingKey(salonSlug), JSON.stringify(booking));
+  } catch {
+    // localStorage bloqueado (modo privado, cuota llena): la próxima visita
+    // simplemente no verá el atajo, no es un error que deba interrumpir la
+    // reserva que se acaba de confirmar.
+  }
+}
+
+function clearLastBooking(salonSlug: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(lastBookingKey(salonSlug));
+  } catch {
+    // Ver comentario de writeLastBooking.
+  }
+}
+
+/** "hoy a las 12:00" / "mañana a las 12:00" / "jueves 24 a las 12:00". */
+function formatSlotLabel(dateKey: string, time: string): string {
+  const date = new Date(`${dateKey}T00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((+date - +today) / 86_400_000);
+  const dia =
+    diffDays === 0
+      ? "hoy"
+      : diffDays === 1
+        ? "mañana"
+        : date.toLocaleDateString("es-ES", { weekday: "long", day: "numeric" });
+  return `${dia} a las ${time}`;
 }
 
 type WizardData = {
@@ -185,6 +259,51 @@ function BookingWizard() {
         : undefined;
   const depositEur = depositFor(total, totalMin);
 
+  // Mejora B1 (grounding externo, patrón Booksy): "Repetir mi última cita".
+  // Se lee una sola vez al montar el wizard — si se aplica y el cliente sigue
+  // adelante, no debe reaparecer a media reserva.
+  const [lastBooking, setLastBooking] = useState<LastBooking | null>(null);
+  useEffect(() => {
+    setLastBooking(readLastBooking(salonSlug));
+  }, [salonSlug]);
+
+  const repeatServices = lastBooking?.serviceIds.map((id) => serviceMap[id]).filter(Boolean) ?? [];
+  // Válido solo si TODOS los servicios y el profesional siguen existiendo en
+  // el catálogo actual: una carta que cambió entre visitas no debe ofrecer
+  // un "repetir" con un servicio que ya no se hace.
+  const repeatValid =
+    !!lastBooking &&
+    repeatServices.length === lastBooking.serviceIds.length &&
+    !!employeeMap[lastBooking.employeeId];
+  const repeatDuration = repeatValid ? sumServices(repeatServices).durationMin : 0;
+  const repeatNextSlot = useMemo(() => {
+    if (!repeatValid || !lastBooking) return undefined;
+    return findNextAvailableSlot(employees, appointments, repeatDuration, lastBooking.employeeId, {
+      lastSlotBufferMin: profile.lastSlotBufferMin ?? 0,
+    });
+  }, [repeatValid, lastBooking, employees, appointments, repeatDuration, profile.lastSlotBufferMin]);
+  const showRepeatBanner =
+    step === 1 && data.serviceIds.length === 0 && repeatValid && !!repeatNextSlot && !!lastBooking;
+  const repeatServiceNames = repeatServices.map((s) => s.name).join(" + ");
+  const repeatEmployeeName = lastBooking ? employeeMap[lastBooking.employeeId]?.name : undefined;
+
+  function applyRepeat() {
+    if (!repeatValid || !repeatNextSlot || !lastBooking) return;
+    setData((d) => ({
+      ...d,
+      serviceIds: lastBooking.serviceIds,
+      employeeId: lastBooking.employeeId as EmployeeId,
+      date: repeatNextSlot.dateKey,
+      time: repeatNextSlot.time,
+    }));
+    setStep(4);
+  }
+
+  function dismissRepeat() {
+    clearLastBooking(salonSlug);
+    setLastBooking(null);
+  }
+
   function toggleService(id: string) {
     setData((d) => ({
       ...d,
@@ -225,6 +344,10 @@ function BookingWizard() {
       employees,
     );
     const startISO = new Date(`${data.date}T${data.time}:00`).toISOString();
+    // Mejora B1: se guarda AQUÍ (reserva ya validada, no en cada tecla) lo
+    // mínimo para poder ofrecer "repetir" la próxima vez desde este mismo
+    // navegador — nunca nombre ni teléfono, que ya viven donde corresponde.
+    writeLastBooking(salonSlug, { serviceIds, employeeId, savedAt: Date.now() });
     addAppointment(
       {
         clientId: `c-walkin-${Date.now()}`,
@@ -311,6 +434,31 @@ function BookingWizard() {
     <section className="mx-auto max-w-5xl px-5 pb-28 pt-10 md:py-16 lg:pb-16">
       <StepIndicator step={step} />
 
+      {/* Mejora B1: atajo de un toque para quien ya reservó antes en este
+          salón desde este mismo navegador (patrón Booksy, sin cuentas). */}
+      {showRepeatBanner && repeatNextSlot && (
+        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-4">
+          <Repeat className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+          <button type="button" onClick={applyRepeat} className="min-w-0 flex-1 text-left">
+            <p className="text-sm font-medium">
+              Repetir: {repeatServiceNames}
+              {repeatEmployeeName ? ` con ${repeatEmployeeName}` : ""}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Próximo hueco: {formatSlotLabel(repeatNextSlot.dateKey, repeatNextSlot.time)}
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={dismissRepeat}
+            aria-label="Descartar sugerencia de repetir cita"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
         <div className="min-w-0">
           {step === 1 && (
@@ -343,12 +491,55 @@ function BookingWizard() {
               employees={employees}
               smartSpread={!!profile.smartSpread}
               lastSlotBufferMin={profile.lastSlotBufferMin ?? 0}
+              priorityHours={profile.priorityHours ?? []}
             />
           )}
 
           {step === 4 && (
             <Step title="Tus datos">
               <div className="max-w-xl space-y-5">
+                {/* Auditoría de UX, hallazgo C8: antes no se repetían fecha,
+                    hora ni profesional justo antes de confirmar — en móvil
+                    el resumen de la barra lateral ni siquiera se ve (está
+                    "hidden lg:block"), así que se confirmaba "a ciegas". Este
+                    resumen sale en TODOS los tamaños, completo y sin cortes. */}
+                <div className="rounded-2xl border border-border/60 bg-card p-5">
+                  <p className="mb-3 text-xs uppercase tracking-widest text-muted-foreground">
+                    Resumen de tu reserva
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    {serviceNames.length > 1 ? (
+                      <div className="flex justify-between gap-3">
+                        <span className="text-muted-foreground">Servicios</span>
+                        <ul className="text-right font-medium">
+                          {serviceNames.map((name) => (
+                            <li key={name}>{name}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <SummaryRow label="Servicio" value={serviceNames[0] ?? "—"} />
+                    )}
+                    <SummaryRow
+                      label={serviceNames.length > 1 ? "Duración total" : "Duración"}
+                      value={`${totalMin} min`}
+                    />
+                    <SummaryRow label={cap(professionalWord(tipo))} value={employeeName ?? "—"} />
+                    <SummaryRow label="Fecha" value={dateLabel ?? "—"} />
+                    <SummaryRow label="Hora" value={data.time ?? "—"} />
+                  </div>
+                  <div className="my-3 border-t border-dashed border-border" />
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm text-muted-foreground">Total</span>
+                    <span className="font-display text-xl">{eur(total)}</span>
+                  </div>
+                  {depositEur > 0 && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Incluye depósito de {eur(depositEur)} a pagar en el salón.
+                    </p>
+                  )}
+                </div>
+
                 <div className="space-y-1.5">
                   <Label htmlFor="name">Nombre completo</Label>
                   <Input
@@ -654,6 +845,49 @@ function StylistStep({
   );
 }
 
+/** `SpreadSlot` + si cae dentro de una franja prioritaria del dueño — ver reparto.ts. */
+type PrioritySlot = SpreadSlot & { priority: boolean };
+
+/** Botón de una hora del paso 3. Se reutiliza en el bloque de franjas prioritarias y en las agrupadas. */
+function TimeSlotButton({
+  slot,
+  selected,
+  onClick,
+}: {
+  slot: PrioritySlot;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      disabled={!slot.available}
+      onClick={onClick}
+      title={slot.busy ? "Suele haber espera" : undefined}
+      className={cn(
+        "relative rounded-full border px-4 py-2 text-sm transition-colors",
+        !slot.available &&
+          "cursor-not-allowed border-border/40 text-muted-foreground/50 line-through",
+        slot.available && selected && "border-primary bg-primary text-primary-foreground",
+        slot.available &&
+          !selected &&
+          "border-border hover:border-primary/50 hover:bg-primary/5",
+        slot.available && slot.busy && !selected && "border-amber-500/50",
+      )}
+    >
+      {slot.time}
+      {slot.busy && slot.available && (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "absolute -right-0.5 -top-0.5 size-2 rounded-full",
+            selected ? "bg-primary-foreground" : "bg-amber-500",
+          )}
+        />
+      )}
+    </button>
+  );
+}
+
 function DateTimeStep({
   durationMin,
   stylistChoice,
@@ -664,6 +898,7 @@ function DateTimeStep({
   employees,
   smartSpread,
   lastSlotBufferMin,
+  priorityHours,
 }: {
   /** Duración total de la cita: el hueco que hay que encontrar libre. */
   durationMin: number;
@@ -677,6 +912,8 @@ function DateTimeStep({
   smartSpread: boolean;
   /** Minutos antes del cierre que dejan de ofertarse (clave "u"). 0 = como siempre. */
   lastSlotBufferMin: number;
+  /** Franjas prioritarias del dueño (clave "y"). Vacío = como siempre, sin nada destacado. */
+  priorityHours: string[];
 }) {
   const relevantEmployees = useMemo(
     () => (stylistChoice === "any" ? employees : employees.filter((e) => e.id === stylistChoice)),
@@ -768,7 +1005,7 @@ function DateTimeStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const slots = useMemo((): SpreadSlot[] => {
+  const slots = useMemo((): PrioritySlot[] => {
     if (!activeDate) return [];
     const dateKey = toDateKey(activeDate);
     const weekday = activeDate.getDay();
@@ -785,7 +1022,7 @@ function DateTimeStep({
       ? lastOfferedHours(salonRange.openMin, closeMinOffered)
       : [];
 
-    const out: SpreadSlot[] = [];
+    const out: PrioritySlot[] = [];
     for (let h = start; h < end; h++) {
       const hourOccupancy = smartSpread
         ? hourOccupancyPct(appointments, dateKey, h, employees)
@@ -804,12 +1041,12 @@ function DateTimeStep({
         const available = relevantEmployees.some(
           (e) => !isSlotTaken(appointments, e.id, iso, durationMin),
         );
-        out.push({ time: timeStr, available, busy });
+        out.push({ time: timeStr, available, busy, priority: isPriorityTime(timeStr, priorityHours) });
       }
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDate, relevantEmployees, employees, appointments, durationMin, smartSpread, lastSlotBufferMin]);
+  }, [activeDate, relevantEmployees, employees, appointments, durationMin, smartSpread, lastSlotBufferMin, priorityHours]);
 
   const groups = useMemo(() => {
     const morning = slots.filter((s) => Number(s.time.split(":")[0]) < 14);
@@ -831,6 +1068,26 @@ function DateTimeStep({
     () => (pendingBusyTime ? pickAlternativeSlots(slots, pendingBusyTime, 3) : []),
     [slots, pendingBusyTime],
   );
+
+  // Mejora B3: primer hueco libre del día que ya se está mirando — como
+  // `activeDate` se auto-selecciona en el primer día con hueco (efecto de
+  // arriba), el primer slot disponible de este día ES el primer hueco libre
+  // en todo el horizonte, sin tener que volver a recorrer 60 días aquí.
+  const firstAvailable = useMemo(() => slots.find((s) => s.available), [slots]);
+
+  // Mejora B2: franjas prioritarias del dueño — se muestran primero, con el
+  // resto detrás de "Ver todas las horas" (nunca oculto del todo). Si el
+  // dueño no ha marcado ninguna, o ninguna cae libre este día en concreto,
+  // se enseña todo directamente, exactamente como antes de este cambio.
+  const priorityAvailable = useMemo(
+    () => slots.filter((s) => s.priority && s.available),
+    [slots],
+  );
+  const hasPriorityBlock = priorityHours.length > 0 && priorityAvailable.length > 0;
+  const [showAllHours, setShowAllHours] = useState(!hasPriorityBlock);
+  useEffect(() => {
+    setShowAllHours(!hasPriorityBlock);
+  }, [hasPriorityBlock, activeDateKey]);
 
   function handleSlotClick(s: SpreadSlot) {
     if (!s.available || !activeDateKey) return;
@@ -877,6 +1134,23 @@ function DateTimeStep({
                 </p>
               )}
 
+              {/* Mejora B3 (grounding externo): el primer hueco libre del día
+                  que se está mirando, destacado y a un toque — sin tener que
+                  leer toda la lista para encontrar "lo antes posible". */}
+              {firstAvailable && !pendingBusyTime && (
+                <button
+                  type="button"
+                  onClick={() => handleSlotClick(firstAvailable)}
+                  className="mb-5 flex w-full items-center gap-2.5 rounded-xl border border-primary/40 bg-primary/5 px-4 py-3 text-left text-sm hover:bg-primary/10"
+                >
+                  <Zap className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                  <span>
+                    <span className="font-medium">Lo antes posible: </span>
+                    {activeDateKey && formatSlotLabel(activeDateKey, firstAvailable.time)}
+                  </span>
+                </button>
+              )}
+
               {pendingBusyTime && (
                 <div className="mb-5 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
                   <p className="font-medium">
@@ -906,52 +1180,57 @@ function DateTimeStep({
                 </div>
               )}
 
-              <div className="space-y-5">
-                {groups.map((g) => (
-                  <div key={g.label}>
-                    <p className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">
-                      {g.label}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {g.items.map((s) => {
-                        const isSelected =
-                          selectedDate === activeDateKey && selectedTime === s.time;
-                        return (
-                          <button
-                            key={s.time}
-                            disabled={!s.available}
-                            onClick={() => handleSlotClick(s)}
-                            title={s.busy ? "Suele haber espera" : undefined}
-                            className={cn(
-                              "relative rounded-full border px-4 py-2 text-sm transition-colors",
-                              !s.available &&
-                                "cursor-not-allowed border-border/40 text-muted-foreground/50 line-through",
-                              s.available &&
-                                isSelected &&
-                                "border-primary bg-primary text-primary-foreground",
-                              s.available &&
-                                !isSelected &&
-                                "border-border hover:border-primary/50 hover:bg-primary/5",
-                              s.available && s.busy && !isSelected && "border-amber-500/50",
-                            )}
-                          >
-                            {s.time}
-                            {s.busy && s.available && (
-                              <span
-                                aria-hidden="true"
-                                className={cn(
-                                  "absolute -right-0.5 -top-0.5 size-2 rounded-full",
-                                  isSelected ? "bg-primary-foreground" : "bg-amber-500",
-                                )}
-                              />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
+              {/* Mejora B2 (necesidad de Cardedal): franjas prioritarias del
+                  dueño primero, con el resto detrás de "Ver todas las horas"
+                  — nunca oculto del todo, para no perder la reserva. Sin
+                  franjas configuradas (el caso de las ~54 demos), esto no
+                  pinta nada y se va directo a la lista agrupada de siempre. */}
+              {hasPriorityBlock && (
+                <div className="mb-5 rounded-xl border border-primary/30 bg-primary/5 p-4">
+                  <p className="mb-2.5 text-sm font-medium">Te atendemos antes y sin esperar</p>
+                  <div className="flex flex-wrap gap-2">
+                    {priorityAvailable.map((s) => (
+                      <TimeSlotButton
+                        key={s.time}
+                        slot={s}
+                        selected={selectedDate === activeDateKey && selectedTime === s.time}
+                        onClick={() => handleSlotClick(s)}
+                      />
+                    ))}
                   </div>
-                ))}
-              </div>
+                  {!showAllHours && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllHours(true)}
+                      className="mt-3 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                    >
+                      Ver todas las horas
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {showAllHours && (
+                <div className="space-y-5">
+                  {groups.map((g) => (
+                    <div key={g.label}>
+                      <p className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">
+                        {g.label}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {g.items.map((s) => (
+                          <TimeSlotButton
+                            key={s.time}
+                            slot={s}
+                            selected={selectedDate === activeDateKey && selectedTime === s.time}
+                            onClick={() => handleSlotClick(s)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {smartSpread && slots.some((s) => s.busy && s.available) && (
                 <p className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span aria-hidden="true" className="size-2 rounded-full bg-amber-500" />
@@ -1015,16 +1294,26 @@ function BookingSummary({
             <p className="truncate text-sm font-medium">
               {serviceNames.length ? serviceNames.join(" + ") : "Elige un servicio"}
             </p>
-            <p className="font-display text-lg">
+            {/* `truncate` (auditoría de UX, hallazgo C8): con la etiqueta larga
+                del paso 4 ("Confirmar reserva — 23,00 €") no quedaba sitio y
+                "45 min" partía "45" y "min" en dos líneas. Con una sola línea
+                que recorta con "…" si hace falta, nunca más partido a medias. */}
+            <p className="truncate font-display text-lg">
               {eur(total)}
               {serviceNames.length > 0 && (
-                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                <span className="ml-2 whitespace-nowrap text-xs font-normal text-muted-foreground">
                   {durationMin} min
                 </span>
               )}
             </p>
           </div>
-          <Button onClick={onCta} disabled={ctaDisabled} className="shrink-0 rounded-full px-6">
+          {/* 44px de alto (auditoría de UX, hallazgo C9): el tamaño por
+              defecto del botón son 36px, por debajo del mínimo táctil. */}
+          <Button
+            onClick={onCta}
+            disabled={ctaDisabled}
+            className="h-11 shrink-0 rounded-full px-6"
+          >
             {ctaLabel}
           </Button>
         </div>
