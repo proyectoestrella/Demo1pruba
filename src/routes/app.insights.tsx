@@ -30,13 +30,17 @@ function Insights() {
   // las dos pantallas comparten el selector (vive en la store), así que no
   // pueden contradecirse. Los patrones de abajo, en cambio, necesitan todo el
   // histórico para significar algo — y lo dicen en su propio rótulo.
-  const { mix: fullMix, etiqueta: etiquetaPeriodo } = useMemo(() => {
+  const {
+    mix: fullMix,
+    etiqueta: etiquetaPeriodo,
+    rango,
+  } = useMemo(() => {
     const r = rangoDePeriodo(periodo, new Date(), rangoGuardado);
     const dentro = appointments.filter((a) => {
       const t = +new Date(a.start);
       return t >= +r.inicio && t < +r.fin;
     });
-    return { mix: serviceMix(dentro), etiqueta: textoRango(r) };
+    return { mix: serviceMix(dentro), etiqueta: textoRango(r), rango: r };
   }, [appointments, periodo, rangoGuardado]);
   // El total se calcula sobre TODOS los servicios, no solo sobre los cinco que
   // se listan: si no, los porcentajes salen inflados y contradicen los de la
@@ -56,7 +60,12 @@ function Insights() {
             Patrones calculados a partir de tus propias reservas — no son predicciones de una IA.
           </p>
         </div>
-        <ExportCsvButtons appointments={appointments} services={services} employees={employees} />
+        <ExportCsvButtons
+          appointments={appointments}
+          services={services}
+          employees={employees}
+          rango={rango}
+        />
       </div>
 
       <TarjetasPeriodo />
@@ -102,7 +111,7 @@ function Insights() {
                   <div className="mb-1 flex justify-between text-sm">
                     <span>{m.name}</span>
                     <span className="text-muted-foreground">
-                      €{m.revenue.toLocaleString("es")} · {pct}%
+                      {Math.round(m.revenue).toLocaleString("es-ES")} € · {pct} %
                     </span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-muted">

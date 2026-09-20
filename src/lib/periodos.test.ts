@@ -317,6 +317,11 @@ describe("textos en español", () => {
       hasta: "2026-09-07",
     });
     expect(textoComparacion("personalizado", cerrado, now)).toBe("vs. los 7 días anteriores");
+    const unDia = rangoDePeriodo("personalizado", now, {
+      desde: "2026-09-01",
+      hasta: "2026-09-01",
+    });
+    expect(textoComparacion("personalizado", unDia, now)).toBe("vs. el día anterior");
     expect(enCurso(cerrado, now)).toBe(false);
   });
 

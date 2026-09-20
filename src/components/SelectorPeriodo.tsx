@@ -18,6 +18,14 @@ import { cn } from "@/lib/utils";
 
 const BOTONES: PeriodoId[] = ["hoy", "semana", "mes", "personalizado"];
 
+/** Nombre corto para móvil — ver el comentario del contenido del botón. */
+const ETIQUETA_CORTA: Record<PeriodoId, string> = {
+  hoy: "Hoy",
+  semana: "Semana",
+  mes: "Mes",
+  personalizado: "Fechas",
+};
+
 /**
  * Selector de periodo de la analítica.
  *
@@ -41,8 +49,6 @@ export function SelectorPeriodo({ className }: { className?: string }) {
   );
 
   const rango = rangoDePeriodo(periodo, new Date(), rangoGuardado);
-  const etiquetaFechas =
-    periodo === "personalizado" && rangoGuardado ? textoRango(rango) : "Fechas";
 
   function aplicar() {
     if (!borrador?.from) return;
@@ -61,13 +67,20 @@ export function SelectorPeriodo({ className }: { className?: string }) {
         {BOTONES.map((id) => {
           const activo = periodo === id;
           const esFechas = id === "personalizado";
+          // En un móvil de 390 px "Esta semana" parte la palabra en dos líneas;
+          // el nombre corto cabe y significa lo mismo. Las fechas exactas no se
+          // meten en el botón (se truncarían a "1 sep…"): viven en la línea de
+          // abajo, que está siempre visible.
           const contenido = esFechas ? (
             <>
-              <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span className="truncate">{activo ? etiquetaFechas : "Fechas"}</span>
+              <CalendarDays className="hidden h-4 w-4 shrink-0 sm:block" aria-hidden="true" />
+              <span className="truncate">Fechas</span>
             </>
           ) : (
-            ETIQUETA_PERIODO[id]
+            <>
+              <span className="sm:hidden">{ETIQUETA_CORTA[id]}</span>
+              <span className="hidden sm:inline">{ETIQUETA_PERIODO[id]}</span>
+            </>
           );
           const clases = cn(
             // 44 px de alto: el mínimo para tocar sin fallar con el iPad en la mano.
@@ -110,7 +123,7 @@ export function SelectorPeriodo({ className }: { className?: string }) {
                   selected={borrador}
                   onSelect={setBorrador}
                   // Celdas grandes: el calendario por defecto es de ratón.
-                  className="[--cell-size:2.6rem]"
+                  className="[--cell-size:2.75rem]"
                 />
                 <div className="flex items-center justify-between gap-2 border-t border-border/60 p-3">
                   <p className="min-w-0 truncate text-xs text-muted-foreground">

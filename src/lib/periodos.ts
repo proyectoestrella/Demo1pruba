@@ -246,7 +246,7 @@ export function textoComparacion(id: PeriodoId, rango: Rango, now: Date = new Da
       return parcial ? "vs. el mes pasado a estas alturas" : "vs. el mes pasado";
     case "personalizado": {
       const dias = diasDelRango(rango);
-      return `vs. los ${dias} ${dias === 1 ? "día" : "días"} anteriores`;
+      return dias === 1 ? "vs. el día anterior" : `vs. los ${dias} días anteriores`;
     }
   }
 }

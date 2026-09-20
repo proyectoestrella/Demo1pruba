@@ -310,7 +310,11 @@ export function franjaMasFloja(
   return { dia: DIAS[Number(dia)], franja, citas };
 }
 
-export function aiInsights(appts: Appointment[], employees: Employee[] = [], now: Date = new Date()) {
+export function aiInsights(
+  appts: Appointment[],
+  employees: Employee[] = [],
+  now: Date = new Date(),
+) {
   const champion = loyaltyChampion(appts, employees);
   const mix = serviceMix(appts);
   const totalRev = mix.reduce((s, m) => s + m.revenue, 0);
@@ -334,7 +338,7 @@ export function aiInsights(appts: Appointment[], employees: Employee[] = [], now
       tone: "primary" as const,
       title: "Servicio estrella",
       body: topService
-        ? `${topService.name} genera el ${topPct}% de la facturación de este periodo.`
+        ? `${topService.name} genera el ${topPct} % de la facturación de todo tu histórico.`
         : SIN_DATOS,
       action: "Ver desglose de servicios",
     },
