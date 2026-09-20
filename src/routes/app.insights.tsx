@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { aiInsights, serviceMix } from "@/lib/derive";
-import { employees } from "@/lib/mock/salon";
+import { useEquipo } from "@/lib/use-equipo";
 import { Sparkles, TrendingDown, Heart, CalendarClock } from "lucide-react";
 import { ComingSoonAction } from "@/components/ComingSoonAction";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
@@ -9,11 +9,19 @@ import { ExportCsvButtons } from "@/components/campanas/ExportCsvButtons";
 
 export const Route = createFileRoute("/app/insights")({ component: Insights });
 
-const ICONS = { sparkles: Sparkles, "trending-down": TrendingDown, heart: Heart, "calendar-clock": CalendarClock } as const;
+const ICONS = {
+  sparkles: Sparkles,
+  "trending-down": TrendingDown,
+  heart: Heart,
+  "calendar-clock": CalendarClock,
+} as const;
 
 function Insights() {
   const appointments = useSalonStore((s) => s.appointments);
   const services = useSalonStore((s) => s.services);
+  // El equipo de la store, no el array mutado en sitio: con un solo
+  // profesional la tarjeta de fidelización deja de coronar a nadie.
+  const employees = useEquipo();
   const cards = aiInsights(appointments, employees);
   const fullMix = serviceMix(appointments);
   // El total se calcula sobre TODOS los servicios, no solo sobre los cinco que
@@ -27,7 +35,9 @@ function Insights() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-widest text-primary">Analítica</p>
-          <h1 className="font-display text-2xl md:text-3xl tracking-tight">Lo que dicen tus datos.</h1>
+          <h1 className="font-display text-2xl md:text-3xl tracking-tight">
+            Lo que dicen tus datos.
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Patrones calculados a partir de tus propias reservas — no son predicciones de una IA.
           </p>
@@ -39,7 +49,10 @@ function Insights() {
         {cards.map((c) => {
           const Icon = ICONS[c.icon as keyof typeof ICONS] ?? Sparkles;
           return (
-            <div key={c.title} className="rounded-xl border border-border/60 bg-card p-6 transition-shadow hover:shadow-sm">
+            <div
+              key={c.title}
+              className="rounded-xl border border-border/60 bg-card p-6 transition-shadow hover:shadow-sm"
+            >
               <div className="flex items-start justify-between">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <Icon className="h-4 w-4" />
@@ -66,7 +79,9 @@ function Insights() {
                 <div key={m.name}>
                   <div className="mb-1 flex justify-between text-sm">
                     <span>{m.name}</span>
-                    <span className="text-muted-foreground">€{m.revenue.toLocaleString("es")} · {pct}%</span>
+                    <span className="text-muted-foreground">
+                      €{m.revenue.toLocaleString("es")} · {pct}%
+                    </span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-muted">
                     <div
