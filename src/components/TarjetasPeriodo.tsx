@@ -8,6 +8,7 @@ import type { KpiTrend } from "@/lib/derive";
 import { KpiCard } from "@/components/KpiCard";
 import { SelectorPeriodo } from "@/components/SelectorPeriodo";
 import { cn } from "@/lib/utils";
+import { eurRedondo, pct } from "@/lib/copy";
 
 /**
  * Las cuatro cifras del periodo elegido, con su selector encima.
@@ -51,7 +52,7 @@ function trend(valor: number, anterior: number | null, spark: number[]): KpiTren
   };
 }
 
-const EUROS = (n: number) => `${Math.round(n).toLocaleString("es-ES")} €`;
+
 
 export function FilaDeTarjetas({ resumen }: { resumen: ResumenPeriodo }) {
   const { actual, previo, series, textoComparacion: contexto } = resumen;
@@ -72,7 +73,7 @@ export function FilaDeTarjetas({ resumen }: { resumen: ResumenPeriodo }) {
       label: "Caja",
       icon: Euro,
       trend: trend(actual.caja, previo.caja, series.caja),
-      format: EUROS,
+      format: eurRedondo,
     },
     {
       label: "Ocupación",
@@ -80,7 +81,7 @@ export function FilaDeTarjetas({ resumen }: { resumen: ResumenPeriodo }) {
       // `null` = el equipo no abre ni un día del rango. Se enseña 0 % pero sin
       // comparación, que es lo único honesto que se puede decir.
       trend: trend(actual.ocupacion ?? 0, previo.ocupacion, series.ocupacion),
-      format: (n) => `${Math.round(n)} %`,
+      format: pct,
     },
     {
       label: "Clientes nuevos",

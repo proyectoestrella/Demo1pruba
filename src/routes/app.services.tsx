@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSalonStore } from "@/lib/store";
 import { requiresDeposit } from "@/lib/mock/salon";
+import { eur } from "@/lib/copy";
 import type { Service } from "@/lib/mock/types";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -88,7 +89,7 @@ function ServicesPage() {
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-display text-xl">{s.name}</h3>
                 <div className="flex shrink-0 items-center gap-1">
-                  <span className="font-display text-xl">€{s.priceEur}</span>
+                  <span className="font-display text-xl">{eur(s.priceEur)}</span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="size-8">

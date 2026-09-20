@@ -304,7 +304,7 @@ export function AppointmentDetailSheet({
             </div>
             <div className="flex items-center gap-2">
               <Euro className="size-4 text-muted-foreground" />
-              <span>€{appointment.priceEur}</span>
+              <span>{eur(appointment.priceEur)}</span>
             </div>
             {appointment.note && (
               <p className="border-t border-border/60 pt-3 text-muted-foreground">

@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { eur } from "@/lib/copy";
+import { eur, eurRedondo } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 import { Users, UserPlus, Repeat, UserX, Search } from "lucide-react";
 
@@ -224,7 +224,7 @@ function Clients() {
                           })
                         : "—"}
                     </TableCell>
-                    <TableCell className="text-right font-medium">€{c.totalSpent}</TableCell>
+                    <TableCell className="text-right font-medium">{eurRedondo(c.totalSpent)}</TableCell>
                     <TableCell>
                       <TagPill tag={c.tag} />
                     </TableCell>
@@ -247,7 +247,7 @@ function Clients() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <p className="truncate font-medium">{c.name}</p>
-                    <span className="shrink-0 font-medium">€{c.totalSpent}</span>
+                    <span className="shrink-0 font-medium">{eurRedondo(c.totalSpent)}</span>
                   </div>
                   <p className="mt-1 truncate text-xs text-muted-foreground">
                     {c.pastVisits} {c.pastVisits === 1 ? "visita" : "visitas"} · {c.favoriteService}{" "}

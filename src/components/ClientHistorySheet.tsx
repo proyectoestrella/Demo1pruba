@@ -10,7 +10,7 @@ import { employeeMap } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
-import { eur } from "@/lib/copy";
+import { eur, eurRedondo } from "@/lib/copy";
 import type { Client } from "@/lib/mock/types";
 import { StylistDot } from "@/components/StylistAvatar";
 import { ClientAvatar } from "@/components/ClientAvatar";
@@ -144,7 +144,7 @@ export function ClientHistorySheet({
           <p className="text-xs text-muted-foreground">Visitas</p>
         </div>
         <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
-          <p className="font-display text-xl">€{stats.totalSpent}</p>
+          <p className="font-display text-xl">{eurRedondo(stats.totalSpent)}</p>
           <p className="text-xs text-muted-foreground">Gasto total</p>
         </div>
         <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
@@ -258,7 +258,7 @@ export function ClientHistorySheet({
                     <p className="truncate font-medium">{serviceLabelOf(a) || "—"}</p>
                     <p className="text-xs text-muted-foreground">con {emp?.name}</p>
                   </div>
-                  <span className="text-sm font-medium">€{a.priceEur}</span>
+                  <span className="text-sm font-medium">{eur(a.priceEur)}</span>
                   <StatusBadge status={a.status} />
                 </div>
               );

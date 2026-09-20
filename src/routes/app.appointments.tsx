@@ -252,7 +252,7 @@ function Appointments() {
                           </span>
                         </TableCell>
                       )}
-                      <TableCell className="text-right font-medium">€{a.priceEur}</TableCell>
+                      <TableCell className="text-right font-medium">{eur(a.priceEur)}</TableCell>
                       <TableCell>
                         <StatusBadge status={a.status} />
                       </TableCell>
@@ -366,7 +366,7 @@ function Appointments() {
                         {soloUno ? "" : ` · ${e.name}`}
                       </span>
                     </span>
-                    <span className="shrink-0 font-medium">€{a.priceEur}</span>
+                    <span className="shrink-0 font-medium">{eur(a.priceEur)}</span>
                   </div>
                   <div className="mt-3">
                     <StatusBadge status={a.status} />

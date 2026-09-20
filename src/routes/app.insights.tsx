@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { aiInsights, serviceMix } from "@/lib/derive";
+import { eurRedondo } from "@/lib/copy";
 import { useEquipo } from "@/lib/use-equipo";
 import { Sparkles, TrendingDown, Heart, CalendarClock } from "lucide-react";
 import { ComingSoonAction } from "@/components/ComingSoonAction";
@@ -114,7 +115,7 @@ function Insights() {
                   <div className="mb-1 flex justify-between text-sm">
                     <span>{m.name}</span>
                     <span className="text-muted-foreground">
-                      {Math.round(m.revenue).toLocaleString("es-ES")} € · {pct} %
+                      {eurRedondo(m.revenue)} · {pct} %
                     </span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-muted">

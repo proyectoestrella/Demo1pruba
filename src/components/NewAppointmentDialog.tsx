@@ -19,6 +19,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { sumServices } from "@/lib/appointment-services";
+import { eur } from "@/lib/copy";
 import { duracionRecordada } from "@/lib/derive";
 import { Check, ChevronsUpDown, Clock3 } from "lucide-react";
 import {
@@ -347,7 +348,7 @@ export function NewAppointmentDialog({
           <span className="text-xs text-muted-foreground" aria-live="polite">
             {chosen.length === 0
               ? "Elige uno o varios"
-              : `${chosen.length} ${chosen.length === 1 ? "elegido" : "elegidos"} · ${totalMin} min · €${total}`}
+              : `${chosen.length} ${chosen.length === 1 ? "elegido" : "elegidos"} · ${totalMin} min · ${eur(total)}`}
           </span>
         </div>
         {/* Misma mecánica que el paso 1 de la reserva pública: cada pulsación
@@ -371,7 +372,7 @@ export function NewAppointmentDialog({
                 <span className="min-w-0">
                   <span className="block truncate font-medium">{s.name}</span>
                   <span className="block text-xs text-muted-foreground">
-                    {s.durationMin} min · €{s.priceEur}
+                    {s.durationMin} min · {eur(s.priceEur)}
                   </span>
                 </span>
                 {isSelected && <Check className="size-4 shrink-0 text-primary" />}

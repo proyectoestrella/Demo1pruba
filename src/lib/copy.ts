@@ -13,3 +13,29 @@
 
 /** Formats a euro amount as Spanish currency, e.g. 38 -> "38,00 €". */
 export const eur = (n: number) => `${n.toFixed(2).replace(".", ",")} €`;
+
+/**
+ * Euros sin decimales, para cifras grandes de resumen: 1234 -> "1.234 €".
+ * Se usa donde el céntimo no aporta (caja del mes, totales de analítica);
+ * para un precio concreto de un servicio o una cita, `eur`.
+ */
+export const eurRedondo = (n: number) => `${Math.round(n).toLocaleString("es-ES")} €`;
+
+/** Porcentaje a la española, con espacio antes del signo: 87 -> "87 %". */
+export const pct = (n: number) => `${Math.round(n)} %`;
+
+/** Hora en 24 h, que es como se lee una agenda en España: "09:30". */
+export const hora = (iso: string | number | Date) =>
+  new Date(iso).toLocaleTimeString("es-ES", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+/** Fecha corta: "20 sept". */
+export const fechaCorta = (iso: string | number | Date) =>
+  new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+
+/** Fecha larga sin año: "domingo, 20 de septiembre". */
+export const fechaLarga = (iso: string | number | Date) =>
+  new Date(iso).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });

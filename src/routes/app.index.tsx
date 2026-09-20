@@ -41,6 +41,7 @@ import { usePanelV2 } from "@/lib/use-panel-v2";
 import { HoyV2 } from "@/components/HoyV2";
 import { CitasPorResolver } from "@/components/CitasPorResolver";
 import { AvisoDeudasHoy } from "@/components/DeudaCliente";
+import { eur, eurRedondo, hora, pct } from "@/lib/copy";
 
 const CHART_TOOLTIP_STYLE = {
   background: "var(--color-card)",
@@ -99,7 +100,7 @@ function HomeV1() {
       label: "Ingresos hoy",
       icon: Euro,
       trend: revenueTodayTrend(appointments),
-      format: (n) => `€${Math.round(n).toLocaleString("es")}`,
+      format: eurRedondo,
       context: "vs. ayer",
       goodDirection: "up",
     },
@@ -107,7 +108,7 @@ function HomeV1() {
       label: "Ocupación semanal",
       icon: TrendingUp,
       trend: weeklyOccupancyTrend(appointments),
-      format: (n) => `${Math.round(n)}%`,
+      format: pct,
       context: "vs. semana pasada",
       goodDirection: "up",
     },
@@ -200,7 +201,7 @@ function HomeV1() {
             <CountUp
               className="font-display text-2xl"
               to={revData.reduce((s, d) => s + d.revenue, 0)}
-              format={(v) => `€${Math.round(v).toLocaleString("es")}`}
+              format={eurRedondo}
             />
           </div>
           <div className="mt-6 h-64">
@@ -232,13 +233,13 @@ function HomeV1() {
                   tickLine={false}
                   axisLine={false}
                   width={44}
-                  tickFormatter={(v: number) => `€${v}`}
+                  tickFormatter={(v: number) => eurRedondo(v)}
                 />
                 <Tooltip
                   cursor={{ stroke: "var(--color-border)", strokeWidth: 1 }}
                   contentStyle={CHART_TOOLTIP_STYLE}
                   labelStyle={CHART_LABEL_STYLE}
-                  formatter={(value: number) => [`€${value}`, "Ingresos"]}
+                  formatter={(value: number) => [eur(value), "Ingresos"]}
                 />
                 <Area
                   type="monotone"
@@ -339,11 +340,7 @@ function HomeV1() {
                   className="flex w-full items-center gap-4 px-6 py-4 text-left transition-colors hover:bg-muted/40"
                 >
                   <div className="w-16 shrink-0 font-display text-xl">
-                    {new Date(a.start).toLocaleTimeString("es", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: false,
-                    })}
+                    {hora(a.start)}
                   </div>
                   {!soloUno && <StylistDot employeeId={a.employeeId} className="size-2.5" />}
                   <div className="min-w-0 flex-1">
@@ -353,7 +350,7 @@ function HomeV1() {
                       {soloUno ? "" : ` · con ${emp.name}`}
                     </p>
                   </div>
-                  <span className="shrink-0 text-sm font-medium">€{a.priceEur}</span>
+                  <span className="shrink-0 text-sm font-medium">{eur(a.priceEur)}</span>
                   <StatusBadge status={a.status} className="shrink-0" />
                 </button>
               );
