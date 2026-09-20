@@ -318,7 +318,7 @@ function MiWeb() {
         </span>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {/* ---------------- Editor ---------------- */}
         <div className="space-y-5">
           <Bloque titulo="Lo primero que se ve">
@@ -470,7 +470,7 @@ function MiWeb() {
         </div>
 
         {/* ---------------- Vista previa ---------------- */}
-        <div className="xl:sticky xl:top-32 xl:h-[calc(100vh-11rem)]">
+        <div className="lg:sticky lg:top-32 lg:h-[calc(100vh-11rem)]">
           <div className="flex h-full flex-col rounded-xl border border-border/60 bg-muted/30 p-3">
             <div className="mb-3 flex items-center gap-2">
               <p className="text-xs uppercase tracking-widest text-muted-foreground">
