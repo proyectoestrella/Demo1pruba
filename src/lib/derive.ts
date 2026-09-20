@@ -327,6 +327,10 @@ export function aiInsights(
   const floja = franjaMasFloja(appts, now);
   const regreso = patronDeRegreso(appts, now);
 
+  // `action: null` cuando la tarjeta no tiene datos detrás. Un botón
+  // "Generar promo para esa franja" debajo de un texto que acaba de decir que
+  // no se sabe cuál es la franja floja no lleva a ningún sitio: la pantalla
+  // ofrecía una acción que ella misma se había desmentido una línea antes.
   return [
     {
       icon: "trending-down",
@@ -335,7 +339,7 @@ export function aiInsights(
       body: floja
         ? `Los ${floja.dia} por la ${floja.franja} son la franja con menos citas de tu semana: ${floja.citas} en todo el histórico.`
         : SIN_DATOS,
-      action: "Generar promo para esa franja",
+      action: floja ? "Generar promo para esa franja" : null,
     },
     {
       icon: "sparkles",
@@ -344,7 +348,7 @@ export function aiInsights(
       body: topService
         ? `${topService.name} genera el ${topPct} % de la facturación de todo tu histórico.`
         : SIN_DATOS,
-      action: "Ver desglose de servicios",
+      action: topService ? "Ver desglose de servicios" : null,
     },
     {
       icon: "heart",
@@ -355,6 +359,8 @@ export function aiInsights(
         : employees.length < 2
           ? "Trabajas solo: no hay a quién comparar. Mira la ficha de cada cliente para ver quién repite."
           : "Todavía no hay suficientes clientes con dos visitas como para comparar al equipo.",
+      // Esta sí se sostiene siempre: la lista de clientes existe haya o no
+      // campeón, y es exactamente lo que el texto invita a mirar.
       action: champion ? `Ver clientes de ${champion.name}` : "Ver clientes",
     },
     {
@@ -368,7 +374,7 @@ export function aiInsights(
               : `${regreso.tocanEstaSemana} ${regreso.tocanEstaSemana === 1 ? "tendría" : "tendrían"} que volver esta semana y no ${regreso.tocanEstaSemana === 1 ? "tiene" : "tienen"} cita puesta.`
           }`
         : SIN_DATOS,
-      action: "Enviar recordatorio de reserva",
+      action: regreso ? "Enviar recordatorio de reserva" : null,
     },
   ];
 }

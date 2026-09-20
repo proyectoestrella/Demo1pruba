@@ -91,7 +91,16 @@ function Insights() {
               </div>
               <h3 className="mt-4 font-display text-xl">{c.title}</h3>
               <p className="mt-2 text-sm text-muted-foreground">{c.body}</p>
-              <ComingSoonAction label={c.action} />
+              {/* Sin datos detrás, sin botón: la tarjeta acaba de decir que
+                  no hay con qué sacar el patrón, así que ofrecer la acción
+                  que depende de ese patrón sería prometer lo que no hay. */}
+              {c.action ? (
+                <ComingSoonAction label={c.action} />
+              ) : (
+                <p className="mt-5 text-xs text-muted-foreground/70">
+                  Cuando tengas más reservas, aquí aparecerá qué hacer con esto.
+                </p>
+              )}
             </div>
           );
         })}
