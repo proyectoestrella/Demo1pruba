@@ -84,10 +84,7 @@ function resolveEmployee(
 }
 
 /** `?service=corte` o `?service=corte,barba`: solo cuentan los ids que existen en este catálogo. */
-function parseServiceIds(
-  param: string | undefined,
-  serviceMap: Record<string, Service>,
-): string[] {
+function parseServiceIds(param: string | undefined, serviceMap: Record<string, Service>): string[] {
   return (param ?? "")
     .split(",")
     .map((id) => id.trim())
@@ -312,7 +309,14 @@ function BookingWizard() {
     return findNextAvailableSlot(employees, appointments, repeatDuration, lastBooking.employeeId, {
       lastSlotBufferMin: profile.lastSlotBufferMin ?? 0,
     });
-  }, [repeatValid, lastBooking, employees, appointments, repeatDuration, profile.lastSlotBufferMin]);
+  }, [
+    repeatValid,
+    lastBooking,
+    employees,
+    appointments,
+    repeatDuration,
+    profile.lastSlotBufferMin,
+  ]);
   const showRepeatBanner =
     step === 1 && data.serviceIds.length === 0 && repeatValid && !!repeatNextSlot && !!lastBooking;
   const repeatServiceNames = repeatServices.map((s) => s.name).join(" + ");
@@ -559,10 +563,7 @@ function BookingWizard() {
                     {/* Con un solo profesional, esta fila repetiría el nombre
                         del salón: no se enseña. */}
                     {!soloUno && (
-                      <SummaryRow
-                        label={cap(professionalWord(tipo))}
-                        value={employeeName ?? "—"}
-                      />
+                      <SummaryRow label={cap(professionalWord(tipo))} value={employeeName ?? "—"} />
                     )}
                     <SummaryRow label="Fecha" value={dateLabel ?? "—"} />
                     <SummaryRow label="Hora" value={data.time ?? "—"} />
@@ -652,7 +653,9 @@ function BookingWizard() {
                   />
                   <span>
                     Acepto la política de cancelación: gratuita hasta{" "}
-                    {(profile.noShowFeeEur ?? 0) > 0 ? `${profile.noShowNoticeHours ?? 2} h` : "24 h"}{" "}
+                    {(profile.noShowFeeEur ?? 0) > 0
+                      ? `${profile.noShowNoticeHours ?? 2} h`
+                      : "24 h"}{" "}
                     antes de la cita.
                   </span>
                 </label>
@@ -660,8 +663,8 @@ function BookingWizard() {
                 {(profile.noShowFeeEur ?? 0) > 0 && (
                   <p className="text-xs text-muted-foreground">
                     Si no puedes venir, avísanos con {profile.noShowNoticeHours ?? 2} h de
-                    antelación; si no, la siguiente reserva lleva {eur(profile.noShowFeeEur ?? 0)} de
-                    penalización.
+                    antelación; si no, la siguiente reserva lleva {eur(profile.noShowFeeEur ?? 0)}{" "}
+                    de penalización.
                   </p>
                 )}
               </div>
@@ -781,7 +784,9 @@ function ServiceStep({
         className="divide-y divide-border/40"
       >
         {categoryOrder.map((cat) => {
-          const items = services.filter((s) => s.active !== false && (s.category ?? "Otros") === cat);
+          const items = services.filter(
+            (s) => s.active !== false && (s.category ?? "Otros") === cat,
+          );
           if (!items.length) return null;
           return (
             <AccordionItem key={cat} value={cat} className="border-b-0">
@@ -915,9 +920,7 @@ function TimeSlotButton({
         !slot.available &&
           "cursor-not-allowed border-border/40 text-muted-foreground/50 line-through",
         slot.available && selected && "border-primary bg-primary text-primary-foreground",
-        slot.available &&
-          !selected &&
-          "border-border hover:border-primary/50 hover:bg-primary/5",
+        slot.available && !selected && "border-border hover:border-primary/50 hover:bg-primary/5",
         slot.available && slot.busy && !selected && "border-amber-500/50",
       )}
     >
@@ -1065,15 +1068,11 @@ function DateTimeStep({
     const closeMinOffered = salonRange
       ? offeredCloseMin(salonRange.closeMin, lastSlotBufferMin)
       : end * 60;
-    const lastHours = salonRange
-      ? lastOfferedHours(salonRange.openMin, closeMinOffered)
-      : [];
+    const lastHours = salonRange ? lastOfferedHours(salonRange.openMin, closeMinOffered) : [];
 
     const out: PrioritySlot[] = [];
     for (let h = start; h < end; h++) {
-      const hourOccupancy = smartSpread
-        ? hourOccupancyPct(appointments, dateKey, h, employees)
-        : 0;
+      const hourOccupancy = smartSpread ? hourOccupancyPct(appointments, dateKey, h, employees) : 0;
       const busy = smartSpread && isBusyHour(h, hourOccupancy, lastHours);
       for (const m of [0, 30]) {
         // "No ofrecer los últimos X minutos": el hueco ni se lista.
@@ -1088,12 +1087,26 @@ function DateTimeStep({
         const available = relevantEmployees.some(
           (e) => !isSlotTaken(appointments, e.id, iso, durationMin),
         );
-        out.push({ time: timeStr, available, busy, priority: isPriorityTime(timeStr, priorityHours) });
+        out.push({
+          time: timeStr,
+          available,
+          busy,
+          priority: isPriorityTime(timeStr, priorityHours),
+        });
       }
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDate, relevantEmployees, employees, appointments, durationMin, smartSpread, lastSlotBufferMin, priorityHours]);
+  }, [
+    activeDate,
+    relevantEmployees,
+    employees,
+    appointments,
+    durationMin,
+    smartSpread,
+    lastSlotBufferMin,
+    priorityHours,
+  ]);
 
   const groups = useMemo(() => {
     const morning = slots.filter((s) => Number(s.time.split(":")[0]) < 14);
@@ -1126,10 +1139,7 @@ function DateTimeStep({
   // resto detrás de "Ver todas las horas" (nunca oculto del todo). Si el
   // dueño no ha marcado ninguna, o ninguna cae libre este día en concreto,
   // se enseña todo directamente, exactamente como antes de este cambio.
-  const priorityAvailable = useMemo(
-    () => slots.filter((s) => s.priority && s.available),
-    [slots],
-  );
+  const priorityAvailable = useMemo(() => slots.filter((s) => s.priority && s.available), [slots]);
   const hasPriorityBlock = priorityHours.length > 0 && priorityAvailable.length > 0;
   const [showAllHours, setShowAllHours] = useState(!hasPriorityBlock);
   useEffect(() => {
@@ -1404,9 +1414,7 @@ function BookingSummary({
           )}
           {/* Sin nombre no hay fila: en un salón de un solo profesional el
               llamante no manda ninguno (ver `soloUno` en BookingWizard). */}
-          {employeeName && (
-            <SummaryRow label={cap(professionalWord(tipo))} value={employeeName} />
-          )}
+          {employeeName && <SummaryRow label={cap(professionalWord(tipo))} value={employeeName} />}
           <SummaryRow label="Fecha" value={dateLabel ?? "—"} />
           <SummaryRow label="Hora" value={timeLabel ?? "—"} />
         </div>

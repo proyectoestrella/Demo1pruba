@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
-import { employees, serviceMap } from "@/lib/mock/salon";
+import { serviceMap } from "@/lib/mock/salon";
+import { useEquipo } from "@/lib/use-equipo";
+import { useRealSalonSlug } from "@/lib/use-real-salon";
+import { useBusinessType } from "@/lib/use-display-profile";
+import { fotoDeProfesional } from "@/lib/business-type";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { PageHeader } from "@/components/PageHeader";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { cn } from "@/lib/utils";
@@ -15,7 +20,10 @@ const DAYS = ["D", "L", "M", "X", "J", "V", "S"];
  * historial de citas — no hay un catálogo de "servicios por empleado" en
  * el modelo, así que se deriva de datos reales en vez de inventarlo.
  */
-function topServicesFor(appointments: ReturnType<typeof useSalonStore.getState>["appointments"], employeeId: string) {
+function topServicesFor(
+  appointments: ReturnType<typeof useSalonStore.getState>["appointments"],
+  employeeId: string,
+) {
   const counts = new Map<string, number>();
   for (const a of appointments) {
     if (a.employeeId !== employeeId || a.status === "cancelled") continue;
@@ -30,11 +38,31 @@ function topServicesFor(appointments: ReturnType<typeof useSalonStore.getState>[
 function Team() {
   const appointments = useSalonStore((s) => s.appointments);
   const today = new Date().getDay();
+  const employees = useEquipo();
+  const tipo = useBusinessType();
+  const salonSlug = useSalonStore((s) => s.salonProfile.slug);
+  const esSalonReal = useRealSalonSlug() === salonSlug;
+  // Trabajar solo no borra esta pantalla: el día que contrate a alguien tiene
+  // que poder darlo de alta aquí. Lo que cambia es que deja de presentarse
+  // como "el equipo" y dice lo que hay.
+  const soloUno = esSoloUnProfesional(employees);
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Equipo" description="Horarios, especialidades y disponibilidad." />
-      <div className="mx-auto grid max-w-5xl gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <PageHeader
+        title="Equipo"
+        description={
+          soloUno
+            ? "Ahora mismo trabajas tú solo. Este es tu horario y tus servicios; cuando contrates a alguien, aquí aparecerá su ficha."
+            : "Horarios, especialidades y disponibilidad."
+        }
+      />
+      <div
+        className={cn(
+          "mx-auto grid gap-5",
+          soloUno ? "max-w-md" : "max-w-5xl sm:grid-cols-2 lg:grid-cols-3",
+        )}
+      >
         {employees.map((e) => {
           const todaySlot = e.schedule[today];
           const services = topServicesFor(appointments, e.id);
@@ -44,7 +72,12 @@ function Team() {
               className="flex flex-col items-center overflow-hidden rounded-2xl border border-border/60 bg-card p-6 text-center shadow-sm transition-shadow hover:shadow-md"
             >
               <div className="relative">
-                <StylistAvatar name={e.name} employeeId={e.id} photo={e.photo} size="xl" />
+                <StylistAvatar
+                  name={e.name}
+                  employeeId={e.id}
+                  photo={fotoDeProfesional(e.name, e.id, e.photo, tipo, esSalonReal)}
+                  size="xl"
+                />
                 <span
                   className={cn(
                     "absolute bottom-1 right-1 size-4 rounded-full border-2 border-card",
@@ -70,7 +103,10 @@ function Team() {
                 )}
               >
                 <span
-                  className={cn("size-1.5 rounded-full", todaySlot ? "bg-success" : "bg-muted-foreground")}
+                  className={cn(
+                    "size-1.5 rounded-full",
+                    todaySlot ? "bg-success" : "bg-muted-foreground",
+                  )}
                   aria-hidden="true"
                 />
                 {todaySlot
@@ -117,7 +153,12 @@ function Team() {
                         !s && "opacity-50",
                       )}
                     >
-                      <p className={cn("text-muted-foreground", i === today && "font-medium text-primary")}>
+                      <p
+                        className={cn(
+                          "text-muted-foreground",
+                          i === today && "font-medium text-primary",
+                        )}
+                      >
                         {DAYS[i]}
                       </p>
                       <p className="mt-0.5 font-medium leading-tight">

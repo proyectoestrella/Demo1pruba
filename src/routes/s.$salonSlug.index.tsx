@@ -393,10 +393,7 @@ function SalonHome() {
   // o equipo reales (profile.menu/profile.team), sustituyen al catálogo y
   // equipo de ejemplo del tipo.
   const services = useMemo(() => servicesForType(tipo, profile.menu), [tipo, profile.menu]);
-  const serviceMap = useMemo(
-    () => Object.fromEntries(services.map((s) => [s.id, s])),
-    [services],
-  );
+  const serviceMap = useMemo(() => Object.fromEntries(services.map((s) => [s.id, s])), [services]);
   const employees = useMemo(() => employeesForType(tipo, profile.team), [tipo, profile.team]);
   /**
    * Adam es el único barbero de su barbería. Con un solo profesional, la
@@ -564,11 +561,7 @@ function SalonHome() {
               // sin cita y por teléfono sigan siendo caminos igual de
               // válidos, no un botón grande y dos enlaces sueltos.
               <div className="grid grid-cols-1 gap-2.5 pt-2 sm:grid-cols-3 sm:gap-3">
-                <Button
-                  asChild
-                  size="lg"
-                  className="w-full rounded-full px-6 font-medium"
-                >
+                <Button asChild size="lg" className="w-full rounded-full px-6 font-medium">
                   <Link to="/s/$salonSlug/book" params={{ salonSlug }} className="gap-2">
                     Reservar online <ArrowRight className="h-4 w-4" />
                   </Link>
@@ -809,23 +802,23 @@ function SalonHome() {
           del que hablar, y una ficha suelta de quien ya firma toda la web
           solo añade ruido (y obligaba a inventarle una foto). */}
       {!soloUno && (
-      <section id="equipo" className="border-t border-border/40 bg-card">
-        <div className="mx-auto max-w-5xl px-6 py-16 md:py-24">
-          <SectionHeading eyebrow="Equipo" title="Quién te va a atender" className="mb-12" />
-          {/* Retratos grandes en vez de avatares pequeños: en una barbería la
+        <section id="equipo" className="border-t border-border/40 bg-card">
+          <div className="mx-auto max-w-5xl px-6 py-16 md:py-24">
+            <SectionHeading eyebrow="Equipo" title="Quién te va a atender" className="mb-12" />
+            {/* Retratos grandes en vez de avatares pequeños: en una barbería la
               cara del que te va a cortar es parte de lo que se vende. */}
-          <Reveal>
-            <TeamShowcase
-              members={employees.map((e) => ({
-                id: e.id,
-                name: e.name,
-                role: `${e.specialty} · ${e.yearsExperience} años`,
-                image: fotoDe(e),
-              }))}
-            />
-          </Reveal>
-        </div>
-      </section>
+            <Reveal>
+              <TeamShowcase
+                members={employees.map((e) => ({
+                  id: e.id,
+                  name: e.name,
+                  role: `${e.specialty} · ${e.yearsExperience} años`,
+                  image: fotoDe(e),
+                }))}
+              />
+            </Reveal>
+          </div>
+        </section>
       )}
 
       {/* Reseñas.
@@ -841,9 +834,7 @@ function SalonHome() {
           <section id="resenas" className="border-t border-border/40 bg-card">
             <div className="mx-auto max-w-3xl px-6 py-16 text-center md:py-24">
               <p className="text-xs uppercase tracking-[0.25em] text-primary">Reseñas</p>
-              <h2 className="mt-2 font-display text-3xl md:text-4xl">
-                Lo que dicen en Google
-              </h2>
+              <h2 className="mt-2 font-display text-3xl md:text-4xl">Lo que dicen en Google</h2>
               <div className="mt-6 flex items-center justify-center gap-2">
                 <span className="flex" aria-hidden="true">
                   {Array.from({ length: 5 }).map((_, j) => (

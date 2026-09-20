@@ -453,7 +453,10 @@ export const FEATURED_IDS_BY_TYPE: Record<BusinessType, string[]> = {
  * se genera un avatar de iniciales sobre el mismo color de marca de cada id,
  * igual que hace `StylistAvatar` cuando no recibe foto.
  */
-export const EMPLOYEE_OVERLAY: Record<BusinessType, Record<EmployeeId, { name: string; specialty: string }>> = {
+export const EMPLOYEE_OVERLAY: Record<
+  BusinessType,
+  Record<EmployeeId, { name: string; specialty: string }>
+> = {
   barberia: {
     mario: { name: "Mario", specialty: "Cortes clásicos y degradados" },
     diego: { name: "Diego", specialty: "Degradados y diseño" },
@@ -588,7 +591,11 @@ export function parseMenuEntry(raw: string): MenuOverrideEntry | null {
   const name = (parts[0] ?? "").trim().slice(0, MENU_NAME_MAX);
   if (!name) return null;
   const durationMin = Math.round(Number(parts[1]));
-  if (!Number.isFinite(durationMin) || durationMin < MENU_DURATION_MIN || durationMin > MENU_DURATION_MAX) {
+  if (
+    !Number.isFinite(durationMin) ||
+    durationMin < MENU_DURATION_MIN ||
+    durationMin > MENU_DURATION_MAX
+  ) {
     return null;
   }
   const priceEur = Number(String(parts[2]).trim().replace(",", "."));

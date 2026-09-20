@@ -188,8 +188,7 @@ function SalonLayout() {
     const t = setTimeout(() => setGraceOver(true), 1500);
     return () => clearTimeout(t);
   }, [salonSlug]);
-  const salonUnresolved =
-    sessionChecked && graceOver && !fromUrl && realSlug !== salonSlug;
+  const salonUnresolved = sessionChecked && graceOver && !fromUrl && realSlug !== salonSlug;
 
   useEffect(() => {
     document.title = salonUnresolved ? "Salón no encontrado" : `${profile.name} — Reserva online`;

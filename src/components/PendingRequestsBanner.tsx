@@ -2,6 +2,8 @@ import { toast } from "sonner";
 import { Clock, MessageCircle } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
 import { employeeMap } from "@/lib/mock/salon";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
+import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { enlaceDeFianza } from "@/lib/avisos";
 import { eur } from "@/lib/copy";
@@ -31,6 +33,8 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const depositEnabled = useSalonStore((s) => !!s.salonProfile.depositEnabled);
   const depositBizumPhone = useSalonStore((s) => s.salonProfile.depositBizumPhone ?? "");
+  // Con un solo profesional, "con Adam" en cada solicitud es ruido.
+  const soloUno = esSoloUnProfesional(useEquipo());
   const depositAmountEur = useSalonStore((s) => s.salonProfile.depositAmountEur ?? 10);
   const pideFianza = depositEnabled && !!depositBizumPhone.trim();
 
@@ -112,15 +116,15 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
               <div className="min-w-0">
                 <p className="truncate font-medium">{a.clientName}</p>
                 <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
-                  <StylistDot employeeId={a.employeeId} className="size-2" />
+                  {!soloUno && <StylistDot employeeId={a.employeeId} className="size-2" />}
                   {serviceLabelOf(a)} ·{" "}
                   {new Date(a.start).toLocaleString("es", {
                     day: "numeric",
                     month: "short",
                     hour: "2-digit",
                     minute: "2-digit",
-                  })}{" "}
-                  · con {emp.name}
+                  })}
+                  {soloUno ? "" : ` · con ${emp.name}`}
                 </p>
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2">

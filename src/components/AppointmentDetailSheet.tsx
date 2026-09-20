@@ -3,6 +3,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
 import { useSalonStore } from "@/lib/store";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
+import { useEquipo } from "@/lib/use-equipo";
 import { employeeMap } from "@/lib/mock/salon";
 import { serviceNamesOf } from "@/lib/appointment-services";
 import { isWithinNoticeWindow } from "@/lib/no-show";
@@ -85,6 +87,8 @@ export function AppointmentDetailSheet({
   open,
   onOpenChange,
 }: AppointmentDetailSheetProps) {
+  // Un solo profesional: la ficha de la cita no repite quién atiende.
+  const soloUno = esSoloUnProfesional(useEquipo());
   // La cita llega como prop desde quien abrió el panel, y esa copia se queda
   // congelada: al cambiar el estado o marcar la confirmación del cliente, el
   // store se actualizaba pero aquí se seguía pintando el objeto viejo. Se lee
@@ -206,7 +210,9 @@ export function AppointmentDetailSheet({
     const yaCobradaAsi = appointment.paidAt && appointment.paymentMethod === metodo;
     markPaid(appointment.id, yaCobradaAsi ? null : metodo);
     toast.success(
-      yaCobradaAsi ? "Marcada como no cobrada" : `Cobrada en ${PAYMENT_METHOD_LABELS[metodo].toLowerCase()}`,
+      yaCobradaAsi
+        ? "Marcada como no cobrada"
+        : `Cobrada en ${PAYMENT_METHOD_LABELS[metodo].toLowerCase()}`,
     );
   }
 
@@ -258,21 +264,29 @@ export function AppointmentDetailSheet({
             <SheetDescription>Detalle de la cita</SheetDescription>
           </SheetHeader>
 
-          <div className="flex items-center gap-3">
-            <StylistAvatar
-              name={employeeMap[appointment.employeeId].name}
-              employeeId={appointment.employeeId}
-            />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">
-                {employeeMap[appointment.employeeId].name}
-              </p>
-              <p className="text-xs text-muted-foreground">Quién atiende</p>
-            </div>
-            <div className="ml-auto">
+          {/* "Quién atiende" con un solo profesional es el dueño del panel
+              mirándose en el espejo: solo se enseña el estado de la cita. */}
+          {soloUno ? (
+            <div className="flex items-center">
               <StatusBadge status={appointment.status} />
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <StylistAvatar
+                name={employeeMap[appointment.employeeId].name}
+                employeeId={appointment.employeeId}
+              />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">
+                  {employeeMap[appointment.employeeId].name}
+                </p>
+                <p className="text-xs text-muted-foreground">Quién atiende</p>
+              </div>
+              <div className="ml-auto">
+                <StatusBadge status={appointment.status} />
+              </div>
+            </div>
+          )}
 
           <div className="space-y-3 rounded-xl border border-border/60 bg-muted/30 p-4 text-sm">
             <div className="flex items-center gap-2">
@@ -396,8 +410,8 @@ export function AppointmentDetailSheet({
                 {appointment.depositReceivedAt ? "Señal recibida" : "Marcar señal recibida"}
               </button>
               <p className="text-xs text-muted-foreground">
-                Se abre tu WhatsApp con el mensaje escrito; lo envías tú. El Bizum llega a tu
-                banco y lo marcas aquí a mano: siShow no cobra ni comprueba nada.
+                Se abre tu WhatsApp con el mensaje escrito; lo envías tú. El Bizum llega a tu banco
+                y lo marcas aquí a mano: siShow no cobra ni comprueba nada.
               </p>
             </div>
           )}
@@ -543,7 +557,9 @@ export function AppointmentDetailSheet({
           <Dialog open={penaltyOpen} onOpenChange={setPenaltyOpen}>
             <DialogContent className="sm:max-w-sm">
               <DialogHeader>
-                <DialogTitle>¿Aplicar la penalización de {eur(noShowFeeEur)} a {client?.name}?</DialogTitle>
+                <DialogTitle>
+                  ¿Aplicar la penalización de {eur(noShowFeeEur)} a {client?.name}?
+                </DialogTitle>
                 <DialogDescription>
                   No ha avisado con {noShowNoticeHours} h de antelación. Tú decides si se la cobras
                   o se la perdonas esta vez.

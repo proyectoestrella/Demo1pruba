@@ -37,10 +37,7 @@ function Confirmation() {
   const equipo = useMemo(() => employeesForType(tipo, profile.team), [tipo, profile.team]);
   // Con un solo profesional, "con Adam" sobra: no puede ser con otro.
   const soloUno = esSoloUnProfesional(equipo);
-  const employeeMap = useMemo(
-    () => Object.fromEntries(equipo.map((e) => [e.id, e])),
-    [equipo],
-  );
+  const employeeMap = useMemo(() => Object.fromEntries(equipo.map((e) => [e.id, e])), [equipo]);
   // `service` trae uno o varios ids separados por comas, tal y como los deja el wizard.
   const chosen = sid
     .split(",")
