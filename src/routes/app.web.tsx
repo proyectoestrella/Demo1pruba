@@ -132,6 +132,18 @@ function MiWeb() {
   const alCargarPrevia = useCallback(() => {
     try {
       iframeRef.current?.contentWindow?.scrollTo(0, scrollRef.current);
+      // La vista previa es un móvil simulado: enseñar dentro la barra de
+      // scroll gris del sistema, con sus flechas, delata que es un iframe y
+      // además se come unos píxeles del ancho. Se esconde solo aquí dentro
+      // (mismo origen), sin tocar la web de verdad, y el scroll sigue yendo.
+      const doc = iframeRef.current?.contentDocument;
+      if (doc && !doc.getElementById("previa-sin-scrollbar")) {
+        const estilo = doc.createElement("style");
+        estilo.id = "previa-sin-scrollbar";
+        estilo.textContent =
+          "html{scrollbar-width:none;-ms-overflow-style:none}html::-webkit-scrollbar{width:0;height:0;display:none}";
+        doc.head.appendChild(estilo);
+      }
     } catch {
       // Otro origen o iframe aún sin documento: no pasa nada, se queda arriba.
     }

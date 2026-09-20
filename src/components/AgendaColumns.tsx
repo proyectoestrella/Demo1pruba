@@ -8,6 +8,7 @@ import { serviceLabelOf } from "@/lib/appointment-services";
 import { capitalizar, fechaLarga } from "@/lib/copy";
 import type { Appointment, EmployeeId } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
+import { TiraScroll } from "@/components/TiraScroll";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
@@ -200,7 +201,7 @@ export function AgendaColumns() {
 
       {/* Tira de la semana — salta de día sin perder el contexto de en qué
           semana estás, igual en móvil que en escritorio. */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <TiraScroll>
         {weekChips.map((d) => {
           const active = isSameDate(d, anchor);
           return (
@@ -222,7 +223,7 @@ export function AgendaColumns() {
             </button>
           );
         })}
-      </div>
+      </TiraScroll>
 
       {/* Selector de profesional — solo móvil, y solo si hay entre quién elegir. */}
       <div className={cn("md:hidden", soloUno && "hidden")}>

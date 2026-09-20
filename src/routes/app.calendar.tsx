@@ -9,6 +9,7 @@ import { serviceLabelOf } from "@/lib/appointment-services";
 import type { Appointment, Employee, EmployeeId } from "@/lib/mock/types";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TiraScroll } from "@/components/TiraScroll";
 import { PageHeader } from "@/components/PageHeader";
 import { capitalizar, fechaLarga } from "@/lib/copy";
 import { StylistDot } from "@/components/StylistAvatar";
@@ -178,7 +179,7 @@ function CalendarView() {
       />
 
       {/* Mobile day-picker chips — avoids ever cramming 7 columns into a phone screen */}
-      <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
+      <TiraScroll className="lg:hidden">
         {weekChips.map((d) => {
           const active = isSameDate(d, anchor);
           return (
@@ -200,7 +201,7 @@ function CalendarView() {
             </button>
           );
         })}
-      </div>
+      </TiraScroll>
 
       {/* Leyenda de colores por profesional. Con una sola persona no hay
           nada que distinguir: todo el calendario es suyo. */}
