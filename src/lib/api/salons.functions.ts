@@ -40,7 +40,7 @@ const APPOINTMENT_COLS_BASE =
 const APPOINTMENT_COLS_NUEVAS =
   "payment_method, paid_at, deposit_requested_at, deposit_received_at, deposit_eur";
 const CLIENT_COLS_BASE = "id, name, phone, email, notes, penalty_eur, penalty_note, created_at";
-const CLIENT_COLS_NUEVAS = "penalty_at, penalty_keep";
+const CLIENT_COLS_NUEVAS = "penalty_at, penalty_keep, penalty_block";
 const WAITLIST_COLS =
   "id, local_id, client_name, phone, service_id, preferred_employee_id, preferred_range, created_at";
 
@@ -52,7 +52,7 @@ const CAMPOS_NUEVOS_CITA = [
   "deposit_received_at",
   "deposit_eur",
 ];
-const CAMPOS_NUEVOS_CLIENTE = ["penalty_at", "penalty_keep"];
+const CAMPOS_NUEVOS_CLIENTE = ["penalty_at", "penalty_keep", "penalty_block"];
 
 /**
  * ¿Ha fallado esto porque una columna o una tabla todavía no existen?
@@ -434,6 +434,8 @@ export const applyClientPenalty = createServerFn({ method: "POST" })
       penaltyAt: z.string().nullable().optional(),
       /** El dueño mantiene el bloqueo más allá de los 30 días. */
       penaltyKeep: z.boolean().optional(),
+      /** ¿La deuda le impide reservar por la web? `false` = solo anotada. */
+      penaltyBlock: z.boolean().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -449,6 +451,7 @@ export const applyClientPenalty = createServerFn({ method: "POST" })
       penalty_note: data.note ?? null,
       penalty_at: data.penaltyAt ?? null,
       penalty_keep: data.penaltyKeep ?? false,
+      penalty_block: data.penaltyBlock ?? true,
     };
 
     const { error } = await supabase
@@ -490,6 +493,7 @@ export const clearClientPenalty = createServerFn({ method: "POST" })
       penalty_note: data.note ?? null,
       penalty_at: null,
       penalty_keep: false,
+      penalty_block: true,
     };
     const { error } = await supabase.from("clients").update(parche).eq("id", id);
     if (faltaEsquema(error)) {

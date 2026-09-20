@@ -133,6 +133,9 @@ export function pushPenalty(
       note,
       penaltyAt: cliente.penaltyAt ?? null,
       penaltyKeep: cliente.penaltyKeep ?? false,
+      // `undefined` sube como `true`: una deuda sin decisión explícita
+      // bloquea, igual que se comportaba antes de que existiera la opción.
+      penaltyBlock: cliente.penaltyBlock !== false,
     },
   }).catch(aviso(`penalización de ${cliente.name}`));
 }

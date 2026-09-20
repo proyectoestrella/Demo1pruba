@@ -59,6 +59,48 @@ export function noShowSummary(
   return `${n} ${n === 1 ? "plantón" : "plantones"} en los últimos ${meses} meses`;
 }
 
+/**
+ * Cuántas veces ha llegado tarde SIN AVISAR dentro de la ventana. Se cuenta
+ * aparte de los plantones: no es lo mismo fallar que llegar a deshora, y la
+ * decisión de Adam cambia según cuál de las dos cosas se repita.
+ */
+export function countTardes(
+  appts: Appointment[],
+  clientId: string,
+  windowDays = NO_SHOW_WINDOW_DAYS,
+  now: Date = new Date(),
+): number {
+  const desde = now.getTime() - windowDays * DAY_MS;
+  return appts.filter(
+    (a) =>
+      a.clientId === clientId &&
+      a.status === "late" &&
+      +new Date(a.start) >= desde &&
+      +new Date(a.start) <= now.getTime(),
+  ).length;
+}
+
+/**
+ * Las dos cuentas en una frase, para la ficha y el detalle de la cita:
+ * "2 plantones y 1 retraso sin avisar en los últimos 3 meses". `null` si no
+ * ha pasado ninguna de las dos cosas.
+ */
+export function historialDeFallos(
+  appts: Appointment[],
+  clientId: string,
+  windowDays = NO_SHOW_WINDOW_DAYS,
+  now: Date = new Date(),
+): string | null {
+  const plantones = countNoShows(appts, clientId, windowDays, now);
+  const tardes = countTardes(appts, clientId, windowDays, now);
+  if (plantones === 0 && tardes === 0) return null;
+  const partes: string[] = [];
+  if (plantones > 0) partes.push(`${plantones} ${plantones === 1 ? "plantón" : "plantones"}`);
+  if (tardes > 0) partes.push(`${tardes} ${tardes === 1 ? "retraso" : "retrasos"} sin avisar`);
+  const meses = Math.round(windowDays / 30);
+  return `${partes.join(" y ")} en los últimos ${meses} meses`;
+}
+
 /** Cuándo caduca el bloqueo de este cliente, o `null` si no caduca (sin fecha o mantenido a mano). */
 export function penaltyExpiresAt(client: Client | undefined): Date | null {
   if (!client || (client.penaltyEur ?? 0) <= 0) return null;
@@ -78,6 +120,10 @@ export function penaltyExpiresAt(client: Client | undefined): Date | null {
  */
 export function isPenaltyActive(client: Client | undefined, now: Date = new Date()): boolean {
   if (!client || (client.penaltyEur ?? 0) <= 0) return false;
+  // "Déjasela anotada y se la cobro cuando vuelva" (ver `Client.penaltyBlock`):
+  // debe dinero, pero puede seguir reservando. Es la decisión que Tomás
+  // subrayó, y sin esto era imposible: cualquier deuda bloqueaba.
+  if (client.penaltyBlock === false) return false;
   const caduca = penaltyExpiresAt(client);
   if (!caduca) return true;
   return now.getTime() < caduca.getTime();

@@ -59,6 +59,7 @@ export interface ClientRow {
   /** Igual que arriba: opcionales hasta que el DDL de la caducidad esté aplicado. */
   penalty_at?: string | null;
   penalty_keep?: boolean | null;
+  penalty_block?: boolean | null;
 }
 
 /** Fila de `waitlist` tal y como la devuelve PostgREST. */
@@ -151,6 +152,7 @@ export function rowToClient(row: ClientRow): Client {
     penaltyNote: row.penalty_note ?? undefined,
     penaltyAt: row.penalty_at ?? undefined,
     penaltyKeep: row.penalty_keep ?? undefined,
+    penaltyBlock: row.penalty_block ?? undefined,
   };
 }
 

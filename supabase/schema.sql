@@ -142,3 +142,23 @@ alter table clients add column if not exists penalty_keep boolean not null defau
 -- Las penalizaciones que ya existían no tienen fecha: se les pone la de ahora
 -- para que también empiecen a caducar en vez de quedarse bloqueadas para siempre.
 update clients set penalty_at = now() where penalty_eur is not null and penalty_at is null;
+
+-- ---------------------------------------------------------------------------
+-- 20/09/2026 (tarde) — la deuda por plantón se ve y se decide
+--
+-- PENDIENTE DE APLICAR EN PRODUCCIÓN. El código aguanta sin esto: si la
+-- columna no existe se guarda la ficha sin ella y la deuda se comporta como
+-- antes (deber dinero bloquea la reserva online) — ver `faltaEsquema` en
+-- src/lib/api/salons.functions.ts.
+-- ---------------------------------------------------------------------------
+
+-- ¿Esta deuda le impide volver a reservar por la web?
+--
+-- `false` es la tercera decisión del dueño, la que pidió Tomás: "déjasela
+-- anotada, que venga igual y se la cobro en el siguiente corte". `true` (el
+-- valor por defecto, y el de todas las filas que ya existían) se comporta
+-- exactamente como hasta ahora.
+alter table clients add column if not exists penalty_block boolean not null default true;
+
+-- El estado 'late' (vino tarde y sin avisar) entra por la columna `status` de
+-- appointments, que ya es texto libre: no hace falta DDL para él.

@@ -14,8 +14,9 @@ import type { AppointmentStatus } from "./mock/types";
 export const STATUS_OPTIONS: { value: AppointmentStatus; label: string }[] = [
   { value: "pending", label: "Pendiente de confirmar" },
   { value: "confirmed", label: "Confirmada" },
-  { value: "completed", label: "Completada" },
-  { value: "no-show", label: "No asistió" },
+  { value: "completed", label: "Vino" },
+  { value: "late", label: "Vino tarde sin avisar" },
+  { value: "no-show", label: "No vino" },
   { value: "cancelled", label: "Cancelada" },
 ];
 

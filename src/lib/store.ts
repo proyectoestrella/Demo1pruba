@@ -128,6 +128,15 @@ interface SalonState {
    * lo mantengo" del dueño (o su marcha atrás) — ver lib/plantones.ts.
    */
   setPenaltyKeep: (clientId: string, mantener: boolean) => void;
+  /**
+   * Deja la deuda de un cliente EXACTAMENTE así, sin interpretar nada.
+   *
+   * Es el punto único por el que pasan las tres decisiones del dueño
+   * (anotarla, perdonarla, bloquear) y, sobre todo, el "Deshacer": cada acción
+   * guarda antes el estado que había y lo devuelve tal cual llamando otra vez
+   * aquí. `{}` = no debe nada.
+   */
+  setDeuda: (clientId: string, estado: EstadoDeuda) => void;
 
   // Services (moved from static salon.ts array to reactive store state)
   addService: (s: Omit<Service, "id">) => Service;
@@ -190,6 +199,31 @@ interface SalonState {
     clients: Client[];
     waitlist: WaitlistEntry[];
   }) => void;
+}
+
+/**
+ * Los cinco campos de deuda de una ficha, juntos. Se mueven siempre en
+ * bloque: media deuda aplicada (importe sin fecha, o bloqueo sin importe) es
+ * justo lo que hacía que el panel dijera cosas distintas en cada pantalla.
+ */
+export interface EstadoDeuda {
+  penaltyEur?: number;
+  penaltyNote?: string;
+  penaltyAt?: string;
+  penaltyKeep?: boolean;
+  penaltyBlock?: boolean;
+}
+
+/** Lee de una ficha su estado de deuda, para poder devolverlo con "Deshacer". */
+export function estadoDeudaDe(client: Client | undefined): EstadoDeuda {
+  if (!client) return {};
+  return {
+    penaltyEur: client.penaltyEur,
+    penaltyNote: client.penaltyNote,
+    penaltyAt: client.penaltyAt,
+    penaltyKeep: client.penaltyKeep,
+    penaltyBlock: client.penaltyBlock,
+  };
 }
 
 /** Una demo guardada es un perfil con identidad propia para poder editarla. */
@@ -333,7 +367,9 @@ export const useSalonStore = create<SalonState>()(
       markDepositRequested: (id, eur) => {
         set((s) => ({
           appointments: s.appointments.map((a) =>
-            a.id === id ? { ...a, depositRequestedAt: new Date().toISOString(), depositEur: eur } : a,
+            a.id === id
+              ? { ...a, depositRequestedAt: new Date().toISOString(), depositEur: eur }
+              : a,
           ),
         }));
         sincronizarCita(get(), id);
@@ -414,17 +450,39 @@ export const useSalonStore = create<SalonState>()(
         pushPenaltyCleared(get().realSalonSlug, cliente, cliente?.penaltyNote);
       },
 
+      setDeuda: (clientId, estado) => {
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === clientId
+              ? {
+                  ...c,
+                  penaltyEur: estado.penaltyEur,
+                  penaltyNote: estado.penaltyNote,
+                  penaltyAt: estado.penaltyAt,
+                  penaltyKeep: estado.penaltyKeep,
+                  penaltyBlock: estado.penaltyBlock,
+                }
+              : c,
+          ),
+        }));
+        const cliente = get().clients.find((c) => c.id === clientId);
+        if (!cliente) return;
+        // Debe algo → se sube la deuda; no debe nada → se cierra en el
+        // servidor. Las dos ramas pasan por el mismo sitio para que deshacer
+        // una decisión también viaje a Supabase.
+        if ((cliente.penaltyEur ?? 0) > 0) {
+          pushPenalty(get().realSalonSlug, cliente, cliente.penaltyEur ?? 0, cliente.penaltyNote);
+        } else {
+          pushPenaltyCleared(get().realSalonSlug, cliente, cliente.penaltyNote);
+        }
+      },
+
       setPenaltyKeep: (clientId, mantener) => {
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, penaltyKeep: mantener } : c)),
         }));
         const cliente = get().clients.find((c) => c.id === clientId);
-        pushPenalty(
-          get().realSalonSlug,
-          cliente,
-          cliente?.penaltyEur ?? 0,
-          cliente?.penaltyNote,
-        );
+        pushPenalty(get().realSalonSlug, cliente, cliente?.penaltyEur ?? 0, cliente?.penaltyNote);
       },
 
       addService: (svc) => {
@@ -524,16 +582,17 @@ export const useSalonStore = create<SalonState>()(
       // carga. Si se persistiera, un navegador que abrió una vez el panel de
       // un salón real seguiría creyéndose ese panel al abrir después una demo
       // de venta — y le escribiría la demo encima al primer cambio.
-      partialize: (state) => ({
-        appointments: state.appointments,
-        waitlist: state.waitlist,
-        clients: state.clients,
-        services: state.services,
-        salonProfile: state.salonProfile,
-        savedDemos: state.savedDemos,
-        panelV2: state.panelV2,
-        demoActive: state.demoActive,
-      }) as unknown as SalonState,
+      partialize: (state) =>
+        ({
+          appointments: state.appointments,
+          waitlist: state.waitlist,
+          clients: state.clients,
+          services: state.services,
+          salonProfile: state.salonProfile,
+          savedDemos: state.savedDemos,
+          panelV2: state.panelV2,
+          demoActive: state.demoActive,
+        }) as unknown as SalonState,
       // v2: the barbershop identity rewrite (name/tagline/about/instagram,
       // service copy) needs to actually reach browsers that already
       // persisted v1 state — otherwise the old salonProfile/services would
