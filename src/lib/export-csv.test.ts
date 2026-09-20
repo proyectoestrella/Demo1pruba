@@ -49,7 +49,7 @@ describe("citasToCsv", () => {
     expect(filas).toHaveLength(2);
     expect(filas[1]).toContain("Corte de caballero");
     expect(filas[1]).toContain("Mario");
-    expect(filas[1]).toContain("Completada");
+    expect(filas[1]).toContain("Vino"); // la etiqueta de "completed" ahora es "Vino"
   });
 
   it("entrecomilla un campo que contiene el separador", () => {
