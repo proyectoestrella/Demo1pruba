@@ -480,6 +480,30 @@ export function showsRealPhotos(type: BusinessType): boolean {
   return type === "barberia";
 }
 
+/**
+ * La foto que se enseña de un profesional.
+ *
+ * Las tres fotos de stock son barberos con navaja y sirven para que una DEMO
+ * de venta no salga con huecos. En un salón REAL no valen: en la ficha de
+ * Adam salía la cara de un desconocido presentada como suya, que es el mismo
+ * fallo que las reseñas inventadas que ya se quitaron. Cuando no hay foto de
+ * verdad se enseña un avatar de iniciales, nunca una cara que no es.
+ *
+ * @param esSalonReal el salón tiene fila en Supabase (ver `use-real-salon.ts`).
+ */
+export function fotoDeProfesional(
+  name: string,
+  employeeId: EmployeeId,
+  fotoDeEjemplo: string | undefined,
+  type: BusinessType,
+  esSalonReal: boolean,
+): string {
+  if (esSalonReal || !showsRealPhotos(type) || !fotoDeEjemplo) {
+    return placeholderAvatar(name, employeeId);
+  }
+  return fotoDeEjemplo;
+}
+
 const AVATAR_COLOR_HEX: Record<EmployeeId, string> = {
   mario: "#a63a52",
   diego: "#3f6fa8",

@@ -90,3 +90,20 @@ describe("cierre de caja del día", () => {
     expect(cierreDelDia([ayer, hoy], EQUIPO, HOY).total).toBe(25);
   });
 });
+
+describe("salón de un solo profesional", () => {
+  const SOLO = [{ id: "mario", name: "Adam" }] as unknown as Employee[];
+
+  it("no desglosa por profesional: sería el total repetido", () => {
+    const appts = [
+      cita({ priceEur: 25, paidAt: HOY.toISOString(), paymentMethod: "efectivo" }),
+      cita({ priceEur: 15, paidAt: HOY.toISOString(), paymentMethod: "bizum" }),
+    ];
+    const c = cierreDelDia(appts, SOLO, HOY);
+    expect(c.porProfesional).toEqual([]);
+    // Todo lo demás sigue igual: el total y el reparto por método se calculan.
+    expect(c.total).toBe(40);
+    expect(c.porMetodo).toEqual({ efectivo: 25, bizum: 15, tarjeta: 0 });
+    expect(c.cobradas).toHaveLength(2);
+  });
+});

@@ -14,6 +14,7 @@
  * Funciones puras (nada de store ni React) para poder probarlas con `bun test`.
  */
 import type { Appointment, Employee, PaymentMethod } from "./mock/types";
+import { esSoloUnProfesional } from "./solo-profesional";
 
 export const PAYMENT_METHODS: PaymentMethod[] = ["efectivo", "bizum", "tarjeta"];
 
@@ -63,6 +64,19 @@ export function cierreDelDia(
   for (const a of cobradas) {
     const metodo = a.paymentMethod ?? "efectivo";
     porMetodo[metodo] += a.priceEur;
+  }
+
+  // Con un solo profesional, "por profesional" es el total otra vez: una
+  // fila con el nombre de Adam y la misma cifra que ya está arriba. No se
+  // calcula. Con dos o más, el desglose sigue tal cual (Alfredo, 6TREINTA).
+  if (esSoloUnProfesional(employees)) {
+    return {
+      cobradas,
+      pendientes,
+      total: cobradas.reduce((s, a) => s + a.priceEur, 0),
+      porMetodo,
+      porProfesional: [],
+    };
   }
 
   const acumulado = new Map<string, { total: number; citas: number }>();
