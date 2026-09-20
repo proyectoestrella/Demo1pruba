@@ -39,3 +39,10 @@ export const fechaCorta = (iso: string | number | Date) =>
 /** Fecha larga sin año: "domingo, 20 de septiembre". */
 export const fechaLarga = (iso: string | number | Date) =>
   new Date(iso).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+
+/**
+ * Primera letra en mayúscula y el resto tal cual. En español solo va en
+ * mayúscula la inicial: la clase `capitalize` de CSS convierte
+ * "domingo, 20 de septiembre" en "Domingo, 20 De Septiembre", que está mal.
+ */
+export const capitalizar = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);

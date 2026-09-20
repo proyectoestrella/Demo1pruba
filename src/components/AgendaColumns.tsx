@@ -5,6 +5,7 @@ import { employeeMap } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
+import { capitalizar, fechaLarga } from "@/lib/copy";
 import type { Appointment, EmployeeId } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import { StylistAvatar } from "@/components/StylistAvatar";
@@ -174,9 +175,7 @@ export function AgendaColumns() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="font-display text-lg capitalize">
-            {anchor.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })}
-          </p>
+          <p className="font-display text-lg">{capitalizar(fechaLarga(anchor))}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => shift(-1)} aria-label="Día anterior">

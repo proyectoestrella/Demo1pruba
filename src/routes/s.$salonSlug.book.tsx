@@ -55,7 +55,7 @@ import {
   totalPasos,
   type PasoReserva,
 } from "@/lib/solo-profesional";
-import { eur } from "@/lib/copy";
+import { capitalizar, eur, fechaLarga } from "@/lib/copy";
 
 export const Route = createFileRoute("/s/$salonSlug/book")({
   validateSearch: (search: Record<string, unknown>): { service?: string } => ({
@@ -1178,13 +1178,7 @@ function DateTimeStep({
         <div>
           {activeDate ? (
             <>
-              <p className="mb-4 font-display text-lg capitalize">
-                {activeDate.toLocaleDateString("es-ES", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                })}
-              </p>
+              <p className="mb-4 font-display text-lg">{capitalizar(fechaLarga(activeDate))}</p>
               {groups.length === 0 && (
                 <p className="text-sm text-muted-foreground">
                   No hay horas disponibles este día. Prueba con otra fecha.

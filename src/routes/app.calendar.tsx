@@ -10,6 +10,7 @@ import type { Appointment, Employee, EmployeeId } from "@/lib/mock/types";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/PageHeader";
+import { capitalizar, fechaLarga } from "@/lib/copy";
 import { StylistDot } from "@/components/StylistAvatar";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
@@ -134,7 +135,7 @@ function CalendarView() {
         description={
           days.length > 1
             ? `${days[0].toLocaleDateString("es", { month: "long", day: "numeric" })} — ${days[days.length - 1].toLocaleDateString("es", { month: "long", day: "numeric" })}`
-            : days[0].toLocaleDateString("es", { weekday: "long", month: "long", day: "numeric" })
+            : capitalizar(fechaLarga(days[0]))
         }
         actions={
           <div className="flex items-center gap-2">
