@@ -10,6 +10,7 @@ import {
   FIRST_NAMES_BY_TYPE,
   formatMenuEntry,
   formatTeamEntry,
+  fotoDeProfesional,
   inferBusinessType,
   parseMenuEntry,
   parseTeamEntry,
@@ -110,6 +111,23 @@ describe("equipo de ejemplo por tipo", () => {
     expect(showsRealPhotos("peluqueria")).toBe(false);
     expect(showsRealPhotos("estetica")).toBe(false);
     expect(showsRealPhotos("unisex")).toBe(false);
+  });
+
+  it("un salón REAL nunca enseña una foto de stock: avatar de iniciales", () => {
+    const foto = fotoDeProfesional("Adam", "mario", "/stock/mario.jpg", "barberia", true);
+    expect(foto.startsWith("data:image/svg+xml")).toBe(true);
+    expect(decodeURIComponent(foto)).toContain(">A<");
+  });
+
+  it("una demo de barbería sigue enseñando la foto de ejemplo de siempre", () => {
+    expect(fotoDeProfesional("Mario", "mario", "/stock/mario.jpg", "barberia", false)).toBe(
+      "/stock/mario.jpg",
+    );
+  });
+
+  it("fuera de barbería, iniciales aunque sea una demo", () => {
+    const foto = fotoDeProfesional("Marta", "mario", "/stock/mario.jpg", "peluqueria", false);
+    expect(foto.startsWith("data:image/svg+xml")).toBe(true);
   });
 });
 

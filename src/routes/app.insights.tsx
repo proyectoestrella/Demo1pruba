@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { aiInsights, serviceMix } from "@/lib/derive";
-import { employees } from "@/lib/mock/salon";
+import { useEquipo } from "@/lib/use-equipo";
 import { Sparkles, TrendingDown, Heart, CalendarClock } from "lucide-react";
 import { ComingSoonAction } from "@/components/ComingSoonAction";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
@@ -24,6 +24,9 @@ function Insights() {
   const services = useSalonStore((s) => s.services);
   const periodo = useSalonStore((s) => s.periodoAnalitica);
   const rangoGuardado = useSalonStore((s) => s.rangoAnalitica);
+  // El equipo de la store, no el array mutado en sitio: con un solo
+  // profesional la tarjeta de fidelización deja de coronar a nadie.
+  const employees = useEquipo();
   const cards = aiInsights(appointments, employees);
 
   // La mezcla de servicios respeta el MISMO periodo que las tarjetas de inicio:

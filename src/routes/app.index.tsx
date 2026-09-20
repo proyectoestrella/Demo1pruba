@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
+import { useEquipo } from "@/lib/use-equipo";
 import {
   appointmentsTodayTrend,
   cancellationsTrend,
@@ -68,6 +70,8 @@ function Home() {
 /** El "Inicio" de siempre — sin tocar. Se usa cuando el panel v2 está desactivado. */
 function HomeV1() {
   const appointments = useSalonStore((s) => s.appointments);
+  // Un solo profesional: sin punto de color ni "con Adam" en cada cita.
+  const soloUno = esSoloUnProfesional(useEquipo());
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const revData = revenueByDay(appointments, 30);
   const [selected, setSelected] = useState<Appointment | null>(null);
@@ -334,11 +338,12 @@ function HomeV1() {
                       hour12: false,
                     })}
                   </div>
-                  <StylistDot employeeId={a.employeeId} className="size-2.5" />
+                  {!soloUno && <StylistDot employeeId={a.employeeId} className="size-2.5" />}
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{a.clientName}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {serviceLabelOf(a)} · {a.duration} min · con {emp.name}
+                      {serviceLabelOf(a)} · {a.duration} min
+                      {soloUno ? "" : ` · con ${emp.name}`}
                     </p>
                   </div>
                   <span className="shrink-0 text-sm font-medium">€{a.priceEur}</span>

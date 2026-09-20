@@ -3,7 +3,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
 import { useSalonStore } from "@/lib/store";
-import { employeeMap, employees } from "@/lib/mock/salon";
+import { employeeMap } from "@/lib/mock/salon";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
+import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import type { Appointment, AppointmentStatus } from "@/lib/mock/types";
 import { Input } from "@/components/ui/input";
@@ -65,6 +67,9 @@ function Appointments() {
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const [status, setStatus] = useState<string>("all");
   const [emp, setEmp] = useState<string>("all");
+  const employees = useEquipo();
+  // Un solo profesional: sin filtro ni columna "por profesional".
+  const soloUno = esSoloUnProfesional(employees);
   const [busqueda, setBusqueda] = useState("");
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
@@ -96,10 +101,14 @@ function Appointments() {
     <div className="space-y-6">
       <PageHeader
         title="Citas"
-        description="Todas las reservas de tu equipo."
+        description={soloUno ? "Todas tus reservas." : "Todas las reservas de tu equipo."}
         actions={
           <>
-            <ExportCsvButtons appointments={appointments} services={services} employees={employees} />
+            <ExportCsvButtons
+              appointments={appointments}
+              services={services}
+              employees={employees}
+            />
             <Button size="sm" className="gap-1.5" onClick={() => setNewApptOpen(true)}>
               <Plus className="h-4 w-4" /> Nueva cita
             </Button>
@@ -133,19 +142,22 @@ function Appointments() {
             <SelectItem value="no-show">No asistió</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={emp} onValueChange={setEmp}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Profesional" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todo el equipo</SelectItem>
-            {employees.map((e) => (
-              <SelectItem key={e.id} value={e.id}>
-                {e.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Filtrar "por profesional" con un solo profesional no filtra nada. */}
+        {!soloUno && (
+          <Select value={emp} onValueChange={setEmp}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Profesional" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todo el equipo</SelectItem>
+              {employees.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -153,7 +165,11 @@ function Appointments() {
           <EmptyState
             icon={CalendarX}
             title="Sin citas con estos filtros"
-            description="Prueba a cambiar el estado o el profesional."
+            description={
+              soloUno
+                ? "Prueba a cambiar el estado o la búsqueda."
+                : "Prueba a cambiar el estado o el profesional."
+            }
           />
         </div>
       ) : (
@@ -166,7 +182,7 @@ function Appointments() {
                   <TableHead>Cuándo</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Servicio</TableHead>
-                  <TableHead>Estilista</TableHead>
+                  {!soloUno && <TableHead>Estilista</TableHead>}
                   <TableHead className="text-right">Precio</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="w-10" />
@@ -191,12 +207,14 @@ function Appointments() {
                       </TableCell>
                       <TableCell className="font-medium">{a.clientName}</TableCell>
                       <TableCell className="text-muted-foreground">{serviceLabelOf(a)}</TableCell>
-                      <TableCell>
-                        <span className="inline-flex items-center gap-1.5">
-                          <StylistDot employeeId={a.employeeId} />
-                          {e.name}
-                        </span>
-                      </TableCell>
+                      {!soloUno && (
+                        <TableCell>
+                          <span className="inline-flex items-center gap-1.5">
+                            {!soloUno && <StylistDot employeeId={a.employeeId} />}
+                            {e.name}
+                          </span>
+                        </TableCell>
+                      )}
                       <TableCell className="text-right font-medium">€{a.priceEur}</TableCell>
                       <TableCell>
                         <StatusBadge status={a.status} />
@@ -306,7 +324,8 @@ function Appointments() {
                     <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-muted-foreground">
                       <StylistDot employeeId={a.employeeId} />
                       <span className="truncate">
-                        {serviceLabelOf(a)} · {e.name}
+                        {serviceLabelOf(a)}
+                        {soloUno ? "" : ` · ${e.name}`}
                       </span>
                     </span>
                     <span className="shrink-0 font-medium">€{a.priceEur}</span>

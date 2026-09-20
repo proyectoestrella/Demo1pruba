@@ -3,7 +3,9 @@ import { CalendarX, Phone, UserPlus, Clock3, Wallet } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
 import { dayOccupancyBars, toDateKey } from "@/lib/reparto";
 import { cierreDelDia } from "@/lib/caja";
-import { employeeMap, employees } from "@/lib/mock/salon";
+import { employeeMap } from "@/lib/mock/salon";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
+import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { eur } from "@/lib/copy";
 import { PAYMENT_METHOD_LABELS, type Appointment } from "@/lib/mock/types";
@@ -44,6 +46,10 @@ export function HoyV2() {
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [phoneApptOpen, setPhoneApptOpen] = useState(false);
   const greeting = greetingForHour(new Date().getHours());
+  const employees = useEquipo();
+  // Un solo profesional: ni "con Adam" en cada cita, ni punto de color, ni
+  // desglose de caja por profesional (eso último lo decide ya `cierreDelDia`).
+  const soloUno = esSoloUnProfesional(employees);
 
   const now = new Date();
 
@@ -58,13 +64,13 @@ export function HoyV2() {
   const horasDeHoy = useMemo(
     () => dayOccupancyBars(appointments, toDateKey(now), employees, lastSlotBufferMin),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [appointments, lastSlotBufferMin],
+    [appointments, lastSlotBufferMin, employees],
   );
   // Cierre de caja del día — lo apuntado a mano, nada de pagos de verdad.
   const caja = useMemo(
     () => cierreDelDia(appointments, employees, now),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [appointments],
+    [appointments, employees],
   );
 
   const upcomingToday = appointments
@@ -280,11 +286,11 @@ export function HoyV2() {
                       hour12: false,
                     })}
                   </div>
-                  <StylistDot employeeId={a.employeeId} className="size-2.5" />
+                  {!soloUno && <StylistDot employeeId={a.employeeId} className="size-2.5" />}
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{a.clientName}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {serviceLabelOf(a)} · con {emp.name}
+                      {soloUno ? serviceLabelOf(a) : `${serviceLabelOf(a)} · con ${emp.name}`}
                     </p>
                   </div>
                   {started ? (

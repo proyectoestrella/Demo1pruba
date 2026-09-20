@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
-import { employees } from "@/lib/mock/salon";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
+import { useEquipo } from "@/lib/use-equipo";
 import type { Appointment, EmployeeId } from "@/lib/mock/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,6 +111,10 @@ export function NewAppointmentDialog({
   const [serviceIds, setServiceIds] = useState<string[]>(() =>
     [defaultServiceId ?? activeServices[0]?.id].filter((id): id is string => !!id),
   );
+  const employees = useEquipo();
+  // Con un solo profesional no hay a quién asignar: se asigna solo y el
+  // selector desaparece del formulario.
+  const soloUno = esSoloUnProfesional(employees);
   const [employeeId, setEmployeeId] = useState<EmployeeId>(defaultEmployeeId ?? employees[0].id);
   const [date, setDate] = useState(toDateInput(defaultDate ?? new Date()));
   const [time, setTime] = useState(toTimeInput(defaultDate ?? new Date()));
@@ -380,10 +385,7 @@ export function NewAppointmentDialog({
           vez tardó otra cosa. */}
       <div className="space-y-1.5">
         <Label>Duración</Label>
-        <Select
-          value={String(totalMin)}
-          onValueChange={(v) => setDuracionManual(Number(v))}
-        >
+        <Select value={String(totalMin)} onValueChange={(v) => setDuracionManual(Number(v))}>
           <SelectTrigger aria-label="Duración de la cita">
             <SelectValue />
           </SelectTrigger>
@@ -415,23 +417,25 @@ export function NewAppointmentDialog({
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label>Estilista</Label>
-          <Select value={employeeId} onValueChange={(v) => setEmployeeId(v as EmployeeId)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {employees.map((e) => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {!soloUno && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>Estilista</Label>
+            <Select value={employeeId} onValueChange={(v) => setEmployeeId(v as EmployeeId)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {employees.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">

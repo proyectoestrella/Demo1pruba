@@ -20,12 +20,14 @@ import {
   type ChatModelAdapter,
 } from "@assistant-ui/react";
 import { ArrowUp, Bot, Square, User } from "lucide-react";
-import { employees } from "@/lib/mock/salon";
+import { useEquipo } from "@/lib/use-equipo";
 import { useSalonStore } from "@/lib/store";
 import { answerFor, SUGGESTION_GROUPS } from "@/lib/assistant-answers";
 import { cn } from "@/lib/utils";
 
 function useSalonAdapter(): ChatModelAdapter {
+  // El equipo real de este salón (uno o varios), no el array de ejemplo.
+  const employees = useEquipo();
   return useMemo(
     () => ({
       async run({ messages }) {
@@ -55,7 +57,7 @@ function useSalonAdapter(): ChatModelAdapter {
         return { content: [{ type: "text" as const, text }] };
       },
     }),
-    [],
+    [employees],
   );
 }
 
@@ -113,8 +115,8 @@ function Welcome() {
     <div className="flex flex-col items-start gap-5 py-4">
       <div className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-sm text-muted-foreground">
         Pregúntame por los números de tu salón: ingresos, ocupación, clientes, agenda o una
-        recomendación. Respondo calculando sobre tus propias reservas — no invento nada ni
-        consulto fuera.
+        recomendación. Respondo calculando sobre tus propias reservas — no invento nada ni consulto
+        fuera.
       </div>
       {/* Sugerencias agrupadas por tema: más preguntas que antes, organizadas
           para que se lean de un vistazo en vez de una fila plana de chips. */}

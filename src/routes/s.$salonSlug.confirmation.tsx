@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef } from "react";
 import { Check, CalendarPlus, MapPin } from "lucide-react";
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { Button } from "@/components/ui/button";
@@ -33,10 +34,10 @@ function Confirmation() {
     () => Object.fromEntries(servicesForType(tipo, profile.menu).map((s) => [s.id, s])),
     [tipo, profile.menu],
   );
-  const employeeMap = useMemo(
-    () => Object.fromEntries(employeesForType(tipo, profile.team).map((e) => [e.id, e])),
-    [tipo, profile.team],
-  );
+  const equipo = useMemo(() => employeesForType(tipo, profile.team), [tipo, profile.team]);
+  // Con un solo profesional, "con Adam" sobra: no puede ser con otro.
+  const soloUno = esSoloUnProfesional(equipo);
+  const employeeMap = useMemo(() => Object.fromEntries(equipo.map((e) => [e.id, e])), [equipo]);
   // `service` trae uno o varios ids separados por comas, tal y como los deja el wizard.
   const chosen = sid
     .split(",")
@@ -148,7 +149,7 @@ function Confirmation() {
           <div className="min-w-0">
             <h2 className="font-display text-2xl">{serviceNames.join(" + ")}</h2>
             <p className="text-sm text-muted-foreground">
-              con {employee.name} · {employee.specialty}
+              {soloUno ? employee.specialty : `con ${employee.name} · ${employee.specialty}`}
             </p>
           </div>
         </div>

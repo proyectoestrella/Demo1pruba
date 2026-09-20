@@ -187,6 +187,10 @@ export function duracionRecordada(
 
 /** Profesional con más clientes que repiten (dos o más citas con la misma persona). */
 function loyaltyChampion(appts: Appointment[], employees: Employee[]) {
+  // "El que más fideliza del equipo" no existe si el equipo es una persona:
+  // sería compararla consigo misma. En un salón de un solo profesional la
+  // tarjeta dice que no hay nada que comparar (ver aiInsights).
+  if (employees.length < 2) return null;
   const byEmp = new Map<string, Map<string, number>>();
   for (const a of appts) {
     if (a.status === "cancelled") continue;
@@ -345,10 +349,12 @@ export function aiInsights(
     {
       icon: "heart",
       tone: "success" as const,
-      title: "Campeón en fidelización",
+      title: employees.length < 2 ? "Clientes que repiten" : "Campeón en fidelización",
       body: champion
         ? `${champion.name} tiene la mayor tasa de clientes que repiten del equipo — ${champion.pct}% vuelven.`
-        : "Todavía no hay suficientes clientes con dos visitas como para comparar al equipo.",
+        : employees.length < 2
+          ? "Trabajas solo: no hay a quién comparar. Mira la ficha de cada cliente para ver quién repite."
+          : "Todavía no hay suficientes clientes con dos visitas como para comparar al equipo.",
       action: champion ? `Ver clientes de ${champion.name}` : "Ver clientes",
     },
     {

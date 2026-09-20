@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { aiInsights, clientFrequency, duracionRecordada, patronDeRegreso } from "./derive";
-import type { Appointment, AppointmentStatus } from "./mock/types";
+import type { Appointment, AppointmentStatus, Employee } from "./mock/types";
 
 const DAY = 86_400_000;
 const AHORA = new Date("2026-09-20T12:00:00.000Z");
@@ -129,5 +129,41 @@ describe("analítica honesta con pocos datos", () => {
     const patron = patronDeRegreso(appts, AHORA);
     expect(patron).not.toBeNull();
     expect(patron!.semanasMedia).toBe(4);
+  });
+});
+
+describe("aiInsights en un salón de un solo profesional", () => {
+  const SOLO = [{ id: "mario", name: "Adam" }] as unknown as Employee[];
+  const EQUIPO = [
+    { id: "mario", name: "Mario" },
+    { id: "diego", name: "Diego" },
+  ] as unknown as Employee[];
+
+  /** Tres clientes con dos visitas cada uno, todas del mismo profesional. */
+  function historial(employeeId: string): Appointment[] {
+    const out: Appointment[] = [];
+    for (let c = 1; c <= 4; c++) {
+      out.push(cita({ clientId: `c${c}`, employeeId: employeeId as Appointment["employeeId"], start: enDias(-30) }));
+      out.push(cita({ clientId: `c${c}`, employeeId: employeeId as Appointment["employeeId"], start: enDias(-5) }));
+    }
+    return out;
+  }
+
+  it("no corona a nadie campeón del equipo cuando el equipo es una persona", () => {
+    const card = aiInsights(historial("mario"), SOLO, AHORA).find(
+      (c) => c.title === "Clientes que repiten",
+    );
+    expect(card).toBeDefined();
+    expect(card!.body).toContain("Trabajas solo");
+    expect(card!.body).not.toContain("Adam tiene la mayor tasa");
+  });
+
+  it("con dos o más profesionales sigue coronando al campeón, como siempre", () => {
+    const card = aiInsights(historial("mario"), EQUIPO, AHORA).find(
+      (c) => c.title === "Campeón en fidelización",
+    );
+    expect(card).toBeDefined();
+    expect(card!.body).toContain("Mario");
+    expect(card!.body).toContain("vuelven");
   });
 });

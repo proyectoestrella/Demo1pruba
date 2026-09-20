@@ -11,6 +11,8 @@ import {
   penaltyExpiresAt,
 } from "@/lib/plantones";
 import { employeeMap } from "@/lib/mock/salon";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
+import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { eur } from "@/lib/copy";
 import type { Client } from "@/lib/mock/types";
@@ -47,12 +49,18 @@ export interface ClientHistorySheetProps {
  * mismo patrón responsive que `NewAppointmentDialog`. Mantiene exactamente
  * el store y los datos existentes: solo cambia la presentación.
  */
-export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: ClientHistorySheetProps) {
+export function ClientHistorySheet({
+  client: clientProp,
+  open,
+  onOpenChange,
+}: ClientHistorySheetProps) {
   const isMobile = useIsMobile();
   const appointments = useSalonStore((s) => s.appointments);
   const updateClient = useSalonStore((s) => s.updateClient);
   const clearPenalty = useSalonStore((s) => s.clearPenalty);
   const setPenaltyKeep = useSalonStore((s) => s.setPenaltyKeep);
+  // Con un solo profesional, "con Adam" bajo cada visita no informa de nada.
+  const soloUno = esSoloUnProfesional(useEquipo());
   // Igual que AppointmentDetailSheet: la prop llega congelada en el momento
   // del clic (quien abre el sheet guarda una copia). Cobrado/Perdonar cambian
   // el store desde AQUÍ MISMO, con el sheet todavía abierto — sin releer la
@@ -87,9 +95,7 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
     updateClient(client.id, { notes: trimmed });
   }
 
-  const ownAppointments = client
-    ? appointments.filter((a) => a.clientId === client.id)
-    : [];
+  const ownAppointments = client ? appointments.filter((a) => a.clientId === client.id) : [];
   const now = Date.now();
   const upcoming = ownAppointments
     .filter((a) => a.status !== "cancelled" && +new Date(a.start) >= now)
@@ -202,7 +208,10 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
         <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
           <p className="font-display text-xl">
             {stats.lastVisit
-              ? new Date(stats.lastVisit).toLocaleDateString("es", { day: "2-digit", month: "short" })
+              ? new Date(stats.lastVisit).toLocaleDateString("es", {
+                  day: "2-digit",
+                  month: "short",
+                })
               : "—"}
           </p>
           <p className="text-xs text-muted-foreground">Última visita</p>
@@ -210,7 +219,10 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
         <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
           <p className="font-display text-xl">
             {stats.nextVisit
-              ? new Date(stats.nextVisit).toLocaleDateString("es", { day: "2-digit", month: "short" })
+              ? new Date(stats.nextVisit).toLocaleDateString("es", {
+                  day: "2-digit",
+                  month: "short",
+                })
               : "—"}
           </p>
           <p className="text-xs text-muted-foreground">Próxima cita</p>
@@ -244,10 +256,10 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
                       minute: "2-digit",
                     })}
                   </div>
-                  <StylistDot employeeId={a.employeeId} />
+                  {!soloUno && <StylistDot employeeId={a.employeeId} />}
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{serviceLabelOf(a) || "—"}</p>
-                    <p className="text-xs text-muted-foreground">con {emp?.name}</p>
+                    {!soloUno && <p className="text-xs text-muted-foreground">con {emp?.name}</p>}
                   </div>
                   <StatusBadge status={a.status} />
                 </div>
@@ -295,7 +307,7 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
                       month: "short",
                     })}
                   </div>
-                  <StylistDot employeeId={a.employeeId} />
+                  {!soloUno && <StylistDot employeeId={a.employeeId} />}
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{serviceLabelOf(a) || "—"}</p>
                     <p className="text-xs text-muted-foreground">con {emp?.name}</p>

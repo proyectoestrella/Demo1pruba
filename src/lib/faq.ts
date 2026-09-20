@@ -49,6 +49,7 @@ export function faqPorDefecto(
   tipo: BusinessType,
   noShowFeeEur: number,
   noShowNoticeHours: number,
+  soloUnProfesional = false,
 ): FaqEntry[] {
   const palabra = professionalWord(tipo);
   const respuestaCancelacion =
@@ -67,10 +68,18 @@ export function faqPorDefecto(
       q: "¿Atendéis sin cita previa?",
       a: "Si hay hueco, sí — pero la agenda suele ir llena. Reservar online es la forma segura de tener sitio.",
     },
-    {
-      q: `¿Puedo elegir ${palabra}?`,
-      a: "Claro. En el paso 2 de la reserva eliges profesional, o dejas «cualquiera disponible» si lo que te corre prisa es la hora.",
-    },
+    // Con un solo profesional, preguntar «¿puedo elegir barbero?» y responder
+    // que sí sería mentira; y la pregunta que de verdad se hace quien reserva
+    // es otra.
+    soloUnProfesional
+      ? {
+          q: "¿Quién me va a atender?",
+          a: "Siempre la misma persona: aquí no hay turnos ni sustitutos. Por eso la reserva tiene solo tres pasos — servicio, hora y tus datos.",
+        }
+      : {
+          q: `¿Puedo elegir ${palabra}?`,
+          a: "Claro. En el paso 2 de la reserva eliges profesional, o dejas «cualquiera disponible» si lo que te corre prisa es la hora.",
+        },
   ];
 }
 
@@ -86,11 +95,12 @@ export function faqPublica(
   noShowFeeEur: number,
   noShowNoticeHours: number,
   propias: string[] | undefined,
+  soloUnProfesional = false,
 ): FaqEntry[] {
   const limpias = (propias ?? [])
     .map(parseFaqEntry)
     .filter((e): e is FaqEntry => e !== null)
     .slice(0, MAX_FAQ_ENTRIES);
   if (limpias.length > 0) return limpias;
-  return faqPorDefecto(tipo, noShowFeeEur, noShowNoticeHours);
+  return faqPorDefecto(tipo, noShowFeeEur, noShowNoticeHours, soloUnProfesional);
 }
