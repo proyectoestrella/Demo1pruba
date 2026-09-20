@@ -416,17 +416,11 @@
 
 /* Deja libre el alto de la barra fija más un respiro, para que la última línea
    no quede pegada al borde de la barra. Dos variantes según dónde desaparece
-   la barra: la del panel y la de la reserva se van a partir de 1024 px, y la
-   de la web pública a partir de 768 px. Al cortarse dentro de la propia clase
-   no hace falta un `lg:pb-*` que compita con ella por especificidad. */
-.hueco-barra-fija,
-.hueco-barra-fija-md {
+   la barra: tanto la del panel como la del flujo de reserva se van a partir
+   de 1024 px. Al cortarse dentro de la propia clase no hace falta un
+   `lg:pb-*` que compita con ella por especificidad. */
+.hueco-barra-fija {
   padding-bottom: calc(var(--alto-barra-fija) + 1rem);
-}
-@media (min-width: 48rem) {
-  .hueco-barra-fija-md {
-    padding-bottom: 0;
-  }
 }
 @media (min-width: 64rem) {
   .hueco-barra-fija {

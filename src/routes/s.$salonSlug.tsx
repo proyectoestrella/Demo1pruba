@@ -217,14 +217,17 @@ function SalonLayout() {
   }
 
   return (
-    // El hueco de abajo lo reserva el contenedor entero, pie incluido: las dos
-    // barras fijas de la web pública (la de «Reservar cita» de la home y la de
-    // resumen del flujo de reserva) tapaban la última fila de lo que hubiera
-    // debajo — la última tanda de huecos horarios, en el caso del flujo. La
-    // clase se apaga sola en el ancho donde cada barra desaparece.
+    // En el flujo de reserva, el hueco de abajo lo reserva el contenedor
+    // entero, pie incluido: la barra fija de resumen tapaba la última fila de
+    // lo que hubiera debajo. La clase se apaga sola a partir de 1024 px, que
+    // es donde esa barra desaparece.
+    //
+    // En la home NO hace falta: su barra de «Reservar cita» ya se esconde sola
+    // al llegar el pie (ver MobileBookingBar), y reservarle sitio dejaría una
+    // banda negra vacía al final de la página.
     <div
       className={`min-h-screen bg-background text-foreground ${
-        onBooking ? "hueco-barra-fija" : "hueco-barra-fija-md"
+        onBooking ? "hueco-barra-fija" : ""
       }`}
     >
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
