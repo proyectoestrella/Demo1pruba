@@ -19,8 +19,6 @@ import {
   employeesForType,
   servicesForType,
   requiresDeposit,
-  DEPOSIT_RATE,
-  DEPOSIT_THRESHOLD_MIN,
 } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
 import { useRealSalonSlug } from "@/lib/use-real-salon";
@@ -65,6 +63,7 @@ import { WordRotate } from "@/components/magicui/word-rotate";
 import { TeamShowcase } from "@/components/twentyfirst/team-showcase";
 import { cn } from "@/lib/utils";
 import { eur } from "@/lib/copy";
+import { faqPublica } from "@/lib/faq";
 
 export const Route = createFileRoute("/s/$salonSlug/")({
   component: SalonHome,
@@ -251,34 +250,6 @@ function bentoItemsFor(tipo: BusinessType, noShowFeeEur: number, noShowNoticeHou
   ];
 }
 
-function faqFor(tipo: BusinessType, noShowFeeEur: number, noShowNoticeHours: number) {
-  const palabra = professionalWord(tipo);
-  const respuestaCancelacion =
-    noShowFeeEur > 0
-      ? `Sí. Hasta ${noShowNoticeHours} h antes puedes cancelar o mover la cita sin coste desde el enlace que recibes al reservar. Pasada esa hora, la siguiente reserva lleva ${eur(noShowFeeEur)} de penalización.`
-      : "Sí. Hasta 24 horas antes puedes cancelar o mover la cita sin coste desde el enlace que recibes al reservar.";
-  return [
-    {
-      q: "¿Puedo cancelar o cambiar la cita?",
-      a: respuestaCancelacion,
-    },
-    {
-      q: "¿Hace falta pagar por adelantado?",
-      a: `Solo en los servicios largos, de más de ${DEPOSIT_THRESHOLD_MIN} minutos: se pide un depósito del ${Math.round(
-        DEPOSIT_RATE * 100,
-      )}% que se descuenta del total y se abona en el salón.`,
-    },
-    {
-      q: "¿Atendéis sin cita previa?",
-      a: "Si hay hueco, sí — pero la agenda suele ir llena. Reservar online es la forma segura de tener sitio.",
-    },
-    {
-      q: `¿Puedo elegir ${palabra}?`,
-      a: "Claro. En el paso 2 de la reserva eliges profesional, o dejas «cualquiera disponible» si lo que te corre prisa es la hora.",
-    },
-  ];
-}
-
 /** Tarjeta de reseña del muro. Ancho fijo: es lo que espera un marquee. */
 function ReviewCard({ name, rating, quote }: Review) {
   return (
@@ -373,7 +344,7 @@ function SalonHome() {
   const noShowFeeEur = profile.noShowFeeEur ?? 0;
   const noShowNoticeHours = profile.noShowNoticeHours ?? 2;
   const bentoItems = bentoItemsFor(tipo, noShowFeeEur, noShowNoticeHours);
-  const faq = faqFor(tipo, noShowFeeEur, noShowNoticeHours);
+  const faq = faqPublica(tipo, noShowFeeEur, noShowNoticeHours, profile.faq);
   // v2: como mucho dos reseñas de ejemplo, y ya van marcadas "Ejemplo" — el
   // cambio priorizado #9 del informe pide "copy del salón real, nunca
   // genérico"; cinco reseñas inventadas pesan más que dos.

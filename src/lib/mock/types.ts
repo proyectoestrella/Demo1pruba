@@ -186,6 +186,13 @@ export interface SalonProfile {
    */
   menu?: string[];
   /**
+   * Preguntas frecuentes propias del salón, de 1 a 8 entradas
+   * ("Pregunta~Respuesta" — ver `parseFaqEntry` en lib/faq.ts). Vacío o
+   * ausente = las cuatro preguntas que la app genera sola a partir del tipo de
+   * negocio y de la política de plantón (`faqPorDefecto`).
+   */
+  faq?: string[];
+  /**
    * Política de plantón: importe en euros que se pide antes de poder volver a
    * reservar tras cancelar tarde o no presentarse. `undefined` o 0 =
    * desactivada — nada cambia respecto a como funcionaba antes. Ver
