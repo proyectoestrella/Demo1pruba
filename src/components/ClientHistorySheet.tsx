@@ -4,12 +4,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { clientFrequency } from "@/lib/derive";
-import {
-  daysUntilPenaltyExpiry,
-  isPenaltyActive,
-  noShowSummary,
-  penaltyExpiresAt,
-} from "@/lib/plantones";
+import { historialDeFallos } from "@/lib/plantones";
+import { BandaDeuda } from "@/components/DeudaCliente";
 import { employeeMap } from "@/lib/mock/salon";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { eur } from "@/lib/copy";
@@ -47,12 +43,14 @@ export interface ClientHistorySheetProps {
  * mismo patrón responsive que `NewAppointmentDialog`. Mantiene exactamente
  * el store y los datos existentes: solo cambia la presentación.
  */
-export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: ClientHistorySheetProps) {
+export function ClientHistorySheet({
+  client: clientProp,
+  open,
+  onOpenChange,
+}: ClientHistorySheetProps) {
   const isMobile = useIsMobile();
   const appointments = useSalonStore((s) => s.appointments);
   const updateClient = useSalonStore((s) => s.updateClient);
-  const clearPenalty = useSalonStore((s) => s.clearPenalty);
-  const setPenaltyKeep = useSalonStore((s) => s.setPenaltyKeep);
   // Igual que AppointmentDetailSheet: la prop llega congelada en el momento
   // del clic (quien abre el sheet guarda una copia). Cobrado/Perdonar cambian
   // el store desde AQUÍ MISMO, con el sheet todavía abierto — sin releer la
@@ -63,16 +61,8 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
   );
   const client = stored ?? clientProp;
   const stats = client ? clientFrequency(appointments, client.id) : null;
-  // Plantones y caducidad del bloqueo — ver lib/plantones.ts.
-  const plantones = client ? noShowSummary(appointments, client.id) : null;
-  const bloqueado = isPenaltyActive(client ?? undefined);
-  const caducaEl = penaltyExpiresAt(client ?? undefined);
-  const diasRestantes = daysUntilPenaltyExpiry(client ?? undefined);
-
-  function handleClearPenalty(motivo: "cobrado" | "perdonado") {
-    if (!client) return;
-    clearPenalty(client.id, motivo);
-  }
+  // Plantones y retrasos sin avisar de los últimos 3 meses — ver lib/plantones.ts.
+  const plantones = client ? historialDeFallos(appointments, client.id) : null;
 
   // Borrador local para no reescribir el store en cada tecla: se guarda al salir del campo.
   const [notes, setNotes] = useState(client?.notes ?? "");
@@ -87,9 +77,7 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
     updateClient(client.id, { notes: trimmed });
   }
 
-  const ownAppointments = client
-    ? appointments.filter((a) => a.clientId === client.id)
-    : [];
+  const ownAppointments = client ? appointments.filter((a) => a.clientId === client.id) : [];
   const now = Date.now();
   const upcoming = ownAppointments
     .filter((a) => a.status !== "cancelled" && +new Date(a.start) >= now)
@@ -140,50 +128,10 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
         </div>
       )}
 
-      {/* Penalización pendiente (política de plantón) — solo si debe algo. */}
-      {(client.penaltyEur ?? 0) > 0 && (
-        <div className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-destructive">
-                Debe {eur(client.penaltyEur!)}
-                {client.penaltyNote ? ` · ${client.penaltyNote}` : ""}
-              </p>
-            </div>
-            <div className="flex shrink-0 gap-2">
-              <Button size="sm" variant="outline" onClick={() => handleClearPenalty("cobrado")}>
-                Cobrado
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => handleClearPenalty("perdonado")}>
-                Perdonar
-              </Button>
-            </div>
-          </div>
-
-          {/* El bloqueo para volver a reservar caduca solo a los 30 días. La
-              deuda no: sigue aquí hasta que el dueño la cobre o la perdone. */}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-destructive/20 pt-3">
-            <p className="text-xs text-muted-foreground">
-              {client.penaltyKeep
-                ? "Bloqueo mantenido por ti: no se levanta solo."
-                : bloqueado && caducaEl
-                  ? `No puede reservar online hasta el ${caducaEl.toLocaleDateString("es", { day: "numeric", month: "long" })}${diasRestantes ? ` (${diasRestantes} ${diasRestantes === 1 ? "día" : "días"})` : ""}.`
-                  : bloqueado
-                    ? "No puede reservar online mientras deba esta cantidad."
-                    : "El bloqueo ya se ha levantado solo: puede volver a reservar online."}
-            </p>
-            <Button
-              size="sm"
-              variant={client.penaltyKeep ? "secondary" : "outline"}
-              onClick={() => {
-                setPenaltyKeep(client.id, !client.penaltyKeep);
-              }}
-            >
-              {client.penaltyKeep ? "Dejar que caduque" : "Mantener el bloqueo"}
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* Lo que debe y las tres salidas: cobrada, perdonada, o bloquear.
+          Mismo componente que el inicio y el detalle de la cita, para que las
+          tres pantallas no puedan decir cosas distintas. */}
+      <BandaDeuda client={client} />
 
       {/* KPIs del cliente */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -202,7 +150,10 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
         <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
           <p className="font-display text-xl">
             {stats.lastVisit
-              ? new Date(stats.lastVisit).toLocaleDateString("es", { day: "2-digit", month: "short" })
+              ? new Date(stats.lastVisit).toLocaleDateString("es", {
+                  day: "2-digit",
+                  month: "short",
+                })
               : "—"}
           </p>
           <p className="text-xs text-muted-foreground">Última visita</p>
@@ -210,7 +161,10 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
         <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
           <p className="font-display text-xl">
             {stats.nextVisit
-              ? new Date(stats.nextVisit).toLocaleDateString("es", { day: "2-digit", month: "short" })
+              ? new Date(stats.nextVisit).toLocaleDateString("es", {
+                  day: "2-digit",
+                  month: "short",
+                })
               : "—"}
           </p>
           <p className="text-xs text-muted-foreground">Próxima cita</p>
