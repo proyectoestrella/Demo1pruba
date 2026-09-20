@@ -318,9 +318,13 @@ function MiWeb() {
         </span>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      {/* `min-w-0` en la rejilla y en sus dos columnas: sin él, la columna de
+          la vista previa impone su ancho real (390 px del móvil simulado) como
+          ancho mínimo de la única columna que hay en móvil, y la pantalla
+          entera se iba 42 px a la derecha con los campos cortados. */}
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {/* ---------------- Editor ---------------- */}
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           <Bloque titulo="Lo primero que se ve">
             <Campo
               etiqueta="Nombre del salón"
@@ -470,8 +474,8 @@ function MiWeb() {
         </div>
 
         {/* ---------------- Vista previa ---------------- */}
-        <div className="lg:sticky lg:top-32 lg:h-[calc(100vh-11rem)]">
-          <div className="flex h-full flex-col rounded-xl border border-border/60 bg-muted/30 p-3">
+        <div className="min-w-0 lg:sticky lg:top-32 lg:h-[calc(100vh-11rem)]">
+          <div className="flex h-full min-w-0 flex-col rounded-xl border border-border/60 bg-muted/30 p-3">
             <div className="mb-3 flex items-center gap-2">
               <p className="text-xs uppercase tracking-widest text-muted-foreground">
                 Tu web, de verdad
@@ -564,7 +568,7 @@ function Marco({ ancho, children }: { ancho: number; children: React.ReactNode }
   }, [ancho]);
 
   return (
-    <div ref={hueco} className="min-h-[480px] flex-1 overflow-hidden">
+    <div ref={hueco} className="min-h-[480px] w-full min-w-0 flex-1 overflow-hidden">
       {/* Envoltorio al tamaño YA escalado: es lo que ocupa sitio y lo que se
           centra. Dentro va el marco a su tamaño real, escalado desde la
           esquina — centrar un elemento más ancho que su hueco no funciona. */}
