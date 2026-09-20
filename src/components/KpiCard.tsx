@@ -10,16 +10,10 @@ export interface KpiCardProps {
   icon: LucideIcon;
   trend: KpiTrend;
   format: (n: number) => string;
-  /** Context label for the comparison, e.g. "vs. ayer" or "vs. semana pasada". */
+  /** Contra qué se compara, ya en español: "vs. ayer a esta hora", "vs. el mes pasado". */
   context: string;
   /** Whether an increase in this metric is good news (ingresos) or bad news (cancelaciones). */
   goodDirection: "up" | "down";
-  /**
-   * Variación que se enseña cuando no hay con qué comparar (ayer sin citas en
-   * los datos de ejemplo). En una demo, "Sin datos previos" o un 0 % gris
-   * leen como panel roto; un valor verosímil lee como negocio en marcha.
-   */
-  fallbackPct?: number;
   className?: string;
 }
 
@@ -44,11 +38,13 @@ export function KpiCard({
   format,
   context,
   goodDirection,
-  fallbackPct,
   className,
 }: KpiCardProps) {
-  const real = trend.deltaPct === null ? null : Math.round(trend.deltaPct);
-  const rounded = (real === null || real === 0) && fallbackPct !== undefined ? fallbackPct : real;
+  // Sin relleno: si no hay periodo anterior con el que comparar, la tarjeta lo
+  // dice. Antes existía un `fallbackPct` que pintaba un "+12 %" inventado
+  // cuando el dato real era `null` — en el panel de un salón de verdad eso es
+  // mentir al dueño sobre su propio negocio.
+  const rounded = trend.deltaPct === null ? null : Math.round(trend.deltaPct);
   const tone = toneFor(rounded, goodDirection);
   const styles = TONE[tone];
   const DeltaIcon = rounded === null || rounded === 0 ? Minus : rounded > 0 ? ArrowUp : ArrowDown;
@@ -70,7 +66,7 @@ export function KpiCard({
           title={context}
         >
           <DeltaIcon className="h-3 w-3" aria-hidden="true" />
-          {rounded === null ? "Sin datos previos" : `${rounded > 0 ? "+" : ""}${rounded}%`}
+          {rounded === null ? "Sin comparación" : `${rounded > 0 ? "+" : ""}${rounded}%`}
         </div>
       </div>
       <CountUp

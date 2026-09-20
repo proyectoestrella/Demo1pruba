@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { PeriodoId, RangoPersonalizado } from "./periodos";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { seedAppointments, seedWaitlist, clients as seedClients, buildSeed } from "./mock/seed";
 import {
@@ -157,6 +158,17 @@ interface SalonState {
     overrides?: { team?: string[]; menu?: string[]; noShowFeeEur?: number; smartSpread?: boolean },
   ) => void;
 
+  /**
+   * Periodo elegido en el selector de la analítica (inicio y Analítica usan el
+   * mismo, para que las dos pantallas no cuenten historias distintas).
+   * Se persiste: el dueño que trabaja por semanas abre el panel ya en semanas.
+   */
+  periodoAnalitica: PeriodoId;
+  /** Fechas del periodo "a medida", cuando `periodoAnalitica` es `personalizado`. */
+  rangoAnalitica: RangoPersonalizado | null;
+  /** Cambia el periodo de la analítica. Elegir fechas concretas pasa el rango. */
+  setPeriodoAnalitica: (id: PeriodoId, rango?: RangoPersonalizado | null) => void;
+
   /** Activa/desactiva el rediseño v2 del panel — ver `panelV2` arriba. */
   setPanelV2: (v: boolean) => void;
   /** Marca que esta demo se abrió desde un enlace público — ver `demoActive` arriba. */
@@ -244,6 +256,16 @@ export const useSalonStore = create<SalonState>()(
       demoActive: false,
       realSalonSlug: null,
       lastFreedSlot: null,
+      periodoAnalitica: "hoy",
+      rangoAnalitica: null,
+
+      setPeriodoAnalitica: (id, rango) =>
+        set((s) => ({
+          periodoAnalitica: id,
+          // Un rango a medida solo se pisa si llega uno nuevo: volver a "Hoy" y
+          // luego a "Fechas" recupera las que ya había elegido.
+          rangoAnalitica: rango === undefined ? s.rangoAnalitica : rango,
+        })),
 
       setLastFreedSlot: (startISO) => set({ lastFreedSlot: startISO }),
 
@@ -333,7 +355,9 @@ export const useSalonStore = create<SalonState>()(
       markDepositRequested: (id, eur) => {
         set((s) => ({
           appointments: s.appointments.map((a) =>
-            a.id === id ? { ...a, depositRequestedAt: new Date().toISOString(), depositEur: eur } : a,
+            a.id === id
+              ? { ...a, depositRequestedAt: new Date().toISOString(), depositEur: eur }
+              : a,
           ),
         }));
         sincronizarCita(get(), id);
@@ -419,12 +443,7 @@ export const useSalonStore = create<SalonState>()(
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, penaltyKeep: mantener } : c)),
         }));
         const cliente = get().clients.find((c) => c.id === clientId);
-        pushPenalty(
-          get().realSalonSlug,
-          cliente,
-          cliente?.penaltyEur ?? 0,
-          cliente?.penaltyNote,
-        );
+        pushPenalty(get().realSalonSlug, cliente, cliente?.penaltyEur ?? 0, cliente?.penaltyNote);
       },
 
       addService: (svc) => {
@@ -524,16 +543,19 @@ export const useSalonStore = create<SalonState>()(
       // carga. Si se persistiera, un navegador que abrió una vez el panel de
       // un salón real seguiría creyéndose ese panel al abrir después una demo
       // de venta — y le escribiría la demo encima al primer cambio.
-      partialize: (state) => ({
-        appointments: state.appointments,
-        waitlist: state.waitlist,
-        clients: state.clients,
-        services: state.services,
-        salonProfile: state.salonProfile,
-        savedDemos: state.savedDemos,
-        panelV2: state.panelV2,
-        demoActive: state.demoActive,
-      }) as unknown as SalonState,
+      partialize: (state) =>
+        ({
+          appointments: state.appointments,
+          waitlist: state.waitlist,
+          clients: state.clients,
+          services: state.services,
+          salonProfile: state.salonProfile,
+          savedDemos: state.savedDemos,
+          panelV2: state.panelV2,
+          demoActive: state.demoActive,
+          periodoAnalitica: state.periodoAnalitica,
+          rangoAnalitica: state.rangoAnalitica,
+        }) as unknown as SalonState,
       // v2: the barbershop identity rewrite (name/tagline/about/instagram,
       // service copy) needs to actually reach browsers that already
       // persisted v1 state — otherwise the old salonProfile/services would

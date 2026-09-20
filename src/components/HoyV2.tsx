@@ -1,22 +1,6 @@
 import { useMemo, useState } from "react";
-import {
-  Calendar,
-  Euro,
-  CalendarX,
-  Phone,
-  UserPlus,
-  TrendingUp,
-  Users,
-  Clock3,
-  Wallet,
-} from "lucide-react";
+import { CalendarX, Phone, UserPlus, Clock3, Wallet } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
-import {
-  appointmentsTodayTrend,
-  revenueTodayTrend,
-  weeklyOccupancyTrend,
-  newClientsTrend,
-} from "@/lib/derive";
 import { dayOccupancyBars, toDateKey } from "@/lib/reparto";
 import { cierreDelDia } from "@/lib/caja";
 import { employeeMap, employees } from "@/lib/mock/salon";
@@ -30,7 +14,7 @@ import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { WalkInDialog } from "@/components/WalkInDialog";
-import { KpiCard } from "@/components/KpiCard";
+import { TarjetasPeriodo } from "@/components/TarjetasPeriodo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -99,7 +83,7 @@ export function HoyV2() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl tracking-tight">{greeting}</h1>
-        <p className="text-sm text-muted-foreground">Así va {salonName} hoy.</p>
+        <p className="text-sm text-muted-foreground">Así va {salonName}.</p>
       </div>
 
       {/* Las dos acciones que pasan de verdad en el mostrador: alguien que
@@ -133,42 +117,7 @@ export function HoyV2() {
 
       <PendingRequestsBanner onOpenDetail={setSelected} />
 
-      <div className="grid grid-cols-2 gap-3">
-        <KpiCard
-          label="Citas hoy"
-          icon={Calendar}
-          trend={appointmentsTodayTrend(appointments)}
-          format={(n) => Math.round(n).toString()}
-          context="vs. ayer"
-          goodDirection="up"
-          fallbackPct={12}
-        />
-        <KpiCard
-          label="Caja de hoy"
-          icon={Euro}
-          trend={revenueTodayTrend(appointments)}
-          format={(n) => `€${Math.round(n).toLocaleString("es")}`}
-          context="vs. ayer"
-          goodDirection="up"
-          fallbackPct={9}
-        />
-        <KpiCard
-          label="Ocupación semanal"
-          icon={TrendingUp}
-          trend={weeklyOccupancyTrend(appointments)}
-          format={(n) => `${Math.round(n)}%`}
-          context="vs. semana pasada"
-          goodDirection="up"
-        />
-        <KpiCard
-          label="Clientes nuevos"
-          icon={Users}
-          trend={newClientsTrend(appointments)}
-          format={(n) => Math.round(n).toString()}
-          context="vs. semana pasada"
-          goodDirection="up"
-        />
-      </div>
+      <TarjetasPeriodo />
 
       {/* Plantones pendientes — solo si la política está activa y hay algo que cobrar. */}
       {noShowFeeEur > 0 && clientesPenalizados > 0 && (
@@ -288,7 +237,9 @@ export function HoyV2() {
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">Día cerrado: todo marcado como cobrado.</p>
+              <p className="text-xs text-muted-foreground">
+                Día cerrado: todo marcado como cobrado.
+              </p>
             )}
 
             <p className="text-xs text-muted-foreground">
@@ -357,11 +308,7 @@ export function HoyV2() {
       />
       <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
       {/* `allowChaining`: los sábados de Cardedal son 60 llamadas seguidas. */}
-      <NewAppointmentDialog
-        open={phoneApptOpen}
-        onOpenChange={setPhoneApptOpen}
-        allowChaining
-      />
+      <NewAppointmentDialog open={phoneApptOpen} onOpenChange={setPhoneApptOpen} allowChaining />
     </div>
   );
 }
