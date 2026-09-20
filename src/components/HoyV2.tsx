@@ -7,7 +7,7 @@ import { employeeMap } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
-import { eur } from "@/lib/copy";
+import { eur, hora } from "@/lib/copy";
 import { PAYMENT_METHOD_LABELS, type Appointment } from "@/lib/mock/types";
 import { StylistDot } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -80,7 +80,7 @@ export function HoyV2() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl tracking-tight">{greeting}</h1>
+        <h1 className="font-display text-2xl md:text-3xl tracking-tight text-foreground">{greeting}</h1>
         <p className="text-sm text-muted-foreground">Así va {salonName}.</p>
       </div>
 
@@ -89,6 +89,8 @@ export function HoyV2() {
           delante), y qué citas de estos días quedaron sin marcar. */}
       <AvisoDeudasHoy />
       <CitasPorResolver />
+
+      <PendingRequestsBanner onOpenDetail={setSelected} />
 
       {/* Las dos acciones que pasan de verdad en el mostrador: alguien que
           entra sin haber reservado, y alguien que llama por teléfono. Una
@@ -119,7 +121,56 @@ export function HoyV2() {
         </Button>
       </div>
 
-      <PendingRequestsBanner onOpenDetail={setSelected} />
+      {/* Lo que pasa hoy va antes que cómo va el mes: al abrir el panel
+          en el mostrador, lo primero que se busca es la siguiente cita,
+          no la ocupación del periodo. Las cifras quedan debajo, de
+          contexto. */}
+      <div className="min-w-0 rounded-xl border border-border/60 bg-card">
+        <div className="flex items-center justify-between border-b border-border/60 px-5 py-3.5">
+          <h2 className="font-display text-base">Citas de hoy</h2>
+          <span className="text-xs text-muted-foreground">{upcomingToday.length} hoy</span>
+        </div>
+        {upcomingToday.length === 0 ? (
+          <EmptyState
+            icon={CalendarX}
+            title="Sin citas para hoy"
+            description="Cuando reserven o crees una cita, aparecerá aquí."
+          />
+        ) : (
+          <div className="divide-y divide-border/60">
+            {upcomingToday.map((a) => {
+              const emp = employeeMap[a.employeeId];
+              const started = new Date(a.start) <= now;
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => setSelected(a)}
+                  className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-muted/40"
+                >
+                  <div className="w-14 shrink-0 font-display text-lg">
+                    {hora(a.start)}
+                  </div>
+                  {!soloUno && <StylistDot employeeId={a.employeeId} className="size-2.5" />}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{a.clientName}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {soloUno ? serviceLabelOf(a) : `${serviceLabelOf(a)} · con ${emp.name}`}
+                    </p>
+                  </div>
+                  {started ? (
+                    <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                      En curso
+                    </span>
+                  ) : (
+                    <StatusBadge status={a.status} className="shrink-0" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       <TarjetasPeriodo />
 
@@ -216,11 +267,7 @@ export function HoyV2() {
                     className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border/60 px-3 py-2 text-left text-sm transition-colors hover:bg-muted/40"
                   >
                     <span className="w-12 shrink-0 tabular-nums text-muted-foreground">
-                      {new Date(a.start).toLocaleTimeString("es", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: false,
-                      })}
+                      {hora(a.start)}
                     </span>
                     <span className="min-w-0 flex-1 truncate">{a.clientName}</span>
                     <span className="shrink-0 tabular-nums text-muted-foreground">
@@ -242,57 +289,6 @@ export function HoyV2() {
           </div>
         </div>
       )}
-
-      <div className="min-w-0 rounded-xl border border-border/60 bg-card">
-        <div className="flex items-center justify-between border-b border-border/60 px-5 py-3.5">
-          <h2 className="font-display text-base">Próximas citas</h2>
-          <span className="text-xs text-muted-foreground">{upcomingToday.length} hoy</span>
-        </div>
-        {upcomingToday.length === 0 ? (
-          <EmptyState
-            icon={CalendarX}
-            title="Sin citas para hoy"
-            description="Cuando reserven o crees una cita, aparecerá aquí."
-          />
-        ) : (
-          <div className="divide-y divide-border/60">
-            {upcomingToday.map((a) => {
-              const emp = employeeMap[a.employeeId];
-              const started = new Date(a.start) <= now;
-              return (
-                <button
-                  key={a.id}
-                  type="button"
-                  onClick={() => setSelected(a)}
-                  className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-muted/40"
-                >
-                  <div className="w-14 shrink-0 font-display text-lg">
-                    {new Date(a.start).toLocaleTimeString("es", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: false,
-                    })}
-                  </div>
-                  {!soloUno && <StylistDot employeeId={a.employeeId} className="size-2.5" />}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{a.clientName}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {soloUno ? serviceLabelOf(a) : `${serviceLabelOf(a)} · con ${emp.name}`}
-                    </p>
-                  </div>
-                  {started ? (
-                    <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-                      En curso
-                    </span>
-                  ) : (
-                    <StatusBadge status={a.status} className="shrink-0" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
 
       <AppointmentDetailSheet
         appointment={selected}
