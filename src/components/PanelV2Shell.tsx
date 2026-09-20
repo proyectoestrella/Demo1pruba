@@ -10,6 +10,7 @@ import {
   Megaphone,
   Clock,
   Settings,
+  Globe,
   ArrowUpRight,
   Sparkles,
   type LucideIcon,
@@ -66,6 +67,7 @@ const MAIN_ITEMS: NavItem[] = [
 ];
 
 const MORE_ITEMS: NavItem[] = [
+  { to: "/app/web", label: "Mi web", icon: Globe },
   { to: "/app/waitlist", label: "Lista de espera", icon: Clock },
   { to: "/app/services", label: "Servicios", icon: Scissors },
   { to: "/app/employees", label: "Equipo", icon: Users },

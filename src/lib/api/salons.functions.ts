@@ -117,24 +117,44 @@ export const getSalonProfile = createServerFn({ method: "GET" })
   });
 
 /**
- * Guarda el perfil del salón. La llama Ajustes cada vez que el dueño cambia
- * algo, en fire-and-forget: en local ya se aplicó al instante.
+ * Guarda el perfil del salón.
+ *
+ * Tiene dos llamantes con exigencias distintas, y por eso devuelve un motivo
+ * en vez de solo un booleano:
+ *
+ *   - La store (`pushSalonProfile`), en fire-and-forget: el cambio ya está
+ *     aplicado en local y un fallo solo se escribe en consola.
+ *   - «Mi web» (`/app/web`), que espera la respuesta antes de decirle al dueño
+ *     que su web ya está publicada. Ahí hace falta distinguir "no hay backend
+ *     configurado" y "el esquema todavía no está aplicado" —dos cosas que no
+ *     son culpa suya ni se arreglan reintentando— de un fallo de verdad, que
+ *     sí sube como excepción para que la pantalla lo cuente y no pierda nada
+ *     de lo escrito.
  */
+export type MotivoNoPublicado = "sin-backend" | "falta-esquema";
+
 export const saveSalonProfile = createServerFn({ method: "POST" })
   .inputValidator(z.object({ slug, profile: z.record(z.string(), z.unknown()) }))
-  .handler(async ({ data }) => {
-    const supabase = getSupabaseServerClient();
-    if (!supabase) return { synced: false as const };
+  .handler(
+    async ({
+      data,
+    }): Promise<{ synced: true } | { synced: false; motivo: MotivoNoPublicado }> => {
+      const supabase = getSupabaseServerClient();
+      if (!supabase) return { synced: false as const, motivo: "sin-backend" as const };
 
-    const { error } = await supabase
-      .from("salons")
-      .upsert(
-        { slug: data.slug, profile: data.profile, updated_at: new Date().toISOString() },
-        { onConflict: "slug" },
-      );
-    if (error) throw new Error(`saveSalonProfile: ${error.message}`);
-    return { synced: true as const };
-  });
+      const { error } = await supabase
+        .from("salons")
+        .upsert(
+          { slug: data.slug, profile: data.profile, updated_at: new Date().toISOString() },
+          { onConflict: "slug" },
+        );
+      if (faltaEsquema(error)) {
+        return { synced: false as const, motivo: "falta-esquema" as const };
+      }
+      if (error) throw new Error(`saveSalonProfile: ${error.message}`);
+      return { synced: true as const };
+    },
+  );
 
 /* ---------------------------------------------------------------------- */
 /* Agenda                                                                  */

@@ -14,6 +14,7 @@ import {
   Menu,
   Plus,
   Compass,
+  Globe,
   Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { salon } from "@/lib/mock/salon";
@@ -69,6 +70,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { to: "/app/clients", label: "Clientes", icon: Users },
       { to: "/app/employees", label: "Equipo", icon: Users },
       { to: "/app/services", label: "Servicios", icon: Scissors },
+      { to: "/app/web", label: "Mi web", icon: Globe },
     ],
   },
   {
