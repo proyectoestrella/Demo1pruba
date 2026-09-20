@@ -504,7 +504,7 @@ export function resumenDelMes(campanas: Campana[]): { recuperables: number; huec
  */
 export const COMPARATIVA_OTRAS_PLATAFORMAS: { concepto: string; otras: string; siShow: string }[] = [
   {
-    concepto: "Campaña de email (por 1.000 envíos)",
+    concepto: "Campaña de correo (por 1.000 envíos)",
     otras: "1 €",
     siShow: "Sin coste extra: lista y mensaje desde el panel",
   },

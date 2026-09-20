@@ -618,13 +618,13 @@ function BookingWizard() {
                 )}
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="email">Email (opcional)</Label>
+                  <Label htmlFor="email">Correo (opcional)</Label>
                   <Input
                     id="email"
                     type="email"
                     value={data.email ?? ""}
                     onChange={(e) => setData((d) => ({ ...d, email: e.target.value }))}
-                    placeholder="tunombre@email.com"
+                    placeholder="tunombre@correo.com"
                   />
                 </div>
                 <div className="space-y-1.5">

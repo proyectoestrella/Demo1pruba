@@ -78,6 +78,16 @@ const MORE_ITEMS: NavItem[] = [
 
 const ALL_SIDEBAR_ITEMS = [...MAIN_ITEMS, ...MORE_ITEMS];
 
+/**
+ * Pantallas que no están en el menú pero sí tienen nombre propio. Sin esto la
+ * barra de arriba ponía "Panel" en Citas mientras el título de la página
+ * ponía "Citas": dos nombres para la misma pantalla.
+ */
+const TITULOS_EXTRA: Record<string, string> = {
+  "/app/appointments": "Citas",
+  "/app/demos": "Demos",
+};
+
 function isActive(to: string, path: string, exact?: boolean) {
   return exact ? path === to : path === to || path.startsWith(to + "/");
 }
@@ -89,7 +99,7 @@ export function PanelV2Shell() {
   const [assistantOpen, setAssistantOpen] = useState(false);
   const activeMain = MAIN_ITEMS.find((i) => isActive(i.to, path, i.exact));
   const activeMore = MORE_ITEMS.find((i) => isActive(i.to, path));
-  const title = activeMain?.label ?? activeMore?.label ?? "Panel";
+  const title = activeMain?.label ?? activeMore?.label ?? TITULOS_EXTRA[path] ?? "Panel";
 
   return (
     <div className="flex min-h-screen w-full bg-background">

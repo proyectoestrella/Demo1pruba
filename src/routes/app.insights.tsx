@@ -55,12 +55,11 @@ function Insights() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-primary">Analítica</p>
-          <h1 className="font-display text-2xl md:text-3xl tracking-tight">
-            Lo que dicen tus datos.
+        <div className="min-w-0 space-y-1">
+          <h1 className="font-display text-2xl md:text-3xl tracking-tight text-foreground">
+            Analítica
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Patrones calculados a partir de tus propias reservas — no son predicciones de una IA.
           </p>
         </div>

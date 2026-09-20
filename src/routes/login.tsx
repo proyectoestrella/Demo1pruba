@@ -33,7 +33,7 @@ function LoginPage() {
     e.preventDefault();
     setError("");
     if (!email.includes("@") || password.length < 6) {
-      setError("Introduce un email válido y una contraseña de al menos 6 caracteres.");
+      setError("Introduce un correo válido y una contraseña de al menos 6 caracteres.");
       return;
     }
     setLoading(true);
@@ -100,7 +100,7 @@ function LoginPage() {
 
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Correo</Label>
               <Input
                 id="email"
                 type="email"

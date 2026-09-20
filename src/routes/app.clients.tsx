@@ -121,7 +121,7 @@ function Clients() {
     <div className="space-y-6">
       <PageHeader
         title="Clientes"
-        description="Tu cartera de clientes, ordenada por valor de vida."
+        description="Tus clientes, ordenados por lo que se han gastado contigo."
       />
 
       {/* KPIs — panorama de la cartera antes de bajar al listado. */}
@@ -143,7 +143,7 @@ function Clients() {
           <Input
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por nombre, teléfono o email…"
+            placeholder="Buscar por nombre, teléfono o correo…"
             className="pl-9"
           />
         </div>

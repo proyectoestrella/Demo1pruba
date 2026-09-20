@@ -130,7 +130,7 @@ function CalendarView() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Calendario"
+        title="Agenda"
         description={
           days.length > 1
             ? `${days[0].toLocaleDateString("es", { month: "long", day: "numeric" })} — ${days[days.length - 1].toLocaleDateString("es", { month: "long", day: "numeric" })}`
