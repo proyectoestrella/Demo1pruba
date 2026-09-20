@@ -28,9 +28,11 @@ import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import {
   categoryOrderOf,
   FEATURED_IDS_BY_TYPE,
+  fotoDeProfesional,
   professionalWord,
   type BusinessType,
 } from "@/lib/business-type";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useMemo } from "react";
 import { isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
 import { useClientNow } from "@/lib/use-client-now";
@@ -209,7 +211,12 @@ const HERO_IN = {
  * vez de navegar por el router. Para reservar ya están los botones de arriba,
  * el de la cabecera y la barra fija del móvil.
  */
-function bentoItemsFor(tipo: BusinessType, noShowFeeEur: number, noShowNoticeHours: number) {
+function bentoItemsFor(
+  tipo: BusinessType,
+  noShowFeeEur: number,
+  noShowNoticeHours: number,
+  soloUno: boolean,
+) {
   const palabra = professionalWord(tipo);
   const cancelacion =
     noShowFeeEur > 0
@@ -219,19 +226,35 @@ function bentoItemsFor(tipo: BusinessType, noShowFeeEur: number, noShowNoticeHou
     {
       Icon: CalendarCheck,
       name: "Reserva sin llamar",
-      description: `Eliges servicio, ${palabra} y hora desde el móvil. Sin teléfono y sin esperar a que abramos.`,
+      description: soloUno
+        ? "Eliges servicio y hora desde el móvil. Sin teléfono y sin esperar a que abramos."
+        : `Eliges servicio, ${palabra} y hora desde el móvil. Sin teléfono y sin esperar a que abramos.`,
       href: "#servicios",
       cta: "Empezar por la carta",
       className: "lg:col-span-2",
     },
-    {
-      Icon: Users,
-      name: `Eliges ${palabra}`,
-      description: "El equipo que prefieras. O el primero que tenga hueco, si lo que corre es la hora.",
-      href: "#equipo",
-      cta: "Ver el equipo",
-      className: "lg:col-span-1",
-    },
+    // Con un solo profesional no hay a quién elegir: la tarjeta pasa a contar
+    // lo que sí es cierto —que siempre te atiende la misma persona— y deja de
+    // apuntar a una sección "Equipo" que ya no existe en esa web.
+    soloUno
+      ? {
+          Icon: Users,
+          name: "Siempre la misma persona",
+          description:
+            "Te atiende quien lleva el negocio, sin turnos ni sustitutos. Sabe cómo te gusta.",
+          href: "#servicios",
+          cta: "Ver la carta",
+          className: "lg:col-span-1",
+        }
+      : {
+          Icon: Users,
+          name: `Eliges ${palabra}`,
+          description:
+            "El equipo que prefieras. O el primero que tenga hueco, si lo que corre es la hora.",
+          href: "#equipo",
+          cta: "Ver el equipo",
+          className: "lg:col-span-1",
+        },
     {
       Icon: ShieldCheck,
       name: "Cancelas gratis",
@@ -251,7 +274,12 @@ function bentoItemsFor(tipo: BusinessType, noShowFeeEur: number, noShowNoticeHou
   ];
 }
 
-function faqFor(tipo: BusinessType, noShowFeeEur: number, noShowNoticeHours: number) {
+function faqFor(
+  tipo: BusinessType,
+  noShowFeeEur: number,
+  noShowNoticeHours: number,
+  soloUno: boolean,
+) {
   const palabra = professionalWord(tipo);
   const respuestaCancelacion =
     noShowFeeEur > 0
@@ -272,10 +300,18 @@ function faqFor(tipo: BusinessType, noShowFeeEur: number, noShowNoticeHours: num
       q: "¿Atendéis sin cita previa?",
       a: "Si hay hueco, sí — pero la agenda suele ir llena. Reservar online es la forma segura de tener sitio.",
     },
-    {
-      q: `¿Puedo elegir ${palabra}?`,
-      a: "Claro. En el paso 2 de la reserva eliges profesional, o dejas «cualquiera disponible» si lo que te corre prisa es la hora.",
-    },
+    // Con un solo profesional, preguntar "¿puedo elegir barbero?" y
+    // responder que sí sería mentira; y la pregunta que de verdad se hace
+    // quien reserva es otra.
+    soloUno
+      ? {
+          q: "¿Quién me va a atender?",
+          a: "Siempre la misma persona: aquí no hay turnos ni sustitutos. Por eso la reserva tiene solo tres pasos — servicio, hora y tus datos.",
+        }
+      : {
+          q: `¿Puedo elegir ${palabra}?`,
+          a: "Claro. En el paso 2 de la reserva eliges profesional, o dejas «cualquiera disponible» si lo que te corre prisa es la hora.",
+        },
   ];
 }
 
@@ -362,6 +398,13 @@ function SalonHome() {
     [services],
   );
   const employees = useMemo(() => employeesForType(tipo, profile.team), [tipo, profile.team]);
+  /**
+   * Adam es el único barbero de su barbería. Con un solo profesional, la
+   * sección "Equipo" no cuenta nada (una ficha suelta de la persona que ya
+   * firma toda la web) y los textos de "elige tu barbero" son ruido. Se
+   * deriva del equipo activo, así que una demo de tres barberos no cambia.
+   */
+  const soloUno = esSoloUnProfesional(employees);
 
   const activeServices = services.filter((s) => s.active !== false);
   const categoryOrder = categoryOrderOf(services);
@@ -372,8 +415,8 @@ function SalonHome() {
     : FEATURED_IDS_BY_TYPE[tipo];
   const noShowFeeEur = profile.noShowFeeEur ?? 0;
   const noShowNoticeHours = profile.noShowNoticeHours ?? 2;
-  const bentoItems = bentoItemsFor(tipo, noShowFeeEur, noShowNoticeHours);
-  const faq = faqFor(tipo, noShowFeeEur, noShowNoticeHours);
+  const bentoItems = bentoItemsFor(tipo, noShowFeeEur, noShowNoticeHours, soloUno);
+  const faq = faqFor(tipo, noShowFeeEur, noShowNoticeHours, soloUno);
   // v2: como mucho dos reseñas de ejemplo, y ya van marcadas "Ejemplo" — el
   // cambio priorizado #9 del informe pide "copy del salón real, nunca
   // genérico"; cinco reseñas inventadas pesan más que dos.
@@ -386,10 +429,13 @@ function SalonHome() {
   const now = useClientNow();
   const openNow = now ? isOpenNow(profile.openingHours, now) : false;
   const estadoHoy = now ? todayOpenInfo(profile.openingHours, now) : "Horario";
-  // Las fotos del equipo salen de employeesForType: reales en barbería,
-  // avatar de iniciales en el resto (ver placeholderAvatar en business-type.ts).
+  // Las fotos del equipo: la de stock solo en una DEMO de barbería. En un
+  // salón real no se enseña la cara de un desconocido como si fuera suya —
+  // iniciales (ver `fotoDeProfesional`).
+  const fotoDe = (e: (typeof employees)[number]) =>
+    fotoDeProfesional(e.name, e.id, e.photo, tipo, isRealSalon);
   const TEAM_AVATARS = employees.map((e) => ({
-    imageUrl: e.photo,
+    imageUrl: fotoDe(e),
     profileUrl: `/s/${salonSlug}#equipo`,
   }));
   const totalTeamYears = employees.reduce((sum, e) => sum + e.yearsExperience, 0);
@@ -579,8 +625,9 @@ function SalonHome() {
                 leer la web como si eso no contara. */}
             {isV2 && (
               <p className="pt-1 text-sm text-white/65">
-                También puedes venir sin cita o llamar: la agenda la lleva el equipo de{" "}
-                {profile.name}.
+                También puedes venir sin cita o llamar: la agenda la lleva{" "}
+                {soloUno ? employees[0].name : `el equipo de ${profile.name}`}
+                {soloUno ? ", de " + profile.name + "." : "."}
               </p>
             )}
           </AnimatedGroup>
@@ -758,7 +805,10 @@ function SalonHome() {
       {/* Galería de trabajos */}
       <WorkGallery photos={galleryPhotosFor(profile)} tipo={profile.tagline} />
 
-      {/* Equipo */}
+      {/* Equipo. Con un solo profesional desaparece entera: no hay equipo
+          del que hablar, y una ficha suelta de quien ya firma toda la web
+          solo añade ruido (y obligaba a inventarle una foto). */}
+      {!soloUno && (
       <section id="equipo" className="border-t border-border/40 bg-card">
         <div className="mx-auto max-w-5xl px-6 py-16 md:py-24">
           <SectionHeading eyebrow="Equipo" title="Quién te va a atender" className="mb-12" />
@@ -770,12 +820,13 @@ function SalonHome() {
                 id: e.id,
                 name: e.name,
                 role: `${e.specialty} · ${e.yearsExperience} años`,
-                image: e.photo,
+                image: fotoDe(e),
               }))}
             />
           </Reveal>
         </div>
       </section>
+      )}
 
       {/* Reseñas.
           Auditoría de UX, hallazgo C3: la web de un salón REAL no puede
@@ -954,15 +1005,18 @@ function SalonHome() {
               ¿Nos vemos <AuroraText colors={["#d6ab68", "#f0e6d2", "#b98a4d"]}>pronto</AuroraText>?
             </h2>
             <p className="mt-3 text-muted-foreground">
-              Elige servicio, {professionalWord(tipo)} y hora en menos de un minuto.
+              {soloUno
+                ? "Elige servicio y hora en menos de un minuto."
+                : `Elige servicio, ${professionalWord(tipo)} y hora en menos de un minuto.`}
             </p>
 
             {/* Caras reales del equipo en barbería; avatar de iniciales en el resto. */}
             <div className="mt-7 flex flex-col items-center gap-2">
               <AvatarCircles avatarUrls={TEAM_AVATARS} />
               <p className="text-xs text-muted-foreground">
-                {employees.length} {professionalWord(tipo, employees.length !== 1)} ·{" "}
-                {totalTeamYears} años de oficio{entreElEquipo}
+                {soloUno
+                  ? `Te atiende ${employees[0].name} · ${totalTeamYears} años de oficio`
+                  : `${employees.length} ${professionalWord(tipo, true)} · ${totalTeamYears} años de oficio${entreElEquipo}`}
               </p>
             </div>
 
