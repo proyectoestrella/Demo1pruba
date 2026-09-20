@@ -96,15 +96,18 @@ function Clients() {
     enRiesgo: allRows.filter((r) => r.tag === "inactivo").length,
   };
 
-  // Aparte de si es barato: solo se ofrece el filtro cuando hay a quién
-  // filtrar — una pestaña "Con penalización" vacía es ruido en cualquier
-  // demo que no tenga la política de plantón activa.
+  // Solo se ofrece el filtro cuando hay a quién filtrar: una pestaña "Me
+  // deben" vacía es ruido en cualquier demo sin plantones.
   const hayPenalizados = allRows.some((r) => (r.penaltyEur ?? 0) > 0);
 
   const termino = busqueda.trim().toLowerCase();
   const rows = allRows
     .filter((c) =>
-      filtro === "todos" ? true : filtro === "penalizado" ? (c.penaltyEur ?? 0) > 0 : c.tag === filtro,
+      filtro === "todos"
+        ? true
+        : filtro === "penalizado"
+          ? (c.penaltyEur ?? 0) > 0
+          : c.tag === filtro,
     )
     .filter((c) =>
       termino === ""
@@ -151,7 +154,7 @@ function Clients() {
             <TabsTrigger value="nuevo">Nuevos</TabsTrigger>
             <TabsTrigger value="habitual">Habituales</TabsTrigger>
             <TabsTrigger value="inactivo">Inactivos</TabsTrigger>
-            {hayPenalizados && <TabsTrigger value="penalizado">Con penalización</TabsTrigger>}
+            {hayPenalizados && <TabsTrigger value="penalizado">Me deben</TabsTrigger>}
           </TabsList>
         </Tabs>
       </div>
@@ -247,8 +250,8 @@ function Clients() {
                     <span className="shrink-0 font-medium">€{c.totalSpent}</span>
                   </div>
                   <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {c.pastVisits} {c.pastVisits === 1 ? "visita" : "visitas"} · {c.favoriteService} ·{" "}
-                    {c.phone}
+                    {c.pastVisits} {c.pastVisits === 1 ? "visita" : "visitas"} · {c.favoriteService}{" "}
+                    · {c.phone}
                   </p>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
                     Última visita:{" "}

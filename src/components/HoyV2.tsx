@@ -17,6 +17,8 @@ import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { WalkInDialog } from "@/components/WalkInDialog";
 import { TarjetasPeriodo } from "@/components/TarjetasPeriodo";
+import { CitasPorResolver } from "@/components/CitasPorResolver";
+import { AvisoDeudasHoy } from "@/components/DeudaCliente";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -37,9 +39,7 @@ function greetingForHour(hour: number) {
  */
 export function HoyV2() {
   const appointments = useSalonStore((s) => s.appointments);
-  const clients = useSalonStore((s) => s.clients);
   const salonName = useSalonStore((s) => s.salonProfile.name);
-  const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur ?? 0);
   const smartSpread = useSalonStore((s) => s.salonProfile.smartSpread ?? false);
   const lastSlotBufferMin = useSalonStore((s) => s.salonProfile.lastSlotBufferMin ?? 0);
   const [selected, setSelected] = useState<Appointment | null>(null);
@@ -52,14 +52,6 @@ export function HoyV2() {
   const soloUno = esSoloUnProfesional(employees);
 
   const now = new Date();
-
-  // Plantones pendientes de cobrar ahora mismo — no es un cierre mensual de
-  // verdad (no hay fecha de cobro guardada), es "cuánto hay sobre la mesa" en
-  // el momento, que es lo que le sirve a Tomás para tantear en 3 segundos.
-  const clientesPenalizados = useMemo(
-    () => clients.filter((c) => (c.penaltyEur ?? 0) > 0).length,
-    [clients],
-  );
 
   const horasDeHoy = useMemo(
     () => dayOccupancyBars(appointments, toDateKey(now), employees, lastSlotBufferMin),
@@ -91,6 +83,12 @@ export function HoyV2() {
         <h1 className="font-display text-2xl tracking-tight">{greeting}</h1>
         <p className="text-sm text-muted-foreground">Así va {salonName}.</p>
       </div>
+
+      {/* Lo primero que se ve al abrir el panel, y en este orden: quién te
+          debe dinero y viene hoy (el momento de cobrar es cuando lo tienes
+          delante), y qué citas de estos días quedaron sin marcar. */}
+      <AvisoDeudasHoy />
+      <CitasPorResolver />
 
       {/* Las dos acciones que pasan de verdad en el mostrador: alguien que
           entra sin haber reservado, y alguien que llama por teléfono. Una
@@ -124,17 +122,6 @@ export function HoyV2() {
       <PendingRequestsBanner onOpenDetail={setSelected} />
 
       <TarjetasPeriodo />
-
-      {/* Plantones pendientes — solo si la política está activa y hay algo que cobrar. */}
-      {noShowFeeEur > 0 && clientesPenalizados > 0 && (
-        <div className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3">
-          <Clock3 className="h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
-          <p className="text-sm text-destructive">
-            Plantones este mes: <strong>{clientesPenalizados}</strong> ·{" "}
-            {eur(clientesPenalizados * noShowFeeEur)} pendientes
-          </p>
-        </div>
-      )}
 
       {/* Reparto de agenda: cómo va cargado el día, hora a hora, todo el equipo. */}
       {smartSpread && horasDeHoy.length > 0 && (

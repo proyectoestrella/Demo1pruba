@@ -8,7 +8,8 @@ import { useEquipo } from "@/lib/use-equipo";
 import { employeeMap } from "@/lib/mock/salon";
 import { serviceNamesOf } from "@/lib/appointment-services";
 import { isWithinNoticeWindow } from "@/lib/no-show";
-import { noShowSummary } from "@/lib/plantones";
+import { historialDeFallos } from "@/lib/plantones";
+import { necesitaDesenlace, type Desenlace } from "@/lib/deuda";
 import { enlaceDeFianza } from "@/lib/avisos";
 import { PAYMENT_METHODS } from "@/lib/caja";
 import { eur } from "@/lib/copy";
@@ -20,6 +21,9 @@ import {
 } from "@/lib/mock/types";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
+import { BandaDeuda } from "@/components/DeudaCliente";
+import { DecisionDeudaDialog } from "@/components/DecisionDeudaDialog";
+import { BotonesDesenlace, useAplicarDesenlace } from "@/components/CitasPorResolver";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -48,14 +52,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Calendar, Clock, Euro, CheckCheck, MessageCircle, TriangleAlert } from "lucide-react";
 
 /** Duraciones que puede elegir el salón al ajustar una cita, en minutos. */
@@ -101,13 +97,11 @@ export function AppointmentDetailSheet({
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const markClientConfirmed = useSalonStore((s) => s.markClientConfirmed);
-  const applyPenalty = useSalonStore((s) => s.applyPenalty);
   const markPaid = useSalonStore((s) => s.markPaid);
   const markDepositRequested = useSalonStore((s) => s.markDepositRequested);
   const markDepositReceived = useSalonStore((s) => s.markDepositReceived);
   const appointments = useSalonStore((s) => s.appointments);
   const salonName = useSalonStore((s) => s.salonProfile.name);
-  const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur ?? 0);
   const noShowNoticeHours = useSalonStore((s) => s.salonProfile.noShowNoticeHours ?? 2);
   const depositEnabled = useSalonStore((s) => !!s.salonProfile.depositEnabled);
   const depositBizumPhone = useSalonStore((s) => s.salonProfile.depositBizumPhone ?? "");
@@ -119,38 +113,33 @@ export function AppointmentDetailSheet({
     appointmentProp ? s.clients.find((c) => c.id === appointmentProp.clientId) : undefined,
   );
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [penaltyOpen, setPenaltyOpen] = useState(false);
-  const [penaltyReason, setPenaltyReason] = useState("");
+  /** Qué desenlace ha elegido el dueño, mientras decide qué hace con el dinero. */
+  const [decision, setDecision] = useState<Desenlace | null>(null);
+  const aplicarDesenlace = useAplicarDesenlace();
 
-  const policyActive = noShowFeeEur > 0 && !!client;
-
-  function maybeAskPenalty() {
-    if (!policyActive) return;
-    setPenaltyReason("");
-    setPenaltyOpen(true);
-  }
-
-  function handleApplyPenalty() {
+  /**
+   * Preguntar por el dinero solo tiene sentido si hay ficha a la que
+   * anotárselo. El importe ya no depende de que la política esté activa en
+   * Ajustes: el diálogo propone uno y el dueño lo cambia ahí mismo.
+   */
+  function preguntarPorLaDeuda(d: Desenlace) {
     if (!client) return;
-    applyPenalty(
-      client.id,
-      noShowFeeEur,
-      penaltyReason.trim() ||
-        `Plantón del ${new Date().toLocaleDateString("es", { day: "numeric", month: "short" })}`,
-    );
-    toast.success(`Penalización de ${eur(noShowFeeEur)} aplicada a ${client.name}`);
-    setPenaltyOpen(false);
+    setDecision(d);
   }
 
-  function handleForgivePenalty() {
-    toast.success("Sin penalización — se lo has perdonado");
-    setPenaltyOpen(false);
+  /** Marca qué pasó con la cita y, si fue mal, pregunta qué hacer con el dinero. */
+  function elegirDesenlace(d: Desenlace) {
+    if (!appointment) return;
+    aplicarDesenlace(appointment, d);
+    if (d !== "vino") preguntarPorLaDeuda(d);
   }
 
   const serviceNames = appointment ? serviceNamesOf(appointment) : [];
   // Cuántas veces ha plantado este cliente en los últimos 3 meses, con las
   // mismas palabras que su ficha — ver lib/plantones.ts.
-  const plantones = appointment ? noShowSummary(appointments, appointment.clientId) : null;
+  const plantones = appointment ? historialDeFallos(appointments, appointment.clientId) : null;
+  // Una cita que ya terminó y sigue sin marcar: se pregunta aquí mismo.
+  const porResolver = !!appointment && necesitaDesenlace(appointment);
   // La fianza solo tiene sentido antes de confirmar y con el número puesto en
   // Ajustes: sin número, el mensaje pediría un Bizum a ningún sitio.
   const puedePedirFianza =
@@ -248,8 +237,8 @@ export function AppointmentDetailSheet({
     cancelAppointment(appointment.id);
     toast.success("Cita cancelada", { description: appointment.clientName });
     setConfirmOpen(false);
-    if (dentroDeAviso && policyActive) {
-      maybeAskPenalty();
+    if (dentroDeAviso && client) {
+      preguntarPorLaDeuda("no-vino");
     } else {
       onOpenChange(false);
     }
@@ -323,6 +312,23 @@ export function AppointmentDetailSheet({
               </p>
             )}
           </div>
+
+          {/* Lo que debe, con las tres salidas al lado. Va arriba a propósito:
+              el momento de cobrar una deuda vieja es cuando la persona está
+              delante, y eso pasa justo aquí. */}
+          <BandaDeuda client={client} compacta />
+
+          {/* La pregunta, en el sitio donde ocurre: esta cita ya pasó y nadie
+              ha dicho si la persona apareció. */}
+          {porResolver && (
+            <div className="space-y-2 rounded-xl border border-[var(--warning)]/50 bg-[var(--warning)]/10 p-4">
+              <p className="text-sm font-medium">¿Qué pasó con esta cita?</p>
+              <BotonesDesenlace actual={appointment.status} onElegir={elegirDesenlace} />
+              <p className="text-xs text-muted-foreground">
+                Si te quedó a deber, te lo pregunto justo después.
+              </p>
+            </div>
+          )}
 
           {/* Plantones del cliente — solo si ha fallado alguna vez. Es el
               contexto que pidió Adam antes de decidir si le guarda el hueco. */}
@@ -459,7 +465,8 @@ export function AppointmentDetailSheet({
               onValueChange={(v) => {
                 updateAppointment(appointment.id, { status: v as AppointmentStatus });
                 toast.success("Estado actualizado");
-                if (v === "no-show") maybeAskPenalty();
+                if (v === "no-show") preguntarPorLaDeuda("no-vino");
+                if (v === "late") preguntarPorLaDeuda("tarde");
               }}
             >
               <SelectTrigger>
@@ -551,33 +558,15 @@ export function AppointmentDetailSheet({
             </AlertDialog>
           </SheetFooter>
 
-          {/* Política de plantón: nunca se cobra sola. "No ha venido" y
-              cancelar dentro del margen de aviso abren esta misma pregunta —
-              el dueño decide en cada caso si la aplica o la perdona. */}
-          <Dialog open={penaltyOpen} onOpenChange={setPenaltyOpen}>
-            <DialogContent className="sm:max-w-sm">
-              <DialogHeader>
-                <DialogTitle>
-                  ¿Aplicar la penalización de {eur(noShowFeeEur)} a {client?.name}?
-                </DialogTitle>
-                <DialogDescription>
-                  No ha avisado con {noShowNoticeHours} h de antelación. Tú decides si se la cobras
-                  o se la perdonas esta vez.
-                </DialogDescription>
-              </DialogHeader>
-              <Input
-                value={penaltyReason}
-                onChange={(e) => setPenaltyReason(e.target.value)}
-                placeholder="Motivo (opcional)"
-              />
-              <DialogFooter className="gap-2 sm:gap-2">
-                <Button variant="outline" onClick={handleForgivePenalty}>
-                  Perdonar
-                </Button>
-                <Button onClick={handleApplyPenalty}>Aplicar</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          {/* Las tres decisiones de Adam sobre el dinero: anotarla, perdonarla
+              o bloquear. Nunca se aplica ninguna sola, y todas se deshacen. */}
+          <DecisionDeudaDialog
+            client={client}
+            cita={appointment}
+            desenlace={decision ?? "no-vino"}
+            open={!!decision}
+            onOpenChange={(o) => !o && setDecision(null)}
+          />
         </SheetContent>
       )}
     </Sheet>

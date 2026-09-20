@@ -6,6 +6,13 @@ export type AppointmentStatus =
   | "completed"
   | "cancelled"
   | "no-show"
+  /**
+   * Vino, pero tarde y sin avisar. Es un desenlace distinto de "no vino": el
+   * servicio se hizo (y se cobra), pero la agenda se descolocó. Adam lo pidió
+   * tal cual — con dos estados no podía distinguir al que le falla del que le
+   * llega a deshora.
+   */
+  | "late"
   | "blocked";
 
 export interface Service {
@@ -61,6 +68,14 @@ export interface Client {
    * decisión suya y explícita: por defecto el bloqueo se levanta solo.
    */
   penaltyKeep?: boolean;
+  /**
+   * ¿Esta deuda le impide volver a reservar por la web?
+   *
+   * `false` es la decisión que Tomás subrayó: "deuda anotada, pero que venga
+   * igual y se la cobro en el siguiente corte". `true` o ausente = se
+   * comporta como siempre (deber dinero bloquea la reserva online).
+   */
+  penaltyBlock?: boolean;
 }
 
 /**

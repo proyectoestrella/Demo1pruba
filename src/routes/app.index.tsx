@@ -39,6 +39,8 @@ import { CountUp } from "@/components/reactbits/CountUp";
 import { BorderBeam } from "@/components/magicui/border-beam";
 import { usePanelV2 } from "@/lib/use-panel-v2";
 import { HoyV2 } from "@/components/HoyV2";
+import { CitasPorResolver } from "@/components/CitasPorResolver";
+import { AvisoDeudasHoy } from "@/components/DeudaCliente";
 
 const CHART_TOOLTIP_STYLE = {
   background: "var(--color-card)",
@@ -149,6 +151,11 @@ function HomeV1() {
         <h1 className="font-display text-2xl md:text-3xl tracking-tight">{greeting}</h1>
         <p className="text-sm text-muted-foreground">Así va {salonName} hoy.</p>
       </div>
+
+      {/* Igual que en el panel v2: quién te debe y viene hoy, y qué citas
+          quedaron sin marcar. Arriba del todo, antes que ningún número. */}
+      <AvisoDeudasHoy />
+      <CitasPorResolver />
 
       <PendingRequestsBanner onOpenDetail={setSelected} />
 

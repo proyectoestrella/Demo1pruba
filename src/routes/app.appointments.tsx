@@ -6,8 +6,11 @@ import { useSalonStore } from "@/lib/store";
 import { employeeMap } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
+import { deudaDe } from "@/lib/deuda";
+import { eur } from "@/lib/copy";
+import { Badge } from "@/components/ui/badge";
 import { serviceLabelOf } from "@/lib/appointment-services";
-import type { Appointment, AppointmentStatus } from "@/lib/mock/types";
+import type { Appointment, AppointmentStatus, Client } from "@/lib/mock/types";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { StylistDot } from "@/components/StylistAvatar";
@@ -15,6 +18,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
+import { CitasPorResolver } from "@/components/CitasPorResolver";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { ExportCsvButtons } from "@/components/campanas/ExportCsvButtons";
 import { Button } from "@/components/ui/button";
@@ -60,8 +64,31 @@ export const Route = createFileRoute("/app/appointments")({
   component: Appointments,
 });
 
+/**
+ * "Debe 7 €" junto al nombre, en la propia agenda. Es lo que pidió Tomás: que
+ * la deuda se vea al lado de la cita y no haya que entrar a ninguna ficha.
+ */
+function DeudaBadge({
+  clientId,
+  clients,
+  className,
+}: {
+  clientId: string;
+  clients: Client[];
+  className?: string;
+}) {
+  const deuda = deudaDe(clients.find((c) => c.id === clientId));
+  if (!deuda) return null;
+  return (
+    <Badge variant="destructive" className={className}>
+      Debe {eur(deuda.eur)}
+    </Badge>
+  );
+}
+
 function Appointments() {
   const appointments = useSalonStore((s) => s.appointments);
+  const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
@@ -116,6 +143,10 @@ function Appointments() {
         }
       />
 
+      {/* La misma pregunta que en el inicio, aquí también: la agenda es donde
+          Adam mira al acabar el día. */}
+      <CitasPorResolver />
+
       <PendingRequestsBanner onOpenDetail={setSelected} />
 
       <div className="flex flex-wrap gap-2">
@@ -137,9 +168,10 @@ function Appointments() {
             <SelectItem value="all">Todos los estados</SelectItem>
             <SelectItem value="pending">Pendiente de confirmar</SelectItem>
             <SelectItem value="confirmed">Confirmada</SelectItem>
-            <SelectItem value="completed">Completada</SelectItem>
+            <SelectItem value="completed">Vino</SelectItem>
             <SelectItem value="cancelled">Cancelada</SelectItem>
-            <SelectItem value="no-show">No asistió</SelectItem>
+            <SelectItem value="late">Vino tarde sin avisar</SelectItem>
+            <SelectItem value="no-show">No vino</SelectItem>
           </SelectContent>
         </Select>
         {/* Filtrar "por profesional" con un solo profesional no filtra nada. */}
@@ -205,7 +237,12 @@ function Appointments() {
                           minute: "2-digit",
                         })}
                       </TableCell>
-                      <TableCell className="font-medium">{a.clientName}</TableCell>
+                      <TableCell className="font-medium">
+                        <span className="inline-flex flex-wrap items-center gap-2">
+                          {a.clientName}
+                          <DeudaBadge clientId={a.clientId} clients={clients} />
+                        </span>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{serviceLabelOf(a)}</TableCell>
                       {!soloUno && (
                         <TableCell>
@@ -280,6 +317,7 @@ function Appointments() {
                         })}
                       </p>
                       <p className="mt-1 truncate font-medium">{a.clientName}</p>
+                      <DeudaBadge clientId={a.clientId} clients={clients} className="mt-1" />
                     </div>
                     <div onClick={(evt) => evt.stopPropagation()}>
                       <DropdownMenu>
