@@ -16,6 +16,7 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as SSalonSlugRouteImport } from './routes/s.$salonSlug'
+import { Route as AppWebRouteImport } from './routes/app.web'
 import { Route as AppWaitlistRouteImport } from './routes/app.waitlist'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppServicesRouteImport } from './routes/app.services'
@@ -66,6 +67,11 @@ const SSalonSlugRoute = SSalonSlugRouteImport.update({
   id: '/s/$salonSlug',
   path: '/s/$salonSlug',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppWebRoute = AppWebRouteImport.update({
+  id: '/web',
+  path: '/web',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppWaitlistRoute = AppWaitlistRouteImport.update({
   id: '/waitlist',
@@ -160,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/app/services': typeof AppServicesRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/waitlist': typeof AppWaitlistRoute
+  '/app/web': typeof AppWebRoute
   '/s/$salonSlug': typeof SSalonSlugRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/s/$salonSlug/book': typeof SSalonSlugBookRoute
@@ -183,6 +190,7 @@ export interface FileRoutesByTo {
   '/app/services': typeof AppServicesRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/waitlist': typeof AppWaitlistRoute
+  '/app/web': typeof AppWebRoute
   '/app': typeof AppIndexRoute
   '/s/$salonSlug/book': typeof SSalonSlugBookRoute
   '/s/$salonSlug/confirmation': typeof SSalonSlugConfirmationRoute
@@ -207,6 +215,7 @@ export interface FileRoutesById {
   '/app/services': typeof AppServicesRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/waitlist': typeof AppWaitlistRoute
+  '/app/web': typeof AppWebRoute
   '/s/$salonSlug': typeof SSalonSlugRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/s/$salonSlug/book': typeof SSalonSlugBookRoute
@@ -233,6 +242,7 @@ export interface FileRouteTypes {
     | '/app/services'
     | '/app/settings'
     | '/app/waitlist'
+    | '/app/web'
     | '/s/$salonSlug'
     | '/app/'
     | '/s/$salonSlug/book'
@@ -256,6 +266,7 @@ export interface FileRouteTypes {
     | '/app/services'
     | '/app/settings'
     | '/app/waitlist'
+    | '/app/web'
     | '/app'
     | '/s/$salonSlug/book'
     | '/s/$salonSlug/confirmation'
@@ -279,6 +290,7 @@ export interface FileRouteTypes {
     | '/app/services'
     | '/app/settings'
     | '/app/waitlist'
+    | '/app/web'
     | '/s/$salonSlug'
     | '/app/'
     | '/s/$salonSlug/book'
@@ -347,6 +359,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/s/$salonSlug'
       preLoaderRoute: typeof SSalonSlugRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/app/web': {
+      id: '/app/web'
+      path: '/web'
+      fullPath: '/app/web'
+      preLoaderRoute: typeof AppWebRouteImport
+      parentRoute: typeof AppRoute
     }
     '/app/waitlist': {
       id: '/app/waitlist'
@@ -467,6 +486,7 @@ interface AppRouteChildren {
   AppServicesRoute: typeof AppServicesRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppWaitlistRoute: typeof AppWaitlistRoute
+  AppWebRoute: typeof AppWebRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
@@ -481,6 +501,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppServicesRoute: AppServicesRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppWaitlistRoute: AppWaitlistRoute,
+  AppWebRoute: AppWebRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
