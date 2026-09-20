@@ -51,12 +51,13 @@ import {
 
 /**
  * Alto real de la barra inferior fija, con el hueco del gesto de iOS dentro.
- * Se declara aquí y se aplica como `padding-bottom` del contenido de TODAS
- * las pantallas: es lo que impide que el último botón de cualquiera de ellas
- * (el "Guardar cambios" de Ajustes fue el que lo destapó) acabe debajo de la
- * barra en un iPad.
+ * El valor vive en `--alto-barra-fija` (styles.css) para que la barra y el
+ * hueco que le reserva el contenido no puedan desincronizarse: la clase
+ * `hueco-barra-fija` usa esa misma variable. Es lo que impide que el último
+ * botón de cualquier pantalla (el "Guardar cambios" de Ajustes fue el que lo
+ * destapó) acabe debajo de la barra.
  */
-const ALTO_BARRA_INFERIOR = "calc(4.5rem + env(safe-area-inset-bottom, 0px))";
+const ALTO_BARRA_INFERIOR = "var(--alto-barra-fija)";
 
 type NavItem = { to: string; label: string; icon: LucideIcon; exact?: boolean };
 
@@ -158,11 +159,13 @@ export function PanelV2Shell() {
           </div>
         </header>
 
-        {/* El hueco de abajo es exactamente el alto de la barra fija (clase,
-            no `style`, para que `lg:pb-6` pueda quitarlo cuando la barra
-            desaparece). Vale para TODAS las pantallas del panel, no solo
-            Ajustes: cualquiera puede acabar con un botón en la última línea. */}
-        <main className="min-w-0 flex-1 px-4 py-5 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:px-6 lg:pb-6">
+        {/* El hueco de abajo es el alto de la barra fija más un respiro
+            (`hueco-barra-fija`, una sola variable compartida con la barra).
+            A partir de 1024 px la barra desaparece y la propia clase se
+            queda en un margen normal. Vale
+            para TODAS las pantallas del panel, no solo Ajustes: cualquiera
+            puede acabar con un botón en la última línea. */}
+        <main className="hueco-barra-fija min-w-0 flex-1 px-4 py-5 sm:px-6">
           <Outlet />
         </main>
       </div>

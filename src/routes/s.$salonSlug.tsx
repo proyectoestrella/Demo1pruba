@@ -217,7 +217,16 @@ function SalonLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    // El hueco de abajo lo reserva el contenedor entero, pie incluido: las dos
+    // barras fijas de la web pública (la de «Reservar cita» de la home y la de
+    // resumen del flujo de reserva) tapaban la última fila de lo que hubiera
+    // debajo — la última tanda de huecos horarios, en el caso del flujo. La
+    // clase se apaga sola en el ancho donde cada barra desaparece.
+    <div
+      className={`min-h-screen bg-background text-foreground ${
+        onBooking ? "hueco-barra-fija" : "hueco-barra-fija-md"
+      }`}
+    >
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
         {/* Barra de avance de lectura, pegada al borde inferior de la cabecera. */}
         <ScrollProgress className="absolute inset-x-0 bottom-0 top-auto h-0.5 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
