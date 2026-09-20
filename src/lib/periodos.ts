@@ -388,6 +388,14 @@ export interface ResumenPeriodo {
   previo: MetricasPeriodo;
   /** ¿Hubo alguna actividad en el periodo anterior? Si no, no hay nada que comparar. */
   hayComparacion: boolean;
+  /**
+   * El equipo no abre ni un solo día del periodo elegido. Un domingo con el
+   * salón cerrado da cero citas y cero caja, y comparar ese cero contra el
+   * sábado sale "-100 %": cierto, pero cuenta como hundimiento del negocio
+   * algo que es el horario de siempre. Cuando esto es `true` las tarjetas no
+   * enseñan variación y lo dicen con todas las letras.
+   */
+  cerrado: boolean;
   /** Series para las minigráficas, del cubo más antiguo al actual. */
   series: {
     citas: number[];
@@ -435,6 +443,7 @@ export function resumenDePeriodo(
     previo,
     hayComparacion:
       !previoVacio && (previo.citas > 0 || previo.caja > 0 || previo.cancelaciones > 0),
+    cerrado: capacidadDelRango(rango, equipo) === 0,
     series: {
       citas: cubos.map((m) => m.citas),
       caja: cubos.map((m) => m.caja),

@@ -32,18 +32,32 @@ export function TarjetasPeriodo({ className }: { className?: string }) {
     <div className={cn("space-y-3", className)} data-tour="kpis">
       <SelectorPeriodo />
       <FilaDeTarjetas resumen={resumen} />
-      {!resumen.hayComparacion && (
+      {resumen.cerrado ? (
         <p className="text-xs text-muted-foreground">
-          No hay actividad en el periodo anterior equivalente, así que no se enseña ninguna
-          variación: preferimos decirlo a inventarla.
+          El salón no abre ningún día de este periodo, así que no hay cifras que comparar: el cero
+          es el horario, no una caída.
         </p>
+      ) : (
+        !resumen.hayComparacion && (
+          <p className="text-xs text-muted-foreground">
+            No hay actividad en el periodo anterior equivalente, así que no se enseña ninguna
+            variación: preferimos decirlo a inventarla.
+          </p>
+        )
       )}
     </div>
   );
 }
 
-function trend(valor: number, anterior: number | null, spark: number[]): KpiTrend {
-  const c = comparar(valor, anterior);
+function trend(
+  valor: number,
+  anterior: number | null,
+  spark: number[],
+  cerrado = false,
+): KpiTrend {
+  // Día cerrado: no se compara contra nada. Así la tarjeta no pinta en rojo
+  // un "-100 %" que solo dice que ese día el salón no abre.
+  const c = cerrado ? { variacionPct: null } : comparar(valor, anterior);
   return {
     current: valor,
     previous: anterior ?? 0,
@@ -55,7 +69,7 @@ function trend(valor: number, anterior: number | null, spark: number[]): KpiTren
 
 
 export function FilaDeTarjetas({ resumen }: { resumen: ResumenPeriodo }) {
-  const { actual, previo, series, textoComparacion: contexto } = resumen;
+  const { actual, previo, series, textoComparacion: contexto, cerrado } = resumen;
 
   const tarjetas: {
     label: string;
@@ -66,13 +80,13 @@ export function FilaDeTarjetas({ resumen }: { resumen: ResumenPeriodo }) {
     {
       label: "Citas",
       icon: Calendar,
-      trend: trend(actual.citas, previo.citas, series.citas),
+      trend: trend(actual.citas, previo.citas, series.citas, cerrado),
       format: (n) => Math.round(n).toString(),
     },
     {
       label: "Caja",
       icon: Euro,
-      trend: trend(actual.caja, previo.caja, series.caja),
+      trend: trend(actual.caja, previo.caja, series.caja, cerrado),
       format: eurRedondo,
     },
     {
@@ -80,13 +94,13 @@ export function FilaDeTarjetas({ resumen }: { resumen: ResumenPeriodo }) {
       icon: TrendingUp,
       // `null` = el equipo no abre ni un día del rango. Se enseña 0 % pero sin
       // comparación, que es lo único honesto que se puede decir.
-      trend: trend(actual.ocupacion ?? 0, previo.ocupacion, series.ocupacion),
+      trend: trend(actual.ocupacion ?? 0, previo.ocupacion, series.ocupacion, cerrado),
       format: pct,
     },
     {
       label: "Clientes nuevos",
       icon: Users,
-      trend: trend(actual.clientesNuevos, previo.clientesNuevos, series.clientesNuevos),
+      trend: trend(actual.clientesNuevos, previo.clientesNuevos, series.clientesNuevos, cerrado),
       format: (n) => Math.round(n).toString(),
     },
   ];
@@ -100,8 +114,9 @@ export function FilaDeTarjetas({ resumen }: { resumen: ResumenPeriodo }) {
           icon={t.icon}
           trend={t.trend}
           format={t.format}
-          context={contexto}
+          context={cerrado ? "El salón no abre" : contexto}
           goodDirection="up"
+          sinComparacionLabel={cerrado ? "Cerrado" : "Sin comparación"}
         />
       ))}
     </div>

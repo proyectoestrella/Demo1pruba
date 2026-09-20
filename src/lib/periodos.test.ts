@@ -294,6 +294,27 @@ describe("honestidad de la comparación", () => {
     expect(comparar(r.actual.citas, r.previo.citas).variacionPct).toBe(100);
   });
 
+  it("el domingo que el salón cierra se marca como cerrado", () => {
+    // Equipo que libra los domingos (getDay() === 0) y trabaja el resto.
+    const deLunesASabado = [
+      {
+        id: "mario",
+        name: "Mario",
+        schedule: [null, ...Array.from({ length: 6 }, () => ({ start: 10, end: 14 }))],
+      },
+    ] as unknown as Employee[];
+    // 20 de septiembre de 2026 es domingo.
+    const domingo = new Date(2026, 8, 20, 13, 0);
+    const appts = [cita("2026-09-19T10:00:00"), cita("2026-09-19T11:00:00")];
+    const r = resumenDePeriodo(appts, "hoy", deLunesASabado, domingo);
+    expect(r.cerrado).toBe(true);
+    expect(r.actual.citas).toBe(0);
+
+    // Y el sábado, con el salón abierto, NO se marca cerrado.
+    const sabado = new Date(2026, 8, 19, 13, 0);
+    expect(resumenDePeriodo(appts, "hoy", deLunesASabado, sabado).cerrado).toBe(false);
+  });
+
   it("la minigráfica trae ocho cubos", () => {
     const r = resumenDePeriodo([], "semana", EQUIPO, new Date(2026, 8, 20, 12));
     expect(r.series.citas).toHaveLength(8);

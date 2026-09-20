@@ -14,6 +14,12 @@ export interface KpiCardProps {
   context: string;
   /** Whether an increase in this metric is good news (ingresos) or bad news (cancelaciones). */
   goodDirection: "up" | "down";
+  /**
+   * Texto del distintivo cuando no hay variación que enseñar. Por defecto
+   * "Sin comparación"; el día que el salón no abre dice "Cerrado", que
+   * explica el cero en vez de dejarlo a medias.
+   */
+  sinComparacionLabel?: string;
   className?: string;
 }
 
@@ -38,6 +44,7 @@ export function KpiCard({
   format,
   context,
   goodDirection,
+  sinComparacionLabel = "Sin comparación",
   className,
 }: KpiCardProps) {
   // Sin relleno: si no hay periodo anterior con el que comparar, la tarjeta lo
@@ -66,7 +73,7 @@ export function KpiCard({
           title={context}
         >
           <DeltaIcon className="h-3 w-3" aria-hidden="true" />
-          {rounded === null ? "Sin comparación" : `${rounded > 0 ? "+" : ""}${rounded}%`}
+          {rounded === null ? sinComparacionLabel : `${rounded > 0 ? "+" : ""}${rounded} %`}
         </div>
       </div>
       <CountUp
