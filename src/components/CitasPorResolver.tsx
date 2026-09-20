@@ -116,8 +116,6 @@ export function CitasPorResolver({ limite = 5, className }: CitasPorResolverProp
   } | null>(null);
 
   const pendientes = useMemo(() => citasSinDesenlace(appointments), [appointments]);
-  if (pendientes.length === 0) return null;
-
   const visibles = pendientes.slice(0, limite);
 
   function elegir(a: Appointment, d: Desenlace) {
@@ -130,51 +128,59 @@ export function CitasPorResolver({ limite = 5, className }: CitasPorResolverProp
     setDecision({ client, cita: a, desenlace: d });
   }
 
+  // Ojo: la tarjeta desaparece en cuanto se marca la última cita, pero el
+  // diálogo de la deuda NO puede irse con ella — si se desmonta, la pregunta
+  // por el dinero no llega a verse nunca. Por eso el diálogo vive fuera.
   return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-xl border border-[var(--warning)]/50 bg-[var(--warning)]/10",
-        className,
-      )}
-    >
-      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--warning)]/25 px-4 py-3">
-        <HelpCircle className="size-4 shrink-0 text-[var(--warning)]" aria-hidden="true" />
-        <div className="min-w-0">
-          <p className="font-display text-base leading-tight">
-            ¿Qué pasó con{" "}
-            {pendientes.length === 1 ? "esta cita" : `estas ${pendientes.length} citas`}?
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Ya pasaron y no has dicho si vinieron. Márcalo y te aviso si alguien te queda a deber.
-          </p>
-        </div>
-      </div>
-      <div className="divide-y divide-[var(--warning)]/20">
-        {visibles.map((a) => (
-          <div key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">{a.clientName || "Sin nombre"}</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {new Date(a.start).toLocaleString("es", {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-                {" · "}
-                {serviceLabelOf(a)}
-                {employeeMap[a.employeeId] ? ` · con ${employeeMap[a.employeeId].name}` : ""}
+    <>
+      {pendientes.length > 0 && (
+        <div
+          className={cn(
+            "overflow-hidden rounded-xl border border-[var(--warning)]/50 bg-[var(--warning)]/10",
+            className,
+          )}
+        >
+          <div className="flex flex-wrap items-center gap-2 border-b border-[var(--warning)]/25 px-4 py-3">
+            <HelpCircle className="size-4 shrink-0 text-[var(--warning)]" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="font-display text-base leading-tight">
+                ¿Qué pasó con{" "}
+                {pendientes.length === 1 ? "esta cita" : `estas ${pendientes.length} citas`}?
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Ya pasaron y no has dicho si vinieron. Márcalo y te aviso si alguien te queda a
+                deber.
               </p>
             </div>
-            <BotonesDesenlace actual={a.status} onElegir={(d) => elegir(a, d)} />
           </div>
-        ))}
-      </div>
-      {pendientes.length > visibles.length && (
-        <p className="px-4 py-2 text-xs text-muted-foreground">
-          Y {pendientes.length - visibles.length} más. Ve marcando: desaparecen solas de aquí.
-        </p>
+          <div className="divide-y divide-[var(--warning)]/20">
+            {visibles.map((a) => (
+              <div key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{a.clientName || "Sin nombre"}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {new Date(a.start).toLocaleString("es", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                    {" · "}
+                    {serviceLabelOf(a)}
+                    {employeeMap[a.employeeId] ? ` · con ${employeeMap[a.employeeId].name}` : ""}
+                  </p>
+                </div>
+                <BotonesDesenlace actual={a.status} onElegir={(d) => elegir(a, d)} />
+              </div>
+            ))}
+          </div>
+          {pendientes.length > visibles.length && (
+            <p className="px-4 py-2 text-xs text-muted-foreground">
+              Y {pendientes.length - visibles.length} más. Ve marcando: desaparecen solas de aquí.
+            </p>
+          )}
+        </div>
       )}
 
       <DecisionDeudaDialog
@@ -184,6 +190,6 @@ export function CitasPorResolver({ limite = 5, className }: CitasPorResolverProp
         open={!!decision}
         onOpenChange={(o) => !o && setDecision(null)}
       />
-    </div>
+    </>
   );
 }

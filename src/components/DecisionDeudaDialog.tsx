@@ -53,7 +53,10 @@ export function DecisionDeudaDialog({
 }: DecisionDeudaDialogProps) {
   const setDeuda = useSalonStore((s) => s.setDeuda);
   const importeSalon = useSalonStore((s) => s.salonProfile.noShowFeeEur ?? 0);
-  const sugerido = importeSalon > 0 ? importeSalon : IMPORTE_POR_DEFECTO;
+  /** Lo que ya debía de antes: una ficha guarda UNA deuda, así que se suman. */
+  const deudaPrevia = client?.penaltyEur ?? 0;
+  const sugerido =
+    (importeSalon > 0 ? importeSalon : IMPORTE_POR_DEFECTO) + (deudaPrevia > 0 ? deudaPrevia : 0);
   const [importe, setImporte] = useState(String(sugerido));
 
   useEffect(() => {
@@ -142,6 +145,11 @@ export function DecisionDeudaDialog({
           <label htmlFor="importe-deuda" className="text-xs font-medium text-muted-foreground">
             Cuánto le apuntas
           </label>
+          {deudaPrevia > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Ya te debía {eur(deudaPrevia)} de antes: el importe propuesto los suma.
+            </p>
+          )}
           <div className="flex items-center gap-2">
             <Input
               id="importe-deuda"
