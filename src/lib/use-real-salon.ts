@@ -9,8 +9,7 @@ import { useSalonStore } from "./store";
 import type { Appointment, Client, SalonProfile, WaitlistEntry } from "./mock/types";
 
 /** Lo que dice el aviso cuando la agenda de un salón real no ha podido cargarse. */
-export const MENSAJE_CARGA_FALLIDA =
-  "No hemos podido cargar tus datos. Vuelve a intentarlo.";
+export const MENSAJE_CARGA_FALLIDA = "No hemos podido cargar tus datos. Vuelve a intentarlo.";
 
 /** Datos de agenda tal y como los devuelve el servidor. */
 export interface DatosDelSalon {
