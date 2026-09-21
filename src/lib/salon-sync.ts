@@ -24,6 +24,7 @@ import {
   clearClientPenalty,
   deleteAppointment as deleteAppointmentFn,
   deleteWaitlistEntry,
+  patchSalonProfile,
   saveClientNotes,
   saveSalonProfile,
   syncAppointment,
@@ -135,11 +136,36 @@ export function pushWaitlistDeletion(slug: string | null, localId: string): void
   subir("el cambio en la lista de espera", () => deleteWaitlistEntry({ data: { slug, localId } }));
 }
 
-/** Sube el perfil del salón (Ajustes). */
+/**
+ * Sube el perfil ENTERO del salón. Solo para quien de verdad tenga delante el
+ * perfil completo y recién leído — hoy, nadie desde la store.
+ *
+ * Ver `pushSalonProfilePatch` para el camino normal, y el comentario de
+ * `patchSalonProfile` en api/salons.functions.ts para por qué importa.
+ */
 export function pushSalonProfile(slug: string | null, profile: SalonProfile): void {
   if (!slug) return;
   subir("los datos de tu salón", () =>
     saveSalonProfile({ data: { slug, profile: profile as unknown as Record<string, unknown> } }),
+  );
+}
+
+/**
+ * Sube SOLO lo que ha cambiado del perfil.
+ *
+ * Es el camino que usa `updateSalonProfile`: así un navegador con el perfil
+ * viejo guardado en `localStorage` ya no puede revertir un campo que cambió
+ * otro dispositivo, porque ese campo ni siquiera viaja.
+ */
+export function pushSalonProfilePatch(slug: string | null, patch: Partial<SalonProfile>): void {
+  if (!slug) return;
+  const claves = Object.keys(patch).filter(
+    (k) => (patch as Record<string, unknown>)[k] !== undefined,
+  );
+  // Un `updateSalonProfile({})` no tiene por qué tocar la red.
+  if (claves.length === 0) return;
+  subir("los datos de tu salón", () =>
+    patchSalonProfile({ data: { slug, patch: patch as unknown as Record<string, unknown> } }),
   );
 }
 

@@ -15,6 +15,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { getSupabaseServerClient } from "../supabase.server";
+import { fusionarPerfil } from "../perfil-parche";
 import {
   findPenaltyRow,
   phoneKey,
@@ -67,9 +68,7 @@ function faltaEsquema(error: { code?: string; message?: string } | null | undefi
   if (["PGRST204", "PGRST205", "42703", "42P01"].includes(error.code ?? "")) return true;
   const msg = (error.message ?? "").toLowerCase();
   return (
-    msg.includes("does not exist") ||
-    msg.includes("could not find") ||
-    msg.includes("schema cache")
+    msg.includes("does not exist") || msg.includes("could not find") || msg.includes("schema cache")
   );
 }
 
@@ -136,9 +135,7 @@ export type MotivoNoPublicado = "sin-backend" | "falta-esquema";
 export const saveSalonProfile = createServerFn({ method: "POST" })
   .inputValidator(z.object({ slug, profile: z.record(z.string(), z.unknown()) }))
   .handler(
-    async ({
-      data,
-    }): Promise<{ synced: true } | { synced: false; motivo: MotivoNoPublicado }> => {
+    async ({ data }): Promise<{ synced: true } | { synced: false; motivo: MotivoNoPublicado }> => {
       const supabase = getSupabaseServerClient();
       if (!supabase) return { synced: false as const, motivo: "sin-backend" as const };
 
@@ -152,6 +149,72 @@ export const saveSalonProfile = createServerFn({ method: "POST" })
         return { synced: false as const, motivo: "falta-esquema" as const };
       }
       if (error) throw new Error(`saveSalonProfile: ${error.message}`);
+      return { synced: true as const };
+    },
+  );
+
+/**
+ * Guarda SOLO los campos que han cambiado, fusionándolos con lo que hay en la
+ * base en el momento de escribir.
+ *
+ * Por qué existe, y qué garantía da exactamente.
+ *
+ * Hasta ahora el panel subía el perfil ENTERO en cada edición
+ * (`updateSalonProfile` → `saveSalonProfile`). Con dos dispositivos eso
+ * significaba perder trabajo sin enterarse: el dueño cambia el teléfono desde
+ * el móvil, y el iPad —que lleva abierto desde ayer y tiene el perfil viejo en
+ * `localStorage`— cambia el horario del martes; al subir su copia completa,
+ * el teléfono nuevo VUELVE al viejo. Nadie tocó el teléfono y el teléfono
+ * cambió.
+ *
+ * La garantía que se da aquí, dicha sin adornos:
+ *
+ *   SÍ — un campo que este navegador no ha tocado no se puede sobrescribir
+ *   con lo que este navegador creía que valía. Solo viajan las claves del
+ *   parche, y el resto del perfil sale de la fila tal y como está en la base
+ *   en el instante de la escritura, no de la copia local.
+ *
+ *   NO — esto no es una transacción ni un bloqueo optimista. Si dos
+ *   dispositivos cambian LA MISMA clave casi a la vez, sigue ganando el
+ *   último que escriba. Y entre el `select` y el `update` de aquí abajo hay
+ *   una ventana pequeña en la que una escritura ajena a otra clave podría
+ *   perderse. Cerrar eso del todo pide una columna de versión y un `update
+ *   ... where updated_at = ...`, que es otro cambio y otra migración.
+ *
+ * Si la fila no existe, NO se crea: dar de alta un salón es un acto
+ * deliberado (`scripts/seed-salon.ts`), no algo que provoque un teclazo en
+ * Ajustes.
+ */
+export type MotivoNoAplicado = MotivoNoPublicado | "sin-salon";
+
+export const patchSalonProfile = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ slug, patch: z.record(z.string(), z.unknown()) }))
+  .handler(
+    async ({ data }): Promise<{ synced: true } | { synced: false; motivo: MotivoNoAplicado }> => {
+      const supabase = getSupabaseServerClient();
+      if (!supabase) return { synced: false as const, motivo: "sin-backend" as const };
+
+      const { data: fila, error: errorLectura } = await supabase
+        .from("salons")
+        .select("profile")
+        .eq("slug", data.slug)
+        .maybeSingle();
+      if (faltaEsquema(errorLectura)) {
+        return { synced: false as const, motivo: "falta-esquema" as const };
+      }
+      if (errorLectura) throw new Error(`patchSalonProfile (lectura): ${errorLectura.message}`);
+      if (!fila) return { synced: false as const, motivo: "sin-salon" as const };
+
+      const fusionado = fusionarPerfil((fila.profile ?? {}) as Record<string, unknown>, data.patch);
+
+      const { error } = await supabase
+        .from("salons")
+        .update({ profile: fusionado, updated_at: new Date().toISOString() })
+        .eq("slug", data.slug);
+      if (faltaEsquema(error)) {
+        return { synced: false as const, motivo: "falta-esquema" as const };
+      }
+      if (error) throw new Error(`patchSalonProfile: ${error.message}`);
       return { synced: true as const };
     },
   );
@@ -188,7 +251,8 @@ export const listSalonData = createServerFn({ method: "GET" })
           .from(tabla)
           .select(`${base}, ${nuevas}`)
           .eq("salon_slug", data.slug);
-        if (!conNuevas.error) return { data: (conNuevas.data ?? []) as unknown as T[], error: null };
+        if (!conNuevas.error)
+          return { data: (conNuevas.data ?? []) as unknown as T[], error: null };
         if (!faltaEsquema(conNuevas.error)) return { data: [] as T[], error: conNuevas.error };
         console.warn(
           `listSalonData: ${tabla} todavía sin las columnas nuevas (${nuevas}); falta aplicar supabase/schema.sql`,

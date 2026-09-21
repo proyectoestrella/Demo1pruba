@@ -28,7 +28,7 @@ import {
   pushClientNotes,
   pushPenalty,
   pushPenaltyCleared,
-  pushSalonProfile,
+  pushSalonProfilePatch,
   pushWaitlistDeletion,
   pushWaitlistEntry,
   type ClienteDeCita,
@@ -532,7 +532,13 @@ export const useSalonStore = create<SalonState>()(
 
       updateSalonProfile: (patch) => {
         set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } }));
-        pushSalonProfile(get().realSalonSlug, get().salonProfile);
+        // Sube el PARCHE, no el perfil entero. Antes subía
+        // `get().salonProfile` completo, y eso hacía que un navegador con el
+        // perfil viejo en localStorage revirtiera lo que se hubiera cambiado
+        // desde otro dispositivo: cambias el teléfono en el móvil, tocas el
+        // horario en el iPad de ayer, y el teléfono vuelve al viejo. Lo que
+        // este navegador no ha tocado ya no viaja. Ver `patchSalonProfile`.
+        pushSalonProfilePatch(get().realSalonSlug, patch);
       },
 
       applyBusinessType: (type, overrides) => {

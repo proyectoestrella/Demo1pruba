@@ -21,6 +21,7 @@ mock.module("./api/salons.functions", () => ({
   syncAppointment: registra("syncAppointment"),
   deleteAppointment: registra("deleteAppointment"),
   saveSalonProfile: registra("saveSalonProfile"),
+  patchSalonProfile: registra("patchSalonProfile"),
   applyClientPenalty: registra("applyClientPenalty"),
   clearClientPenalty: registra("clearClientPenalty"),
   saveClientNotes: registra("saveClientNotes"),
@@ -33,6 +34,7 @@ const {
   pushAppointment,
   pushAppointmentDeletion,
   pushSalonProfile,
+  pushSalonProfilePatch,
   pushPenalty,
   pushPenaltyCleared,
   pushClientNotes,
@@ -71,6 +73,7 @@ describe("salon-sync con slug null (demo de venta)", () => {
     pushAppointment(null, cita);
     pushAppointmentDeletion(null, "a-new-1");
     pushSalonProfile(null, salon);
+    pushSalonProfilePatch(null, { phone: "600 111 222" });
     pushPenalty(null, cliente, 7, "No vino");
     pushPenaltyCleared(null, cliente, "Perdonada");
     pushClientNotes(null, cliente);
@@ -189,3 +192,28 @@ describe("un fallo de guardado se ve en pantalla y se puede reintentar", () => {
 async function esperarAvisos() {
   for (let i = 0; i < 5; i++) await Promise.resolve();
 }
+
+/**
+ * El perfil ya no se sube entero desde Ajustes. Subirlo entero era lo que
+ * permitía que un navegador con el perfil viejo en `localStorage` revirtiera
+ * un campo cambiado desde otro dispositivo.
+ */
+describe("el perfil sube el parche, no el perfil entero", () => {
+  it("usa patchSalonProfile, no saveSalonProfile", () => {
+    pushSalonProfilePatch("the-best-shave-barber", { phone: "600 999 888" });
+    expect(llamadas).toEqual(["patchSalonProfile"]);
+  });
+
+  it("un parche sin nada que decir no toca la red", () => {
+    pushSalonProfilePatch("the-best-shave-barber", {});
+    pushSalonProfilePatch("the-best-shave-barber", { phone: undefined });
+    expect(llamadas).toEqual([]);
+  });
+
+  it("si el parche no sube, el dueño se entera", async () => {
+    fallarTodo = true;
+    pushSalonProfilePatch("the-best-shave-barber", { phone: "600 999 888" });
+    await esperarAvisos();
+    expect(leerAvisos()[0]!.mensaje).toContain("los datos de tu salón");
+  });
+});
