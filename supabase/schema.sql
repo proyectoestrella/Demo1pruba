@@ -208,3 +208,63 @@ alter table waitlist enable row level security;
 -- penalty_at = now()` de más arriba) pasarían a afectar a cero filas sin
 -- decir nada. Además dejaría de reflejar el estado real de producción, que es
 -- justo lo que este bloque viene a versionar.
+
+-- ---------------------------------------------------------------------------
+-- 21/09/2026 — Quién puede entrar al panel de cada salón (`salon_members`)
+--
+-- El problema que cierra esta tabla, dicho en claro: hasta hoy, cualquiera que
+-- escribiera `/app?s=the-best-shave-barber` en el navegador veía el panel de
+-- ese salón entero, con la lista de sus clientes y sus teléfonos, sin escribir
+-- ninguna credencial. El slug no es un secreto: sale en la URL pública de la
+-- web de reservas del salón.
+--
+-- La frontera vuelve a ser una sola fila, igual que en `salons`:
+--
+--   * Si `salons` NO tiene fila con ese slug, es una DEMO de venta. Se entra
+--     como siempre, sin pedir nada. Esto es intocable: el equipo comercial
+--     enseña ~54 demos en la calle abriendo un enlace `?d=…`, y una demo que
+--     pida contraseña es una venta perdida.
+--   * Si `salons` SÍ tiene fila, es un salón de pago. Entonces hace falta una
+--     sesión de Supabase Auth Y una fila aquí que diga que ESE usuario puede
+--     entrar a ESE salón.
+--
+-- Quién decide cuál de los dos casos es: el SERVIDOR, consultando `salons`.
+-- Nunca un parámetro que mande el navegador. Ver src/lib/api/autorizacion.ts.
+--
+-- `user_id` apunta a `auth.users`, que es la tabla de usuarios que gestiona
+-- Supabase Auth: ahí es donde aparece el dueño del salón en cuanto pincha por
+-- primera vez el enlace mágico que le llega al correo. No guardamos
+-- contraseñas en ningún sitio porque no hay contraseñas.
+--
+-- `on delete cascade`: si se borra el usuario, desaparece su pertenencia. No
+-- queremos filas huérfanas que den acceso a un id que ya no existe.
+--
+-- La clave primaria es la pareja (usuario, salón): la misma persona puede
+-- tener varios salones, y un salón puede tener varios usuarios (el dueño y su
+-- encargado). No se repite la pareja.
+-- ---------------------------------------------------------------------------
+
+create table if not exists salon_members (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  -- No lleva `references salons (slug)` a propósito: dar de alta al usuario y
+  -- dar de alta el salón son dos actos distintos y a veces en distinto orden.
+  -- Una fila aquí sin salón no da acceso a nada, porque el acceso se decide
+  -- mirando `salons` primero.
+  salon_slug text not null,
+  -- Hoy solo se usa 'dueno'. 'encargado' queda escrito para cuando haga falta
+  -- distinguir quién puede tocar Ajustes y quién solo la agenda; mientras
+  -- tanto el servidor trata igual a los dos y no se inventa permisos.
+  rol text not null default 'dueno',
+  creado timestamptz not null default now(),
+  primary key (user_id, salon_slug)
+);
+
+-- Se consulta siempre por la pareja, pero también "quién puede entrar a este
+-- salón" al dar de alta a alguien nuevo.
+create index if not exists salon_members_salon_slug_idx on salon_members (salon_slug);
+
+-- Misma decisión que en el bloque anterior: RLS activada y SIN políticas. El
+-- servidor entra con la service role key y la salta; la clave anónima no ve ni
+-- una fila. Una política permisiva aquí dejaría que cualquiera con la clave
+-- pública leyera —o peor, escribiera— quién tiene acceso a qué salón.
+alter table salon_members enable row level security;
