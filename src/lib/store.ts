@@ -211,6 +211,15 @@ interface SalonState {
     clients: Client[];
     waitlist: WaitlistEntry[];
   }) => void;
+  /**
+   * Deja citas, clientes y lista de espera a cero.
+   *
+   * Lo usa `resolverSalonReal` justo después de `applyBusinessType`: un salón
+   * de pago no puede ver ni un segundo las citas y los clientes inventados que
+   * ese método siembra, y mucho menos escribir encima de ellos. Mejor un panel
+   * vacío mientras carga que un panel con gente que no existe.
+   */
+  vaciarDatosDeEjemplo: () => void;
 }
 
 /**
@@ -573,6 +582,8 @@ export const useSalonStore = create<SalonState>()(
 
       hydrateFromServer: ({ appointments, clients, waitlist }) =>
         set({ appointments, clients, waitlist }),
+
+      vaciarDatosDeEjemplo: () => set({ appointments: [], clients: [], waitlist: [] }),
 
       applyDemo: (id) => {
         const demo = get().savedDemos.find((d) => d.id === id);
