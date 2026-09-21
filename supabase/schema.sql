@@ -162,3 +162,49 @@ alter table clients add column if not exists penalty_block boolean not null defa
 
 -- El estado 'late' (vino tarde y sin avisar) entra por la columna `status` de
 -- appointments, que ya es texto libre: no hace falta DDL para él.
+
+-- ---------------------------------------------------------------------------
+-- 21/09/2026 — Row Level Security, por fin escrita donde se puede recrear
+--
+-- La RLS YA está activada en el proyecto de producción, pero se activó a mano
+-- en el panel de Supabase y nunca llegó a este fichero. Consecuencia: quien
+-- levante el proyecto desde el repositorio —que es exactamente lo que dice la
+-- primera línea de aquí arriba: `bun run scripts/migrate.ts`— se encuentra una
+-- base de datos SIN RLS y con todas las tablas abiertas a la clave anónima.
+-- Una protección que existe por accidente histórico no es una protección.
+--
+-- Esto no cambia nada en producción (ya está así): sirve para que un proyecto
+-- recreado nazca igual de cerrado que el actual.
+--
+-- CÓMO ENCAJA ESTO CON EL SERVIDOR, que es lo que suele confundirse:
+--
+--   * El servidor de la aplicación entra con la SERVICE ROLE KEY
+--     (src/lib/supabase.server.ts). Esa clave SALTA la RLS por definición:
+--     ninguna política de aquí le afecta ni le afectará.
+--   * Por tanto la RLS NO es la primera barrera del producto, es la SEGUNDA.
+--     La primera —comprobar quién llama antes de leer o escribir el salón que
+--     pide— tiene que estar en las funciones de servidor. Mientras eso no
+--     exista, activar RLS no protege de nada por el camino normal.
+--   * Lo que la RLS sí cierra, y por eso se activa, es el camino directo: que
+--     cualquiera con la clave anónima o la publicable —que van en claro en el
+--     navegador en cuanto se use un cliente de Supabase desde el cliente—
+--     lea o escriba las tablas saltándose la aplicación entera.
+--
+-- Se activa la RLS y NO se crea ninguna política. Es deliberado y es el estado
+-- real de hoy: sin políticas, la clave anónima ve cero filas y no puede
+-- escribir ninguna. Una política permisiva («true») aquí abriría la puerta que
+-- este bloque está cerrando; cuando haya autenticación de verdad, las
+-- políticas se escribirán contra esa sesión, en su propio bloque fechado.
+-- ---------------------------------------------------------------------------
+
+alter table clients enable row level security;
+alter table appointments enable row level security;
+alter table salons enable row level security;
+alter table waitlist enable row level security;
+
+-- Ojo con `force row level security`: NO se pone. Forzaría la RLS también al
+-- dueño de la tabla, que es con quien conecta `scripts/migrate.ts`, y las
+-- sentencias de datos de este mismo fichero (el `update clients set
+-- penalty_at = now()` de más arriba) pasarían a afectar a cero filas sin
+-- decir nada. Además dejaría de reflejar el estado real de producción, que es
+-- justo lo que este bloque viene a versionar.
