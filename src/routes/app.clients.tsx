@@ -161,11 +161,23 @@ function Clients() {
 
       {rows.length === 0 ? (
         <div className="rounded-xl border border-border/60 bg-card">
-          <EmptyState
-            icon={Users}
-            title="Ningún cliente coincide"
-            description="Prueba con otro término de búsqueda o quita el filtro."
-          />
+          {/* Dos vacíos muy distintos, y hasta ahora los dos decían lo mismo.
+              Un salón que acaba de empezar, sin ningún cliente todavía y sin
+              haber tocado ningún filtro, leía "prueba con otro término de
+              búsqueda" y se quedaba buscando un filtro que no había puesto. */}
+          {allRows.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title="Todavía no tienes clientes"
+              description="Aquí irá apareciendo cada persona que reserve contigo: su teléfono, lo que suele pedir y cuándo vino por última vez. La ficha se crea sola con la primera cita, no hay que apuntar a nadie a mano."
+            />
+          ) : (
+            <EmptyState
+              icon={Users}
+              title="Ningún cliente coincide"
+              description="Prueba con otro término de búsqueda o quita el filtro."
+            />
+          )}
         </div>
       ) : (
         <>
