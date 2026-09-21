@@ -30,6 +30,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { PanelV2Shell } from "@/components/PanelV2Shell";
 import { GuardiaDelPanel } from "@/components/GuardiaDelPanel";
+import { BotonCerrarSesion } from "@/components/BotonCerrarSesion";
 import { accesoAlPanel } from "@/lib/api/salons.functions";
 import { hasSeenTour, startTour } from "@/lib/tour";
 import { Button } from "@/components/ui/button";
@@ -160,8 +161,9 @@ function SidebarNav({ path, onNavigate }: { path: string; onNavigate?: () => voi
           </div>
         </div>
       ))}
-      <div className="mt-auto border-t border-sidebar-border pt-3">
+      <div className="mt-auto space-y-0.5 border-t border-sidebar-border pt-3">
         <NavLink item={settingsItem} active={isActive(settingsItem, path)} onNavigate={onNavigate} />
+        <BotonCerrarSesion />
       </div>
     </nav>
   );

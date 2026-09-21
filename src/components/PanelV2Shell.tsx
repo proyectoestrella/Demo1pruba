@@ -20,6 +20,7 @@ import { salon } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { BotonCerrarSesion } from "@/components/BotonCerrarSesion";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -138,6 +139,11 @@ export function PanelV2Shell() {
           <ArrowUpRight className="h-4 w-4" />
           <span className="text-[9px] leading-tight">Web</span>
         </Link>
+        {/* Salir. Borra también las citas y las fichas guardadas en este
+            aparato — ver components/BotonCerrarSesion.tsx. */}
+        <div className="mt-1 flex w-16 justify-center">
+          <BotonCerrarSesion variante="icono" />
+        </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -238,6 +244,10 @@ export function PanelV2Shell() {
                 <ArrowUpRight className="h-5 w-5" />
                 Ver sitio público
               </Link>
+              <div className="flex flex-col items-center gap-2 rounded-xl border border-border/60 px-3 py-4 text-center text-xs font-medium text-muted-foreground">
+                <BotonCerrarSesion variante="icono" />
+                Cerrar sesión
+              </div>
             </div>
           </SheetContent>
         </Sheet>
