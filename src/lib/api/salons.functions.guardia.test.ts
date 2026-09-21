@@ -37,7 +37,7 @@ const DEL_DUENO = [
  * Las que no cortan pero sí recortan: miran quién llama con `acceso(...)` y
  * entregan menos según la respuesta.
  */
-const RECORTADAS = ["listSalonData", "syncAppointment"];
+const RECORTADAS = ["listSalonData", "syncAppointment", "accesoAlPanel"];
 
 /**
  * Las que son públicas A PROPÓSITO, y por qué. Ninguna devuelve una lista de

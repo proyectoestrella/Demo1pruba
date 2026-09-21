@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Calendar,
@@ -29,6 +29,8 @@ import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { PanelV2Shell } from "@/components/PanelV2Shell";
+import { GuardiaDelPanel } from "@/components/GuardiaDelPanel";
+import { accesoAlPanel } from "@/lib/api/salons.functions";
 import { hasSeenTour, startTour } from "@/lib/tour";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +42,40 @@ import {
 } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/app")({
+  /**
+   * La puerta, antes de que el panel llegue a existir.
+   *
+   * Corta la navegación a `/app` cuando el salón es de pago y quien entra no
+   * pertenece a él: no se monta ningún componente, así que no hay nada que
+   * parpadee. Esto cubre el caso de moverse por la aplicación.
+   *
+   * En el servidor NO se comprueba —y es deliberado—: la sesión del dueño vive
+   * en su navegador, no viaja en la petición del documento, así que aquí
+   * dentro TODO el mundo parecería un desconocido y hasta el dueño acabaría en
+   * la pantalla de acceso. De la carga directa de la URL se encarga
+   * `GuardiaDelPanel`, que no pinta el panel hasta saberlo.
+   *
+   * Y por si las dos fallaran: ninguna de las dos es la que protege los datos.
+   * Eso lo hace cada función de servidor por su cuenta.
+   */
+  beforeLoad: async ({ location }) => {
+    if (typeof window === "undefined") return;
+    const desdeUrl = (location.search as Record<string, unknown>)?.s;
+    const slug =
+      typeof desdeUrl === "string" && desdeUrl
+        ? desdeUrl
+        : useSalonStore.getState().salonProfile.slug;
+    if (!slug) return;
+    try {
+      const { real, permitido } = await accesoAlPanel({ data: { slug } });
+      if (real && !permitido) throw redirect({ to: "/login", replace: true });
+    } catch (err) {
+      // El `redirect` de TanStack se lanza como excepción: hay que dejarlo
+      // pasar. Cualquier otro fallo se ignora y decide `GuardiaDelPanel`.
+      if (err && typeof err === "object" && "isRedirect" in err) throw err;
+      console.error("No se pudo comprobar el acceso al panel:", err);
+    }
+  },
   head: () => ({
     meta: [{ title: `Dashboard · ${useSalonStore.getState().salonProfile.name}` }],
     // Manifest propio del panel ("siShow · Panel", start_url /app?v=2) además
@@ -232,9 +268,22 @@ function DashboardLayout() {
   useSyncPanelV2FromUrl();
   useApplyDemoFromUrl();
   useTituloDelPanel();
+  const slug = useSalonSlugDelPanel();
+
+  // Nada de lo de dentro se monta hasta que se sabe quién está entrando: ni
+  // el armazón del panel, ni la consulta que trae la agenda.
+  return (
+    <GuardiaDelPanel slug={slug}>
+      <PanelAutorizado slug={slug} />
+    </GuardiaDelPanel>
+  );
+}
+
+/** El panel, ya con el acceso comprobado. */
+function PanelAutorizado({ slug }: { slug?: string }) {
   // Si este panel gestiona un salón real, aquí es donde deja de ser una copia
   // local y pasa a leer y escribir en Supabase. Si no, no hace nada.
-  useRealSalon(useSalonSlugDelPanel(), "panel");
+  useRealSalon(slug, "panel");
   const panelV2 = usePanelV2();
 
   if (panelV2) return <PanelV2Shell />;

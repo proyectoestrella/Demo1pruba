@@ -143,6 +143,28 @@ export const esSalonRealPublico = createServerFn({ method: "GET" })
     return { real: Boolean(row) };
   });
 
+/**
+ * ¿Puede quien está llamando abrir el panel de este salón?
+ *
+ * La usa la guarda de la ruta `/app` para decidir entre enseñar el panel o
+ * mandar a `/login`. Devuelve dos cosas porque hacen falta las dos:
+ *
+ *   `real`      — si es false es una demo de venta: se entra sin pedir nada.
+ *   `permitido` — si es true, quien llama manda sobre ese salón.
+ *
+ * No devuelve ni un dato del salón, así que preguntarlo no filtra nada. Y es
+ * una comodidad de la interfaz, no la barrera: la barrera está en cada
+ * función que entrega datos. Aunque alguien se saltara esta pregunta, el
+ * panel se abriría vacío.
+ */
+export const accesoAlPanel = createServerFn({ method: "GET" })
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug }))
+  .handler(async ({ data }): Promise<{ real: boolean; permitido: boolean }> => {
+    const quien = await acceso(data.slug);
+    return { real: quien.tipo !== "demo", permitido: tieneMando(quien) };
+  });
+
 /* ---------------------------------------------------------------------- */
 /* Perfil                                                                  */
 /* ---------------------------------------------------------------------- */
