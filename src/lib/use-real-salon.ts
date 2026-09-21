@@ -42,7 +42,7 @@ export interface StoreSalonReal {
 export interface DepsSalonReal {
   getSalonProfile: (arg: { data: { slug: string } }) => Promise<{ profile: SalonProfile | null }>;
   listSalonData: (arg: {
-    data: { slug: string; scope: "panel" | "publica" };
+    data: { slug: string; vista: "panel" | "publica" };
   }) => Promise<DatosDelSalon>;
   /** Estado actual de la store. Se pide cada vez, nunca se cachea. */
   store: () => StoreSalonReal;
@@ -134,7 +134,11 @@ export async function resolverSalonReal(
   // 4. Agenda real. Solo si llega se enciende la sincronización.
   const intentar = async (): Promise<ResultadoSalonReal> => {
     try {
-      const datos = await deps.listSalonData({ data: { slug, scope } });
+      // `vista` es solo lo que ESTA pantalla necesita. Lo que de verdad se
+      // entrega lo recorta el servidor según quién esté llamando: pedir
+      // "panel" sin ser miembro del salón devuelve la vista pública, sin una
+      // sola ficha de cliente. Ver lib/api/autorizacion.ts.
+      const datos = await deps.listSalonData({ data: { slug, vista: scope } });
       if (deps.cancelado()) return "cancelado";
       const ahora = deps.store();
       ahora.hydrateFromServer(datos);
