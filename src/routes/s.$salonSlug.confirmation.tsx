@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef } from "react";
-import { Check, CalendarPlus, MapPin } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, CalendarPlus, Download, MapPin } from "lucide-react";
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
@@ -9,6 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Confetti, type ConfettiRef } from "@/components/magicui/confetti";
 import { eur } from "@/lib/copy";
 import { sumServices } from "@/lib/appointment-services";
+import {
+  construirEnlaceGoogleCalendar,
+  construirIcs,
+  construirIcsDataUri,
+  esDispositivoApple,
+  type DatosCita,
+} from "@/lib/calendario";
 
 export const Route = createFileRoute("/s/$salonSlug/confirmation")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -47,6 +54,13 @@ function Confirmation() {
   const { durationMin: totalMin, priceEur: total } = sumServices(chosen);
   const employee = employeeMap[employeeId];
   const confettiRef = useRef<ConfettiRef>(null);
+  // Solo para ordenar los dos botones de calendario: en iPhone/iPad, Apple
+  // primero; en el resto (Android incluido), Google primero. Los dos se ven
+  // siempre. Se calcula en el cliente porque depende de navigator.userAgent.
+  const [esApple, setEsApple] = useState(false);
+  useEffect(() => {
+    setEsApple(esDispositivoApple(navigator.userAgent));
+  }, []);
 
   // Un disparo al aterrizar en la confirmación. Se respeta
   // `prefers-reduced-motion`: para quien lo pida, no cae nada.
@@ -88,22 +102,24 @@ function Confirmation() {
       })
     : "—";
 
+  const datosCita: DatosCita | null =
+    date && time
+      ? {
+          fecha: date,
+          hora: time,
+          duracionMin: totalMin,
+          servicio: serviceNames.join(" + "),
+          salon: profile.name,
+          direccion: profile.address,
+        }
+      : null;
+
+  const enlaceGoogle = datosCita ? construirEnlaceGoogleCalendar(datosCita) : null;
+  const enlaceAppleDataUri = datosCita ? construirIcsDataUri(datosCita) : null;
+
   function downloadIcs() {
-    if (!chosen.length || !date || !time) return;
-    const start = new Date(`${date}T${time}:00`);
-    const end = new Date(start.getTime() + totalMin * 60_000);
-    const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-    const ics = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "BEGIN:VEVENT",
-      `DTSTART:${fmt(start)}`,
-      `DTEND:${fmt(end)}`,
-      `SUMMARY:${serviceNames.join(" + ")} en ${profile.name}`,
-      `LOCATION:${profile.address}`,
-      "END:VEVENT",
-      "END:VCALENDAR",
-    ].join("\r\n");
+    if (!datosCita) return;
+    const ics = construirIcs(datosCita);
     const blob = new Blob([ics], { type: "text/calendar" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -188,15 +204,52 @@ function Confirmation() {
         </div>
       </div>
 
+      {datosCita && (
+        <div className="mt-6 flex flex-col gap-3">
+          <p className="text-center text-xs uppercase tracking-widest text-muted-foreground">
+            Añadir a mi calendario
+          </p>
+          <div className="flex gap-3">
+            {(esApple
+              ? (["apple", "google"] as const)
+              : (["google", "apple"] as const)
+            ).map((proveedor) =>
+              proveedor === "google" ? (
+                <Button
+                  key="google"
+                  asChild
+                  variant="outline"
+                  className="flex-1 rounded-full px-2 text-xs sm:text-sm"
+                >
+                  <a href={enlaceGoogle!} target="_blank" rel="noopener noreferrer">
+                    <CalendarPlus className="h-4 w-4 shrink-0" /> Google
+                  </a>
+                </Button>
+              ) : (
+                <Button
+                  key="apple"
+                  asChild
+                  variant="outline"
+                  className="flex-1 rounded-full px-2 text-xs sm:text-sm"
+                >
+                  <a href={enlaceAppleDataUri!}>
+                    <CalendarPlus className="h-4 w-4 shrink-0" /> Apple / iPhone
+                  </a>
+                </Button>
+              ),
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={downloadIcs}
+            className="text-center text-xs text-muted-foreground underline underline-offset-2"
+          >
+            <Download className="mr-1 inline h-3 w-3" /> Otro calendario (.ics)
+          </button>
+        </div>
+      )}
+
       <div className="mt-6 flex gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={downloadIcs}
-          className="flex-1 rounded-full"
-        >
-          <CalendarPlus className="h-4 w-4" /> Añadir a mi calendario
-        </Button>
         <Button asChild className="flex-1 rounded-full">
           <Link to="/s/$salonSlug" params={{ salonSlug }}>
             Hecho
