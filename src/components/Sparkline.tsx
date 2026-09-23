@@ -1,4 +1,5 @@
 import { Line, LineChart, ResponsiveContainer } from "recharts";
+import { hayTendenciaQueDibujar } from "@/lib/sparkline";
 
 export interface SparklineProps {
   /** Values oldest → newest. */
@@ -11,8 +12,30 @@ export interface SparklineProps {
 /**
  * Minimal trend line for KPI cards — no axes, grid or tooltip, just the
  * shape of the series with the final (current) point marked.
+ *
+ * Con uno o dos días con datos no se dibuja NADA: se enseña un guion. Con tan
+ * poco, las cuatro tarjetas pintaban exactamente la misma curva —plana y con
+ * un repunte al final— que parecía una tendencia y no lo era. Ver
+ * `hayTendenciaQueDibujar`.
  */
 export function Sparkline({ data, color, className }: SparklineProps) {
+  if (!hayTendenciaQueDibujar(data)) {
+    return (
+      <div
+        className={className}
+        style={{ width: "100%", height: 32 }}
+        title="Aún no hay días suficientes para enseñar una tendencia."
+      >
+        <div
+          aria-hidden="true"
+          className="flex h-full items-center justify-center text-sm leading-none text-muted-foreground/40"
+        >
+          —
+        </div>
+      </div>
+    );
+  }
+
   const points = data.map((value, i) => ({ value, i }));
   const lastIndex = data.length - 1;
 

@@ -18,9 +18,11 @@ import {
 } from "@/lib/derive";
 import { dayOccupancyBars, toDateKey } from "@/lib/reparto";
 import { cierreDelDia } from "@/lib/caja";
-import { employeeMap, employees } from "@/lib/mock/salon";
+import { employeeMap } from "@/lib/mock/salon";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
+import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
-import { eur } from "@/lib/copy";
+import { eur, hora } from "@/lib/copy";
 import { PAYMENT_METHOD_LABELS, type Appointment } from "@/lib/mock/types";
 import { StylistDot } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -32,6 +34,8 @@ import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { WalkInDialog } from "@/components/WalkInDialog";
 import { KpiCard } from "@/components/KpiCard";
 import { PeriodFilter } from "@/components/PeriodFilter";
+import { CitasPorResolver } from "@/components/CitasPorResolver";
+import { AvisoDeudasHoy } from "@/components/DeudaCliente";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +65,10 @@ export function HoyV2() {
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [phoneApptOpen, setPhoneApptOpen] = useState(false);
   const greeting = greetingForHour(new Date().getHours());
+  const employees = useEquipo();
+  // Un solo profesional: ni "con Adam" en cada cita, ni punto de color, ni
+  // desglose de caja por profesional (eso último lo decide ya `cierreDelDia`).
+  const soloUno = esSoloUnProfesional(employees);
 
   // Periodo de las métricas: "hoy" reproduce exactamente lo de siempre.
   const [period, setPeriod] = useState<MetricPeriod>("hoy");
@@ -89,13 +97,13 @@ export function HoyV2() {
   const horasDeHoy = useMemo(
     () => dayOccupancyBars(appointments, toDateKey(now), employees, lastSlotBufferMin),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [appointments, lastSlotBufferMin],
+    [appointments, lastSlotBufferMin, employees],
   );
   // Cierre de caja del día — lo apuntado a mano, nada de pagos de verdad.
   const caja = useMemo(
     () => cierreDelDia(appointments, employees, now),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [appointments],
+    [appointments, employees],
   );
 
   const upcomingToday = appointments
@@ -113,9 +121,15 @@ export function HoyV2() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl tracking-tight">{greeting}</h1>
-        <p className="text-sm text-muted-foreground">Así va {salonName} hoy.</p>
+        <h1 className="font-display text-2xl md:text-3xl tracking-tight text-foreground">{greeting}</h1>
+        <p className="text-sm text-muted-foreground">Así va {salonName}.</p>
       </div>
+
+      {/* Lo primero que se ve al abrir el panel, y en este orden: quién te
+          debe dinero y viene hoy (el momento de cobrar es cuando lo tienes
+          delante), y qué citas de estos días quedaron sin marcar. */}
+      <AvisoDeudasHoy />
+      <CitasPorResolver />
 
       {/* Las dos acciones que pasan de verdad en el mostrador: alguien que
           entra sin haber reservado, y alguien que llama por teléfono. Una
@@ -291,11 +305,7 @@ export function HoyV2() {
                     className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border/60 px-3 py-2 text-left text-sm transition-colors hover:bg-muted/40"
                   >
                     <span className="w-12 shrink-0 tabular-nums text-muted-foreground">
-                      {new Date(a.start).toLocaleTimeString("es", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: false,
-                      })}
+                      {hora(a.start)}
                     </span>
                     <span className="min-w-0 flex-1 truncate">{a.clientName}</span>
                     <span className="shrink-0 tabular-nums text-muted-foreground">

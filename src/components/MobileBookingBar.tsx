@@ -31,6 +31,7 @@ export function MobileBookingBar({ salonSlug }: MobileBookingBarProps) {
         hideForFooter ? "translate-y-full" : "translate-y-0"
       }`}
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
+      data-barra-fija="reserva"
     >
       <Link
         to="/s/$salonSlug/book"

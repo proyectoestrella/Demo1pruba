@@ -10,7 +10,7 @@ export interface KpiCardProps {
   icon: LucideIcon;
   trend: KpiTrend;
   format: (n: number) => string;
-  /** Context label for the comparison, e.g. "vs. ayer" or "vs. semana pasada". */
+  /** Contra qué se compara, ya en español: "vs. ayer a esta hora", "vs. el mes pasado". */
   context: string;
   /** Whether an increase in this metric is good news (ingresos) or bad news (cancelaciones). */
   goodDirection: "up" | "down";
@@ -19,6 +19,8 @@ export interface KpiCardProps {
    * Omítelo cuando `format` ya lleva su propia unidad (p. ej. "€120").
    */
   unitLabel?: string;
+  /** Texto cuando no hay periodo anterior que comparar. */
+  sinComparacionLabel?: string;
   className?: string;
 }
 
@@ -44,6 +46,7 @@ export function KpiCard({
   context,
   goodDirection,
   unitLabel,
+  sinComparacionLabel = "Sin datos previos",
   className,
 }: KpiCardProps) {
   const display = trendDisplay(trend);
@@ -56,7 +59,7 @@ export function KpiCard({
 
   let deltaText: string;
   if (display.kind === "no-data") {
-    deltaText = "Sin datos previos";
+    deltaText = sinComparacionLabel;
   } else if (display.kind === "pct") {
     deltaText = `${display.pct > 0 ? "+" : ""}${display.pct}%`;
   } else {
@@ -93,7 +96,10 @@ export function KpiCard({
       {/* Etiqueta y comparación en dos líneas: en cinco columnas, "Cancelaciones"
           y "vs. semana pasada" no caben lado a lado y la segunda se salía. */}
       <p className="mt-0.5 text-xs leading-tight text-muted-foreground">{label}</p>
-      <p className="truncate text-[10px] text-muted-foreground/70">{context}</p>
+      {/* Sin `truncate`: la comparación es el dato que da sentido al
+          porcentaje, y en un móvil "vs. la semana pasada a estas alturas" se
+          quedaba en "vs. la semana pasada a esta…". Que ocupe dos líneas. */}
+      <p className="text-[10px] leading-tight text-muted-foreground/70">{context}</p>
       <div className="mt-3">
         <Sparkline data={trend.spark} color={styles.line} />
       </div>

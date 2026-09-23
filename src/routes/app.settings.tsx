@@ -1,34 +1,30 @@
 import { useEffect, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { ArrowUpRight } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { DAY_LABELS_ES, DEFAULT_OPENING_HOURS, normalizeDay } from "@/lib/opening-hours";
 
 export const Route = createFileRoute("/app/settings")({ component: Settings });
 
+/**
+ * Ajustes = POLÍTICAS. Lo que se LEE en la web pública (nombre, presentación,
+ * foto, teléfono, dirección, horario, carta, equipo, preguntas frecuentes,
+ * franjas prioritarias) se edita en «Mi web» (`/app/web`), viendo el efecto.
+ *
+ * Antes estaba en los dos sitios: aquí se cambiaba el nombre a ciegas y allí
+ * también, con dos formularios que podían decir cosas distintas sobre lo
+ * mismo. Manda «Mi web» y aquí solo queda el enlace — una decisión de la que
+ * no hay que volver: dos formularios sobre un solo perfil siempre acaban
+ * discrepando, y el que gana es el último que guardó.
+ */
 function Settings() {
   const salonProfile = useSalonStore((s) => s.salonProfile);
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
-
-  const [name, setName] = useState(salonProfile.name);
-  const [tagline, setTagline] = useState(salonProfile.tagline);
-  const [about, setAbout] = useState(salonProfile.about);
-  const [address, setAddress] = useState(salonProfile.address);
-  const [phone, setPhone] = useState(salonProfile.phone);
-  const [instagram, setInstagram] = useState(salonProfile.instagram);
-  const [rating, setRating] = useState(String(salonProfile.rating));
-  const [reviewCount, setReviewCount] = useState(String(salonProfile.reviewCount));
-  const [specialties, setSpecialties] = useState(salonProfile.specialties.join(", "));
-  const [heroImage, setHeroImage] = useState(salonProfile.heroImage ?? "");
-  const [openingHours, setOpeningHours] = useState<string[]>(
-    salonProfile.openingHours?.length === 7 ? salonProfile.openingHours : DEFAULT_OPENING_HOURS,
-  );
 
   // Plantones — política de penalización por cancelar tarde o no presentarse.
   const [noShowEnabled, setNoShowEnabled] = useState((salonProfile.noShowFeeEur ?? 0) > 0);
@@ -52,19 +48,6 @@ function Settings() {
 
   // Keep the form in sync if the profile changes from elsewhere (e.g. reset).
   useEffect(() => {
-    setName(salonProfile.name);
-    setTagline(salonProfile.tagline);
-    setAbout(salonProfile.about);
-    setAddress(salonProfile.address);
-    setPhone(salonProfile.phone);
-    setInstagram(salonProfile.instagram);
-    setRating(String(salonProfile.rating));
-    setReviewCount(String(salonProfile.reviewCount));
-    setSpecialties(salonProfile.specialties.join(", "));
-    setHeroImage(salonProfile.heroImage ?? "");
-    setOpeningHours(
-      salonProfile.openingHours?.length === 7 ? salonProfile.openingHours : DEFAULT_OPENING_HOURS,
-    );
     setNoShowEnabled((salonProfile.noShowFeeEur ?? 0) > 0);
     setNoShowFeeEur(String(salonProfile.noShowFeeEur || 7));
     setNoShowNoticeHours(String(salonProfile.noShowNoticeHours ?? 2));
@@ -76,16 +59,6 @@ function Settings() {
   }, [salonProfile]);
 
   function handleSave() {
-    const parsedRating = Number(rating.replace(",", "."));
-    const parsedCount = Number(reviewCount.replace(/[^\d]/g, ""));
-
-    // Una nota fuera de escala se ve a la legua en el hero: mejor avisar que
-    // guardar algo que deje la demo en evidencia delante del cliente.
-    if (!Number.isFinite(parsedRating) || parsedRating < 0 || parsedRating > 5) {
-      toast.error("La nota tiene que estar entre 0 y 5");
-      return;
-    }
-
     const parsedFee = Number(noShowFeeEur.replace(",", "."));
     if (noShowEnabled && (!Number.isFinite(parsedFee) || parsedFee <= 0 || parsedFee > 50)) {
       toast.error("La penalización tiene que estar entre 0 y 50 €");
@@ -116,20 +89,6 @@ function Settings() {
     }
 
     updateSalonProfile({
-      name,
-      tagline,
-      about,
-      address,
-      phone,
-      instagram,
-      rating: parsedRating,
-      reviewCount: Number.isFinite(parsedCount) ? parsedCount : 0,
-      specialties: specialties
-        .split(",")
-        .map((w) => w.trim())
-        .filter(Boolean),
-      heroImage: heroImage.trim(),
-      openingHours: openingHours.map(normalizeDay),
       noShowFeeEur: noShowEnabled ? Math.min(50, Math.max(0, parsedFee)) : 0,
       noShowNoticeHours: Math.min(48, Math.max(1, Math.round(parsedNotice) || 2)),
       smartSpread: smartSpreadEnabled,
@@ -143,89 +102,22 @@ function Settings() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <PageHeader title="Ajustes" description="Perfil del salón y políticas." />
+      <PageHeader title="Ajustes" description="Las políticas de tu salón: plantones, señal y reparto de agenda." />
 
-      <div className="space-y-4 rounded-xl border border-border/60 bg-card p-6">
-        <Field label="Nombre del salón" value={name} onChange={setName} />
-        <Field
-          label="Tipo de negocio"
-          value={tagline}
-          onChange={setTagline}
-          hint="El rótulo bajo el nombre, p. ej. «Peluquería y estética» o «Salón unisex»."
-        />
-        <Field
-          label="Dirección"
-          value={address}
-          onChange={setAddress}
-          hint="Mueve también el mapa de «Cómo llegar»."
-        />
-        <Field label="Teléfono" value={phone} onChange={setPhone} />
-        <Field label="Instagram" value={instagram} onChange={setInstagram} />
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Nota" value={rating} onChange={setRating} hint="De 0 a 5." />
-          <Field label="Nº de reseñas" value={reviewCount} onChange={setReviewCount} />
-        </div>
-
-        <Field
-          label="Especialidades"
-          value={specialties}
-          onChange={setSpecialties}
-          hint="Separadas por comas. Van rotando tras «Especialistas en»."
-        />
-
-        <div className="space-y-1.5">
-          <Label className="text-xs uppercase tracking-widest text-muted-foreground">Horario</Label>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {DAY_LABELS_ES.map((label, i) => (
-              <div key={label} className="flex items-center gap-2">
-                <span className="w-20 shrink-0 text-xs text-muted-foreground">{label}</span>
-                <Input
-                  value={openingHours[i] ?? ""}
-                  onChange={(e) =>
-                    setOpeningHours((h) => {
-                      const next = [...h];
-                      next[i] = e.target.value;
-                      return next;
-                    })
-                  }
-                  placeholder="10:00–14:00, 16:00–20:00 · o Cerrado"
-                  className="font-mono text-xs"
-                />
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Sale en la píldora «Abierto · cierra a las…», en «Cómo llegar» y en el pie de la web.
+      <Link
+        to="/app/web"
+        className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-card p-6 transition-colors hover:border-primary/50"
+      >
+        <div>
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">Mi web</p>
+          <p className="mt-2 text-sm">
+            El nombre, la foto, la presentación, el teléfono, la dirección, el horario, los
+            servicios y precios, el equipo y las preguntas frecuentes se cambian en{" "}
+            <strong>Mi web</strong>, viendo el resultado mientras escribes.
           </p>
         </div>
-
-        <Field
-          label="Foto de portada (URL)"
-          value={heroImage}
-          onChange={setHeroImage}
-          hint="Vacío usa la foto de ejemplo. Debe acabar en .jpg, .png o .webp."
-        />
-
-        <div className="space-y-1.5">
-          <Label className="text-xs uppercase tracking-widest text-muted-foreground">
-            Presentación
-          </Label>
-          <Textarea
-            value={about}
-            onChange={(e) => setAbout(e.target.value)}
-            rows={3}
-            className="resize-y"
-          />
-          <p className="text-xs text-muted-foreground">
-            El párrafo bajo el titular del hero y en el pie de página.
-          </p>
-        </div>
-
-        <div className="flex justify-end pt-2">
-          <Button onClick={handleSave}>Guardar cambios</Button>
-        </div>
-      </div>
+        <ArrowUpRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      </Link>
 
       <div className="space-y-4 rounded-xl border border-border/60 bg-card p-6">
         <div className="flex items-center justify-between gap-4">

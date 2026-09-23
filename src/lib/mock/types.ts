@@ -6,6 +6,13 @@ export type AppointmentStatus =
   | "completed"
   | "cancelled"
   | "no-show"
+  /**
+   * Vino, pero tarde y sin avisar. Es un desenlace distinto de "no vino": el
+   * servicio se hizo (y se cobra), pero la agenda se descolocó. Adam lo pidió
+   * tal cual — con dos estados no podía distinguir al que le falla del que le
+   * llega a deshora.
+   */
+  | "late"
   | "blocked";
 
 export interface Service {
@@ -77,6 +84,14 @@ export interface Client {
    * en el aviso de Hoy, pero sigue sin cobrar ni perdonar.
    */
   penaltyReviewedAt?: string;
+  /**
+   * ¿Esta deuda le impide volver a reservar por la web?
+   *
+   * `false` es la decisión que Tomás subrayó: "deuda anotada, pero que venga
+   * igual y se la cobro en el siguiente corte". `true` o ausente = se
+   * comporta como siempre (deber dinero bloquea la reserva online).
+   */
+  penaltyBlock?: boolean;
 }
 
 /**
@@ -207,6 +222,13 @@ export interface SalonProfile {
    * ausente = el catálogo de ejemplo del tipo de negocio (`SERVICE_CATALOG`).
    */
   menu?: string[];
+  /**
+   * Preguntas frecuentes propias del salón, de 1 a 8 entradas
+   * ("Pregunta~Respuesta" — ver `parseFaqEntry` en lib/faq.ts). Vacío o
+   * ausente = las cuatro preguntas que la app genera sola a partir del tipo de
+   * negocio y de la política de plantón (`faqPorDefecto`).
+   */
+  faq?: string[];
   /**
    * Política de plantón: importe en euros que se pide antes de poder volver a
    * reservar tras cancelar tarde o no presentarse. `undefined` o 0 =

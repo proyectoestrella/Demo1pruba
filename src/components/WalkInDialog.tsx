@@ -4,7 +4,8 @@ import { UserPlus } from "lucide-react";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import { employeesForType } from "@/lib/mock/salon";
-import { professionalWord, showsRealPhotos } from "@/lib/business-type";
+import { fotoDeProfesional, professionalWord } from "@/lib/business-type";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import type { EmployeeId } from "@/lib/mock/types";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,10 @@ export function WalkInDialog({ open, onOpenChange }: WalkInDialogProps) {
   // que respete el equipo real del enlace sin depender de que
   // `applyBusinessType` ya haya corrido — igual que las páginas públicas.
   const employees = employeesForType(tipo, profile.team);
+  // En un salón real no se enseñan las fotos de stock (ver fotoDeProfesional).
+  const esSalonReal = useSalonStore((s) => s.realSalonSlug) === profile.slug;
+  // Un solo profesional: la cita se le asigna sola, sin preguntar.
+  const soloUno = esSoloUnProfesional(employees);
 
   const [name, setName] = useState("");
   const [serviceId, setServiceId] = useState<string | undefined>(activeServices[0]?.id);
@@ -61,7 +66,7 @@ export function WalkInDialog({ open, onOpenChange }: WalkInDialogProps) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!service || !employeeId) {
-      toast.error("Elige servicio y " + professionalWord(tipo));
+      toast.error(soloUno ? "Elige un servicio" : "Elige servicio y " + professionalWord(tipo));
       return;
     }
     const clientName = name.trim() || "Cliente sin cita";
@@ -135,36 +140,38 @@ export function WalkInDialog({ open, onOpenChange }: WalkInDialogProps) {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="capitalize">{professionalWord(tipo)}</Label>
-              <div className="flex flex-wrap gap-2">
-                {employees.map((e) => {
-                  const selected = employeeId === e.id;
-                  return (
-                    <button
-                      key={e.id}
-                      type="button"
-                      aria-pressed={selected}
-                      onClick={() => setEmployeeId(e.id)}
-                      className={cn(
-                        "flex items-center gap-2 rounded-full border py-1.5 pr-3 pl-1.5 text-sm transition-colors",
-                        selected
-                          ? "border-primary bg-primary/10"
-                          : "border-border/60 hover:border-primary/40",
-                      )}
-                    >
-                      <StylistAvatar
-                        name={e.name}
-                        employeeId={e.id}
-                        photo={showsRealPhotos(tipo) ? e.photo : undefined}
-                        size="sm"
-                      />
-                      {e.name}
-                    </button>
-                  );
-                })}
+            {!soloUno && (
+              <div className="space-y-1.5">
+                <Label className="capitalize">{professionalWord(tipo)}</Label>
+                <div className="flex flex-wrap gap-2">
+                  {employees.map((e) => {
+                    const selected = employeeId === e.id;
+                    return (
+                      <button
+                        key={e.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => setEmployeeId(e.id)}
+                        className={cn(
+                          "flex items-center gap-2 rounded-full border py-1.5 pr-3 pl-1.5 text-sm transition-colors",
+                          selected
+                            ? "border-primary bg-primary/10"
+                            : "border-border/60 hover:border-primary/40",
+                        )}
+                      >
+                        <StylistAvatar
+                          name={e.name}
+                          employeeId={e.id}
+                          photo={fotoDeProfesional(e.name, e.id, e.photo, tipo, esSalonReal)}
+                          size="sm"
+                        />
+                        {e.name}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <DialogFooter className="mt-6">

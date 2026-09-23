@@ -45,14 +45,11 @@ function Marketing() {
   ];
 
   return (
-    <div className="space-y-8">
-      <div>
-        <p className="text-xs uppercase tracking-widest text-primary">Marketing</p>
-        <PageHeader title="Campañas listas para enviar." />
-        <p className="mt-1 text-sm text-muted-foreground">
-          Calculadas a partir de tus propias reservas, con la lista y el mensaje ya preparados.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Marketing"
+        description="Campañas calculadas a partir de tus propias reservas, con la lista y el mensaje ya preparados."
+      />
 
       <CampanasPanel />
 

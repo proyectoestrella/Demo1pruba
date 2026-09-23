@@ -4,16 +4,13 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { clientFrequency } from "@/lib/derive";
-import {
-  daysUntilPenaltyExpiry,
-  isPenaltyActive,
-  noShowSummary,
-  penaltyExpiresAt,
-  penaltyReasonLabel,
-} from "@/lib/plantones";
-import { employeeMap, employees } from "@/lib/mock/salon";
+import { historialDeFallos, penaltyReasonLabel } from "@/lib/plantones";
+import { BandaDeuda } from "@/components/DeudaCliente";
+import { employeeMap } from "@/lib/mock/salon";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
+import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
-import { eur } from "@/lib/copy";
+import { eur, eurRedondo } from "@/lib/copy";
 import type { Client } from "@/lib/mock/types";
 import { StylistDot } from "@/components/StylistAvatar";
 import { ClientAvatar } from "@/components/ClientAvatar";
@@ -48,13 +45,17 @@ export interface ClientHistorySheetProps {
  * mismo patrón responsive que `NewAppointmentDialog`. Mantiene exactamente
  * el store y los datos existentes: solo cambia la presentación.
  */
-export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: ClientHistorySheetProps) {
+export function ClientHistorySheet({
+  client: clientProp,
+  open,
+  onOpenChange,
+}: ClientHistorySheetProps) {
   const isMobile = useIsMobile();
   const appointments = useSalonStore((s) => s.appointments);
   const updateClient = useSalonStore((s) => s.updateClient);
-  const clearPenalty = useSalonStore((s) => s.clearPenalty);
-  const setPenaltyKeep = useSalonStore((s) => s.setPenaltyKeep);
   const reviewPenalty = useSalonStore((s) => s.reviewPenalty);
+  // Con un solo profesional, "con Adam" bajo cada visita no informa de nada.
+  const soloUno = esSoloUnProfesional(useEquipo());
   // Igual que AppointmentDetailSheet: la prop llega congelada en el momento
   // del clic (quien abre el sheet guarda una copia). Cobrado/Perdonar cambian
   // el store desde AQUÍ MISMO, con el sheet todavía abierto — sin releer la
@@ -65,16 +66,8 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
   );
   const client = stored ?? clientProp;
   const stats = client ? clientFrequency(appointments, client.id) : null;
-  // Plantones y caducidad del bloqueo — ver lib/plantones.ts.
-  const plantones = client ? noShowSummary(appointments, client.id) : null;
-  const bloqueado = isPenaltyActive(client ?? undefined);
-  const caducaEl = penaltyExpiresAt(client ?? undefined);
-  const diasRestantes = daysUntilPenaltyExpiry(client ?? undefined);
-
-  function handleClearPenalty(motivo: "cobrado" | "perdonado") {
-    if (!client) return;
-    clearPenalty(client.id, motivo);
-  }
+  // Plantones y retrasos sin avisar de los últimos 3 meses — ver lib/plantones.ts.
+  const plantones = client ? historialDeFallos(appointments, client.id) : null;
 
   // Borrador local para no reescribir el store en cada tecla: se guarda al salir del campo.
   const [notes, setNotes] = useState(client?.notes ?? "");
@@ -89,9 +82,7 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
     updateClient(client.id, { notes: trimmed });
   }
 
-  const ownAppointments = client
-    ? appointments.filter((a) => a.clientId === client.id)
-    : [];
+  const ownAppointments = client ? appointments.filter((a) => a.clientId === client.id) : [];
   const now = Date.now();
   const upcoming = ownAppointments
     .filter((a) => a.status !== "cancelled" && +new Date(a.start) >= now)
@@ -142,61 +133,22 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
         </div>
       )}
 
-      {/* Penalización pendiente (política de plantón) — solo si debe algo. */}
+      {/* Lo que debe y las tres salidas: cobrada, perdonada, o bloquear.
+          Mismo componente que el inicio y el detalle de la cita, para que las
+          tres pantallas no puedan decir cosas distintas. */}
+      <BandaDeuda client={client} />
       {(client.penaltyEur ?? 0) > 0 && (
-        <div className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-destructive">
-                Debe {eur(client.penaltyEur!)} · {penaltyReasonLabel(client)}
-                {client.penaltyNote ? ` · ${client.penaltyNote}` : ""}
-              </p>
-              {client.penaltyReviewedAt && (
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Revisado el{" "}
-                  {new Date(client.penaltyReviewedAt).toLocaleDateString("es", {
-                    day: "numeric",
-                    month: "short",
-                  })}
-                  : se ha dejado pendiente a propósito.
-                </p>
-              )}
-            </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => handleClearPenalty("cobrado")}>
-                Marcar como pagada
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => reviewPenalty(client.id)}>
-                Mantener
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => handleClearPenalty("perdonado")}>
-                Perdonar
-              </Button>
-            </div>
-          </div>
-
-          {/* El bloqueo para volver a reservar caduca solo a los 30 días. La
-              deuda no: sigue aquí hasta que el dueño la cobre o la perdone. */}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-destructive/20 pt-3">
-            <p className="text-xs text-muted-foreground">
-              {client.penaltyKeep
-                ? "Bloqueo mantenido por ti: no se levanta solo."
-                : bloqueado && caducaEl
-                  ? `No puede reservar online hasta el ${caducaEl.toLocaleDateString("es", { day: "numeric", month: "long" })}${diasRestantes ? ` (${diasRestantes} ${diasRestantes === 1 ? "día" : "días"})` : ""}.`
-                  : bloqueado
-                    ? "No puede reservar online mientras deba esta cantidad."
-                    : "El bloqueo ya se ha levantado solo: puede volver a reservar online."}
-            </p>
-            <Button
-              size="sm"
-              variant={client.penaltyKeep ? "secondary" : "outline"}
-              onClick={() => {
-                setPenaltyKeep(client.id, !client.penaltyKeep);
-              }}
-            >
-              {client.penaltyKeep ? "Dejar que caduque" : "Mantener el bloqueo"}
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+          <p>
+            {penaltyReasonLabel(client)}
+            {client.penaltyReviewedAt &&
+              ` · Revisado el ${new Date(client.penaltyReviewedAt).toLocaleDateString("es", { day: "numeric", month: "short" })}`}
+          </p>
+          {!client.penaltyReviewedAt && (
+            <Button size="sm" variant="outline" onClick={() => reviewPenalty(client.id)}>
+              Mantener pendiente
             </Button>
-          </div>
+          )}
         </div>
       )}
 
@@ -207,7 +159,7 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
           <p className="text-xs text-muted-foreground">Visitas</p>
         </div>
         <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
-          <p className="font-display text-xl">€{stats.totalSpent}</p>
+          <p className="font-display text-xl">{eurRedondo(stats.totalSpent)}</p>
           <p className="text-xs text-muted-foreground">Gasto total</p>
         </div>
         <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
@@ -217,7 +169,10 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
         <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
           <p className="font-display text-xl">
             {stats.lastVisit
-              ? new Date(stats.lastVisit).toLocaleDateString("es", { day: "2-digit", month: "short" })
+              ? new Date(stats.lastVisit).toLocaleDateString("es", {
+                  day: "2-digit",
+                  month: "short",
+                })
               : "—"}
           </p>
           <p className="text-xs text-muted-foreground">Última visita</p>
@@ -225,7 +180,10 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
         <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
           <p className="font-display text-xl">
             {stats.nextVisit
-              ? new Date(stats.nextVisit).toLocaleDateString("es", { day: "2-digit", month: "short" })
+              ? new Date(stats.nextVisit).toLocaleDateString("es", {
+                  day: "2-digit",
+                  month: "short",
+                })
               : "—"}
           </p>
           <p className="text-xs text-muted-foreground">Próxima cita</p>
@@ -259,12 +217,10 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
                       minute: "2-digit",
                     })}
                   </div>
-                  <StylistDot employeeId={a.employeeId} />
+                  {!soloUno && <StylistDot employeeId={a.employeeId} />}
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{serviceLabelOf(a) || "—"}</p>
-                    {employees.length > 1 && (
-                      <p className="text-xs text-muted-foreground">con {emp?.name}</p>
-                    )}
+                    {!soloUno && <p className="text-xs text-muted-foreground">con {emp?.name}</p>}
                   </div>
                   <StatusBadge status={a.status} />
                 </div>
@@ -312,14 +268,14 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
                       month: "short",
                     })}
                   </div>
-                  <StylistDot employeeId={a.employeeId} />
+                  {!soloUno && <StylistDot employeeId={a.employeeId} />}
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{serviceLabelOf(a) || "—"}</p>
-                    {employees.length > 1 && (
+                    {!soloUno && (
                       <p className="text-xs text-muted-foreground">con {emp?.name}</p>
                     )}
                   </div>
-                  <span className="text-sm font-medium">€{a.priceEur}</span>
+                  <span className="text-sm font-medium">{eur(a.priceEur)}</span>
                   <StatusBadge status={a.status} />
                 </div>
               );

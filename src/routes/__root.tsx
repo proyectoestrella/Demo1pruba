@@ -11,6 +11,7 @@ import {
 import { useEffect, useState } from "react";
 import { LayoutGrid, Maximize, Minimize } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
+import { AvisosDeSincronizacion } from "@/components/AvisosDeSincronizacion";
 import { useSalonStore } from "@/lib/store";
 
 import appCss from "../styles.css?url";
@@ -174,6 +175,8 @@ function RootComponent() {
       <Outlet />
       <ControlesIpad />
       <Toaster position="top-center" />
+      {/* Lo que NO se ha guardado tiene que verse: ver lib/avisos-sync.ts. */}
+      <AvisosDeSincronizacion />
     </QueryClientProvider>
   );
 }

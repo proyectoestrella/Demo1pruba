@@ -402,3 +402,41 @@
 .driver-popover.trimly-tour .driver-popover-arrow-side-bottom { border-bottom-color: var(--color-card); }
 .driver-popover.trimly-tour .driver-popover-arrow-side-left { border-left-color: var(--color-card); }
 .driver-popover.trimly-tour .driver-popover-arrow-side-right { border-right-color: var(--color-card); }
+
+/* ---------------------------------------------------------------------------
+ * Barras fijas al borde inferior de la pantalla (la navegación del panel en
+ * móvil y la barra de resumen de la reserva pública). Su alto se declara UNA
+ * vez aquí para que el contenido que hay debajo pueda reservar exactamente ese
+ * hueco: sin él, el último botón o la última fila de la pantalla quedaban
+ * tapados. `env(safe-area-inset-bottom)` es el hueco del gesto del iPhone.
+ * ------------------------------------------------------------------------ */
+:root {
+  --alto-barra-fija: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Deja libre el alto de la barra fija más un respiro, para que la última línea
+   no quede pegada al borde de la barra. Dos variantes según dónde desaparece
+   la barra: tanto la del panel como la del flujo de reserva se van a partir
+   de 1024 px. Al cortarse dentro de la propia clase no hace falta un
+   `lg:pb-*` que compita con ella por especificidad. */
+.hueco-barra-fija {
+  padding-bottom: calc(var(--alto-barra-fija) + 1rem);
+}
+@media (min-width: 64rem) {
+  .hueco-barra-fija {
+    padding-bottom: 1.5rem;
+  }
+}
+
+/* Scroll que funciona pero sin barra nativa a la vista: las tiras de días y la
+   vista previa de «Mi web» enseñaban el scrollbar gris del sistema, con sus
+   flechas, en medio del diseño. */
+.sin-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.sin-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}

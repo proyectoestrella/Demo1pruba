@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
+import { useEquipo } from "@/lib/use-equipo";
 import {
   mostBookedService,
   periodLabelSuffix,
@@ -33,11 +35,13 @@ import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
 import { RecargosPendientes } from "@/components/RecargosPendientes";
 import { KpiCard } from "@/components/KpiCard";
-import { CountUp } from "@/components/reactbits/CountUp";
 import { BorderBeam } from "@/components/magicui/border-beam";
 import { usePanelV2 } from "@/lib/use-panel-v2";
 import { HoyV2 } from "@/components/HoyV2";
 import { PeriodFilter } from "@/components/PeriodFilter";
+import { CitasPorResolver } from "@/components/CitasPorResolver";
+import { AvisoDeudasHoy } from "@/components/DeudaCliente";
+import { eur, eurRedondo, hora } from "@/lib/copy";
 
 const CHART_TOOLTIP_STYLE = {
   background: "var(--color-card)",
@@ -69,6 +73,8 @@ function Home() {
 /** El "Inicio" de siempre — sin tocar. Se usa cuando el panel v2 está desactivado. */
 function HomeV1() {
   const appointments = useSalonStore((s) => s.appointments);
+  // Un solo profesional: sin punto de color ni "con Adam" en cada cita.
+  const soloUno = esSoloUnProfesional(useEquipo());
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const mostrarSolicitudes = useSalonStore((s) => s.salonProfile.mostrarSolicitudes ?? true);
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur ?? 0);
@@ -172,6 +178,8 @@ function HomeV1() {
         <p className="text-sm text-muted-foreground">Así va {salonName} hoy.</p>
       </div>
 
+      <AvisoDeudasHoy />
+      <CitasPorResolver />
       {mostrarSolicitudes && <PendingRequestsBanner onOpenDetail={setSelected} />}
 
       <PeriodFilter
@@ -262,13 +270,13 @@ function HomeV1() {
                   tickLine={false}
                   axisLine={false}
                   width={44}
-                  tickFormatter={(v: number) => `€${v}`}
+                  tickFormatter={(v: number) => eurRedondo(v)}
                 />
                 <Tooltip
                   cursor={{ stroke: "var(--color-border)", strokeWidth: 1 }}
                   contentStyle={CHART_TOOLTIP_STYLE}
                   labelStyle={CHART_LABEL_STYLE}
-                  formatter={(value: number) => [`€${value}`, "Ingresos"]}
+                  formatter={(value: number) => [eur(value), "Ingresos"]}
                 />
                 <Area
                   type="monotone"
@@ -369,21 +377,17 @@ function HomeV1() {
                   className="flex w-full items-center gap-4 px-6 py-4 text-left transition-colors hover:bg-muted/40"
                 >
                   <div className="w-16 shrink-0 font-display text-xl">
-                    {new Date(a.start).toLocaleTimeString("es", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: false,
-                    })}
+                    {hora(a.start)}
                   </div>
-                  <StylistDot employeeId={a.employeeId} className="size-2.5" />
+                  {!soloUno && <StylistDot employeeId={a.employeeId} className="size-2.5" />}
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{a.clientName}</p>
                     <p className="truncate text-xs text-muted-foreground">
                       {serviceLabelOf(a)} · {a.duration} min
-                      {employees.length > 1 && ` · con ${emp.name}`}
+                      {soloUno ? "" : ` · con ${emp.name}`}
                     </p>
                   </div>
-                  <span className="shrink-0 text-sm font-medium">€{a.priceEur}</span>
+                  <span className="shrink-0 text-sm font-medium">{eur(a.priceEur)}</span>
                   <StatusBadge status={a.status} className="shrink-0" />
                 </button>
               );

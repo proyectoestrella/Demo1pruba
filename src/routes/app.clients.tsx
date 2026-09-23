@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { eur } from "@/lib/copy";
+import { eur, eurRedondo } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 import { Users, UserPlus, Repeat, UserX, Search } from "lucide-react";
 
@@ -97,15 +97,18 @@ function Clients() {
     enRiesgo: allRows.filter((r) => r.tag === "inactivo").length,
   };
 
-  // Aparte de si es barato: solo se ofrece el filtro cuando hay a quién
-  // filtrar — una pestaña "Con penalización" vacía es ruido en cualquier
-  // demo que no tenga la política de plantón activa.
+  // Solo se ofrece el filtro cuando hay a quién filtrar: una pestaña "Me
+  // deben" vacía es ruido en cualquier demo sin plantones.
   const hayPenalizados = allRows.some((r) => (r.penaltyEur ?? 0) > 0);
 
   const termino = busqueda.trim().toLowerCase();
   const rows = allRows
     .filter((c) =>
-      filtro === "todos" ? true : filtro === "penalizado" ? (c.penaltyEur ?? 0) > 0 : c.tag === filtro,
+      filtro === "todos"
+        ? true
+        : filtro === "penalizado"
+          ? (c.penaltyEur ?? 0) > 0
+          : c.tag === filtro,
     )
     .filter((c) =>
       termino === ""
@@ -119,7 +122,7 @@ function Clients() {
     <div className="space-y-6">
       <PageHeader
         title="Clientes"
-        description="Tu cartera de clientes, ordenada por valor de vida."
+        description="Tus clientes, ordenados por lo que se han gastado contigo."
       />
 
       {/* KPIs — panorama de la cartera antes de bajar al listado. */}
@@ -146,7 +149,7 @@ function Clients() {
           <Input
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por nombre, teléfono o email…"
+            placeholder="Buscar por nombre, teléfono o correo…"
             className="pl-9"
           />
         </div>
@@ -157,18 +160,30 @@ function Clients() {
             <TabsTrigger value="nuevo">Nuevos</TabsTrigger>
             <TabsTrigger value="habitual">Habituales</TabsTrigger>
             <TabsTrigger value="inactivo">Inactivos</TabsTrigger>
-            {hayPenalizados && <TabsTrigger value="penalizado">Con penalización</TabsTrigger>}
+            {hayPenalizados && <TabsTrigger value="penalizado">Me deben</TabsTrigger>}
           </TabsList>
         </Tabs>
       </div>
 
       {rows.length === 0 ? (
         <div className="rounded-xl border border-border/60 bg-card">
-          <EmptyState
-            icon={Users}
-            title="Ningún cliente coincide"
-            description="Prueba con otro término de búsqueda o quita el filtro."
-          />
+          {/* Dos vacíos muy distintos, y hasta ahora los dos decían lo mismo.
+              Un salón que acaba de empezar, sin ningún cliente todavía y sin
+              haber tocado ningún filtro, leía "prueba con otro término de
+              búsqueda" y se quedaba buscando un filtro que no había puesto. */}
+          {allRows.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title="Todavía no tienes clientes"
+              description="Aquí irá apareciendo cada persona que reserve contigo: su teléfono, lo que suele pedir y cuándo vino por última vez. La ficha se crea sola con la primera cita, no hay que apuntar a nadie a mano."
+            />
+          ) : (
+            <EmptyState
+              icon={Users}
+              title="Ningún cliente coincide"
+              description="Prueba con otro término de búsqueda o quita el filtro."
+            />
+          )}
         </div>
       ) : (
         <>
@@ -227,7 +242,7 @@ function Clients() {
                           })
                         : "—"}
                     </TableCell>
-                    <TableCell className="text-right font-medium">€{c.totalSpent}</TableCell>
+                    <TableCell className="text-right font-medium">{eurRedondo(c.totalSpent)}</TableCell>
                     <TableCell>
                       <TagPill tag={c.tag} />
                     </TableCell>
@@ -250,11 +265,11 @@ function Clients() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <p className="truncate font-medium">{c.name}</p>
-                    <span className="shrink-0 font-medium">€{c.totalSpent}</span>
+                    <span className="shrink-0 font-medium">{eurRedondo(c.totalSpent)}</span>
                   </div>
                   <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {c.pastVisits} {c.pastVisits === 1 ? "visita" : "visitas"} · {c.favoriteService} ·{" "}
-                    {c.phone}
+                    {c.pastVisits} {c.pastVisits === 1 ? "visita" : "visitas"} · {c.favoriteService}{" "}
+                    · {c.phone}
                   </p>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
                     Última visita:{" "}

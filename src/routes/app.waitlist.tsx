@@ -5,7 +5,9 @@ import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { beforeLoadSiModuloVisible, useRedirigirSiModuloOculto } from "@/lib/route-guards";
 import { useBusinessType } from "@/lib/use-display-profile";
 import { professionalWord } from "@/lib/business-type";
-import { employeeMap, employees } from "@/lib/mock/salon";
+import { employeeMap } from "@/lib/mock/salon";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
+import { useEquipo } from "@/lib/use-equipo";
 import { enlaceDeHueco } from "@/lib/avisos";
 import type { EmployeeId, WaitlistEntry } from "@/lib/mock/types";
 import { PageHeader } from "@/components/PageHeader";
@@ -69,6 +71,9 @@ function horaSugerida(lastFreedSlot: string | null): Date {
 function Waitlist() {
   const visible = useRedirigirSiModuloOculto("lista-espera");
   const waitlist = useSalonStore((s) => s.waitlist);
+  // Un solo profesional: en la ficha de quien espera no se escribe "con Adam"
+  // ni "cualquier barbero" — no hay alternativa.
+  const soloUno = esSoloUnProfesional(useEquipo());
   const services = useSalonStore((s) => s.services);
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const deleteWaitlist = useSalonStore((s) => s.deleteWaitlist);
@@ -170,8 +175,10 @@ function Waitlist() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{w.clientName}</p>
                   <p className="text-xs text-muted-foreground">
-                    {s?.name ?? "Sin servicio concreto"} ·{" "}
-                    {e ? `con ${e.name}` : `cualquier ${professionalWord(tipo)}`}
+                    {s?.name ?? "Sin servicio concreto"}
+                    {soloUno
+                      ? ""
+                      : ` · ${e ? `con ${e.name}` : `cualquier ${professionalWord(tipo)}`}`}
                     {w.preferredRange ? ` · ${w.preferredRange}` : ""}
                   </p>
                 </div>
@@ -278,6 +285,10 @@ function AltaEnListaDialog({
 }) {
   const services = useSalonStore((s) => s.services);
   const tipo = useBusinessType();
+  const employees = useEquipo();
+  // Con un solo profesional no hay preferencia que apuntar: se guarda "any",
+  // que es lo que ya hace el resto del flujo cuando da igual quién atienda.
+  const soloUno = esSoloUnProfesional(employees);
   const activos = services.filter((s) => s.active !== false);
 
   const [clientName, setClientName] = useState("");
@@ -362,25 +373,27 @@ function AltaEnListaDialog({
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="capitalize">{professionalWord(tipo)}</Label>
-              <Select
-                value={preferredEmployeeId}
-                onValueChange={(v) => setPreferredEmployeeId(v as EmployeeId | "any")}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Cualquiera</SelectItem>
-                  {employees.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!soloUno && (
+              <div className="space-y-1.5">
+                <Label className="capitalize">{professionalWord(tipo)}</Label>
+                <Select
+                  value={preferredEmployeeId}
+                  onValueChange={(v) => setPreferredEmployeeId(v as EmployeeId | "any")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Cualquiera</SelectItem>
+                    {employees.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <Label htmlFor="we-range">Cuándo le viene bien</Label>
@@ -481,7 +494,12 @@ function AvisoDeHuecoDialog({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="av-hora">Hora</Label>
-            <Input id="av-hora" type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
+            <Input
+              id="av-hora"
+              type="time"
+              value={hora}
+              onChange={(e) => setHora(e.target.value)}
+            />
           </div>
         </div>
 

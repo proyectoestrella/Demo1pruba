@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Download, FileSpreadsheet } from "lucide-react";
 import type { Appointment, Employee, Service } from "@/lib/mock/types";
+import { claveDeDia, textoRango, type Rango } from "@/lib/periodos";
 import { selectServiceMap } from "@/lib/store";
 import { citasToCsv, resumenMensualToCsv, downloadCsv } from "@/lib/export-csv";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,13 @@ export interface ExportCsvButtonsProps {
   appointments: Appointment[];
   services: Service[];
   employees: Employee[];
+  /**
+   * Periodo que manda, cuando la pantalla ya tiene su propio selector
+   * (Analítica). Si viene, el desplegable de aquí desaparece: dos selectores
+   * de periodo en la misma pantalla diciendo cosas distintas es justo lo que
+   * confunde al dueño. Sin él, el componente se gobierna solo (Agenda).
+   */
+  rango?: Rango;
   className?: string;
 }
 
@@ -50,6 +58,7 @@ export function ExportCsvButtons({
   appointments,
   services,
   employees,
+  rango,
   className,
 }: ExportCsvButtonsProps) {
   const [periodo, setPeriodo] = useState<Periodo>("mes");
@@ -61,12 +70,17 @@ export function ExportCsvButtons({
 
   function exportarCitas() {
     const now = new Date();
-    const desde = +inicioDePeriodo(periodo, now);
+    const desde = rango ? +rango.inicio : +inicioDePeriodo(periodo, now);
+    // Con un rango del selector se exporta el rango entero, futuras incluidas:
+    // es lo que el dueño está viendo en pantalla. Sin él, hasta hoy.
+    const hasta = rango ? +rango.fin : +now + 1;
     const enPeriodo = appointments.filter(
-      (a) => +new Date(a.start) >= desde && +new Date(a.start) <= +now,
+      (a) => +new Date(a.start) >= desde && +new Date(a.start) < hasta,
     );
     const csv = citasToCsv(enPeriodo, serviceMap, employeeMap);
-    const etiqueta = PERIODOS.find((p) => p.value === periodo)?.archivo ?? periodo;
+    const etiqueta = rango
+      ? `${claveDeDia(rango.inicio)}_${claveDeDia(new Date(+rango.fin - 86_400_000))}`
+      : (PERIODOS.find((p) => p.value === periodo)?.archivo ?? periodo);
     downloadCsv(`citas-${etiqueta}-${now.toISOString().slice(0, 10)}.csv`, csv);
   }
 
@@ -82,18 +96,22 @@ export function ExportCsvButtons({
 
   return (
     <div className={className ?? "flex flex-wrap items-center gap-2"}>
-      <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
-        <SelectTrigger className="w-[170px]" aria-label="Periodo a exportar">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {PERIODOS.map((p) => (
-            <SelectItem key={p.value} value={p.value}>
-              {p.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {rango ? (
+        <span className="text-xs text-muted-foreground">{textoRango(rango)}</span>
+      ) : (
+        <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
+          <SelectTrigger className="w-[170px]" aria-label="Periodo a exportar">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PERIODOS.map((p) => (
+              <SelectItem key={p.value} value={p.value}>
+                {p.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
       <Button variant="outline" size="sm" className="gap-1.5" onClick={exportarCitas}>
         <Download className="h-3.5 w-3.5" /> Exportar a Excel (CSV)
       </Button>

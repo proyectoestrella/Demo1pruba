@@ -142,3 +142,129 @@ alter table clients add column if not exists penalty_keep boolean not null defau
 -- Las penalizaciones que ya existían no tienen fecha: se les pone la de ahora
 -- para que también empiecen a caducar en vez de quedarse bloqueadas para siempre.
 update clients set penalty_at = now() where penalty_eur is not null and penalty_at is null;
+
+-- ---------------------------------------------------------------------------
+-- 20/09/2026 (tarde) — la deuda por plantón se ve y se decide
+--
+-- PENDIENTE DE APLICAR EN PRODUCCIÓN. El código aguanta sin esto: si la
+-- columna no existe se guarda la ficha sin ella y la deuda se comporta como
+-- antes (deber dinero bloquea la reserva online) — ver `faltaEsquema` en
+-- src/lib/api/salons.functions.ts.
+-- ---------------------------------------------------------------------------
+
+-- ¿Esta deuda le impide volver a reservar por la web?
+--
+-- `false` es la tercera decisión del dueño, la que pidió Tomás: "déjasela
+-- anotada, que venga igual y se la cobro en el siguiente corte". `true` (el
+-- valor por defecto, y el de todas las filas que ya existían) se comporta
+-- exactamente como hasta ahora.
+alter table clients add column if not exists penalty_block boolean not null default true;
+
+-- El estado 'late' (vino tarde y sin avisar) entra por la columna `status` de
+-- appointments, que ya es texto libre: no hace falta DDL para él.
+
+-- ---------------------------------------------------------------------------
+-- 21/09/2026 — Row Level Security, por fin escrita donde se puede recrear
+--
+-- La RLS YA está activada en el proyecto de producción, pero se activó a mano
+-- en el panel de Supabase y nunca llegó a este fichero. Consecuencia: quien
+-- levante el proyecto desde el repositorio —que es exactamente lo que dice la
+-- primera línea de aquí arriba: `bun run scripts/migrate.ts`— se encuentra una
+-- base de datos SIN RLS y con todas las tablas abiertas a la clave anónima.
+-- Una protección que existe por accidente histórico no es una protección.
+--
+-- Esto no cambia nada en producción (ya está así): sirve para que un proyecto
+-- recreado nazca igual de cerrado que el actual.
+--
+-- CÓMO ENCAJA ESTO CON EL SERVIDOR, que es lo que suele confundirse:
+--
+--   * El servidor de la aplicación entra con la SERVICE ROLE KEY
+--     (src/lib/supabase.server.ts). Esa clave SALTA la RLS por definición:
+--     ninguna política de aquí le afecta ni le afectará.
+--   * Por tanto la RLS NO es la primera barrera del producto, es la SEGUNDA.
+--     La primera —comprobar quién llama antes de leer o escribir el salón que
+--     pide— tiene que estar en las funciones de servidor. Mientras eso no
+--     exista, activar RLS no protege de nada por el camino normal.
+--   * Lo que la RLS sí cierra, y por eso se activa, es el camino directo: que
+--     cualquiera con la clave anónima o la publicable —que van en claro en el
+--     navegador en cuanto se use un cliente de Supabase desde el cliente—
+--     lea o escriba las tablas saltándose la aplicación entera.
+--
+-- Se activa la RLS y NO se crea ninguna política. Es deliberado y es el estado
+-- real de hoy: sin políticas, la clave anónima ve cero filas y no puede
+-- escribir ninguna. Una política permisiva («true») aquí abriría la puerta que
+-- este bloque está cerrando; cuando haya autenticación de verdad, las
+-- políticas se escribirán contra esa sesión, en su propio bloque fechado.
+-- ---------------------------------------------------------------------------
+
+alter table clients enable row level security;
+alter table appointments enable row level security;
+alter table salons enable row level security;
+alter table waitlist enable row level security;
+
+-- Ojo con `force row level security`: NO se pone. Forzaría la RLS también al
+-- dueño de la tabla, que es con quien conecta `scripts/migrate.ts`, y las
+-- sentencias de datos de este mismo fichero (el `update clients set
+-- penalty_at = now()` de más arriba) pasarían a afectar a cero filas sin
+-- decir nada. Además dejaría de reflejar el estado real de producción, que es
+-- justo lo que este bloque viene a versionar.
+
+-- ---------------------------------------------------------------------------
+-- 21/09/2026 — Quién puede entrar al panel de cada salón (`salon_members`)
+--
+-- El problema que cierra esta tabla, dicho en claro: hasta hoy, cualquiera que
+-- escribiera `/app?s=the-best-shave-barber` en el navegador veía el panel de
+-- ese salón entero, con la lista de sus clientes y sus teléfonos, sin escribir
+-- ninguna credencial. El slug no es un secreto: sale en la URL pública de la
+-- web de reservas del salón.
+--
+-- La frontera vuelve a ser una sola fila, igual que en `salons`:
+--
+--   * Si `salons` NO tiene fila con ese slug, es una DEMO de venta. Se entra
+--     como siempre, sin pedir nada. Esto es intocable: el equipo comercial
+--     enseña ~54 demos en la calle abriendo un enlace `?d=…`, y una demo que
+--     pida contraseña es una venta perdida.
+--   * Si `salons` SÍ tiene fila, es un salón de pago. Entonces hace falta una
+--     sesión de Supabase Auth Y una fila aquí que diga que ESE usuario puede
+--     entrar a ESE salón.
+--
+-- Quién decide cuál de los dos casos es: el SERVIDOR, consultando `salons`.
+-- Nunca un parámetro que mande el navegador. Ver src/lib/api/autorizacion.ts.
+--
+-- `user_id` apunta a `auth.users`, que es la tabla de usuarios que gestiona
+-- Supabase Auth: ahí es donde aparece el dueño del salón en cuanto pincha por
+-- primera vez el enlace mágico que le llega al correo. No guardamos
+-- contraseñas en ningún sitio porque no hay contraseñas.
+--
+-- `on delete cascade`: si se borra el usuario, desaparece su pertenencia. No
+-- queremos filas huérfanas que den acceso a un id que ya no existe.
+--
+-- La clave primaria es la pareja (usuario, salón): la misma persona puede
+-- tener varios salones, y un salón puede tener varios usuarios (el dueño y su
+-- encargado). No se repite la pareja.
+-- ---------------------------------------------------------------------------
+
+create table if not exists salon_members (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  -- No lleva `references salons (slug)` a propósito: dar de alta al usuario y
+  -- dar de alta el salón son dos actos distintos y a veces en distinto orden.
+  -- Una fila aquí sin salón no da acceso a nada, porque el acceso se decide
+  -- mirando `salons` primero.
+  salon_slug text not null,
+  -- Hoy solo se usa 'dueno'. 'encargado' queda escrito para cuando haga falta
+  -- distinguir quién puede tocar Ajustes y quién solo la agenda; mientras
+  -- tanto el servidor trata igual a los dos y no se inventa permisos.
+  rol text not null default 'dueno',
+  creado timestamptz not null default now(),
+  primary key (user_id, salon_slug)
+);
+
+-- Se consulta siempre por la pareja, pero también "quién puede entrar a este
+-- salón" al dar de alta a alguien nuevo.
+create index if not exists salon_members_salon_slug_idx on salon_members (salon_slug);
+
+-- Misma decisión que en el bloque anterior: RLS activada y SIN políticas. El
+-- servidor entra con la service role key y la salta; la clave anónima no ve ni
+-- una fila. Una política permisiva aquí dejaría que cualquiera con la clave
+-- pública leyera —o peor, escribiera— quién tiene acceso a qué salón.
+alter table salon_members enable row level security;

@@ -10,6 +10,7 @@ import {
   parseTeamEntry,
 } from "./business-type";
 import { MAX_PRIORITY_RANGES, formatPriorityRange, parsePriorityRange } from "./reparto";
+import { MAX_FAQ_ENTRIES, formatFaqEntry, parseFaqEntry } from "./faq";
 
 /**
  * Perfiles de demo transportados en la URL.
@@ -67,6 +68,7 @@ type DemoProfileNegocio = Pick<
   | "galleryPhotos"
   | "team"
   | "menu"
+  | "faq"
   | "noShowFeeEur"
   | "noShowNoticeHours"
   | "smartSpread"
@@ -108,6 +110,7 @@ const KEYS: Record<keyof DemoProfileNegocio, string> = {
   galleryPhotos: "g",
   team: "e",
   menu: "m",
+  faq: "j",
   noShowFeeEur: "q",
   noShowNoticeHours: "w",
   smartSpread: "k",
@@ -147,6 +150,7 @@ export function blankDemoProfile(): DemoProfile {
     galleryPhotos: [],
     team: [],
     menu: [],
+    faq: [],
     // Ausentes/0 = desactivadas — igual que team/menu arriba, hay que
     // ponerlas EXPLÍCITAS a "apagado" y no simplemente omitirlas: si no, al
     // abrir un enlace sin "q"/"k" tras haber tenido activa la demo anterior
@@ -273,6 +277,18 @@ export function encodeDemoProfile(profile: Partial<DemoProfile>): string {
       compact[short] = clean;
       continue;
     }
+    if (field === "faq" && Array.isArray(value)) {
+      // Igual que team/menu: se valida al codificar con la misma regla que al
+      // descodificar, para que una pregunta sin respuesta no viaje en el enlace.
+      const clean = value
+        .map((v) => parseFaqEntry(String(v)))
+        .filter((v): v is NonNullable<typeof v> => v !== null)
+        .slice(0, MAX_FAQ_ENTRIES)
+        .map(formatFaqEntry);
+      if (clean.length === 0) continue;
+      compact[short] = clean;
+      continue;
+    }
     if (field === "priorityHours" && Array.isArray(value)) {
       // Igual que team/menu: se valida al codificar con la misma regla que
       // al descodificar, para que un rango corrupto no se cuele en el enlace.
@@ -386,6 +402,16 @@ export function decodeDemoProfile(raw: string | undefined | null): Partial<DemoP
           .slice(0, MAX_TEAM_ENTRIES)
           .map(formatTeamEntry);
         if (clean.length) out.team = clean;
+      }
+    } else if (field === "faq") {
+      // "Pregunta~Respuesta", de 1 a 8 — el resto se corta.
+      if (Array.isArray(value)) {
+        const clean = value
+          .map((v) => parseFaqEntry(String(v)))
+          .filter((v): v is NonNullable<typeof v> => v !== null)
+          .slice(0, MAX_FAQ_ENTRIES)
+          .map(formatFaqEntry);
+        if (clean.length) out.faq = clean;
       }
     } else if (field === "noShowFeeEur") {
       const n = Number(value);

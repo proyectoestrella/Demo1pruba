@@ -3,11 +3,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useSalonStore } from "@/lib/store";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { employees, employeeMap } from "@/lib/mock/salon";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
+import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
-import type { Appointment, EmployeeId } from "@/lib/mock/types";
+import type { Appointment, Employee, EmployeeId } from "@/lib/mock/types";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TiraScroll } from "@/components/TiraScroll";
 import { PageHeader } from "@/components/PageHeader";
+import { capitalizar, fechaLarga } from "@/lib/copy";
 import { StylistDot } from "@/components/StylistAvatar";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
@@ -70,6 +74,11 @@ function CalendarView() {
     null,
   );
   const [newApptOpen, setNewApptOpen] = useState(false);
+  // Un solo profesional: ni leyenda de colores, ni columnas por persona en la
+  // vista Día, ni el punto de color en cada cita del mes. Ver
+  // lib/solo-profesional.ts.
+  const equipo = useEquipo();
+  const soloUno = esSoloUnProfesional(equipo);
 
   // Reloj para la línea de "ahora": solo repinta cada minuto, no cada segundo —
   // es un indicador visual, no un cronómetro.
@@ -123,11 +132,11 @@ function CalendarView() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Calendario"
+        title="Agenda"
         description={
           days.length > 1
             ? `${days[0].toLocaleDateString("es", { month: "long", day: "numeric" })} — ${days[days.length - 1].toLocaleDateString("es", { month: "long", day: "numeric" })}`
-            : days[0].toLocaleDateString("es", { weekday: "long", month: "long", day: "numeric" })
+            : capitalizar(fechaLarga(days[0]))
         }
         actions={
           <div className="flex items-center gap-2">
@@ -170,7 +179,7 @@ function CalendarView() {
       />
 
       {/* Mobile day-picker chips — avoids ever cramming 7 columns into a phone screen */}
-      <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
+      <TiraScroll className="lg:hidden">
         {weekChips.map((d) => {
           const active = isSameDate(d, anchor);
           return (
@@ -192,12 +201,13 @@ function CalendarView() {
             </button>
           );
         })}
-      </div>
+      </TiraScroll>
 
-      {/* Con un único profesional no hace falta leyenda: todo el calendario es de esa persona. */}
-      {employees.length > 1 && (
+      {/* Leyenda de colores por profesional. Con una sola persona no hay
+          nada que distinguir: todo el calendario es suyo. */}
+      {!soloUno && (
         <div className="flex flex-wrap items-center gap-4 text-xs">
-          {employees.map((e) => (
+          {equipo.map((e) => (
             <span key={e.id} className="flex items-center gap-1.5">
               <StylistDot employeeId={e.id} />
               {e.name}
@@ -208,6 +218,7 @@ function CalendarView() {
 
       {effectiveView === "month" ? (
         <MonthGrid
+          soloUno={soloUno}
           anchor={anchor}
           appointments={appointments}
           onPickDay={(d) => {
@@ -222,6 +233,8 @@ function CalendarView() {
            plantilla, peor. Es la misma rejilla de AgendaColumns (el panel v2)
            para que las dos versiones cuenten lo mismo. */
         <DayByEmployee
+          soloUno={soloUno}
+          employees={equipo}
           day={anchor}
           appointments={appointments}
           now={now}
@@ -397,10 +410,13 @@ function MonthGrid({
   anchor,
   appointments,
   onPickDay,
+  soloUno,
 }: {
   anchor: Date;
   appointments: Appointment[];
   onPickDay: (d: Date) => void;
+  /** Con un solo profesional, el punto de color no distingue nada. */
+  soloUno: boolean;
 }) {
   const cells = useMemo(() => monthCells(anchor), [anchor]);
   const today = useMemo(() => {
@@ -485,7 +501,7 @@ function MonthGrid({
                     title={`${a.clientName} · ${serviceLabelOf(a)}`}
                     className="flex items-center gap-1 truncate rounded bg-muted/60 px-1 py-0.5 text-[10px]"
                   >
-                    <StylistDot employeeId={a.employeeId} />
+                    {!soloUno && <StylistDot employeeId={a.employeeId} />}
                     <span className="truncate">
                       {new Date(a.start).toLocaleTimeString("es", {
                         hour: "2-digit",
@@ -527,12 +543,17 @@ function DayByEmployee({
   now,
   onSelect,
   onOpenSlot,
+  soloUno,
+  employees,
 }: {
   day: Date;
   appointments: Appointment[];
   now: Date;
   onSelect: (a: Appointment) => void;
   onOpenSlot: (employeeId: EmployeeId, hour: number) => void;
+  /** Con un solo profesional se pinta una única columna, y sin su cabecera. */
+  soloUno: boolean;
+  employees: Employee[];
 }) {
   const dayAppts = useMemo(
     () =>
@@ -550,18 +571,23 @@ function DayByEmployee({
     <div className="min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card">
       <div className="overflow-x-auto">
         <div className="min-w-max">
-          <div className="grid border-b border-border/60" style={{ gridTemplateColumns: columnas }}>
-            <div />
-            {employees.map((e) => (
-              <div
-                key={e.id}
-                className="flex items-center justify-center gap-1.5 border-l border-border/60 px-2 py-3 text-xs"
-              >
-                <StylistDot employeeId={e.id} />
-                <span className="truncate font-medium">{e.name}</span>
-              </div>
-            ))}
-          </div>
+          {!soloUno && (
+            <div
+              className="grid border-b border-border/60"
+              style={{ gridTemplateColumns: columnas }}
+            >
+              <div />
+              {employees.map((e) => (
+                <div
+                  key={e.id}
+                  className="flex items-center justify-center gap-1.5 border-l border-border/60 px-2 py-3 text-xs"
+                >
+                  <StylistDot employeeId={e.id} />
+                  <span className="truncate font-medium">{e.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="relative grid" style={{ gridTemplateColumns: columnas }}>
             <div className="border-r border-border/60">

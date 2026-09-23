@@ -453,7 +453,10 @@ export const FEATURED_IDS_BY_TYPE: Record<BusinessType, string[]> = {
  * se genera un avatar de iniciales sobre el mismo color de marca de cada id,
  * igual que hace `StylistAvatar` cuando no recibe foto.
  */
-export const EMPLOYEE_OVERLAY: Record<BusinessType, Record<EmployeeId, { name: string; specialty: string }>> = {
+export const EMPLOYEE_OVERLAY: Record<
+  BusinessType,
+  Record<EmployeeId, { name: string; specialty: string }>
+> = {
   barberia: {
     mario: { name: "Mario", specialty: "Cortes clásicos y degradados" },
     diego: { name: "Diego", specialty: "Degradados y diseño" },
@@ -478,6 +481,30 @@ export const EMPLOYEE_OVERLAY: Record<BusinessType, Record<EmployeeId, { name: s
 
 export function showsRealPhotos(type: BusinessType): boolean {
   return type === "barberia";
+}
+
+/**
+ * La foto que se enseña de un profesional.
+ *
+ * Las tres fotos de stock son barberos con navaja y sirven para que una DEMO
+ * de venta no salga con huecos. En un salón REAL no valen: en la ficha de
+ * Adam salía la cara de un desconocido presentada como suya, que es el mismo
+ * fallo que las reseñas inventadas que ya se quitaron. Cuando no hay foto de
+ * verdad se enseña un avatar de iniciales, nunca una cara que no es.
+ *
+ * @param esSalonReal el salón tiene fila en Supabase (ver `use-real-salon.ts`).
+ */
+export function fotoDeProfesional(
+  name: string,
+  employeeId: EmployeeId,
+  fotoDeEjemplo: string | undefined,
+  type: BusinessType,
+  esSalonReal: boolean,
+): string {
+  if (esSalonReal || !showsRealPhotos(type) || !fotoDeEjemplo) {
+    return placeholderAvatar(name, employeeId);
+  }
+  return fotoDeEjemplo;
 }
 
 const AVATAR_COLOR_HEX: Record<EmployeeId, string> = {
@@ -564,7 +591,11 @@ export function parseMenuEntry(raw: string): MenuOverrideEntry | null {
   const name = (parts[0] ?? "").trim().slice(0, MENU_NAME_MAX);
   if (!name) return null;
   const durationMin = Math.round(Number(parts[1]));
-  if (!Number.isFinite(durationMin) || durationMin < MENU_DURATION_MIN || durationMin > MENU_DURATION_MAX) {
+  if (
+    !Number.isFinite(durationMin) ||
+    durationMin < MENU_DURATION_MIN ||
+    durationMin > MENU_DURATION_MAX
+  ) {
     return null;
   }
   const priceEur = Number(String(parts[2]).trim().replace(",", "."));

@@ -3,11 +3,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
 import { useSalonStore } from "@/lib/store";
-import { employeeMap, employees } from "@/lib/mock/salon";
-import { serviceLabelOf } from "@/lib/appointment-services";
-import type { Appointment, AppointmentStatus, Client } from "@/lib/mock/types";
+import { employeeMap } from "@/lib/mock/salon";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
+import { useEquipo } from "@/lib/use-equipo";
+import { deudaDe } from "@/lib/deuda";
 import { eur } from "@/lib/copy";
 import { Badge } from "@/components/ui/badge";
+import { serviceLabelOf } from "@/lib/appointment-services";
+import type { Appointment, AppointmentStatus, Client } from "@/lib/mock/types";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { StylistDot } from "@/components/StylistAvatar";
@@ -15,6 +18,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
+import { CitasPorResolver } from "@/components/CitasPorResolver";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { ExportCsvButtons } from "@/components/campanas/ExportCsvButtons";
 import { Button } from "@/components/ui/button";
@@ -91,15 +95,37 @@ function RecargoChip({ appointment, client }: { appointment: Appointment; client
   );
 }
 
+/** La deuda activa junto al nombre permite cobrarla cuando el cliente llega. */
+function DeudaBadge({
+  clientId,
+  clients,
+  className,
+}: {
+  clientId: string;
+  clients: Client[];
+  className?: string;
+}) {
+  const deuda = deudaDe(clients.find((c) => c.id === clientId));
+  if (!deuda) return null;
+  return (
+    <Badge variant="destructive" className={className}>
+      Debe {eur(deuda.eur)}
+    </Badge>
+  );
+}
+
 function Appointments() {
   const appointments = useSalonStore((s) => s.appointments);
-  const services = useSalonStore((s) => s.services);
   const clients = useSalonStore((s) => s.clients);
+  const services = useSalonStore((s) => s.services);
   const clientById = new Map(clients.map((c) => [c.id, c] as const));
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const [status, setStatus] = useState<string>("all");
   const [emp, setEmp] = useState<string>("all");
+  const employees = useEquipo();
+  // Un solo profesional: sin filtro ni columna "por profesional".
+  const soloUno = esSoloUnProfesional(employees);
   const [busqueda, setBusqueda] = useState("");
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
@@ -132,10 +158,14 @@ function Appointments() {
     <div className="space-y-6">
       <PageHeader
         title="Citas"
-        description="Todas las reservas de tu equipo."
+        description={soloUno ? "Todas tus reservas." : "Todas las reservas de tu equipo."}
         actions={
           <>
-            <ExportCsvButtons appointments={appointments} services={services} employees={employees} />
+            <ExportCsvButtons
+              appointments={appointments}
+              services={services}
+              employees={employees}
+            />
             <Button size="sm" className="gap-1.5" onClick={() => setNewApptOpen(true)}>
               <Plus className="h-4 w-4" /> Nueva cita
             </Button>
@@ -143,6 +173,7 @@ function Appointments() {
         }
       />
 
+      <CitasPorResolver />
       {mostrarSolicitudes && <PendingRequestsBanner onOpenDetail={setSelected} />}
 
       <div className="flex flex-wrap gap-2">
@@ -164,24 +195,28 @@ function Appointments() {
             <SelectItem value="all">Todos los estados</SelectItem>
             <SelectItem value="pending">Pendiente de confirmar</SelectItem>
             <SelectItem value="confirmed">Confirmada</SelectItem>
-            <SelectItem value="completed">Completada</SelectItem>
+            <SelectItem value="completed">Vino</SelectItem>
             <SelectItem value="cancelled">Cancelada</SelectItem>
-            <SelectItem value="no-show">No asistió</SelectItem>
+            <SelectItem value="late">Vino tarde sin avisar</SelectItem>
+            <SelectItem value="no-show">No vino</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={emp} onValueChange={setEmp}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Profesional" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todo el equipo</SelectItem>
-            {employees.map((e) => (
-              <SelectItem key={e.id} value={e.id}>
-                {e.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Filtrar "por profesional" con un solo profesional no filtra nada. */}
+        {!soloUno && (
+          <Select value={emp} onValueChange={setEmp}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Profesional" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todo el equipo</SelectItem>
+              {employees.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -189,7 +224,11 @@ function Appointments() {
           <EmptyState
             icon={CalendarX}
             title="Sin citas con estos filtros"
-            description="Prueba a cambiar el estado o el profesional."
+            description={
+              soloUno
+                ? "Prueba a cambiar el estado o la búsqueda."
+                : "Prueba a cambiar el estado o el profesional."
+            }
           />
         </div>
       ) : (
@@ -202,7 +241,7 @@ function Appointments() {
                   <TableHead>Cuándo</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Servicio</TableHead>
-                  <TableHead>Estilista</TableHead>
+                  {!soloUno && <TableHead>Estilista</TableHead>}
                   <TableHead className="text-right">Precio</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="w-10" />
@@ -225,15 +264,22 @@ function Appointments() {
                           minute: "2-digit",
                         })}
                       </TableCell>
-                      <TableCell className="font-medium">{a.clientName}</TableCell>
-                      <TableCell className="text-muted-foreground">{serviceLabelOf(a)}</TableCell>
-                      <TableCell>
-                        <span className="inline-flex items-center gap-1.5">
-                          <StylistDot employeeId={a.employeeId} />
-                          {e.name}
+                      <TableCell className="font-medium">
+                        <span className="inline-flex flex-wrap items-center gap-2">
+                          {a.clientName}
+                          <DeudaBadge clientId={a.clientId} clients={clients} />
                         </span>
                       </TableCell>
-                      <TableCell className="text-right font-medium">€{a.priceEur}</TableCell>
+                      <TableCell className="text-muted-foreground">{serviceLabelOf(a)}</TableCell>
+                      {!soloUno && (
+                        <TableCell>
+                          <span className="inline-flex items-center gap-1.5">
+                            {!soloUno && <StylistDot employeeId={a.employeeId} />}
+                            {e.name}
+                          </span>
+                        </TableCell>
+                      )}
+                      <TableCell className="text-right font-medium">{eur(a.priceEur)}</TableCell>
                       <TableCell>
                         <StatusBadge status={a.status} />
                         <RecargoChip appointment={a} client={clientById.get(a.clientId)} />
@@ -299,6 +345,7 @@ function Appointments() {
                         })}
                       </p>
                       <p className="mt-1 truncate font-medium">{a.clientName}</p>
+                      <DeudaBadge clientId={a.clientId} clients={clients} className="mt-1" />
                     </div>
                     <div onClick={(evt) => evt.stopPropagation()}>
                       <DropdownMenu>
@@ -343,10 +390,11 @@ function Appointments() {
                     <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-muted-foreground">
                       <StylistDot employeeId={a.employeeId} />
                       <span className="truncate">
-                        {serviceLabelOf(a)} · {e.name}
+                        {serviceLabelOf(a)}
+                        {soloUno ? "" : ` · ${e.name}`}
                       </span>
                     </span>
-                    <span className="shrink-0 font-medium">€{a.priceEur}</span>
+                    <span className="shrink-0 font-medium">{eur(a.priceEur)}</span>
                   </div>
                   <div className="mt-3">
                     <StatusBadge status={a.status} />

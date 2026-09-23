@@ -6,13 +6,15 @@ import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "@/lib/demo-prof
 import { weekSchedule } from "@/lib/opening-hours";
 import { useBusinessType } from "@/lib/use-display-profile";
 import { BUSINESS_LABEL, inferBusinessType, professionalWord } from "@/lib/business-type";
+import { employeesForType } from "@/lib/mock/salon";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { Instagram, MapPin, Phone, Lock, Menu, TriangleAlert } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollProgress } from "@/components/magicui/scroll-progress";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export const Route = createFileRoute("/s/$salonSlug")({
   head: ({ match }) => {
@@ -55,15 +57,21 @@ function demoSessionKey(salonSlug: string): string {
   return `${DEMO_SESSION_PREFIX}${salonSlug}`;
 }
 
-/** Anclas de la home pública. Una sola fuente para el menú de escritorio y el de móvil. */
-const NAV_LINKS = [
-  { href: "#servicios", label: "Servicios" },
-  { href: "#galeria", label: "Galería" },
-  { href: "#equipo", label: "Equipo" },
-  { href: "#resenas", label: "Reseñas" },
-  { href: "#faq", label: "FAQ" },
-  { href: "#ubicacion", label: "Cómo llegar" },
-];
+/**
+ * Anclas de la home pública. Una sola fuente para el menú de escritorio y el
+ * de móvil. Con un solo profesional no hay sección "Equipo" en la página, así
+ * que tampoco puede haber un enlace del menú que lleve a un ancla vacía.
+ */
+function navLinks(soloUno: boolean) {
+  return [
+    { href: "#servicios", label: "Servicios" },
+    { href: "#galeria", label: "Galería" },
+    ...(soloUno ? [] : [{ href: "#equipo", label: "Equipo" }]),
+    { href: "#resenas", label: "Reseñas" },
+    { href: "#faq", label: "FAQ" },
+    { href: "#ubicacion", label: "Cómo llegar" },
+  ];
+}
 
 function SalonLayout() {
   const { salonSlug } = Route.useParams();
@@ -87,6 +95,12 @@ function SalonLayout() {
   const applyBusinessType = useSalonStore((s) => s.applyBusinessType);
   const markDemoActive = useSalonStore((s) => s.markDemoActive);
   const tipo = useBusinessType();
+  // Un solo profesional: sin sección "Equipo" en la home, sin enlace en el
+  // menú (ver `navLinks`). Se deriva del equipo activo, no de un flag.
+  const NAV_LINKS = useMemo(
+    () => navLinks(esSoloUnProfesional(employeesForType(tipo, profile.team))),
+    [tipo, profile.team],
+  );
 
   // Auditoría de UX, hallazgo C2: los `Link` del flujo de reserva no
   // propagan el `?d=` (TanStack Router no conserva el `search` si no se le
@@ -175,8 +189,7 @@ function SalonLayout() {
     const t = setTimeout(() => setGraceOver(true), 1500);
     return () => clearTimeout(t);
   }, [salonSlug]);
-  const salonUnresolved =
-    sessionChecked && graceOver && !fromUrl && realSlug !== salonSlug;
+  const salonUnresolved = sessionChecked && graceOver && !fromUrl && realSlug !== salonSlug;
 
   useEffect(() => {
     document.title = salonUnresolved ? "Salón no encontrado" : `${profile.name} — Reserva online`;
@@ -205,7 +218,19 @@ function SalonLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    // En el flujo de reserva, el hueco de abajo lo reserva el contenedor
+    // entero, pie incluido: la barra fija de resumen tapaba la última fila de
+    // lo que hubiera debajo. La clase se apaga sola a partir de 1024 px, que
+    // es donde esa barra desaparece.
+    //
+    // En la home NO hace falta: su barra de «Reservar cita» ya se esconde sola
+    // al llegar el pie (ver MobileBookingBar), y reservarle sitio dejaría una
+    // banda negra vacía al final de la página.
+    <div
+      className={`min-h-screen bg-background text-foreground ${
+        onBooking ? "hueco-barra-fija" : ""
+      }`}
+    >
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
         {/* Barra de avance de lectura, pegada al borde inferior de la cabecera. */}
         <ScrollProgress className="absolute inset-x-0 bottom-0 top-auto h-0.5 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />

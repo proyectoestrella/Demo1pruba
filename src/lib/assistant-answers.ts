@@ -38,14 +38,17 @@ export interface SalonContext {
   now?: Date;
 }
 
+import { eurRedondo, fechaCorta, hora } from "./copy";
+
 const DAY_MS = 86400_000;
 
-const eur = (n: number) => `${Math.round(n).toLocaleString("es")} €`;
-const pct = (n: number) => `${n > 0 ? "+" : ""}${Math.round(n)}%`;
-const hhmm = (iso: string) =>
-  new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit", hour12: false });
-const dmes = (iso: string) =>
-  new Date(iso).toLocaleDateString("es", { day: "2-digit", month: "short" });
+// Formato español: los tres salen de lib/copy, que es el único sitio donde se
+// decide cómo se escribe un euro, una hora o una fecha en toda la aplicación.
+const eur = eurRedondo;
+const hhmm = hora;
+const dmes = fechaCorta;
+/** Variación con signo: aquí sí hace falta el "+", a diferencia del `pct` general. */
+const pct = (n: number) => `${n > 0 ? "+" : ""}${Math.round(n)} %`;
 
 const WEEKDAYS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 

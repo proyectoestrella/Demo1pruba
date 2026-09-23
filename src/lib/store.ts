@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { PeriodoId, RangoPersonalizado } from "./periodos";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { seedAppointments, seedWaitlist, clients as seedClients, buildSeed } from "./mock/seed";
 import {
@@ -27,7 +28,7 @@ import {
   pushClientNotes,
   pushPenalty,
   pushPenaltyCleared,
-  pushSalonProfile,
+  pushSalonProfilePatch,
   pushWaitlistDeletion,
   pushWaitlistEntry,
   type ClienteDeCita,
@@ -144,6 +145,15 @@ interface SalonState {
    * RecargosPendientes.tsx.
    */
   reviewPenalty: (clientId: string) => void;
+  /**
+   * Deja la deuda de un cliente EXACTAMENTE así, sin interpretar nada.
+   *
+   * Es el punto único por el que pasan las tres decisiones del dueño
+   * (anotarla, perdonarla, bloquear) y, sobre todo, el "Deshacer": cada acción
+   * guarda antes el estado que había y lo devuelve tal cual llamando otra vez
+   * aquí. `{}` = no debe nada.
+   */
+  setDeuda: (clientId: string, estado: EstadoDeuda) => void;
 
   // Services (moved from static salon.ts array to reactive store state)
   addService: (s: Omit<Service, "id">) => Service;
@@ -181,6 +191,17 @@ interface SalonState {
     },
   ) => void;
 
+  /**
+   * Periodo elegido en el selector de la analítica (inicio y Analítica usan el
+   * mismo, para que las dos pantallas no cuenten historias distintas).
+   * Se persiste: el dueño que trabaja por semanas abre el panel ya en semanas.
+   */
+  periodoAnalitica: PeriodoId;
+  /** Fechas del periodo "a medida", cuando `periodoAnalitica` es `personalizado`. */
+  rangoAnalitica: RangoPersonalizado | null;
+  /** Cambia el periodo de la analítica. Elegir fechas concretas pasa el rango. */
+  setPeriodoAnalitica: (id: PeriodoId, rango?: RangoPersonalizado | null) => void;
+
   /** Activa/desactiva el rediseño v2 del panel — ver `panelV2` arriba. */
   setPanelV2: (v: boolean) => void;
   /** Marca que esta demo se abrió desde un enlace público — ver `demoActive` arriba. */
@@ -214,6 +235,40 @@ interface SalonState {
     clients: Client[];
     waitlist: WaitlistEntry[];
   }) => void;
+  /**
+   * Deja citas, clientes y lista de espera a cero.
+   *
+   * Lo usa `resolverSalonReal` justo después de `applyBusinessType`: un salón
+   * de pago no puede ver ni un segundo las citas y los clientes inventados que
+   * ese método siembra, y mucho menos escribir encima de ellos. Mejor un panel
+   * vacío mientras carga que un panel con gente que no existe.
+   */
+  vaciarDatosDeEjemplo: () => void;
+}
+
+/**
+ * Los cinco campos de deuda de una ficha, juntos. Se mueven siempre en
+ * bloque: media deuda aplicada (importe sin fecha, o bloqueo sin importe) es
+ * justo lo que hacía que el panel dijera cosas distintas en cada pantalla.
+ */
+export interface EstadoDeuda {
+  penaltyEur?: number;
+  penaltyNote?: string;
+  penaltyAt?: string;
+  penaltyKeep?: boolean;
+  penaltyBlock?: boolean;
+}
+
+/** Lee de una ficha su estado de deuda, para poder devolverlo con "Deshacer". */
+export function estadoDeudaDe(client: Client | undefined): EstadoDeuda {
+  if (!client) return {};
+  return {
+    penaltyEur: client.penaltyEur,
+    penaltyNote: client.penaltyNote,
+    penaltyAt: client.penaltyAt,
+    penaltyKeep: client.penaltyKeep,
+    penaltyBlock: client.penaltyBlock,
+  };
 }
 
 /** Una demo guardada es un perfil con identidad propia para poder editarla. */
@@ -268,6 +323,16 @@ export const useSalonStore = create<SalonState>()(
       demoActive: false,
       realSalonSlug: null,
       lastFreedSlot: null,
+      periodoAnalitica: "hoy",
+      rangoAnalitica: null,
+
+      setPeriodoAnalitica: (id, rango) =>
+        set((s) => ({
+          periodoAnalitica: id,
+          // Un rango a medida solo se pisa si llega uno nuevo: volver a "Hoy" y
+          // luego a "Fechas" recupera las que ya había elegido.
+          rangoAnalitica: rango === undefined ? s.rangoAnalitica : rango,
+        })),
 
       setLastFreedSlot: (startISO) => set({ lastFreedSlot: startISO }),
 
@@ -357,7 +422,9 @@ export const useSalonStore = create<SalonState>()(
       markDepositRequested: (id, eur) => {
         set((s) => ({
           appointments: s.appointments.map((a) =>
-            a.id === id ? { ...a, depositRequestedAt: new Date().toISOString(), depositEur: eur } : a,
+            a.id === id
+              ? { ...a, depositRequestedAt: new Date().toISOString(), depositEur: eur }
+              : a,
           ),
         }));
         sincronizarCita(get(), id);
@@ -452,17 +519,39 @@ export const useSalonStore = create<SalonState>()(
         pushPenaltyCleared(get().realSalonSlug, cliente, cliente?.penaltyNote);
       },
 
+      setDeuda: (clientId, estado) => {
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === clientId
+              ? {
+                  ...c,
+                  penaltyEur: estado.penaltyEur,
+                  penaltyNote: estado.penaltyNote,
+                  penaltyAt: estado.penaltyAt,
+                  penaltyKeep: estado.penaltyKeep,
+                  penaltyBlock: estado.penaltyBlock,
+                }
+              : c,
+          ),
+        }));
+        const cliente = get().clients.find((c) => c.id === clientId);
+        if (!cliente) return;
+        // Debe algo → se sube la deuda; no debe nada → se cierra en el
+        // servidor. Las dos ramas pasan por el mismo sitio para que deshacer
+        // una decisión también viaje a Supabase.
+        if ((cliente.penaltyEur ?? 0) > 0) {
+          pushPenalty(get().realSalonSlug, cliente, cliente.penaltyEur ?? 0, cliente.penaltyNote);
+        } else {
+          pushPenaltyCleared(get().realSalonSlug, cliente, cliente.penaltyNote);
+        }
+      },
+
       setPenaltyKeep: (clientId, mantener) => {
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, penaltyKeep: mantener } : c)),
         }));
         const cliente = get().clients.find((c) => c.id === clientId);
-        pushPenalty(
-          get().realSalonSlug,
-          cliente,
-          cliente?.penaltyEur ?? 0,
-          cliente?.penaltyNote,
-        );
+        pushPenalty(get().realSalonSlug, cliente, cliente?.penaltyEur ?? 0, cliente?.penaltyNote);
       },
 
       reviewPenalty: (clientId) => {
@@ -489,7 +578,13 @@ export const useSalonStore = create<SalonState>()(
 
       updateSalonProfile: (patch) => {
         set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } }));
-        pushSalonProfile(get().realSalonSlug, get().salonProfile);
+        // Sube el PARCHE, no el perfil entero. Antes subía
+        // `get().salonProfile` completo, y eso hacía que un navegador con el
+        // perfil viejo en localStorage revirtiera lo que se hubiera cambiado
+        // desde otro dispositivo: cambias el teléfono en el móvil, tocas el
+        // horario en el iPad de ayer, y el teléfono vuelve al viejo. Lo que
+        // este navegador no ha tocado ya no viaja. Ver `patchSalonProfile`.
+        pushSalonProfilePatch(get().realSalonSlug, patch);
       },
 
       applyBusinessType: (type, overrides) => {
@@ -541,6 +636,8 @@ export const useSalonStore = create<SalonState>()(
       hydrateFromServer: ({ appointments, clients, waitlist }) =>
         set({ appointments, clients, waitlist }),
 
+      vaciarDatosDeEjemplo: () => set({ appointments: [], clients: [], waitlist: [] }),
+
       applyDemo: (id) => {
         const demo = get().savedDemos.find((d) => d.id === id);
         if (!demo) return;
@@ -572,16 +669,19 @@ export const useSalonStore = create<SalonState>()(
       // carga. Si se persistiera, un navegador que abrió una vez el panel de
       // un salón real seguiría creyéndose ese panel al abrir después una demo
       // de venta — y le escribiría la demo encima al primer cambio.
-      partialize: (state) => ({
-        appointments: state.appointments,
-        waitlist: state.waitlist,
-        clients: state.clients,
-        services: state.services,
-        salonProfile: state.salonProfile,
-        savedDemos: state.savedDemos,
-        panelV2: state.panelV2,
-        demoActive: state.demoActive,
-      }) as unknown as SalonState,
+      partialize: (state) =>
+        ({
+          appointments: state.appointments,
+          waitlist: state.waitlist,
+          clients: state.clients,
+          services: state.services,
+          salonProfile: state.salonProfile,
+          savedDemos: state.savedDemos,
+          panelV2: state.panelV2,
+          demoActive: state.demoActive,
+          periodoAnalitica: state.periodoAnalitica,
+          rangoAnalitica: state.rangoAnalitica,
+        }) as unknown as SalonState,
       // v2: the barbershop identity rewrite (name/tagline/about/instagram,
       // service copy) needs to actually reach browsers that already
       // persisted v1 state — otherwise the old salonProfile/services would

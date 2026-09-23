@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
-import { employees } from "@/lib/mock/salon";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
+import { useEquipo } from "@/lib/use-equipo";
 import type { Appointment, EmployeeId } from "@/lib/mock/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { sumServices } from "@/lib/appointment-services";
+import { eur } from "@/lib/copy";
 import { duracionRecordada } from "@/lib/derive";
 import { Check, ChevronsUpDown, Clock3 } from "lucide-react";
 import {
@@ -110,6 +112,10 @@ export function NewAppointmentDialog({
   const [serviceIds, setServiceIds] = useState<string[]>(() =>
     [defaultServiceId ?? activeServices[0]?.id].filter((id): id is string => !!id),
   );
+  const employees = useEquipo();
+  // Con un solo profesional no hay a quién asignar: se asigna solo y el
+  // selector desaparece del formulario.
+  const soloUno = esSoloUnProfesional(employees);
   const [employeeId, setEmployeeId] = useState<EmployeeId>(defaultEmployeeId ?? employees[0].id);
   const [date, setDate] = useState(toDateInput(defaultDate ?? new Date()));
   const [time, setTime] = useState(toTimeInput(defaultDate ?? new Date()));
@@ -342,7 +348,7 @@ export function NewAppointmentDialog({
           <span className="text-xs text-muted-foreground" aria-live="polite">
             {chosen.length === 0
               ? "Elige uno o varios"
-              : `${chosen.length} ${chosen.length === 1 ? "elegido" : "elegidos"} · ${totalMin} min · €${total}`}
+              : `${chosen.length} ${chosen.length === 1 ? "elegido" : "elegidos"} · ${totalMin} min · ${eur(total)}`}
           </span>
         </div>
         {/* Misma mecánica que el paso 1 de la reserva pública: cada pulsación
@@ -366,7 +372,7 @@ export function NewAppointmentDialog({
                 <span className="min-w-0">
                   <span className="block truncate font-medium">{s.name}</span>
                   <span className="block text-xs text-muted-foreground">
-                    {s.durationMin} min · €{s.priceEur}
+                    {s.durationMin} min · {eur(s.priceEur)}
                   </span>
                 </span>
                 {isSelected && <Check className="size-4 shrink-0 text-primary" />}
@@ -380,10 +386,7 @@ export function NewAppointmentDialog({
           vez tardó otra cosa. */}
       <div className="space-y-1.5">
         <Label>Duración</Label>
-        <Select
-          value={String(totalMin)}
-          onValueChange={(v) => setDuracionManual(Number(v))}
-        >
+        <Select value={String(totalMin)} onValueChange={(v) => setDuracionManual(Number(v))}>
           <SelectTrigger aria-label="Duración de la cita">
             <SelectValue />
           </SelectTrigger>
@@ -415,9 +418,7 @@ export function NewAppointmentDialog({
         )}
       </div>
 
-      {/* Con un único profesional en el equipo no hay nada que elegir — la
-          cita ya va fija a esa persona (ver `employeeId` inicial arriba). */}
-      {employees.length > 1 && (
+      {!soloUno && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Estilista</Label>

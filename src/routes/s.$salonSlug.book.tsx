@@ -45,8 +45,18 @@ import { registerBookingClient } from "@/lib/api/clients.functions";
 import { checkClientPenalty } from "@/lib/api/salons.functions";
 import { sumServices } from "@/lib/appointment-services";
 import { FluidSteps } from "@/components/twentyfirst/fluid-steps";
-import { eur } from "@/lib/copy";
-import { DEMO_PARAM, decodeDemoProfile, esUnicoProfesional } from "@/lib/demo-profile";
+import { capitalizar, eur, fechaLarga } from "@/lib/copy";
+import { DEMO_PARAM, decodeDemoProfile } from "@/lib/demo-profile";
+import {
+  esSoloUnProfesional,
+  pasoAnterior,
+  pasoInicial,
+  pasoVisible,
+  rotulosDePaso,
+  siguientePaso,
+  totalPasos,
+  type PasoReserva,
+} from "@/lib/solo-profesional";
 
 /** "45 min" / "1 h" / "1 h 30" — sin ceros ni "0 h" cuando sobra. */
 function formatMinutes(min: number): string {
@@ -107,10 +117,7 @@ function resolveEmployee(
 }
 
 /** `?service=corte` o `?service=corte,barba`: solo cuentan los ids que existen en este catálogo. */
-function parseServiceIds(
-  param: string | undefined,
-  serviceMap: Record<string, Service>,
-): string[] {
+function parseServiceIds(param: string | undefined, serviceMap: Record<string, Service>): string[] {
   return (param ?? "")
     .split(",")
     .map((id) => id.trim())
@@ -255,27 +262,32 @@ function BookingWizard() {
     [employees],
   );
 
-  // Salón con un solo profesional (caso Adam): no tiene sentido preguntar a
-  // quién quiere ver — se asigna directamente y el asistente pasa del
-  // servicio a la fecha, sin el paso 2.
-  const single = esUnicoProfesional(profile);
-  const soloEmployeeId = single ? employees[0]?.id : undefined;
+  /**
+   * Un solo profesional: no hay nada que elegir en el paso 2, así que se
+   * salta y la reserva pasa a tener tres pasos. La cita se asigna igual —a la
+   * única persona que hay— a través de `employeeId`, que se deja fijado desde
+   * el principio. Con dos o más, todo sigue exactamente como antes.
+   */
+  const soloUno = esSoloUnProfesional(employees);
 
   const [data, setData] = useState<WizardData>(() => ({
     serviceIds: parseServiceIds(search.service, serviceMap),
-    employeeId: soloEmployeeId ?? (isV2 ? "any" : undefined),
+    employeeId: soloUno ? employees[0]?.id : isV2 ? "any" : undefined,
   }));
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(data.serviceIds.length ? (single ? 3 : 2) : 1);
+  const [step, setStep] = useState<PasoReserva>(() =>
+    pasoInicial(data.serviceIds.length > 0, soloUno),
+  );
 
-  // Si el equipo pasa a tener un único profesional después del primer
-  // render (por ejemplo, la carta/equipo llega tarde por el enlace `?d=`),
-  // se asigna igualmente sin que haga falta pasar por el paso 2.
+  // El equipo puede llegar después del primer render (un salón real se
+  // resuelve contra Supabase tras montar): si resulta que solo hay una
+  // persona, se fija como elegida y se sale del paso que ya no existe.
   useEffect(() => {
-    if (single && soloEmployeeId && data.employeeId !== soloEmployeeId) {
-      setData((d) => ({ ...d, employeeId: soloEmployeeId }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [single, soloEmployeeId]);
+    if (!soloUno) return;
+    const unico = employees[0]?.id;
+    if (!unico) return;
+    setData((d) => (d.employeeId === unico ? d : { ...d, employeeId: unico }));
+    setStep((s) => (s === 2 ? 3 : s));
+  }, [soloUno, employees]);
   const appointments = useSalonStore((s) => s.appointments);
   const addAppointment = useSalonStore((s) => s.addAppointment);
   const clients = useSalonStore((s) => s.clients);
@@ -352,7 +364,14 @@ function BookingWizard() {
     return findNextAvailableSlot(employees, appointments, repeatDuration, lastBooking.employeeId, {
       lastSlotBufferMin: profile.lastSlotBufferMin ?? 0,
     });
-  }, [repeatValid, lastBooking, employees, appointments, repeatDuration, profile.lastSlotBufferMin]);
+  }, [
+    repeatValid,
+    lastBooking,
+    employees,
+    appointments,
+    repeatDuration,
+    profile.lastSlotBufferMin,
+  ]);
   const showRepeatBanner =
     step === 1 && data.serviceIds.length === 0 && repeatValid && !!repeatNextSlot && !!lastBooking;
   const repeatServiceNames = repeatServices.map((s) => s.name).join(" + ");
@@ -391,16 +410,10 @@ function BookingWizard() {
   // Con un único profesional el paso 2 (elegir a quién) no existe: del
   // servicio se pasa directo a la fecha, y de vuelta.
   function next() {
-    setStep((s) => {
-      if (single && s === 1) return 3;
-      return Math.min(4, s + 1) as 1 | 2 | 3 | 4;
-    });
+    setStep((s) => siguientePaso(s, soloUno));
   }
   function prev() {
-    setStep((s) => {
-      if (single && s === 3) return 1;
-      return Math.max(1, s - 1) as 1 | 2 | 3 | 4;
-    });
+    setStep((s) => pasoAnterior(s, soloUno));
   }
 
   function confirm() {
@@ -514,10 +527,6 @@ function BookingWizard() {
           ? !data.date || !data.time
           : !data.name || !data.phone || !data.acceptedPolicy || !!penalizedClient;
 
-  // Con un único profesional el paso 2 no existe: 3 pasos, no 4.
-  const totalSteps = single ? 3 : 4;
-  const displayStep = single ? (step === 1 ? 1 : step === 3 ? 2 : 3) : step;
-
   const ctaLabel = step < 4 ? "Continuar" : `Confirmar reserva — ${eur(total)}`;
 
   function onCta() {
@@ -556,7 +565,7 @@ function BookingWizard() {
 
   return (
     <section className="mx-auto max-w-6xl px-5 pb-28 pt-10 md:py-16 lg:pb-16">
-      <StepIndicator step={displayStep} totalSteps={totalSteps} single={single} />
+      <StepIndicator step={step} soloUno={soloUno} />
 
       {/* Mejora B1: atajo de un toque para quien ya reservó antes en este
           salón desde este mismo navegador (patrón Booksy, sin cuentas). */}
@@ -566,7 +575,7 @@ function BookingWizard() {
           <button type="button" onClick={applyRepeat} className="min-w-0 flex-1 text-left">
             <p className="text-sm font-medium">
               Repetir: {repeatServiceNames}
-              {repeatEmployeeName ? ` con ${repeatEmployeeName}` : ""}
+              {!soloUno && repeatEmployeeName ? ` con ${repeatEmployeeName}` : ""}
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Próximo hueco: {formatSlotLabel(repeatNextSlot.dateKey, repeatNextSlot.time)}
@@ -597,12 +606,13 @@ function BookingWizard() {
             />
           )}
 
-          {!single && step === 2 && (
+          {!soloUno && step === 2 && (
             <StylistStep
               selected={data.employeeId}
               onSelect={(id) => setData((d) => ({ ...d, employeeId: id }))}
               tipo={tipo}
               employees={employees}
+              esSalonReal={realSlug === salonSlug}
             />
           )}
 
@@ -653,9 +663,9 @@ function BookingWizard() {
                       label={serviceNames.length > 1 ? "Duración total" : "Duración"}
                       value={durationLabel}
                     />
-                    {/* Con un único profesional no se enseña como si se
-                        hubiera elegido: se informa de quién atiende. */}
-                    {!single && (
+                    {/* Con un solo profesional, esta fila repetiría el nombre
+                        del salón: no se enseña. */}
+                    {!soloUno && (
                       <SummaryRow label={cap(professionalWord(tipo))} value={employeeName ?? "—"} />
                     )}
                     <SummaryRow label="Fecha" value={dateLabel ?? "—"} />
@@ -671,7 +681,7 @@ function BookingWizard() {
                       Incluye depósito de {eur(depositEur)} a pagar en el salón.
                     </p>
                   )}
-                  {single && employeeName && (
+                  {soloUno && employeeName && (
                     <p className="mt-1 text-xs text-muted-foreground">Te atiende {employeeName}.</p>
                   )}
                   {flexible && flexNota && (
@@ -722,13 +732,13 @@ function BookingWizard() {
                 )}
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="email">Email (opcional)</Label>
+                  <Label htmlFor="email">Correo (opcional)</Label>
                   <Input
                     id="email"
                     type="email"
                     value={data.email ?? ""}
                     onChange={(e) => setData((d) => ({ ...d, email: e.target.value }))}
-                    placeholder="tunombre@email.com"
+                    placeholder="tunombre@correo.com"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -757,7 +767,9 @@ function BookingWizard() {
                   />
                   <span>
                     Acepto la política de cancelación: gratuita hasta{" "}
-                    {(profile.noShowFeeEur ?? 0) > 0 ? `${profile.noShowNoticeHours ?? 2} h` : "24 h"}{" "}
+                    {(profile.noShowFeeEur ?? 0) > 0
+                      ? `${profile.noShowNoticeHours ?? 2} h`
+                      : "24 h"}{" "}
                     antes de la cita.
                   </span>
                 </label>
@@ -765,8 +777,8 @@ function BookingWizard() {
                 {(profile.noShowFeeEur ?? 0) > 0 && (
                   <p className="text-xs text-muted-foreground">
                     Si no puedes venir, avísanos con {profile.noShowNoticeHours ?? 2} h de
-                    antelación; si no, la siguiente reserva lleva {eur(profile.noShowFeeEur ?? 0)} de
-                    penalización.
+                    antelación; si no, la siguiente reserva lleva {eur(profile.noShowFeeEur ?? 0)}{" "}
+                    de penalización.
                   </p>
                 )}
                 {profile.depositEnabled && (profile.depositAmountEur ?? 0) > 0 && (
@@ -799,7 +811,7 @@ function BookingWizard() {
           serviceNames={serviceNames}
           durationLabel={durationLabel}
           employeeName={employeeName}
-          showEmployeeRow={!single}
+          showEmployeeRow={!soloUno}
           dateLabel={dateLabel}
           timeLabel={data.time}
           total={total}
@@ -815,7 +827,7 @@ function BookingWizard() {
         serviceNames={serviceNames}
         durationLabel={durationLabel}
         employeeName={employeeName}
-        showEmployeeRow={!single}
+        showEmployeeRow={!soloUno}
         dateLabel={dateLabel}
         timeLabel={data.time}
         total={total}
@@ -832,31 +844,23 @@ function cap(w: string) {
   return w.charAt(0).toUpperCase() + w.slice(1);
 }
 
-function StepIndicator({
-  step,
-  totalSteps,
-  single,
-}: {
-  step: 1 | 2 | 3 | 4;
-  totalSteps: number;
-  single: boolean;
-}) {
+function StepIndicator({ step, soloUno }: { step: PasoReserva; soloUno: boolean }) {
   // «Barbero» en barberías, «Profesional» en unisex: el rótulo del paso no
   // puede contradecir al título «Elige tu barbero» de la propia pantalla.
-  // Con un único profesional el paso de elegir a quién no existe.
+  // Con un solo profesional ese paso no existe: tres rótulos y "Paso 2 de 3".
   const tipo = useBusinessType();
-  const labels = single
-    ? ["Servicio", "Fecha y hora", "Tus datos"]
-    : ["Servicio", cap(professionalWord(tipo)), "Fecha y hora", "Tus datos"];
+  const labels = rotulosDePaso(professionalWord(tipo), soloUno);
+  const visible = pasoVisible(step, soloUno);
+  const total = totalPasos(soloUno);
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="flex items-center gap-4">
-        <FluidSteps step={step} total={totalSteps} />
+        <FluidSteps step={visible} total={total} />
         <span className="text-xs text-muted-foreground">
-          Paso {step} de {totalSteps}
+          Paso {visible} de {total}
         </span>
       </div>
-      <span className="text-sm font-medium text-foreground">{labels[step - 1]}</span>
+      <span className="text-sm font-medium text-foreground">{labels[visible - 1]}</span>
     </div>
   );
 }
@@ -915,7 +919,9 @@ function ServiceStep({
         className="divide-y divide-border/40"
       >
         {categoryOrder.map((cat) => {
-          const items = services.filter((s) => s.active !== false && (s.category ?? "Otros") === cat);
+          const items = services.filter(
+            (s) => s.active !== false && (s.category ?? "Otros") === cat,
+          );
           if (!items.length) return null;
           return (
             <AccordionItem key={cat} value={cat} className="border-b-0">
@@ -969,11 +975,14 @@ function StylistStep({
   onSelect,
   tipo,
   employees,
+  esSalonReal,
 }: {
   selected?: EmployeeId | "any";
   onSelect: (id: EmployeeId | "any") => void;
   tipo: BusinessType;
   employees: Employee[];
+  /** En un salón real no se enseñan las fotos de stock. Ver `fotoDeProfesional`. */
+  esSalonReal: boolean;
 }) {
   return (
     <Step title={`Elige tu ${professionalWord(tipo)}`}>
@@ -1009,7 +1018,7 @@ function StylistStep({
             <StylistAvatar
               name={e.name}
               employeeId={e.id}
-              photo={showsRealPhotos(tipo) ? e.photo : undefined}
+              photo={esSalonReal || !showsRealPhotos(tipo) ? undefined : e.photo}
               size="lg"
             />
             <div>
@@ -1046,9 +1055,7 @@ function TimeSlotButton({
         !slot.available &&
           "cursor-not-allowed border-border/40 text-muted-foreground/50 line-through",
         slot.available && selected && "border-primary bg-primary text-primary-foreground",
-        slot.available &&
-          !selected &&
-          "border-border hover:border-primary/50 hover:bg-primary/5",
+        slot.available && !selected && "border-border hover:border-primary/50 hover:bg-primary/5",
         slot.available && slot.busy && !selected && "border-amber-500/50",
       )}
     >
@@ -1205,15 +1212,11 @@ function DateTimeStep({
     const closeMinOffered = salonRange
       ? offeredCloseMin(salonRange.closeMin, lastSlotBufferMin)
       : end * 60;
-    const lastHours = salonRange
-      ? lastOfferedHours(salonRange.openMin, closeMinOffered)
-      : [];
+    const lastHours = salonRange ? lastOfferedHours(salonRange.openMin, closeMinOffered) : [];
 
     const out: PrioritySlot[] = [];
     for (let h = start; h < end; h++) {
-      const hourOccupancy = smartSpread
-        ? hourOccupancyPct(appointments, dateKey, h, employees)
-        : 0;
+      const hourOccupancy = smartSpread ? hourOccupancyPct(appointments, dateKey, h, employees) : 0;
       const busy = smartSpread && isBusyHour(h, hourOccupancy, lastHours);
       for (const m of [0, 30]) {
         // "No ofrecer los últimos X minutos": el hueco ni se lista.
@@ -1228,12 +1231,26 @@ function DateTimeStep({
         const available = relevantEmployees.some(
           (e) => !isSlotTaken(appointments, e.id, iso, durationMin),
         );
-        out.push({ time: timeStr, available, busy, priority: isPriorityTime(timeStr, priorityHours) });
+        out.push({
+          time: timeStr,
+          available,
+          busy,
+          priority: isPriorityTime(timeStr, priorityHours),
+        });
       }
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDate, relevantEmployees, employees, appointments, durationMin, smartSpread, lastSlotBufferMin, priorityHours]);
+  }, [
+    activeDate,
+    relevantEmployees,
+    employees,
+    appointments,
+    durationMin,
+    smartSpread,
+    lastSlotBufferMin,
+    priorityHours,
+  ]);
 
   const groups = useMemo(() => {
     const morning = slots.filter((s) => Number(s.time.split(":")[0]) < 14);
@@ -1266,10 +1283,7 @@ function DateTimeStep({
   // resto detrás de "Ver todas las horas" (nunca oculto del todo). Si el
   // dueño no ha marcado ninguna, o ninguna cae libre este día en concreto,
   // se enseña todo directamente, exactamente como antes de este cambio.
-  const priorityAvailable = useMemo(
-    () => slots.filter((s) => s.priority && s.available),
-    [slots],
-  );
+  const priorityAvailable = useMemo(() => slots.filter((s) => s.priority && s.available), [slots]);
   const hasPriorityBlock = priorityHours.length > 0 && priorityAvailable.length > 0;
   const [showAllHours, setShowAllHours] = useState(!hasPriorityBlock);
   useEffect(() => {
@@ -1313,13 +1327,7 @@ function DateTimeStep({
         <div>
           {activeDate ? (
             <>
-              <p className="mb-4 font-display text-lg capitalize">
-                {activeDate.toLocaleDateString("es-ES", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                })}
-              </p>
+              <p className="mb-4 font-display text-lg">{capitalizar(fechaLarga(activeDate))}</p>
               {groups.length === 0 && (
                 <p className="text-sm text-muted-foreground">
                   No hay horas disponibles este día. Prueba con otra fecha.

@@ -14,7 +14,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { acceso, exigirAcceso } from "./autorizacion.server";
+import { tieneMando, vistaEfectiva } from "./autorizacion";
+import { conSesion } from "./sesion.middleware";
 import { getSupabaseServerClient } from "../supabase.server";
+import { fusionarPerfil } from "../perfil-parche";
 import {
   findPenaltyRow,
   phoneKey,
@@ -40,7 +44,7 @@ const APPOINTMENT_COLS_BASE =
 const APPOINTMENT_COLS_NUEVAS =
   "payment_method, paid_at, deposit_requested_at, deposit_received_at, deposit_eur";
 const CLIENT_COLS_BASE = "id, name, phone, email, notes, penalty_eur, penalty_note, created_at";
-const CLIENT_COLS_NUEVAS = "penalty_at, penalty_keep";
+const CLIENT_COLS_NUEVAS = "penalty_at, penalty_keep, penalty_block";
 const WAITLIST_COLS =
   "id, local_id, client_name, phone, service_id, preferred_employee_id, preferred_range, created_at";
 
@@ -52,7 +56,7 @@ const CAMPOS_NUEVOS_CITA = [
   "deposit_received_at",
   "deposit_eur",
 ];
-const CAMPOS_NUEVOS_CLIENTE = ["penalty_at", "penalty_keep"];
+const CAMPOS_NUEVOS_CLIENTE = ["penalty_at", "penalty_keep", "penalty_block"];
 
 /**
  * ¿Ha fallado esto porque una columna o una tabla todavía no existen?
@@ -67,9 +71,7 @@ function faltaEsquema(error: { code?: string; message?: string } | null | undefi
   if (["PGRST204", "PGRST205", "42703", "42P01"].includes(error.code ?? "")) return true;
   const msg = (error.message ?? "").toLowerCase();
   return (
-    msg.includes("does not exist") ||
-    msg.includes("could not find") ||
-    msg.includes("schema cache")
+    msg.includes("does not exist") || msg.includes("could not find") || msg.includes("schema cache")
   );
 }
 
@@ -83,6 +85,87 @@ function sinCampos<T extends Record<string, unknown>>(fila: T, campos: string[])
 const slug = z.string().min(1).max(120);
 
 /* ---------------------------------------------------------------------- */
+/* Quién puede tocar qué                                                   */
+/* ---------------------------------------------------------------------- */
+
+/**
+ * Todas las funciones de este fichero llevan `.middleware([conSesion])`, que
+ * les hace llegar la sesión del navegador que llama, y las que manejan datos
+ * de personas empiezan por `exigirAcceso(data.slug)` o por `acceso(data.slug)`.
+ *
+ * Hay exactamente tres niveles, y conviene tenerlos claros:
+ *
+ *   PÚBLICO      `getSalonProfile`, `esSalonRealPublico`, `checkClientPenalty`.
+ *                No comprueban nada porque no hay nada que comprobar: lo que
+ *                devuelven ya es público (la ficha del salón, si existe, y si
+ *                un teléfono concreto debe dinero). No devuelven listas.
+ *
+ *   RECORTADO    `listSalonData`. No corta: recorta. Quien no sea miembro
+ *                recibe la vista pública —los huecos ocupados, sin nombres y
+ *                sin una sola ficha de cliente— aunque pida la del panel. Es
+ *                así porque la web de reservas de un salón de pago tiene que
+ *                seguir funcionando para cualquiera que entre a pedir hora.
+ *
+ *   MIXTO        `syncAppointment`. El dueño puede todo; quien no lo sea solo
+ *                puede pedir hora: una cita NUEVA, en estado "pendiente", sin
+ *                tocar cobros ni fianzas y sin poder pisar una cita que ya
+ *                exista. Es lo que hace la web de reservas y nada más.
+ *
+ *   DEL DUEÑO    el resto: guardar el perfil, la lista de espera, borrar
+ *                citas, deudas y notas de clientes. Cortan.
+ *
+ * Y por encima de todo: si el slug no existe en `salons` es una DEMO de venta
+ * y no se pide absolutamente nada, exactamente como antes. Esa decisión la
+ * toma el servidor mirando la base de datos, no un parámetro del navegador.
+ * Ver lib/api/autorizacion.ts.
+ */
+
+/**
+ * ¿Este slug es un salón de pago? Solo eso, sí o no.
+ *
+ * Es información pública —el slug sale en la URL de la web de reservas— y la
+ * necesita la pantalla de acceso para saber si puede ofrecer el atajo de las
+ * demos o si tiene que pedir el correo. Ojo: es una comodidad de la interfaz,
+ * no una barrera. La barrera la vuelve a poner el servidor en cada llamada.
+ */
+export const esSalonRealPublico = createServerFn({ method: "GET" })
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug }))
+  .handler(async ({ data }): Promise<{ real: boolean }> => {
+    const supabase = getSupabaseServerClient();
+    if (!supabase) return { real: false };
+    const { data: row, error } = await supabase
+      .from("salons")
+      .select("slug")
+      .eq("slug", data.slug)
+      .maybeSingle();
+    if (error) return { real: false };
+    return { real: Boolean(row) };
+  });
+
+/**
+ * ¿Puede quien está llamando abrir el panel de este salón?
+ *
+ * La usa la guarda de la ruta `/app` para decidir entre enseñar el panel o
+ * mandar a `/login`. Devuelve dos cosas porque hacen falta las dos:
+ *
+ *   `real`      — si es false es una demo de venta: se entra sin pedir nada.
+ *   `permitido` — si es true, quien llama manda sobre ese salón.
+ *
+ * No devuelve ni un dato del salón, así que preguntarlo no filtra nada. Y es
+ * una comodidad de la interfaz, no la barrera: la barrera está en cada
+ * función que entrega datos. Aunque alguien se saltara esta pregunta, el
+ * panel se abriría vacío.
+ */
+export const accesoAlPanel = createServerFn({ method: "GET" })
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug }))
+  .handler(async ({ data }): Promise<{ real: boolean; permitido: boolean }> => {
+    const quien = await acceso(data.slug);
+    return { real: quien.tipo !== "demo", permitido: tieneMando(quien) };
+  });
+
+/* ---------------------------------------------------------------------- */
 /* Perfil                                                                  */
 /* ---------------------------------------------------------------------- */
 
@@ -91,8 +174,14 @@ const slug = z.string().min(1).max(120);
  *
  * Es la ÚNICA llamada que hace la app para un slug desconocido, y su respuesta
  * negativa no cambia absolutamente nada de lo que se pinta.
+ *
+ * PÚBLICA a propósito, y sin comprobar nada: lo que devuelve es la ficha que
+ * ese salón enseña en su propia web —nombre, dirección, horarios, carta—, que
+ * es justo lo que quiere que vea todo el mundo. Aquí no viaja ni una cita ni
+ * un cliente.
  */
 export const getSalonProfile = createServerFn({ method: "GET" })
+  .middleware([conSesion])
   .inputValidator(z.object({ slug }))
   .handler(async ({ data }): Promise<{ profile: SalonProfile | null }> => {
     const supabase = getSupabaseServerClient();
@@ -117,24 +206,114 @@ export const getSalonProfile = createServerFn({ method: "GET" })
   });
 
 /**
- * Guarda el perfil del salón. La llama Ajustes cada vez que el dueño cambia
- * algo, en fire-and-forget: en local ya se aplicó al instante.
+ * Guarda el perfil del salón.
+ *
+ * Tiene dos llamantes con exigencias distintas, y por eso devuelve un motivo
+ * en vez de solo un booleano:
+ *
+ *   - La store (`pushSalonProfile`), en fire-and-forget: el cambio ya está
+ *     aplicado en local y un fallo solo se escribe en consola.
+ *   - «Mi web» (`/app/web`), que espera la respuesta antes de decirle al dueño
+ *     que su web ya está publicada. Ahí hace falta distinguir "no hay backend
+ *     configurado" y "el esquema todavía no está aplicado" —dos cosas que no
+ *     son culpa suya ni se arreglan reintentando— de un fallo de verdad, que
+ *     sí sube como excepción para que la pantalla lo cuente y no pierda nada
+ *     de lo escrito.
  */
-export const saveSalonProfile = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ slug, profile: z.record(z.string(), z.unknown()) }))
-  .handler(async ({ data }) => {
-    const supabase = getSupabaseServerClient();
-    if (!supabase) return { synced: false as const };
+export type MotivoNoPublicado = "sin-backend" | "falta-esquema";
 
-    const { error } = await supabase
-      .from("salons")
-      .upsert(
-        { slug: data.slug, profile: data.profile, updated_at: new Date().toISOString() },
-        { onConflict: "slug" },
-      );
-    if (error) throw new Error(`saveSalonProfile: ${error.message}`);
-    return { synced: true as const };
-  });
+export const saveSalonProfile = createServerFn({ method: "POST" })
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug, profile: z.record(z.string(), z.unknown()) }))
+  .handler(
+    async ({ data }): Promise<{ synced: true } | { synced: false; motivo: MotivoNoPublicado }> => {
+      // Sobrescribir el perfil entero de un salón es cosa de su dueño. Sin
+      // esto, cualquiera podía cambiarle el teléfono, la dirección o la carta.
+      await exigirAcceso(data.slug);
+      const supabase = getSupabaseServerClient();
+      if (!supabase) return { synced: false as const, motivo: "sin-backend" as const };
+
+      const { error } = await supabase
+        .from("salons")
+        .upsert(
+          { slug: data.slug, profile: data.profile, updated_at: new Date().toISOString() },
+          { onConflict: "slug" },
+        );
+      if (faltaEsquema(error)) {
+        return { synced: false as const, motivo: "falta-esquema" as const };
+      }
+      if (error) throw new Error(`saveSalonProfile: ${error.message}`);
+      return { synced: true as const };
+    },
+  );
+
+/**
+ * Guarda SOLO los campos que han cambiado, fusionándolos con lo que hay en la
+ * base en el momento de escribir.
+ *
+ * Por qué existe, y qué garantía da exactamente.
+ *
+ * Hasta ahora el panel subía el perfil ENTERO en cada edición
+ * (`updateSalonProfile` → `saveSalonProfile`). Con dos dispositivos eso
+ * significaba perder trabajo sin enterarse: el dueño cambia el teléfono desde
+ * el móvil, y el iPad —que lleva abierto desde ayer y tiene el perfil viejo en
+ * `localStorage`— cambia el horario del martes; al subir su copia completa,
+ * el teléfono nuevo VUELVE al viejo. Nadie tocó el teléfono y el teléfono
+ * cambió.
+ *
+ * La garantía que se da aquí, dicha sin adornos:
+ *
+ *   SÍ — un campo que este navegador no ha tocado no se puede sobrescribir
+ *   con lo que este navegador creía que valía. Solo viajan las claves del
+ *   parche, y el resto del perfil sale de la fila tal y como está en la base
+ *   en el instante de la escritura, no de la copia local.
+ *
+ *   NO — esto no es una transacción ni un bloqueo optimista. Si dos
+ *   dispositivos cambian LA MISMA clave casi a la vez, sigue ganando el
+ *   último que escriba. Y entre el `select` y el `update` de aquí abajo hay
+ *   una ventana pequeña en la que una escritura ajena a otra clave podría
+ *   perderse. Cerrar eso del todo pide una columna de versión y un `update
+ *   ... where updated_at = ...`, que es otro cambio y otra migración.
+ *
+ * Si la fila no existe, NO se crea: dar de alta un salón es un acto
+ * deliberado (`scripts/seed-salon.ts`), no algo que provoque un teclazo en
+ * Ajustes.
+ */
+export type MotivoNoAplicado = MotivoNoPublicado | "sin-salon";
+
+export const patchSalonProfile = createServerFn({ method: "POST" })
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug, patch: z.record(z.string(), z.unknown()) }))
+  .handler(
+    async ({ data }): Promise<{ synced: true } | { synced: false; motivo: MotivoNoAplicado }> => {
+      await exigirAcceso(data.slug);
+      const supabase = getSupabaseServerClient();
+      if (!supabase) return { synced: false as const, motivo: "sin-backend" as const };
+
+      const { data: fila, error: errorLectura } = await supabase
+        .from("salons")
+        .select("profile")
+        .eq("slug", data.slug)
+        .maybeSingle();
+      if (faltaEsquema(errorLectura)) {
+        return { synced: false as const, motivo: "falta-esquema" as const };
+      }
+      if (errorLectura) throw new Error(`patchSalonProfile (lectura): ${errorLectura.message}`);
+      if (!fila) return { synced: false as const, motivo: "sin-salon" as const };
+
+      const fusionado = fusionarPerfil((fila.profile ?? {}) as Record<string, unknown>, data.patch);
+
+      const { error } = await supabase
+        .from("salons")
+        .update({ profile: fusionado, updated_at: new Date().toISOString() })
+        .eq("slug", data.slug);
+      if (faltaEsquema(error)) {
+        return { synced: false as const, motivo: "falta-esquema" as const };
+      }
+      if (error) throw new Error(`patchSalonProfile: ${error.message}`);
+      return { synced: true as const };
+    },
+  );
 
 /* ---------------------------------------------------------------------- */
 /* Agenda                                                                  */
@@ -143,12 +322,24 @@ export const saveSalonProfile = createServerFn({ method: "POST" })
 /**
  * Toda la agenda del salón, para hidratar la store al entrar.
  *
- * `scope: "publica"` es lo que se sirve a la web de reservas: las citas solo
+ * La vista "publica" es lo que se sirve a la web de reservas: las citas solo
  * para saber qué huecos están ocupados, sin nombres ni notas, y cero fichas de
  * cliente. La lista de clientes es del dueño, no de quien abra el enlace.
+ *
+ * Eso ANTES era una intención escrita en este comentario y nada más, porque
+ * `scope` lo elegía quien llamaba: bastaba pedir "panel" para recibir la lista
+ * completa de clientes con sus teléfonos. Ahora `vista` es como mucho una
+ * preferencia, y el servidor la recorta a lo que esa persona tiene derecho a
+ * ver (`vistaEfectiva`). Pedir "panel" sin ser miembro del salón devuelve
+ * exactamente lo mismo que pedir "publica".
+ *
+ * No corta con un error a propósito: la web de reservas de un salón de pago
+ * la abre gente que no tiene ni va a tener sesión, y tiene que seguir viendo
+ * qué huecos quedan libres.
  */
 export const listSalonData = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ slug, scope: z.enum(["panel", "publica"]).default("panel") }))
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug, vista: z.enum(["panel", "publica"]).default("publica") }))
   .handler(
     async ({
       data,
@@ -156,7 +347,7 @@ export const listSalonData = createServerFn({ method: "GET" })
       const supabase = getSupabaseServerClient();
       if (!supabase) return { appointments: [], clients: [], waitlist: [] };
 
-      const publica = data.scope === "publica";
+      const publica = vistaEfectiva(data.vista, await acceso(data.slug)) === "publica";
 
       /**
        * Un `select` con las columnas nuevas y, si el esquema todavía no las
@@ -168,7 +359,8 @@ export const listSalonData = createServerFn({ method: "GET" })
           .from(tabla)
           .select(`${base}, ${nuevas}`)
           .eq("salon_slug", data.slug);
-        if (!conNuevas.error) return { data: (conNuevas.data ?? []) as unknown as T[], error: null };
+        if (!conNuevas.error)
+          return { data: (conNuevas.data ?? []) as unknown as T[], error: null };
         if (!faltaEsquema(conNuevas.error)) return { data: [] as T[], error: conNuevas.error };
         console.warn(
           `listSalonData: ${tabla} todavía sin las columnas nuevas (${nuevas}); falta aplicar supabase/schema.sql`,
@@ -223,6 +415,7 @@ export const listSalonData = createServerFn({ method: "GET" })
  * y la lista sigue funcionando en local, como antes de esto.
  */
 export const syncWaitlistEntry = createServerFn({ method: "POST" })
+  .middleware([conSesion])
   .inputValidator(
     z.object({
       slug,
@@ -235,6 +428,9 @@ export const syncWaitlistEntry = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
+    // La lista de espera la lleva el dueño desde el panel; la web de reservas
+    // no escribe aquí. Nadie de fuera tiene por qué meter gente en ella.
+    await exigirAcceso(data.slug);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
     const { error } = await supabase.from("waitlist").upsert(
@@ -259,8 +455,10 @@ export const syncWaitlistEntry = createServerFn({ method: "POST" })
 
 /** Quita una entrada de la lista de espera (la quitó el dueño, o se convirtió en cita). */
 export const deleteWaitlistEntry = createServerFn({ method: "POST" })
+  .middleware([conSesion])
   .inputValidator(z.object({ slug, localId: z.string().min(1) }))
   .handler(async ({ data }) => {
+    await exigirAcceso(data.slug);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
     const { error } = await supabase
@@ -288,6 +486,7 @@ export const deleteWaitlistEntry = createServerFn({ method: "POST" })
  * formas.
  */
 export const syncAppointment = createServerFn({ method: "POST" })
+  .middleware([conSesion])
   .inputValidator(
     z.object({
       slug,
@@ -311,8 +510,45 @@ export const syncAppointment = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
+    /**
+     * Esta es la única función de escritura que tiene que seguir abierta a
+     * gente sin sesión, porque es por donde entra una reserva de la web
+     * pública: el cliente del salón pide hora y no tiene ni va a tener cuenta.
+     *
+     * Así que en vez de cortar, se recorta a lo que una reserva puede hacer:
+     *
+     *   - No puede pisar una cita que ya exista. Sin esto, cualquiera podría
+     *     cambiarle la hora, el precio o el estado a una cita ajena sabiendo
+     *     su `local_id`.
+     *   - Nace siempre "pendiente" de que el dueño la confirme, diga lo que
+     *     diga quien llama. Nadie se autoconfirma la cita, ni se marca a sí
+     *     mismo como "ya vino" o "cancelada".
+     *   - No toca cobros ni fianzas. Quién ha pagado, cuánto y cómo lo decide
+     *     el salón desde su panel, nunca una llamada de fuera.
+     *
+     * El dueño (miembro, o una demo de venta) no tiene ninguno de estos
+     * límites: su panel hace exactamente lo que hacía antes.
+     */
+    const quien = await acceso(data.slug);
+    const manda = tieneMando(quien);
+
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
+
+    if (!manda) {
+      const { data: yaExiste, error: errorExiste } = await supabase
+        .from("appointments")
+        .select("id")
+        .eq("salon_slug", data.slug)
+        .eq("local_id", data.localId)
+        .maybeSingle();
+      if (errorExiste) throw new Error(`syncAppointment: ${errorExiste.message}`);
+      if (yaExiste) {
+        throw new Error(
+          "Esa cita ya existe y solo puede cambiarla el salón. Llámalos si necesitas moverla.",
+        );
+      }
+    }
 
     let clientId: string | null = null;
     const key = phoneKey(data.clientPhone);
@@ -344,14 +580,16 @@ export const syncAppointment = createServerFn({ method: "POST" })
       start_at: data.startISO,
       duration_min: data.durationMin,
       price_eur: data.priceEur,
-      status: data.status,
-      client_confirmed_at: data.clientConfirmedAt ?? null,
+      // Una reserva de fuera nace pendiente; el estado lo decide el salón.
+      status: manda ? data.status : "pending",
+      client_confirmed_at: manda ? (data.clientConfirmedAt ?? null) : null,
       note: data.note ?? null,
-      payment_method: data.paymentMethod ?? null,
-      paid_at: data.paidAt ?? null,
-      deposit_requested_at: data.depositRequestedAt ?? null,
-      deposit_received_at: data.depositReceivedAt ?? null,
-      deposit_eur: data.depositEur ?? null,
+      // Cobros y fianzas: solo desde el panel.
+      payment_method: manda ? (data.paymentMethod ?? null) : null,
+      paid_at: manda ? (data.paidAt ?? null) : null,
+      deposit_requested_at: manda ? (data.depositRequestedAt ?? null) : null,
+      deposit_received_at: manda ? (data.depositReceivedAt ?? null) : null,
+      deposit_eur: manda ? (data.depositEur ?? null) : null,
     };
     // Solo se toca `client_id` cuando esta llamada sabe de qué cliente habla.
     // Un "confirmar" desde el panel no lleva teléfono, y machacar la columna
@@ -381,8 +619,11 @@ export const syncAppointment = createServerFn({ method: "POST" })
 
 /** Borra una cita de verdad (el panel tiene "eliminar" además de "cancelar"). */
 export const deleteAppointment = createServerFn({ method: "POST" })
+  .middleware([conSesion])
   .inputValidator(z.object({ slug, localId: z.string().min(1) }))
   .handler(async ({ data }) => {
+    // Borrar la agenda de otro era, literalmente, una llamada con su slug.
+    await exigirAcceso(data.slug);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
     const { error } = await supabase
@@ -422,6 +663,7 @@ async function localizarCliente(
 
 /** Marca al cliente con una penalización pendiente (política de plantón). */
 export const applyClientPenalty = createServerFn({ method: "POST" })
+  .middleware([conSesion])
   .inputValidator(
     z.object({
       slug,
@@ -434,9 +676,14 @@ export const applyClientPenalty = createServerFn({ method: "POST" })
       penaltyAt: z.string().nullable().optional(),
       /** El dueño mantiene el bloqueo más allá de los 30 días. */
       penaltyKeep: z.boolean().optional(),
+      /** ¿La deuda le impide reservar por la web? `false` = solo anotada. */
+      penaltyBlock: z.boolean().optional(),
     }),
   )
   .handler(async ({ data }) => {
+    // Marcar a una persona como morosa y bloquearle la reserva es una decisión
+    // del dueño y de nadie más.
+    await exigirAcceso(data.slug);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
 
@@ -449,6 +696,7 @@ export const applyClientPenalty = createServerFn({ method: "POST" })
       penalty_note: data.note ?? null,
       penalty_at: data.penaltyAt ?? null,
       penalty_keep: data.penaltyKeep ?? false,
+      penalty_block: data.penaltyBlock ?? true,
     };
 
     const { error } = await supabase
@@ -470,6 +718,7 @@ export const applyClientPenalty = createServerFn({ method: "POST" })
 
 /** Cierra la penalización: cobrada o perdonada. Decide siempre el dueño. */
 export const clearClientPenalty = createServerFn({ method: "POST" })
+  .middleware([conSesion])
   .inputValidator(
     z.object({
       slug,
@@ -479,6 +728,7 @@ export const clearClientPenalty = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
+    await exigirAcceso(data.slug);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
 
@@ -490,6 +740,7 @@ export const clearClientPenalty = createServerFn({ method: "POST" })
       penalty_note: data.note ?? null,
       penalty_at: null,
       penalty_keep: false,
+      penalty_block: true,
     };
     const { error } = await supabase.from("clients").update(parche).eq("id", id);
     if (faltaEsquema(error)) {
@@ -506,8 +757,12 @@ export const clearClientPenalty = createServerFn({ method: "POST" })
 
 /** Guarda las indicaciones del salón sobre un cliente ("usa el número 8"). */
 export const saveClientNotes = createServerFn({ method: "POST" })
+  .middleware([conSesion])
   .inputValidator(z.object({ slug, phone: z.string().min(1), notes: z.string() }))
   .handler(async ({ data }) => {
+    // Las notas son texto libre del salón sobre una persona con nombre y
+    // teléfono. Escribirlas —y leerlas— es del dueño.
+    await exigirAcceso(data.slug);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
     const id = await localizarCliente(supabase, data.slug, data.phone);
@@ -524,6 +779,7 @@ export const saveClientNotes = createServerFn({ method: "POST" })
  * el enlace público no tiene por qué recibir los teléfonos de los demás.
  */
 export const checkClientPenalty = createServerFn({ method: "GET" })
+  .middleware([conSesion])
   .inputValidator(z.object({ slug, phone: z.string() }))
   .handler(async ({ data }): Promise<{ client: Client | null }> => {
     const supabase = getSupabaseServerClient();

@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
-import { employees, employeeMap } from "@/lib/mock/salon";
+import { employeeMap } from "@/lib/mock/salon";
+import { esSoloUnProfesional } from "@/lib/solo-profesional";
+import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
+import { capitalizar, fechaLarga } from "@/lib/copy";
 import type { Appointment, EmployeeId } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
+import { TiraScroll } from "@/components/TiraScroll";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
@@ -47,12 +51,22 @@ function startOfWeek(anchor: Date) {
  */
 export function AgendaColumns() {
   const appointments = useSalonStore((s) => s.appointments);
+  const employees = useEquipo();
+  // Con un solo profesional no hay columnas que comparar: ni selector de
+  // móvil, ni cabecera con su foto encima de su propia agenda.
+  const soloUno = esSoloUnProfesional(employees);
   const [anchor, setAnchor] = useState(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d;
   });
-  const [mobileEmployee, setMobileEmployee] = useState<EmployeeId>(employees[0]?.id);
+  const [mobileEmployee, setMobileEmployee] = useState<EmployeeId | undefined>(employees[0]?.id);
+  // El equipo puede llegar después del primer render (salón real).
+  useEffect(() => {
+    setMobileEmployee((actual) =>
+      actual && employees.some((e) => e.id === actual) ? actual : employees[0]?.id,
+    );
+  }, [employees]);
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [slotPrefill, setSlotPrefill] = useState<{ date: Date; employeeId: EmployeeId } | null>(
     null,
@@ -81,7 +95,8 @@ export function AgendaColumns() {
   }
 
   const dayAppts = useMemo(
-    () => appointments.filter((a) => isSameDate(new Date(a.start), anchor) && a.status !== "cancelled"),
+    () =>
+      appointments.filter((a) => isSameDate(new Date(a.start), anchor) && a.status !== "cancelled"),
     [appointments, anchor],
   );
 
@@ -161,9 +176,7 @@ export function AgendaColumns() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="font-display text-lg capitalize">
-            {anchor.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })}
-          </p>
+          <p className="font-display text-lg">{capitalizar(fechaLarga(anchor))}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => shift(-1)} aria-label="Día anterior">
@@ -188,7 +201,7 @@ export function AgendaColumns() {
 
       {/* Tira de la semana — salta de día sin perder el contexto de en qué
           semana estás, igual en móvil que en escritorio. */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <TiraScroll>
         {weekChips.map((d) => {
           const active = isSameDate(d, anchor);
           return (
@@ -210,10 +223,10 @@ export function AgendaColumns() {
             </button>
           );
         })}
-      </div>
+      </TiraScroll>
 
-      {/* Selector de profesional — solo móvil: un profesional a la vez. */}
-      <div className="md:hidden">
+      {/* Selector de profesional — solo móvil, y solo si hay entre quién elegir. */}
+      <div className={cn("md:hidden", soloUno && "hidden")}>
         <Select value={mobileEmployee} onValueChange={(v) => setMobileEmployee(v as EmployeeId)}>
           <SelectTrigger className="w-full">
             <SelectValue />
@@ -232,7 +245,7 @@ export function AgendaColumns() {
         {/* Cabecera con foto/iniciales por profesional — oculta en móvil, ya
             se elige arriba con el selector. */}
         <div
-          className="hidden border-b border-border/60 md:grid"
+          className={cn("hidden border-b border-border/60", !soloUno && "md:grid")}
           style={{ gridTemplateColumns: `56px repeat(${employees.length}, minmax(0, 1fr))` }}
         >
           <div />

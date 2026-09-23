@@ -10,6 +10,7 @@ import {
   Megaphone,
   Clock,
   Settings,
+  Globe,
   ArrowUpRight,
   Sparkles,
   type LucideIcon,
@@ -20,6 +21,7 @@ import { useSalonStore } from "@/lib/store";
 import { moduloVisible, type ModuloOcultable } from "@/lib/demo-profile";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { BotonCerrarSesion } from "@/components/BotonCerrarSesion";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,12 +53,13 @@ import {
 
 /**
  * Alto real de la barra inferior fija, con el hueco del gesto de iOS dentro.
- * Se declara aquí y se aplica como `padding-bottom` del contenido de TODAS
- * las pantallas: es lo que impide que el último botón de cualquiera de ellas
- * (el "Guardar cambios" de Ajustes fue el que lo destapó) acabe debajo de la
- * barra en un iPad.
+ * El valor vive en `--alto-barra-fija` (styles.css) para que la barra y el
+ * hueco que le reserva el contenido no puedan desincronizarse: la clase
+ * `hueco-barra-fija` usa esa misma variable. Es lo que impide que el último
+ * botón de cualquier pantalla (el "Guardar cambios" de Ajustes fue el que lo
+ * destapó) acabe debajo de la barra.
  */
-const ALTO_BARRA_INFERIOR = "calc(4.5rem + env(safe-area-inset-bottom, 0px))";
+const ALTO_BARRA_INFERIOR = "var(--alto-barra-fija)";
 
 type NavItem = {
   to: string;
@@ -74,6 +77,7 @@ const MAIN_ITEMS: NavItem[] = [
 ];
 
 const MORE_ITEMS: NavItem[] = [
+  { to: "/app/web", label: "Mi web", icon: Globe },
   { to: "/app/waitlist", label: "Lista de espera", icon: Clock, modulo: "lista-espera" },
   { to: "/app/services", label: "Servicios", icon: Scissors },
   { to: "/app/employees", label: "Equipo", icon: Users, modulo: "equipo" },
@@ -81,6 +85,16 @@ const MORE_ITEMS: NavItem[] = [
   { to: "/app/marketing", label: "Marketing", icon: Megaphone, modulo: "marketing" },
   { to: "/app/settings", label: "Ajustes", icon: Settings },
 ];
+
+/**
+ * Pantallas que no están en el menú pero sí tienen nombre propio. Sin esto la
+ * barra de arriba ponía "Panel" en Citas mientras el título de la página
+ * ponía "Citas": dos nombres para la misma pantalla.
+ */
+const TITULOS_EXTRA: Record<string, string> = {
+  "/app/appointments": "Citas",
+  "/app/demos": "Demos",
+};
 
 function isActive(to: string, path: string, exact?: boolean) {
   return exact ? path === to : path === to || path.startsWith(to + "/");
@@ -100,7 +114,7 @@ export function PanelV2Shell() {
 
   const activeMain = MAIN_ITEMS.find((i) => isActive(i.to, path, i.exact));
   const activeMore = moreItems.find((i) => isActive(i.to, path));
-  const title = activeMain?.label ?? activeMore?.label ?? "Panel";
+  const title = activeMain?.label ?? activeMore?.label ?? TITULOS_EXTRA[path] ?? "Panel";
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -138,6 +152,11 @@ export function PanelV2Shell() {
           <ArrowUpRight className="h-4 w-4" />
           <span className="text-[9px] leading-tight">Web</span>
         </Link>
+        {/* Salir. Borra también las citas y las fichas guardadas en este
+            aparato — ver components/BotonCerrarSesion.tsx. */}
+        <div className="mt-1 flex w-16 justify-center">
+          <BotonCerrarSesion variante="icono" />
+        </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -159,11 +178,13 @@ export function PanelV2Shell() {
           </div>
         </header>
 
-        {/* El hueco de abajo es exactamente el alto de la barra fija (clase,
-            no `style`, para que `lg:pb-6` pueda quitarlo cuando la barra
-            desaparece). Vale para TODAS las pantallas del panel, no solo
-            Ajustes: cualquiera puede acabar con un botón en la última línea. */}
-        <main className="min-w-0 flex-1 px-4 py-5 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:px-6 lg:pb-6">
+        {/* El hueco de abajo es el alto de la barra fija más un respiro
+            (`hueco-barra-fija`, una sola variable compartida con la barra).
+            A partir de 1024 px la barra desaparece y la propia clase se
+            queda en un margen normal. Vale
+            para TODAS las pantallas del panel, no solo Ajustes: cualquiera
+            puede acabar con un botón en la última línea. */}
+        <main className="hueco-barra-fija min-w-0 flex-1 px-4 py-5 sm:px-6">
           <Outlet />
         </main>
       </div>
@@ -236,6 +257,10 @@ export function PanelV2Shell() {
                 <ArrowUpRight className="h-5 w-5" />
                 Ver sitio público
               </Link>
+              <div className="flex flex-col items-center gap-2 rounded-xl border border-border/60 px-3 py-4 text-center text-xs font-medium text-muted-foreground">
+                <BotonCerrarSesion variante="icono" />
+                Cerrar sesión
+              </div>
             </div>
           </SheetContent>
         </Sheet>
