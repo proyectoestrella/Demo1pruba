@@ -2,6 +2,7 @@ import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef } from "react";
 import { Check, CalendarPlus, MapPin } from "lucide-react";
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
+import { useSalonStore } from "@/lib/store";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import { DEMO_PARAM, decodeDemoProfile, esUnicoProfesional } from "@/lib/demo-profile";
 import { StylistAvatar } from "@/components/StylistAvatar";
@@ -83,7 +84,15 @@ function Confirmation() {
     },
   });
   const demoPersonalizacion = useMemo(() => decodeDemoProfile(demoParamRaw), [demoParamRaw]);
-  const flexible = !!demoPersonalizacion?.duracionFlexible;
+  // Si esta URL no trae `?d=` (se llegó navegando desde el asistente, no con
+  // el enlace directo), cae a lo que el layout ya guardó en el store al
+  // abrir la portada — igual que en el asistente de reserva.
+  const storedRecargoRetraso = useSalonStore((s) => s.salonProfile.recargoRetraso);
+  const storedDuracionFlexible = useSalonStore((s) => s.salonProfile.duracionFlexible);
+  const flexible = demoPersonalizacion
+    ? !!demoPersonalizacion.duracionFlexible
+    : !!storedDuracionFlexible;
+  const recargoRetraso = demoPersonalizacion?.recargoRetraso ?? storedRecargoRetraso;
   const flexRange = flexible ? flexDurationRange(totalMin) : null;
   const durationLabel =
     flexRange && totalMin > 0
@@ -92,9 +101,7 @@ function Confirmation() {
   const flexNota = flexible
     ? `La duración final la confirma ${profile.name || "el salón"} al aceptar tu solicitud.`
     : undefined;
-  const recargoTexto = demoPersonalizacion?.recargoRetraso
-    ? recargoRetrasoTexto(demoPersonalizacion.recargoRetraso)
-    : undefined;
+  const recargoTexto = recargoRetraso ? recargoRetrasoTexto(recargoRetraso) : undefined;
 
   // Un disparo al aterrizar en la confirmación. Se respeta
   // `prefers-reduced-motion`: para quien lo pida, no cae nada.
@@ -119,6 +126,7 @@ function Confirmation() {
         <Link
           to="/s/$salonSlug/book"
           params={{ salonSlug }}
+          search={(prev) => prev}
           className="mt-4 inline-block text-sm text-primary underline underline-offset-2"
         >
           Volver a reservar
@@ -255,7 +263,7 @@ function Confirmation() {
           <CalendarPlus className="h-4 w-4" /> Añadir a mi calendario
         </Button>
         <Button asChild className="flex-1 rounded-full">
-          <Link to="/s/$salonSlug" params={{ salonSlug }}>
+          <Link to="/s/$salonSlug" params={{ salonSlug }} search={(prev) => prev}>
             Hecho
           </Link>
         </Button>

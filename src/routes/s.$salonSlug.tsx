@@ -306,7 +306,7 @@ function SalonLayout() {
                 </Sheet>
 
                 <Button asChild size="sm" className="shrink-0 rounded-full px-4">
-                  <Link to="/s/$salonSlug/book" params={{ salonSlug }}>
+                  <Link to="/s/$salonSlug/book" params={{ salonSlug }} search={(prev) => prev}>
                     Reservar
                   </Link>
                 </Button>

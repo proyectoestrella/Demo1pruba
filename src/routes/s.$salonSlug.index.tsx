@@ -608,7 +608,7 @@ function SalonHome() {
                   size="lg"
                   className="w-full rounded-full px-6 font-medium"
                 >
-                  <Link to="/s/$salonSlug/book" params={{ salonSlug }} className="gap-2">
+                  <Link to="/s/$salonSlug/book" params={{ salonSlug }} search={(prev) => prev} className="gap-2">
                     Reservar online <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
@@ -644,6 +644,7 @@ function SalonHome() {
                   <Link
                     to="/s/$salonSlug/book"
                     params={{ salonSlug }}
+                    search={(prev) => prev}
                     className="flex items-center gap-2 text-[color:var(--color-primary-foreground)]"
                   >
                     Reservar cita <ArrowRight className="h-4 w-4" />
@@ -718,7 +719,7 @@ function SalonHome() {
                   <Link
                     to="/s/$salonSlug/book"
                     params={{ salonSlug }}
-                    search={{ service: id }}
+                    search={(prev) => ({ ...prev, service: id })}
                     className="relative flex h-full flex-col p-6"
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -813,7 +814,7 @@ function SalonHome() {
                               key={s.id}
                               to="/s/$salonSlug/book"
                               params={{ salonSlug }}
-                              search={{ service: s.id }}
+                              search={(prev) => ({ ...prev, service: s.id })}
                               className="group flex items-center justify-between gap-4 rounded-lg border border-border/60 px-4 py-3.5 transition-colors hover:border-primary/40 hover:bg-muted/30"
                             >
                               <div className="min-w-0">
@@ -1075,6 +1076,7 @@ function SalonHome() {
               <Link
                 to="/s/$salonSlug/book"
                 params={{ salonSlug }}
+                search={(prev) => prev}
                 className="flex items-center gap-2 text-[color:var(--color-primary-foreground)]"
               >
                 Reservar ahora <ArrowRight className="h-4 w-4" />

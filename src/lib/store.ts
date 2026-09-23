@@ -42,7 +42,8 @@ interface SalonState {
   // enseña una demo (`useApplyDemoFromUrl` en app.tsx) se le mezclan también
   // los campos de personalización de `DemoProfile` (modulosOcultos,
   // mostrarSolicitudes...), que no forman parte del negocio real.
-  salonProfile: SalonProfile & Partial<Pick<DemoProfile, "modulosOcultos" | "mostrarSolicitudes">>;
+  salonProfile: SalonProfile &
+    Partial<Pick<DemoProfile, "modulosOcultos" | "mostrarSolicitudes" | "duracionFlexible" | "recargoRetraso">>;
   /** Salones preparados para enseñar en visitas — ver demo-profile.ts. */
   savedDemos: SavedDemo[];
   /**
@@ -150,7 +151,9 @@ interface SalonState {
   deleteService: (id: string) => void;
 
   // Salon profile (Settings)
-  updateSalonProfile: (patch: Partial<SalonProfile>) => void;
+  updateSalonProfile: (
+    patch: Partial<SalonProfile> & Partial<Pick<DemoProfile, "duracionFlexible" | "recargoRetraso">>,
+  ) => void;
 
   /**
    * Cambia el equipo, el catálogo de servicios, los clientes, las citas y la

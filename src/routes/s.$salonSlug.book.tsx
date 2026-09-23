@@ -224,8 +224,17 @@ function BookingWizard() {
     },
   });
   const demoPersonalizacion = useMemo(() => decodeDemoProfile(demoParamRaw), [demoParamRaw]);
-  const recargoRetraso = demoPersonalizacion?.recargoRetraso;
-  const duracionFlexibleDemo = !!demoPersonalizacion?.duracionFlexible;
+  // Si esta URL no trae `?d=` (caso normal: se llegó pulsando "Reservar
+  // cita" desde la portada, que no lo reenvía), cae a lo que el layout
+  // `s.$salonSlug.tsx` ya guardó en el store al abrir la portada con el
+  // enlace. Así la personalización sobrevive a la navegación interna sin
+  // depender de que cada enlace del sitio arrastre el parámetro.
+  const storedRecargoRetraso = useSalonStore((s) => s.salonProfile.recargoRetraso);
+  const storedDuracionFlexible = useSalonStore((s) => s.salonProfile.duracionFlexible);
+  const recargoRetraso = demoPersonalizacion?.recargoRetraso ?? storedRecargoRetraso;
+  const duracionFlexibleDemo = demoPersonalizacion
+    ? !!demoPersonalizacion.duracionFlexible
+    : !!storedDuracionFlexible;
 
   // Catálogo y equipo, calculados a partir del tipo de negocio deducido del
   // enlace de esta demo — no del equipo/catálogo "activo" mutado en
