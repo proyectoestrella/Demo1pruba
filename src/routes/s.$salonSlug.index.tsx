@@ -299,11 +299,12 @@ function faqFor(
     },
     {
       q: "¿Hace falta pagar por adelantado?",
-      a: senalEur > 0
-        ? `Solo una señal de ${eur(senalEur)} por Bizum cuando el salón confirma tu cita: se descuenta del precio del servicio y el resto lo pagas en el salón.`
-        : `Solo en los servicios largos, de más de ${DEPOSIT_THRESHOLD_MIN} minutos: se pide un depósito del ${Math.round(
-        DEPOSIT_RATE * 100,
-      )}% que se descuenta del total y se abona en el salón.`,
+      a:
+        senalEur > 0
+          ? `Solo una señal de ${eur(senalEur)} por Bizum cuando el salón confirma tu cita: se descuenta del precio del servicio y el resto lo pagas en el salón.`
+          : `Solo en los servicios largos, de más de ${DEPOSIT_THRESHOLD_MIN} minutos: se pide un depósito del ${Math.round(
+              DEPOSIT_RATE * 100,
+            )}% que se descuenta del total y se abona en el salón.`,
     },
     {
       q: "¿Atendéis sin cita previa?",
@@ -447,10 +448,7 @@ function SalonHome() {
   // o equipo reales (profile.menu/profile.team), sustituyen al catálogo y
   // equipo de ejemplo del tipo.
   const services = useMemo(() => servicesForType(tipo, profile.menu), [tipo, profile.menu]);
-  const serviceMap = useMemo(
-    () => Object.fromEntries(services.map((s) => [s.id, s])),
-    [services],
-  );
+  const serviceMap = useMemo(() => Object.fromEntries(services.map((s) => [s.id, s])), [services]);
   const employees = useMemo(() => employeesForType(tipo, profile.team), [tipo, profile.team]);
 
   const activeServices = services.filter((s) => s.active !== false);
@@ -467,7 +465,14 @@ function SalonHome() {
   const single = esUnicoProfesional(profile);
   const soloPro = employees[0];
   const senalEur = profile.depositEnabled ? (profile.depositAmountEur ?? 0) : 0;
-  const bentoItems = bentoItemsFor(tipo, noShowFeeEur, noShowNoticeHours, single, soloPro?.name, senalEur);
+  const bentoItems = bentoItemsFor(
+    tipo,
+    noShowFeeEur,
+    noShowNoticeHours,
+    single,
+    soloPro?.name,
+    senalEur,
+  );
   const faq = faqFor(tipo, noShowFeeEur, noShowNoticeHours, single, soloPro?.name, senalEur);
   // v2: como mucho dos reseñas de ejemplo, y ya van marcadas "Ejemplo" — el
   // cambio priorizado #9 del informe pide "copy del salón real, nunca
@@ -613,12 +618,13 @@ function SalonHome() {
               // sin cita y por teléfono sigan siendo caminos igual de
               // válidos, no un botón grande y dos enlaces sueltos.
               <div className="grid grid-cols-1 gap-2.5 pt-2 sm:grid-cols-3 sm:gap-3">
-                <Button
-                  asChild
-                  size="lg"
-                  className="w-full rounded-full px-6 font-medium"
-                >
-                  <Link to="/s/$salonSlug/book" params={{ salonSlug }} search={(prev) => prev} className="gap-2">
+                <Button asChild size="lg" className="w-full rounded-full px-6 font-medium">
+                  <Link
+                    to="/s/$salonSlug/book"
+                    params={{ salonSlug }}
+                    search={(prev) => prev}
+                    className="gap-2"
+                  >
                     Reservar online <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
@@ -711,7 +717,10 @@ function SalonHome() {
       </div>
 
       {/* Servicios destacados */}
-      <section id="servicios" className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24">
+      <section
+        id="servicios"
+        className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24"
+      >
         <SectionHeading eyebrow="Más reservados" title="Servicios destacados" />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {featuredIds.map((id, i) => {
@@ -756,40 +765,6 @@ function SalonHome() {
               </Reveal>
             );
           })}
-        </div>
-      </section>
-
-      {/* Por qué aquí — rejilla bento */}
-      <section className="relative border-t border-border/40">
-        <DotPattern
-          width={22}
-          height={22}
-          cr={1}
-          className="[mask-image:radial-gradient(500px_circle_at_center,white,transparent)] fill-primary/25"
-        />
-        <div className="relative mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24">
-          <SectionHeading eyebrow="Por qué aquí" title="Lo que te vas a encontrar" />
-          <Reveal>
-            <BentoGrid className="md:grid-rows-2 lg:grid-cols-3">
-              {bentoItems.map((item) => (
-                <BentoCard
-                  key={item.name}
-                  name={item.name}
-                  description={item.description}
-                  Icon={item.Icon}
-                  className={item.className}
-                  href={item.href}
-                  cta={item.cta}
-                  background={
-                    <div
-                      aria-hidden="true"
-                      className="absolute inset-0 bg-gradient-to-br from-primary/12 via-transparent to-transparent"
-                    />
-                  }
-                />
-              ))}
-            </BentoGrid>
-          </Reveal>
         </div>
       </section>
 
@@ -901,9 +876,7 @@ function SalonHome() {
           <section id="resenas" className="border-t border-border/40 bg-card">
             <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 text-center md:py-24">
               <p className="text-xs uppercase tracking-[0.25em] text-primary">Reseñas</p>
-              <h2 className="mt-2 font-display text-3xl md:text-4xl">
-                Lo que dicen en Google
-              </h2>
+              <h2 className="mt-2 font-display text-3xl md:text-4xl">Lo que dicen en Google</h2>
               <div className="mt-6 flex items-center justify-center gap-2">
                 <span className="flex" aria-hidden="true">
                   {Array.from({ length: 5 }).map((_, j) => (
@@ -932,7 +905,10 @@ function SalonHome() {
           </section>
         ) : null
       ) : (
-        <section id="resenas" className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24">
+        <section
+          id="resenas"
+          className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24"
+        >
           <Reveal className="mb-6 flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-xs uppercase tracking-[0.25em] text-primary">Reseñas</p>

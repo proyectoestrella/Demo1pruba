@@ -1,6 +1,11 @@
 import { employees as defaultEmployees, services as defaultServices } from "./salon";
 import type { Appointment, Client, Employee, EmployeeId, Service, WaitlistEntry } from "./types";
-import { FIRST_NAMES_BY_TYPE, LAST_NAMES, withExampleNotes, type BusinessType } from "../business-type";
+import {
+  FIRST_NAMES_BY_TYPE,
+  LAST_NAMES,
+  withExampleNotes,
+  type BusinessType,
+} from "../business-type";
 
 // Deterministic pseudo-random
 function mulberry32(seed: number) {
@@ -30,7 +35,7 @@ export const LATE_PENALIZED_CLIENT_PHONE = "+34 600 000 008";
 
 function buildClients(type: BusinessType, penalizedFeeEur?: number): Client[] {
   const rand = mulberry32(42);
-  const pick = <T,>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
+  const pick = <T>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
   const FIRST = FIRST_NAMES_BY_TYPE[type];
 
   const clients: Client[] = Array.from({ length: 52 }, (_, i) => {
@@ -137,7 +142,7 @@ function buildAppointments(
   smartSpread?: boolean,
 ): Appointment[] {
   const rand = mulberry32(1042);
-  const pick = <T,>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
+  const pick = <T>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
   const out: Appointment[] = [];
   let nextId = 1;
   // Próximo sábado (0 si hoy ya lo es): junto con "hoy" (day === 0), son los
@@ -215,7 +220,7 @@ function buildAppointments(
           if (r < 0.08) status = "no-show";
           else if (r < 0.13) status = "cancelled";
           else status = "completed";
-        } else if (day === 0 && i === 0 && pendingHoyAsignados < 2) {
+        } else if (day === 0 && i <= 1 && pendingHoyAsignados < 3) {
           // Llegó de la web pública y el salón todavía no la ha revisado.
           status = "pending";
           pendingHoyAsignados++;
@@ -271,7 +276,11 @@ function buildAppointments(
  * sustituyen por los primeros de la carta/equipo activos, nunca por un id
  * inexistente que dejaría el nombre del servicio o del profesional en blanco.
  */
-function buildWaitlist(type: BusinessType, employees: Employee[], services: Service[]): WaitlistEntry[] {
+function buildWaitlist(
+  type: BusinessType,
+  employees: Employee[],
+  services: Service[],
+): WaitlistEntry[] {
   const FIRST = FIRST_NAMES_BY_TYPE[type];
   const nombre = (i: number, apellido: string) => `${FIRST[i % FIRST.length]} ${apellido}`;
   const serviceIds = new Set(services.map((s) => s.id));

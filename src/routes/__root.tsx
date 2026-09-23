@@ -141,7 +141,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 const THEME_ANTI_FLASH_SCRIPT = `
 (function () {
   try {
-    if (window.localStorage.getItem("trimly-theme") === "light") {
+    var t = window.localStorage.getItem("trimly-theme");
+    // La web pública de reservas arranca en claro salvo que el visitante
+    // haya elegido oscuro a mano; el panel sigue oscuro por defecto.
+    if (t === "light" || (t !== "dark" && window.location.pathname.indexOf("/s/") === 0)) {
       document.documentElement.classList.remove("dark");
     }
   } catch (e) {}
