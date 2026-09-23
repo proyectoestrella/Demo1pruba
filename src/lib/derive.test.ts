@@ -1,5 +1,12 @@
 import { describe, expect, it } from "bun:test";
-import { aiInsights, clientFrequency, duracionRecordada, patronDeRegreso } from "./derive";
+import {
+  aiInsights,
+  clientFrequency,
+  duracionRecordada,
+  patronDeRegreso,
+  trendDisplay,
+  type KpiTrend,
+} from "./derive";
 import type { Appointment, AppointmentStatus } from "./mock/types";
 
 const DAY = 86_400_000;
@@ -129,5 +136,37 @@ describe("analítica honesta con pocos datos", () => {
     const patron = patronDeRegreso(appts, AHORA);
     expect(patron).not.toBeNull();
     expect(patron!.semanasMedia).toBe(4);
+  });
+});
+
+describe("trendDisplay — evitar porcentajes absurdos", () => {
+  function trend(current: number, previous: number): KpiTrend {
+    const deltaPct =
+      previous === 0 ? (current === 0 ? 0 : null) : ((current - previous) / previous) * 100;
+    return { current, previous, deltaPct, spark: [] };
+  }
+
+  it("valor previo 0 (y actual > 0) → sin datos previos, sin flecha ni %", () => {
+    expect(trendDisplay(trend(7, 0))).toEqual({ kind: "no-data" });
+  });
+
+  it("previo y actual ambos 0 → 0%, no 'sin datos'", () => {
+    expect(trendDisplay(trend(0, 0))).toEqual({ kind: "pct", pct: 0 });
+  });
+
+  it("porcentaje disparado por un previo casi nulo → diferencia absoluta", () => {
+    // 7 vs 1 = +600% (caso real: "Citas hoy 7 · ↑ +700%").
+    expect(trendDisplay(trend(7, 1))).toEqual({ kind: "absolute", diff: 6 });
+    // 129 vs 9 = +1333% (caso real: "Ingresos hoy €129 · ↑ +1330%").
+    expect(trendDisplay(trend(129, 9))).toEqual({ kind: "absolute", diff: 120 });
+  });
+
+  it("subida aún mayor (previo muy bajo) sigue devolviendo la diferencia absoluta", () => {
+    expect(trendDisplay(trend(50, 2))).toEqual({ kind: "absolute", diff: 48 });
+  });
+
+  it("cambios dentro de ±300% se muestran como porcentaje normal", () => {
+    expect(trendDisplay(trend(12, 10))).toEqual({ kind: "pct", pct: 20 });
+    expect(trendDisplay(trend(4, 10))).toEqual({ kind: "pct", pct: -60 });
   });
 });

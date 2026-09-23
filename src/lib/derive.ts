@@ -389,6 +389,29 @@ function pctChange(current: number, previous: number): number | null {
   return ((current - previous) / previous) * 100;
 }
 
+/**
+ * How a KPI card should render its comparison chip, given a trend.
+ *
+ * - `previous` is 0 (nothing to compare against) → "no-data": no arrow, no %.
+ * - `|deltaPct|` over 300% → "absolute": a tiny previous value turns any real
+ *   change into a triple-digit percentage ("+700%"), which reads as a broken
+ *   panel, not a healthy business. The absolute difference stays readable.
+ * - Otherwise → "pct" as before.
+ */
+export type TrendDisplay =
+  | { kind: "no-data" }
+  | { kind: "pct"; pct: number }
+  | { kind: "absolute"; diff: number };
+
+export function trendDisplay(trend: KpiTrend): TrendDisplay {
+  if (trend.deltaPct === null) return { kind: "no-data" };
+  const pct = Math.round(trend.deltaPct);
+  if (Math.abs(pct) > 300) {
+    return { kind: "absolute", diff: trend.current - trend.previous };
+  }
+  return { kind: "pct", pct };
+}
+
 /** Non-cancelled appointment count + revenue for the single calendar day containing `date`. */
 function dayCountAndRevenue(appts: Appointment[], date: Date) {
   const dayAppts = appts.filter(

@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { KpiTrend } from "@/lib/derive";
+import { trendDisplay, type KpiTrend } from "@/lib/derive";
 import { Sparkline } from "@/components/Sparkline";
 import { CountUp } from "@/components/reactbits/CountUp";
 
@@ -15,11 +15,10 @@ export interface KpiCardProps {
   /** Whether an increase in this metric is good news (ingresos) or bad news (cancelaciones). */
   goodDirection: "up" | "down";
   /**
-   * Variación que se enseña cuando no hay con qué comparar (ayer sin citas en
-   * los datos de ejemplo). En una demo, "Sin datos previos" o un 0 % gris
-   * leen como panel roto; un valor verosímil lee como negocio en marcha.
+   * Palabra para la diferencia absoluta cuando el % se dispara ("+6 citas").
+   * Omítelo cuando `format` ya lleva su propia unidad (p. ej. "€120").
    */
-  fallbackPct?: number;
+  unitLabel?: string;
   className?: string;
 }
 
@@ -29,9 +28,9 @@ const TONE = {
   neutral: { chip: "bg-muted text-muted-foreground", line: "var(--color-muted-foreground)" },
 } as const;
 
-function toneFor(deltaPct: number | null, goodDirection: "up" | "down") {
-  if (deltaPct === null || Math.round(deltaPct) === 0) return "neutral" as const;
-  const increased = deltaPct > 0;
+function toneFor(signedChange: number | null, goodDirection: "up" | "down") {
+  if (signedChange === null || signedChange === 0) return "neutral" as const;
+  const increased = signedChange > 0;
   const isGood = goodDirection === "up" ? increased : !increased;
   return isGood ? ("success" as const) : ("destructive" as const);
 }
@@ -44,14 +43,26 @@ export function KpiCard({
   format,
   context,
   goodDirection,
-  fallbackPct,
+  unitLabel,
   className,
 }: KpiCardProps) {
-  const real = trend.deltaPct === null ? null : Math.round(trend.deltaPct);
-  const rounded = (real === null || real === 0) && fallbackPct !== undefined ? fallbackPct : real;
-  const tone = toneFor(rounded, goodDirection);
+  const display = trendDisplay(trend);
+  const signedChange =
+    display.kind === "no-data" ? null : display.kind === "pct" ? display.pct : display.diff;
+  const tone = toneFor(signedChange, goodDirection);
   const styles = TONE[tone];
-  const DeltaIcon = rounded === null || rounded === 0 ? Minus : rounded > 0 ? ArrowUp : ArrowDown;
+  const DeltaIcon =
+    signedChange === null || signedChange === 0 ? Minus : signedChange > 0 ? ArrowUp : ArrowDown;
+
+  let deltaText: string;
+  if (display.kind === "no-data") {
+    deltaText = "Sin datos previos";
+  } else if (display.kind === "pct") {
+    deltaText = `${display.pct > 0 ? "+" : ""}${display.pct}%`;
+  } else {
+    const sign = display.diff >= 0 ? "+" : "-";
+    deltaText = `${sign}${format(Math.abs(display.diff))}${unitLabel ? ` ${unitLabel}` : ""}`;
+  }
 
   return (
     <div
@@ -70,7 +81,7 @@ export function KpiCard({
           title={context}
         >
           <DeltaIcon className="h-3 w-3" aria-hidden="true" />
-          {rounded === null ? "Sin datos previos" : `${rounded > 0 ? "+" : ""}${rounded}%`}
+          {deltaText}
         </div>
       </div>
       <CountUp

@@ -163,7 +163,7 @@ export function HoyV2() {
           format={(n) => Math.round(n).toString()}
           context={context}
           goodDirection="up"
-          fallbackPct={period === "hoy" ? 12 : undefined}
+          unitLabel="citas"
         />
         <KpiCard
           label={cajaLabel}
@@ -172,7 +172,6 @@ export function HoyV2() {
           format={(n) => `€${Math.round(n).toLocaleString("es")}`}
           context={context}
           goodDirection="up"
-          fallbackPct={period === "hoy" ? 9 : undefined}
         />
         <KpiCard
           label={ocupacionLabel}
@@ -181,6 +180,7 @@ export function HoyV2() {
           format={(n) => `${Math.round(n)}%`}
           context={weeklyContext}
           goodDirection="up"
+          unitLabel="puntos"
         />
         <KpiCard
           label={clientesLabel}
@@ -189,6 +189,7 @@ export function HoyV2() {
           format={(n) => Math.round(n).toString()}
           context={weeklyContext}
           goodDirection="up"
+          unitLabel="clientes"
         />
       </div>
 

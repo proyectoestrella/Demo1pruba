@@ -95,7 +95,7 @@ function HomeV1() {
     format: (n: number) => string;
     context: string;
     goodDirection: "up" | "down";
-    fallbackPct?: number;
+    unitLabel?: string;
   }[] = [
     {
       label: `Citas ${suffix}`,
@@ -104,7 +104,7 @@ function HomeV1() {
       format: (n) => Math.round(n).toString(),
       context,
       goodDirection: "up",
-      fallbackPct: period === "hoy" ? 12 : undefined,
+      unitLabel: "citas",
     },
     {
       label: `Ingresos ${suffix}`,
@@ -113,7 +113,6 @@ function HomeV1() {
       format: (n) => `€${Math.round(n).toLocaleString("es")}`,
       context,
       goodDirection: "up",
-      fallbackPct: period === "hoy" ? 9 : undefined,
     },
     {
       label:
@@ -127,6 +126,7 @@ function HomeV1() {
       format: (n) => `${Math.round(n)}%`,
       context: period === "hoy" || period === "semana" ? "vs. semana pasada" : context,
       goodDirection: "up",
+      unitLabel: "puntos",
     },
     {
       label:
@@ -136,6 +136,7 @@ function HomeV1() {
       format: (n) => Math.round(n).toString(),
       context: period === "hoy" || period === "semana" ? "vs. semana pasada" : context,
       goodDirection: "up",
+      unitLabel: "clientes",
     },
     {
       label: period === "hoy" || period === "semana" ? "Cancelaciones" : `Cancelaciones ${suffix}`,
@@ -145,6 +146,7 @@ function HomeV1() {
       context: period === "hoy" || period === "semana" ? "vs. semana pasada" : context,
       // Unlike the other KPIs, more cancellations is bad news, not good.
       goodDirection: "down",
+      unitLabel: "cancelaciones",
     },
   ];
 
@@ -189,7 +191,7 @@ function HomeV1() {
             format={k.format}
             context={k.context}
             goodDirection={k.goodDirection}
-            fallbackPct={k.fallbackPct}
+            unitLabel={k.unitLabel}
           />
         ))}
       </div>
@@ -222,11 +224,14 @@ function HomeV1() {
               <p className="text-xs uppercase tracking-widest text-muted-foreground">Ingresos</p>
               <h2 className="mt-1 font-display text-xl">Últimos 30 días</h2>
             </div>
-            <CountUp
-              className="font-display text-2xl"
-              to={revData.reduce((s, d) => s + d.revenue, 0)}
-              format={(v) => `€${Math.round(v).toLocaleString("es")}`}
-            />
+            {/* Total real de la ventana del gráfico. Antes usaba CountUp: por
+                debajo del pliegue, si la captura/lectura llegaba antes de que
+                el muelle arrancara (necesita entrar en viewport) o de que la
+                red de seguridad se disparase a los 2,5 s, se leía "€0" con la
+                curva ya llena de datos. Un total no necesita animarse. */}
+            <span className="font-display text-2xl tabular-nums">
+              €{Math.round(revData.reduce((s, d) => s + d.revenue, 0)).toLocaleString("es")}
+            </span>
           </div>
           <div className="mt-6 h-64">
             <ResponsiveContainer width="100%" height="100%">
