@@ -169,7 +169,13 @@ interface SalonState {
    */
   applyBusinessType: (
     type: BusinessType,
-    overrides?: { team?: string[]; menu?: string[]; noShowFeeEur?: number; smartSpread?: boolean },
+    overrides?: {
+      team?: string[];
+      menu?: string[];
+      noShowFeeEur?: number;
+      smartSpread?: boolean;
+      duracionFlexible?: boolean;
+    },
   ) => void;
 
   /** Activa/desactiva el rediseño v2 del panel — ver `panelV2` arriba. */
@@ -494,6 +500,7 @@ export const useSalonStore = create<SalonState>()(
         const seed = buildSeed(type, liveEmployees, [...seedServices], {
           noShowFeeEur: overrides?.noShowFeeEur,
           smartSpread: overrides?.smartSpread,
+          duracionFlexible: overrides?.duracionFlexible,
         });
         set(() => ({
           services: [...seedServices],
@@ -545,6 +552,7 @@ export const useSalonStore = create<SalonState>()(
           menu: profileFields.menu,
           noShowFeeEur: profileFields.noShowFeeEur,
           smartSpread: profileFields.smartSpread,
+          duracionFlexible: profileFields.duracionFlexible,
         });
       },
 

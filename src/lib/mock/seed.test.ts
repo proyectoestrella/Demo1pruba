@@ -1,6 +1,12 @@
 import { describe, expect, it } from "bun:test";
-import { buildSeed, PENALIZED_CLIENT_PHONE, LATE_PENALIZED_CLIENT_PHONE } from "./seed";
+import {
+  buildSeed,
+  PENALIZED_CLIENT_PHONE,
+  LATE_PENALIZED_CLIENT_PHONE,
+  DURACION_FLEXIBLE_CLIENT_PHONE,
+} from "./seed";
 import { employeesForType, servicesForType } from "./salon";
+import { duracionRecordada } from "../derive";
 
 const employees = employeesForType("barberia");
 const services = servicesForType("barberia");
@@ -58,5 +64,48 @@ describe("buildSeed — reparto de agenda (opts.smartSpread)", () => {
       return h === 10 || h === 11;
     });
     expect(citasDeHoyEnHoraFloja).toHaveLength(0);
+  });
+});
+
+describe("buildSeed — duración flexible (opts.duracionFlexible)", () => {
+  it("sin el flag activo, la semilla queda exactamente igual que antes", () => {
+    const conFlag = buildSeed("barberia", employees, services, { duracionFlexible: false });
+    const sinFlag = buildSeed("barberia", employees, services);
+    expect(conFlag.clients.length).toBe(sinFlag.clients.length);
+    expect(conFlag.appointments.length).toBe(sinFlag.appointments.length);
+    expect(conFlag.clients.map((c) => c.id)).toEqual(sinFlag.clients.map((c) => c.id));
+    expect(conFlag.appointments.map((a) => a.id)).toEqual(sinFlag.appointments.map((a) => a.id));
+    expect(
+      conFlag.clients.some((c) => c.phone === DURACION_FLEXIBLE_CLIENT_PHONE),
+    ).toBe(false);
+  });
+
+  it("con el flag activo, hay una cita pasada y una solicitud pendiente de la misma clienta y servicio, y duracionRecordada() avisa de la duración real", () => {
+    const seed = buildSeed("barberia", employees, services, { duracionFlexible: true });
+    const clienta = seed.clients.find((c) => c.phone === DURACION_FLEXIBLE_CLIENT_PHONE);
+    expect(clienta).toBeTruthy();
+
+    const propias = seed.appointments.filter((a) => a.clientId === clienta?.id);
+    const pasada = propias.find((a) => a.status === "completed");
+    const pendiente = propias.find((a) => a.status === "pending");
+    expect(pasada).toBeTruthy();
+    expect(pendiente).toBeTruthy();
+    expect(pasada?.serviceIds).toEqual(pendiente?.serviceIds);
+    expect(pasada?.duration).not.toBe(pendiente?.duration);
+
+    const servicioLargo = [...services].sort((a, b) => b.durationMin - a.durationMin)[0];
+    expect(pendiente?.duration).toBe(servicioLargo.durationMin);
+    // Entre un 40% y un 60% más que la de catálogo, como pide la demo.
+    const ratio = (pasada?.duration ?? 0) / servicioLargo.durationMin;
+    expect(ratio).toBeGreaterThanOrEqual(1.4);
+    expect(ratio).toBeLessThanOrEqual(1.6);
+
+    const aviso = duracionRecordada(
+      seed.appointments,
+      clienta?.id,
+      pendiente!.serviceIds,
+      servicioLargo.durationMin,
+    );
+    expect(aviso?.minutos).toBe(pasada?.duration);
   });
 });

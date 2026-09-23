@@ -89,6 +89,20 @@ function buildClients(type: BusinessType, penalizedFeeEur?: number): Client[] {
   return withNotes;
 }
 
+/**
+ * Clienta sembrada cuando el salón tiene `duracionFlexible` activo ("la
+ * duración final la decide el salón" — commit 7be115a): trae una cita pasada
+ * cuya duración real se disparó sobre la de catálogo, más una solicitud
+ * pendiente de ese mismo servicio, para que `duracionRecordada()` (ver
+ * lib/derive.ts) pueda avisar en el bloque de solicitudes sin que Tomás
+ * tenga que sembrarlo a mano cada vez que cambia de dispositivo.
+ */
+export const DURACION_FLEXIBLE_CLIENT_NAME = "Marisol Iglesias";
+export const DURACION_FLEXIBLE_CLIENT_PHONE = "+34 600 000 009";
+const DURACION_FLEXIBLE_DAYS_AGO = 7;
+/** Cuánto se dispara la duración real sobre la de catálogo (dentro del 40-60% pedido). */
+const DURACION_FLEXIBLE_FACTOR = 1.47;
+
 function isoAt(daysFromToday: number, hour: number, minute = 0) {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -309,6 +323,62 @@ function buildWaitlist(type: BusinessType, employees: Employee[], services: Serv
   ];
 }
 
+/**
+ * Añade la clienta y las dos citas de `duracionFlexible` (ver la constante de
+ * arriba). Genérico: el servicio elegido es el de más minutos de LA CARTA
+ * activa en esta demo, nunca un id fijo, así que funciona con cualquier tipo
+ * de negocio o carta personalizada del enlace.
+ */
+function seedDuracionFlexible(
+  clients: Client[],
+  appointments: Appointment[],
+  employees: Employee[],
+  services: Service[],
+): { clients: Client[]; appointments: Appointment[] } {
+  const servicioLargo = [...services].sort((a, b) => b.durationMin - a.durationMin)[0];
+  if (!servicioLargo || employees.length === 0) return { clients, appointments };
+
+  const cliente: Client = {
+    id: "c-duracion-flexible",
+    name: DURACION_FLEXIBLE_CLIENT_NAME,
+    phone: DURACION_FLEXIBLE_CLIENT_PHONE,
+    createdAt: new Date(Date.now() - 200 * 86400_000).toISOString(),
+  };
+
+  const catalogoMin = servicioLargo.durationMin;
+  const realMin = Math.round((catalogoMin * DURACION_FLEXIBLE_FACTOR) / 5) * 5;
+  const emp = employees[0];
+
+  const citaPasada: Appointment = {
+    id: "a-duracion-flexible-pasada",
+    clientId: cliente.id,
+    clientName: cliente.name,
+    serviceIds: [servicioLargo.id],
+    employeeId: emp.id as EmployeeId,
+    start: isoAt(-DURACION_FLEXIBLE_DAYS_AGO, 12, 0),
+    duration: realMin,
+    priceEur: servicioLargo.priceEur,
+    status: "completed",
+  };
+
+  const solicitudPendiente: Appointment = {
+    id: "a-duracion-flexible-pendiente",
+    clientId: cliente.id,
+    clientName: cliente.name,
+    serviceIds: [servicioLargo.id],
+    employeeId: emp.id as EmployeeId,
+    start: isoAt(0, 17, 0),
+    duration: catalogoMin,
+    priceEur: servicioLargo.priceEur,
+    status: "pending",
+  };
+
+  return {
+    clients: [...clients, cliente],
+    appointments: [...appointments, citaPasada, solicitudPendiente],
+  };
+}
+
 export interface DemoSeed {
   clients: Client[];
   appointments: Appointment[];
@@ -324,15 +394,20 @@ export interface DemoSeed {
  * (claves "q"/"k" del enlace — ver demo-profile.ts): cuando están activos,
  * el seed se ajusta para poder enseñar la función en el momento (cliente
  * penalizado, agenda cargada en 12–14) sin tocar nada a mano.
+ *
+ * `opts.duracionFlexible` (clave "df") añade la clienta y el par de citas de
+ * `seedDuracionFlexible` para que el aviso de `duracionRecordada()` (ver
+ * lib/derive.ts) salte solo en el bloque de solicitudes pendientes.
  */
 export function buildSeed(
   type: BusinessType,
   employees: Employee[],
   services: Service[],
-  opts?: { noShowFeeEur?: number; smartSpread?: boolean },
+  opts?: { noShowFeeEur?: number; smartSpread?: boolean; duracionFlexible?: boolean },
 ): DemoSeed {
   const clients = buildClients(type, opts?.noShowFeeEur);
-  const appointments = buildAppointments(clients, employees, services, opts?.smartSpread);
+  let appointments = buildAppointments(clients, employees, services, opts?.smartSpread);
+  let finalClients = clients;
 
   // Engancha cada recargo pendiente sembrado a una cita pasada real de ESE
   // cliente, para que RecargosPendientes y la vista de Citas puedan enseñar
@@ -345,8 +420,14 @@ export function buildSeed(
     });
   }
 
+  if (opts?.duracionFlexible) {
+    const conFlexible = seedDuracionFlexible(clients, appointments, employees, services);
+    finalClients = conFlexible.clients;
+    appointments = conFlexible.appointments;
+  }
+
   return {
-    clients,
+    clients: finalClients,
     appointments,
     waitlist: buildWaitlist(type, employees, services),
   };

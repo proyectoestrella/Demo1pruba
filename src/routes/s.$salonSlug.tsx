@@ -147,6 +147,7 @@ function SalonLayout() {
       menu: fromUrl.menu,
       noShowFeeEur: fromUrl.noShowFeeEur,
       smartSpread: fromUrl.smartSpread,
+      duracionFlexible: fromUrl.duracionFlexible,
     });
     markDemoActive();
     // eslint-disable-next-line react-hooks/exhaustive-deps
