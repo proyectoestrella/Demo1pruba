@@ -18,6 +18,7 @@ import type {
   WaitlistEntry,
 } from "./mock/types";
 import { isPenaltyActive } from "./plantones";
+import { isManualBlockRecord, previousPenaltyState } from "./no-show";
 
 /** Fila de `appointments` tal y como la devuelve PostgREST. */
 export interface AppointmentRow {
@@ -141,6 +142,7 @@ export function rowToWaitlist(row: WaitlistRow): WaitlistEntry {
 /** Fila → `Client`. El id local pasa a ser el uuid de Supabase: es opaco, da igual. */
 export function rowToClient(row: ClientRow): Client {
   const penalty = num(row.penalty_eur, 0);
+  const previo = isManualBlockRecord(row) ? previousPenaltyState(row.penalty_note) : null;
   return {
     id: row.id,
     name: row.name,
@@ -148,11 +150,12 @@ export function rowToClient(row: ClientRow): Client {
     email: row.email ?? undefined,
     createdAt: row.created_at,
     notes: row.notes ?? undefined,
+    manualBlock: isManualBlockRecord(row),
     penaltyEur: penalty > 0 ? penalty : undefined,
-    penaltyNote: row.penalty_note ?? undefined,
+    penaltyNote: previo ? previo.note : row.penalty_note ?? undefined,
     penaltyAt: row.penalty_at ?? undefined,
-    penaltyKeep: row.penalty_keep ?? undefined,
-    penaltyBlock: row.penalty_block ?? undefined,
+    penaltyKeep: previo ? previo.keep : row.penalty_keep ?? undefined,
+    penaltyBlock: previo ? previo.block : row.penalty_block ?? undefined,
   };
 }
 
@@ -180,7 +183,7 @@ export function resolveActiveProfile(
 }
 
 /**
- * Cliente con penalización pendiente dentro de una lista de filas, buscando
+ * Cliente con bloqueo manual o penalización pendiente dentro de una lista de filas, buscando
  * por teléfono normalizado. Lo usa el servidor para responder a la reserva
  * pública sin mandarle la agenda de clientes entera a un desconocido.
  */
@@ -195,5 +198,9 @@ export function findPenaltyRow(
   // sigue en la ficha, pero a partir de ahí esta persona vuelve a poder
   // reservar sola. Se comprueba con la MISMA función que usa el panel, para
   // que la web pública y la ficha no puedan decir cosas distintas.
-  return rows.find((r) => phoneKey(r.phone) === target && isPenaltyActive(rowToClient(r), now));
+  return rows.find((r) => {
+    if (phoneKey(r.phone) !== target) return false;
+    const client = rowToClient(r);
+    return client.manualBlock || isPenaltyActive(client, now);
+  });
 }

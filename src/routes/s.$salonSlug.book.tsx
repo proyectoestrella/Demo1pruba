@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-re
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
 import type { Appointment, Client, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { useSalonStore, isSlotTaken } from "@/lib/store";
+import { recargoActivo } from "@/lib/recargo-activo";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import {
   categoryOrderOf,
@@ -11,7 +12,7 @@ import {
   showsRealPhotos,
   type BusinessType,
 } from "@/lib/business-type";
-import { findClientWithPenalty, findClientByPhone } from "@/lib/no-show";
+import { findClientByPhone, isBookingBlocked } from "@/lib/no-show";
 import {
   toDateKey,
   hourOccupancyPct,
@@ -250,6 +251,7 @@ function BookingWizard() {
   // igual que ya hacía `useDisplayProfile` con el resto del perfil. Si el
   // enlace trae carta o equipo reales, sustituyen a los de ejemplo del tipo.
   const profile = useDisplayProfile();
+  const conRecargo = recargoActivo(profile);
   const tipo = useBusinessType();
   const services = useMemo(() => servicesForType(tipo, profile.menu), [tipo, profile.menu]);
   const serviceMap = useMemo(
@@ -292,12 +294,14 @@ function BookingWizard() {
   const addAppointment = useSalonStore((s) => s.addAppointment);
   const clients = useSalonStore((s) => s.clients);
 
-  // Política de plantón (ver lib/no-show.ts): mientras el teléfono tecleado
-  // coincida con un cliente que debe una penalización, se bloquea el envío —
-  // se recalcula en cada tecla, no solo al perder el foco.
-  const penalizedLocal = useMemo(
-    () => findClientWithPenalty(clients, data.phone),
-    [clients, data.phone],
+  // Bloqueo manual o deuda activa: se recalcula en cada tecla, no solo al
+  // perder el foco. Sin recargo, la deuda antigua no bloquea.
+  const blockedLocal = useMemo(
+    () => {
+      const matching = findClientByPhone(clients, data.phone);
+      return isBookingBlocked(matching, profile) ? matching : undefined;
+    },
+    [clients, data.phone, profile],
   );
 
   // En un salón REAL la ficha del cliente vive en Supabase, no en el navegador
@@ -326,7 +330,11 @@ function BookingWizard() {
     };
   }, [realSlug, data.phone]);
 
-  const penalizedClient = realSlug ? penalizedRemote : penalizedLocal;
+  const blockedClient = realSlug
+    ? isBookingBlocked(penalizedRemote, profile)
+      ? penalizedRemote
+      : null
+    : blockedLocal;
 
   const selectedServices = data.serviceIds.map((id) => serviceMap[id]).filter(Boolean);
   const serviceNames = selectedServices.map((s) => s.name);
@@ -525,7 +533,7 @@ function BookingWizard() {
         ? !data.employeeId
         : step === 3
           ? !data.date || !data.time
-          : !data.name || !data.phone || !data.acceptedPolicy || !!penalizedClient;
+          : !data.name || !data.phone || !data.acceptedPolicy || !!blockedClient;
 
   const ctaLabel = step < 4 ? "Continuar" : `Confirmar reserva — ${eur(total)}`;
 
@@ -553,7 +561,7 @@ function BookingWizard() {
   // quepan en la agenda.
   const schedulingDurationMin = flexRange ? flexRange.hi : totalMin;
 
-  const recargoTexto = recargoRetraso ? recargoRetrasoTexto(recargoRetraso) : undefined;
+  const recargoTexto = conRecargo && recargoRetraso ? recargoRetrasoTexto(recargoRetraso) : undefined;
 
   const dateLabel = data.date
     ? new Date(`${data.date}T00:00`).toLocaleDateString("es-ES", {
@@ -713,13 +721,20 @@ function BookingWizard() {
                   />
                 </div>
 
-                {penalizedClient && (
+                {blockedClient && (
                   <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-                    <p>
-                      Tienes pendiente una penalización de {eur(profile.noShowFeeEur ?? 0)} por una
-                      cita a la que no pudiste venir sin avisar. Abónala en {profile.name} y podrás
-                      volver a reservar.
-                    </p>
+                    {blockedClient.manualBlock ? (
+                      <p>
+                        Este salón ha bloqueado la reserva online para este número. Llámanos para
+                        gestionarla.
+                      </p>
+                    ) : (
+                      <p>
+                        Tienes pendiente una penalización de {eur(profile.noShowFeeEur ?? 0)} por una
+                        cita a la que no pudiste venir sin avisar. Abónala en {profile.name} y podrás
+                        volver a reservar.
+                      </p>
+                    )}
                     {profile.phone && (
                       <Button asChild size="sm" variant="outline" className="mt-3 gap-1.5">
                         <a href={`tel:${profile.phone.replace(/\s+/g, "")}`}>
@@ -767,14 +782,14 @@ function BookingWizard() {
                   />
                   <span>
                     Acepto la política de cancelación: gratuita hasta{" "}
-                    {(profile.noShowFeeEur ?? 0) > 0
+                    {conRecargo
                       ? `${profile.noShowNoticeHours ?? 2} h`
                       : "24 h"}{" "}
                     antes de la cita.
                   </span>
                 </label>
 
-                {(profile.noShowFeeEur ?? 0) > 0 && (
+                {conRecargo && (
                   <p className="text-xs text-muted-foreground">
                     Si no puedes venir, avísanos con {profile.noShowNoticeHours ?? 2} h de
                     antelación; si no, la siguiente reserva lleva {eur(profile.noShowFeeEur ?? 0)}{" "}

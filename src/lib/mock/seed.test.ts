@@ -17,6 +17,11 @@ describe("buildSeed — política de plantón (opts.noShowFeeEur)", () => {
     expect(seed.clients.some((c) => (c.penaltyEur ?? 0) > 0)).toBe(false);
   });
 
+  it("con importe explícito 0 no siembra deuda, bloqueo ni motivo de recargo", () => {
+    const seed = buildSeed("peluqueria", employeesForType("peluqueria"), servicesForType("peluqueria"), { noShowFeeEur: 0 });
+    expect(seed.clients.every((c) => !c.penaltyEur && !c.penaltyBlock && !c.penaltyReason && !c.penaltyAppointmentId)).toBe(true);
+  });
+
   it("con penalización activa, un cliente sale con la deuda y el teléfono estable", () => {
     const seed = buildSeed("barberia", employees, services, { noShowFeeEur: 7 });
     const penalizado = seed.clients.find((c) => (c.penaltyEur ?? 0) > 0);

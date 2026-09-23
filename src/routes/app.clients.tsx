@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
+import { recargoActivo } from "@/lib/recargo-activo";
 import { clientFrequency } from "@/lib/derive";
 import type { Client } from "@/lib/mock/types";
 import { Input } from "@/components/ui/input";
@@ -77,6 +78,8 @@ function TagPill({ tag }: { tag: ClientTag }) {
 function Clients() {
   const appointments = useSalonStore((s) => s.appointments);
   const clients = useSalonStore((s) => s.clients);
+  const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
+  const conRecargo = recargoActivo({ noShowFeeEur });
   const [selected, setSelected] = useState<Client | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<"todos" | ClientTag | "penalizado">("todos");
@@ -99,14 +102,15 @@ function Clients() {
 
   // Solo se ofrece el filtro cuando hay a quién filtrar: una pestaña "Me
   // deben" vacía es ruido en cualquier demo sin plantones.
-  const hayPenalizados = allRows.some((r) => (r.penaltyEur ?? 0) > 0);
+  const hayPenalizados = conRecargo && allRows.some((r) => (r.penaltyEur ?? 0) > 0);
 
   const termino = busqueda.trim().toLowerCase();
+  const filtroEfectivo = filtro === "penalizado" && !conRecargo ? "todos" : filtro;
   const rows = allRows
     .filter((c) =>
-      filtro === "todos"
+      filtroEfectivo === "todos"
         ? true
-        : filtro === "penalizado"
+        : filtroEfectivo === "penalizado"
           ? (c.penaltyEur ?? 0) > 0
           : c.tag === filtro,
     )
@@ -141,7 +145,7 @@ function Clients() {
       {/* Recargos pendientes destacados: Adam pidió esto expresamente el
           17-sep. El propio componente enseña un estado vacío amable cuando
           no hay ninguno pendiente. */}
-      <RecargosPendientes title="Recargos pendientes" />
+      {conRecargo && <RecargosPendientes title="Recargos pendientes" />}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative max-w-sm flex-1">
@@ -154,7 +158,7 @@ function Clients() {
           />
         </div>
 
-        <Tabs value={filtro} onValueChange={(v) => setFiltro(v as typeof filtro)}>
+        <Tabs value={filtroEfectivo} onValueChange={(v) => setFiltro(v as typeof filtro)}>
           <TabsList>
             <TabsTrigger value="todos">Todos</TabsTrigger>
             <TabsTrigger value="nuevo">Nuevos</TabsTrigger>
@@ -213,7 +217,7 @@ function Clients() {
                       <div className="flex items-center gap-3">
                         <ClientAvatar name={c.name} size="sm" />
                         <span className="truncate">{c.name}</span>
-                        {(c.penaltyEur ?? 0) > 0 && (
+                        {conRecargo && (c.penaltyEur ?? 0) > 0 && (
                           <Badge variant="destructive" className="shrink-0 text-[10px]">
                             Debe {eur(c.penaltyEur!)}
                           </Badge>
@@ -289,7 +293,7 @@ function Clients() {
                   </p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <TagPill tag={c.tag} />
-                    {(c.penaltyEur ?? 0) > 0 && (
+                    {conRecargo && (c.penaltyEur ?? 0) > 0 && (
                       <Badge variant="destructive" className="text-[10px]">
                         Debe {eur(c.penaltyEur!)}
                       </Badge>

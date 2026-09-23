@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { normalizePhone, findClientWithPenalty, findClientByPhone, isWithinNoticeWindow } from "./no-show";
+import { normalizePhone, findClientWithPenalty, findClientByPhone, isBookingBlocked, isManualBlockRecord, manualBlockNote, previousPenaltyState, MANUAL_BLOCK_NOTE, isWithinNoticeWindow } from "./no-show";
 import type { Client } from "./mock/types";
 
 function client(overrides: Partial<Client> = {}): Client {
@@ -75,6 +75,34 @@ describe("findClientByPhone", () => {
   it("sin teléfono tecleado no hay coincidencia", () => {
     expect(findClientByPhone(clients, undefined)).toBeUndefined();
     expect(findClientByPhone(clients, "")).toBeUndefined();
+  });
+});
+
+describe("isBookingBlocked", () => {
+  it("con recargo a 0 ignora deuda y bloqueo de penalización antiguos", () => {
+    expect(isBookingBlocked(client({ penaltyEur: 7, penaltyBlock: true }), { noShowFeeEur: 0 })).toBe(false);
+  });
+
+  it("el bloqueo manual funciona sin recargo y se levanta a mano", () => {
+    const blocked = client({ manualBlock: true });
+    expect(isBookingBlocked(blocked, { noShowFeeEur: 0 })).toBe(true);
+    expect(isBookingBlocked({ ...blocked, manualBlock: false }, { noShowFeeEur: 0 })).toBe(false);
+  });
+
+  it("con recargo activo conserva el bloqueo por deuda", () => {
+    expect(isBookingBlocked(client({ penaltyEur: 7 }), { noShowFeeEur: 7 })).toBe(true);
+    expect(isBookingBlocked(client({ penaltyEur: 7, penaltyBlock: false }), { noShowFeeEur: 7 })).toBe(false);
+  });
+});
+
+describe("isManualBlockRecord", () => {
+  it("reconoce el bloqueo explícito y conserva una deuda antigua", () => {
+    expect(isManualBlockRecord({ penalty_eur: 0, penalty_note: MANUAL_BLOCK_NOTE })).toBe(true);
+    const note = manualBlockNote(client({ penaltyEur: 7, penaltyNote: "No vino", penaltyBlock: false }));
+    expect(isManualBlockRecord({ penalty_eur: 7, penalty_note: note })).toBe(true);
+    expect(previousPenaltyState(note)).toEqual({ note: "No vino", keep: undefined, block: false });
+    expect(isManualBlockRecord({ penalty_eur: null, penalty_note: MANUAL_BLOCK_NOTE })).toBe(false);
+    expect(isManualBlockRecord({ penalty_eur: 0, penalty_note: null })).toBe(false);
   });
 });
 

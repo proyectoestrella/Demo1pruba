@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 import { useSalonStore } from "@/lib/store";
+import { recargoActivo } from "@/lib/recargo-activo";
 import { clientsWithPendingPenalty, penaltyReasonLabel } from "@/lib/plantones";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { eur } from "@/lib/copy";
@@ -31,6 +32,7 @@ export interface RecargosPendientesProps {
  * material de venta de siShow.
  */
 export function RecargosPendientes({ clientId, title, className }: RecargosPendientesProps) {
+  const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const clients = useSalonStore((s) => s.clients);
   const appointments = useSalonStore((s) => s.appointments);
   const clearPenalty = useSalonStore((s) => s.clearPenalty);
@@ -60,6 +62,8 @@ export function RecargosPendientes({ clientId, title, className }: RecargosPendi
     clearPenalty(client.id, "cobrado");
     toast.success(`Recargo de ${client.name} marcado como pagado`);
   }
+
+  if (!recargoActivo({ noShowFeeEur })) return null;
 
   if (pendientes.length === 0) {
     return (

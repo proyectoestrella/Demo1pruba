@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Check, Clock3, UserX, HelpCircle } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
+import { recargoActivo } from "@/lib/recargo-activo";
 import { citasSinDesenlace, ESTADO_POR_DESENLACE, type Desenlace } from "@/lib/deuda";
 import { employeeMap } from "@/lib/mock/salon";
 import { serviceLabelOf } from "@/lib/appointment-services";
@@ -108,6 +109,8 @@ export interface CitasPorResolverProps {
 export function CitasPorResolver({ limite = 5, className }: CitasPorResolverProps) {
   const appointments = useSalonStore((s) => s.appointments);
   const clients = useSalonStore((s) => s.clients);
+  const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
+  const conRecargo = recargoActivo({ noShowFeeEur });
   const aplicarDesenlace = useAplicarDesenlace();
   const [decision, setDecision] = useState<{
     client: Client | undefined;
@@ -120,7 +123,7 @@ export function CitasPorResolver({ limite = 5, className }: CitasPorResolverProp
 
   function elegir(a: Appointment, d: Desenlace) {
     aplicarDesenlace(a, d);
-    if (d === "vino") return;
+    if (d === "vino" || !conRecargo) return;
     // Solo cuando algo fue mal se pregunta por el dinero, y solo si esa cita
     // tiene ficha de cliente a la que anotárselo.
     const client = clients.find((c) => c.id === a.clientId);
@@ -148,8 +151,8 @@ export function CitasPorResolver({ limite = 5, className }: CitasPorResolverProp
                 {pendientes.length === 1 ? "esta cita" : `estas ${pendientes.length} citas`}?
               </p>
               <p className="text-xs text-muted-foreground">
-                Ya pasaron y no has dicho si vinieron. Márcalo y te aviso si alguien te queda a
-                deber.
+                Ya pasaron y no has dicho si vinieron. Márcalo
+                {conRecargo ? " y te aviso si alguien te queda a deber" : ""}.
               </p>
             </div>
           </div>
@@ -183,13 +186,15 @@ export function CitasPorResolver({ limite = 5, className }: CitasPorResolverProp
         </div>
       )}
 
-      <DecisionDeudaDialog
-        client={decision?.client}
-        cita={decision?.cita}
-        desenlace={decision?.desenlace ?? "no-vino"}
-        open={!!decision}
-        onOpenChange={(o) => !o && setDecision(null)}
-      />
+      {conRecargo && (
+        <DecisionDeudaDialog
+          client={decision?.client}
+          cita={decision?.cita}
+          desenlace={decision?.desenlace ?? "no-vino"}
+          open={!!decision}
+          onOpenChange={(o) => !o && setDecision(null)}
+        />
+      )}
     </>
   );
 }

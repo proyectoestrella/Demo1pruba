@@ -1,5 +1,57 @@
 import type { Client } from "./mock/types";
 import { isPenaltyActive } from "./plantones";
+import { recargoActivo } from "./recargo-activo";
+
+/** Valor interno en las columnas actuales de cliente para un bloqueo manual. */
+export const MANUAL_BLOCK_NOTE = "__booking_blocked_manually__";
+
+interface PreviousPenaltyState {
+  note?: string;
+  keep?: boolean;
+  block?: boolean;
+}
+
+/** Guarda los datos previos de deuda mientras el bloqueo manual ocupa la nota del servidor. */
+export function manualBlockNote(client: Client): string {
+  return `${MANUAL_BLOCK_NOTE}|${JSON.stringify({
+    note: client.penaltyNote,
+    keep: client.penaltyKeep,
+    block: client.penaltyBlock,
+  })}`;
+}
+
+export function previousPenaltyState(note: string | null): PreviousPenaltyState | null {
+  if (note === MANUAL_BLOCK_NOTE) return {};
+  if (!note?.startsWith(`${MANUAL_BLOCK_NOTE}|`)) return null;
+  try {
+    const parsed = JSON.parse(note.slice(MANUAL_BLOCK_NOTE.length + 1));
+    return {
+      note: typeof parsed.note === "string" ? parsed.note : undefined,
+      keep: typeof parsed.keep === "boolean" ? parsed.keep : undefined,
+      block: typeof parsed.block === "boolean" ? parsed.block : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function isManualBlockRecord(row: {
+  penalty_eur: number | string | null;
+  penalty_note: string | null;
+}): boolean {
+  return row.penalty_eur !== null && previousPenaltyState(row.penalty_note) !== null;
+}
+
+/** Un bloqueo manual manda siempre; una deuda solo bloquea con la política activa. */
+export function isBookingBlocked(
+  client: Client | undefined | null,
+  profile: { noShowFeeEur?: number | null },
+  now: Date = new Date(),
+): boolean {
+  return (
+    !!client && (!!client.manualBlock || (recargoActivo(profile) && isPenaltyActive(client, now)))
+  );
+}
 
 /**
  * Política de plantón (enlace de demo, claves "q"/"w" — ver demo-profile.ts).

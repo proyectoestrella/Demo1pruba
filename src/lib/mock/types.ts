@@ -48,6 +48,8 @@ export interface Client {
   createdAt: string; // ISO
   /** Indicaciones del salón sobre este cliente ("usa el número 8"). Del cliente, no de una cita. */
   notes?: string;
+  /** Bloqueo explícito de reserva online, independiente de cualquier deuda. */
+  manualBlock?: boolean;
   /**
    * Política de plantón (ver `SalonProfile.noShowFeeEur`): importe pendiente
    * de cobrar, en euros. `undefined` o 0 = no debe nada. El dueño decide si

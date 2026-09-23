@@ -41,6 +41,7 @@ import { HoyV2 } from "@/components/HoyV2";
 import { PeriodFilter } from "@/components/PeriodFilter";
 import { CitasPorResolver } from "@/components/CitasPorResolver";
 import { AvisoDeudasHoy } from "@/components/DeudaCliente";
+import { recargoActivo } from "@/lib/recargo-activo";
 import { eur, eurRedondo, hora } from "@/lib/copy";
 
 const CHART_TOOLTIP_STYLE = {
@@ -206,7 +207,7 @@ function HomeV1() {
 
       {/* Recargos por plantón: lo primero después de las métricas, sobre todo
           para el salón que no enseña el bloque de solicitudes (arriba). */}
-      {noShowFeeEur > 0 && <RecargosPendientes title="Recargos pendientes" />}
+      {recargoActivo({ noShowFeeEur }) && <RecargosPendientes title="Recargos pendientes" />}
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-muted-foreground">
         <span>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSalonStore } from "@/lib/store";
+import { recargoActivo } from "@/lib/recargo-activo";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
-import { CalendarX, Mail, Phone, CalendarClock, TriangleAlert } from "lucide-react";
+import { CalendarX, Mail, Phone, CalendarClock, TriangleAlert, Ban, Unlock } from "lucide-react";
 
 export interface ClientHistorySheetProps {
   client: Client | null;
@@ -52,8 +53,11 @@ export function ClientHistorySheet({
 }: ClientHistorySheetProps) {
   const isMobile = useIsMobile();
   const appointments = useSalonStore((s) => s.appointments);
+  const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
+  const conRecargo = recargoActivo({ noShowFeeEur });
   const updateClient = useSalonStore((s) => s.updateClient);
   const reviewPenalty = useSalonStore((s) => s.reviewPenalty);
+  const setManualBlock = useSalonStore((s) => s.setManualBlock);
   // Con un solo profesional, "con Adam" bajo cada visita no informa de nada.
   const soloUno = esSoloUnProfesional(useEquipo());
   // Igual que AppointmentDetailSheet: la prop llega congelada en el momento
@@ -123,6 +127,22 @@ export function ClientHistorySheet({
         </div>
       </div>
 
+      {(!conRecargo || client.manualBlock) && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 p-4">
+          <p className="text-sm">
+            {client.manualBlock ? "Reserva online bloqueada a mano" : "Puede reservar online"}
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setManualBlock(client.id, !client.manualBlock)}
+          >
+            {client.manualBlock ? <Unlock className="size-4" /> : <Ban className="size-4" />}
+            {client.manualBlock ? "Desbloquear" : "Bloquear reserva online"}
+          </Button>
+        </div>
+      )}
+
       {/* Contador de plantones — el contexto antes que la deuda: saber que
           alguien ha fallado dos veces en tres meses cambia la decisión aunque
           ya te haya pagado la penalización. */}
@@ -136,8 +156,8 @@ export function ClientHistorySheet({
       {/* Lo que debe y las tres salidas: cobrada, perdonada, o bloquear.
           Mismo componente que el inicio y el detalle de la cita, para que las
           tres pantallas no puedan decir cosas distintas. */}
-      <BandaDeuda client={client} />
-      {(client.penaltyEur ?? 0) > 0 && (
+      {conRecargo && <BandaDeuda client={client} />}
+      {conRecargo && (client.penaltyEur ?? 0) > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <p>
             {penaltyReasonLabel(client)}

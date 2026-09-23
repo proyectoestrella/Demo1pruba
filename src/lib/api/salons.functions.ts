@@ -19,6 +19,7 @@ import { tieneMando, vistaEfectiva } from "./autorizacion";
 import { conSesion } from "./sesion.middleware";
 import { getSupabaseServerClient } from "../supabase.server";
 import { fusionarPerfil } from "../perfil-parche";
+import { isManualBlockRecord } from "../no-show";
 import {
   findPenaltyRow,
   phoneKey,
@@ -552,6 +553,18 @@ export const syncAppointment = createServerFn({ method: "POST" })
 
     let clientId: string | null = null;
     const key = phoneKey(data.clientPhone);
+    if (!manda && key.length >= 9) {
+      const { data: blocked, error: blockError } = await supabase
+        .from("clients")
+        .select("penalty_eur, penalty_note")
+        .eq("salon_slug", data.slug)
+        .eq("phone_key", key)
+        .maybeSingle();
+      if (blockError) throw new Error(`syncAppointment (bloqueo): ${blockError.message}`);
+      if (blocked && isManualBlockRecord(blocked)) {
+        throw new Error("Este salón ha bloqueado la reserva online para este número.");
+      }
+    }
     if (data.clientPhone && key.length >= 6 && data.clientName) {
       const { data: cliente, error } = await supabase
         .from("clients")
@@ -773,9 +786,10 @@ export const saveClientNotes = createServerFn({ method: "POST" })
   });
 
 /**
- * ¿Debe este teléfono una penalización? Lo pregunta la RESERVA PÚBLICA.
+ * ¿Tiene este teléfono un bloqueo manual o una penalización activa?
+ * Lo pregunta la RESERVA PÚBLICA.
  *
- * Devuelve solo el importe y el motivo, nunca la lista de clientes: quien abre
+ * Devuelve solo la ficha coincidente, nunca la lista de clientes: quien abre
  * el enlace público no tiene por qué recibir los teléfonos de los demás.
  */
 export const checkClientPenalty = createServerFn({ method: "GET" })

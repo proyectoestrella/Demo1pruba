@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, CalendarPlus, Download, MapPin } from "lucide-react";
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
+import { recargoActivo } from "@/lib/recargo-activo";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import { DEMO_PARAM, decodeDemoProfile } from "@/lib/demo-profile";
@@ -114,7 +115,7 @@ function Confirmation() {
   const flexNota = flexible
     ? `La duración final la confirma ${profile.name || "el salón"} al aceptar tu solicitud.`
     : undefined;
-  const recargoTexto = recargoRetraso ? recargoRetrasoTexto(recargoRetraso) : undefined;
+  const recargoTexto = recargoActivo(profile) && recargoRetraso ? recargoRetrasoTexto(recargoRetraso) : undefined;
 
   // Un disparo al aterrizar en la confirmación. Se respeta
   // `prefers-reduced-motion`: para quien lo pida, no cae nada.

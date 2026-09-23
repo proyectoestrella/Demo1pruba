@@ -32,6 +32,7 @@ import {
 } from "./api/salons.functions";
 import { registrarAviso } from "./avisos-sync";
 import type { Appointment, Client, SalonProfile, WaitlistEntry } from "./mock/types";
+import { manualBlockNote } from "./no-show";
 
 /** Datos del cliente que acompañan a una cita cuando se conocen (reserva pública, cita por teléfono). */
 export interface ClienteDeCita {
@@ -203,6 +204,50 @@ export function pushPenaltyCleared(
   subir(`la deuda saldada de ${cliente.name}`, () =>
     clearClientPenalty({ data: { slug, clientId: cliente.id, phone: cliente.phone, note } }),
   );
+}
+
+/** Persiste un bloqueo manual en las columnas existentes y conserva la deuda previa. */
+export function pushManualBlock(
+  slug: string | null,
+  cliente: Client | undefined,
+  blocked: boolean,
+): void {
+  if (!slug || !cliente?.phone) return;
+  if (blocked) {
+    subir(`el bloqueo manual de ${cliente.name}`, () =>
+      applyClientPenalty({
+        data: {
+          slug,
+          clientId: cliente.id,
+          phone: cliente.phone,
+          name: cliente.name,
+          eur: cliente.penaltyEur ?? 0,
+          note: manualBlockNote(cliente),
+          penaltyAt: cliente.penaltyAt ?? null,
+          penaltyKeep: true,
+          penaltyBlock: true,
+        },
+      }),
+    );
+  } else {
+    subir(`el desbloqueo de ${cliente.name}`, () =>
+      (cliente.penaltyEur ?? 0) > 0
+        ? applyClientPenalty({
+            data: {
+              slug,
+              clientId: cliente.id,
+              phone: cliente.phone,
+              name: cliente.name,
+              eur: cliente.penaltyEur ?? 0,
+              note: cliente.penaltyNote,
+              penaltyAt: cliente.penaltyAt ?? null,
+              penaltyKeep: cliente.penaltyKeep ?? false,
+              penaltyBlock: cliente.penaltyBlock !== false,
+            },
+          })
+        : clearClientPenalty({ data: { slug, clientId: cliente.id, phone: cliente.phone } }),
+    );
+  }
 }
 
 /** Sube las indicaciones del salón sobre un cliente. */

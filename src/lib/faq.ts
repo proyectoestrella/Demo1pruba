@@ -14,6 +14,7 @@
 import { professionalWord, type BusinessType } from "./business-type";
 import { DEPOSIT_RATE, DEPOSIT_THRESHOLD_MIN } from "./mock/salon";
 import { eur } from "./copy";
+import { recargoActivo } from "./recargo-activo";
 
 export const MAX_FAQ_ENTRIES = 8;
 export const FAQ_QUESTION_MAX = 120;
@@ -53,7 +54,7 @@ export function faqPorDefecto(
 ): FaqEntry[] {
   const palabra = professionalWord(tipo);
   const respuestaCancelacion =
-    noShowFeeEur > 0
+    recargoActivo({ noShowFeeEur })
       ? `Sí. Hasta ${noShowNoticeHours} h antes puedes cancelar o mover la cita sin coste desde el enlace que recibes al reservar. Pasada esa hora, la siguiente reserva lleva ${eur(noShowFeeEur)} de penalización.`
       : "Sí. Hasta 24 horas antes puedes cancelar o mover la cita sin coste desde el enlace que recibes al reservar.";
   return [
@@ -100,6 +101,13 @@ export function faqPublica(
   const limpias = (propias ?? [])
     .map(parseFaqEntry)
     .filter((e): e is FaqEntry => e !== null)
+    .filter(
+      (e) =>
+        recargoActivo({ noShowFeeEur }) ||
+        !/\b(recargos?|deudas?|penalizaci[oó]n(?:es)?|penalizar|plant[oó]n con cargo)\b/i.test(
+          `${e.q} ${e.a}`,
+        ),
+    )
     .slice(0, MAX_FAQ_ENTRIES);
   if (limpias.length > 0) return limpias;
   return faqPorDefecto(tipo, noShowFeeEur, noShowNoticeHours, soloUnProfesional);

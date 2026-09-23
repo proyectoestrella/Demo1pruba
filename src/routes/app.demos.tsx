@@ -14,6 +14,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { useSalonStore, type SavedDemo } from "@/lib/store";
+import { recargoActivo } from "@/lib/recargo-activo";
 import { Switch } from "@/components/ui/switch";
 import {
   blankDemoProfile,
@@ -156,7 +157,7 @@ function draftFrom(demo: DemoProfile & { id?: string }): DraftDemo {
     galleryPhotos: demo.galleryPhotos ?? [],
     team: (demo.team ?? []).map(tildeToLine).join("\n"),
     menu: (demo.menu ?? []).map(tildeToLine).join("\n"),
-    noShowEnabled: (demo.noShowFeeEur ?? 0) > 0,
+    noShowEnabled: recargoActivo(demo),
     noShowFeeEur: String(demo.noShowFeeEur || 7),
     noShowNoticeHours: String(demo.noShowNoticeHours ?? 2),
     smartSpread: demo.smartSpread ?? false,

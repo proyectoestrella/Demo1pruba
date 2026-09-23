@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { useSalonStore } from "./store";
 
 /**
@@ -56,6 +56,9 @@ describe("solicitudes pendientes de confirmar", () => {
  * aplicar y cerrar una penalización, probadas aquí sin montar React.
  */
 describe("penalización por plantón", () => {
+  const originalProfile = useSalonStore.getState().salonProfile;
+  beforeEach(() => useSalonStore.setState({ salonProfile: { ...originalProfile, noShowFeeEur: 7 } }));
+  afterEach(() => useSalonStore.setState({ salonProfile: originalProfile }));
   it("applyPenalty marca al cliente con el importe y la nota", () => {
     const { addClient, applyPenalty } = useSalonStore.getState();
     const cliente = addClient({ name: "Cliente Plantón", phone: "+34 600 000 099" });
@@ -115,5 +118,38 @@ describe("penalización por plantón", () => {
 
     const actualizado = useSalonStore.getState().clients.find((c) => c.id === cliente.id);
     expect(actualizado?.penaltyReviewedAt).toBeUndefined();
+  });
+});
+
+describe("salón sin recargo", () => {
+  const originalProfile = useSalonStore.getState().salonProfile;
+  beforeEach(() => useSalonStore.setState({ salonProfile: { ...originalProfile, noShowFeeEur: 0 } }));
+  afterEach(() => useSalonStore.setState({ salonProfile: originalProfile }));
+
+  it("marcar una cita como no vino no genera deuda aunque se intente aplicar", () => {
+    const { addClient, addAppointment, updateAppointment, applyPenalty, setDeuda } = useSalonStore.getState();
+    const cliente = addClient({ name: "Sin recargo", phone: "600000088" });
+    const cita = addAppointment({
+      clientId: cliente.id, clientName: cliente.name, serviceIds: ["corte"],
+      employeeId: "mario", start: new Date().toISOString(), duration: 30,
+      priceEur: 20, status: "confirmed",
+    });
+    updateAppointment(cita.id, { status: "no-show" });
+    applyPenalty(cliente.id, 7, "No vino");
+    setDeuda(cliente.id, { penaltyEur: 7, penaltyBlock: true });
+    const state = useSalonStore.getState();
+    expect(state.appointments.find((a) => a.id === cita.id)?.status).toBe("no-show");
+    expect(state.clients.find((c) => c.id === cliente.id)?.penaltyEur).toBeUndefined();
+    expect(state.clients.find((c) => c.id === cliente.id)?.penaltyBlock).toBeUndefined();
+  });
+
+  it("bloquear y desbloquear a mano no crea deuda", () => {
+    const { addClient, setManualBlock } = useSalonStore.getState();
+    const cliente = addClient({ name: "Bloqueada", phone: "600000089" });
+    setManualBlock(cliente.id, true);
+    expect(useSalonStore.getState().clients.find((c) => c.id === cliente.id)).toMatchObject({ manualBlock: true });
+    expect(useSalonStore.getState().clients.find((c) => c.id === cliente.id)?.penaltyEur).toBeUndefined();
+    setManualBlock(cliente.id, false);
+    expect(useSalonStore.getState().clients.find((c) => c.id === cliente.id)?.manualBlock).toBe(false);
   });
 });

@@ -1,4 +1,5 @@
 import { employees as defaultEmployees, services as defaultServices } from "./salon";
+import { recargoActivo } from "../recargo-activo";
 import type { Appointment, Client, Employee, EmployeeId, Service, WaitlistEntry } from "./types";
 import {
   FIRST_NAMES_BY_TYPE,
@@ -59,7 +60,7 @@ function buildClients(type: BusinessType, penalizedFeeEur?: number): Client[] {
   // reserva pública. Se le fuerza también el teléfono a uno fácil de teclear
   // (+34 600 000 007): un número aleatorio del seed vale para enseñar la
   // ficha, pero no para que Tomás lo teclee delante de un cliente.
-  if (penalizedFeeEur && penalizedFeeEur > 0) {
+  if (recargoActivo({ noShowFeeEur: penalizedFeeEur })) {
     const fechaNoShow = new Date(Date.now() - PENALIZED_DAYS_AGO * 86400_000).toLocaleDateString(
       "es",
       { day: "numeric", month: "long" },
@@ -421,7 +422,7 @@ export function buildSeed(
   // Engancha cada recargo pendiente sembrado a una cita pasada real de ESE
   // cliente, para que RecargosPendientes y la vista de Citas puedan enseñar
   // su fecha y servicio en vez de solo el texto libre de la nota.
-  if (opts?.noShowFeeEur && opts.noShowFeeEur > 0) {
+  if (recargoActivo({ noShowFeeEur: opts?.noShowFeeEur })) {
     linkSeededPenalty(clients[PENALIZED_CLIENT_INDEX], appointments, { status: "no-show" });
     linkSeededPenalty(clients[LATE_PENALIZED_CLIENT_INDEX], appointments, {
       status: "completed",

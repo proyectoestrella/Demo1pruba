@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
 import { useSalonStore } from "@/lib/store";
+import { recargoActivo } from "@/lib/recargo-activo";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { employeeMap } from "@/lib/mock/salon";
@@ -103,6 +104,8 @@ export function AppointmentDetailSheet({
   const appointments = useSalonStore((s) => s.appointments);
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const noShowNoticeHours = useSalonStore((s) => s.salonProfile.noShowNoticeHours ?? 2);
+  const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
+  const conRecargo = recargoActivo({ noShowFeeEur });
   const depositEnabled = useSalonStore((s) => !!s.salonProfile.depositEnabled);
   const depositBizumPhone = useSalonStore((s) => s.salonProfile.depositBizumPhone ?? "");
   const depositAmountEur = useSalonStore((s) => s.salonProfile.depositAmountEur ?? 10);
@@ -118,12 +121,11 @@ export function AppointmentDetailSheet({
   const aplicarDesenlace = useAplicarDesenlace();
 
   /**
-   * Preguntar por el dinero solo tiene sentido si hay ficha a la que
-   * anotárselo. El importe ya no depende de que la política esté activa en
-   * Ajustes: el diálogo propone uno y el dueño lo cambia ahí mismo.
+   * Preguntar por el dinero solo con recargo activo y ficha a la que anotarlo.
+   * El diálogo propone el importe y el dueño puede cambiarlo.
    */
   function preguntarPorLaDeuda(d: Desenlace) {
-    if (!client) return;
+    if (!client || !conRecargo) return;
     setDecision(d);
   }
 
@@ -131,7 +133,7 @@ export function AppointmentDetailSheet({
   function elegirDesenlace(d: Desenlace) {
     if (!appointment) return;
     aplicarDesenlace(appointment, d);
-    if (d !== "vino") preguntarPorLaDeuda(d);
+    if (conRecargo && d !== "vino") preguntarPorLaDeuda(d);
   }
 
   const serviceNames = appointment ? serviceNamesOf(appointment) : [];
@@ -237,7 +239,7 @@ export function AppointmentDetailSheet({
     cancelAppointment(appointment.id);
     toast.success("Cita cancelada", { description: appointment.clientName });
     setConfirmOpen(false);
-    if (dentroDeAviso && client) {
+    if (conRecargo && dentroDeAviso && client) {
       preguntarPorLaDeuda("no-vino");
     } else {
       onOpenChange(false);
@@ -316,7 +318,7 @@ export function AppointmentDetailSheet({
           {/* Lo que debe, con las tres salidas al lado. Va arriba a propósito:
               el momento de cobrar una deuda vieja es cuando la persona está
               delante, y eso pasa justo aquí. */}
-          <BandaDeuda client={client} compacta />
+          {conRecargo && <BandaDeuda client={client} compacta />}
 
           {/* La pregunta, en el sitio donde ocurre: esta cita ya pasó y nadie
               ha dicho si la persona apareció. */}
@@ -324,9 +326,11 @@ export function AppointmentDetailSheet({
             <div className="space-y-2 rounded-xl border border-[var(--warning)]/50 bg-[var(--warning)]/10 p-4">
               <p className="text-sm font-medium">¿Qué pasó con esta cita?</p>
               <BotonesDesenlace actual={appointment.status} onElegir={elegirDesenlace} />
-              <p className="text-xs text-muted-foreground">
-                Si te quedó a deber, te lo pregunto justo después.
-              </p>
+              {conRecargo && (
+                <p className="text-xs text-muted-foreground">
+                  Si te quedó a deber, te lo pregunto justo después.
+                </p>
+              )}
             </div>
           )}
 
@@ -343,7 +347,7 @@ export function AppointmentDetailSheet({
               sobre todo al confirmar una solicitud: es lo que Adam necesita
               ver antes de decidir si le guarda el hueco a quien todavía le
               debe una penalización. */}
-          {(client?.penaltyEur ?? 0) > 0 && (
+          {conRecargo && (client?.penaltyEur ?? 0) > 0 && (
             <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               <TriangleAlert className="size-4 shrink-0" aria-hidden="true" />
               <span>
@@ -479,8 +483,8 @@ export function AppointmentDetailSheet({
               onValueChange={(v) => {
                 updateAppointment(appointment.id, { status: v as AppointmentStatus });
                 toast.success("Estado actualizado");
-                if (v === "no-show") preguntarPorLaDeuda("no-vino");
-                if (v === "late") preguntarPorLaDeuda("tarde");
+                if (conRecargo && v === "no-show") preguntarPorLaDeuda("no-vino");
+                if (conRecargo && v === "late") preguntarPorLaDeuda("tarde");
               }}
             >
               <SelectTrigger>

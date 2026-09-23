@@ -4,6 +4,7 @@ import { BadgeEuro, HandHeart, Ban } from "lucide-react";
 import { estadoDeudaDe, useSalonStore, type EstadoDeuda } from "@/lib/store";
 import { TEXTO_DESENLACE, type Desenlace } from "@/lib/deuda";
 import { eur } from "@/lib/copy";
+import { recargoActivo } from "@/lib/recargo-activo";
 import type { Appointment, Client } from "@/lib/mock/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,7 +64,7 @@ export function DecisionDeudaDialog({
     if (open) setImporte(String(sugerido));
   }, [open, sugerido]);
 
-  if (!client) return null;
+  if (!client || !recargoActivo({ noShowFeeEur: importeSalon })) return null;
 
   const cuando = fechaCorta(cita?.start);
   const motivo =
@@ -73,7 +74,7 @@ export function DecisionDeudaDialog({
 
   /** Aplica una decisión y deja el "Deshacer" cargado con lo que había antes. */
   function aplicar(estado: EstadoDeuda, mensaje: string, detalle: string) {
-    if (!client) return;
+    if (!client || !recargoActivo(useSalonStore.getState().salonProfile)) return;
     const previo = estadoDeudaDe(client);
     const id = client.id;
     setDeuda(id, estado);

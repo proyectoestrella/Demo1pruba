@@ -21,6 +21,7 @@ import {
   requiresDeposit,
 } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
+import { recargoActivo } from "@/lib/recargo-activo";
 import { useRealSalonSlug } from "@/lib/use-real-salon";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import {
@@ -226,7 +227,7 @@ function bentoItemsFor(
   // confirmar la cita. Se enseña en la tarjeta de cancelación, que es donde
   // la clienta busca "qué pasa con mi dinero".
   const cancelacion =
-    noShowFeeEur > 0
+    recargoActivo({ noShowFeeEur })
       ? `Hasta ${noShowNoticeHours} h antes, sin coste. Después, ${eur(noShowFeeEur)} de penalización.`
       : senalEur > 0
         ? `Hasta 24 horas antes, sin coste. Al confirmar la cita se pide una señal de ${eur(senalEur)} por Bizum que se descuenta del servicio.`

@@ -36,6 +36,7 @@ import { KpiCard } from "@/components/KpiCard";
 import { PeriodFilter } from "@/components/PeriodFilter";
 import { CitasPorResolver } from "@/components/CitasPorResolver";
 import { AvisoDeudasHoy } from "@/components/DeudaCliente";
+import { recargoActivo } from "@/lib/recargo-activo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -210,7 +211,7 @@ export function HoyV2() {
       {/* Recargos por plantón — justo debajo de las métricas, lo primero que
           se ve tras ellas. Solo con la política activa: apagada, ocultarlo es
           más claro que enseñar el estado vacío del componente. */}
-      {noShowFeeEur > 0 && <RecargosPendientes title="Recargos pendientes" />}
+      {recargoActivo({ noShowFeeEur }) && <RecargosPendientes title="Recargos pendientes" />}
 
       {/* Reparto de agenda: cómo va cargado el día, hora a hora, todo el equipo. */}
       {smartSpread && horasDeHoy.length > 0 && (

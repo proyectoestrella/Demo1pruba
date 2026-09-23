@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import { BadgeEuro, Ban, HandHeart, Unlock } from "lucide-react";
 import { estadoDeudaDe, useSalonStore, type EstadoDeuda } from "@/lib/store";
 import { cobrosDeHoy, deudaDe, resumenDeDeuda } from "@/lib/deuda";
+import { recargoActivo } from "@/lib/recargo-activo";
 import { daysUntilPenaltyExpiry, penaltyExpiresAt } from "@/lib/plantones";
 import { eur } from "@/lib/copy";
 import type { Client } from "@/lib/mock/types";
@@ -52,9 +53,10 @@ export interface BandaDeudaProps {
  * está delante, no escondido en una pestaña.
  */
 export function BandaDeuda({ client, compacta, className }: BandaDeudaProps) {
+  const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const aplicar = useAccionesDeuda();
   const deuda = deudaDe(client);
-  if (!client || !deuda) return null;
+  if (!recargoActivo({ noShowFeeEur }) || !client || !deuda) return null;
 
   const caducaEl = penaltyExpiresAt(client);
   const dias = daysUntilPenaltyExpiry(client);
@@ -165,13 +167,14 @@ export function BandaDeuda({ client, compacta, className }: BandaDeudaProps) {
  * viene hoy, se queda en una línea con el total pendiente.
  */
 export function AvisoDeudasHoy() {
+  const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const appointments = useSalonStore((s) => s.appointments);
   const clients = useSalonStore((s) => s.clients);
   const aplicar = useAccionesDeuda();
 
   const hoy = cobrosDeHoy(appointments, clients);
   const resumen = resumenDeDeuda(clients);
-  if (resumen.personas === 0) return null;
+  if (!recargoActivo({ noShowFeeEur }) || resumen.personas === 0) return null;
 
   if (hoy.length === 0) {
     return (

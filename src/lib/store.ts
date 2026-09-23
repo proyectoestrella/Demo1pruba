@@ -21,6 +21,7 @@ import type {
   SalonProfile,
 } from "./mock/types";
 import type { DemoProfile } from "./demo-profile";
+import { recargoActivo } from "./recargo-activo";
 import { inferBusinessType, type BusinessType } from "./business-type";
 import {
   pushAppointment,
@@ -28,6 +29,7 @@ import {
   pushClientNotes,
   pushPenalty,
   pushPenaltyCleared,
+  pushManualBlock,
   pushSalonProfilePatch,
   pushWaitlistDeletion,
   pushWaitlistEntry,
@@ -125,6 +127,8 @@ interface SalonState {
   addClient: (c: Omit<Client, "id" | "createdAt">) => Client;
   updateClient: (id: string, patch: Partial<Client>) => void;
   deleteClient: (id: string) => void;
+  /** Bloquea o desbloquea a mano la reserva online, sin crear una deuda. */
+  setManualBlock: (clientId: string, blocked: boolean) => void;
   /** Marca al cliente con una penalización pendiente (política de plantón — ver mock/types.ts). */
   applyPenalty: (
     clientId: string,
@@ -466,7 +470,19 @@ export const useSalonStore = create<SalonState>()(
           clients: s.clients.filter((c) => c.id !== id),
         })),
 
+      setManualBlock: (clientId, blocked) => {
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === clientId ? { ...c, manualBlock: blocked } : c,
+          ),
+        }));
+        const cliente = get().clients.find((c) => c.id === clientId);
+        if (!cliente) return;
+        pushManualBlock(get().realSalonSlug, cliente, blocked);
+      },
+
       applyPenalty: (clientId, eur, note, detalle) => {
+        if (!recargoActivo(get().salonProfile)) return;
         // La fecha es lo que hace que el bloqueo pueda caducar solo a los 30
         // días (ver lib/plantones.ts): sin ella no hay desde cuándo contar.
         const ahora = new Date().toISOString();
@@ -520,6 +536,7 @@ export const useSalonStore = create<SalonState>()(
       },
 
       setDeuda: (clientId, estado) => {
+        if (!recargoActivo(get().salonProfile)) return;
         set((s) => ({
           clients: s.clients.map((c) =>
             c.id === clientId

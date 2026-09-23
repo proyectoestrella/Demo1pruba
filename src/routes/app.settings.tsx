@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ArrowUpRight } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
+import { recargoActivo } from "@/lib/recargo-activo";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +28,7 @@ function Settings() {
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
 
   // Plantones — política de penalización por cancelar tarde o no presentarse.
-  const [noShowEnabled, setNoShowEnabled] = useState((salonProfile.noShowFeeEur ?? 0) > 0);
+  const [noShowEnabled, setNoShowEnabled] = useState(recargoActivo(salonProfile));
   const [noShowFeeEur, setNoShowFeeEur] = useState(String(salonProfile.noShowFeeEur || 7));
   const [noShowNoticeHours, setNoShowNoticeHours] = useState(
     String(salonProfile.noShowNoticeHours ?? 2),
@@ -48,7 +49,7 @@ function Settings() {
 
   // Keep the form in sync if the profile changes from elsewhere (e.g. reset).
   useEffect(() => {
-    setNoShowEnabled((salonProfile.noShowFeeEur ?? 0) > 0);
+    setNoShowEnabled(recargoActivo(salonProfile));
     setNoShowFeeEur(String(salonProfile.noShowFeeEur || 7));
     setNoShowNoticeHours(String(salonProfile.noShowNoticeHours ?? 2));
     setSmartSpreadEnabled(!!salonProfile.smartSpread);

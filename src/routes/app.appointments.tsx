@@ -7,6 +7,7 @@ import { employeeMap } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { deudaDe } from "@/lib/deuda";
+import { recargoActivo } from "@/lib/recargo-activo";
 import { eur } from "@/lib/copy";
 import { Badge } from "@/components/ui/badge";
 import { serviceLabelOf } from "@/lib/appointment-services";
@@ -116,6 +117,8 @@ function DeudaBadge({
 
 function Appointments() {
   const appointments = useSalonStore((s) => s.appointments);
+  const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
+  const conRecargo = recargoActivo({ noShowFeeEur });
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
   const clientById = new Map(clients.map((c) => [c.id, c] as const));
@@ -267,7 +270,7 @@ function Appointments() {
                       <TableCell className="font-medium">
                         <span className="inline-flex flex-wrap items-center gap-2">
                           {a.clientName}
-                          <DeudaBadge clientId={a.clientId} clients={clients} />
+                          {conRecargo && <DeudaBadge clientId={a.clientId} clients={clients} />}
                         </span>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{serviceLabelOf(a)}</TableCell>
@@ -282,7 +285,7 @@ function Appointments() {
                       <TableCell className="text-right font-medium">{eur(a.priceEur)}</TableCell>
                       <TableCell>
                         <StatusBadge status={a.status} />
-                        <RecargoChip appointment={a} client={clientById.get(a.clientId)} />
+                        {conRecargo && <RecargoChip appointment={a} client={clientById.get(a.clientId)} />}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
@@ -345,7 +348,7 @@ function Appointments() {
                         })}
                       </p>
                       <p className="mt-1 truncate font-medium">{a.clientName}</p>
-                      <DeudaBadge clientId={a.clientId} clients={clients} className="mt-1" />
+                      {conRecargo && <DeudaBadge clientId={a.clientId} clients={clients} className="mt-1" />}
                     </div>
                     <div onClick={(evt) => evt.stopPropagation()}>
                       <DropdownMenu>
@@ -398,7 +401,7 @@ function Appointments() {
                   </div>
                   <div className="mt-3">
                     <StatusBadge status={a.status} />
-                    <RecargoChip appointment={a} client={clientById.get(a.clientId)} />
+                    {conRecargo && <RecargoChip appointment={a} client={clientById.get(a.clientId)} />}
                   </div>
                 </div>
               );

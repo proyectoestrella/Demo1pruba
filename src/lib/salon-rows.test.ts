@@ -10,6 +10,7 @@ import {
   type ClientRow,
 } from "./salon-rows";
 import { salon } from "./mock/salon";
+import { MANUAL_BLOCK_NOTE, manualBlockNote } from "./no-show";
 import type { SalonProfile } from "./mock/types";
 
 const adam: SalonProfile = {
@@ -140,6 +141,30 @@ describe("rowToClient", () => {
     expect(rowToClient({ ...ficha, penalty_eur: null }).penaltyEur).toBeUndefined();
     expect(rowToClient({ ...ficha, penalty_eur: 0 }).penaltyEur).toBeUndefined();
   });
+
+  it("un cero con flags antiguos de penalización no activa un bloqueo manual", () => {
+    const c = rowToClient({ ...ficha, penalty_eur: 0, penalty_keep: true, penalty_block: true });
+    expect(c.penaltyEur).toBeUndefined();
+    expect(c.manualBlock).toBe(false);
+  });
+
+  it("reconoce el bloqueo manual con las columnas antiguas del servidor", () => {
+    const c = rowToClient({ ...ficha, penalty_eur: 0, penalty_note: MANUAL_BLOCK_NOTE });
+    expect(c.manualBlock).toBe(true);
+    expect(c.penaltyEur).toBeUndefined();
+  });
+
+  it("restaura la deuda previa junto al bloqueo manual", () => {
+    const note = manualBlockNote({
+      id: ficha.id, name: ficha.name, phone: ficha.phone, createdAt: ficha.created_at,
+      penaltyEur: 7, penaltyNote: "No vino", penaltyBlock: false,
+    });
+    const c = rowToClient({ ...ficha, penalty_note: note, penalty_block: true, penalty_keep: true });
+    expect(c.manualBlock).toBe(true);
+    expect(c.penaltyEur).toBe(7);
+    expect(c.penaltyNote).toBe("No vino");
+    expect(c.penaltyBlock).toBe(false);
+  });
 });
 
 describe("findPenaltyRow", () => {
@@ -154,6 +179,11 @@ describe("findPenaltyRow", () => {
 
   it("no bloquea a quien no debe nada", () => {
     expect(findPenaltyRow(filas, "+34 622 87 46 38")).toBeUndefined();
+  });
+
+  it("encuentra un bloqueo manual sin deuda", () => {
+    const manual = { ...ficha, penalty_eur: 0, penalty_note: MANUAL_BLOCK_NOTE };
+    expect(findPenaltyRow([manual], ficha.phone)?.id).toBe(ficha.id);
   });
 
   it("no bloquea mientras la persona sigue escribiendo el teléfono", () => {
