@@ -27,8 +27,30 @@ import { MAX_PRIORITY_RANGES, formatPriorityRange, parsePriorityRange } from "./
  * alguien tiene que ver en un WhatsApp: con nombres completos ocupa el doble.
  */
 
-/** Campos del perfil que se pueden personalizar por demo. */
-export type DemoProfile = Pick<
+/** Claves de módulos del panel que una demo puede ocultar. */
+export type ModuloOcultable = "equipo" | "marketing" | "lista-espera";
+
+const MODULOS_OCULTABLES: ModuloOcultable[] = ["equipo", "marketing", "lista-espera"];
+
+/**
+ * Campos de personalización de la demo que no forman parte del negocio real
+ * (no viven en `SalonProfile`): controlan qué enseña el panel y cómo se
+ * comporta la reserva pública para ESTA demo en concreto. Todos opcionales,
+ * y su ausencia reproduce el comportamiento de siempre.
+ */
+export interface DemoPersonalizacion {
+  /** Módulos del panel que esta demo oculta. Ausente/[] = se ven todos, como hasta ahora. */
+  modulosOcultos?: ModuloOcultable[];
+  /** Mostrar el bloque «solicitudes pendientes de confirmar» en Inicio y Citas. Por defecto true. */
+  mostrarSolicitudes?: boolean;
+  /** Aviso de recargo por retraso en la reserva pública. Ausente = no se muestra. */
+  recargoRetraso?: { pct: number; minutos: number };
+  /** La duración final la decide el salón: reserva pública muestra un rango orientativo. Por defecto false. */
+  duracionFlexible?: boolean;
+}
+
+/** Campos de negocio del perfil que se pueden personalizar por demo (viven en `SalonProfile`). */
+type DemoProfileNegocio = Pick<
   SalonProfile,
   | "name"
   | "tagline"
@@ -52,7 +74,22 @@ export type DemoProfile = Pick<
   | "priorityHours"
 >;
 
-const KEYS: Record<keyof DemoProfile, string> = {
+/** Campos del perfil que se pueden personalizar por demo. */
+export type DemoProfile = DemoProfileNegocio & DemoPersonalizacion;
+
+/**
+ * Claves abreviadas de los campos de personalización (§ arriba). Se
+ * codifican/descodifican aparte de `KEYS` porque no viven en `SalonProfile` y
+ * cada una necesita su propia validación.
+ */
+const PERSONALIZACION_KEYS: Record<keyof DemoPersonalizacion, string> = {
+  modulosOcultos: "mo",
+  mostrarSolicitudes: "ms",
+  recargoRetraso: "rr",
+  duracionFlexible: "df",
+};
+
+const KEYS: Record<keyof DemoProfileNegocio, string> = {
   name: "n",
   tagline: "t",
   about: "a",
@@ -113,6 +150,13 @@ export function blankDemoProfile(): DemoProfile {
     smartSpread: false,
     lastSlotBufferMin: 0,
     priorityHours: [],
+    // Misma razón que arriba: explícitas, para que un enlace sin "mo"/"ms"/
+    // "rr"/"df" no herede la personalización de la demo anterior en este
+    // mismo navegador.
+    modulosOcultos: [],
+    mostrarSolicitudes: true,
+    recargoRetraso: undefined,
+    duracionFlexible: false,
   };
 }
 
@@ -225,6 +269,31 @@ export function encodeDemoProfile(profile: Partial<DemoProfile>): string {
     compact[short] = value;
   }
 
+  // Campos de personalización — no viven en SalonProfile, se codifican aparte.
+  const modulos = (profile.modulosOcultos ?? []).filter((m) => MODULOS_OCULTABLES.includes(m));
+  if (modulos.length > 0) compact[PERSONALIZACION_KEYS.modulosOcultos] = modulos;
+
+  // true es el comportamiento de siempre: solo ocupa sitio en el enlace
+  // cuando se ha apagado explícitamente.
+  if (profile.mostrarSolicitudes === false) {
+    compact[PERSONALIZACION_KEYS.mostrarSolicitudes] = 0;
+  }
+
+  if (profile.recargoRetraso) {
+    const pct = Number(profile.recargoRetraso.pct);
+    const minutos = Number(profile.recargoRetraso.minutos);
+    if (Number.isFinite(pct) && pct > 0 && Number.isFinite(minutos) && minutos > 0) {
+      compact[PERSONALIZACION_KEYS.recargoRetraso] = [
+        Math.min(100, Math.round(pct)),
+        Math.min(120, Math.round(minutos)),
+      ];
+    }
+  }
+
+  if (profile.duracionFlexible === true) {
+    compact[PERSONALIZACION_KEYS.duracionFlexible] = 1;
+  }
+
   return toBase64Url(JSON.stringify(compact));
 }
 
@@ -329,7 +398,48 @@ export function decodeDemoProfile(raw: string | undefined | null): Partial<DemoP
     }
   }
 
+  // Campos de personalización — misma cadena, claves aparte (ver KEYS arriba).
+  const modulosRaw = source[PERSONALIZACION_KEYS.modulosOcultos];
+  if (Array.isArray(modulosRaw)) {
+    const clean = modulosRaw
+      .map((v) => String(v))
+      .filter((v): v is ModuloOcultable => (MODULOS_OCULTABLES as string[]).includes(v));
+    if (clean.length) out.modulosOcultos = clean;
+  }
+
+  const mostrarRaw = source[PERSONALIZACION_KEYS.mostrarSolicitudes];
+  if (mostrarRaw !== undefined) {
+    out.mostrarSolicitudes = !(mostrarRaw === 0 || mostrarRaw === false || mostrarRaw === "0");
+  }
+
+  const recargoRaw = source[PERSONALIZACION_KEYS.recargoRetraso];
+  if (Array.isArray(recargoRaw) && recargoRaw.length === 2) {
+    const pct = Number(recargoRaw[0]);
+    const minutos = Number(recargoRaw[1]);
+    if (Number.isFinite(pct) && pct > 0 && pct <= 100 && Number.isFinite(minutos) && minutos > 0) {
+      out.recargoRetraso = { pct: Math.round(pct), minutos: Math.min(120, Math.round(minutos)) };
+    }
+  }
+
+  const flexibleRaw = source[PERSONALIZACION_KEYS.duracionFlexible];
+  if (flexibleRaw !== undefined) {
+    out.duracionFlexible = flexibleRaw === 1 || flexibleRaw === true || flexibleRaw === "1";
+  }
+
   return Object.keys(out).length ? out : null;
+}
+
+/** `true` cuando el equipo de esta demo tiene una sola persona. */
+export function esUnicoProfesional(profile: Pick<DemoProfile, "team">): boolean {
+  return (profile.team ?? []).length === 1;
+}
+
+/** `true` cuando esta demo NO oculta el módulo dado. */
+export function moduloVisible(
+  profile: Pick<DemoProfile, "modulosOcultos">,
+  clave: ModuloOcultable,
+): boolean {
+  return !(profile.modulosOcultos ?? []).includes(clave);
 }
 
 /** Construye el enlace público completo para una demo. */

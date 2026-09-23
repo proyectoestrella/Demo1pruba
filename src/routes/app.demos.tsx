@@ -22,6 +22,7 @@ import {
   parseGoogleMapsPaste,
   slugify,
   type DemoProfile,
+  type ModuloOcultable,
 } from "@/lib/demo-profile";
 import {
   formatMenuEntry,
@@ -77,6 +78,13 @@ interface DraftDemo {
   /** Reparto de agenda. */
   smartSpread: boolean;
   lastSlotBufferMin: string;
+  /** Personalización de esta demo — módulos del panel y comportamiento de la reserva pública. */
+  modulosOcultos: ModuloOcultable[];
+  mostrarSolicitudes: boolean;
+  duracionFlexible: boolean;
+  recargoRetrasoEnabled: boolean;
+  recargoRetrasoPct: string;
+  recargoRetrasoMinutos: string;
 }
 
 /**
@@ -153,6 +161,12 @@ function draftFrom(demo: DemoProfile & { id?: string }): DraftDemo {
     noShowNoticeHours: String(demo.noShowNoticeHours ?? 2),
     smartSpread: demo.smartSpread ?? false,
     lastSlotBufferMin: String(demo.lastSlotBufferMin || 90),
+    modulosOcultos: demo.modulosOcultos ?? [],
+    mostrarSolicitudes: demo.mostrarSolicitudes ?? true,
+    duracionFlexible: demo.duracionFlexible ?? false,
+    recargoRetrasoEnabled: !!demo.recargoRetraso,
+    recargoRetrasoPct: String(demo.recargoRetraso?.pct ?? 10),
+    recargoRetrasoMinutos: String(demo.recargoRetraso?.minutos ?? 15),
   };
 }
 
@@ -331,6 +345,20 @@ function Demos() {
       return;
     }
 
+    const recargoPct = Number(draft.recargoRetrasoPct.replace(",", "."));
+    if (draft.recargoRetrasoEnabled && (!Number.isFinite(recargoPct) || recargoPct <= 0 || recargoPct > 100)) {
+      toast.error("El recargo tiene que estar entre 0 y 100 %");
+      return;
+    }
+    const recargoMinutos = Number(draft.recargoRetrasoMinutos);
+    if (
+      draft.recargoRetrasoEnabled &&
+      (!Number.isFinite(recargoMinutos) || recargoMinutos <= 0 || recargoMinutos > 120)
+    ) {
+      toast.error("Los minutos de retraso tienen que estar entre 0 y 120");
+      return;
+    }
+
     saveDemo(
       {
         name: draft.name.trim(),
@@ -355,6 +383,15 @@ function Demos() {
         noShowNoticeHours: Math.min(48, Math.max(1, Math.round(notice) || 2)),
         smartSpread: draft.smartSpread,
         lastSlotBufferMin: draft.smartSpread ? Math.min(240, Math.max(0, Math.round(buffer))) : 0,
+        modulosOcultos: draft.modulosOcultos,
+        mostrarSolicitudes: draft.mostrarSolicitudes,
+        duracionFlexible: draft.duracionFlexible,
+        recargoRetraso: draft.recargoRetrasoEnabled
+          ? {
+              pct: Math.min(100, Math.max(0, Math.round(recargoPct))),
+              minutos: Math.min(120, Math.max(0, Math.round(recargoMinutos))),
+            }
+          : undefined,
       },
       draft.id,
     );
@@ -596,6 +633,89 @@ function Demos() {
                 onChange={(v) => field("lastSlotBufferMin", v)}
                 hint="Minutos antes del cierre que dejan de ofertarse. De 0 a 240."
               />
+            )}
+          </div>
+
+          <div className="h-px bg-border/60" />
+
+          <div className="space-y-4 rounded-lg border border-border/60 p-4">
+            <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+              Personalización de esta demo
+            </Label>
+
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">Ocultar módulos del panel</p>
+              <div className="flex flex-wrap gap-4">
+                {(
+                  [
+                    { key: "equipo", label: "Equipo" },
+                    { key: "marketing", label: "Marketing" },
+                    { key: "lista-espera", label: "Lista de espera" },
+                  ] as Array<{ key: ModuloOcultable; label: string }>
+                ).map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={draft.modulosOcultos.includes(key)}
+                      onChange={(e) =>
+                        field(
+                          "modulosOcultos",
+                          e.target.checked
+                            ? [...draft.modulosOcultos, key]
+                            : draft.modulosOcultos.filter((m) => m !== key),
+                        )
+                      }
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+                Mostrar solicitudes pendientes de confirmar
+              </Label>
+              <Switch
+                checked={draft.mostrarSolicitudes}
+                onCheckedChange={(v) => field("mostrarSolicitudes", v)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+                La duración final la decide el salón
+              </Label>
+              <Switch
+                checked={draft.duracionFlexible}
+                onCheckedChange={(v) => field("duracionFlexible", v)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+                Aviso de recargo por retraso
+              </Label>
+              <Switch
+                checked={draft.recargoRetrasoEnabled}
+                onCheckedChange={(v) => field("recargoRetrasoEnabled", v)}
+              />
+            </div>
+            {draft.recargoRetrasoEnabled && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <DraftField
+                  label="Recargo (%)"
+                  value={draft.recargoRetrasoPct}
+                  onChange={(v) => field("recargoRetrasoPct", v)}
+                  hint="De 0 a 100 %."
+                />
+                <DraftField
+                  label="A partir de (min)"
+                  value={draft.recargoRetrasoMinutos}
+                  onChange={(v) => field("recargoRetrasoMinutos", v)}
+                  hint="Minutos de retraso desde los que aplica. De 0 a 120."
+                />
+              </div>
             )}
           </div>
 
