@@ -46,12 +46,12 @@ export function WorkGallery({ photos = [], tipo }: { photos?: string[]; tipo?: s
 
   return (
     <section id="galeria" className="border-t border-border/40">
-      <div className="mx-auto max-w-5xl px-6 py-16 md:py-24">
+      <div className="mx-auto max-w-6xl px-5 py-16 md:py-24">
         <Reveal className="mb-10">
           <p className="text-xs uppercase tracking-[0.25em] text-primary">Nuestro trabajo</p>
           <h2 className="mt-2 font-display text-3xl md:text-4xl">Galería</h2>
         </Reveal>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
           {images.map((img, i) => (
             <Reveal key={img.src} delay={i * 80}>
               {/* La lupa deja mirar el degradado y el remate de cerca sin salir

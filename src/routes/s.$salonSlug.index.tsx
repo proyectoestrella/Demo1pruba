@@ -615,7 +615,7 @@ function SalonHome() {
       </div>
 
       {/* Servicios destacados */}
-      <section id="servicios" className="mx-auto max-w-5xl px-6 py-16 md:py-24">
+      <section id="servicios" className="mx-auto max-w-6xl px-5 py-16 md:py-24">
         <SectionHeading eyebrow="Más reservados" title="Servicios destacados" />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {featuredIds.map((id, i) => {
@@ -671,7 +671,7 @@ function SalonHome() {
           cr={1}
           className="[mask-image:radial-gradient(500px_circle_at_center,white,transparent)] fill-primary/25"
         />
-        <div className="relative mx-auto max-w-5xl px-6 py-16 md:py-24">
+        <div className="relative mx-auto max-w-6xl px-5 py-16 md:py-24">
           <SectionHeading eyebrow="Por qué aquí" title="Lo que te vas a encontrar" />
           <Reveal>
             <BentoGrid className="md:grid-rows-2 lg:grid-cols-3">
@@ -699,7 +699,7 @@ function SalonHome() {
 
       {/* Catálogo completo */}
       <section className="border-t border-border/40">
-        <div className="mx-auto max-w-5xl px-6 py-16 md:py-24">
+        <div className="mx-auto max-w-6xl px-5 py-16 md:py-24">
           <SectionHeading eyebrow="El menú completo" title="Todos los servicios" />
           <Reveal>
             <Accordion
@@ -760,7 +760,7 @@ function SalonHome() {
 
       {/* Equipo */}
       <section id="equipo" className="border-t border-border/40 bg-card">
-        <div className="mx-auto max-w-5xl px-6 py-16 md:py-24">
+        <div className="mx-auto max-w-6xl px-5 py-16 md:py-24">
           <SectionHeading eyebrow="Equipo" title="Quién te va a atender" className="mb-12" />
           {/* Retratos grandes en vez de avatares pequeños: en una barbería la
               cara del que te va a cortar es parte de lo que se vende. */}
@@ -788,7 +788,7 @@ function SalonHome() {
       {isRealSalon ? (
         hasGoogleReviews ? (
           <section id="resenas" className="border-t border-border/40 bg-card">
-            <div className="mx-auto max-w-3xl px-6 py-16 text-center md:py-24">
+            <div className="mx-auto max-w-6xl px-5 py-16 text-center md:py-24">
               <p className="text-xs uppercase tracking-[0.25em] text-primary">Reseñas</p>
               <h2 className="mt-2 font-display text-3xl md:text-4xl">
                 Lo que dicen en Google
@@ -821,7 +821,7 @@ function SalonHome() {
           </section>
         ) : null
       ) : (
-        <section id="resenas" className="mx-auto max-w-5xl px-6 py-16 md:py-24">
+        <section id="resenas" className="mx-auto max-w-6xl px-5 py-16 md:py-24">
           <Reveal className="mb-6 flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-xs uppercase tracking-[0.25em] text-primary">Reseñas</p>
@@ -862,7 +862,7 @@ function SalonHome() {
 
       {/* Preguntas frecuentes */}
       <section id="faq" className="border-t border-border/40 bg-card">
-        <div className="mx-auto max-w-3xl px-6 py-16 md:py-24">
+        <div className="mx-auto max-w-6xl px-5 py-16 md:py-24">
           <SectionHeading eyebrow="Antes de venir" title="Preguntas frecuentes" />
           <Reveal>
             <Accordion type="single" collapsible className="divide-y divide-border/40">
@@ -883,7 +883,7 @@ function SalonHome() {
 
       {/* Ubicación + horario */}
       <section id="ubicacion" className="border-t border-border/40">
-        <div className="mx-auto max-w-5xl px-6 py-16 md:py-24">
+        <div className="mx-auto max-w-6xl px-5 py-16 md:py-24">
           <SectionHeading
             eyebrow="Ubicación y horario"
             title="Te esperamos aquí"
@@ -948,7 +948,7 @@ function SalonHome() {
           aria-hidden="true"
           className="absolute inset-0 -z-10 bg-[radial-gradient(60%_80%_at_50%_0%,color-mix(in_oklab,var(--color-primary)_18%,transparent),transparent)]"
         />
-        <div className="mx-auto max-w-5xl px-6 py-20 text-center md:py-28">
+        <div className="mx-auto max-w-6xl px-5 py-20 text-center md:py-28">
           <Reveal className="flex flex-col items-center">
             <h2 className="font-display text-3xl md:text-5xl">
               ¿Nos vemos <AuroraText colors={["#d6ab68", "#f0e6d2", "#b98a4d"]}>pronto</AuroraText>?
