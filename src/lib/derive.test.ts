@@ -74,6 +74,14 @@ describe("clientFrequency — última visita", () => {
 });
 
 describe("duracionRecordada", () => {
+  it("ignora solicitudes pendientes cuya hora ya pasó", () => {
+    const appts = [
+      cita({ start: enDias(-7), duration: 65, status: "completed" }),
+      cita({ start: enDias(-1), duration: 45, status: "pending" }),
+    ];
+    expect(duracionRecordada(appts, "c1", ["corte"], 45, AHORA)?.minutos).toBe(65);
+  });
+
   it("propone lo que tardó la última vez con esos mismos servicios", () => {
     const appts = [cita({ start: enDias(-40), duration: 75 }), cita({ start: enDias(-14), duration: 75 })];
     const r = duracionRecordada(appts, "c1", ["corte"], 45, AHORA);

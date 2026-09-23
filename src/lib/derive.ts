@@ -176,6 +176,9 @@ export function duracionRecordada(
         a.clientId === clientId &&
         +new Date(a.start) <= ahora &&
         cuentaComoVisita(a) &&
+        // Una solicitud pendiente no demuestra cuánto duró un servicio,
+        // aunque su hora ya haya pasado y aún no se haya resuelto en el panel.
+        a.status !== "pending" &&
         [...a.serviceIds].sort().join(",") === clave,
     )
     .sort((a, b) => +new Date(a.start) - +new Date(b.start));
