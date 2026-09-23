@@ -11,7 +11,7 @@ import {
   showsRealPhotos,
   type BusinessType,
 } from "@/lib/business-type";
-import { findClientWithPenalty } from "@/lib/no-show";
+import { findClientWithPenalty, findClientByPhone } from "@/lib/no-show";
 import {
   toDateKey,
   hourOccupancyPct,
@@ -46,6 +46,39 @@ import { checkClientPenalty } from "@/lib/api/salons.functions";
 import { sumServices } from "@/lib/appointment-services";
 import { FluidSteps } from "@/components/twentyfirst/fluid-steps";
 import { eur } from "@/lib/copy";
+import { DEMO_PARAM, decodeDemoProfile, esUnicoProfesional } from "@/lib/demo-profile";
+
+/** "45 min" / "1 h" / "1 h 30" — sin ceros ni "0 h" cuando sobra. */
+function formatMinutes(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h} h`;
+  return `${h} h ${m}`;
+}
+
+/**
+ * Rango orientativo de duración cuando el salón decide la duración final
+ * (caso PeluChic: peluquería de novias/eventos). Regla: de la duración de
+ * catálogo hasta +50%, redondeada al cuarto de hora más cercano — un
+ * servicio de catálogo de 90 min se enseña como "1 h 30 – 2 h 15".
+ */
+function flexDurationRange(catalogMin: number): { lo: number; hi: number } {
+  const hi = Math.round((catalogMin * 1.5) / 15) * 15;
+  return { lo: catalogMin, hi: Math.max(hi, catalogMin) };
+}
+
+/** "1 minuto"/"45 minutos"/"1 hora" — para el aviso de recargo por retraso. */
+function formatRetrasoMinutos(min: number): string {
+  if (min === 60) return "1 hora";
+  if (min % 60 === 0) return `${min / 60} horas`;
+  return `${min} minutos`;
+}
+
+/** Texto del aviso de recargo por retraso (caso Adam: 45 % si llega +60 min tarde). */
+function recargoRetrasoTexto(recargo: { pct: number; minutos: number }): string {
+  return `Si llegas con más de ${formatRetrasoMinutos(recargo.minutos)} de retraso se aplica un recargo del ${recargo.pct} % del precio del servicio.`;
+}
 
 export const Route = createFileRoute("/s/$salonSlug/book")({
   validateSearch: (search: Record<string, unknown>): { service?: string } => ({
@@ -181,6 +214,19 @@ function BookingWizard() {
     select: (s) => String((s.location.search as Record<string, unknown>)?.v) === "2",
   });
 
+  // `recargoRetraso`/`duracionFlexible` son personalización de demo pura
+  // (no viven en `SalonProfile`, ver demo-profile.ts), así que no salen de
+  // `useDisplayProfile` — se leen directamente del mismo enlace `?d=`.
+  const demoParamRaw = useRouterState({
+    select: (s) => {
+      const sp = s.location.search as Record<string, unknown> | undefined;
+      return typeof sp?.[DEMO_PARAM] === "string" ? (sp[DEMO_PARAM] as string) : undefined;
+    },
+  });
+  const demoPersonalizacion = useMemo(() => decodeDemoProfile(demoParamRaw), [demoParamRaw]);
+  const recargoRetraso = demoPersonalizacion?.recargoRetraso;
+  const duracionFlexibleDemo = !!demoPersonalizacion?.duracionFlexible;
+
   // Catálogo y equipo, calculados a partir del tipo de negocio deducido del
   // enlace de esta demo — no del equipo/catálogo "activo" mutado en
   // mock/salon.ts, que solo se pone al día tras un efecto de cliente. Así el
@@ -200,11 +246,27 @@ function BookingWizard() {
     [employees],
   );
 
+  // Salón con un solo profesional (caso Adam): no tiene sentido preguntar a
+  // quién quiere ver — se asigna directamente y el asistente pasa del
+  // servicio a la fecha, sin el paso 2.
+  const single = esUnicoProfesional(profile);
+  const soloEmployeeId = single ? employees[0]?.id : undefined;
+
   const [data, setData] = useState<WizardData>(() => ({
     serviceIds: parseServiceIds(search.service, serviceMap),
-    employeeId: isV2 ? "any" : undefined,
+    employeeId: soloEmployeeId ?? (isV2 ? "any" : undefined),
   }));
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(data.serviceIds.length ? 2 : 1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(data.serviceIds.length ? (single ? 3 : 2) : 1);
+
+  // Si el equipo pasa a tener un único profesional después del primer
+  // render (por ejemplo, la carta/equipo llega tarde por el enlace `?d=`),
+  // se asigna igualmente sin que haga falta pasar por el paso 2.
+  useEffect(() => {
+    if (single && soloEmployeeId && data.employeeId !== soloEmployeeId) {
+      setData((d) => ({ ...d, employeeId: soloEmployeeId }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [single, soloEmployeeId]);
   const appointments = useSalonStore((s) => s.appointments);
   const addAppointment = useSalonStore((s) => s.addAppointment);
   const clients = useSalonStore((s) => s.clients);
@@ -317,11 +379,19 @@ function BookingWizard() {
     }));
   }
 
+  // Con un único profesional el paso 2 (elegir a quién) no existe: del
+  // servicio se pasa directo a la fecha, y de vuelta.
   function next() {
-    setStep((s) => Math.min(4, s + 1) as 1 | 2 | 3 | 4);
+    setStep((s) => {
+      if (single && s === 1) return 3;
+      return Math.min(4, s + 1) as 1 | 2 | 3 | 4;
+    });
   }
   function prev() {
-    setStep((s) => Math.max(1, s - 1) as 1 | 2 | 3 | 4);
+    setStep((s) => {
+      if (single && s === 3) return 1;
+      return Math.max(1, s - 1) as 1 | 2 | 3 | 4;
+    });
   }
 
   function confirm() {
@@ -339,23 +409,38 @@ function BookingWizard() {
       stylistChoice,
       data.date,
       data.time,
-      totalMin,
+      schedulingDurationMin,
       appointments,
       employees,
     );
     const startISO = new Date(`${data.date}T${data.time}:00`).toISOString();
+    // Una clienta que repite y teclea su teléfono (con espacios, guiones o
+    // prefijo distintos a la vez anterior) tiene que quedar enlazada a SU
+    // ficha, no a una "walk-in" nueva: si no, el historial no la reconoce y
+    // avisos como la duración recordada (derive.ts) nunca le llegan viniendo
+    // de la reserva pública. Si no hay ficha con ese teléfono, se crea una
+    // nueva walk-in, exactamente como hasta ahora.
+    const clienteExistente = findClientByPhone(clients, data.phone);
+    const clientId = clienteExistente?.id ?? `c-walkin-${Date.now()}`;
+    // El nombre de la ficha ya existente manda: si esta vez lo escribió de
+    // otra forma ("Mari" en vez de "María García"), no se pisa el que el
+    // salón ya conocía.
+    const clientName = clienteExistente?.name ?? data.name;
     // Mejora B1: se guarda AQUÍ (reserva ya validada, no en cada tecla) lo
     // mínimo para poder ofrecer "repetir" la próxima vez desde este mismo
     // navegador — nunca nombre ni teléfono, que ya viven donde corresponde.
     writeLastBooking(salonSlug, { serviceIds, employeeId, savedAt: Date.now() });
     addAppointment(
       {
-        clientId: `c-walkin-${Date.now()}`,
-        clientName: data.name,
+        clientId,
+        clientName,
         serviceIds,
         employeeId,
         start: startISO,
-        duration: totalMin,
+        // Con duración flexible se bloquea el extremo alto del rango, para
+        // que la agenda no ofrezca a la siguiente clienta un hueco que en la
+        // práctica no cabe.
+        duration: schedulingDurationMin,
         priceEur: total,
         // Las reservas de la web pública entran como solicitud: las confirma,
         // cambia o rechaza el salón desde el panel. Las citas creadas a mano
@@ -366,7 +451,7 @@ function BookingWizard() {
       // En un salón real esto es lo que crea (o reconoce) la ficha del cliente
       // en Supabase y engancha la cita: la store lo sube sola. En una demo de
       // venta `realSalonSlug` es null y estos datos no salen del navegador.
-      { name: data.name, phone: data.phone, email: data.email },
+      { name: clientName, phone: data.phone, email: data.email },
     );
     if (!realSlug) {
       // Demo de venta: se conserva tal cual estaba — la reserva queda
@@ -402,6 +487,11 @@ function BookingWizard() {
         date: data.date,
         time: data.time,
         name: data.name,
+        // Sin esto la confirmación pierde la personalización de esta demo
+        // (recargo por retraso, duración flexible, equipo…): el tipo de
+        // negocio y el perfil que pinta esa página vuelven a los de
+        // ejemplo en cuanto se sale de esta ruta.
+        ...(demoParamRaw ? { [DEMO_PARAM]: demoParamRaw } : {}),
       },
     });
   }
@@ -415,12 +505,37 @@ function BookingWizard() {
           ? !data.date || !data.time
           : !data.name || !data.phone || !data.acceptedPolicy || !!penalizedClient;
 
+  // Con un único profesional el paso 2 no existe: 3 pasos, no 4.
+  const totalSteps = single ? 3 : 4;
+  const displayStep = single ? (step === 1 ? 1 : step === 3 ? 2 : 3) : step;
+
   const ctaLabel = step < 4 ? "Continuar" : `Confirmar reserva — ${eur(total)}`;
 
   function onCta() {
     if (step < 4) next();
     else confirm();
   }
+
+  // Duración orientativa cuando el salón decide la duración final (caso
+  // PeluChic, clave "df" del enlace de demo). El precio y el hueco que se
+  // reserva siguen calculándose sobre `totalMin`/`total`: esto es solo lo
+  // que se ENSEÑA, salvo en la búsqueda de huecos de más abajo, donde se usa
+  // el extremo alto del rango para no ofrecer horas que luego no quepan.
+  const flexible = duracionFlexibleDemo;
+  const flexRange = flexible ? flexDurationRange(totalMin) : null;
+  const durationLabel =
+    flexRange && totalMin > 0
+      ? `aprox. ${formatMinutes(flexRange.lo)} – ${formatMinutes(flexRange.hi)}`
+      : `${totalMin} min`;
+  const flexNota = flexible
+    ? `La duración final la confirma ${profile.name || "el salón"} al aceptar tu solicitud.`
+    : undefined;
+  // Duración con la que se buscan y filtran huecos: con duración flexible se
+  // reserva el extremo alto del rango para no ofrecer citas que luego no
+  // quepan en la agenda.
+  const schedulingDurationMin = flexRange ? flexRange.hi : totalMin;
+
+  const recargoTexto = recargoRetraso ? recargoRetrasoTexto(recargoRetraso) : undefined;
 
   const dateLabel = data.date
     ? new Date(`${data.date}T00:00`).toLocaleDateString("es-ES", {
@@ -431,8 +546,8 @@ function BookingWizard() {
     : undefined;
 
   return (
-    <section className="mx-auto max-w-5xl px-5 pb-28 pt-10 md:py-16 lg:pb-16">
-      <StepIndicator step={step} />
+    <section className="mx-auto max-w-6xl px-5 pb-28 pt-10 md:py-16 lg:pb-16">
+      <StepIndicator step={displayStep} totalSteps={totalSteps} single={single} />
 
       {/* Mejora B1: atajo de un toque para quien ya reservó antes en este
           salón desde este mismo navegador (patrón Booksy, sin cuentas). */}
@@ -465,13 +580,15 @@ function BookingWizard() {
             <ServiceStep
               selected={data.serviceIds}
               totalMin={totalMin}
+              durationLabel={durationLabel}
+              flexNota={flexible ? flexNota : undefined}
               onToggle={toggleService}
               tipo={tipo}
               services={services}
             />
           )}
 
-          {step === 2 && (
+          {!single && step === 2 && (
             <StylistStep
               selected={data.employeeId}
               onSelect={(id) => setData((d) => ({ ...d, employeeId: id }))}
@@ -482,7 +599,7 @@ function BookingWizard() {
 
           {step === 3 && selectedServices.length > 0 && (
             <DateTimeStep
-              durationMin={totalMin}
+              durationMin={schedulingDurationMin}
               stylistChoice={data.employeeId ?? "any"}
               appointments={appointments}
               selectedDate={data.date}
@@ -492,6 +609,9 @@ function BookingWizard() {
               smartSpread={!!profile.smartSpread}
               lastSlotBufferMin={profile.lastSlotBufferMin ?? 0}
               priorityHours={profile.priorityHours ?? []}
+              durationLabel={durationLabel}
+              flexNota={flexNota}
+              recargoTexto={recargoTexto}
             />
           )}
 
@@ -522,9 +642,13 @@ function BookingWizard() {
                     )}
                     <SummaryRow
                       label={serviceNames.length > 1 ? "Duración total" : "Duración"}
-                      value={`${totalMin} min`}
+                      value={durationLabel}
                     />
-                    <SummaryRow label={cap(professionalWord(tipo))} value={employeeName ?? "—"} />
+                    {/* Con un único profesional no se enseña como si se
+                        hubiera elegido: se informa de quién atiende. */}
+                    {!single && (
+                      <SummaryRow label={cap(professionalWord(tipo))} value={employeeName ?? "—"} />
+                    )}
                     <SummaryRow label="Fecha" value={dateLabel ?? "—"} />
                     <SummaryRow label="Hora" value={data.time ?? "—"} />
                   </div>
@@ -536,6 +660,17 @@ function BookingWizard() {
                   {depositEur > 0 && (
                     <p className="mt-1 text-xs text-muted-foreground">
                       Incluye depósito de {eur(depositEur)} a pagar en el salón.
+                    </p>
+                  )}
+                  {single && employeeName && (
+                    <p className="mt-1 text-xs text-muted-foreground">Te atiende {employeeName}.</p>
+                  )}
+                  {flexible && flexNota && (
+                    <p className="mt-3 text-sm font-medium text-foreground">{flexNota}</p>
+                  )}
+                  {recargoTexto && (
+                    <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+                      {recargoTexto}
                     </p>
                   )}
                 </div>
@@ -646,8 +781,9 @@ function BookingWizard() {
         <BookingSummary
           variant="sidebar"
           serviceNames={serviceNames}
-          durationMin={totalMin}
+          durationLabel={durationLabel}
           employeeName={employeeName}
+          showEmployeeRow={!single}
           dateLabel={dateLabel}
           timeLabel={data.time}
           total={total}
@@ -661,8 +797,9 @@ function BookingWizard() {
       <BookingSummary
         variant="bar"
         serviceNames={serviceNames}
-        durationMin={totalMin}
+        durationLabel={durationLabel}
         employeeName={employeeName}
+        showEmployeeRow={!single}
         dateLabel={dateLabel}
         timeLabel={data.time}
         total={total}
@@ -679,16 +816,29 @@ function cap(w: string) {
   return w.charAt(0).toUpperCase() + w.slice(1);
 }
 
-function StepIndicator({ step }: { step: 1 | 2 | 3 | 4 }) {
+function StepIndicator({
+  step,
+  totalSteps,
+  single,
+}: {
+  step: 1 | 2 | 3 | 4;
+  totalSteps: number;
+  single: boolean;
+}) {
   // «Barbero» en barberías, «Profesional» en unisex: el rótulo del paso no
   // puede contradecir al título «Elige tu barbero» de la propia pantalla.
+  // Con un único profesional el paso de elegir a quién no existe.
   const tipo = useBusinessType();
-  const labels = ["Servicio", cap(professionalWord(tipo)), "Fecha y hora", "Tus datos"];
+  const labels = single
+    ? ["Servicio", "Fecha y hora", "Tus datos"]
+    : ["Servicio", cap(professionalWord(tipo)), "Fecha y hora", "Tus datos"];
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="flex items-center gap-4">
-        <FluidSteps step={step} total={4} />
-        <span className="text-xs text-muted-foreground">Paso {step} de 4</span>
+        <FluidSteps step={step} total={totalSteps} />
+        <span className="text-xs text-muted-foreground">
+          Paso {step} de {totalSteps}
+        </span>
       </div>
       <span className="text-sm font-medium text-foreground">{labels[step - 1]}</span>
     </div>
@@ -707,12 +857,18 @@ function Step({ title, children }: { title: string; children: React.ReactNode })
 function ServiceStep({
   selected,
   totalMin,
+  durationLabel,
+  flexNota,
   onToggle,
   tipo,
   services,
 }: {
   selected: string[];
   totalMin: number;
+  /** "45 min" o, con duración flexible, "aprox. 1 h 30 – 2 h 15". */
+  durationLabel: string;
+  /** Frase «la duración final la confirma…», solo con duración flexible. */
+  flexNota?: string;
   onToggle: (id: string) => void;
   tipo: BusinessType;
   services: Service[];
@@ -721,11 +877,17 @@ function ServiceStep({
   const categoryOrder = categoryOrderOf(services);
   return (
     <Step title="Elige uno o varios servicios">
-      <p className="-mt-4 mb-6 text-sm text-muted-foreground" aria-live="polite">
+      <p
+        className={cn("-mt-4 text-sm text-muted-foreground", count > 0 && flexNota ? "mb-2" : "mb-6")}
+        aria-live="polite"
+      >
         {count === 0
           ? "Puedes combinar varios en la misma cita."
-          : `${count} ${count === 1 ? "servicio elegido" : "servicios elegidos"} · ${totalMin} min en total`}
+          : `${count} ${count === 1 ? "servicio elegido" : "servicios elegidos"} · ${durationLabel} en total`}
       </p>
+      {count > 0 && flexNota && (
+        <p className="mb-6 text-sm font-medium text-foreground">{flexNota}</p>
+      )}
       {/* `key`: cuando la carta llega del enlace después del primer render, las
           categorías cambian («Cortes» → «Servicios») y un defaultValue ya
           montado dejaría el acordeón cerrado sin ningún servicio a la vista. */}
@@ -899,8 +1061,11 @@ function DateTimeStep({
   smartSpread,
   lastSlotBufferMin,
   priorityHours,
+  durationLabel,
+  flexNota,
+  recargoTexto,
 }: {
-  /** Duración total de la cita: el hueco que hay que encontrar libre. */
+  /** Duración con la que se busca hueco libre — con duración flexible ya es el extremo alto del rango. */
   durationMin: number;
   stylistChoice: EmployeeId | "any";
   appointments: Appointment[];
@@ -914,6 +1079,12 @@ function DateTimeStep({
   lastSlotBufferMin: number;
   /** Franjas prioritarias del dueño (clave "y"). Vacío = como siempre, sin nada destacado. */
   priorityHours: string[];
+  /** "45 min" o, con duración flexible, "aprox. 1 h 30 – 2 h 15". */
+  durationLabel: string;
+  /** Frase «la duración final la confirma…», solo con duración flexible (clave "df"). */
+  flexNota?: string;
+  /** Aviso de recargo por retraso (clave "rr"), o undefined si esta demo no lo tiene. */
+  recargoTexto?: string;
 }) {
   const relevantEmployees = useMemo(
     () => (stylistChoice === "any" ? employees : employees.filter((e) => e.id === stylistChoice)),
@@ -1108,6 +1279,11 @@ function DateTimeStep({
 
   return (
     <Step title="Fecha y hora">
+      <div className="-mt-4 mb-6 space-y-1.5">
+        <p className="text-sm text-muted-foreground">Duración: {durationLabel}</p>
+        {flexNota && <p className="text-sm font-medium text-foreground">{flexNota}</p>}
+        {recargoTexto && <p className="text-[11px] leading-snug text-muted-foreground">{recargoTexto}</p>}
+      </div>
       <div className="grid gap-8 md:grid-cols-[auto_1fr]">
         <div className="self-start rounded-2xl border border-border/60 bg-card p-1">
           <Calendar
@@ -1261,8 +1437,9 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 function BookingSummary({
   variant,
   serviceNames,
-  durationMin,
+  durationLabel,
   employeeName,
+  showEmployeeRow = true,
   dateLabel,
   timeLabel,
   total,
@@ -1273,8 +1450,11 @@ function BookingSummary({
 }: {
   variant: "sidebar" | "bar";
   serviceNames: string[];
-  durationMin: number;
+  /** "45 min" o, con duración flexible, "aprox. 1 h 30 – 2 h 15". */
+  durationLabel: string;
   employeeName?: string;
+  /** false con un único profesional: no se enseña como si se hubiera elegido. */
+  showEmployeeRow?: boolean;
   dateLabel?: string;
   timeLabel?: string;
   total: number;
@@ -1289,7 +1469,7 @@ function BookingSummary({
   if (variant === "bar") {
     return (
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 px-5 py-3 backdrop-blur lg:hidden">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">
               {serviceNames.length ? serviceNames.join(" + ") : "Elige un servicio"}
@@ -1302,7 +1482,7 @@ function BookingSummary({
               {eur(total)}
               {serviceNames.length > 0 && (
                 <span className="ml-2 whitespace-nowrap text-xs font-normal text-muted-foreground">
-                  {durationMin} min
+                  {durationLabel}
                 </span>
               )}
             </p>
@@ -1349,13 +1529,15 @@ function BookingSummary({
           ) : (
             <SummaryRow label="Servicio" value={serviceNames[0] ?? "—"} />
           )}
-          {durationMin > 0 && (
+          {serviceNames.length > 0 && (
             <SummaryRow
               label={serviceNames.length > 1 ? "Duración total" : "Duración"}
-              value={`${durationMin} min`}
+              value={durationLabel}
             />
           )}
-          <SummaryRow label={cap(professionalWord(tipo))} value={employeeName ?? "—"} />
+          {showEmployeeRow && (
+            <SummaryRow label={cap(professionalWord(tipo))} value={employeeName ?? "—"} />
+          )}
           <SummaryRow label="Fecha" value={dateLabel ?? "—"} />
           <SummaryRow label="Hora" value={timeLabel ?? "—"} />
         </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { normalizePhone, findClientWithPenalty, isWithinNoticeWindow } from "./no-show";
+import { normalizePhone, findClientWithPenalty, findClientByPhone, isWithinNoticeWindow } from "./no-show";
 import type { Client } from "./mock/types";
 
 function client(overrides: Partial<Client> = {}): Client {
@@ -48,6 +48,33 @@ describe("findClientWithPenalty", () => {
 
   it("no bloquea mientras el teléfono no tiene 9 dígitos (se está tecleando)", () => {
     expect(findClientWithPenalty(clients, "600000")).toBeUndefined();
+  });
+});
+
+describe("findClientByPhone", () => {
+  const clients = [
+    client({ id: "c1", name: "Marta", phone: "+34 600 000 007" }),
+    client({ id: "c2", name: "Elena", phone: "611 222 333" }),
+  ];
+
+  it("reconoce a la clienta que repite aunque teclee el teléfono distinto", () => {
+    expect(findClientByPhone(clients, "+34 600 000 007")?.id).toBe("c1");
+    expect(findClientByPhone(clients, "600000007")?.id).toBe("c1");
+    expect(findClientByPhone(clients, "600-000-007")?.id).toBe("c1");
+    expect(findClientByPhone(clients, "0034 600 00 00 07")?.id).toBe("c1");
+  });
+
+  it("un teléfono que no coincide con nadie no devuelve ficha (se crea una nueva)", () => {
+    expect(findClientByPhone(clients, "699999999")).toBeUndefined();
+  });
+
+  it("no reconoce a nadie mientras el teléfono no tiene 9 dígitos", () => {
+    expect(findClientByPhone(clients, "600000")).toBeUndefined();
+  });
+
+  it("sin teléfono tecleado no hay coincidencia", () => {
+    expect(findClientByPhone(clients, undefined)).toBeUndefined();
+    expect(findClientByPhone(clients, "")).toBeUndefined();
   });
 });
 

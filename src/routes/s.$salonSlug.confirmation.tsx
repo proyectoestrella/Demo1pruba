@@ -1,13 +1,38 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef } from "react";
 import { Check, CalendarPlus, MapPin } from "lucide-react";
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
+import { DEMO_PARAM, decodeDemoProfile, esUnicoProfesional } from "@/lib/demo-profile";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { Button } from "@/components/ui/button";
 import { Confetti, type ConfettiRef } from "@/components/magicui/confetti";
 import { eur } from "@/lib/copy";
 import { sumServices } from "@/lib/appointment-services";
+
+/** "45 min" / "1 h" / "1 h 30" — igual que en el asistente de reserva. */
+function formatMinutes(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h} h`;
+  return `${h} h ${m}`;
+}
+
+function flexDurationRange(catalogMin: number): { lo: number; hi: number } {
+  const hi = Math.round((catalogMin * 1.5) / 15) * 15;
+  return { lo: catalogMin, hi: Math.max(hi, catalogMin) };
+}
+
+function formatRetrasoMinutos(min: number): string {
+  if (min === 60) return "1 hora";
+  if (min % 60 === 0) return `${min / 60} horas`;
+  return `${min} minutos`;
+}
+
+function recargoRetrasoTexto(recargo: { pct: number; minutos: number }): string {
+  return `Si llegas con más de ${formatRetrasoMinutos(recargo.minutos)} de retraso se aplica un recargo del ${recargo.pct} % del precio del servicio.`;
+}
 
 export const Route = createFileRoute("/s/$salonSlug/confirmation")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -46,6 +71,30 @@ function Confirmation() {
   const { durationMin: totalMin, priceEur: total } = sumServices(chosen);
   const employee = employeeMap[employeeId];
   const confettiRef = useRef<ConfettiRef>(null);
+
+  const single = esUnicoProfesional(profile);
+
+  // Personalización de demo pura (no vive en SalonProfile): se lee del mismo
+  // enlace `?d=`, igual que en el asistente de reserva.
+  const demoParamRaw = useRouterState({
+    select: (s) => {
+      const sp = s.location.search as Record<string, unknown> | undefined;
+      return typeof sp?.[DEMO_PARAM] === "string" ? (sp[DEMO_PARAM] as string) : undefined;
+    },
+  });
+  const demoPersonalizacion = useMemo(() => decodeDemoProfile(demoParamRaw), [demoParamRaw]);
+  const flexible = !!demoPersonalizacion?.duracionFlexible;
+  const flexRange = flexible ? flexDurationRange(totalMin) : null;
+  const durationLabel =
+    flexRange && totalMin > 0
+      ? `aprox. ${formatMinutes(flexRange.lo)} – ${formatMinutes(flexRange.hi)}`
+      : `${totalMin} min`;
+  const flexNota = flexible
+    ? `La duración final la confirma ${profile.name || "el salón"} al aceptar tu solicitud.`
+    : undefined;
+  const recargoTexto = demoPersonalizacion?.recargoRetraso
+    ? recargoRetrasoTexto(demoPersonalizacion.recargoRetraso)
+    : undefined;
 
   // Un disparo al aterrizar en la confirmación. Se respeta
   // `prefers-reduced-motion`: para quien lo pida, no cae nada.
@@ -148,7 +197,9 @@ function Confirmation() {
           <div className="min-w-0">
             <h2 className="font-display text-2xl">{serviceNames.join(" + ")}</h2>
             <p className="text-sm text-muted-foreground">
-              con {employee.name} · {employee.specialty}
+              {/* Con un único profesional no se enseña como si se hubiera
+                  elegido: se informa de quién atiende. */}
+              {single ? `Te atiende ${employee.name}` : `con ${employee.name} · ${employee.specialty}`}
             </p>
           </div>
         </div>
@@ -158,7 +209,7 @@ function Confirmation() {
         <div className="space-y-3 text-sm">
           <Row k="Fecha" v={dateLabel} />
           <Row k="Hora" v={time || "—"} />
-          <Row k={chosen.length > 1 ? "Duración total" : "Duración"} v={`${totalMin} min`} />
+          <Row k={chosen.length > 1 ? "Duración total" : "Duración"} v={durationLabel} />
           {chosen.length > 1 ? (
             chosen.map((s, i) => <Row key={s.id} k={serviceNames[i]} v={eur(s.priceEur)} />)
           ) : (
@@ -168,6 +219,13 @@ function Confirmation() {
             <Row k="Depósito a pagar en el salón" v={eur(deposit)} accent />
           )}
         </div>
+
+        {flexNota && (
+          <p className="mt-4 text-sm font-medium text-foreground">{flexNota}</p>
+        )}
+        {recargoTexto && (
+          <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{recargoTexto}</p>
+        )}
 
         <div className="my-6 border-t border-dashed border-border" />
 

@@ -25,12 +25,16 @@ import {
 import { useSalonStore } from "@/lib/store";
 import { useRealSalonSlug } from "@/lib/use-real-salon";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
+import { esUnicoProfesional } from "@/lib/demo-profile";
 import {
   categoryOrderOf,
   FEATURED_IDS_BY_TYPE,
   professionalWord,
+  showsRealPhotos,
   type BusinessType,
 } from "@/lib/business-type";
+import { StylistAvatar } from "@/components/StylistAvatar";
+import type { EmployeeId } from "@/lib/mock/types";
 import { useMemo } from "react";
 import { isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
 import { useClientNow } from "@/lib/use-client-now";
@@ -209,7 +213,13 @@ const HERO_IN = {
  * vez de navegar por el router. Para reservar ya están los botones de arriba,
  * el de la cabecera y la barra fija del móvil.
  */
-function bentoItemsFor(tipo: BusinessType, noShowFeeEur: number, noShowNoticeHours: number) {
+function bentoItemsFor(
+  tipo: BusinessType,
+  noShowFeeEur: number,
+  noShowNoticeHours: number,
+  single: boolean,
+  proName?: string,
+) {
   const palabra = professionalWord(tipo);
   const cancelacion =
     noShowFeeEur > 0
@@ -219,19 +229,31 @@ function bentoItemsFor(tipo: BusinessType, noShowFeeEur: number, noShowNoticeHou
     {
       Icon: CalendarCheck,
       name: "Reserva sin llamar",
-      description: `Eliges servicio, ${palabra} y hora desde el móvil. Sin teléfono y sin esperar a que abramos.`,
+      description: single
+        ? "Eliges servicio y hora desde el móvil. Sin teléfono y sin esperar a que abramos."
+        : `Eliges servicio, ${palabra} y hora desde el móvil. Sin teléfono y sin esperar a que abramos.`,
       href: "#servicios",
       cta: "Empezar por la carta",
       className: "lg:col-span-2",
     },
-    {
-      Icon: Users,
-      name: `Eliges ${palabra}`,
-      description: "El equipo que prefieras. O el primero que tenga hueco, si lo que corre es la hora.",
-      href: "#equipo",
-      cta: "Ver el equipo",
-      className: "lg:col-span-1",
-    },
+    single
+      ? {
+          Icon: Users,
+          name: "Trato directo",
+          description: `Siempre te atiende ${proName ?? "la misma persona"}, sin intermediarios ni cambios de última hora.`,
+          href: "#equipo",
+          cta: "Conócele",
+          className: "lg:col-span-1",
+        }
+      : {
+          Icon: Users,
+          name: `Eliges ${palabra}`,
+          description:
+            "El equipo que prefieras. O el primero que tenga hueco, si lo que corre es la hora.",
+          href: "#equipo",
+          cta: "Ver el equipo",
+          className: "lg:col-span-1",
+        },
     {
       Icon: ShieldCheck,
       name: "Cancelas gratis",
@@ -251,7 +273,13 @@ function bentoItemsFor(tipo: BusinessType, noShowFeeEur: number, noShowNoticeHou
   ];
 }
 
-function faqFor(tipo: BusinessType, noShowFeeEur: number, noShowNoticeHours: number) {
+function faqFor(
+  tipo: BusinessType,
+  noShowFeeEur: number,
+  noShowNoticeHours: number,
+  single: boolean,
+  proName?: string,
+) {
   const palabra = professionalWord(tipo);
   const respuestaCancelacion =
     noShowFeeEur > 0
@@ -272,10 +300,17 @@ function faqFor(tipo: BusinessType, noShowFeeEur: number, noShowNoticeHours: num
       q: "¿Atendéis sin cita previa?",
       a: "Si hay hueco, sí — pero la agenda suele ir llena. Reservar online es la forma segura de tener sitio.",
     },
-    {
-      q: `¿Puedo elegir ${palabra}?`,
-      a: "Claro. En el paso 2 de la reserva eliges profesional, o dejas «cualquiera disponible» si lo que te corre prisa es la hora.",
-    },
+    // Con un único profesional no tiene sentido preguntar si se puede
+    // elegir: se aclara que siempre atiende la misma persona.
+    single
+      ? {
+          q: "¿Siempre me atiende la misma persona?",
+          a: `Sí. En este salón trabaja ${proName ?? "una sola persona"}, así que siempre te atiende ${proName ?? "ella misma"}.`,
+        }
+      : {
+          q: `¿Puedo elegir ${palabra}?`,
+          a: "Claro. En el paso de la reserva eliges profesional, o dejas «cualquiera disponible» si lo que te corre prisa es la hora.",
+        },
   ];
 }
 
@@ -305,6 +340,52 @@ function ReviewCard({ name, rating, quote }: Review) {
         </span>
       </figcaption>
     </figure>
+  );
+}
+
+/**
+ * Presentación de un salón con un único profesional (caso Adam): sustituye a
+ * `TeamShowcase`, pensada para tres fichas, que con una sola persona queda
+ * descompensada. Foto grande si la hay (StylistAvatar cae sola al avatar de
+ * iniciales si no), nombre, especialidad y años de experiencia en una línea.
+ */
+function SoloProfessional({
+  name,
+  specialty,
+  yearsExperience,
+  photo,
+  employeeId,
+}: {
+  name: string;
+  specialty: string;
+  yearsExperience: number;
+  photo?: string;
+  employeeId: EmployeeId;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-center sm:gap-8 sm:text-left">
+      <div
+        className={cn(
+          "shrink-0 overflow-hidden rounded-3xl border-2 border-primary/20",
+          photo ? "h-56 w-56 sm:h-64 sm:w-64" : "h-40 w-40",
+        )}
+      >
+        {photo ? (
+          <img src={photo} alt={name} className="h-full w-full object-cover" />
+        ) : (
+          <StylistAvatar name={name} employeeId={employeeId} size="lg" className="h-full w-full" />
+        )}
+      </div>
+      <div>
+        <p className="font-display text-2xl md:text-3xl">{name}</p>
+        <p className="mt-1 text-muted-foreground">
+          {specialty} · {yearsExperience} años de experiencia
+        </p>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Siempre te atiende {name.split(" ")[0]}, sin cambios de última hora.
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -372,8 +453,12 @@ function SalonHome() {
     : FEATURED_IDS_BY_TYPE[tipo];
   const noShowFeeEur = profile.noShowFeeEur ?? 0;
   const noShowNoticeHours = profile.noShowNoticeHours ?? 2;
-  const bentoItems = bentoItemsFor(tipo, noShowFeeEur, noShowNoticeHours);
-  const faq = faqFor(tipo, noShowFeeEur, noShowNoticeHours);
+  // Salón con un solo profesional (caso Adam): la sección de equipo, el
+  // bento "Eliges barbero" y la FAQ de elegir profesional no tienen sentido.
+  const single = esUnicoProfesional(profile);
+  const soloPro = employees[0];
+  const bentoItems = bentoItemsFor(tipo, noShowFeeEur, noShowNoticeHours, single, soloPro?.name);
+  const faq = faqFor(tipo, noShowFeeEur, noShowNoticeHours, single, soloPro?.name);
   // v2: como mucho dos reseñas de ejemplo, y ya van marcadas "Ejemplo" — el
   // cambio priorizado #9 del informe pide "copy del salón real, nunca
   // genérico"; cinco reseñas inventadas pesan más que dos.
@@ -762,18 +847,33 @@ function SalonHome() {
       <section id="equipo" className="border-t border-border/40 bg-card">
         <div className="mx-auto max-w-6xl px-5 py-16 md:py-24">
           <SectionHeading eyebrow="Equipo" title="Quién te va a atender" className="mb-12" />
-          {/* Retratos grandes en vez de avatares pequeños: en una barbería la
-              cara del que te va a cortar es parte de lo que se vende. */}
-          <Reveal>
-            <TeamShowcase
-              members={employees.map((e) => ({
-                id: e.id,
-                name: e.name,
-                role: `${e.specialty} · ${e.yearsExperience} años`,
-                image: e.photo,
-              }))}
-            />
-          </Reveal>
+          {single && soloPro ? (
+            // Con un solo profesional, la rejilla de tres fichas de
+            // TeamShowcase no tiene sentido: una presentación de una sola
+            // persona, con foto grande si la hay.
+            <Reveal>
+              <SoloProfessional
+                name={soloPro.name}
+                specialty={soloPro.specialty}
+                yearsExperience={soloPro.yearsExperience}
+                photo={showsRealPhotos(tipo) ? soloPro.photo : undefined}
+                employeeId={soloPro.id}
+              />
+            </Reveal>
+          ) : (
+            /* Retratos grandes en vez de avatares pequeños: en una barbería
+               la cara del que te va a cortar es parte de lo que se vende. */
+            <Reveal>
+              <TeamShowcase
+                members={employees.map((e) => ({
+                  id: e.id,
+                  name: e.name,
+                  role: `${e.specialty} · ${e.yearsExperience} años`,
+                  image: e.photo,
+                }))}
+              />
+            </Reveal>
+          )}
         </div>
       </section>
 

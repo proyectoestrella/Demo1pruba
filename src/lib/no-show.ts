@@ -45,6 +45,22 @@ export function findClientWithPenalty(
   return clients.find((c) => isPenaltyActive(c, now) && normalizePhone(c.phone) === target);
 }
 
+/**
+ * Cliente ya fichado cuyo teléfono coincide con el tecleado, sin importar la
+ * penalización — a diferencia de `findClientWithPenalty`, esto es para
+ * reconocer a quien repite (reserva pública, mostrador) y enlazarla con su
+ * historial, no para bloquearla. `undefined` si no hay 9 dígitos o ninguna
+ * ficha coincide: entonces se crea una ficha nueva, como hasta ahora.
+ */
+export function findClientByPhone(
+  clients: Client[],
+  phoneInput: string | undefined | null,
+): Client | undefined {
+  const target = normalizePhone(phoneInput);
+  if (target.length < 9) return undefined;
+  return clients.find((c) => normalizePhone(c.phone) === target);
+}
+
 /** ¿Empieza la cita dentro de las próximas `noticeHours`? Cancelar dentro de ese margen cuenta como plantón. */
 export function isWithinNoticeWindow(
   startISO: string,
