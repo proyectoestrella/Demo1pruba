@@ -1,12 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { employees, serviceMap } from "@/lib/mock/salon";
+import { beforeLoadSiModuloVisible, useRedirigirSiModuloOculto } from "@/lib/route-guards";
 import { PageHeader } from "@/components/PageHeader";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
-export const Route = createFileRoute("/app/employees")({ component: Team });
+export const Route = createFileRoute("/app/employees")({
+  beforeLoad: beforeLoadSiModuloVisible("equipo"),
+  component: Team,
+});
 
 const DAYS = ["D", "L", "M", "X", "J", "V", "S"];
 
@@ -28,8 +32,10 @@ function topServicesFor(appointments: ReturnType<typeof useSalonStore.getState>[
 }
 
 function Team() {
+  const visible = useRedirigirSiModuloOculto("equipo");
   const appointments = useSalonStore((s) => s.appointments);
   const today = new Date().getDay();
+  if (!visible) return null;
 
   return (
     <div className="space-y-6">

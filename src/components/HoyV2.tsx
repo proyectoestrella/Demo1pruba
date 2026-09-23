@@ -7,7 +7,6 @@ import {
   UserPlus,
   TrendingUp,
   Users,
-  Clock3,
   Wallet,
 } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
@@ -28,6 +27,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
+import { RecargosPendientes } from "@/components/RecargosPendientes";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { WalkInDialog } from "@/components/WalkInDialog";
 import { KpiCard } from "@/components/KpiCard";
@@ -52,9 +52,9 @@ function greetingForHour(hour: number) {
  */
 export function HoyV2() {
   const appointments = useSalonStore((s) => s.appointments);
-  const clients = useSalonStore((s) => s.clients);
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur ?? 0);
+  const mostrarSolicitudes = useSalonStore((s) => s.salonProfile.mostrarSolicitudes ?? true);
   const smartSpread = useSalonStore((s) => s.salonProfile.smartSpread ?? false);
   const lastSlotBufferMin = useSalonStore((s) => s.salonProfile.lastSlotBufferMin ?? 0);
   const [selected, setSelected] = useState<Appointment | null>(null);
@@ -85,14 +85,6 @@ export function HoyV2() {
   const cajaLabel = period === "hoy" ? "Caja de hoy" : `Caja ${suffix}`;
   const clientesLabel =
     period === "hoy" || period === "semana" ? "Clientes nuevos" : `Clientes nuevos ${suffix}`;
-
-  // Plantones pendientes de cobrar ahora mismo — no es un cierre mensual de
-  // verdad (no hay fecha de cobro guardada), es "cuánto hay sobre la mesa" en
-  // el momento, que es lo que le sirve a Tomás para tantear en 3 segundos.
-  const clientesPenalizados = useMemo(
-    () => clients.filter((c) => (c.penaltyEur ?? 0) > 0).length,
-    [clients],
-  );
 
   const horasDeHoy = useMemo(
     () => dayOccupancyBars(appointments, toDateKey(now), employees, lastSlotBufferMin),
@@ -154,7 +146,7 @@ export function HoyV2() {
         </Button>
       </div>
 
-      <PendingRequestsBanner onOpenDetail={setSelected} />
+      {mostrarSolicitudes && <PendingRequestsBanner onOpenDetail={setSelected} />}
 
       <PeriodFilter
         value={period}
@@ -200,16 +192,10 @@ export function HoyV2() {
         />
       </div>
 
-      {/* Plantones pendientes — solo si la política está activa y hay algo que cobrar. */}
-      {noShowFeeEur > 0 && clientesPenalizados > 0 && (
-        <div className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3">
-          <Clock3 className="h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
-          <p className="text-sm text-destructive">
-            Plantones este mes: <strong>{clientesPenalizados}</strong> ·{" "}
-            {eur(clientesPenalizados * noShowFeeEur)} pendientes
-          </p>
-        </div>
-      )}
+      {/* Recargos por plantón — justo debajo de las métricas, lo primero que
+          se ve tras ellas. Solo con la política activa: apagada, ocultarlo es
+          más claro que enseñar el estado vacío del componente. */}
+      {noShowFeeEur > 0 && <RecargosPendientes title="Recargos pendientes" />}
 
       {/* Reparto de agenda: cómo va cargado el día, hora a hora, todo el equipo. */}
       {smartSpread && horasDeHoy.length > 0 && (
@@ -365,7 +351,8 @@ export function HoyV2() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{a.clientName}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {serviceLabelOf(a)} · con {emp.name}
+                      {serviceLabelOf(a)}
+                      {employees.length > 1 && ` · con ${emp.name}`}
                     </p>
                   </div>
                   {started ? (

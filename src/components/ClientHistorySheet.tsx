@@ -11,7 +11,7 @@ import {
   penaltyExpiresAt,
   penaltyReasonLabel,
 } from "@/lib/plantones";
-import { employeeMap } from "@/lib/mock/salon";
+import { employeeMap, employees } from "@/lib/mock/salon";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { eur } from "@/lib/copy";
 import type { Client } from "@/lib/mock/types";
@@ -262,7 +262,9 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
                   <StylistDot employeeId={a.employeeId} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{serviceLabelOf(a) || "—"}</p>
-                    <p className="text-xs text-muted-foreground">con {emp?.name}</p>
+                    {employees.length > 1 && (
+                      <p className="text-xs text-muted-foreground">con {emp?.name}</p>
+                    )}
                   </div>
                   <StatusBadge status={a.status} />
                 </div>
@@ -313,7 +315,9 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
                   <StylistDot employeeId={a.employeeId} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{serviceLabelOf(a) || "—"}</p>
-                    <p className="text-xs text-muted-foreground">con {emp?.name}</p>
+                    {employees.length > 1 && (
+                      <p className="text-xs text-muted-foreground">con {emp?.name}</p>
+                    )}
                   </div>
                   <span className="text-sm font-medium">€{a.priceEur}</span>
                   <StatusBadge status={a.status} />

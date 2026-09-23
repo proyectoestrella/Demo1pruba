@@ -20,7 +20,13 @@ import { salon } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
 import { useRealSalon } from "@/lib/use-real-salon";
 import { useSyncPanelV2FromUrl, usePanelV2 } from "@/lib/use-panel-v2";
-import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "@/lib/demo-profile";
+import {
+  DEMO_PARAM,
+  blankDemoProfile,
+  decodeDemoProfile,
+  moduloVisible,
+  type ModuloOcultable,
+} from "@/lib/demo-profile";
 import { inferBusinessType } from "@/lib/business-type";
 import { ViewSwitcher } from "@/components/ViewSwitcher";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
@@ -50,7 +56,14 @@ export const Route = createFileRoute("/app")({
   component: DashboardLayout,
 });
 
-type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
+type NavItem = {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+  /** Módulo que esta demo puede ocultar (ver `demo-profile.ts`). Ausente = siempre visible. */
+  modulo?: ModuloOcultable;
+};
 
 /** Nav grouped into logical clusters, each with its own faint uppercase heading. */
 const navGroups: { label: string; items: NavItem[] }[] = [
@@ -60,14 +73,14 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { to: "/app/calendar", label: "Calendario", icon: Calendar },
       { to: "/app/appointments", label: "Citas", icon: ListChecks },
-      { to: "/app/waitlist", label: "Lista de espera", icon: Clock },
+      { to: "/app/waitlist", label: "Lista de espera", icon: Clock, modulo: "lista-espera" },
     ],
   },
   {
     label: "Negocio",
     items: [
       { to: "/app/clients", label: "Clientes", icon: Users },
-      { to: "/app/employees", label: "Equipo", icon: Users },
+      { to: "/app/employees", label: "Equipo", icon: Users, modulo: "equipo" },
       { to: "/app/services", label: "Servicios", icon: Scissors },
     ],
   },
@@ -75,7 +88,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: "Crecimiento",
     items: [
       { to: "/app/insights", label: "Analítica", icon: ChartColumn },
-      { to: "/app/marketing", label: "Marketing", icon: Megaphone },
+      { to: "/app/marketing", label: "Marketing", icon: Megaphone, modulo: "marketing" },
     ],
   },
 ];
@@ -86,6 +99,19 @@ const allNavItems: NavItem[] = [...navGroups.flatMap((g) => g.items), settingsIt
 
 function isActive(item: NavItem, path: string) {
   return item.exact ? path === item.to : path === item.to || path.startsWith(item.to + "/");
+}
+
+/** Grupos de navegación tras aplicar los módulos ocultos de esta demo, sin grupos vacíos. */
+function useVisibleNavGroups() {
+  const modulosOcultos = useSalonStore((s) => s.salonProfile.modulosOcultos);
+  return navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) => !item.modulo || moduloVisible({ modulosOcultos }, item.modulo),
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
 }
 
 function NavLink({ item, active, onNavigate }: { item: NavItem; active: boolean; onNavigate?: () => void }) {
@@ -108,9 +134,10 @@ function NavLink({ item, active, onNavigate }: { item: NavItem; active: boolean;
 }
 
 function SidebarNav({ path, onNavigate }: { path: string; onNavigate?: () => void }) {
+  const visibleGroups = useVisibleNavGroups();
   return (
     <nav data-tour="nav" className="flex flex-1 flex-col space-y-4 overflow-y-auto px-3 py-3">
-      {navGroups.map((group) => (
+      {visibleGroups.map((group) => (
         <div key={group.label}>
           <p className="px-3 pb-1 text-[10px] font-medium uppercase tracking-widest text-sidebar-foreground/35">
             {group.label}

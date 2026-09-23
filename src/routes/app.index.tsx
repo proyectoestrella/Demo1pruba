@@ -23,7 +23,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { employeeMap } from "@/lib/mock/salon";
+import { employeeMap, employees } from "@/lib/mock/salon";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import type { Appointment } from "@/lib/mock/types";
 import { StylistDot } from "@/components/StylistAvatar";
@@ -31,6 +31,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
+import { RecargosPendientes } from "@/components/RecargosPendientes";
 import { KpiCard } from "@/components/KpiCard";
 import { CountUp } from "@/components/reactbits/CountUp";
 import { BorderBeam } from "@/components/magicui/border-beam";
@@ -69,6 +70,8 @@ function Home() {
 function HomeV1() {
   const appointments = useSalonStore((s) => s.appointments);
   const salonName = useSalonStore((s) => s.salonProfile.name);
+  const mostrarSolicitudes = useSalonStore((s) => s.salonProfile.mostrarSolicitudes ?? true);
+  const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur ?? 0);
   const revData = revenueByDay(appointments, 30);
   const [selected, setSelected] = useState<Appointment | null>(null);
   const greeting = greetingForHour(new Date().getHours());
@@ -167,7 +170,7 @@ function HomeV1() {
         <p className="text-sm text-muted-foreground">Así va {salonName} hoy.</p>
       </div>
 
-      <PendingRequestsBanner onOpenDetail={setSelected} />
+      {mostrarSolicitudes && <PendingRequestsBanner onOpenDetail={setSelected} />}
 
       <PeriodFilter
         value={period}
@@ -190,6 +193,10 @@ function HomeV1() {
           />
         ))}
       </div>
+
+      {/* Recargos por plantón: lo primero después de las métricas, sobre todo
+          para el salón que no enseña el bloque de solicitudes (arriba). */}
+      {noShowFeeEur > 0 && <RecargosPendientes title="Recargos pendientes" />}
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-muted-foreground">
         <span>
@@ -367,7 +374,8 @@ function HomeV1() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{a.clientName}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {serviceLabelOf(a)} · {a.duration} min · con {emp.name}
+                      {serviceLabelOf(a)} · {a.duration} min
+                      {employees.length > 1 && ` · con ${emp.name}`}
                     </p>
                   </div>
                   <span className="shrink-0 text-sm font-medium">€{a.priceEur}</span>

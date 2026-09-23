@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { salon } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
+import { moduloVisible, type ModuloOcultable } from "@/lib/demo-profile";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
@@ -57,7 +58,14 @@ import {
  */
 const ALTO_BARRA_INFERIOR = "calc(4.5rem + env(safe-area-inset-bottom, 0px))";
 
-type NavItem = { to: string; label: string; icon: LucideIcon; exact?: boolean };
+type NavItem = {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  exact?: boolean;
+  /** Módulo que esta demo puede ocultar (ver `demo-profile.ts`). Ausente = siempre visible. */
+  modulo?: ModuloOcultable;
+};
 
 const MAIN_ITEMS: NavItem[] = [
   { to: "/app", label: "Hoy", icon: Home, exact: true },
@@ -66,15 +74,13 @@ const MAIN_ITEMS: NavItem[] = [
 ];
 
 const MORE_ITEMS: NavItem[] = [
-  { to: "/app/waitlist", label: "Lista de espera", icon: Clock },
+  { to: "/app/waitlist", label: "Lista de espera", icon: Clock, modulo: "lista-espera" },
   { to: "/app/services", label: "Servicios", icon: Scissors },
-  { to: "/app/employees", label: "Equipo", icon: Users },
+  { to: "/app/employees", label: "Equipo", icon: Users, modulo: "equipo" },
   { to: "/app/insights", label: "Analítica", icon: ChartColumn },
-  { to: "/app/marketing", label: "Marketing", icon: Megaphone },
+  { to: "/app/marketing", label: "Marketing", icon: Megaphone, modulo: "marketing" },
   { to: "/app/settings", label: "Ajustes", icon: Settings },
 ];
-
-const ALL_SIDEBAR_ITEMS = [...MAIN_ITEMS, ...MORE_ITEMS];
 
 function isActive(to: string, path: string, exact?: boolean) {
   return exact ? path === to : path === to || path.startsWith(to + "/");
@@ -83,10 +89,17 @@ function isActive(to: string, path: string, exact?: boolean) {
 export function PanelV2Shell() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const salonName = useSalonStore((s) => s.salonProfile.name);
+  const modulosOcultos = useSalonStore((s) => s.salonProfile.modulosOcultos);
   const [moreOpen, setMoreOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
+
+  const visible = (item: NavItem) =>
+    !item.modulo || moduloVisible({ modulosOcultos }, item.modulo);
+  const moreItems = MORE_ITEMS.filter(visible);
+  const allSidebarItems = [...MAIN_ITEMS, ...moreItems];
+
   const activeMain = MAIN_ITEMS.find((i) => isActive(i.to, path, i.exact));
-  const activeMore = MORE_ITEMS.find((i) => isActive(i.to, path));
+  const activeMore = moreItems.find((i) => isActive(i.to, path));
   const title = activeMain?.label ?? activeMore?.label ?? "Panel";
 
   return (
@@ -97,7 +110,7 @@ export function PanelV2Shell() {
           <Logo />
         </Link>
         <nav className="flex flex-1 flex-col items-center gap-1">
-          {ALL_SIDEBAR_ITEMS.map((item) => {
+          {allSidebarItems.map((item) => {
             const active = isActive(item.to, path, item.exact);
             return (
               <Link
@@ -195,7 +208,7 @@ export function PanelV2Shell() {
               <SheetDescription className="sr-only">Resto de secciones del panel</SheetDescription>
             </SheetHeader>
             <div className="grid grid-cols-3 gap-2 px-4 pb-6">
-              {MORE_ITEMS.map((item) => {
+              {moreItems.map((item) => {
                 const active = isActive(item.to, path);
                 return (
                   <Link

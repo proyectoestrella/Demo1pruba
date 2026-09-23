@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
+import { beforeLoadSiModuloVisible, useRedirigirSiModuloOculto } from "@/lib/route-guards";
 import { useBusinessType } from "@/lib/use-display-profile";
 import { professionalWord } from "@/lib/business-type";
 import { employeeMap, employees } from "@/lib/mock/salon";
@@ -40,7 +41,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CalendarCheck, Clock, ListChecks, MessageCircle, Plus, Trash2 } from "lucide-react";
 
-export const Route = createFileRoute("/app/waitlist")({ component: Waitlist });
+export const Route = createFileRoute("/app/waitlist")({
+  beforeLoad: beforeLoadSiModuloVisible("lista-espera"),
+  component: Waitlist,
+});
 
 /** Fecha y hora en el formato que piden `<input type="date">` y `type="time"`, en hora local. */
 function toDateInput(d: Date) {
@@ -63,6 +67,7 @@ function horaSugerida(lastFreedSlot: string | null): Date {
 }
 
 function Waitlist() {
+  const visible = useRedirigirSiModuloOculto("lista-espera");
   const waitlist = useSalonStore((s) => s.waitlist);
   const services = useSalonStore((s) => s.services);
   const salonName = useSalonStore((s) => s.salonProfile.name);
@@ -100,6 +105,8 @@ function Waitlist() {
   // El primero de la lista es el que lleva más tiempo esperando: a ese es a
   // quien toca avisar cuando se libera un hueco.
   const siguiente = waitlist[0];
+
+  if (!visible) return null;
 
   return (
     <div className="space-y-6">

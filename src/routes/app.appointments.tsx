@@ -104,6 +104,7 @@ function Appointments() {
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
   const [newApptOpen, setNewApptOpen] = useState(false);
+  const mostrarSolicitudes = useSalonStore((s) => s.salonProfile.mostrarSolicitudes ?? true);
 
   // El recorte va al final: si se aplicara antes, buscar solo miraría dentro de
   // las 60 citas más recientes.
@@ -142,7 +143,7 @@ function Appointments() {
         }
       />
 
-      <PendingRequestsBanner onOpenDetail={setSelected} />
+      {mostrarSolicitudes && <PendingRequestsBanner onOpenDetail={setSelected} />}
 
       <div className="flex flex-wrap gap-2">
         <div className="relative w-full sm:max-w-xs">

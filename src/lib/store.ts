@@ -38,7 +38,11 @@ interface SalonState {
   waitlist: WaitlistEntry[];
   clients: Client[];
   services: Service[];
-  salonProfile: SalonProfile;
+  // El perfil real vive tipado como `SalonProfile`, pero cuando esta ventana
+  // enseña una demo (`useApplyDemoFromUrl` en app.tsx) se le mezclan también
+  // los campos de personalización de `DemoProfile` (modulosOcultos,
+  // mostrarSolicitudes...), que no forman parte del negocio real.
+  salonProfile: SalonProfile & Partial<Pick<DemoProfile, "modulosOcultos" | "mostrarSolicitudes">>;
   /** Salones preparados para enseñar en visitas — ver demo-profile.ts. */
   savedDemos: SavedDemo[];
   /**

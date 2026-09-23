@@ -1,16 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { clientFrequency, mostBookedService } from "@/lib/derive";
+import { beforeLoadSiModuloVisible, useRedirigirSiModuloOculto } from "@/lib/route-guards";
 import { PageHeader } from "@/components/PageHeader";
 import { ComingSoonAction } from "@/components/ComingSoonAction";
 import { CampanasPanel } from "@/components/campanas/CampanasPanel";
 import { Megaphone, Sparkles, MessageCircle } from "lucide-react";
 
-export const Route = createFileRoute("/app/marketing")({ component: Marketing });
+export const Route = createFileRoute("/app/marketing")({
+  beforeLoad: beforeLoadSiModuloVisible("marketing"),
+  component: Marketing,
+});
 
 function Marketing() {
+  const visible = useRedirigirSiModuloOculto("marketing");
   const appointments = useSalonStore((s) => s.appointments);
   const clients = useSalonStore((s) => s.clients);
+  if (!visible) return null;
 
   const withStats = clients
     .map((c) => ({ ...c, ...clientFrequency(appointments, c.id) }))

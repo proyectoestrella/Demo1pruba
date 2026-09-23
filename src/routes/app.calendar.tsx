@@ -194,14 +194,17 @@ function CalendarView() {
         })}
       </div>
 
-      <div className="flex flex-wrap items-center gap-4 text-xs">
-        {employees.map((e) => (
-          <span key={e.id} className="flex items-center gap-1.5">
-            <StylistDot employeeId={e.id} />
-            {e.name}
-          </span>
-        ))}
-      </div>
+      {/* Con un único profesional no hace falta leyenda: todo el calendario es de esa persona. */}
+      {employees.length > 1 && (
+        <div className="flex flex-wrap items-center gap-4 text-xs">
+          {employees.map((e) => (
+            <span key={e.id} className="flex items-center gap-1.5">
+              <StylistDot employeeId={e.id} />
+              {e.name}
+            </span>
+          ))}
+        </div>
+      )}
 
       {effectiveView === "month" ? (
         <MonthGrid
