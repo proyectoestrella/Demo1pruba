@@ -310,7 +310,11 @@ export function franjaMasFloja(
   return { dia: DIAS[Number(dia)], franja, citas };
 }
 
-export function aiInsights(appts: Appointment[], employees: Employee[] = [], now: Date = new Date()) {
+export function aiInsights(
+  appts: Appointment[],
+  employees: Employee[] = [],
+  now: Date = new Date(),
+) {
   const champion = loyaltyChampion(appts, employees);
   const mix = serviceMix(appts);
   const totalRev = mix.reduce((s, m) => s + m.revenue, 0);
@@ -504,4 +508,171 @@ export function cancellationsTrend(appts: Appointment[]): KpiTrend {
   const current = cancellationsInRange(appts, now - WEEK_MS, now);
   const previous = cancellationsInRange(appts, now - 2 * WEEK_MS, now - WEEK_MS);
   return { current, previous, deltaPct: pctChange(current, previous), spark };
+}
+
+/* ---------------------------------------------------------------------------
+ * Period filter for the KPI section ("Hoy" · "Esta semana" · "Este mes" ·
+ * "Personalizado"). Purely additive on top of the trend functions above:
+ * "hoy" reuses them exactly (byte-for-byte the same numbers as before this
+ * filter existed), the other periods generalize the same sliding-window math
+ * to a different window length.
+ * ------------------------------------------------------------------------- */
+
+export type MetricPeriod = "hoy" | "semana" | "mes" | "personalizado";
+export interface CustomRange {
+  from: Date;
+  to: Date;
+}
+
+export const PERIOD_CONTEXT: Record<MetricPeriod, string> = {
+  hoy: "vs. ayer",
+  semana: "vs. semana pasada",
+  mes: "vs. mes pasado",
+  personalizado: "vs. periodo anterior de igual duración",
+};
+
+/** Word/phrase to append to a metric's base label for the selected period. */
+export function periodLabelSuffix(period: MetricPeriod): string {
+  switch (period) {
+    case "hoy":
+      return "hoy";
+    case "semana":
+      return "esta semana";
+    case "mes":
+      return "este mes";
+    case "personalizado":
+      return "en el periodo";
+  }
+}
+
+const MONTH_MS = 30 * DAY_MS;
+
+function endOfDayTs(d: Date): number {
+  const c = new Date(d);
+  c.setHours(23, 59, 59, 999);
+  return c.getTime();
+}
+
+function startOfDayTs(d: Date): number {
+  const c = new Date(d);
+  c.setHours(0, 0, 0, 0);
+  return c.getTime();
+}
+
+/** Sliding window [end - durationMs, end) for a given period, capped at `now`. */
+function windowFor(
+  period: "mes" | "personalizado",
+  now: Date,
+  custom?: CustomRange,
+): { end: number; durationMs: number } {
+  const nowTs = now.getTime();
+  if (period === "mes") return { end: nowTs, durationMs: MONTH_MS };
+  if (custom) {
+    const end = Math.min(endOfDayTs(custom.to), nowTs);
+    const durationMs = Math.max(DAY_MS, end - startOfDayTs(custom.from));
+    return { end, durationMs };
+  }
+  return { end: nowTs, durationMs: DAY_MS };
+}
+
+type RangeAgg = (appts: Appointment[], start: number, end: number) => number;
+
+const aggCitas: RangeAgg = (appts, start, end) =>
+  appts.filter((a) => {
+    const t = +new Date(a.start);
+    return t >= start && t < end && a.status !== "cancelled";
+  }).length;
+
+const aggIngresos: RangeAgg = (appts, start, end) =>
+  appts
+    .filter((a) => {
+      const t = +new Date(a.start);
+      return t >= start && t < end && a.status !== "cancelled" && a.status !== "no-show";
+    })
+    .reduce((sum, a) => sum + a.priceEur, 0);
+
+const aggOcupacion: RangeAgg = (appts, start, end) => {
+  const totalSlots = weeklyCapacitySlots() * ((end - start) / WEEK_MS);
+  const inRange = appts.filter((a) => {
+    const t = +new Date(a.start);
+    return t >= start && t < end && a.status !== "cancelled";
+  });
+  const used = inRange.reduce((s, a) => s + a.duration / 30, 0);
+  return totalSlots > 0 ? Math.min(100, Math.round((used / totalSlots) * 100)) : 0;
+};
+
+const aggClientesNuevos: RangeAgg = newClientsInRange;
+const aggCancelaciones: RangeAgg = cancellationsInRange;
+
+/** Generic sliding-window trend: current window, the one right before it, and an 8-window sparkline. */
+function slidingTrend(
+  appts: Appointment[],
+  end: number,
+  durationMs: number,
+  agg: RangeAgg,
+): KpiTrend {
+  const start = end - durationMs;
+  const spark: number[] = [];
+  for (let i = 7; i >= 0; i--) {
+    spark.push(agg(appts, end - (i + 1) * durationMs, end - i * durationMs));
+  }
+  const current = agg(appts, start, end);
+  const previous = agg(appts, start - durationMs, start);
+  return { current, previous, deltaPct: pctChange(current, previous), spark };
+}
+
+export interface PeriodTrends {
+  citas: KpiTrend;
+  ingresos: KpiTrend;
+  ocupacion: KpiTrend;
+  clientesNuevos: KpiTrend;
+  cancelaciones: KpiTrend;
+}
+
+/**
+ * All five KPI trends for the selected period.
+ *
+ * "hoy" reproduces exactly what the panel showed before this filter existed:
+ * citas/ingresos compare calendar-day-to-calendar-day, and
+ * ocupación/clientes/cancelaciones compare the trailing 7 days — that mix is
+ * intentional, not a bug, so "semana" keeps the same trailing-7-days numbers
+ * for those three (a week IS that window) and only changes citas/ingresos to
+ * also use it. "mes" and "personalizado" recompute all five over the chosen
+ * window.
+ */
+export function trendsForPeriod(
+  appts: Appointment[],
+  period: MetricPeriod,
+  now: Date = new Date(),
+  custom?: CustomRange,
+): PeriodTrends {
+  let citas: KpiTrend;
+  let ingresos: KpiTrend;
+  if (period === "hoy") {
+    citas = appointmentsTodayTrend(appts);
+    ingresos = revenueTodayTrend(appts);
+  } else if (period === "semana") {
+    citas = slidingTrend(appts, now.getTime(), WEEK_MS, aggCitas);
+    ingresos = slidingTrend(appts, now.getTime(), WEEK_MS, aggIngresos);
+  } else {
+    const { end, durationMs } = windowFor(period, now, custom);
+    citas = slidingTrend(appts, end, durationMs, aggCitas);
+    ingresos = slidingTrend(appts, end, durationMs, aggIngresos);
+  }
+
+  let ocupacion: KpiTrend;
+  let clientesNuevos: KpiTrend;
+  let cancelaciones: KpiTrend;
+  if (period === "hoy" || period === "semana") {
+    ocupacion = weeklyOccupancyTrend(appts);
+    clientesNuevos = newClientsTrend(appts);
+    cancelaciones = cancellationsTrend(appts);
+  } else {
+    const { end, durationMs } = windowFor(period, now, custom);
+    ocupacion = slidingTrend(appts, end, durationMs, aggOcupacion);
+    clientesNuevos = slidingTrend(appts, end, durationMs, aggClientesNuevos);
+    cancelaciones = slidingTrend(appts, end, durationMs, aggCancelaciones);
+  }
+
+  return { citas, ingresos, ocupacion, clientesNuevos, cancelaciones };
 }

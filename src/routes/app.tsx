@@ -54,7 +54,7 @@ type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?
 
 /** Nav grouped into logical clusters, each with its own faint uppercase heading. */
 const navGroups: { label: string; items: NavItem[] }[] = [
-  { label: "General", items: [{ to: "/app", label: "Inicio", icon: LayoutDashboard, exact: true }] },
+  { label: "General", items: [{ to: "/app", label: "Hoy", icon: LayoutDashboard, exact: true }] },
   {
     label: "Agenda",
     items: [

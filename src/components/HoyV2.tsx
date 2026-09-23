@@ -12,10 +12,10 @@ import {
 } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
 import {
-  appointmentsTodayTrend,
-  revenueTodayTrend,
-  weeklyOccupancyTrend,
-  newClientsTrend,
+  periodLabelSuffix,
+  trendsForPeriod,
+  type CustomRange,
+  type MetricPeriod,
 } from "@/lib/derive";
 import { dayOccupancyBars, toDateKey } from "@/lib/reparto";
 import { cierreDelDia } from "@/lib/caja";
@@ -31,6 +31,7 @@ import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { WalkInDialog } from "@/components/WalkInDialog";
 import { KpiCard } from "@/components/KpiCard";
+import { PeriodFilter } from "@/components/PeriodFilter";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -61,7 +62,29 @@ export function HoyV2() {
   const [phoneApptOpen, setPhoneApptOpen] = useState(false);
   const greeting = greetingForHour(new Date().getHours());
 
+  // Periodo de las métricas: "hoy" reproduce exactamente lo de siempre.
+  const [period, setPeriod] = useState<MetricPeriod>("hoy");
+  const [customRange, setCustomRange] = useState<CustomRange | undefined>(undefined);
+  const suffix = periodLabelSuffix(period);
+
   const now = new Date();
+  const trends = trendsForPeriod(appointments, period, now, customRange);
+  const context = {
+    hoy: "vs. ayer",
+    semana: "vs. semana pasada",
+    mes: "vs. mes pasado",
+    personalizado: "vs. periodo anterior de igual duración",
+  }[period];
+  const weeklyContext = period === "hoy" || period === "semana" ? "vs. semana pasada" : context;
+  const ocupacionLabel =
+    period === "mes"
+      ? "Ocupación mensual"
+      : period === "personalizado"
+        ? "Ocupación del periodo"
+        : "Ocupación semanal";
+  const cajaLabel = period === "hoy" ? "Caja de hoy" : `Caja ${suffix}`;
+  const clientesLabel =
+    period === "hoy" || period === "semana" ? "Clientes nuevos" : `Clientes nuevos ${suffix}`;
 
   // Plantones pendientes de cobrar ahora mismo — no es un cierre mensual de
   // verdad (no hay fecha de cobro guardada), es "cuánto hay sobre la mesa" en
@@ -133,39 +156,46 @@ export function HoyV2() {
 
       <PendingRequestsBanner onOpenDetail={setSelected} />
 
+      <PeriodFilter
+        value={period}
+        onChange={setPeriod}
+        customRange={customRange}
+        onCustomRangeChange={setCustomRange}
+      />
+
       <div className="grid grid-cols-2 gap-3">
         <KpiCard
-          label="Citas hoy"
+          label={`Citas ${suffix}`}
           icon={Calendar}
-          trend={appointmentsTodayTrend(appointments)}
+          trend={trends.citas}
           format={(n) => Math.round(n).toString()}
-          context="vs. ayer"
+          context={context}
           goodDirection="up"
-          fallbackPct={12}
+          fallbackPct={period === "hoy" ? 12 : undefined}
         />
         <KpiCard
-          label="Caja de hoy"
+          label={cajaLabel}
           icon={Euro}
-          trend={revenueTodayTrend(appointments)}
+          trend={trends.ingresos}
           format={(n) => `€${Math.round(n).toLocaleString("es")}`}
-          context="vs. ayer"
+          context={context}
           goodDirection="up"
-          fallbackPct={9}
+          fallbackPct={period === "hoy" ? 9 : undefined}
         />
         <KpiCard
-          label="Ocupación semanal"
+          label={ocupacionLabel}
           icon={TrendingUp}
-          trend={weeklyOccupancyTrend(appointments)}
+          trend={trends.ocupacion}
           format={(n) => `${Math.round(n)}%`}
-          context="vs. semana pasada"
+          context={weeklyContext}
           goodDirection="up"
         />
         <KpiCard
-          label="Clientes nuevos"
+          label={clientesLabel}
           icon={Users}
-          trend={newClientsTrend(appointments)}
+          trend={trends.clientesNuevos}
           format={(n) => Math.round(n).toString()}
-          context="vs. semana pasada"
+          context={weeklyContext}
           goodDirection="up"
         />
       </div>
@@ -288,7 +318,9 @@ export function HoyV2() {
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">Día cerrado: todo marcado como cobrado.</p>
+              <p className="text-xs text-muted-foreground">
+                Día cerrado: todo marcado como cobrado.
+              </p>
             )}
 
             <p className="text-xs text-muted-foreground">
@@ -357,11 +389,7 @@ export function HoyV2() {
       />
       <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
       {/* `allowChaining`: los sábados de Cardedal son 60 llamadas seguidas. */}
-      <NewAppointmentDialog
-        open={phoneApptOpen}
-        onOpenChange={setPhoneApptOpen}
-        allowChaining
-      />
+      <NewAppointmentDialog open={phoneApptOpen} onOpenChange={setPhoneApptOpen} allowChaining />
     </div>
   );
 }

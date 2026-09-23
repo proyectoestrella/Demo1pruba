@@ -2,14 +2,13 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import {
-  appointmentsTodayTrend,
-  cancellationsTrend,
   mostBookedService,
-  newClientsTrend,
+  periodLabelSuffix,
   revenueByDay,
-  revenueTodayTrend,
-  weeklyOccupancyTrend,
+  trendsForPeriod,
+  type CustomRange,
   type KpiTrend,
+  type MetricPeriod,
 } from "@/lib/derive";
 import { Calendar, Euro, Users, TrendingUp, CalendarX, type LucideIcon } from "lucide-react";
 import {
@@ -37,6 +36,7 @@ import { CountUp } from "@/components/reactbits/CountUp";
 import { BorderBeam } from "@/components/magicui/border-beam";
 import { usePanelV2 } from "@/lib/use-panel-v2";
 import { HoyV2 } from "@/components/HoyV2";
+import { PeriodFilter } from "@/components/PeriodFilter";
 
 const CHART_TOOLTIP_STYLE = {
   background: "var(--color-card)",
@@ -73,6 +73,18 @@ function HomeV1() {
   const [selected, setSelected] = useState<Appointment | null>(null);
   const greeting = greetingForHour(new Date().getHours());
 
+  // Periodo de las métricas: "hoy" reproduce exactamente lo de siempre.
+  const [period, setPeriod] = useState<MetricPeriod>("hoy");
+  const [customRange, setCustomRange] = useState<CustomRange | undefined>(undefined);
+  const trends = trendsForPeriod(appointments, period, new Date(), customRange);
+  const suffix = periodLabelSuffix(period);
+  const context = {
+    hoy: "vs. ayer",
+    semana: "vs. semana pasada",
+    mes: "vs. mes pasado",
+    personalizado: "vs. periodo anterior de igual duración",
+  }[period];
+
   const kpis: {
     label: string;
     icon: LucideIcon;
@@ -83,45 +95,51 @@ function HomeV1() {
     fallbackPct?: number;
   }[] = [
     {
-      label: "Citas hoy",
+      label: `Citas ${suffix}`,
       icon: Calendar,
-      trend: appointmentsTodayTrend(appointments),
+      trend: trends.citas,
       format: (n) => Math.round(n).toString(),
-      context: "vs. ayer",
+      context,
       goodDirection: "up",
-      fallbackPct: 12,
+      fallbackPct: period === "hoy" ? 12 : undefined,
     },
     {
-      label: "Ingresos hoy",
+      label: `Ingresos ${suffix}`,
       icon: Euro,
-      trend: revenueTodayTrend(appointments),
+      trend: trends.ingresos,
       format: (n) => `€${Math.round(n).toLocaleString("es")}`,
-      context: "vs. ayer",
+      context,
       goodDirection: "up",
-      fallbackPct: 9,
+      fallbackPct: period === "hoy" ? 9 : undefined,
     },
     {
-      label: "Ocupación semanal",
+      label:
+        period === "mes"
+          ? "Ocupación mensual"
+          : period === "personalizado"
+            ? "Ocupación del periodo"
+            : "Ocupación semanal",
       icon: TrendingUp,
-      trend: weeklyOccupancyTrend(appointments),
+      trend: trends.ocupacion,
       format: (n) => `${Math.round(n)}%`,
-      context: "vs. semana pasada",
+      context: period === "hoy" || period === "semana" ? "vs. semana pasada" : context,
       goodDirection: "up",
     },
     {
-      label: "Clientes nuevos",
+      label:
+        period === "hoy" || period === "semana" ? "Clientes nuevos" : `Clientes nuevos ${suffix}`,
       icon: Users,
-      trend: newClientsTrend(appointments),
+      trend: trends.clientesNuevos,
       format: (n) => Math.round(n).toString(),
-      context: "vs. semana pasada",
+      context: period === "hoy" || period === "semana" ? "vs. semana pasada" : context,
       goodDirection: "up",
     },
     {
-      label: "Cancelaciones",
+      label: period === "hoy" || period === "semana" ? "Cancelaciones" : `Cancelaciones ${suffix}`,
       icon: CalendarX,
-      trend: cancellationsTrend(appointments),
+      trend: trends.cancelaciones,
       format: (n) => Math.round(n).toString(),
-      context: "vs. semana pasada",
+      context: period === "hoy" || period === "semana" ? "vs. semana pasada" : context,
       // Unlike the other KPIs, more cancellations is bad news, not good.
       goodDirection: "down",
     },
@@ -150,6 +168,13 @@ function HomeV1() {
       </div>
 
       <PendingRequestsBanner onOpenDetail={setSelected} />
+
+      <PeriodFilter
+        value={period}
+        onChange={setPeriod}
+        customRange={customRange}
+        onCustomRangeChange={setCustomRange}
+      />
 
       <div data-tour="kpis" className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         {kpis.map((k) => (
