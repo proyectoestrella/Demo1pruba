@@ -46,7 +46,7 @@ export function WorkGallery({ photos = [], tipo }: { photos?: string[]; tipo?: s
 
   return (
     <section id="galeria" className="border-t border-border/40">
-      <div className="mx-auto max-w-6xl px-5 py-16 md:py-24">
+      <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24">
         <Reveal className="mb-10">
           <p className="text-xs uppercase tracking-[0.25em] text-primary">Nuestro trabajo</p>
           <h2 className="mt-2 font-display text-3xl md:text-4xl">Galería</h2>

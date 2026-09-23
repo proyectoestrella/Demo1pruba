@@ -219,12 +219,18 @@ function bentoItemsFor(
   noShowNoticeHours: number,
   single: boolean,
   proName?: string,
+  senalEur = 0,
 ) {
   const palabra = professionalWord(tipo);
+  // Señal por Bizum (caso PeluChic): el salón no penaliza, pide una señal al
+  // confirmar la cita. Se enseña en la tarjeta de cancelación, que es donde
+  // la clienta busca "qué pasa con mi dinero".
   const cancelacion =
     noShowFeeEur > 0
       ? `Hasta ${noShowNoticeHours} h antes, sin coste. Después, ${eur(noShowFeeEur)} de penalización.`
-      : "Hasta 24 horas antes, sin coste y sin dar explicaciones.";
+      : senalEur > 0
+        ? `Hasta 24 horas antes, sin coste. Al confirmar la cita se pide una señal de ${eur(senalEur)} por Bizum que se descuenta del servicio.`
+        : "Hasta 24 horas antes, sin coste y sin dar explicaciones.";
   return [
     {
       Icon: CalendarCheck,
@@ -279,6 +285,7 @@ function faqFor(
   noShowNoticeHours: number,
   single: boolean,
   proName?: string,
+  senalEur = 0,
 ) {
   const palabra = professionalWord(tipo);
   const respuestaCancelacion =
@@ -292,7 +299,9 @@ function faqFor(
     },
     {
       q: "¿Hace falta pagar por adelantado?",
-      a: `Solo en los servicios largos, de más de ${DEPOSIT_THRESHOLD_MIN} minutos: se pide un depósito del ${Math.round(
+      a: senalEur > 0
+        ? `Solo una señal de ${eur(senalEur)} por Bizum cuando el salón confirma tu cita: se descuenta del precio del servicio y el resto lo pagas en el salón.`
+        : `Solo en los servicios largos, de más de ${DEPOSIT_THRESHOLD_MIN} minutos: se pide un depósito del ${Math.round(
         DEPOSIT_RATE * 100,
       )}% que se descuenta del total y se abona en el salón.`,
     },
@@ -457,8 +466,9 @@ function SalonHome() {
   // bento "Eliges barbero" y la FAQ de elegir profesional no tienen sentido.
   const single = esUnicoProfesional(profile);
   const soloPro = employees[0];
-  const bentoItems = bentoItemsFor(tipo, noShowFeeEur, noShowNoticeHours, single, soloPro?.name);
-  const faq = faqFor(tipo, noShowFeeEur, noShowNoticeHours, single, soloPro?.name);
+  const senalEur = profile.depositEnabled ? (profile.depositAmountEur ?? 0) : 0;
+  const bentoItems = bentoItemsFor(tipo, noShowFeeEur, noShowNoticeHours, single, soloPro?.name, senalEur);
+  const faq = faqFor(tipo, noShowFeeEur, noShowNoticeHours, single, soloPro?.name, senalEur);
   // v2: como mucho dos reseñas de ejemplo, y ya van marcadas "Ejemplo" — el
   // cambio priorizado #9 del informe pide "copy del salón real, nunca
   // genérico"; cinco reseñas inventadas pesan más que dos.
@@ -510,7 +520,7 @@ function SalonHome() {
         <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/92 via-black/60 to-black/25" />
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(75%_60%_at_15%_50%,rgba(0,0,0,0.55),transparent_70%)]" />
 
-        <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:py-24 md:py-32">
+        <div className="mx-auto w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-20 sm:py-24 md:py-32">
           <AnimatedGroup variants={HERO_IN} className="max-w-2xl space-y-6">
             {/* Dos píldoras en una sola fila: estado real del salón a la
                 izquierda y el reclamo a la derecha. Apiladas competían entre sí. */}
@@ -675,7 +685,7 @@ function SalonHome() {
 
       {/* Barra de info rápida */}
       <section className="border-y border-border/60 bg-card">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-8 gap-y-3 px-5 py-4 text-sm">
+        <div className="mx-auto flex max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] flex-wrap items-center gap-x-8 gap-y-3 px-5 py-4 text-sm">
           <span className="flex items-center gap-2 font-medium text-foreground">
             <Clock className="h-4 w-4 shrink-0 text-primary" /> {estadoHoy}
           </span>
@@ -701,7 +711,7 @@ function SalonHome() {
       </div>
 
       {/* Servicios destacados */}
-      <section id="servicios" className="mx-auto max-w-6xl px-5 py-16 md:py-24">
+      <section id="servicios" className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24">
         <SectionHeading eyebrow="Más reservados" title="Servicios destacados" />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {featuredIds.map((id, i) => {
@@ -757,7 +767,7 @@ function SalonHome() {
           cr={1}
           className="[mask-image:radial-gradient(500px_circle_at_center,white,transparent)] fill-primary/25"
         />
-        <div className="relative mx-auto max-w-6xl px-5 py-16 md:py-24">
+        <div className="relative mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24">
           <SectionHeading eyebrow="Por qué aquí" title="Lo que te vas a encontrar" />
           <Reveal>
             <BentoGrid className="md:grid-rows-2 lg:grid-cols-3">
@@ -785,7 +795,7 @@ function SalonHome() {
 
       {/* Catálogo completo */}
       <section className="border-t border-border/40">
-        <div className="mx-auto max-w-6xl px-5 py-16 md:py-24">
+        <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24">
           <SectionHeading eyebrow="El menú completo" title="Todos los servicios" />
           <Reveal>
             <Accordion
@@ -846,7 +856,7 @@ function SalonHome() {
 
       {/* Equipo */}
       <section id="equipo" className="border-t border-border/40 bg-card">
-        <div className="mx-auto max-w-6xl px-5 py-16 md:py-24">
+        <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24">
           <SectionHeading eyebrow="Equipo" title="Quién te va a atender" className="mb-12" />
           {single && soloPro ? (
             // Con un solo profesional, la rejilla de tres fichas de
@@ -889,7 +899,7 @@ function SalonHome() {
       {isRealSalon ? (
         hasGoogleReviews ? (
           <section id="resenas" className="border-t border-border/40 bg-card">
-            <div className="mx-auto max-w-6xl px-5 py-16 text-center md:py-24">
+            <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 text-center md:py-24">
               <p className="text-xs uppercase tracking-[0.25em] text-primary">Reseñas</p>
               <h2 className="mt-2 font-display text-3xl md:text-4xl">
                 Lo que dicen en Google
@@ -922,7 +932,7 @@ function SalonHome() {
           </section>
         ) : null
       ) : (
-        <section id="resenas" className="mx-auto max-w-6xl px-5 py-16 md:py-24">
+        <section id="resenas" className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24">
           <Reveal className="mb-6 flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-xs uppercase tracking-[0.25em] text-primary">Reseñas</p>
@@ -963,7 +973,7 @@ function SalonHome() {
 
       {/* Preguntas frecuentes */}
       <section id="faq" className="border-t border-border/40 bg-card">
-        <div className="mx-auto max-w-6xl px-5 py-16 md:py-24">
+        <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24">
           <SectionHeading eyebrow="Antes de venir" title="Preguntas frecuentes" />
           <Reveal>
             <Accordion type="single" collapsible className="divide-y divide-border/40">
@@ -984,7 +994,7 @@ function SalonHome() {
 
       {/* Ubicación + horario */}
       <section id="ubicacion" className="border-t border-border/40">
-        <div className="mx-auto max-w-6xl px-5 py-16 md:py-24">
+        <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24">
           <SectionHeading
             eyebrow="Ubicación y horario"
             title="Te esperamos aquí"
@@ -1049,7 +1059,7 @@ function SalonHome() {
           aria-hidden="true"
           className="absolute inset-0 -z-10 bg-[radial-gradient(60%_80%_at_50%_0%,color-mix(in_oklab,var(--color-primary)_18%,transparent),transparent)]"
         />
-        <div className="mx-auto max-w-6xl px-5 py-20 text-center md:py-28">
+        <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-20 text-center md:py-28">
           <Reveal className="flex flex-col items-center">
             <h2 className="font-display text-3xl md:text-5xl">
               ¿Nos vemos <AuroraText colors={["#d6ab68", "#f0e6d2", "#b98a4d"]}>pronto</AuroraText>?

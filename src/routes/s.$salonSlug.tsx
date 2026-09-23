@@ -209,7 +209,7 @@ function SalonLayout() {
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
         {/* Barra de avance de lectura, pegada al borde inferior de la cabecera. */}
         <ScrollProgress className="absolute inset-x-0 bottom-0 top-auto h-0.5 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4">
+        <div className="mx-auto flex max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] items-center justify-between gap-4 px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
             <Link
               to="/s/$salonSlug"
@@ -321,7 +321,7 @@ function SalonLayout() {
       </main>
 
       <footer className="mt-24 border-t border-border/60 bg-card">
-        <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 md:grid-cols-4">
+        <div className="mx-auto grid max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] gap-10 px-5 py-16 md:grid-cols-4">
           <div className="md:col-span-2">
             <div className="flex items-center gap-2">
               <Logo label={profile.name} />
@@ -357,7 +357,7 @@ function SalonLayout() {
           </div>
         </div>
         <div className="border-t border-border/60">
-          <div className="mx-auto flex max-w-6xl flex-col gap-2 px-5 py-6 text-xs text-muted-foreground sm:flex-row sm:justify-between">
+          <div className="mx-auto flex max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] flex-col gap-2 px-5 py-6 text-xs text-muted-foreground sm:flex-row sm:justify-between">
             <p>© {profile.name}</p>
             <p>Privacidad · Términos · Política de cancelación</p>
           </div>

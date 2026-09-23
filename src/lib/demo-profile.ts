@@ -72,6 +72,9 @@ type DemoProfileNegocio = Pick<
   | "smartSpread"
   | "lastSlotBufferMin"
   | "priorityHours"
+  | "depositEnabled"
+  | "depositBizumPhone"
+  | "depositAmountEur"
 >;
 
 /** Campos del perfil que se pueden personalizar por demo. */
@@ -110,6 +113,10 @@ const KEYS: Record<keyof DemoProfileNegocio, string> = {
   smartSpread: "k",
   lastSlotBufferMin: "u",
   priorityHours: "y",
+  // Señal por Bizum (caso PeluChic): activa, número y cuánto.
+  depositEnabled: "fe",
+  depositBizumPhone: "fb",
+  depositAmountEur: "fa",
 };
 
 /** Nombre del search param que lleva el perfil en las rutas públicas. */
@@ -150,6 +157,10 @@ export function blankDemoProfile(): DemoProfile {
     smartSpread: false,
     lastSlotBufferMin: 0,
     priorityHours: [],
+    // Explícitas por la misma razón que noShowFeeEur: sin "fe" en el enlace, apagada.
+    depositEnabled: false,
+    depositBizumPhone: "",
+    depositAmountEur: 0,
     // Misma razón que arriba: explícitas, para que un enlace sin "mo"/"ms"/
     // "rr"/"df" no herede la personalización de la demo anterior en este
     // mismo navegador.
@@ -214,6 +225,20 @@ export function encodeDemoProfile(profile: Partial<DemoProfile>): string {
       if (!Number.isFinite(n) || n <= 0 || !(fee > 0)) continue;
       compact[short] = Math.min(48, Math.max(1, Math.round(n)));
       continue;
+    }
+    if (field === "depositEnabled") {
+      if (value !== true) continue;
+      compact[short] = 1;
+      continue;
+    }
+    if (field === "depositAmountEur") {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n <= 0 || profile.depositEnabled !== true) continue;
+      compact[short] = Math.min(200, Math.round(n * 100) / 100);
+      continue;
+    }
+    if (field === "depositBizumPhone") {
+      if (profile.depositEnabled !== true) continue;
     }
     if (field === "smartSpread") {
       if (value !== true) continue;
@@ -368,6 +393,11 @@ export function decodeDemoProfile(raw: string | undefined | null): Partial<DemoP
     } else if (field === "noShowNoticeHours") {
       const n = Number(value);
       if (Number.isFinite(n) && n >= 1 && n <= 48) out.noShowNoticeHours = Math.round(n);
+    } else if (field === "depositEnabled") {
+      out.depositEnabled = value === 1 || value === true || value === "1";
+    } else if (field === "depositAmountEur") {
+      const n = Number(value);
+      if (Number.isFinite(n) && n > 0 && n <= 200) out.depositAmountEur = n;
     } else if (field === "smartSpread") {
       out.smartSpread = value === 1 || value === true || value === "1";
     } else if (field === "lastSlotBufferMin") {

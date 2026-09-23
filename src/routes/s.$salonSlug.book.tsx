@@ -769,6 +769,13 @@ function BookingWizard() {
                     penalización.
                   </p>
                 )}
+                {profile.depositEnabled && (profile.depositAmountEur ?? 0) > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Para confirmar la cita, {profile.name} te pedirá por WhatsApp una señal de{" "}
+                    {eur(profile.depositAmountEur ?? 0)} por Bizum, que se descuenta del precio del
+                    servicio.
+                  </p>
+                )}
               </div>
             </Step>
           )}

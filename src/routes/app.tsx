@@ -204,9 +204,15 @@ function useApplyDemoFromUrl() {
     // s.$salonSlug.tsx y `useRealSalon`.
     if (useSalonStore.getState().realSalonSlug) return;
     updateSalonProfile({ ...blankDemoProfile(), ...fromUrl });
+    // Las mismas opciones que aplica la web pública (s.$salonSlug.tsx): sin
+    // `duracionFlexible` aquí, abrir el panel directamente por `/app?d=…`
+    // resembraba la agenda SIN la clienta de la duración flexible.
     applyBusinessType(inferBusinessType(fromUrl.tagline, fromUrl.name), {
       team: fromUrl.team,
       menu: fromUrl.menu,
+      noShowFeeEur: fromUrl.noShowFeeEur,
+      smartSpread: fromUrl.smartSpread,
+      duracionFlexible: fromUrl.duracionFlexible,
     });
     markDemoActive();
   }, [demoRaw, updateSalonProfile, applyBusinessType, markDemoActive]);
