@@ -42,6 +42,25 @@ describe("construirEnlaceGoogleCalendar", () => {
     expect((msFin - msIni) / 60_000).toBe(45);
   });
 
+  it("aplica el horario de invierno de Madrid aunque el proceso use otra zona", () => {
+    const url = construirEnlaceGoogleCalendar({ ...datos, fecha: "2026-01-15" });
+    expect(new URL(url).searchParams.get("dates")).toBe(
+      "20260115T090000Z/20260115T094500Z",
+    );
+  });
+
+  it("mantiene la duración de la cita al cruzar el cambio al horario de verano", () => {
+    const url = construirEnlaceGoogleCalendar({
+      ...datos,
+      fecha: "2026-03-29",
+      hora: "01:45",
+      duracionMin: 60,
+    });
+    expect(new URL(url).searchParams.get("dates")).toBe(
+      "20260329T004500Z/20260329T014500Z",
+    );
+  });
+
   it("usa la URL base correcta de Google Calendar", () => {
     const url = construirEnlaceGoogleCalendar(datos);
     expect(url.startsWith("https://calendar.google.com/calendar/render?")).toBe(true);

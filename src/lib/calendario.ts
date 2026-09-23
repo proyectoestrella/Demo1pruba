@@ -23,15 +23,53 @@ export interface DatosCita {
   direccion: string;
 }
 
-/**
- * Fecha/hora de inicio y fin como objetos Date, interpretando `fecha` y
- * `hora` como hora local de España (que es la única zona en la que opera
- * el producto). new Date("YYYY-MM-DDTHH:mm:00") ya se interpreta en la
- * zona horaria del entorno de ejecución, que en producción y en local es
- * Europe/Madrid.
- */
+const MADRID = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/Madrid",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
+
+/** Diferencia entre la hora civil de Madrid y UTC en un instante concreto. */
+function desfaseMadrid(utcMs: number): number {
+  const partes = Object.fromEntries(
+    MADRID.formatToParts(new Date(utcMs)).map((p) => [p.type, Number(p.value)]),
+  );
+  const horaMadridComoUtc = Date.UTC(
+    partes.year,
+    partes.month - 1,
+    partes.day,
+    partes.hour,
+    partes.minute,
+    partes.second,
+  );
+  return horaMadridComoUtc - utcMs;
+}
+
+/** Convierte la fecha y hora del salón a UTC, sin depender de TZ del servidor. */
+function fechaMadridEnUtc(fecha: string, hora: string): Date {
+  const [year, month, day] = fecha.split("-").map(Number);
+  const [hours, minutes] = hora.split(":").map(Number);
+  const civilComoUtc = Date.UTC(year, month - 1, day, hours, minutes);
+  let candidato = civilComoUtc - desfaseMadrid(civilComoUtc);
+  for (let i = 0; i < 3; i++) {
+    const siguiente = civilComoUtc - desfaseMadrid(candidato);
+    if (siguiente === candidato) break;
+    // En el salto de marzo hay horas que no existen; se normalizan a la
+    // primera hora posterior, igual que hace Date con una hora local inválida.
+    if (i > 0 && siguiente < candidato) break;
+    candidato = siguiente;
+  }
+  return new Date(candidato);
+}
+
+/** Fecha/hora de inicio y fin en UTC a partir de la hora local del salón. */
 function rangoCita(datos: DatosCita): { inicio: Date; fin: Date } {
-  const inicio = new Date(`${datos.fecha}T${datos.hora}:00`);
+  const inicio = fechaMadridEnUtc(datos.fecha, datos.hora);
   const fin = new Date(inicio.getTime() + datos.duracionMin * 60_000);
   return { inicio, fin };
 }
