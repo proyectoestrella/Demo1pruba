@@ -127,12 +127,13 @@ export function AppointmentDetailSheet({
   }
 
   function handleApplyPenalty() {
-    if (!client) return;
+    if (!client || !appointment) return;
     applyPenalty(
       client.id,
       noShowFeeEur,
       penaltyReason.trim() ||
-        `Plantón del ${new Date().toLocaleDateString("es", { day: "numeric", month: "short" })}`,
+        `No se presentó el ${new Date().toLocaleDateString("es", { day: "numeric", month: "short" })}`,
+      { reason: "no_show", appointmentId: appointment.id },
     );
     toast.success(`Penalización de ${eur(noShowFeeEur)} aplicada a ${client.name}`);
     setPenaltyOpen(false);
@@ -316,6 +317,20 @@ export function AppointmentDetailSheet({
             <div className="flex items-center gap-2 rounded-lg border border-[var(--warning)]/40 bg-[var(--warning)]/10 px-3 py-2 text-sm">
               <TriangleAlert className="size-4 shrink-0 text-[var(--warning)]" aria-hidden="true" />
               <span>{plantones}</span>
+            </div>
+          )}
+
+          {/* Recargo pendiente de cobrar — se enseña siempre que exista, y
+              sobre todo al confirmar una solicitud: es lo que Adam necesita
+              ver antes de decidir si le guarda el hueco a quien todavía le
+              debe una penalización. */}
+          {(client?.penaltyEur ?? 0) > 0 && (
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <TriangleAlert className="size-4 shrink-0" aria-hidden="true" />
+              <span>
+                Este cliente tiene un recargo pendiente de {eur(client!.penaltyEur ?? 0)}
+                {appointment.status === "pending" ? " — decide si le confirmas la cita." : "."}
+              </span>
             </div>
           )}
 

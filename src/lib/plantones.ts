@@ -93,3 +93,22 @@ export function daysUntilPenaltyExpiry(
   const restan = Math.ceil((caduca.getTime() - now.getTime()) / DAY_MS);
   return restan > 0 ? restan : null;
 }
+
+/**
+ * Frase del motivo de una penalización activa, lista para pantalla. Nunca
+ * usa "plantón" ni "no-show" (vocabulario prohibido en el material de venta):
+ * siempre "no se presentó" o "llegó tarde".
+ */
+export function penaltyReasonLabel(client: Client | undefined): string {
+  if (!client) return "no se presentó";
+  if (client.penaltyReason === "late") {
+    const min = client.penaltyLateMinutes;
+    return min ? `llegó tarde (${min} min)` : "llegó tarde";
+  }
+  return "no se presentó";
+}
+
+/** Clientes con un recargo pendiente de cobrar o perdonar ahora mismo. */
+export function clientsWithPendingPenalty(clients: Client[]): Client[] {
+  return clients.filter((c) => (c.penaltyEur ?? 0) > 0);
+}

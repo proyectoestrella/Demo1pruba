@@ -120,7 +120,12 @@ interface SalonState {
   updateClient: (id: string, patch: Partial<Client>) => void;
   deleteClient: (id: string) => void;
   /** Marca al cliente con una penalización pendiente (política de plantón — ver mock/types.ts). */
-  applyPenalty: (clientId: string, eur: number, note?: string) => void;
+  applyPenalty: (
+    clientId: string,
+    eur: number,
+    note?: string,
+    detalle?: { reason?: "no_show" | "late"; lateMinutes?: number; appointmentId?: string },
+  ) => void;
   /** Cierra la penalización: cobrada o perdonada, decide siempre el dueño. */
   clearPenalty: (clientId: string, motivo: "cobrado" | "perdonado") => void;
   /**
@@ -128,6 +133,12 @@ interface SalonState {
    * lo mantengo" del dueño (o su marcha atrás) — ver lib/plantones.ts.
    */
   setPenaltyKeep: (clientId: string, mantener: boolean) => void;
+  /**
+   * El dueño ya ha visto este recargo pendiente y decide dejarlo así, sin
+   * cobrarlo ni perdonarlo todavía — sale del aviso de "nuevos" en Hoy. Ver
+   * RecargosPendientes.tsx.
+   */
+  reviewPenalty: (clientId: string) => void;
 
   // Services (moved from static salon.ts array to reactive store state)
   addService: (s: Omit<Service, "id">) => Service;
@@ -375,14 +386,24 @@ export const useSalonStore = create<SalonState>()(
           clients: s.clients.filter((c) => c.id !== id),
         })),
 
-      applyPenalty: (clientId, eur, note) => {
+      applyPenalty: (clientId, eur, note, detalle) => {
         // La fecha es lo que hace que el bloqueo pueda caducar solo a los 30
         // días (ver lib/plantones.ts): sin ella no hay desde cuándo contar.
         const ahora = new Date().toISOString();
         set((s) => ({
           clients: s.clients.map((c) =>
             c.id === clientId
-              ? { ...c, penaltyEur: eur, penaltyNote: note, penaltyAt: ahora, penaltyKeep: false }
+              ? {
+                  ...c,
+                  penaltyEur: eur,
+                  penaltyNote: note,
+                  penaltyAt: ahora,
+                  penaltyKeep: false,
+                  penaltyReason: detalle?.reason ?? "no_show",
+                  penaltyLateMinutes: detalle?.lateMinutes,
+                  penaltyAppointmentId: detalle?.appointmentId,
+                  penaltyReviewedAt: undefined,
+                }
               : c,
           ),
         }));
@@ -402,6 +423,10 @@ export const useSalonStore = create<SalonState>()(
                   penaltyEur: undefined,
                   penaltyAt: undefined,
                   penaltyKeep: undefined,
+                  penaltyReason: undefined,
+                  penaltyLateMinutes: undefined,
+                  penaltyAppointmentId: undefined,
+                  penaltyReviewedAt: undefined,
                   penaltyNote:
                     motivo === "cobrado"
                       ? `Cobrada el ${new Date().toLocaleDateString("es", { day: "numeric", month: "short" })}`
@@ -425,6 +450,14 @@ export const useSalonStore = create<SalonState>()(
           cliente?.penaltyEur ?? 0,
           cliente?.penaltyNote,
         );
+      },
+
+      reviewPenalty: (clientId) => {
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === clientId ? { ...c, penaltyReviewedAt: new Date().toISOString() } : c,
+          ),
+        }));
       },
 
       addService: (svc) => {

@@ -61,6 +61,22 @@ export interface Client {
    * decisión suya y explícita: por defecto el bloqueo se levanta solo.
    */
   penaltyKeep?: boolean;
+  /**
+   * Motivo de la penalización activa: no se presentó o llegó tarde. Ausente
+   * en fichas antiguas (se tratan como "no se presentó", que era el único
+   * motivo antes de esto). Ver RecargosPendientes.tsx.
+   */
+  penaltyReason?: "no_show" | "late";
+  /** Minutos de retraso, solo cuando `penaltyReason === "late"`. */
+  penaltyLateMinutes?: number;
+  /** Cita que originó la penalización activa, para poder enseñar su fecha y servicio. */
+  penaltyAppointmentId?: string;
+  /**
+   * El dueño ya ha visto este recargo y lo ha dejado pendiente a propósito
+   * (acción "Mantener" en RecargosPendientes): deja de contar como "nuevo"
+   * en el aviso de Hoy, pero sigue sin cobrar ni perdonar.
+   */
+  penaltyReviewedAt?: string;
 }
 
 /**
@@ -103,6 +119,12 @@ export interface Appointment {
   clientConfirmedAt?: string;
   /** Title for blocked time entries */
   note?: string;
+  /**
+   * Minutos de retraso con los que se presentó, cuando eso disparó un
+   * recargo (política de plantón). Independiente de `status`: la cita puede
+   * estar `completed` y aun así llevar este dato. Ver RecargosPendientes.tsx.
+   */
+  lateMinutes?: number;
   /**
    * Cierre de caja: cómo se cobró esta cita y cuándo se marcó como cobrada.
    * Las dos van juntas — marcar cobrada obliga a elegir forma de cobro. Nada

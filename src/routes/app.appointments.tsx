@@ -5,7 +5,9 @@ import { STATUS_OPTIONS } from "@/lib/appointment-status";
 import { useSalonStore } from "@/lib/store";
 import { employeeMap, employees } from "@/lib/mock/salon";
 import { serviceLabelOf } from "@/lib/appointment-services";
-import type { Appointment, AppointmentStatus } from "@/lib/mock/types";
+import type { Appointment, AppointmentStatus, Client } from "@/lib/mock/types";
+import { eur } from "@/lib/copy";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { StylistDot } from "@/components/StylistAvatar";
@@ -58,9 +60,42 @@ export const Route = createFileRoute("/app/appointments")({
   component: Appointments,
 });
 
+/**
+ * Chip de recargo para una cita pasada: motivo (nunca "plantón"/"no-show")
+ * y si el recargo que originó sigue pendiente. Solo se puede saber que
+ * SIGUE pendiente si esta es la cita que hoy tiene enganchada la ficha del
+ * cliente (`penaltyAppointmentId`) — la ficha solo guarda un recargo activo
+ * a la vez, así que una cita más antigua ya resuelta no se distingue de una
+ * que nunca generó recargo.
+ */
+function RecargoChip({ appointment, client }: { appointment: Appointment; client?: Client }) {
+  const esRetraso = (appointment.lateMinutes ?? 0) > 0;
+  const esNoPresentado = appointment.status === "no-show";
+  if (!esRetraso && !esNoPresentado) return null;
+  const motivo = esNoPresentado
+    ? "No se presentó"
+    : `Llegó tarde (${appointment.lateMinutes} min)`;
+  const pendiente =
+    (client?.penaltyEur ?? 0) > 0 && client?.penaltyAppointmentId === appointment.id;
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+      <Badge variant="outline" className="text-[10px] font-normal">
+        {motivo}
+      </Badge>
+      {pendiente && (
+        <Badge variant="destructive" className="text-[10px]">
+          Recargo pendiente · {eur(client!.penaltyEur ?? 0)}
+        </Badge>
+      )}
+    </div>
+  );
+}
+
 function Appointments() {
   const appointments = useSalonStore((s) => s.appointments);
   const services = useSalonStore((s) => s.services);
+  const clients = useSalonStore((s) => s.clients);
+  const clientById = new Map(clients.map((c) => [c.id, c] as const));
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const [status, setStatus] = useState<string>("all");
@@ -200,6 +235,7 @@ function Appointments() {
                       <TableCell className="text-right font-medium">€{a.priceEur}</TableCell>
                       <TableCell>
                         <StatusBadge status={a.status} />
+                        <RecargoChip appointment={a} client={clientById.get(a.clientId)} />
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
@@ -313,6 +349,7 @@ function Appointments() {
                   </div>
                   <div className="mt-3">
                     <StatusBadge status={a.status} />
+                    <RecargoChip appointment={a} client={clientById.get(a.clientId)} />
                   </div>
                 </div>
               );

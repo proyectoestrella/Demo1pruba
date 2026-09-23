@@ -88,4 +88,32 @@ describe("penalización por plantón", () => {
     const actualizado = useSalonStore.getState().clients.find((c) => c.id === cliente.id);
     expect(actualizado?.penaltyEur).toBeUndefined();
   });
+
+  it("reviewPenalty('Mantener') deja la deuda pendiente pero marca revisado", () => {
+    const { addClient, applyPenalty, reviewPenalty } = useSalonStore.getState();
+    const cliente = addClient({ name: "Cuarto Cliente", phone: "+34 600 000 096" });
+    applyPenalty(cliente.id, 7, "Llegó tarde", { reason: "late", lateMinutes: 15 });
+
+    reviewPenalty(cliente.id);
+
+    const actualizado = useSalonStore.getState().clients.find((c) => c.id === cliente.id);
+    // Sigue debiendo el recargo: "Mantener" no es "Perdonar" ni "Cobrado".
+    expect(actualizado?.penaltyEur).toBe(7);
+    expect(actualizado?.penaltyReviewedAt).toBeTruthy();
+  });
+
+  it("una nueva penalización sobre un cliente ya revisado vuelve a contar como nueva", () => {
+    const { addClient, applyPenalty, reviewPenalty } = useSalonStore.getState();
+    const cliente = addClient({ name: "Quinto Cliente", phone: "+34 600 000 095" });
+    applyPenalty(cliente.id, 7, "No vino");
+    reviewPenalty(cliente.id);
+    expect(
+      useSalonStore.getState().clients.find((c) => c.id === cliente.id)?.penaltyReviewedAt,
+    ).toBeTruthy();
+
+    applyPenalty(cliente.id, 7, "No vino otra vez");
+
+    const actualizado = useSalonStore.getState().clients.find((c) => c.id === cliente.id);
+    expect(actualizado?.penaltyReviewedAt).toBeUndefined();
+  });
 });

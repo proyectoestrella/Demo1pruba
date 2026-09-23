@@ -9,6 +9,7 @@ import {
   isPenaltyActive,
   noShowSummary,
   penaltyExpiresAt,
+  penaltyReasonLabel,
 } from "@/lib/plantones";
 import { employeeMap } from "@/lib/mock/salon";
 import { serviceLabelOf } from "@/lib/appointment-services";
@@ -53,6 +54,7 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
   const updateClient = useSalonStore((s) => s.updateClient);
   const clearPenalty = useSalonStore((s) => s.clearPenalty);
   const setPenaltyKeep = useSalonStore((s) => s.setPenaltyKeep);
+  const reviewPenalty = useSalonStore((s) => s.reviewPenalty);
   // Igual que AppointmentDetailSheet: la prop llega congelada en el momento
   // del clic (quien abre el sheet guarda una copia). Cobrado/Perdonar cambian
   // el store desde AQUÍ MISMO, con el sheet todavía abierto — sin releer la
@@ -146,13 +148,26 @@ export function ClientHistorySheet({ client: clientProp, open, onOpenChange }: C
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-medium text-destructive">
-                Debe {eur(client.penaltyEur!)}
+                Debe {eur(client.penaltyEur!)} · {penaltyReasonLabel(client)}
                 {client.penaltyNote ? ` · ${client.penaltyNote}` : ""}
               </p>
+              {client.penaltyReviewedAt && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Revisado el{" "}
+                  {new Date(client.penaltyReviewedAt).toLocaleDateString("es", {
+                    day: "numeric",
+                    month: "short",
+                  })}
+                  : se ha dejado pendiente a propósito.
+                </p>
+              )}
             </div>
-            <div className="flex shrink-0 gap-2">
+            <div className="flex shrink-0 flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={() => handleClearPenalty("cobrado")}>
-                Cobrado
+                Marcar como pagada
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => reviewPenalty(client.id)}>
+                Mantener
               </Button>
               <Button size="sm" variant="ghost" onClick={() => handleClearPenalty("perdonado")}>
                 Perdonar

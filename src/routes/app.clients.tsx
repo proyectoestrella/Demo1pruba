@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { ClientAvatar } from "@/components/ClientAvatar";
 import { ClientHistorySheet } from "@/components/ClientHistorySheet";
+import { RecargosPendientes } from "@/components/RecargosPendientes";
 import {
   Table,
   TableBody,
@@ -133,6 +134,11 @@ function Clients() {
           tone={kpis.enRiesgo > 0 ? "destructive" : "default"}
         />
       </div>
+
+      {/* Recargos pendientes destacados: Adam pidió esto expresamente el
+          17-sep. El propio componente enseña un estado vacío amable cuando
+          no hay ninguno pendiente. */}
+      <RecargosPendientes title="Recargos pendientes" />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative max-w-sm flex-1">

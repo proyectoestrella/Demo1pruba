@@ -18,6 +18,16 @@ const PENALIZED_DAYS_AGO = 5;
 /** Teléfono estable y fácil de teclear en la tablet delante del cliente — ver demo-profile.ts. */
 export const PENALIZED_CLIENT_PHONE = "+34 600 000 007";
 
+/**
+ * Segundo cliente sembrado con recargo pendiente, esta vez por llegar tarde
+ * en vez de por no presentarse — para que la demo enseñe los dos motivos
+ * (RecargosPendientes.tsx) sin depender de que Tomás genere el caso a mano.
+ */
+const LATE_PENALIZED_CLIENT_INDEX = 3;
+const LATE_PENALIZED_DAYS_AGO = 2;
+const LATE_PENALIZED_MINUTES = 20;
+export const LATE_PENALIZED_CLIENT_PHONE = "+34 600 000 008";
+
 function buildClients(type: BusinessType, penalizedFeeEur?: number): Client[] {
   const rand = mulberry32(42);
   const pick = <T,>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
@@ -45,20 +55,35 @@ function buildClients(type: BusinessType, penalizedFeeEur?: number): Client[] {
   // (+34 600 000 007): un número aleatorio del seed vale para enseñar la
   // ficha, pero no para que Tomás lo teclee delante de un cliente.
   if (penalizedFeeEur && penalizedFeeEur > 0) {
-    const fechaPlantón = new Date(Date.now() - PENALIZED_DAYS_AGO * 86400_000).toLocaleDateString(
+    const fechaNoShow = new Date(Date.now() - PENALIZED_DAYS_AGO * 86400_000).toLocaleDateString(
       "es",
       { day: "numeric", month: "long" },
     );
-    return withNotes.map((c, i) =>
-      i === PENALIZED_CLIENT_INDEX
-        ? {
-            ...c,
-            phone: PENALIZED_CLIENT_PHONE,
-            penaltyEur: penalizedFeeEur,
-            penaltyNote: `No vino el ${fechaPlantón} · Corte`,
-          }
-        : c,
-    );
+    const fechaTarde = new Date(
+      Date.now() - LATE_PENALIZED_DAYS_AGO * 86400_000,
+    ).toLocaleDateString("es", { day: "numeric", month: "long" });
+    return withNotes.map((c, i) => {
+      if (i === PENALIZED_CLIENT_INDEX) {
+        return {
+          ...c,
+          phone: PENALIZED_CLIENT_PHONE,
+          penaltyEur: penalizedFeeEur,
+          penaltyNote: `No se presentó el ${fechaNoShow} · Corte`,
+          penaltyReason: "no_show" as const,
+        };
+      }
+      if (i === LATE_PENALIZED_CLIENT_INDEX) {
+        return {
+          ...c,
+          phone: LATE_PENALIZED_CLIENT_PHONE,
+          penaltyEur: penalizedFeeEur,
+          penaltyNote: `Llegó tarde el ${fechaTarde} · Corte`,
+          penaltyReason: "late" as const,
+          penaltyLateMinutes: LATE_PENALIZED_MINUTES,
+        };
+      }
+      return c;
+    });
   }
 
   return withNotes;
@@ -307,11 +332,48 @@ export function buildSeed(
   opts?: { noShowFeeEur?: number; smartSpread?: boolean },
 ): DemoSeed {
   const clients = buildClients(type, opts?.noShowFeeEur);
+  const appointments = buildAppointments(clients, employees, services, opts?.smartSpread);
+
+  // Engancha cada recargo pendiente sembrado a una cita pasada real de ESE
+  // cliente, para que RecargosPendientes y la vista de Citas puedan enseñar
+  // su fecha y servicio en vez de solo el texto libre de la nota.
+  if (opts?.noShowFeeEur && opts.noShowFeeEur > 0) {
+    linkSeededPenalty(clients[PENALIZED_CLIENT_INDEX], appointments, { status: "no-show" });
+    linkSeededPenalty(clients[LATE_PENALIZED_CLIENT_INDEX], appointments, {
+      status: "completed",
+      lateMinutes: LATE_PENALIZED_MINUTES,
+    });
+  }
+
   return {
     clients,
-    appointments: buildAppointments(clients, employees, services, opts?.smartSpread),
+    appointments,
     waitlist: buildWaitlist(type, employees, services),
   };
+}
+
+/**
+ * Toma la cita pasada más reciente de este cliente y la deja coherente con
+ * su recargo pendiente sembrado (estado y, si llegó tarde, los minutos),
+ * enlazándola desde `Client.penaltyAppointmentId`. Si el cliente no tiene
+ * ninguna cita pasada (semilla muy corta), no hace nada — el recargo se
+ * sigue viendo por su nota y su fecha, solo sin cita asociada.
+ */
+function linkSeededPenalty(
+  client: Client | undefined,
+  appointments: Appointment[],
+  patch: { status: Appointment["status"]; lateMinutes?: number },
+): void {
+  if (!client) return;
+  const now = Date.now();
+  const propia = appointments
+    .filter((a) => a.clientId === client.id && +new Date(a.start) < now)
+    .sort((a, b) => +new Date(b.start) - +new Date(a.start));
+  const cita = propia[0];
+  if (!cita) return;
+  cita.status = patch.status;
+  if (patch.lateMinutes) cita.lateMinutes = patch.lateMinutes;
+  client.penaltyAppointmentId = cita.id;
 }
 
 const DEFAULT_SEED = buildSeed("barberia", defaultEmployees, defaultServices);

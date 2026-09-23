@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { buildSeed, PENALIZED_CLIENT_PHONE } from "./seed";
+import { buildSeed, PENALIZED_CLIENT_PHONE, LATE_PENALIZED_CLIENT_PHONE } from "./seed";
 import { employeesForType, servicesForType } from "./salon";
 
 const employees = employeesForType("barberia");
@@ -19,9 +19,21 @@ describe("buildSeed — política de plantón (opts.noShowFeeEur)", () => {
     expect(penalizado?.penaltyNote).toBeTruthy();
   });
 
-  it("solo hay un cliente penalizado, no varios", () => {
+  it("hay exactamente dos clientes penalizados: uno por no presentarse y otro por llegar tarde", () => {
     const seed = buildSeed("barberia", employees, services, { noShowFeeEur: 7 });
-    expect(seed.clients.filter((c) => (c.penaltyEur ?? 0) > 0)).toHaveLength(1);
+    const penalizados = seed.clients.filter((c) => (c.penaltyEur ?? 0) > 0);
+    expect(penalizados).toHaveLength(2);
+    expect(penalizados.map((c) => c.penaltyReason).sort()).toEqual(["late", "no_show"]);
+  });
+
+  it("el cliente penalizado por llegar tarde lleva teléfono estable, minutos y cita enlazada", () => {
+    const seed = buildSeed("barberia", employees, services, { noShowFeeEur: 7 });
+    const tarde = seed.clients.find((c) => c.penaltyReason === "late");
+    expect(tarde?.phone).toBe(LATE_PENALIZED_CLIENT_PHONE);
+    expect(tarde?.penaltyLateMinutes).toBeGreaterThan(0);
+    expect(tarde?.penaltyAppointmentId).toBeTruthy();
+    const cita = seed.appointments.find((a) => a.id === tarde?.penaltyAppointmentId);
+    expect(cita?.lateMinutes).toBe(tarde?.penaltyLateMinutes);
   });
 });
 
