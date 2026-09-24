@@ -37,18 +37,29 @@ export const LATE_PENALIZED_CLIENT_PHONE = "+34 600 000 008";
 function buildClients(type: BusinessType, penalizedFeeEur?: number): Client[] {
   const rand = mulberry32(42);
   const pick = <T>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
-  const FIRST = FIRST_NAMES_BY_TYPE[type];
+  const FIRST = type === "peluqueria"
+    ? FIRST_NAMES_BY_TYPE.peluqueria.map((name) => ({ Sofia: "Sofía", Lucia: "Lucía" }[name] ?? name))
+    : FIRST_NAMES_BY_TYPE[type];
+  const apellidosPeluqueria = [
+    "García", "López", "Martín", "Ruiz", "Vega", "Torres", "Romero", "Castillo",
+    "Navarro", "Iglesias", "Serrano", "Mendoza", "Reyes", "Ortega", "Delgado",
+    "Cortés", "Sánchez", "Gómez", "Muñoz", "Pérez", "Díaz", "Hernández",
+  ];
 
-  const clients: Client[] = Array.from({ length: 52 }, (_, i) => {
+  const clients: Client[] = Array.from({ length: type === "peluqueria" ? 152 : 52 }, (_, i) => {
     const first = FIRST[i % FIRST.length];
-    const last = pick(LAST_NAMES);
+    const last = type === "peluqueria"
+      ? apellidosPeluqueria[(i * 7 + Math.floor(i / FIRST.length)) % apellidosPeluqueria.length]
+      : pick(LAST_NAMES);
     const daysAgo = Math.floor(rand() * 400);
     return {
       id: `c${i + 1}`,
       name: `${first} ${last}`,
-      phone: `+34 6${String(10 + i).padStart(2, "0")} ${String(100 + Math.floor(rand() * 800)).padStart(3, "0")} ${String(100 + Math.floor(rand() * 800)).padStart(3, "0")}`,
-      email: `${first.toLowerCase()}.${last.toLowerCase()}@mail.com`,
-      createdAt: new Date(Date.now() - daysAgo * 86400_000).toISOString(),
+      phone: type === "peluqueria"
+        ? `+34 6${String(10 + Math.floor(i / 100))} ${String(100 + i % 100)} ${String(100 + Math.floor(rand() * 800))}`
+        : `+34 6${String(10 + i).padStart(2, "0")} ${String(100 + Math.floor(rand() * 800)).padStart(3, "0")} ${String(100 + Math.floor(rand() * 800)).padStart(3, "0")}`,
+      email: `${first.toLowerCase()}.${last.toLowerCase()}@mail.com`.normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
+      createdAt: type === "peluqueria" ? isoAt(-daysAgo, 12) : new Date(Date.now() - daysAgo * 86400_000).toISOString(),
     };
   });
 
@@ -156,6 +167,192 @@ const COLORES_DEMO = {
     ["Balayage cobrizo: decoloración con oxidante 30 vol, 25 min; matiz 8.34, 10 vol, 15 min", "No solapar la decoloración anterior."],
   ],
 } as const;
+
+/** Historiales de peluquería por persona: cada visita nace del hábito de esa
+ * clienta. La agenda destacada recoloca visitas cercanas, sin duplicarlas. */
+function buildHairAppointments(
+  clients: Client[], employees: Employee[], services: Service[], smartSpread?: boolean,
+): Appointment[] {
+  if (!employees.length || !services.length) return [];
+  const rand = mulberry32(1042);
+  const byName = (pattern: RegExp, fallback: number) =>
+    services.find((service) => pattern.test(service.name)) ?? services[fallback % services.length];
+  const color = byName(/tinte|color|baño|matiz/i, 0);
+  const mechas = byName(/mecha|balayage/i, 1);
+  const corte = byName(/corte|peinado/i, 2);
+  const tratamiento = byName(/tratamiento|hidrataci[oó]n|keratina/i, 3);
+  const evento = byName(/recogido|novia|fiesta|evento/i, 4);
+  const nextSaturday = (6 - new Date().getDay() + 7) % 7;
+  type Planned = { client: Client; day: number; services: Service[]; employee: Employee; status: Appointment["status"] };
+  const planned: Planned[] = [];
+  const habituales = clients.slice(0, 136);
+  const idsHabituales = new Set(habituales.map((client) => client.id));
+  const add = (client: Client, intendedDay: number, primary: Service, status: Appointment["status"] = "completed") => {
+    const extra = primary === color && rand() < 0.18 ? corte
+      : primary === corte && rand() < 0.12 ? tratamiento : undefined;
+    const chosen = extra && extra.id !== primary.id ? [primary, extra] : [primary];
+    const duration = chosen.reduce((minutes, service) => minutes + service.durationMin, 0);
+    const possibleDays = [0, 1, -1, 2, -2].map((offset) => intendedDay + offset).filter((candidate) => {
+      const date = new Date();
+      date.setDate(date.getDate() + candidate);
+      return employees.some((employee) => employee.schedule[date.getDay()])
+        && !planned.some((visit) => visit.client.id === client.id && visit.day === candidate);
+    });
+    const day = possibleDays.find((candidate) => {
+      const date = new Date();
+      date.setDate(date.getDate() + candidate);
+      const capacity = employees.reduce((minutes, employee) => {
+        const shift = employee.schedule[date.getDay()];
+        return minutes + (shift ? (shift.end - shift.start) * 60 : 0);
+      }, 0);
+      const booked = planned.filter((visit) => visit.day === candidate)
+        .reduce((minutes, visit) => minutes + visit.services.reduce((sum, service) => sum + service.durationMin, 0), 0);
+      return booked + duration <= capacity;
+    }) ?? possibleDays[0];
+    if (day === undefined) return;
+    const date = new Date();
+    date.setDate(date.getDate() + day);
+    const available = employees.filter((employee) => employee.schedule[date.getDay()]);
+    if (!available.length) return;
+    planned.push({ client, day, services: chosen, employee: available[Math.floor(rand() * available.length)], status: day >= 0 ? "confirmed" : status });
+  };
+
+  // 136 habituales; el resto incluye primeras visitas y clientas que dejaron
+  // de venir. El ritmo propio evita que un corte se repita como un tinte.
+  habituales.forEach((client, i) => {
+    const kind = i % 12;
+    const primary = kind < 4 ? color : kind < 6 ? mechas : kind < 11 ? corte : tratamiento;
+    const low = kind < 4 ? 28 : kind < 6 ? 56 : kind < 11 ? 35 : 50;
+    const high = kind < 4 ? 42 : kind < 6 ? 70 : kind < 11 ? 56 : 70;
+    const interval = low + Math.floor(rand() * (high - low + 1));
+    let day = -Math.floor(rand() * interval);
+    while (day >= -540) {
+      add(client, day, primary, day < 0 ? "completed" : "confirmed");
+      day -= interval + Math.floor(rand() * 7) - 3;
+    }
+    day = interval - Math.floor(rand() * interval);
+    while (day <= 21) {
+      add(client, day, primary, "confirmed");
+      day += interval;
+    }
+  });
+
+  // Primeras visitas (varias de evento) y clientas inactivas para campañas.
+  clients.slice(136, 144).forEach((client, i) => add(client, -(7 + i * 6), i < 4 ? evento : corte));
+  clients.slice(144).forEach((client, i) => add(client, -(75 + i * 5), i % 2 ? color : corte));
+
+  // Hoy y el próximo sábado parecen días de trabajo reales. Se trasladan
+  // reservas de las dos semanas vecinas, respetando una por clienta y día.
+  const fillDay = (target: number) => {
+    const date = new Date();
+    date.setDate(date.getDate() + target);
+    const available = employees.filter((employee) => employee.schedule[date.getDay()]);
+    if (!available.length) return;
+    const already = new Set(planned.filter((p) => p.day === target).map((p) => p.client.id));
+    const candidates = planned.filter((p) =>
+      p.day !== 0 && idsHabituales.has(p.client.id) && !already.has(p.client.id)
+      && Math.abs(p.day - target) <= 12
+      && !planned.some((other) => other !== p && other.client.id === p.client.id && other.day === target));
+    candidates.sort((a, b) => Math.abs(a.day - target) - Math.abs(b.day - target)
+      || a.client.id.localeCompare(b.client.id));
+    const targetCount = smartSpread ? 12 : Math.min(16, Math.max(12, available.length * 5));
+    for (const candidate of candidates) {
+      if (already.size >= targetCount) break;
+      if (already.has(candidate.client.id)) continue;
+      const loads = available.map((employee) => planned.filter((p) => p.day === target && p.employee.id === employee.id)
+        .reduce((minutes, p) => minutes + p.services.reduce((sum, s) => sum + s.durationMin, 0), 0));
+      candidate.day = target;
+      candidate.employee = available[loads.indexOf(Math.min(...loads))];
+      candidate.status = "confirmed";
+      already.add(candidate.client.id);
+    }
+  };
+  fillDay(0);
+  if (nextSaturday !== 0) fillDay(nextSaturday);
+
+  // Las dos solicitudes de hoy siguen visibles. Una cita con dos servicios
+  // conserva una sola fila y suma duración e importe.
+  planned.filter((p) => p.day === 0).slice(0, 2).forEach((p) => { p.status = "pending"; });
+  const used = new Map<string, Array<[number, number]>>();
+  return planned.map((p, index) => {
+    let date = new Date();
+    date.setDate(date.getDate() + p.day);
+    const duration = p.services.reduce((sum, service) => sum + service.durationMin, 0);
+    const slotsFor = (employee: Employee) => {
+      const sched = employee.schedule[date.getDay()];
+      if (!sched) return [];
+      const busy = used.get(`${p.day}:${employee.id}`) ?? [];
+      const options: number[] = [];
+      for (let minute = sched.start * 60; minute + duration <= sched.end * 60; minute += 15) {
+        if (smartSpread && (p.day === 0 || p.day === nextSaturday) && minute < 12 * 60) continue;
+        if (busy.every(([start, end]) => minute >= end || minute + duration <= start)) options.push(minute);
+      }
+      return options;
+    };
+    let employee = p.employee;
+    let options = slotsFor(employee);
+    if (!options.length) {
+      const alternatives = employees.map((candidate) => ({ candidate, options: slotsFor(candidate) }))
+        .sort((a, b) => b.options.length - a.options.length);
+      if (alternatives[0]?.options.length) {
+        employee = alternatives[0].candidate;
+        options = alternatives[0].options;
+      }
+    }
+    if (!options.length && p.day !== 0 && p.day !== nextSaturday) {
+      const originalDay = p.day;
+      for (const offset of [1, -1, 2, -2]) {
+        const candidateDay = originalDay + offset;
+        if ((originalDay < 0) !== (candidateDay < 0) || candidateDay === 0 || candidateDay === nextSaturday
+          || planned.some((other) => other !== p && other.client.id === p.client.id && other.day === candidateDay)) continue;
+        p.day = candidateDay;
+        date = new Date();
+        date.setDate(date.getDate() + candidateDay);
+        const alternatives = employees.map((candidate) => ({ candidate, options: slotsFor(candidate) }))
+          .sort((a, b) => b.options.length - a.options.length);
+        if (alternatives[0]?.options.length) {
+          employee = alternatives[0].candidate;
+          options = alternatives[0].options;
+          break;
+        }
+      }
+      if (!options.length) {
+        p.day = originalDay;
+        date = new Date();
+        date.setDate(date.getDate() + originalDay);
+      }
+    }
+    const sched = employee.schedule[date.getDay()]!;
+    const key = `${p.day}:${employee.id}`;
+    const busy = used.get(key) ?? [];
+    // El caso extremo de una carta personalizada sin hueco libre mantiene
+    // la cita; la carta normal encuentra otro profesional o un día cercano.
+    const preferred = smartSpread && (p.day === 0 || p.day === nextSaturday)
+      ? options.filter((minute) => minute < 14 * 60) : options;
+    const minute = (preferred.length ? preferred : options)[Math.floor(rand() * (preferred.length ? preferred : options).length)]
+      ?? Math.max(sched.start * 60, sched.end * 60 - duration);
+    busy.push([minute, minute + duration]);
+    used.set(key, busy);
+    const colorKind = p.services.some((s) => /mecha|balayage/i.test(s.name)) ? "mechas"
+      : p.services.some((s) => /tinte|color|baño|matiz/i.test(s.name)) ? "color" : undefined;
+    const clientIndex = Number(p.client.id.slice(1)) - 1;
+    const colorIndex = (Math.floor(clientIndex / 12) + clientIndex % 12) % 6;
+    const fichaColor = colorKind && p.day < 0 && p.status === "completed"
+      ? COLORES_DEMO[colorKind][colorIndex] : undefined;
+    const formula = fichaColor && colorKind === "color" && index % 2
+      && colorIndex < 2
+      ? fichaColor[0].replace("35 min", "40 min").replace("30 min", "35 min") : fichaColor?.[0];
+    const start = isoAt(p.day, Math.floor(minute / 60), minute % 60);
+    return {
+      id: `a${index + 1}`, clientId: p.client.id, clientName: p.client.name,
+      serviceIds: p.services.map((service) => service.id), employeeId: employee.id as EmployeeId,
+      start, duration, priceEur: p.services.reduce((sum, service) => sum + service.priceEur, 0),
+      status: p.status,
+      ...(fichaColor ? { colorFormula: formula, technicalNotes: `${fichaColor[1]} ${index % 2 ? "Revisar al aclarar." : "Anotar el resultado."}` } : {}),
+      ...(p.status === "completed" && +new Date(start) < Date.now() - 60 * 86_400_000 ? { origen: "tpv123" as const } : {}),
+    };
+  });
+}
 
 function buildAppointments(
   type: BusinessType,
@@ -344,7 +541,7 @@ function buildWaitlist(
       serviceId: resolveService("corte-barba", 0),
       preferredEmployeeId: resolveEmployee("diego", 1),
       preferredRange: "Sábado por la mañana",
-      createdAt: new Date(Date.now() - 86400_000).toISOString(),
+      createdAt: type === "peluqueria" ? isoAt(-1, 12) : new Date(Date.now() - 86400_000).toISOString(),
     },
     {
       id: "w2",
@@ -353,7 +550,7 @@ function buildWaitlist(
       serviceId: resolveService("corte", 1),
       preferredEmployeeId: "any",
       preferredRange: "Martes por la tarde",
-      createdAt: new Date(Date.now() - 2 * 86400_000).toISOString(),
+      createdAt: type === "peluqueria" ? isoAt(-2, 12) : new Date(Date.now() - 2 * 86400_000).toISOString(),
     },
     {
       id: "w3",
@@ -362,7 +559,7 @@ function buildWaitlist(
       serviceId: resolveService("afeitado", 2),
       preferredEmployeeId: resolveEmployee("ruben", 2),
       preferredRange: "Viernes a partir de las 17:00",
-      createdAt: new Date(Date.now() - 3 * 86400_000).toISOString(),
+      createdAt: type === "peluqueria" ? isoAt(-3, 12) : new Date(Date.now() - 3 * 86400_000).toISOString(),
     },
     {
       id: "w4",
@@ -371,7 +568,7 @@ function buildWaitlist(
       serviceId: resolveService("barba", 3),
       preferredEmployeeId: resolveEmployee("mario", 0),
       preferredRange: "Cualquier día de esta semana",
-      createdAt: new Date(Date.now() - 5 * 86400_000).toISOString(),
+      createdAt: type === "peluqueria" ? isoAt(-5, 12) : new Date(Date.now() - 5 * 86400_000).toISOString(),
     },
   ];
 }
@@ -383,6 +580,7 @@ function buildWaitlist(
  * de negocio o carta personalizada del enlace.
  */
 function seedDuracionFlexible(
+  type: BusinessType,
   clients: Client[],
   appointments: Appointment[],
   employees: Employee[],
@@ -395,7 +593,7 @@ function seedDuracionFlexible(
     id: "c-duracion-flexible",
     name: DURACION_FLEXIBLE_CLIENT_NAME,
     phone: DURACION_FLEXIBLE_CLIENT_PHONE,
-    createdAt: new Date(Date.now() - 200 * 86400_000).toISOString(),
+    createdAt: type === "peluqueria" ? isoAt(-200, 12) : new Date(Date.now() - 200 * 86400_000).toISOString(),
   };
 
   const catalogoMin = servicioLargo.durationMin;
@@ -459,7 +657,9 @@ export function buildSeed(
   opts?: { noShowFeeEur?: number; smartSpread?: boolean; duracionFlexible?: boolean },
 ): DemoSeed {
   const clients = buildClients(type, opts?.noShowFeeEur);
-  let appointments = buildAppointments(type, clients, employees, services, opts?.smartSpread);
+  let appointments = type === "peluqueria"
+    ? buildHairAppointments(clients, employees, services, opts?.smartSpread)
+    : buildAppointments(type, clients, employees, services, opts?.smartSpread);
   let finalClients = clients;
 
   // Engancha cada recargo pendiente sembrado a una cita pasada real de ESE
@@ -474,7 +674,7 @@ export function buildSeed(
   }
 
   if (opts?.duracionFlexible) {
-    const conFlexible = seedDuracionFlexible(clients, appointments, employees, services);
+    const conFlexible = seedDuracionFlexible(type, clients, appointments, employees, services);
     finalClients = conFlexible.clients;
     appointments = conFlexible.appointments;
   }
