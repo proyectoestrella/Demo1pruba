@@ -22,6 +22,7 @@ import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppServicesRouteImport } from './routes/app.services'
 import { Route as AppMarketingRouteImport } from './routes/app.marketing'
 import { Route as AppInsightsRouteImport } from './routes/app.insights'
+import { Route as AppHojaRouteImport } from './routes/app.hoja'
 import { Route as AppEmployeesRouteImport } from './routes/app.employees'
 import { Route as AppDemosRouteImport } from './routes/app.demos'
 import { Route as AppClientsRouteImport } from './routes/app.clients'
@@ -99,6 +100,11 @@ const AppInsightsRoute = AppInsightsRouteImport.update({
   path: '/insights',
   getParentRoute: () => AppRoute,
 } as any)
+const AppHojaRoute = AppHojaRouteImport.update({
+  id: '/hoja',
+  path: '/hoja',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppEmployeesRoute = AppEmployeesRouteImport.update({
   id: '/employees',
   path: '/employees',
@@ -167,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/app/clients': typeof AppClientsRoute
   '/app/demos': typeof AppDemosRoute
   '/app/employees': typeof AppEmployeesRoute
+  '/app/hoja': typeof AppHojaRoute
   '/app/insights': typeof AppInsightsRoute
   '/app/marketing': typeof AppMarketingRoute
   '/app/services': typeof AppServicesRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/app/clients': typeof AppClientsRoute
   '/app/demos': typeof AppDemosRoute
   '/app/employees': typeof AppEmployeesRoute
+  '/app/hoja': typeof AppHojaRoute
   '/app/insights': typeof AppInsightsRoute
   '/app/marketing': typeof AppMarketingRoute
   '/app/services': typeof AppServicesRoute
@@ -218,6 +226,7 @@ export interface FileRoutesById {
   '/app/clients': typeof AppClientsRoute
   '/app/demos': typeof AppDemosRoute
   '/app/employees': typeof AppEmployeesRoute
+  '/app/hoja': typeof AppHojaRoute
   '/app/insights': typeof AppInsightsRoute
   '/app/marketing': typeof AppMarketingRoute
   '/app/services': typeof AppServicesRoute
@@ -246,6 +255,7 @@ export interface FileRouteTypes {
     | '/app/clients'
     | '/app/demos'
     | '/app/employees'
+    | '/app/hoja'
     | '/app/insights'
     | '/app/marketing'
     | '/app/services'
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/app/clients'
     | '/app/demos'
     | '/app/employees'
+    | '/app/hoja'
     | '/app/insights'
     | '/app/marketing'
     | '/app/services'
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/app/clients'
     | '/app/demos'
     | '/app/employees'
+    | '/app/hoja'
     | '/app/insights'
     | '/app/marketing'
     | '/app/services'
@@ -414,6 +426,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInsightsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/hoja': {
+      id: '/app/hoja'
+      path: '/hoja'
+      fullPath: '/app/hoja'
+      preLoaderRoute: typeof AppHojaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/employees': {
       id: '/app/employees'
       path: '/employees'
@@ -500,6 +519,7 @@ interface AppRouteChildren {
   AppClientsRoute: typeof AppClientsRoute
   AppDemosRoute: typeof AppDemosRoute
   AppEmployeesRoute: typeof AppEmployeesRoute
+  AppHojaRoute: typeof AppHojaRoute
   AppInsightsRoute: typeof AppInsightsRoute
   AppMarketingRoute: typeof AppMarketingRoute
   AppServicesRoute: typeof AppServicesRoute
@@ -515,6 +535,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppClientsRoute: AppClientsRoute,
   AppDemosRoute: AppDemosRoute,
   AppEmployeesRoute: AppEmployeesRoute,
+  AppHojaRoute: AppHojaRoute,
   AppInsightsRoute: AppInsightsRoute,
   AppMarketingRoute: AppMarketingRoute,
   AppServicesRoute: AppServicesRoute,

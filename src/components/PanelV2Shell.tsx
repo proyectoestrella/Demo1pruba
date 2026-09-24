@@ -77,6 +77,7 @@ const MAIN_ITEMS: NavItem[] = [
 ];
 
 const MORE_ITEMS: NavItem[] = [
+  { to: "/app/hoja", label: "Hoja del día", icon: CalendarDays },
   { to: "/app/web", label: "Mi web", icon: Globe },
   { to: "/app/waitlist", label: "Lista de espera", icon: Clock, modulo: "lista-espera" },
   { to: "/app/services", label: "Servicios", icon: Scissors },

@@ -440,3 +440,13 @@
   height: 0;
   display: none;
 }
+@media print {
+  @page { size: A4 portrait; margin: 10mm; }
+  body { background: white !important; color: black !important; }
+  body * { visibility: hidden !important; }
+  .hoja-dia, .hoja-dia * { visibility: visible !important; }
+  .hoja-dia { position: absolute; inset: 0; width: 100%; max-width: none; margin: 0; font-size: 9pt; }
+  .hoja-dia .hoja-controles { display: none !important; }
+  .hoja-dia .hoja-grupo { break-inside: avoid; border-color: #aaa; margin-bottom: 8mm; }
+  .hoja-dia .hoja-visita { break-inside: avoid; padding-top: 2mm; padding-bottom: 2mm; }
+}

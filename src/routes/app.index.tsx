@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
+import { ultimoColor } from "@/lib/colores";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import {
@@ -360,7 +361,7 @@ function HomeV1() {
       <div data-tour="today-list" className="min-w-0 rounded-xl border border-border/60 bg-card">
         <div className="flex items-center justify-between border-b border-border/60 px-6 py-4">
           <h2 className="font-display text-lg">Citas de hoy</h2>
-          <span className="text-xs text-muted-foreground">{todayList.length} programadas</span>
+          <div className="flex items-center gap-3"><span className="text-xs text-muted-foreground">{todayList.length} programadas</span><Link to="/app/hoja" className="text-xs font-medium text-primary underline">Hoja del día</Link></div>
         </div>
         {todayList.length === 0 ? (
           <EmptyState
@@ -389,6 +390,7 @@ function HomeV1() {
                       {serviceLabelOf(a)} · {a.duration} min
                       {soloUno ? "" : ` · con ${emp.name}`}
                     </p>
+                    {ultimoColor(appointments, a.clientId, a.start)?.colorFormula && <p className="truncate text-xs text-muted-foreground">Color: {ultimoColor(appointments, a.clientId, a.start)?.colorFormula}</p>}
                   </div>
                   <span className="shrink-0 text-sm font-medium">{eur(a.priceEur)}</span>
                   <StatusBadge status={a.status} className="shrink-0" />

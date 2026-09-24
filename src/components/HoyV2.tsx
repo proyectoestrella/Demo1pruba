@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   Calendar,
   Euro,
@@ -10,6 +11,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
+import { ultimoColor } from "@/lib/colores";
 import {
   periodLabelSuffix,
   trendsForPeriod,
@@ -334,7 +336,7 @@ export function HoyV2() {
       <div className="min-w-0 rounded-xl border border-border/60 bg-card">
         <div className="flex items-center justify-between border-b border-border/60 px-5 py-3.5">
           <h2 className="font-display text-base">Próximas citas</h2>
-          <span className="text-xs text-muted-foreground">{upcomingToday.length} hoy</span>
+          <div className="flex items-center gap-3"><span className="text-xs text-muted-foreground">{upcomingToday.length} hoy</span><Link to="/app/hoja" className="text-xs font-medium text-primary underline">Hoja del día</Link></div>
         </div>
         {upcomingToday.length === 0 ? (
           <EmptyState
@@ -368,6 +370,7 @@ export function HoyV2() {
                       {serviceLabelOf(a)}
                       {employees.length > 1 && ` · con ${emp.name}`}
                     </p>
+                    {ultimoColor(appointments, a.clientId, a.start)?.colorFormula && <p className="truncate text-xs text-muted-foreground">Color: {ultimoColor(appointments, a.clientId, a.start)?.colorFormula}</p>}
                   </div>
                   {started ? (
                     <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
