@@ -31,6 +31,7 @@ const DEL_DUENO = [
   "applyClientPenalty",
   "clearClientPenalty",
   "saveClientNotes",
+  "saveClient",
 ];
 
 /**

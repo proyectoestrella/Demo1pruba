@@ -162,7 +162,7 @@ export function rowToClient(row: ClientRow): Client {
   return {
     id: row.id,
     name: row.name,
-    phone: row.phone,
+    phone: row.phone ?? "",
     email: row.email ?? undefined,
     createdAt: row.created_at,
     notes: row.notes ?? undefined,

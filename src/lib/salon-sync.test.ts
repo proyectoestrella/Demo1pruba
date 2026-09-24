@@ -25,6 +25,9 @@ mock.module("./api/salons.functions", () => ({
   applyClientPenalty: registra("applyClientPenalty"),
   clearClientPenalty: registra("clearClientPenalty"),
   saveClientNotes: registra("saveClientNotes"),
+  saveClient: registra("saveClient"),
+  syncWaitlistEntry: registra("syncWaitlistEntry"),
+  deleteWaitlistEntry: registra("deleteWaitlistEntry"),
   getSalonProfile: registra("getSalonProfile"),
   listSalonData: registra("listSalonData"),
   checkClientPenalty: registra("checkClientPenalty"),
@@ -38,6 +41,7 @@ const {
   pushPenalty,
   pushPenaltyCleared,
   pushClientNotes,
+  pushClient,
 } = await import("./salon-sync");
 const { salon } = await import("./mock/salon");
 const { leerAvisos, limpiarAvisos } = await import("./avisos-sync");
@@ -61,6 +65,13 @@ const cliente = {
   createdAt: "2026-09-01T00:00:00.000Z",
   notes: "Usa el número 8",
 };
+
+it("el alta de una ficha sin cita se sube solo en un salón real", () => {
+  pushClient(null, cliente);
+  expect(llamadas).toEqual([]);
+  pushClient("salon-real", cliente);
+  expect(llamadas).toEqual(["saveClient"]);
+});
 
 afterEach(() => {
   llamadas.length = 0;

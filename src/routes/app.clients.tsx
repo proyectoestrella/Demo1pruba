@@ -10,6 +10,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { ClientAvatar } from "@/components/ClientAvatar";
 import { ClientHistorySheet } from "@/components/ClientHistorySheet";
+import { ImportarClientasDialog } from "@/components/ImportarClientasDialog";
+import { Button } from "@/components/ui/button";
 import { RecargosPendientes } from "@/components/RecargosPendientes";
 import {
   Table,
@@ -82,6 +84,7 @@ function Clients() {
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const conRecargo = recargoActivo({ noShowFeeEur });
   const [selected, setSelected] = useState<Client | null>(null);
+  const [importarAbierto, setImportarAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<"todos" | ClientTag | "penalizado">("todos");
 
@@ -126,6 +129,7 @@ function Clients() {
         title="Clientes"
         description="Tus clientes, ordenados por lo que se han gastado contigo."
       />
+      <Button type="button" variant="outline" onClick={() => setImportarAbierto(true)}>Importar desde TPV 123</Button>
 
       {/* KPIs — panorama de la cartera antes de bajar al listado. */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -309,6 +313,7 @@ function Clients() {
         open={!!selected}
         onOpenChange={(o) => !o && setSelected(null)}
       />
+      <ImportarClientasDialog open={importarAbierto} onOpenChange={setImportarAbierto} />
     </div>
   );
 }

@@ -16,6 +16,10 @@ create table if not exists clients (
   unique (salon_slug, phone)
 );
 
+-- Una ficha importada puede venir sin teléfono. La restricción UNIQUE admite
+-- varios NULL y la búsqueda de duplicados sin teléfono se hace por nombre.
+alter table clients alter column phone drop not null;
+
 create table if not exists appointments (
   id uuid primary key default gen_random_uuid(),
   salon_slug text not null,

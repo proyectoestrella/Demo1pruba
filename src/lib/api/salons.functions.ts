@@ -515,6 +515,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
       clientName: z.string().optional(),
       clientPhone: z.string().optional(),
       clientEmail: z.string().email().optional(),
+      importedFromTpv: z.boolean().optional(),
       serviceIds: z.array(z.string()).default([]),
       employeeId: z.string().min(1),
       startISO: z.string().min(1),
@@ -606,6 +607,19 @@ export const syncAppointment = createServerFn({ method: "POST" })
       if (error) throw new Error(`syncAppointment (cliente): ${error.message}`);
       clientId = cliente.id as string;
     }
+    if (manda && data.importedFromTpv && !key && data.clientName) {
+      const { data: previa, error: buscarError } = await supabase.from("clients").select("id")
+        .eq("salon_slug", data.slug).is("phone", null).eq("name", data.clientName).maybeSingle();
+      if (buscarError) throw new Error(`syncAppointment (cliente): ${buscarError.message}`);
+      if (previa) clientId = previa.id as string;
+      else {
+        const { data: creada, error: crearError } = await supabase.from("clients").insert({
+          salon_slug: data.slug, name: data.clientName, phone: null,
+        }).select("id").single();
+        if (crearError) throw new Error(`syncAppointment (cliente): ${crearError.message}`);
+        clientId = creada.id as string;
+      }
+    }
 
     const fila: Record<string, unknown> = {
       salon_slug: data.slug,
@@ -691,6 +705,30 @@ export const deleteAppointment = createServerFn({ method: "POST" })
 /* ---------------------------------------------------------------------- */
 /* Clientes y política de plantón                                          */
 /* ---------------------------------------------------------------------- */
+
+/** Alta directa de una ficha, también cuando aún no tiene ninguna cita. */
+export const saveClient = createServerFn({ method: "POST" })
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug, name: z.string().min(1), phone: z.string(), email: z.string().email().optional(), notes: z.string().optional() }))
+  .handler(async ({ data }) => {
+    await exigirAcceso(data.slug);
+    const supabase = getSupabaseServerClient();
+    if (!supabase) return { synced: false as const };
+    const key = phoneKey(data.phone);
+    if (!key) {
+      const { data: previa, error: buscarError } = await supabase.from("clients").select("id")
+        .eq("salon_slug", data.slug).is("phone", null).eq("name", data.name).maybeSingle();
+      if (buscarError) throw new Error(`saveClient: ${buscarError.message}`);
+      if (previa) return { synced: true as const };
+    }
+    const fila = { salon_slug: data.slug, name: data.name, phone: data.phone || null,
+      phone_key: key || null, email: data.email ?? null, notes: data.notes ?? null };
+    const result = key
+      ? await supabase.from("clients").upsert(fila, { onConflict: "salon_slug,phone_key" })
+      : await supabase.from("clients").insert(fila);
+    if (result.error) throw new Error(`saveClient: ${result.error.message}`);
+    return { synced: true as const };
+  });
 
 /**
  * La ficha se localiza por TELÉFONO normalizado, no por el id local: el id que

@@ -26,6 +26,7 @@ import {
   deleteWaitlistEntry,
   patchSalonProfile,
   saveClientNotes,
+  saveClient,
   saveSalonProfile,
   syncAppointment,
   syncWaitlistEntry,
@@ -70,12 +71,13 @@ function aviso(que: string, intentar: () => Promise<unknown>) {
 }
 
 /** Lanza la subida y, si falla, la convierte en un aviso reintentable. */
-function subir(que: string, intentar: () => Promise<unknown>): void {
+function subir(que: string, intentar: () => Promise<unknown>): Promise<void> {
   pendientes += 1;
-  intentar().catch(aviso(que, intentar)).finally(() => { pendientes -= 1; });
+  return intentar().then(() => {}, aviso(que, intentar)).finally(() => { pendientes -= 1; });
 }
 
 let pendientes = 0;
+const altasPendientes = new Map<string, Promise<void>>();
 /** Evita que una lectura antigua pise un cambio local aún en camino. */
 export function sincronizacionPendiente(): boolean { return pendientes > 0; }
 
@@ -93,6 +95,7 @@ export function pushAppointment(
     clientName: cliente?.name ?? appt.clientName ?? undefined,
     clientPhone: cliente?.phone,
     clientEmail: cliente?.email,
+    importedFromTpv: appt.origen === "tpv123",
     serviceIds: appt.serviceIds ?? [],
     employeeId: appt.employeeId,
     startISO: appt.start,
@@ -110,7 +113,10 @@ export function pushAppointment(
     technicalNotes: appt.technicalNotes ?? null,
     reminderSentAt: appt.reminderSentAt ?? null,
   };
-  subir(quien ? `la cita de ${quien}` : "la cita", () => syncAppointment({ data: payload }));
+  subir(quien ? `la cita de ${quien}` : "la cita", async () => {
+    if (appt.origen === "tpv123" && !cliente?.phone) await altasPendientes.get(`${slug}|${quien}`);
+    return syncAppointment({ data: payload });
+  });
 }
 
 /** Borra una cita de verdad. */
@@ -267,4 +273,15 @@ export function pushClientNotes(slug: string | null, cliente: Client | undefined
   subir(`las notas de ${cliente.name}`, () =>
     saveClientNotes({ data: { slug, phone: cliente.phone, notes: cliente.notes ?? "" } }),
   );
+}
+
+/** Alta de ficha sin cita para los salones reales. */
+export function pushClient(slug: string | null, cliente: Client): void {
+  if (!slug) return;
+  const clave = `${slug}|${cliente.name}`;
+  const pending = subir(`la ficha de ${cliente.name}`, () => saveClient({ data: {
+    slug, name: cliente.name, phone: cliente.phone, email: cliente.email, notes: cliente.notes,
+  } }));
+  altasPendientes.set(clave, pending);
+  void pending.finally(() => { if (altasPendientes.get(clave) === pending) altasPendientes.delete(clave); });
 }

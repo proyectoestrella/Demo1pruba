@@ -28,6 +28,7 @@ import {
   pushAppointment,
   pushAppointmentDeletion,
   pushClientNotes,
+  pushClient,
   pushPenalty,
   pushPenaltyCleared,
   pushManualBlock,
@@ -343,7 +344,7 @@ export const useSalonStore = create<SalonState>()(
       setLastFreedSlot: (startISO) => set({ lastFreedSlot: startISO }),
 
       addAppointment: (a, cliente) => {
-        const appt: Appointment = { ...a, id: `a-new-${Date.now()}` };
+        const appt: Appointment = { ...a, id: `a-new-${crypto.randomUUID()}` };
         set((s) => ({ appointments: [...s.appointments, appt] }));
         // Y además, si el salón es real, súbela. El `push*` no hace nada
         // cuando `realSalonSlug` es null, que es el caso de todas las demos.
@@ -463,10 +464,11 @@ export const useSalonStore = create<SalonState>()(
       addClient: (c) => {
         const client: Client = {
           ...c,
-          id: `c-new-${Date.now()}`,
+          id: `c-new-${crypto.randomUUID()}`,
           createdAt: new Date().toISOString(),
         };
         set((s) => ({ clients: [...s.clients, client] }));
+        pushClient(get().realSalonSlug, client);
         return client;
       },
       updateClient: (id, patch) => {
