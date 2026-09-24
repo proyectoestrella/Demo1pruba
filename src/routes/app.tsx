@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { usePanelPublicLink } from "@/lib/panel-public-link";
 import { useSalonStore } from "@/lib/store";
 import { useRealSalon } from "@/lib/use-real-salon";
+import { usePanelRefresh } from "@/lib/use-panel-refresh";
 import { useSyncPanelV2FromUrl, usePanelV2 } from "@/lib/use-panel-v2";
 import {
   DEMO_PARAM,
@@ -319,10 +320,14 @@ function PanelAutorizado({ slug }: { slug?: string }) {
   // Si este panel gestiona un salón real, aquí es donde deja de ser una copia
   // local y pasa a leer y escribir en Supabase. Si no, no hace nada.
   useRealSalon(slug, "panel");
+  const realSlug = useSalonStore((s) => s.realSalonSlug);
+  const refresco = usePanelRefresh(realSlug);
   const panelV2 = usePanelV2();
 
-  if (panelV2) return <PanelV2Shell />;
-  return <DashboardLayoutV1 />;
+  return <>
+    {panelV2 ? <PanelV2Shell /> : <DashboardLayoutV1 />}
+    {refresco && <span className="indicador-refresco fixed bottom-3 right-3 z-10 rounded-full border border-border bg-background/90 px-2 py-1 text-[10px] text-muted-foreground shadow-sm max-lg:bottom-20">{refresco}</span>}
+  </>;
 }
 
 /** El panel de siempre, sin tocar — se activa cuando `panelV2` está desactivado. */

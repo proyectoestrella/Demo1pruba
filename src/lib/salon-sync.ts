@@ -70,8 +70,13 @@ function aviso(que: string, intentar: () => Promise<unknown>) {
 
 /** Lanza la subida y, si falla, la convierte en un aviso reintentable. */
 function subir(que: string, intentar: () => Promise<unknown>): void {
-  intentar().catch(aviso(que, intentar));
+  pendientes += 1;
+  intentar().catch(aviso(que, intentar)).finally(() => { pendientes -= 1; });
 }
+
+let pendientes = 0;
+/** Evita que una lectura antigua pise un cambio local aún en camino. */
+export function sincronizacionPendiente(): boolean { return pendientes > 0; }
 
 /** Sube una cita (crear o modificar: es el mismo upsert). */
 export function pushAppointment(
