@@ -46,7 +46,12 @@ interface SalonState {
   // los campos de personalización de `DemoProfile` (modulosOcultos,
   // mostrarSolicitudes...), que no forman parte del negocio real.
   salonProfile: SalonProfile &
-    Partial<Pick<DemoProfile, "modulosOcultos" | "mostrarSolicitudes" | "duracionFlexible" | "recargoRetraso">>;
+    Partial<
+      Pick<
+        DemoProfile,
+        "modulosOcultos" | "mostrarSolicitudes" | "duracionFlexible" | "recargoRetraso"
+      >
+    >;
   /** Salones preparados para enseñar en visitas — ver demo-profile.ts. */
   savedDemos: SavedDemo[];
   /**
@@ -77,6 +82,12 @@ interface SalonState {
    * Adam no siga creyéndose su panel al abrir luego una demo cualquiera.
    */
   realSalonSlug: string | null;
+  /** Resultado de identificar el slug; la reserva pública espera esta respuesta. */
+  publicBookingResolution: {
+    slug: string;
+    status: "resolviendo" | "demo" | "real" | "fallo";
+  } | null;
+  setPublicBookingResolution: (value: SalonState["publicBookingResolution"]) => void;
   /**
    * Hora de la última cita que se ha cancelado en esta sesión (ISO), o `null`.
    *
@@ -97,6 +108,8 @@ interface SalonState {
    * cita se crea igual que siempre, la lleve o no.
    */
   addAppointment: (a: Omit<Appointment, "id">, cliente?: ClienteDeCita) => Appointment;
+  /** Anota en local una reserva pública que el servidor ya ha guardado. */
+  addSavedPublicAppointment: (appt: Appointment) => void;
   updateAppointment: (id: string, patch: Partial<Appointment>) => void;
   cancelAppointment: (id: string) => void;
   /**
@@ -166,7 +179,8 @@ interface SalonState {
 
   // Salon profile (Settings)
   updateSalonProfile: (
-    patch: Partial<SalonProfile> & Partial<Pick<DemoProfile, "duracionFlexible" | "recargoRetraso">>,
+    patch: Partial<SalonProfile> &
+      Partial<Pick<DemoProfile, "duracionFlexible" | "recargoRetraso">>,
   ) => void;
 
   /**
@@ -326,6 +340,7 @@ export const useSalonStore = create<SalonState>()(
       panelV2: false,
       demoActive: false,
       realSalonSlug: null,
+      publicBookingResolution: null,
       lastFreedSlot: null,
       periodoAnalitica: "hoy",
       rangoAnalitica: null,
@@ -348,6 +363,12 @@ export const useSalonStore = create<SalonState>()(
         pushAppointment(get().realSalonSlug, appt, cliente ?? clienteDeLaCita(get(), appt));
         return appt;
       },
+      addSavedPublicAppointment: (appt) =>
+        set((s) => ({
+          appointments: s.appointments.some((a) => a.id === appt.id)
+            ? s.appointments
+            : [...s.appointments, appt],
+        })),
       updateAppointment: (id, patch) => {
         set((s) => ({
           appointments: s.appointments.map((a) => (a.id === id ? { ...a, ...patch } : a)),
@@ -472,9 +493,7 @@ export const useSalonStore = create<SalonState>()(
 
       setManualBlock: (clientId, blocked) => {
         set((s) => ({
-          clients: s.clients.map((c) =>
-            c.id === clientId ? { ...c, manualBlock: blocked } : c,
-          ),
+          clients: s.clients.map((c) => (c.id === clientId ? { ...c, manualBlock: blocked } : c)),
         }));
         const cliente = get().clients.find((c) => c.id === clientId);
         if (!cliente) return;
@@ -649,6 +668,7 @@ export const useSalonStore = create<SalonState>()(
       deleteDemo: (id) => set((s) => ({ savedDemos: s.savedDemos.filter((d) => d.id !== id) })),
 
       setRealSalonSlug: (slug) => set({ realSalonSlug: slug }),
+      setPublicBookingResolution: (value) => set({ publicBookingResolution: value }),
 
       hydrateFromServer: ({ appointments, clients, waitlist }) =>
         set({ appointments, clients, waitlist }),

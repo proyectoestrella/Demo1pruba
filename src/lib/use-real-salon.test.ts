@@ -24,6 +24,10 @@ import { salon } from "./mock/salon";
 
 interface StoreFalsa extends StoreSalonReal {
   diario: string[];
+  publicBookingResolution: {
+    slug: string;
+    status: "resolviendo" | "demo" | "real" | "fallo";
+  } | null;
   realSalonSlug: string | null;
   appointments: unknown[];
   clients: unknown[];
@@ -33,6 +37,10 @@ interface StoreFalsa extends StoreSalonReal {
 function storeFalsa(): StoreFalsa {
   const s: StoreFalsa = {
     diario: [],
+    publicBookingResolution: null,
+    setPublicBookingResolution: (value) => {
+      s.publicBookingResolution = value;
+    },
     realSalonSlug: null,
     // Lo que hay al entrar: datos de ejemplo del seed, como en cualquier pestaña nueva.
     appointments: [{ id: "cita-de-ejemplo" }],
@@ -98,6 +106,7 @@ describe("resolverSalonReal — un salón de pago no se conecta hasta tener sus 
     const res = await resolverSalonReal("the-best-shave-barber", "panel", deps({ store: () => s }));
 
     expect(res).toBe("real");
+    expect(s.publicBookingResolution).toEqual({ slug: "the-best-shave-barber", status: "real" });
     // Este es el invariante de todo el arreglo: hidratar va antes de conectar.
     const iHidrata = s.diario.indexOf("hydrateFromServer");
     const iConecta = s.diario.indexOf("setRealSalonSlug:the-best-shave-barber");
@@ -213,6 +222,7 @@ describe("resolverSalonReal — un salón de pago no se conecta hasta tener sus 
     );
 
     expect(res).toBe("demo");
+    expect(s.publicBookingResolution).toEqual({ slug: "peluqueria-inventada", status: "demo" });
     expect(s.realSalonSlug).toBeNull();
     expect(pidioAgenda).toBe(false);
     // Las demos SÍ conservan sus datos de ejemplo: es de lo que viven.
@@ -220,7 +230,7 @@ describe("resolverSalonReal — un salón de pago no se conecta hasta tener sus 
     expect(s.diario).toEqual(["setRealSalonSlug:null"]);
   });
 
-  it("si no se puede ni preguntar si es real, se trata como demo y no se conecta", async () => {
+  it("si no se puede ni preguntar si es real, la reserva pública queda bloqueada y reintentable", async () => {
     const s = storeFalsa();
     const res = await resolverSalonReal(
       "the-best-shave-barber",
@@ -233,8 +243,9 @@ describe("resolverSalonReal — un salón de pago no se conecta hasta tener sus 
       }),
     );
 
-    expect(res).toBe("demo");
+    expect(res).toBe("fallo");
     expect(s.realSalonSlug).toBeNull();
+    expect(s.publicBookingResolution).toEqual({ slug: "the-best-shave-barber", status: "fallo" });
   });
 
   it("si el componente se desmonta a mitad, no se toca la store ni se conecta", async () => {

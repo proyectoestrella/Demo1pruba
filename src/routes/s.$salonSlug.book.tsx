@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
 import type { Appointment, Client, Employee, EmployeeId, Service } from "@/lib/mock/types";
@@ -44,6 +44,9 @@ import { es } from "date-fns/locale";
 import heroImg from "@/assets/hero-salon.jpg";
 import { registerBookingClient } from "@/lib/api/clients.functions";
 import { checkClientPenalty } from "@/lib/api/salons.functions";
+import { guardarReservaPublica } from "@/lib/salon-sync";
+import { firmaReservaPublica, mensajeErrorReserva } from "@/lib/reserva-publica";
+import { reintentarSalonPublico } from "@/lib/use-real-salon";
 import { sumServices } from "@/lib/appointment-services";
 import { FluidSteps } from "@/components/twentyfirst/fluid-steps";
 import { capitalizar, eur, fechaLarga } from "@/lib/copy";
@@ -292,17 +295,21 @@ function BookingWizard() {
   }, [soloUno, employees]);
   const appointments = useSalonStore((s) => s.appointments);
   const addAppointment = useSalonStore((s) => s.addAppointment);
+  const addSavedPublicAppointment = useSalonStore((s) => s.addSavedPublicAppointment);
   const clients = useSalonStore((s) => s.clients);
+  const resolution = useSalonStore((s) => s.publicBookingResolution);
+  const resolutionStatus = resolution?.slug === salonSlug ? resolution.status : "resolviendo";
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const sendingRef = useRef(false);
+  const intentoRef = useRef<{ firma: string; cita: Appointment } | null>(null);
 
   // Bloqueo manual o deuda activa: se recalcula en cada tecla, no solo al
   // perder el foco. Sin recargo, la deuda antigua no bloquea.
-  const blockedLocal = useMemo(
-    () => {
-      const matching = findClientByPhone(clients, data.phone);
-      return isBookingBlocked(matching, profile) ? matching : undefined;
-    },
-    [clients, data.phone, profile],
-  );
+  const blockedLocal = useMemo(() => {
+    const matching = findClientByPhone(clients, data.phone);
+    return isBookingBlocked(matching, profile) ? matching : undefined;
+  }, [clients, data.phone, profile]);
 
   // En un salón REAL la ficha del cliente vive en Supabase, no en el navegador
   // de quien reserva: la comprobación la hace el servidor y solo devuelve el
@@ -424,7 +431,27 @@ function BookingWizard() {
     setStep((s) => pasoAnterior(s, soloUno));
   }
 
-  function confirm() {
+  async function confirm() {
+    if (sendingRef.current) return;
+    if (resolutionStatus === "resolviendo") return;
+    if (resolutionStatus === "fallo") {
+      sendingRef.current = true;
+      setSending(true);
+      try {
+        const resultado = await reintentarSalonPublico(salonSlug);
+        setSendError(
+          resultado === "fallo"
+            ? "No hemos podido comprobar el salón. Tus datos siguen aquí; inténtalo de nuevo."
+            : "Ya hemos conectado con el salón. Revisa tu reserva y vuelve a enviarla.",
+        );
+      } catch (error) {
+        setSendError(mensajeErrorReserva(error));
+      } finally {
+        sendingRef.current = false;
+        setSending(false);
+      }
+      return;
+    }
     if (
       !selectedServices.length ||
       !data.date ||
@@ -456,38 +483,53 @@ function BookingWizard() {
     // otra forma ("Mari" en vez de "María García"), no se pisa el que el
     // salón ya conocía.
     const clientName = clienteExistente?.name ?? data.name;
-    // Mejora B1: se guarda AQUÍ (reserva ya validada, no en cada tecla) lo
-    // mínimo para poder ofrecer "repetir" la próxima vez desde este mismo
-    // navegador — nunca nombre ni teléfono, que ya viven donde corresponde.
-    writeLastBooking(salonSlug, { serviceIds, employeeId, savedAt: Date.now() });
-    addAppointment(
-      {
-        clientId,
-        clientName,
-        serviceIds,
-        employeeId,
-        start: startISO,
-        // Con duración flexible se bloquea el extremo alto del rango, para
-        // que la agenda no ofrezca a la siguiente clienta un hueco que en la
-        // práctica no cabe.
-        duration: schedulingDurationMin,
-        priceEur: total,
-        // Las reservas de la web pública entran como solicitud: las confirma,
-        // cambia o rechaza el salón desde el panel. Las citas creadas a mano
-        // desde el panel (NewAppointmentDialog) siguen naciendo confirmadas.
-        status: "pending",
-        note: data.note,
-      },
-      // En un salón real esto es lo que crea (o reconoce) la ficha del cliente
-      // en Supabase y engancha la cita: la store lo sube sola. En una demo de
-      // venta `realSalonSlug` es null y estos datos no salen del navegador.
-      { name: clientName, phone: data.phone, email: data.email },
-    );
-    if (!realSlug) {
+    const citaSinId: Omit<Appointment, "id"> = {
+      clientId,
+      clientName,
+      serviceIds,
+      employeeId,
+      start: startISO,
+      // Con duración flexible se bloquea el extremo alto del rango, para
+      // que la agenda no ofrezca a la siguiente clienta un hueco que en la
+      // práctica no cabe.
+      duration: schedulingDurationMin,
+      priceEur: total,
+      // Las reservas de la web pública entran como solicitud: las confirma,
+      // cambia o rechaza el salón desde el panel. Las citas creadas a mano
+      // desde el panel (NewAppointmentDialog) siguen naciendo confirmadas.
+      status: "pending",
+      note: data.note,
+    };
+    const cliente = { name: clientName, phone: data.phone, email: data.email };
+    if (resolutionStatus === "real") {
+      // La misma solicitud conserva su id entre intentos; si el servidor
+      // guardó la cita pero se perdió la respuesta, el reintento la reconoce.
+      const firma = firmaReservaPublica(salonSlug, citaSinId, cliente);
+      if (intentoRef.current?.firma !== firma) {
+        intentoRef.current = {
+          firma,
+          cita: { ...citaSinId, id: `a-public-${crypto.randomUUID()}` },
+        };
+      }
+      sendingRef.current = true;
+      setSending(true);
+      setSendError(null);
+      try {
+        await guardarReservaPublica(salonSlug, intentoRef.current.cita, cliente);
+        addSavedPublicAppointment(intentoRef.current.cita);
+      } catch (error) {
+        setSendError(mensajeErrorReserva(error));
+        return;
+      } finally {
+        sendingRef.current = false;
+        setSending(false);
+      }
+    } else {
+      addAppointment(citaSinId, cliente);
       // Demo de venta: se conserva tal cual estaba — la reserva queda
       // registrada en Supabase como lead, con el status "confirmed" de
-      // siempre. En un salón real no se llama, porque `addAppointment` ya ha
-      // subido la MISMA cita con su estado "pending" y se duplicaría.
+      // siempre. En un salón real no se llama, porque ya se ha guardado
+      // la misma cita con su estado "pending".
       registerBookingClient({
         data: {
           salonSlug,
@@ -505,6 +547,7 @@ function BookingWizard() {
         console.error("Supabase sync failed (booking still confirmed locally):", err),
       );
     }
+    writeLastBooking(salonSlug, { serviceIds, employeeId, savedAt: Date.now() });
     toast.success("Solicitud enviada", {
       description: `${serviceNames.join(" + ")} · ${data.date} a las ${data.time}`,
     });
@@ -533,13 +576,26 @@ function BookingWizard() {
         ? !data.employeeId
         : step === 3
           ? !data.date || !data.time
-          : !data.name || !data.phone || !data.acceptedPolicy || !!blockedClient;
+          : !data.name ||
+            !data.phone ||
+            !data.acceptedPolicy ||
+            !!blockedClient ||
+            sending ||
+            resolutionStatus === "resolviendo";
 
-  const ctaLabel = step < 4 ? "Continuar" : `Confirmar reserva — ${eur(total)}`;
+  const ctaLabel = sending
+    ? "Enviando…"
+    : step < 4
+      ? "Continuar"
+      : resolutionStatus === "resolviendo"
+        ? "Comprobando salón…"
+        : resolutionStatus === "fallo"
+          ? "Reintentar conexión"
+          : `Confirmar reserva — ${eur(total)}`;
 
   function onCta() {
     if (step < 4) next();
-    else confirm();
+    else void confirm();
   }
 
   // Duración orientativa cuando el salón decide la duración final (caso
@@ -561,7 +617,8 @@ function BookingWizard() {
   // quepan en la agenda.
   const schedulingDurationMin = flexRange ? flexRange.hi : totalMin;
 
-  const recargoTexto = conRecargo && recargoRetraso ? recargoRetrasoTexto(recargoRetraso) : undefined;
+  const recargoTexto =
+    conRecargo && recargoRetraso ? recargoRetrasoTexto(recargoRetraso) : undefined;
 
   const dateLabel = data.date
     ? new Date(`${data.date}T00:00`).toLocaleDateString("es-ES", {
@@ -644,7 +701,7 @@ function BookingWizard() {
 
           {step === 4 && (
             <Step title="Tus datos">
-              <div className="max-w-xl space-y-5">
+              <fieldset disabled={sending} className="max-w-xl space-y-5">
                 {/* Auditoría de UX, hallazgo C8: antes no se repetían fecha,
                     hora ni profesional justo antes de confirmar — en móvil
                     el resumen de la barra lateral ni siquiera se ve (está
@@ -724,15 +781,12 @@ function BookingWizard() {
                 {blockedClient && (
                   <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
                     {blockedClient.manualBlock ? (
-                      <p>
-                        Este salón ha bloqueado la reserva online para este número. Llámanos para
-                        gestionarla.
-                      </p>
+                      <p>No podemos confirmar tu reserva online; llama al salón.</p>
                     ) : (
                       <p>
-                        Tienes pendiente una penalización de {eur(profile.noShowFeeEur ?? 0)} por una
-                        cita a la que no pudiste venir sin avisar. Abónala en {profile.name} y podrás
-                        volver a reservar.
+                        Tienes pendiente una penalización de {eur(profile.noShowFeeEur ?? 0)} por
+                        una cita a la que no pudiste venir sin avisar. Abónala en {profile.name} y
+                        podrás volver a reservar.
                       </p>
                     )}
                     {profile.phone && (
@@ -782,10 +836,7 @@ function BookingWizard() {
                   />
                   <span>
                     Acepto la política de cancelación: gratuita hasta{" "}
-                    {conRecargo
-                      ? `${profile.noShowNoticeHours ?? 2} h`
-                      : "24 h"}{" "}
-                    antes de la cita.
+                    {conRecargo ? `${profile.noShowNoticeHours ?? 2} h` : "24 h"} antes de la cita.
                   </span>
                 </label>
 
@@ -803,7 +854,16 @@ function BookingWizard() {
                     servicio.
                   </p>
                 )}
-              </div>
+                {(sendError || resolutionStatus === "fallo") && (
+                  <p
+                    role="alert"
+                    className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+                  >
+                    {sendError ??
+                      "No hemos podido comprobar el salón. Tus datos siguen aquí; inténtalo de nuevo."}
+                  </p>
+                )}
+              </fieldset>
             </Step>
           )}
 
@@ -811,6 +871,7 @@ function BookingWizard() {
             {step > 1 ? (
               <button
                 onClick={prev}
+                disabled={sending}
                 className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="h-4 w-4" /> Atrás
@@ -913,7 +974,10 @@ function ServiceStep({
   return (
     <Step title="Elige uno o varios servicios">
       <p
-        className={cn("-mt-4 text-sm text-muted-foreground", count > 0 && flexNota ? "mb-2" : "mb-6")}
+        className={cn(
+          "-mt-4 text-sm text-muted-foreground",
+          count > 0 && flexNota ? "mb-2" : "mb-6",
+        )}
         aria-live="polite"
       >
         {count === 0
@@ -1327,7 +1391,9 @@ function DateTimeStep({
       <div className="-mt-4 mb-6 space-y-1.5">
         <p className="text-sm text-muted-foreground">Duración: {durationLabel}</p>
         {flexNota && <p className="text-sm font-medium text-foreground">{flexNota}</p>}
-        {recargoTexto && <p className="text-[11px] leading-snug text-muted-foreground">{recargoTexto}</p>}
+        {recargoTexto && (
+          <p className="text-[11px] leading-snug text-muted-foreground">{recargoTexto}</p>
+        )}
       </div>
       <div className="grid gap-8 md:grid-cols-[auto_1fr]">
         <div className="self-start rounded-2xl border border-border/60 bg-card p-1">
