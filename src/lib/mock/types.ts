@@ -204,6 +204,8 @@ export interface SalonProfile {
   tagline: string;
   about: string;
   address: string;
+  /** El salón fija la duración al aceptar cada solicitud. */
+  duracionFlexible?: boolean;
   phone: string;
   instagram: string;
   /** Siete cadenas, lunes a domingo: "10:00–13:30, 17:00–20:00" o "Cerrado". Ver lib/opening-hours.ts */

@@ -59,13 +59,7 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
   const soloUno = esSoloUnProfesional(useEquipo());
   const depositAmountEur = useSalonStore((s) => s.salonProfile.depositAmountEur ?? 10);
   const depositDeadlineHours = useSalonStore((s) => deadlineHours(s.salonProfile.depositDeadlineHours));
-  // `duracionFlexible` es personalización de demo (ver `DemoPersonalizacion` en
-  // demo-profile.ts): no forma parte de `SalonProfile` pero `useApplyDemoFromUrl`
-  // (app.tsx) la mezcla en `salonProfile` al cargar el panel desde un enlace de
-  // demo, así que ya vive ahí cuando este componente renderiza dentro de /app.
-  const duracionFlexible = useSalonStore(
-    (s) => !!(s.salonProfile as { duracionFlexible?: boolean }).duracionFlexible,
-  );
+  const duracionFlexible = useSalonStore((s) => !!s.salonProfile.duracionFlexible);
   const pideFianza = depositEnabled && !!depositBizumPhone.trim();
   const serviceMap = selectServiceMap(services);
 

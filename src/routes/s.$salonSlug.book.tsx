@@ -5,6 +5,7 @@ import { employeesForType, servicesForType, depositFor, requiresDeposit } from "
 import type { Appointment, BookingAnswers, Client, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { bookingAnswersComplete, bookingQuestionsEnabled, cleanBookingAnswers, serializeBookingNote } from "@/lib/booking-answers";
 import { useSalonStore, isSlotTaken } from "@/lib/store";
+import { duracionFlexibleActiva } from "@/lib/duracion-flexible";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import {
@@ -242,9 +243,10 @@ function BookingWizard() {
   const storedRecargoRetraso = useSalonStore((s) => s.salonProfile.recargoRetraso);
   const storedDuracionFlexible = useSalonStore((s) => s.salonProfile.duracionFlexible);
   const recargoRetraso = demoPersonalizacion?.recargoRetraso ?? storedRecargoRetraso;
-  const duracionFlexibleDemo = demoPersonalizacion
-    ? !!demoPersonalizacion.duracionFlexible
-    : !!storedDuracionFlexible;
+  const realSalonSlug = useSalonStore((s) => s.realSalonSlug);
+  const duracionFlexibleDemo = duracionFlexibleActiva(
+    { duracionFlexible: storedDuracionFlexible }, demoPersonalizacion, realSalonSlug === salonSlug,
+  );
 
   // Catálogo y equipo, calculados a partir del tipo de negocio deducido del
   // enlace de esta demo — no del equipo/catálogo "activo" mutado en

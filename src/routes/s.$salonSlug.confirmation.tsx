@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, CalendarPlus, Download, MapPin } from "lucide-react";
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
+import { duracionFlexibleActiva } from "@/lib/duracion-flexible";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
@@ -103,9 +104,10 @@ function Confirmation() {
   // abrir la portada — igual que en el asistente de reserva.
   const storedRecargoRetraso = useSalonStore((s) => s.salonProfile.recargoRetraso);
   const storedDuracionFlexible = useSalonStore((s) => s.salonProfile.duracionFlexible);
-  const flexible = demoPersonalizacion
-    ? !!demoPersonalizacion.duracionFlexible
-    : !!storedDuracionFlexible;
+  const realSalonSlug = useSalonStore((s) => s.realSalonSlug);
+  const flexible = duracionFlexibleActiva(
+    { duracionFlexible: storedDuracionFlexible }, demoPersonalizacion, realSalonSlug === salonSlug,
+  );
   const recargoRetraso = demoPersonalizacion?.recargoRetraso ?? storedRecargoRetraso;
   const flexRange = flexible ? flexDurationRange(totalMin) : null;
   const durationLabel =

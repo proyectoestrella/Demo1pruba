@@ -32,6 +32,7 @@ function Settings() {
   const businessType = inferBusinessType(salonProfile.tagline, salonProfile.name);
   const [questionsEnabled, setQuestionsEnabled] = useState(bookingQuestionsEnabled(salonProfile, businessType));
   const [questionsRequired, setQuestionsRequired] = useState(!!salonProfile.bookingQuestionsRequired);
+  const [duracionFlexible, setDuracionFlexible] = useState(!!salonProfile.duracionFlexible);
 
   // Plantones — política de penalización por cancelar tarde o no presentarse.
   const [noShowEnabled, setNoShowEnabled] = useState(recargoActivo(salonProfile));
@@ -67,6 +68,7 @@ function Settings() {
     setDepositDeadline(deadlineHours(salonProfile.depositDeadlineHours));
     setQuestionsEnabled(bookingQuestionsEnabled(salonProfile, businessType));
     setQuestionsRequired(!!salonProfile.bookingQuestionsRequired);
+    setDuracionFlexible(!!salonProfile.duracionFlexible);
   }, [salonProfile, businessType]);
 
   function handleSave() {
@@ -110,6 +112,7 @@ function Settings() {
       depositDeadlineHours: depositDeadline,
       bookingQuestionsEnabled: questionsEnabled,
       bookingQuestionsRequired: questionsRequired,
+      duracionFlexible,
     });
     toast.success("Cambios guardados");
   }
@@ -117,6 +120,17 @@ function Settings() {
   return (
     <div className="max-w-2xl space-y-6">
       <PageHeader title="Ajustes" description="Las políticas de tu salón: plantones, señal y reparto de agenda." />
+
+      <div className="rounded-xl border border-border/60 bg-card p-6">
+        <div className="flex items-center justify-between gap-4">
+        <div>
+          <Label htmlFor="duracion-flexible" className="text-sm font-medium">La duración de cada cita la decido yo al aceptarla</Label>
+          <p className="mt-1 text-sm text-muted-foreground">La web muestra una duración orientativa. Cuando llegue la solicitud, podrás fijar los minutos antes de confirmarla.</p>
+        </div>
+        <Switch id="duracion-flexible" checked={duracionFlexible} onCheckedChange={setDuracionFlexible} />
+        </div>
+        <div className="mt-4 flex justify-end"><Button onClick={handleSave}>Guardar cambios</Button></div>
+      </div>
 
       <Link
         to="/app/web"
