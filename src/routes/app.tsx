@@ -17,7 +17,7 @@ import {
   Globe,
   Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { salon } from "@/lib/mock/salon";
+import { usePanelPublicLink } from "@/lib/panel-public-link";
 import { useSalonStore } from "@/lib/store";
 import { useRealSalon } from "@/lib/use-real-salon";
 import { useSyncPanelV2FromUrl, usePanelV2 } from "@/lib/use-panel-v2";
@@ -210,15 +210,15 @@ function SidebarBrand() {
 }
 
 function SidebarFooter() {
+  const publicLink = usePanelPublicLink();
   return (
     <div className="border-t border-sidebar-border p-4">
-      <Link
-        to="/s/$salonSlug"
-        params={{ salonSlug: salon.slug }}
+      <a
+        href={publicLink}
         className="flex items-center justify-between rounded-lg bg-sidebar-accent/50 px-3 py-2 text-xs text-sidebar-foreground/80 hover:bg-sidebar-accent"
       >
         Ver sitio público <ArrowUpRight className="h-3.5 w-3.5" />
-      </Link>
+      </a>
     </div>
   );
 }

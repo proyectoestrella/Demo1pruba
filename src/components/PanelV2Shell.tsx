@@ -16,7 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { salon } from "@/lib/mock/salon";
+import { usePanelPublicLink } from "@/lib/panel-public-link";
 import { useSalonStore } from "@/lib/store";
 import { moduloVisible, type ModuloOcultable } from "@/lib/demo-profile";
 import { Logo } from "@/components/Logo";
@@ -101,6 +101,7 @@ function isActive(to: string, path: string, exact?: boolean) {
 }
 
 export function PanelV2Shell() {
+  const publicLink = usePanelPublicLink();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const modulosOcultos = useSalonStore((s) => s.salonProfile.modulosOcultos);
@@ -143,15 +144,14 @@ export function PanelV2Shell() {
             );
           })}
         </nav>
-        <Link
-          to="/s/$salonSlug"
-          params={{ salonSlug: salon.slug }}
+        <a
+          href={publicLink}
           className="mt-3 flex w-16 flex-col items-center gap-1 rounded-lg py-2 text-center text-sidebar-foreground/50 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
           title="Ver sitio público"
         >
           <ArrowUpRight className="h-4 w-4" />
           <span className="text-[9px] leading-tight">Web</span>
-        </Link>
+        </a>
         {/* Salir. Borra también las citas y las fichas guardadas en este
             aparato — ver components/BotonCerrarSesion.tsx. */}
         <div className="mt-1 flex w-16 justify-center">
@@ -248,15 +248,14 @@ export function PanelV2Shell() {
                   </Link>
                 );
               })}
-              <Link
-                to="/s/$salonSlug"
-                params={{ salonSlug: salon.slug }}
+              <a
+                href={publicLink}
                 onClick={() => setMoreOpen(false)}
                 className="flex flex-col items-center gap-2 rounded-xl border border-border/60 px-3 py-4 text-center text-xs font-medium text-muted-foreground hover:bg-muted/50"
               >
                 <ArrowUpRight className="h-5 w-5" />
                 Ver sitio público
-              </Link>
+              </a>
               <div className="flex flex-col items-center gap-2 rounded-xl border border-border/60 px-3 py-4 text-center text-xs font-medium text-muted-foreground">
                 <BotonCerrarSesion variante="icono" />
                 Cerrar sesión
