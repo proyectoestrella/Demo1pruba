@@ -734,7 +734,7 @@ function BookingWizard() {
                   <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
                     {blockedClient.manualBlock ? (
                       <p>
-                        Este salón ha bloqueado la reserva online para este número. Llámanos para
+                        Este salón ha bloqueado las reservas por internet para este número. Llámanos para
                         gestionarla.
                       </p>
                     ) : (

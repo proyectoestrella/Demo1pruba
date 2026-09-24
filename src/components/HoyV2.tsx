@@ -41,6 +41,7 @@ import { CitasPorResolver } from "@/components/CitasPorResolver";
 import { AvisoDeudasHoy } from "@/components/DeudaCliente";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { Button } from "@/components/ui/button";
+import { RecordatoriosManana } from "@/components/RecordatoriosManana";
 import { cn } from "@/lib/utils";
 
 /** Buenos días (00-06 se cuenta como "madrugada" pero saluda igual que noche). */
@@ -134,6 +135,7 @@ export function HoyV2() {
           delante), y qué citas de estos días quedaron sin marcar. */}
       <AvisoDeudasHoy />
       <CitasPorResolver />
+      <RecordatoriosManana citas={appointments} />
 
       {/* Las dos acciones que pasan de verdad en el mostrador: alguien que
           entra sin haber reservado, y alguien que llama por teléfono. Una
@@ -336,7 +338,7 @@ export function HoyV2() {
       <div className="min-w-0 rounded-xl border border-border/60 bg-card">
         <div className="flex items-center justify-between border-b border-border/60 px-5 py-3.5">
           <h2 className="font-display text-base">Próximas citas</h2>
-          <div className="flex items-center gap-3"><span className="text-xs text-muted-foreground">{upcomingToday.length} hoy</span><Link to="/app/hoja" className="text-xs font-medium text-primary underline">Hoja del día</Link></div>
+          <div className="flex items-center gap-3"><span className="text-xs text-muted-foreground">{upcomingToday.length} hoy</span><Link to="/app/hoja" search={{ dia: "hoy" }} className="text-xs font-medium text-primary underline">Hoja del día</Link></div>
         </div>
         {upcomingToday.length === 0 ? (
           <EmptyState

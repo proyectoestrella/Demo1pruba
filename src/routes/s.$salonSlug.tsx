@@ -35,7 +35,7 @@ export const Route = createFileRoute("/s/$salonSlug")({
     const description = name
       ? `${BUSINESS_LABEL[inferBusinessType(fromUrl?.tagline, fromUrl?.name)]} · Reserva tu cita en ${name} en segundos, sin llamar.`
       : "Reserva tu cita en segundos, sin llamar.";
-    const title = name ? `${name} — Reserva online` : "Reserva online";
+    const title = name ? `${name} — Reserva por internet` : "Reserva por internet";
     return {
       meta: [
         { title },
@@ -192,7 +192,7 @@ function SalonLayout() {
   const salonUnresolved = sessionChecked && graceOver && !fromUrl && realSlug !== salonSlug;
 
   useEffect(() => {
-    document.title = salonUnresolved ? "Salón no encontrado" : `${profile.name} — Reserva online`;
+    document.title = salonUnresolved ? "Salón no encontrado" : `${profile.name} — Reserva por internet`;
   }, [profile.name, salonUnresolved]);
 
   // El dosier comercial imprimible (`/dosier`) es una página A4 propia, no

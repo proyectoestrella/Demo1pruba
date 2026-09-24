@@ -87,22 +87,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         {
           name: "description",
           content:
-            "Premium booking platform for hair salons and barbershops. Book in seconds, manage your salon like an operating system.",
+            "Reservas para peluquerías y barberías. Gestiona tu agenda y deja que tus clientes reserven en segundos.",
         },
         { property: "og:title", content: fallbackTitle },
         { property: "og:type", content: "website" },
         { name: "twitter:title", content: fallbackTitle },
         {
           name: "description",
-          content: "Trimly is a barber booking and business dashboard for independent barbers.",
+          content: "Trimly permite gestionar la agenda y las reservas de peluquerías y barberías.",
         },
         {
           property: "og:description",
-          content: "Trimly is a barber booking and business dashboard for independent barbers.",
+          content: "Trimly permite gestionar la agenda y las reservas de peluquerías y barberías.",
         },
         {
           name: "twitter:description",
-          content: "Trimly is a barber booking and business dashboard for independent barbers.",
+          content: "Trimly permite gestionar la agenda y las reservas de peluquerías y barberías.",
         },
         {
           property: "og:image",

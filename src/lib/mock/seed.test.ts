@@ -11,6 +11,35 @@ import { duracionRecordada } from "../derive";
 const employees = employeesForType("barberia");
 const services = servicesForType("barberia");
 
+describe("buildSeed — colores de peluquería", () => {
+  it("siembra entre diez y catorce fórmulas variadas y coherentes por clienta y servicio", () => {
+    const equipo = employeesForType("peluqueria");
+    const carta = servicesForType("peluqueria");
+    const first = buildSeed("peluqueria", equipo, carta).appointments;
+    const second = buildSeed("peluqueria", equipo, carta).appointments;
+    const coloreadas = first.filter((a) => a.colorFormula);
+    expect(coloreadas.map((a) => [a.clientId, a.colorFormula, a.technicalNotes]))
+      .toEqual(second.filter((a) => a.colorFormula).map((a) => [a.clientId, a.colorFormula, a.technicalNotes]));
+    const formulasDistintas = new Set(coloreadas.map((a) => a.colorFormula)).size;
+    expect(formulasDistintas).toBeGreaterThanOrEqual(10);
+    expect(formulasDistintas).toBeLessThanOrEqual(14);
+    expect(new Set(coloreadas.map((a) => a.technicalNotes)).size).toBeGreaterThan(12);
+    expect(coloreadas.some((a) => a.colorFormula?.includes("Baño de color"))).toBe(true);
+    expect(coloreadas.some((a) => a.colorFormula?.includes("30 vol"))).toBe(true);
+    expect(coloreadas.every((a) => a.serviceIds.includes("color") || a.serviceIds.includes("afeitado"))).toBe(true);
+    const porClientaYServicio = new Map<string, Set<string>>();
+    for (const a of coloreadas) {
+      const clave = `${a.clientId}:${a.serviceIds.includes("afeitado") ? "mechas" : "color"}`;
+      const formulas = porClientaYServicio.get(clave) ?? new Set<string>();
+      formulas.add(a.colorFormula!);
+      porClientaYServicio.set(clave, formulas);
+    }
+    expect([...porClientaYServicio.values()].every((formulas) => formulas.size <= 2)).toBe(true);
+    expect([...porClientaYServicio.values()].some((formulas) => formulas.size === 2)).toBe(true);
+    expect(first.some((a) => a.serviceIds.every((id) => id !== "color" && id !== "afeitado") && !a.colorFormula)).toBe(true);
+  });
+});
+
 describe("buildSeed — política de plantón (opts.noShowFeeEur)", () => {
   it("sin penalización activa, ningún cliente sale marcado", () => {
     const seed = buildSeed("barberia", employees, services);

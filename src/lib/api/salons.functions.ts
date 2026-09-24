@@ -585,7 +585,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
         .maybeSingle();
       if (blockError) throw new Error(`syncAppointment (bloqueo): ${blockError.message}`);
       if (blocked && isManualBlockRecord(blocked)) {
-        throw new Error("Este salón ha bloqueado la reserva online para este número.");
+        throw new Error("Este salón ha bloqueado las reservas por internet para este número.");
       }
     }
     if (data.clientPhone && key.length >= 6 && data.clientName) {

@@ -1,17 +1,20 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Printer } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
 import { enlaceRecordatorio } from "@/lib/avisos";
 import { useEquipo } from "@/lib/use-equipo";
-import { hojaDelDia, fechaLocal } from "@/lib/hoja-del-dia";
+import { hojaDelDia, fechaLocal, vistaHoja } from "@/lib/hoja-del-dia";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
 import { Button } from "@/components/ui/button";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import type { Appointment } from "@/lib/mock/types";
 
-export const Route = createFileRoute("/app/hoja")({ component: HojaDelDia });
+export const Route = createFileRoute("/app/hoja")({
+  validateSearch: (search: Record<string, unknown>) => ({ dia: vistaHoja(search) }),
+  component: HojaDelDia,
+});
 
 function HojaDelDia() {
   const citas = useSalonStore((s) => s.appointments);
@@ -19,7 +22,9 @@ function HojaDelDia() {
   const clientes = useSalonStore((s) => s.clients);
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const equipo = useEquipo();
-  const [manana, setManana] = useState(false);
+  const { dia } = Route.useSearch();
+  const navigate = useNavigate({ from: "/app/hoja" });
+  const manana = dia === "manana";
   const [selected, setSelected] = useState<Appointment | null>(null);
   const fecha = new Date();
   if (manana) fecha.setDate(fecha.getDate() + 1);
@@ -34,8 +39,8 @@ function HojaDelDia() {
         <p className="text-sm text-muted-foreground">{fecha.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
       </div>
       <div className="hoja-controles flex gap-2">
-        <Button variant={!manana ? "default" : "outline"} onClick={() => setManana(false)}>Hoy</Button>
-        <Button variant={manana ? "default" : "outline"} onClick={() => setManana(true)}>Mañana</Button>
+        <Button variant={!manana ? "default" : "outline"} onClick={() => navigate({ search: { dia: "hoy" } })}>Hoy</Button>
+        <Button variant={manana ? "default" : "outline"} onClick={() => navigate({ search: { dia: "manana" } })}>Mañana</Button>
         <Button variant="outline" onClick={() => window.print()}><Printer className="mr-2 size-4" />Imprimir</Button>
       </div>
     </header>

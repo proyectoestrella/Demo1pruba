@@ -141,7 +141,7 @@ function Page2({ t }: { t: DosierTexts }) {
           <div className="step">
             <div className="num">1</div>
             <div className="stext">
-              <div className="stitle">Reserva online 24/7, en tu propia página</div>
+              <div className="stitle">Reservas por internet a cualquier hora, en tu propia página</div>
               <div className="sbody">
                 {clienteSingCap} elige {info.serviciosLista}, con quién y a qué hora, desde el móvil y a
                 cualquier hora. A ti te llega como solicitud.

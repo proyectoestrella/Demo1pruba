@@ -367,7 +367,7 @@ const INTENTS: Intent[] = [
       const noShow = appointments.filter((a) => a.status === "no-show").length;
       const cancelPct = Math.round((cancelled / total) * 100);
       const noShowPct = Math.round((noShow / total) * 100);
-      return `Sobre el total de citas: ${cancelPct}% canceladas (${cancelled}) y ${noShowPct}% no-show (${noShow}). ${
+      return `Sobre el total de citas: ${cancelPct}% canceladas (${cancelled}) y ${noShowPct}% sin asistencia (${noShow}). ${
         cancelPct + noShowPct > 15
           ? "Está por encima del 15% combinado — vale la pena pedir confirmación el día antes."
           : "Se mantiene en un nivel saludable."
@@ -595,6 +595,6 @@ export function answerFor(question: string, ctx: SalonContext): string {
   return [
     "No sé responder a eso — solo consulto los datos de tu propio salón, no invento.",
     "",
-    "Puedo hablarte de ingresos (totales, por servicio, por mes), ocupación (global o por profesional), franjas fuertes y flojas, clientes (nuevos, recurrentes, inactivos, quién gasta más), cancelaciones y no-shows, agenda de hoy y próxima, lista de espera, tarifas o una recomendación para hoy.",
+    "Puedo hablarte de ingresos (totales, por servicio, por mes), ocupación (global o por profesional), franjas fuertes y flojas, clientes (nuevos, recurrentes, inactivos, quién gasta más), cancelaciones y ausencias, agenda de hoy y próxima, lista de espera, tarifas o una recomendación para hoy.",
   ].join("\n");
 }

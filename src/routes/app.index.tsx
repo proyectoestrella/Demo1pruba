@@ -40,6 +40,7 @@ import { KpiCard } from "@/components/KpiCard";
 import { BorderBeam } from "@/components/magicui/border-beam";
 import { usePanelV2 } from "@/lib/use-panel-v2";
 import { HoyV2 } from "@/components/HoyV2";
+import { RecordatoriosManana } from "@/components/RecordatoriosManana";
 import { PeriodFilter } from "@/components/PeriodFilter";
 import { CitasPorResolver } from "@/components/CitasPorResolver";
 import { AvisoDeudasHoy } from "@/components/DeudaCliente";
@@ -183,6 +184,7 @@ function HomeV1() {
 
       <AvisoDeudasHoy />
       <CitasPorResolver />
+      <RecordatoriosManana citas={appointments} />
       {mostrarSolicitudes && <PendingRequestsBanner onOpenDetail={setSelected} />}
       <ExpiredDepositsNotice onOpenDetail={setSelected} />
 
@@ -361,7 +363,7 @@ function HomeV1() {
       <div data-tour="today-list" className="min-w-0 rounded-xl border border-border/60 bg-card">
         <div className="flex items-center justify-between border-b border-border/60 px-6 py-4">
           <h2 className="font-display text-lg">Citas de hoy</h2>
-          <div className="flex items-center gap-3"><span className="text-xs text-muted-foreground">{todayList.length} programadas</span><Link to="/app/hoja" className="text-xs font-medium text-primary underline">Hoja del día</Link></div>
+          <div className="flex items-center gap-3"><span className="text-xs text-muted-foreground">{todayList.length} programadas</span><Link to="/app/hoja" search={{ dia: "hoy" }} className="text-xs font-medium text-primary underline">Hoja del día</Link></div>
         </div>
         {todayList.length === 0 ? (
           <EmptyState

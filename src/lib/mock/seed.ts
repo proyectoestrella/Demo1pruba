@@ -136,6 +136,27 @@ function pickSpreadStartHour(sched: { start: number; end: number }, rand: () => 
   return pool[Math.floor(rand() * pool.length)];
 }
 
+// Doce fichas de color estables por clienta y tipo de servicio. Las notas
+// cambian ligeramente entre visitas, como sucede al revisar el cabello.
+const COLORES_DEMO = {
+  color: [
+    ["Tinte 5.0 en raíz, oxidante 20 vol, 35 min", "Cubrir canas de sienes; emulsión suave."],
+    ["Tinte 6.3 en raíz, oxidante 20 vol, 30 min", "Respetar medios; refrescar solo al aclarar."],
+    ["Tinte 7.1 sin amoníaco, oxidante 10 vol, 30 min", "Usar tinte sin amoníaco; comprobar cuero cabelludo."],
+    ["Baño de color 7.13, oxidante 10 vol, 20 min", "Vigilar puntas porosas; aclarar con suavidad."],
+    ["Baño de color 6.34, oxidante 10 vol, 25 min", "Aplicar de medios a puntas; revisar brillo."],
+    ["Matiz 9.12, oxidante 10 vol, 12 min", "Revisar el reflejo cada 5 min."],
+  ],
+  mechas: [
+    ["Mechas finas: decoloración con oxidante 20 vol, 35 min; matiz 9.1, 10 vol, 10 min", "Dejar libre el contorno; comprobar elasticidad."],
+    ["Balayage: decoloración con oxidante 30 vol, 30 min; matiz 9.13, 10 vol, 15 min", "Difuminar la raíz; vigilar puntas."],
+    ["Mechas con papel: decoloración con oxidante 20 vol, 40 min; matiz 8.21, 10 vol, 10 min", "Separaciones finas en coronilla."],
+    ["Balayage suave: decoloración con oxidante 20 vol, 30 min; matiz 8.13, 10 vol, 12 min", "Conservar profundidad en la nuca."],
+    ["Mechas de contorno: decoloración con oxidante 20 vol, 25 min; matiz 10.2, 10 vol, 8 min", "Aclarar primero las zonas del rostro."],
+    ["Balayage cobrizo: decoloración con oxidante 30 vol, 25 min; matiz 8.34, 10 vol, 15 min", "No solapar la decoloración anterior."],
+  ],
+} as const;
+
 function buildAppointments(
   type: BusinessType,
   clients: Client[],
@@ -228,6 +249,17 @@ function buildAppointments(
           pendingHoyAsignados++;
         }
 
+        const servicioColor = chosen.some((sv) => sv.id === "afeitado") ? "mechas"
+          : chosen.some((sv) => sv.id === "color") ? "color" : undefined;
+        const fichaColor = type === "peluqueria" && servicioColor && day < 0 && status === "completed"
+          ? COLORES_DEMO[servicioColor][(Number(client.id.slice(1)) - 1) % 6]
+          : undefined;
+        // En dos tonos de raíz se ajustan cinco minutos según la visita.
+        const formulaColor = fichaColor && servicioColor === "color" && nextId % 2
+          && (Number(client.id.slice(1)) - 1) % 6 < 2
+          ? fichaColor[0].replace("35 min", "40 min").replace("30 min", "35 min")
+          : fichaColor?.[0];
+
         out.push({
           id: `a${nextId++}`,
           clientId: client.id,
@@ -238,9 +270,9 @@ function buildAppointments(
           duration: durationMin,
           priceEur,
           status,
-          ...(type === "peluqueria" && day < 0 && i === 0 && client.id < "c9" ? {
-            colorFormula: ["7.1 + 8.0 al 50 %, oxidante 20 vol, 35 min", "6.3 raíz, 8.1 medios y puntas, 30 min", "Baño de color 7.13, 20 vol, 25 min"][nextId % 3],
-            technicalNotes: "Matizar puntas al final y revisar porosidad.",
+          ...(fichaColor ? {
+            colorFormula: formulaColor,
+            technicalNotes: `${fichaColor[1]} ${nextId % 2 ? "Revisar al aclarar." : "Anotar el resultado."}`,
           } : {}),
         });
       }

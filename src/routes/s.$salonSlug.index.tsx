@@ -604,7 +604,7 @@ function SalonHome() {
                     search={(prev) => prev}
                     className="gap-2"
                   >
-                    Reservar online <ArrowRight className="h-4 w-4" />
+                    Reservar por internet <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
                 <Button

@@ -134,7 +134,7 @@ export function ClientHistorySheet({
         // Vaul no debe interpretar el toque del botón como arrastre del cajón.
         <div data-vaul-no-drag className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 p-4">
           <p className="text-sm">
-            {client.manualBlock ? "Reserva online bloqueada a mano" : "Puede reservar online"}
+            {client.manualBlock ? "Reserva por internet bloqueada a mano" : "Puede reservar por internet"}
           </p>
           <Button
             size="sm"
@@ -142,7 +142,7 @@ export function ClientHistorySheet({
             onClick={() => setManualBlock(client.id, !client.manualBlock)}
           >
             {client.manualBlock ? <Unlock className="size-4" /> : <Ban className="size-4" />}
-            {client.manualBlock ? "Desbloquear" : "Bloquear reserva online"}
+            {client.manualBlock ? "Desbloquear" : "Bloquear reserva por internet"}
           </Button>
         </div>
       )}

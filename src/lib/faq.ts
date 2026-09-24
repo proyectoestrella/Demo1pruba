@@ -67,7 +67,7 @@ export function faqPorDefecto(
     },
     {
       q: "¿Atendéis sin cita previa?",
-      a: "Si hay hueco, sí — pero la agenda suele ir llena. Reservar online es la forma segura de tener sitio.",
+      a: "Si hay hueco, sí — pero la agenda suele ir llena. Reservar por internet es la forma segura de tener sitio.",
     },
     // Con un solo profesional, preguntar «¿puedo elegir barbero?» y responder
     // que sí sería mentira; y la pregunta que de verdad se hace quien reserva

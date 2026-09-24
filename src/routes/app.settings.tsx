@@ -316,8 +316,7 @@ function Settings() {
           Política de cancelación
         </p>
         <p className="mt-2 text-sm">
-          Cancelación gratuita hasta 24h antes. El depósito no es reembolsable pasado ese plazo. Las
-          no-shows pierden el depósito.
+          Cancelación gratuita hasta 24 h antes. Si no vienes o cancelas más tarde, pierdes la señal.
         </p>
       </div>
       <div className="rounded-xl border border-border/60 bg-card p-6">
