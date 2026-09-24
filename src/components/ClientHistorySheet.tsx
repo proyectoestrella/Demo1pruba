@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSalonStore } from "@/lib/store";
+import { historialColores } from "@/lib/colores";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Textarea } from "@/components/ui/textarea";
@@ -88,6 +89,7 @@ export function ClientHistorySheet({
   }
 
   const ownAppointments = client ? appointments.filter((a) => a.clientId === client.id) : [];
+  const colores = client ? historialColores(appointments, client.id, new Date().toISOString()) : [];
   const now = Date.now();
   const upcoming = ownAppointments
     .filter((a) => a.status !== "cancelled" && +new Date(a.start) >= now)
@@ -269,6 +271,18 @@ export function ClientHistorySheet({
       </div>
 
       {/* Historial de citas */}
+      <div className="space-y-2 rounded-xl border border-border/60 p-4">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Color</p>
+        {colores.length ? <>
+          <p className="font-medium">Último: {colores[0].colorFormula}</p>
+          <div className="divide-y divide-border/60 text-sm">
+            {colores.map((a) => <div key={a.id} className="flex gap-3 py-2">
+              <time className="w-24 shrink-0 text-muted-foreground">{new Date(a.start).toLocaleDateString("es-ES")}</time>
+              <span>{a.colorFormula}{a.technicalNotes && <span className="block text-muted-foreground">{a.technicalNotes}</span>}</span>
+            </div>)}
+          </div>
+        </> : <p className="text-sm text-muted-foreground">Aún no hay colores anotados.</p>}
+      </div>
       <div>
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Historial de citas

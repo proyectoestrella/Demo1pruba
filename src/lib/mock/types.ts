@@ -138,6 +138,9 @@ export interface Appointment {
   note?: string;
   /** Respuestas que la clienta dio al pedir la cita. No contienen datos de salud. */
   bookingAnswers?: BookingAnswers;
+  /** Fórmula y notas de esta visita; el historial de la clienta se obtiene de sus citas. */
+  colorFormula?: string;
+  technicalNotes?: string;
   /**
    * Minutos de retraso con los que se presentó, cuando eso disparó un
    * recargo (política de plantón). Independiente de `status`: la cita puede

@@ -100,6 +100,8 @@ export function pushAppointment(
     depositRequestedAt: appt.depositRequestedAt ?? null,
     depositReceivedAt: appt.depositReceivedAt ?? null,
     depositEur: appt.depositEur ?? null,
+    colorFormula: appt.colorFormula ?? null,
+    technicalNotes: appt.technicalNotes ?? null,
   };
   subir(quien ? `la cita de ${quien}` : "la cita", () => syncAppointment({ data: payload }));
 }

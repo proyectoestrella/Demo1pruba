@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
@@ -30,6 +30,7 @@ import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
 import { DepositStatusControls } from "@/components/DepositStatusControls";
 import { deadlineHours, depositDueAt } from "@/lib/deposit-deadline";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Sheet,
   SheetContent,
@@ -97,6 +98,12 @@ export function AppointmentDetailSheet({
     appointmentProp ? s.appointments.find((a) => a.id === appointmentProp.id) : undefined,
   );
   const appointment = stored ?? appointmentProp;
+  const [formula, setFormula] = useState(appointment?.colorFormula ?? "");
+  const [technicalNotes, setTechnicalNotes] = useState(appointment?.technicalNotes ?? "");
+  useEffect(() => {
+    setFormula(appointment?.colorFormula ?? "");
+    setTechnicalNotes(appointment?.technicalNotes ?? "");
+  }, [appointment?.id]);
 
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
@@ -319,6 +326,22 @@ export function AppointmentDetailSheet({
               </p>
             )}
             <BookingAnswersSummary answers={appointment.bookingAnswers} />
+          </div>
+
+          <div className="space-y-3 rounded-xl border border-border/60 p-4">
+            <p className="text-sm font-medium">Ficha técnica de esta visita</p>
+            <label className="block space-y-1 text-xs font-medium">
+              <span>Color / fórmula</span>
+              <Input value={formula} onChange={(e) => setFormula(e.target.value)} onBlur={() => {
+                if (formula.trim() !== (appointment.colorFormula ?? "")) updateAppointment(appointment.id, { colorFormula: formula.trim() });
+              }} placeholder="7.1 + 8.0 al 50 %, oxidante 20 vol, 35 min" />
+            </label>
+            <label className="block space-y-1 text-xs font-medium">
+              <span>Notas técnicas</span>
+              <Textarea value={technicalNotes} onChange={(e) => setTechnicalNotes(e.target.value)} onBlur={() => {
+                if (technicalNotes.trim() !== (appointment.technicalNotes ?? "")) updateAppointment(appointment.id, { technicalNotes: technicalNotes.trim() });
+              }} rows={2} placeholder="Aplicación, mezcla o indicaciones para la próxima visita" />
+            </label>
           </div>
 
           {/* Lo que debe, con las tres salidas al lado. Va arriba a propósito:

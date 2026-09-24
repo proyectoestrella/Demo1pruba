@@ -45,6 +45,8 @@ const APPOINTMENT_COLS_BASE =
   "id, local_id, client_id, client_name, service_id, employee_id, start_at, duration_min, price_eur, status, client_confirmed_at, note";
 const APPOINTMENT_COLS_NUEVAS =
   "payment_method, paid_at, deposit_requested_at, deposit_received_at, deposit_eur";
+// TODO: aplicar las columnas técnicas de supabase/schema.sql en producción.
+const APPOINTMENT_COLS_TECNICAS = "color_formula, technical_notes";
 const CLIENT_COLS_BASE = "id, name, phone, email, notes, penalty_eur, penalty_note, created_at";
 const CLIENT_COLS_NUEVAS = "penalty_at, penalty_keep, penalty_block";
 const WAITLIST_COLS =
@@ -58,6 +60,7 @@ const CAMPOS_NUEVOS_CITA = [
   "deposit_received_at",
   "deposit_eur",
 ];
+const CAMPOS_TECNICOS_CITA = ["color_formula", "technical_notes"];
 const CAMPOS_NUEVOS_CLIENTE = ["penalty_at", "penalty_keep", "penalty_block"];
 
 /**
@@ -357,6 +360,14 @@ export const listSalonData = createServerFn({ method: "GET" })
        * este código antes que el DDL dejaría la agenda en blanco.
        */
       async function traer<T>(tabla: string, base: string, nuevas: string) {
+        if (tabla === "appointments") {
+          const tecnicas = await supabase!
+            .from(tabla)
+            .select(`${base}, ${nuevas}, ${APPOINTMENT_COLS_TECNICAS}`)
+            .eq("salon_slug", data.slug);
+          if (!tecnicas.error) return { data: (tecnicas.data ?? []) as unknown as T[], error: null };
+          if (!faltaEsquema(tecnicas.error)) return { data: [] as T[], error: tecnicas.error };
+        }
         const conNuevas = await supabase!
           .from(tabla)
           .select(`${base}, ${nuevas}`)
@@ -509,6 +520,8 @@ export const syncAppointment = createServerFn({ method: "POST" })
       depositRequestedAt: z.string().nullable().optional(),
       depositReceivedAt: z.string().nullable().optional(),
       depositEur: z.number().nullable().optional(),
+      colorFormula: z.string().nullable().optional(),
+      technicalNotes: z.string().nullable().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -606,6 +619,8 @@ export const syncAppointment = createServerFn({ method: "POST" })
       deposit_requested_at: manda ? (data.depositRequestedAt ?? null) : null,
       deposit_received_at: manda ? (data.depositReceivedAt ?? null) : null,
       deposit_eur: manda ? (data.depositEur ?? null) : null,
+      color_formula: manda ? (data.colorFormula ?? null) : null,
+      technical_notes: manda ? (data.technicalNotes ?? null) : null,
     };
     // Solo se toca `client_id` cuando esta llamada sabe de qué cliente habla.
     // Un "confirmar" desde el panel no lleva teléfono, y machacar la columna
@@ -616,6 +631,12 @@ export const syncAppointment = createServerFn({ method: "POST" })
       .from("appointments")
       .upsert(fila, { onConflict: "salon_slug,local_id" });
     if (faltaEsquema(error)) {
+      const sinTecnicas = sinCampos(fila, CAMPOS_TECNICOS_CITA);
+      const { error: errorAnterior } = await supabase
+        .from("appointments")
+        .upsert(sinTecnicas, { onConflict: "salon_slug,local_id" });
+      if (!errorAnterior) return { synced: true as const };
+      if (!faltaEsquema(errorAnterior)) throw new Error(`syncAppointment: ${errorAnterior.message}`);
       // El DDL de caja y fianzas todavía no está aplicado: se guarda la cita
       // sin esos campos antes que perder el cambio entero. Confirmar una cita
       // delante de un cliente no puede depender de una migración pendiente.
@@ -624,7 +645,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
       );
       const { error: err2 } = await supabase
         .from("appointments")
-        .upsert(sinCampos(fila, CAMPOS_NUEVOS_CITA), { onConflict: "salon_slug,local_id" });
+        .upsert(sinCampos(sinTecnicas, CAMPOS_NUEVOS_CITA), { onConflict: "salon_slug,local_id" });
       if (err2) throw new Error(`syncAppointment: ${err2.message}`);
       return { synced: true as const };
     }

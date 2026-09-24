@@ -137,6 +137,7 @@ function pickSpreadStartHour(sched: { start: number; end: number }, rand: () => 
 }
 
 function buildAppointments(
+  type: BusinessType,
   clients: Client[],
   employees: Employee[],
   services: Service[],
@@ -237,6 +238,10 @@ function buildAppointments(
           duration: durationMin,
           priceEur,
           status,
+          ...(type === "peluqueria" && day < 0 && i === 0 && client.id < "c9" ? {
+            colorFormula: ["7.1 + 8.0 al 50 %, oxidante 20 vol, 35 min", "6.3 raíz, 8.1 medios y puntas, 30 min", "Baño de color 7.13, 20 vol, 25 min"][nextId % 3],
+            technicalNotes: "Matizar puntas al final y revisar porosidad.",
+          } : {}),
         });
       }
     }
@@ -416,7 +421,7 @@ export function buildSeed(
   opts?: { noShowFeeEur?: number; smartSpread?: boolean; duracionFlexible?: boolean },
 ): DemoSeed {
   const clients = buildClients(type, opts?.noShowFeeEur);
-  let appointments = buildAppointments(clients, employees, services, opts?.smartSpread);
+  let appointments = buildAppointments(type, clients, employees, services, opts?.smartSpread);
   let finalClients = clients;
 
   // Engancha cada recargo pendiente sembrado a una cita pasada real de ESE

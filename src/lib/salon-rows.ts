@@ -47,6 +47,8 @@ export interface AppointmentRow {
   deposit_requested_at?: string | null;
   deposit_received_at?: string | null;
   deposit_eur?: number | string | null;
+  color_formula?: string | null;
+  technical_notes?: string | null;
 }
 
 /** Fila de `clients` tal y como la devuelve PostgREST. */
@@ -118,6 +120,8 @@ export function rowToAppointment(row: AppointmentRow, anonimo = false): Appointm
     clientConfirmedAt: row.client_confirmed_at ?? undefined,
     note: booking.note,
     bookingAnswers: booking.answers,
+    colorFormula: anonimo ? undefined : (row.color_formula ?? undefined),
+    technicalNotes: anonimo ? undefined : (row.technical_notes ?? undefined),
     // Cómo se cobró y si hubo señal son cosa del salón: no viajan a la web
     // pública, igual que el nombre y la nota.
     paymentMethod: anonimo ? undefined : ((row.payment_method as PaymentMethod) ?? undefined),
