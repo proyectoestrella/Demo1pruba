@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { clientFrequency } from "@/lib/derive";
+import { buscarClientas } from "@/lib/buscar-clientas";
 import type { Client } from "@/lib/mock/types";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
@@ -104,7 +105,8 @@ function Clients() {
   // deben" vacía es ruido en cualquier demo sin plantones.
   const hayPenalizados = conRecargo && allRows.some((r) => (r.penaltyEur ?? 0) > 0);
 
-  const termino = busqueda.trim().toLowerCase();
+  const buscados = buscarClientas(busqueda, { clientes: clients, citas: appointments });
+  const ordenBusqueda = new Map(buscados.map((c, i) => [c.id, i]));
   const filtroEfectivo = filtro === "penalizado" && !conRecargo ? "todos" : filtro;
   const rows = allRows
     .filter((c) =>
@@ -114,12 +116,8 @@ function Clients() {
           ? (c.penaltyEur ?? 0) > 0
           : c.tag === filtro,
     )
-    .filter((c) =>
-      termino === ""
-        ? true
-        : [c.name, c.phone, c.email ?? ""].some((campo) => campo.toLowerCase().includes(termino)),
-    )
-    .sort((a, b) => b.totalSpent - a.totalSpent)
+    .filter((c) => ordenBusqueda.has(c.id))
+    .sort((a, b) => busqueda.trim() ? (ordenBusqueda.get(a.id)! - ordenBusqueda.get(b.id)!) : b.totalSpent - a.totalSpent)
     .slice(0, 60);
 
   return (
@@ -153,7 +151,7 @@ function Clients() {
           <Input
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por nombre, teléfono o correo…"
+            placeholder="Nombre, teléfono, correo, notas o color…"
             className="pl-9"
           />
         </div>

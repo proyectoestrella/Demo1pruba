@@ -23,6 +23,7 @@ import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BotonCerrarSesion } from "@/components/BotonCerrarSesion";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
+import { BuscadorGlobal } from "@/components/BuscadorGlobal";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -167,6 +168,7 @@ export function PanelV2Shell() {
             <p className="hidden truncate text-xs text-muted-foreground sm:block">{salonName}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <BuscadorGlobal />
             <Button
               variant="outline"
               size="icon"

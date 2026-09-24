@@ -36,6 +36,7 @@ import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { PanelV2Shell } from "@/components/PanelV2Shell";
+import { BuscadorGlobal } from "@/components/BuscadorGlobal";
 import { GuardiaDelPanel } from "@/components/GuardiaDelPanel";
 import { BotonCerrarSesion } from "@/components/BotonCerrarSesion";
 import { accesoAlPanel } from "@/lib/api/salons.functions";
@@ -397,6 +398,7 @@ function DashboardLayoutV1() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <BuscadorGlobal />
             <div className="hidden md:block">
               <ViewSwitcher mode="dashboard" />
             </div>
