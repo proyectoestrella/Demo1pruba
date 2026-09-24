@@ -47,7 +47,8 @@ function HojaDelDia() {
     {manana && <section className="hoja-recordatorios space-y-2 rounded-xl border border-border bg-card p-4">
       <h2 className="font-display text-lg">Recordatorios para mañana</h2>
       {hoja.length === 0 && <p className="text-sm text-muted-foreground">No hay citas que recordar.</p>}
-      {hoja.map(({ cita }) => {
+      {/* Por hora: la hoja viene agrupada por profesional y aquí no hay rótulos de grupo. */}
+      {[...hoja].sort((a, b) => +new Date(a.cita.start) - +new Date(b.cita.start)).map(({ cita }) => {
         const telefono = clientes.find((c) => c.id === cita.clientId)?.phone;
         return <div key={cita.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 py-2 text-sm">
           <span>{new Date(cita.start).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })} · {cita.clientName} · {serviceLabelOf(cita)}</span>
