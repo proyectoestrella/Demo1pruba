@@ -77,6 +77,8 @@ type DemoProfileNegocio = Pick<
   | "depositEnabled"
   | "depositBizumPhone"
   | "depositAmountEur"
+  | "bookingQuestionsEnabled"
+  | "bookingQuestionsRequired"
 >;
 
 /** Campos del perfil que se pueden personalizar por demo. */
@@ -120,6 +122,8 @@ const KEYS: Record<keyof DemoProfileNegocio, string> = {
   depositEnabled: "fe",
   depositBizumPhone: "fb",
   depositAmountEur: "fa",
+  bookingQuestionsEnabled: "bq",
+  bookingQuestionsRequired: "br",
 };
 
 /** Nombre del search param que lleva el perfil en las rutas públicas. */
@@ -165,6 +169,9 @@ export function blankDemoProfile(): DemoProfile {
     depositEnabled: false,
     depositBizumPhone: "",
     depositAmountEur: 0,
+    // undefined conserva el valor por defecto derivado del tipo de negocio.
+    bookingQuestionsEnabled: undefined,
+    bookingQuestionsRequired: false,
     // Misma razón que arriba: explícitas, para que un enlace sin "mo"/"ms"/
     // "rr"/"df" no herede la personalización de la demo anterior en este
     // mismo navegador.
@@ -233,6 +240,10 @@ export function encodeDemoProfile(profile: Partial<DemoProfile>): string {
     if (field === "depositEnabled") {
       if (value !== true) continue;
       compact[short] = 1;
+      continue;
+    }
+    if (field === "bookingQuestionsEnabled" || field === "bookingQuestionsRequired") {
+      compact[short] = value === true ? 1 : 0;
       continue;
     }
     if (field === "depositAmountEur") {
@@ -421,6 +432,8 @@ export function decodeDemoProfile(raw: string | undefined | null): Partial<DemoP
       if (Number.isFinite(n) && n >= 1 && n <= 48) out.noShowNoticeHours = Math.round(n);
     } else if (field === "depositEnabled") {
       out.depositEnabled = value === 1 || value === true || value === "1";
+    } else if (field === "bookingQuestionsEnabled" || field === "bookingQuestionsRequired") {
+      out[field] = (value === 1 || value === true || value === "1") as never;
     } else if (field === "depositAmountEur") {
       const n = Number(value);
       if (Number.isFinite(n) && n > 0 && n <= 200) out.depositAmountEur = n;

@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { ArrowUpRight } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
 import { recargoActivo } from "@/lib/recargo-activo";
+import { inferBusinessType } from "@/lib/business-type";
+import { bookingQuestionsEnabled } from "@/lib/booking-answers";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +28,9 @@ export const Route = createFileRoute("/app/settings")({ component: Settings });
 function Settings() {
   const salonProfile = useSalonStore((s) => s.salonProfile);
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
+  const businessType = inferBusinessType(salonProfile.tagline, salonProfile.name);
+  const [questionsEnabled, setQuestionsEnabled] = useState(bookingQuestionsEnabled(salonProfile, businessType));
+  const [questionsRequired, setQuestionsRequired] = useState(!!salonProfile.bookingQuestionsRequired);
 
   // Plantones — política de penalización por cancelar tarde o no presentarse.
   const [noShowEnabled, setNoShowEnabled] = useState(recargoActivo(salonProfile));
@@ -57,7 +62,9 @@ function Settings() {
     setDepositEnabled(!!salonProfile.depositEnabled);
     setDepositBizumPhone(salonProfile.depositBizumPhone ?? "");
     setDepositAmountEur(String(salonProfile.depositAmountEur || 10));
-  }, [salonProfile]);
+    setQuestionsEnabled(bookingQuestionsEnabled(salonProfile, businessType));
+    setQuestionsRequired(!!salonProfile.bookingQuestionsRequired);
+  }, [salonProfile, businessType]);
 
   function handleSave() {
     const parsedFee = Number(noShowFeeEur.replace(",", "."));
@@ -97,6 +104,8 @@ function Settings() {
       depositEnabled,
       depositBizumPhone: depositBizumPhone.trim(),
       depositAmountEur: depositEnabled ? Math.min(200, Math.max(1, parsedDeposit)) : 0,
+      bookingQuestionsEnabled: questionsEnabled,
+      bookingQuestionsRequired: questionsRequired,
     });
     toast.success("Cambios guardados");
   }
@@ -119,6 +128,21 @@ function Settings() {
         </div>
         <ArrowUpRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
       </Link>
+
+      <div className="space-y-4 rounded-xl border border-border/60 bg-card p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <Label>Preguntas al reservar</Label>
+            <p className="mt-1 text-sm text-muted-foreground">Pregunta por el largo de pelo, el color actual y los tratamientos químicos recientes para preparar cada cita.</p>
+          </div>
+          <Switch aria-label="Activar preguntas al reservar" checked={questionsEnabled} onCheckedChange={setQuestionsEnabled} />
+        </div>
+        {questionsEnabled && <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-4">
+          <div><Label>Respuestas obligatorias</Label><p className="mt-1 text-sm text-muted-foreground">Si está desactivado, la clienta puede dejar las preguntas sin responder.</p></div>
+          <Switch aria-label="Hacer obligatorias las preguntas" checked={questionsRequired} onCheckedChange={setQuestionsRequired} />
+        </div>}
+        <div className="flex justify-end"><Button onClick={handleSave}>Guardar cambios</Button></div>
+      </div>
 
       <div className="space-y-4 rounded-xl border border-border/60 bg-card p-6">
         <div className="flex items-center justify-between gap-4">

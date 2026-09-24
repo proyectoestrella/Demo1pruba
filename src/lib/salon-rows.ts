@@ -19,6 +19,7 @@ import type {
 } from "./mock/types";
 import { isPenaltyActive } from "./plantones";
 import { isManualBlockRecord, previousPenaltyState } from "./no-show";
+import { parseBookingNote } from "./booking-answers";
 
 /** Fila de `appointments` tal y como la devuelve PostgREST. */
 export interface AppointmentRow {
@@ -99,6 +100,7 @@ function num(value: number | string | null | undefined, porDefecto = 0): number 
  * viajan al navegador de un desconocido.
  */
 export function rowToAppointment(row: AppointmentRow, anonimo = false): Appointment {
+  const booking = anonimo ? {} : parseBookingNote(row.note);
   return {
     // El id que conoce el navegador es `local_id`; las filas antiguas (y las
     // que creó la reserva pública antes de esto) no lo tienen y caen al uuid.
@@ -112,7 +114,8 @@ export function rowToAppointment(row: AppointmentRow, anonimo = false): Appointm
     priceEur: num(row.price_eur),
     status: row.status as AppointmentStatus,
     clientConfirmedAt: row.client_confirmed_at ?? undefined,
-    note: anonimo ? undefined : (row.note ?? undefined),
+    note: booking.note,
+    bookingAnswers: booking.answers,
     // Cómo se cobró y si hubo señal son cosa del salón: no viajan a la web
     // pública, igual que el nombre y la nota.
     paymentMethod: anonimo ? undefined : ((row.payment_method as PaymentMethod) ?? undefined),

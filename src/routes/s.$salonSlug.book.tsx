@@ -2,7 +2,8 @@ import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-ro
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
-import type { Appointment, Client, Employee, EmployeeId, Service } from "@/lib/mock/types";
+import type { Appointment, BookingAnswers, Client, Employee, EmployeeId, Service } from "@/lib/mock/types";
+import { bookingAnswersComplete, bookingQuestionsEnabled, cleanBookingAnswers, serializeBookingNote } from "@/lib/booking-answers";
 import { useSalonStore, isSlotTaken } from "@/lib/store";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
@@ -207,6 +208,7 @@ type WizardData = {
   phone?: string;
   email?: string;
   note?: string;
+  bookingAnswers?: BookingAnswers;
   acceptedPolicy?: boolean;
 };
 
@@ -253,6 +255,8 @@ function BookingWizard() {
   const profile = useDisplayProfile();
   const conRecargo = recargoActivo(profile);
   const tipo = useBusinessType();
+  const showBookingQuestions = bookingQuestionsEnabled(profile, tipo);
+  const requireBookingQuestions = showBookingQuestions && !!profile.bookingQuestionsRequired;
   const services = useMemo(() => servicesForType(tipo, profile.menu), [tipo, profile.menu]);
   const serviceMap = useMemo(
     () => Object.fromEntries(services.map((s) => [s.id, s])) as Record<string, Service>,
@@ -431,7 +435,8 @@ function BookingWizard() {
       !data.time ||
       !data.name ||
       !data.phone ||
-      !data.acceptedPolicy
+      !data.acceptedPolicy ||
+      (requireBookingQuestions && !bookingAnswersComplete(data.bookingAnswers))
     )
       return;
     const serviceIds = selectedServices.map((s) => s.id);
@@ -477,6 +482,7 @@ function BookingWizard() {
         // desde el panel (NewAppointmentDialog) siguen naciendo confirmadas.
         status: "pending",
         note: data.note,
+        bookingAnswers: showBookingQuestions ? cleanBookingAnswers(data.bookingAnswers) : undefined,
       },
       // En un salón real esto es lo que crea (o reconoce) la ficha del cliente
       // en Supabase y engancha la cita: la store lo sube sola. En una demo de
@@ -499,7 +505,7 @@ function BookingWizard() {
           startISO,
           durationMin: totalMin,
           priceEur: total,
-          note: data.note,
+          note: serializeBookingNote(data.note, showBookingQuestions ? data.bookingAnswers : undefined),
         },
       }).catch((err) =>
         console.error("Supabase sync failed (booking still confirmed locally):", err),
@@ -533,7 +539,8 @@ function BookingWizard() {
         ? !data.employeeId
         : step === 3
           ? !data.date || !data.time
-          : !data.name || !data.phone || !data.acceptedPolicy || !!blockedClient;
+          : !data.name || !data.phone || !data.acceptedPolicy || !!blockedClient ||
+            (requireBookingQuestions && !bookingAnswersComplete(data.bookingAnswers));
 
   const ctaLabel = step < 4 ? "Continuar" : `Confirmar reserva — ${eur(total)}`;
 
@@ -766,6 +773,38 @@ function BookingWizard() {
                     placeholder="Alguna preferencia o detalle que debamos saber"
                   />
                 </div>
+
+                {showBookingQuestions && (
+                  <div className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
+                    <div>
+                      <p className="text-sm font-medium">Para preparar tu cita</p>
+                      <p className="text-xs text-muted-foreground">
+                        {requireBookingQuestions ? "Responde estas preguntas para continuar." : "Puedes dejar las preguntas sin responder."}
+                      </p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="hair-length">¿Qué largo de pelo tienes?</Label>
+                      <select id="hair-length" className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={data.bookingAnswers?.hairLength ?? ""} onChange={(e) => setData((d) => ({ ...d, bookingAnswers: { ...d.bookingAnswers, hairLength: e.target.value as BookingAnswers["hairLength"] } }))}>
+                        <option value="">Elige una opción</option>
+                        {["Corto", "Medio", "Largo", "Muy largo"].map((value) => <option key={value} value={value}>{value}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="has-color">¿Llevas color o tinte ahora?</Label>
+                      <select id="has-color" className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={data.bookingAnswers?.hasColor ?? ""} onChange={(e) => setData((d) => ({ ...d, bookingAnswers: { ...d.bookingAnswers, hasColor: e.target.value as BookingAnswers["hasColor"], colorDetail: undefined } }))}>
+                        <option value="">Elige una opción</option><option value="No">No</option><option value="Sí">Sí</option>
+                      </select>
+                      {data.bookingAnswers?.hasColor === "Sí" && <Input aria-label="¿Cuál es tu color o tinte?" placeholder="¿Cuál?" maxLength={120} value={data.bookingAnswers.colorDetail ?? ""} onChange={(e) => setData((d) => ({ ...d, bookingAnswers: { ...d.bookingAnswers, colorDetail: e.target.value } }))} />}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="recent-chemical">¿Te has hecho algún tratamiento químico en el último mes (tinte, mechas, alisado, permanente)?</Label>
+                      <select id="recent-chemical" className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={data.bookingAnswers?.recentChemical ?? ""} onChange={(e) => setData((d) => ({ ...d, bookingAnswers: { ...d.bookingAnswers, recentChemical: e.target.value as BookingAnswers["recentChemical"], chemicalDetail: undefined } }))}>
+                        <option value="">Elige una opción</option><option value="No">No</option><option value="Sí">Sí</option>
+                      </select>
+                      {data.bookingAnswers?.recentChemical === "Sí" && <Input aria-label="¿Qué tratamiento químico?" placeholder="¿Cuál?" maxLength={120} value={data.bookingAnswers.chemicalDetail ?? ""} onChange={(e) => setData((d) => ({ ...d, bookingAnswers: { ...d.bookingAnswers, chemicalDetail: e.target.value } }))} />}
+                    </div>
+                  </div>
+                )}
 
                 {requiresDeposit(totalMin) && (
                   <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm text-primary">

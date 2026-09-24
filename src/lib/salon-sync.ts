@@ -33,6 +33,7 @@ import {
 import { registrarAviso } from "./avisos-sync";
 import type { Appointment, Client, SalonProfile, WaitlistEntry } from "./mock/types";
 import { manualBlockNote } from "./no-show";
+import { serializeBookingNote } from "./booking-answers";
 
 /** Datos del cliente que acompañan a una cita cuando se conocen (reserva pública, cita por teléfono). */
 export interface ClienteDeCita {
@@ -92,7 +93,7 @@ export function pushAppointment(
     priceEur: appt.priceEur,
     status: appt.status,
     clientConfirmedAt: appt.clientConfirmedAt ?? null,
-    note: appt.note ?? null,
+    note: serializeBookingNote(appt.note, appt.bookingAnswers) ?? null,
     paymentMethod: appt.paymentMethod ?? null,
     paidAt: appt.paidAt ?? null,
     depositRequestedAt: appt.depositRequestedAt ?? null,

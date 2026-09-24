@@ -13,6 +13,7 @@ import type { Appointment } from "@/lib/mock/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { StylistDot } from "@/components/StylistAvatar";
 import { Button } from "@/components/ui/button";
+import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
 import {
   Select,
   SelectContent,
@@ -197,6 +198,7 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                     })}{" "}
                     · con {emp.name}
                   </p>
+                  <BookingAnswersSummary answers={a.bookingAnswers} />
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
                   <Button size="sm" onClick={() => handleConfirm(a)}>
@@ -262,6 +264,7 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                   })}
                   {soloUno ? "" : ` · con ${emp.name}`}
                 </p>
+                <BookingAnswersSummary answers={a.bookingAnswers} />
               </div>
 
               <div className="flex flex-col gap-1.5 rounded-lg bg-background/60 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">

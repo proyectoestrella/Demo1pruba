@@ -136,6 +136,8 @@ export interface Appointment {
   clientConfirmedAt?: string;
   /** Title for blocked time entries */
   note?: string;
+  /** Respuestas que la clienta dio al pedir la cita. No contienen datos de salud. */
+  bookingAnswers?: BookingAnswers;
   /**
    * Minutos de retraso con los que se presentó, cuando eso disparó un
    * recargo (política de plantón). Independiente de `status`: la cita puede
@@ -159,6 +161,14 @@ export interface Appointment {
   depositReceivedAt?: string;
   /** Importe de la señal pedida, en euros — se congela al pedirla por si luego cambia en Ajustes. */
   depositEur?: number;
+}
+
+export interface BookingAnswers {
+  hairLength?: "Corto" | "Medio" | "Largo" | "Muy largo";
+  hasColor?: "No" | "Sí";
+  colorDetail?: string;
+  recentChemical?: "No" | "Sí";
+  chemicalDetail?: string;
 }
 
 export interface WaitlistEntry {
@@ -266,4 +276,7 @@ export interface SalonProfile {
   depositBizumPhone?: string;
   /** Importe de la señal en euros. Por defecto 10. */
   depositAmountEur?: number;
+  /** Ausente: se decide por el tipo de negocio. */
+  bookingQuestionsEnabled?: boolean;
+  bookingQuestionsRequired?: boolean;
 }

@@ -11,6 +11,7 @@ import { employeeMap } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
+import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
 import { eur, eurRedondo } from "@/lib/copy";
 import type { Client } from "@/lib/mock/types";
 import { StylistDot } from "@/components/StylistAvatar";
@@ -241,6 +242,7 @@ export function ClientHistorySheet({
                   {!soloUno && <StylistDot employeeId={a.employeeId} />}
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{serviceLabelOf(a) || "—"}</p>
+                    <BookingAnswersSummary answers={a.bookingAnswers} />
                     {!soloUno && <p className="text-xs text-muted-foreground">con {emp?.name}</p>}
                   </div>
                   <StatusBadge status={a.status} />

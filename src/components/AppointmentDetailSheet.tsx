@@ -26,6 +26,7 @@ import { BandaDeuda } from "@/components/DeudaCliente";
 import { DecisionDeudaDialog } from "@/components/DecisionDeudaDialog";
 import { BotonesDesenlace, useAplicarDesenlace } from "@/components/CitasPorResolver";
 import { Button } from "@/components/ui/button";
+import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -313,6 +314,7 @@ export function AppointmentDetailSheet({
                 {appointment.note}
               </p>
             )}
+            <BookingAnswersSummary answers={appointment.bookingAnswers} />
           </div>
 
           {/* Lo que debe, con las tres salidas al lado. Va arriba a propósito:
