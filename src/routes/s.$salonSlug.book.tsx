@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
 import { huecosDeProfesionales, trabajaEn } from "@/lib/horario-equipo";
@@ -47,6 +47,9 @@ import { es } from "date-fns/locale";
 import heroImg from "@/assets/hero-salon.jpg";
 import { registerBookingClient } from "@/lib/api/clients.functions";
 import { checkClientPenalty } from "@/lib/api/salons.functions";
+import { guardarReservaPublica } from "@/lib/salon-sync";
+import { firmaReservaPublica, mensajeErrorReserva } from "@/lib/reserva-publica";
+import { reintentarSalonPublico } from "@/lib/use-real-salon";
 import { sumServices } from "@/lib/appointment-services";
 import { FluidSteps } from "@/components/twentyfirst/fluid-steps";
 import { capitalizar, eur, fechaLarga } from "@/lib/copy";
@@ -300,7 +303,17 @@ function BookingWizard() {
   }, [soloUno, employees]);
   const appointments = useSalonStore((s) => s.appointments);
   const addAppointment = useSalonStore((s) => s.addAppointment);
+  const addSavedPublicAppointment = useSalonStore((s) => s.addSavedPublicAppointment);
   const clients = useSalonStore((s) => s.clients);
+  // Reserva fiable (R5/R6): en un salón real no se dice «recibida» hasta que
+  // el servidor ha guardado la cita, y mientras no se sepa si el slug es real
+  // o demo no se envía nada. Ver `resolverSalonReal` y `guardarReservaPublica`.
+  const resolution = useSalonStore((s) => s.publicBookingResolution);
+  const resolutionStatus = resolution?.slug === salonSlug ? resolution.status : "resolviendo";
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const sendingRef = useRef(false);
+  const intentoRef = useRef<{ firma: string; cita: Appointment } | null>(null);
 
   // Bloqueo manual o deuda activa: se recalcula en cada tecla, no solo al
   // perder el foco. Sin recargo, la deuda antigua no bloquea.
@@ -432,7 +445,29 @@ function BookingWizard() {
     setStep((s) => pasoAnterior(s, soloUno));
   }
 
-  function confirm() {
+  async function confirm() {
+    if (sendingRef.current) return;
+    if (resolutionStatus === "resolviendo") return;
+    if (resolutionStatus === "fallo") {
+      // No se sabe si el salón es real: se reintenta la identificación en vez
+      // de confirmar en local una cita que quizá debía ir al servidor.
+      sendingRef.current = true;
+      setSending(true);
+      try {
+        const resultado = await reintentarSalonPublico(salonSlug);
+        setSendError(
+          resultado === "fallo"
+            ? "No hemos podido comprobar el salón. Tus datos siguen aquí; inténtalo de nuevo."
+            : "Ya hemos conectado con el salón. Revisa tu reserva y vuelve a enviarla.",
+        );
+      } catch (error) {
+        setSendError(mensajeErrorReserva(error));
+      } finally {
+        sendingRef.current = false;
+        setSending(false);
+      }
+      return;
+    }
     if (
       !selectedServices.length ||
       !data.date ||
@@ -465,39 +500,60 @@ function BookingWizard() {
     // otra forma ("Mari" en vez de "María García"), no se pisa el que el
     // salón ya conocía.
     const clientName = clienteExistente?.name ?? data.name;
-    // Mejora B1: se guarda AQUÍ (reserva ya validada, no en cada tecla) lo
-    // mínimo para poder ofrecer "repetir" la próxima vez desde este mismo
-    // navegador — nunca nombre ni teléfono, que ya viven donde corresponde.
+    const citaSinId: Omit<Appointment, "id"> = {
+      clientId,
+      clientName,
+      serviceIds,
+      employeeId,
+      start: startISO,
+      // Con duración flexible se bloquea el extremo alto del rango, para
+      // que la agenda no ofrezca a la siguiente clienta un hueco que en la
+      // práctica no cabe.
+      duration: schedulingDurationMin,
+      priceEur: total,
+      // Las reservas de la web pública entran como solicitud: las confirma,
+      // cambia o rechaza el salón desde el panel. Las citas creadas a mano
+      // desde el panel (NewAppointmentDialog) siguen naciendo confirmadas.
+      status: "pending",
+      note: data.note,
+      bookingAnswers: showBookingQuestions ? cleanBookingAnswers(data.bookingAnswers) : undefined,
+    };
+    // En un salón real esto es lo que crea (o reconoce) la ficha del cliente
+    // en Supabase y engancha la cita. En una demo de venta `realSalonSlug` es
+    // null y estos datos no salen del navegador.
+    const cliente = { name: clientName, phone: data.phone, email: data.email };
+    if (resolutionStatus === "real") {
+      // La misma solicitud conserva su id entre intentos; si el servidor
+      // guardó la cita pero se perdió la respuesta, el reintento la reconoce.
+      const firma = firmaReservaPublica(salonSlug, citaSinId, cliente);
+      if (intentoRef.current?.firma !== firma) {
+        intentoRef.current = { firma, cita: { ...citaSinId, id: `a-public-${crypto.randomUUID()}` } };
+      }
+      sendingRef.current = true;
+      setSending(true);
+      setSendError(null);
+      try {
+        await guardarReservaPublica(salonSlug, intentoRef.current.cita, cliente);
+        addSavedPublicAppointment(intentoRef.current.cita);
+      } catch (error) {
+        setSendError(mensajeErrorReserva(error));
+        return;
+      } finally {
+        sendingRef.current = false;
+        setSending(false);
+      }
+    } else {
+      addAppointment(citaSinId, cliente);
+    }
+    // Mejora B1: se guarda AQUÍ (reserva ya validada y, en un salón real, ya
+    // guardada) lo mínimo para poder ofrecer "repetir" la próxima vez desde
+    // este mismo navegador — nunca nombre ni teléfono, que ya viven donde corresponde.
     writeLastBooking(salonSlug, { serviceIds, employeeId, savedAt: Date.now() });
-    addAppointment(
-      {
-        clientId,
-        clientName,
-        serviceIds,
-        employeeId,
-        start: startISO,
-        // Con duración flexible se bloquea el extremo alto del rango, para
-        // que la agenda no ofrezca a la siguiente clienta un hueco que en la
-        // práctica no cabe.
-        duration: schedulingDurationMin,
-        priceEur: total,
-        // Las reservas de la web pública entran como solicitud: las confirma,
-        // cambia o rechaza el salón desde el panel. Las citas creadas a mano
-        // desde el panel (NewAppointmentDialog) siguen naciendo confirmadas.
-        status: "pending",
-        note: data.note,
-        bookingAnswers: showBookingQuestions ? cleanBookingAnswers(data.bookingAnswers) : undefined,
-      },
-      // En un salón real esto es lo que crea (o reconoce) la ficha del cliente
-      // en Supabase y engancha la cita: la store lo sube sola. En una demo de
-      // venta `realSalonSlug` es null y estos datos no salen del navegador.
-      { name: clientName, phone: data.phone, email: data.email },
-    );
     if (!realSlug) {
       // Demo de venta: se conserva tal cual estaba — la reserva queda
       // registrada en Supabase como lead, con el status "confirmed" de
-      // siempre. En un salón real no se llama, porque `addAppointment` ya ha
-      // subido la MISMA cita con su estado "pending" y se duplicaría.
+      // siempre. En un salón real no se llama, porque la MISMA cita ya se ha
+      // guardado con su estado "pending" y se duplicaría.
       registerBookingClient({
         data: {
           salonSlug,
@@ -544,13 +600,14 @@ function BookingWizard() {
         : step === 3
           ? !data.date || !data.time
           : !data.name || !data.phone || !data.acceptedPolicy || !!blockedClient ||
-            (requireBookingQuestions && !bookingAnswersComplete(data.bookingAnswers));
+            (requireBookingQuestions && !bookingAnswersComplete(data.bookingAnswers)) ||
+            sending || resolutionStatus === "resolviendo";
 
   const ctaLabel = step < 4 ? "Continuar" : `Confirmar reserva — ${eur(total)}`;
 
   function onCta() {
     if (step < 4) next();
-    else confirm();
+    else void confirm();
   }
 
   // Duración orientativa cuando el salón decide la duración final (caso
@@ -755,6 +812,16 @@ function BookingWizard() {
                       </Button>
                     )}
                   </div>
+                )}
+
+                {(sendError || resolutionStatus === "fallo") && (
+                  <p
+                    role="alert"
+                    className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+                  >
+                    {sendError ??
+                      "No hemos podido comprobar el salón. Tus datos siguen aquí; inténtalo de nuevo."}
+                  </p>
                 )}
 
                 <div className="space-y-1.5">

@@ -22,6 +22,13 @@ import { fusionarPerfil } from "../perfil-parche";
 import { isManualBlockRecord } from "../no-show";
 import { parseDepositNote } from "../deposit-deadline";
 import {
+  ERROR_BLOQUEO_MANUAL,
+  ERROR_FUERA_HORARIO,
+  ERROR_HUECO_OCUPADO,
+  haySolape,
+  profesionalTrabaja,
+} from "../reserva-publica";
+import {
   findPenaltyRow,
   phoneKey,
   rowToAppointment,
@@ -200,11 +207,10 @@ export const getSalonProfile = createServerFn({ method: "GET" })
       .eq("slug", data.slug)
       .maybeSingle();
 
-    // Un fallo de red o una tabla que aún no existe NO pueden tumbar la web
-    // pública de una demo: se responde "no es real" y todo sigue como siempre.
+    // No confundimos un error de lectura con «este slug es una demo»:
+    // una clienta de un salón real no debe recibir confirmación local.
     if (error) {
-      console.error("getSalonProfile:", error.message);
-      return { profile: null };
+      throw new Error(`getSalonProfile: ${error.message}`);
     }
     if (!row) return { profile: null };
 
@@ -569,9 +575,10 @@ export const syncAppointment = createServerFn({ method: "POST" })
         .maybeSingle();
       if (errorExiste) throw new Error(`syncAppointment: ${errorExiste.message}`);
       if (yaExiste) {
-        throw new Error(
-          "Esa cita ya existe y solo puede cambiarla el salón. Llámalos si necesitas moverla.",
-        );
+        // Una respuesta perdida después de insertar debe poder reintentarse
+        // con el MISMO id, incluso si el salón ya ha movido la cita. Nunca
+        // se hace upsert sobre una cita pública previa.
+        return { synced: true as const };
       }
     }
 
@@ -586,7 +593,38 @@ export const syncAppointment = createServerFn({ method: "POST" })
         .maybeSingle();
       if (blockError) throw new Error(`syncAppointment (bloqueo): ${blockError.message}`);
       if (blocked && isManualBlockRecord(blocked)) {
-        throw new Error("Este salón ha bloqueado las reservas por internet para este número.");
+        return { synced: false as const, reason: ERROR_BLOQUEO_MANUAL };
+      }
+    }
+    if (!manda) {
+      // Horario por profesional (`teamHours`) y del local, leídos del perfil
+      // guardado: la web pública ya no ofrece esas horas, pero el servidor no
+      // se fía de lo que pinte un navegador.
+      const { data: salonRow, error: errorSalon } = await supabase
+        .from("salons")
+        .select("profile")
+        .eq("slug", data.slug)
+        .maybeSingle();
+      if (errorSalon) throw new Error(`syncAppointment (horario): ${errorSalon.message}`);
+      const perfil = salonRow?.profile as SalonProfile | undefined;
+      if (perfil && !profesionalTrabaja(perfil, data.employeeId, data.startISO, data.durationMin)) {
+        return { synced: false as const, reason: ERROR_FUERA_HORARIO };
+      }
+
+      const fin = new Date(Date.parse(data.startISO) + data.durationMin * 60_000).toISOString();
+      // Acota la lectura a citas recientes. La protección definitiva contra
+      // dos inserciones simultáneas debe ser una restricción en PostgreSQL.
+      const desde = new Date(Date.parse(data.startISO) - 7 * 24 * 60 * 60_000).toISOString();
+      const { data: cercanas, error: errorCercanas } = await supabase
+        .from("appointments")
+        .select("start_at, duration_min, status")
+        .eq("salon_slug", data.slug)
+        .eq("employee_id", data.employeeId)
+        .gte("start_at", desde)
+        .lt("start_at", fin);
+      if (errorCercanas) throw new Error(`syncAppointment (hueco): ${errorCercanas.message}`);
+      if (haySolape(data.startISO, data.durationMin, cercanas ?? [])) {
+        return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
       }
     }
     if (data.clientPhone && key.length >= 6 && data.clientName) {

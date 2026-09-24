@@ -24,6 +24,10 @@ export interface DatosDelSalon {
  */
 export interface StoreSalonReal {
   salonProfile: SalonProfile;
+  setPublicBookingResolution: (value: {
+    slug: string;
+    status: "resolviendo" | "demo" | "real" | "fallo";
+  }) => void;
   setRealSalonSlug: (slug: string | null) => void;
   updateSalonProfile: (patch: Partial<SalonProfile>) => void;
   applyBusinessType: (
@@ -94,16 +98,19 @@ export async function resolverSalonReal(
   scope: "panel" | "publica",
   deps: DepsSalonReal,
 ): Promise<ResultadoSalonReal> {
+  deps.store().setPublicBookingResolution({ slug, status: "resolviendo" });
   let remoto: SalonProfile | null = null;
   try {
     const res = await deps.getSalonProfile({ data: { slug } });
     remoto = res.profile;
   } catch (err) {
-    // Supabase caído o tabla inexistente: se trata como "no es real". Una
-    // demo de venta en mitad de una reunión no se puede quedar en blanco
-    // porque falle una consulta que a ella no le hace ninguna falta.
+    // Sin respuesta no sabemos si el slug es real o demo. La reserva pública
+    // no puede confirmar una cita local fingiendo que se guardó en servidor.
     console.error("No se pudo comprobar si el salón es real:", err);
-    remoto = null;
+    if (deps.cancelado()) return "cancelado";
+    deps.store().setRealSalonSlug(null);
+    deps.store().setPublicBookingResolution({ slug, status: "fallo" });
+    return "fallo";
   }
   if (deps.cancelado()) return "cancelado";
 
@@ -112,6 +119,7 @@ export async function resolverSalonReal(
 
   if (!real) {
     store.setRealSalonSlug(null);
+    store.setPublicBookingResolution({ slug, status: "demo" });
     return "demo";
   }
 
@@ -143,13 +151,16 @@ export async function resolverSalonReal(
       const ahora = deps.store();
       ahora.hydrateFromServer(datos);
       ahora.setRealSalonSlug(slug);
+      ahora.setPublicBookingResolution({ slug, status: "real" });
       return "real";
     } catch (err) {
       console.error("No se pudo cargar la agenda del salón:", err);
       if (deps.cancelado()) return "cancelado";
       // Sin datos no hay conexión: nada de lo que se toque debe subir.
       deps.store().setRealSalonSlug(null);
+      deps.store().setPublicBookingResolution({ slug, status: "fallo" });
       deps.avisar(MENSAJE_CARGA_FALLIDA, () => {
+        deps.store().setPublicBookingResolution({ slug, status: "resolviendo" });
         void intentar();
       });
       return "fallo";
@@ -157,6 +168,17 @@ export async function resolverSalonReal(
   };
 
   return intentar();
+}
+
+/** Repite la identificación desde la reserva pública tras un fallo de red. */
+export function reintentarSalonPublico(slug: string): Promise<ResultadoSalonReal> {
+  return resolverSalonReal(slug, "publica", {
+    getSalonProfile,
+    listSalonData,
+    store: () => useSalonStore.getState(),
+    avisar: registrarAviso,
+    cancelado: () => false,
+  });
 }
 
 /** Resuelve el salón real de este slug durante la vida del componente. */

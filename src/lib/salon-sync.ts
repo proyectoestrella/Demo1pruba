@@ -3,8 +3,9 @@
  *
  * Todas las acciones del panel siguen haciendo exactamente lo que hacían —
  * mutar el estado local, al instante, sin esperar a nadie — y llaman aquí
- * después. Este módulo no bloquea nunca: perder una sincronización es
- * molesto; bloquear al dueño delante de un cliente, no.
+ * después. El panel no bloquea nunca: perder una sincronización es
+ * molesto; bloquear al dueño delante de un cliente, no. La reserva pública
+ * de un salón real sí espera el guardado antes de confirmar a la clienta.
  *
  * Lo que sí ha cambiado es qué pasa cuando falla. Antes acababa solo en un
  * `console.error`: el dueño veía la cita movida en pantalla, cerraba el iPad
@@ -89,7 +90,14 @@ export function pushAppointment(
 ): void {
   if (!slug) return;
   const quien = (cliente?.name ?? appt.clientName ?? "").trim();
-  const payload = {
+  subir(quien ? `la cita de ${quien}` : "la cita", async () => {
+    if (appt.origen === "tpv123" && !cliente?.phone) await altasPendientes.get(`${slug}|${quien}`);
+    return syncAppointment({ data: appointmentPayload(slug, appt, cliente) });
+  });
+}
+
+function appointmentPayload(slug: string, appt: Appointment, cliente?: ClienteDeCita) {
+  return {
     slug,
     localId: appt.id,
     clientName: cliente?.name ?? appt.clientName ?? undefined,
@@ -113,10 +121,18 @@ export function pushAppointment(
     technicalNotes: appt.technicalNotes ?? null,
     reminderSentAt: appt.reminderSentAt ?? null,
   };
-  subir(quien ? `la cita de ${quien}` : "la cita", async () => {
-    if (appt.origen === "tpv123" && !cliente?.phone) await altasPendientes.get(`${slug}|${quien}`);
-    return syncAppointment({ data: payload });
-  });
+}
+
+/** La reserva pública espera la confirmación; un `synced: false` no es éxito. */
+export async function guardarReservaPublica(
+  slug: string,
+  appt: Appointment,
+  cliente: ClienteDeCita,
+): Promise<void> {
+  const resultado = await syncAppointment({ data: appointmentPayload(slug, appt, cliente) });
+  if (!resultado.synced) {
+    throw new Error("reason" in resultado ? resultado.reason : "RESERVA_NO_GUARDADA");
+  }
 }
 
 /** Borra una cita de verdad. */

@@ -7,6 +7,24 @@ import { useSalonStore } from "./store";
  * Aquí se prueban las dos acciones del store sin montar nada de React.
  */
 describe("solicitudes pendientes de confirmar", () => {
+  it("anota una reserva ya guardada una sola vez y sin cambiar su id", () => {
+    const cita = {
+      id: `a-public-test-${crypto.randomUUID()}`,
+      clientId: "c-test-publica",
+      clientName: "Cliente de prueba",
+      serviceIds: ["corte"],
+      employeeId: "mario" as const,
+      start: "2026-09-26T13:00:00.000Z",
+      duration: 30,
+      priceEur: 20,
+      status: "pending" as const,
+    };
+    const { addSavedPublicAppointment } = useSalonStore.getState();
+    addSavedPublicAppointment(cita);
+    addSavedPublicAppointment(cita);
+    expect(useSalonStore.getState().appointments.filter((a) => a.id === cita.id)).toEqual([cita]);
+  });
+
   it("confirmar pasa la cita de pendiente a confirmada", () => {
     const { addAppointment, updateAppointment } = useSalonStore.getState();
     const appt = addAppointment({

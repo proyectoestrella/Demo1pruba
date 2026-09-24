@@ -6,14 +6,19 @@ import { afterEach, describe, expect, it, mock } from "bun:test";
  * las llamadas reales a las server functions con el módulo interceptado.
  */
 const llamadas: string[] = [];
+const argumentosCitas: unknown[] = [];
 /** Cuando está a `true`, TODA subida falla: es como tener la red caída. */
 let fallarTodo = false;
+let noGuardado = false;
+let rechazo: string | null = null;
 const registra =
   (nombre: string) =>
   (...args: unknown[]) => {
     llamadas.push(nombre);
-    void args;
+    if (nombre === "syncAppointment") argumentosCitas.push(args[0]);
     if (fallarTodo) return Promise.reject(new Error("red caída"));
+    if (rechazo) return Promise.resolve({ synced: false as const, reason: rechazo });
+    if (noGuardado) return Promise.resolve({ synced: false as const });
     return Promise.resolve({ synced: true as const });
   };
 
@@ -35,6 +40,7 @@ mock.module("./api/salons.functions", () => ({
 
 const {
   pushAppointment,
+  guardarReservaPublica,
   pushAppointmentDeletion,
   pushSalonProfile,
   pushSalonProfilePatch,
@@ -75,7 +81,10 @@ it("el alta de una ficha sin cita se sube solo en un salón real", () => {
 
 afterEach(() => {
   llamadas.length = 0;
+  argumentosCitas.length = 0;
   fallarTodo = false;
+  noGuardado = false;
+  rechazo = null;
   limpiarAvisos();
 });
 
@@ -93,6 +102,40 @@ describe("salon-sync con slug null (demo de venta)", () => {
 });
 
 describe("salon-sync con un salón real", () => {
+  it("la reserva pública espera la confirmación real", async () => {
+    await expect(
+      guardarReservaPublica("the-best-shave-barber", cita, { name: "Marta", phone: "600111222" }),
+    ).resolves.toBeUndefined();
+    expect(llamadas).toEqual(["syncAppointment"]);
+    expect(argumentosCitas[0]).toMatchObject({ data: { localId: cita.id, status: "pending" } });
+  });
+
+  it("un fallo de red conserva el id para reintentar sin duplicar la solicitud", async () => {
+    fallarTodo = true;
+    const cliente = { name: "Marta", phone: "600111222" };
+    await expect(guardarReservaPublica("the-best-shave-barber", cita, cliente)).rejects.toThrow(
+      "red caída",
+    );
+    fallarTodo = false;
+    await guardarReservaPublica("the-best-shave-barber", cita, cliente);
+    expect(argumentosCitas).toHaveLength(2);
+    expect(argumentosCitas[1]).toEqual(argumentosCitas[0]);
+  });
+
+  it("no confunde `synced: false` con una cita guardada", async () => {
+    noGuardado = true;
+    await expect(
+      guardarReservaPublica("the-best-shave-barber", cita, { name: "Marta", phone: "600111222" }),
+    ).rejects.toThrow("RESERVA_NO_GUARDADA");
+  });
+
+  it("propaga el motivo del rechazo para mostrar el mensaje preciso", async () => {
+    rechazo = "RESERVA_HUECO_OCUPADO";
+    await expect(
+      guardarReservaPublica("the-best-shave-barber", cita, { name: "Marta", phone: "600111222" }),
+    ).rejects.toThrow("RESERVA_HUECO_OCUPADO");
+  });
+
   it("sube la cita, el borrado y el perfil", () => {
     pushAppointment("the-best-shave-barber", cita);
     pushAppointmentDeletion("the-best-shave-barber", "a-new-1");
