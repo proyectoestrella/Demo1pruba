@@ -128,7 +128,8 @@ export function ClientHistorySheet({
       </div>
 
       {(!conRecargo || client.manualBlock) && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 p-4">
+        // Vaul no debe interpretar el toque del botón como arrastre del cajón.
+        <div data-vaul-no-drag className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 p-4">
           <p className="text-sm">
             {client.manualBlock ? "Reserva online bloqueada a mano" : "Puede reservar online"}
           </p>
