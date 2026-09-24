@@ -28,6 +28,7 @@ import { Route as AppDemosRouteImport } from './routes/app.demos'
 import { Route as AppClientsRouteImport } from './routes/app.clients'
 import { Route as AppCalendarRouteImport } from './routes/app.calendar'
 import { Route as AppAppointmentsRouteImport } from './routes/app.appointments'
+import { Route as ApiRecordatoriosRouteImport } from './routes/api.recordatorios'
 import { Route as ApiFotoRouteImport } from './routes/api.foto'
 import { Route as ApiCalendarioRouteImport } from './routes/api.calendario'
 import { Route as SSalonSlugIndexRouteImport } from './routes/s.$salonSlug.index'
@@ -131,6 +132,11 @@ const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
   path: '/appointments',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiRecordatoriosRoute = ApiRecordatoriosRouteImport.update({
+  id: '/api/recordatorios',
+  path: '/api/recordatorios',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiFotoRoute = ApiFotoRouteImport.update({
   id: '/api/foto',
   path: '/api/foto',
@@ -175,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/rutero': typeof RuteroRoute
   '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
+  '/api/recordatorios': typeof ApiRecordatoriosRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/clients': typeof AppClientsRoute
@@ -202,6 +209,7 @@ export interface FileRoutesByTo {
   '/rutero': typeof RuteroRoute
   '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
+  '/api/recordatorios': typeof ApiRecordatoriosRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/clients': typeof AppClientsRoute
@@ -230,6 +238,7 @@ export interface FileRoutesById {
   '/rutero': typeof RuteroRoute
   '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
+  '/api/recordatorios': typeof ApiRecordatoriosRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/clients': typeof AppClientsRoute
@@ -260,6 +269,7 @@ export interface FileRouteTypes {
     | '/rutero'
     | '/api/calendario'
     | '/api/foto'
+    | '/api/recordatorios'
     | '/app/appointments'
     | '/app/calendar'
     | '/app/clients'
@@ -287,6 +297,7 @@ export interface FileRouteTypes {
     | '/rutero'
     | '/api/calendario'
     | '/api/foto'
+    | '/api/recordatorios'
     | '/app/appointments'
     | '/app/calendar'
     | '/app/clients'
@@ -314,6 +325,7 @@ export interface FileRouteTypes {
     | '/rutero'
     | '/api/calendario'
     | '/api/foto'
+    | '/api/recordatorios'
     | '/app/appointments'
     | '/app/calendar'
     | '/app/clients'
@@ -343,6 +355,7 @@ export interface RootRouteChildren {
   RuteroRoute: typeof RuteroRoute
   ApiCalendarioRoute: typeof ApiCalendarioRoute
   ApiFotoRoute: typeof ApiFotoRoute
+  ApiRecordatoriosRoute: typeof ApiRecordatoriosRoute
   SSalonSlugRoute: typeof SSalonSlugRouteWithChildren
 }
 
@@ -481,6 +494,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppointmentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/recordatorios': {
+      id: '/api/recordatorios'
+      path: '/api/recordatorios'
+      fullPath: '/api/recordatorios'
+      preLoaderRoute: typeof ApiRecordatoriosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/foto': {
       id: '/api/foto'
       path: '/api/foto'
@@ -595,6 +615,7 @@ const rootRouteChildren: RootRouteChildren = {
   RuteroRoute: RuteroRoute,
   ApiCalendarioRoute: ApiCalendarioRoute,
   ApiFotoRoute: ApiFotoRoute,
+  ApiRecordatoriosRoute: ApiRecordatoriosRoute,
   SSalonSlugRoute: SSalonSlugRouteWithChildren,
 }
 export const routeTree = rootRouteImport
