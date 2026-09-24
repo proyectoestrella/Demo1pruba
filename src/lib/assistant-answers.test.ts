@@ -156,3 +156,33 @@ test("la recomendación general no inventa nada cuando no hay datos", () => {
   const answer = answerFor("dame una recomendación para hoy", ctx([]));
   expect(answer.length).toBeGreaterThan(0);
 });
+
+test("preguntas de ficha por nombre, color, historial y última visita", () => {
+  const marta = client({ id: "marta", name: "Marta Martín", notes: "Alergia anotada" });
+  const marisol = client({ id: "marisol", name: "Marisol Pérez" });
+  const cristina = client({ id: "cristina", name: "Cristina López" });
+  const elena = client({ id: "elena", name: "Elena García" });
+  const valentina = client({ id: "valentina", name: "Valentina Ríos" });
+  const citas = [appt({ clientId: "marta", clientName: marta.name, start: daysAgoAt(5, 10), status: "completed", colorFormula: "6.3", technicalNotes: "20 vol" })];
+  const datos = ctx(citas, [marta, marisol, cristina, elena, valentina]);
+  for (const pregunta of ["¿qué se ha hecho Marta Martín?", "Marta Martín"]) {
+    const respuesta = answerFor(pregunta, datos);
+    expect(respuesta).toContain("Ficha de Marta Martín");
+    expect(respuesta).toContain("6.3");
+    expect(respuesta).toContain("20 vol");
+    expect(respuesta).toContain("Alergia anotada");
+  }
+  for (const [pregunta, nombre] of [["¿qué color lleva Marisol?", "Marisol"], ["ficha de Cristina", "Cristina"], ["cuándo vino Elena la última vez", "Elena"], ["historial de Valentina", "Valentina"]]) {
+    expect(answerFor(pregunta, datos)).toContain(`Ficha de ${nombre}`);
+  }
+  expect(answerFor("ficha de Desconocida", datos)).toContain("No encuentro");
+});
+
+test("nombre de pila ambiguo y prioridad de ingresos", () => {
+  const datos = ctx([], [client({ name: "Marta Martín" }), client({ name: "Marta Gómez" }), client({ name: "Inés Ruiz" })]);
+  const respuesta = answerFor("ficha de Marta", datos);
+  expect(respuesta).toContain("2 clientas");
+  expect(respuesta).toContain("Marta Martín");
+  expect(respuesta).toContain("Marta Gómez");
+  expect(answerFor("ingresos", datos)).not.toContain("Ficha de Inés");
+});

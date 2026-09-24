@@ -9,7 +9,7 @@
  * La UI se monta con primitivas en vez de con el paquete de estilos de
  * assistant-ui para que herede los tokens del tema (carbón + latón).
  */
-import { useMemo } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import {
   AssistantRuntimeProvider,
   ComposerPrimitive,
@@ -18,11 +18,16 @@ import {
   useAuiState,
   useLocalRuntime,
   type ChatModelAdapter,
+  type TextMessagePartProps,
 } from "@assistant-ui/react";
 import { ArrowUp, Bot, Square, User } from "lucide-react";
 import { useEquipo } from "@/lib/use-equipo";
 import { useSalonStore } from "@/lib/store";
-import { answerFor, SUGGESTION_GROUPS } from "@/lib/assistant-answers";
+import { answerFor, clientasDePregunta, SUGGESTION_GROUPS } from "@/lib/assistant-answers";
+import { ClientHistorySheet } from "@/components/ClientHistorySheet";
+
+const AbrirFicha = createContext<(id: string) => void>(() => {});
+const MARCA_FICHA = /\n\[\[abrir-ficha:([^\]]+)\]\]$/;
 import { cn } from "@/lib/utils";
 
 function useSalonAdapter(): ChatModelAdapter {
@@ -49,12 +54,14 @@ function useSalonAdapter(): ChatModelAdapter {
           clients: s.clients,
           salonName: s.salonProfile.name,
         });
+        const matches = clientasDePregunta(question ?? "", s.clients);
+        const fichaId = text.startsWith("Ficha de ") && matches?.matches.length === 1 ? matches.matches[0].id : null;
 
         // Una sola respuesta, no un generador que la escupa palabra a palabra:
         // el cálculo es local e instantáneo, así que "escribir" poco a poco
         // solo añadiría retardo — y ataba la entrega al bucle de frames del
         // navegador, que se detiene si la pestaña no está visible.
-        return { content: [{ type: "text" as const, text }] };
+        return { content: [{ type: "text" as const, text: fichaId ? `${text}\n[[abrir-ficha:${fichaId}]]` : text }] };
       },
     }),
     [employees],
@@ -102,10 +109,22 @@ function AssistantMessage() {
   return (
     <MessagePrimitive.Root>
       <Bubble role="assistant">
-        <MessagePrimitive.Parts />
+        <MessagePrimitive.Parts components={{ Text: AssistantText }} />
       </Bubble>
     </MessagePrimitive.Root>
   );
+}
+
+function AssistantText({ text }: TextMessagePartProps) {
+  const abrir = useContext(AbrirFicha);
+  const marca = text.match(MARCA_FICHA);
+  return <div className="min-w-0 break-words whitespace-pre-line">
+    {marca ? text.slice(0, marca.index) : text}
+    {marca && <button type="button" onClick={() => abrir(marca[1])}
+      className="mt-3 block min-h-11 rounded-lg border border-primary/40 px-3 py-2 text-left font-medium text-primary hover:bg-primary/5">
+      Abrir ficha completa
+    </button>}
+  </div>;
 }
 
 function Welcome() {
@@ -179,8 +198,11 @@ function Composer() {
 export function AssistantPanel({ className }: { className?: string }) {
   const adapter = useSalonAdapter();
   const runtime = useLocalRuntime(adapter);
+  const [fichaId, setFichaId] = useState<string | null>(null);
+  const clienta = useSalonStore((s) => s.clients.find((c) => c.id === fichaId) ?? null);
 
   return (
+    <AbrirFicha.Provider value={setFichaId}>
     <AssistantRuntimeProvider runtime={runtime}>
       <ThreadPrimitive.Root className={cn("flex min-h-0 flex-col", className)}>
         <ThreadPrimitive.Viewport className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
@@ -190,5 +212,7 @@ export function AssistantPanel({ className }: { className?: string }) {
         <Composer />
       </ThreadPrimitive.Root>
     </AssistantRuntimeProvider>
+    <ClientHistorySheet client={clienta} open={!!clienta} onOpenChange={(open) => { if (!open) setFichaId(null); }} />
+    </AbrirFicha.Provider>
   );
 }

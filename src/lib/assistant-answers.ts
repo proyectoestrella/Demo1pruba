@@ -20,6 +20,7 @@ import {
   serviceMix,
   weeklyOccupancyTrend,
 } from "./derive";
+import { fichaDeClienta } from "./ficha-clienta";
 
 export interface SalonContext {
   appointments: Appointment[];
@@ -58,6 +59,46 @@ function norm(s: string) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "");
+}
+
+const FORMAS_FICHA = [
+  /^(?:que se ha hecho|que le han hecho)\s+(.+)$/,
+  /^(?:que color lleva|cual es el color de)\s+(.+)$/,
+  /^(?:ficha de|historial de|cuando vino)\s+(.+)$/,
+];
+
+/** Solo coteja palabras del nombre: una nota o un teléfono nunca identifican a la clienta. */
+export function clientasDePregunta(question: string, clients: Client[]): { matches: Client[]; explicit: boolean } | null {
+  const limpio = norm(question).replace(/[¿?¡!.,]/g, "").trim().replace(/\s+/g, " ");
+  const forma = FORMAS_FICHA.map((r) => limpio.match(r)).find(Boolean);
+  const explicit = !!forma;
+  const nombre = (forma?.[1] ?? limpio).replace(/^(?:a|de)\s+/, "").replace(/\s+la ultima vez$/, "").trim();
+  if (!nombre) return null;
+  const matches = clients.filter((c) => {
+    const completo = norm(c.name).replace(/\s+/g, " ").trim();
+    return completo === nombre || (nombre.split(" ").length === 1 && completo.split(" ")[0] === nombre);
+  });
+  return { matches, explicit };
+}
+
+function respuestaFicha(matches: Client[], ctx: Required<SalonContext>): string {
+  if (!matches.length) return "No encuentro a esa clienta. Prueba con su nombre completo en el buscador de Clientes.";
+  if (matches.length > 1) return `${matches.length} clientas coinciden con ese nombre:\n${matches.map((c) => `• ${c.name}`).join("\n")}\nEscribe el nombre completo para elegir una.`;
+  const clienta = matches[0];
+  const ficha = fichaDeClienta(clienta.id, { citas: ctx.appointments, clientes: ctx.clients, servicios: ctx.services, equipo: ctx.employees, ahora: ctx.now });
+  const fecha = (iso: string) => new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
+  const visitas = ficha.visitas.slice(0, 3).map((v) =>
+    `• ${fecha(v.fecha)} · ${v.servicios.join(", ") || "Servicio sin indicar"} · ${v.profesional || "Profesional sin indicar"} · ${v.colorFormula || "sin fórmula de color"}`);
+  const notas = ficha.visitas.filter((v) => v.technicalNotes?.trim()).slice(0, 3)
+    .map((v) => `• ${fecha(v.fecha)}: ${v.technicalNotes!.trim()}`);
+  return [
+    `Ficha de ${clienta.name}`,
+    `Último color: ${ficha.resumen.ultimoColor ? `${ficha.resumen.ultimoColor.formula} (${fecha(ficha.resumen.ultimoColor.fecha)})` : "sin fórmula registrada"}.`,
+    "Últimas visitas:", ...(visitas.length ? visitas : ["• Sin visitas registradas."]),
+    "Notas técnicas:", ...(notas.length ? notas : ["• Sin notas técnicas."]),
+    "Avisos:", ...(ficha.avisos.length ? ficha.avisos.map((a) => `• ${a}`) : ["• Sin avisos."]),
+    `Próxima cita: ${ficha.resumen.proximaCita ? `${fecha(ficha.resumen.proximaCita)} a las ${hhmm(ficha.resumen.proximaCita)}` : "no tiene cita prevista"}.`,
+  ].join("\n");
 }
 
 function activeToday(appts: Appointment[], now: Date) {
@@ -564,6 +605,7 @@ export const SUGGESTION_GROUPS: { topic: string; items: string[] }[] = [
     topic: "Clientes",
     items: ["¿Qué clientes están inactivos?", "¿Cuántos clientes son recurrentes?"],
   },
+  { topic: "Tus clientas", items: ["¿Qué se ha hecho Marta Martín?", "¿Qué color lleva Marisol?", "Ficha de Cristina", "Historial de Valentina"] },
   {
     topic: "Agenda",
     items: [
@@ -589,8 +631,11 @@ export function answerFor(question: string, ctx: SalonContext): string {
   const q = norm(question);
   const full: Required<SalonContext> = { ...ctx, now: ctx.now ?? new Date() };
 
+  const clienta = clientasDePregunta(question, ctx.clients);
+  if (clienta?.explicit) return respuestaFicha(clienta.matches, full);
   const hit = INTENTS.find((intent) => intent.keywords.some((k) => q.includes(norm(k))));
   if (hit) return hit.answer(full);
+  if (clienta?.matches.length) return respuestaFicha(clienta.matches, full);
 
   return [
     "No sé responder a eso — solo consulto los datos de tu propio salón, no invento.",
