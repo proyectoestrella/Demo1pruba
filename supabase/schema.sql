@@ -284,3 +284,20 @@ create index if not exists salon_members_salon_slug_idx on salon_members (salon_
 -- una fila. Una política permisiva aquí dejaría que cualquiera con la clave
 -- pública leyera —o peor, escribiera— quién tiene acceso a qué salón.
 alter table salon_members enable row level security;
+
+-- ---------------------------------------------------------------------------
+-- 25/09/2026 — reserva fiable y recordatorio automático por email
+--
+-- PENDIENTE DE APLICAR EN PRODUCCIÓN: ver supabase/pendiente.sql, que reúne
+-- en un solo fichero todo lo que falta, listo para el SQL Editor.
+-- ---------------------------------------------------------------------------
+
+-- El control de solapes del servidor (`syncAppointment`, reserva pública) lee
+-- las citas de UNA profesional en una ventana de siete días alrededor de la
+-- hora pedida; el recordatorio automático (`recordatorios.server.ts`) lee las
+-- citas de mañana de TODOS los salones. Sin estos índices las dos consultas
+-- recorren la tabla entera.
+create index if not exists appointments_salon_employee_start_idx
+  on appointments (salon_slug, employee_id, start_at);
+create index if not exists appointments_start_status_idx
+  on appointments (start_at, status);
