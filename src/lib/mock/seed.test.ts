@@ -38,6 +38,17 @@ describe("buildSeed — colores de peluquería", () => {
     expect([...porClientaYServicio.values()].some((formulas) => formulas.size === 2)).toBe(true);
     expect(first.some((a) => a.serviceIds.every((id) => id !== "color" && id !== "afeitado") && !a.colorFormula)).toBe(true);
   });
+
+  it("también siembra color con una carta propia de demo por enlace (ids distintos)", () => {
+    const equipo = employeesForType("peluqueria");
+    const carta = servicesForType("peluqueria").map((s) =>
+      s.id === "color" ? { ...s, id: "tinte", name: "Tinte" }
+        : s.id === "afeitado" ? { ...s, id: "mechas-balayage", name: "Mechas / balayage" }
+        : s);
+    const coloreadas = buildSeed("peluqueria", equipo, carta).appointments.filter((a) => a.colorFormula);
+    expect(new Set(coloreadas.map((a) => a.colorFormula)).size).toBeGreaterThanOrEqual(10);
+    expect(coloreadas.every((a) => a.serviceIds.includes("tinte") || a.serviceIds.includes("mechas-balayage"))).toBe(true);
+  });
 });
 
 describe("buildSeed — política de plantón (opts.noShowFeeEur)", () => {

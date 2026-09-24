@@ -249,8 +249,10 @@ function buildAppointments(
           pendingHoyAsignados++;
         }
 
-        const servicioColor = chosen.some((sv) => sv.id === "afeitado") ? "mechas"
-          : chosen.some((sv) => sv.id === "color") ? "color" : undefined;
+        // Por nombre, no por id: las demos por enlace traen su propia carta
+        // («Tinte», «Mechas / balayage») con ids distintos a los de por defecto.
+        const servicioColor = chosen.some((sv) => /mecha|balayage/i.test(sv.name)) ? "mechas"
+          : chosen.some((sv) => /tinte|color|baño|matiz/i.test(sv.name)) ? "color" : undefined;
         const fichaColor = type === "peluqueria" && servicioColor && day < 0 && status === "completed"
           ? COLORES_DEMO[servicioColor][(Number(client.id.slice(1)) - 1) % 6]
           : undefined;
