@@ -69,7 +69,7 @@ function Confirmation() {
     () => Object.fromEntries(servicesForType(tipo, profile.menu).map((s) => [s.id, s])),
     [tipo, profile.menu],
   );
-  const equipo = useMemo(() => employeesForType(tipo, profile.team), [tipo, profile.team]);
+  const equipo = useMemo(() => employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds), [tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds]);
   // Con un solo profesional, "con Adam" sobra: no puede ser con otro.
   const soloUno = esSoloUnProfesional(equipo);
   const employeeMap = useMemo(() => Object.fromEntries(equipo.map((e) => [e.id, e])), [equipo]);

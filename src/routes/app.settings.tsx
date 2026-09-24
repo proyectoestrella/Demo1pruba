@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { PrimerosPasos } from "@/components/PrimerosPasos";
 
 export const Route = createFileRoute("/app/settings")({ component: Settings });
 
@@ -139,6 +140,8 @@ function Settings() {
   return (
     <div className="max-w-2xl space-y-6">
       <PageHeader title="Ajustes" description="Las políticas de tu salón: plantones, señal y reparto de agenda." />
+
+      <PrimerosPasos enAjustes />
 
       <div className="rounded-xl border border-border/60 bg-card p-6">
         <div className="flex items-center justify-between gap-4">

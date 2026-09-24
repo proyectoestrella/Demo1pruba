@@ -45,6 +45,7 @@ import { recargoActivo } from "@/lib/recargo-activo";
 import { Button } from "@/components/ui/button";
 import { RecordatoriosManana } from "@/components/RecordatoriosManana";
 import { cn } from "@/lib/utils";
+import { PrimerosPasos } from "@/components/PrimerosPasos";
 
 /** Buenos días (00-06 se cuenta como "madrugada" pero saluda igual que noche). */
 function greetingForHour(hour: number) {
@@ -133,6 +134,8 @@ export function HoyV2() {
         <h1 className="font-display text-2xl md:text-3xl tracking-tight text-foreground">{greeting}</h1>
         <p className="text-sm text-muted-foreground">Así va {salonName}.</p>
       </div>
+
+      <PrimerosPasos />
 
       {/* Lo primero que se ve al abrir el panel, y en este orden: quién te
           debe dinero y viene hoy (el momento de cobrar es cuando lo tienes

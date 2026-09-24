@@ -1,4 +1,4 @@
-export type EmployeeId = "mario" | "diego" | "ruben";
+export type EmployeeId = string;
 
 export type AppointmentStatus =
   | "pending"
@@ -38,6 +38,8 @@ export interface Employee {
   colorVar: string;
   /** working hours per weekday 0-6 (Sun-Sat). null = day off */
   schedule: Array<{ start: number; end: number } | null>;
+  /** Franjas exactas en minutos desde medianoche; índice 0 = domingo. */
+  scheduleRanges?: Array<Array<{ start: number; end: number }>>;
 }
 
 export interface Client {
@@ -236,11 +238,18 @@ export interface SalonProfile {
    */
   heroImage?: string;
   /**
-   * Equipo real del salón, de 1 a 3 entradas ("Nombre" o "Nombre~Especialidad"
+   * Equipo real del salón, de 1 a 6 entradas ("Nombre" o "Nombre~Especialidad"
    * — ver `parseTeamEntry` en business-type.ts). Vacío o ausente = el equipo
    * de ejemplo de tres profesionales de siempre (`EMPLOYEE_OVERLAY`).
    */
   team?: string[];
+  /** Identificadores estables alineados con team, para conservar las citas al renombrar o quitar a alguien. */
+  teamIds?: string[];
+  /** Horario semanal por posición del equipo; cada día conserva el formato de openingHours. */
+  teamHours?: string[][];
+  /** Estado de la tarjeta de primeros pasos. */
+  setupChecklistHidden?: boolean;
+  setupChecklistDone?: number[];
   /**
    * Carta real del salón, de 1 a 12 entradas ("Nombre~minutos~precio" o
    * "...~Categoría" — ver `parseMenuEntry` en business-type.ts). Vacío o

@@ -43,7 +43,7 @@ export function WalkInDialog({ open, onOpenChange }: WalkInDialogProps) {
   // Este diálogo vive en el panel (/app), pero llama a la versión pura para
   // que respete el equipo real del enlace sin depender de que
   // `applyBusinessType` ya haya corrido — igual que las páginas públicas.
-  const employees = employeesForType(tipo, profile.team);
+  const employees = employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds);
   // En un salón real no se enseñan las fotos de stock (ver fotoDeProfesional).
   const esSalonReal = useSalonStore((s) => s.realSalonSlug) === profile.slug;
   // Un solo profesional: la cita se le asigna sola, sin preguntar.

@@ -612,6 +612,14 @@ export const useSalonStore = create<SalonState>()(
 
       updateSalonProfile: (patch) => {
         set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } }));
+        const perfil = get().salonProfile;
+        setEmployeesForType(
+          inferBusinessType(perfil.tagline, perfil.name),
+          perfil.team,
+          perfil.teamHours,
+          perfil.openingHours,
+          perfil.teamIds,
+        );
         // Sube el PARCHE, no el perfil entero. Antes subía
         // `get().salonProfile` completo, y eso hacía que un navegador con el
         // perfil viejo en localStorage revirtiera lo que se hubiera cambiado
@@ -627,7 +635,7 @@ export const useSalonStore = create<SalonState>()(
         // lista de espera del panel, el diálogo de nueva cita…) los leen de
         // nuevo en el siguiente render, que llega enseguida porque el `set`
         // de abajo notifica a todo lo que esté suscrito a la store.
-        setEmployeesForType(type, overrides?.team);
+        setEmployeesForType(type, overrides?.team, get().salonProfile.teamHours, get().salonProfile.openingHours, get().salonProfile.teamIds);
         setServicesForType(type, overrides?.menu);
         const seed = buildSeed(type, liveEmployees, [...seedServices], {
           noShowFeeEur: overrides?.noShowFeeEur,
@@ -680,7 +688,16 @@ export const useSalonStore = create<SalonState>()(
         set({ realSalonSlug: null });
         // `id` y `savedAt` son de la demo, no del salón: no deben colarse en el perfil.
         const { id: _id, savedAt: _savedAt, ...profileFields } = demo;
-        set((s) => ({ salonProfile: { ...s.salonProfile, ...profileFields } }));
+        set((s) => ({
+          salonProfile: {
+            ...s.salonProfile,
+            ...profileFields,
+            teamHours: undefined,
+            teamIds: undefined,
+            setupChecklistHidden: undefined,
+            setupChecklistDone: undefined,
+          },
+        }));
         get().applyBusinessType(inferBusinessType(profileFields.tagline, profileFields.name), {
           team: profileFields.team,
           menu: profileFields.menu,
@@ -839,7 +856,7 @@ export const useSalonStore = create<SalonState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         const type = inferBusinessType(state.salonProfile?.tagline, state.salonProfile?.name);
-        setEmployeesForType(type, state.salonProfile?.team);
+        setEmployeesForType(type, state.salonProfile?.team, state.salonProfile?.teamHours, state.salonProfile?.openingHours, state.salonProfile?.teamIds);
         setServicesForType(type, state.salonProfile?.menu);
       },
     },

@@ -31,7 +31,7 @@ export function useDisplayProfile(): SalonProfile {
     // señoras salía presentándose como "barbería de toda la vida, tres
     // profesionales" y con las especialidades del salón de ejemplo: los datos
     // eran suyos y el discurso de otro, que es peor que no decir nada.
-    return { ...stored, ...blankDemoProfile(), ...fromUrl };
+    return { ...stored, ...blankDemoProfile(), teamHours: undefined, teamIds: undefined, ...fromUrl };
   }, [stored, raw]);
 }
 

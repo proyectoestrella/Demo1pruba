@@ -33,9 +33,11 @@ describe("employeesForType con equipo real", () => {
     expect(employees.map((e) => e.id)).toEqual(["mario", "diego"]);
   });
 
-  it("con más de tres nombres, se corta a tres", () => {
+  it("admite hasta seis profesionales", () => {
     const employees = employeesForType("barberia", ["A", "B", "C", "D"]);
-    expect(employees).toHaveLength(3);
+    expect(employees).toHaveLength(4);
+    expect(employees[3].id).toBe("profesional-4");
+    expect(employeesForType("barberia", ["A", "B", "C", "D", "E", "F", "G"])).toHaveLength(6);
   });
 
   it("un array vacío se comporta como si no viniera team", () => {

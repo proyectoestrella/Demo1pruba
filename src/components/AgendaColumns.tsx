@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
-import { employeeMap } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { capitalizar, fechaLarga } from "@/lib/copy";
 import type { Appointment, EmployeeId } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
+import { trabajaEn } from "@/lib/horario-equipo";
 import { TiraScroll } from "@/components/TiraScroll";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
@@ -113,19 +113,21 @@ export function AgendaColumns() {
   const nowTop = (nowMinutes / 60) * ROW_HEIGHT;
 
   function Column({ employeeId }: { employeeId: EmployeeId }) {
-    const emp = employeeMap[employeeId];
+    const emp = employees.find((e) => e.id === employeeId)!;
     const own = dayAppts.filter((a) => a.employeeId === employeeId);
     return (
       <div className="relative border-l border-border/60 first:border-l-0">
-        {HOURS.map((h) => (
-          <button
+        {HOURS.map((h) => {
+          const trabaja = trabajaEn(emp, anchor.getDay(), h * 60, 30);
+          return <button
             key={h}
             type="button"
+            disabled={!trabaja}
             onClick={() => openSlot(employeeId, h)}
-            className="block h-16 w-full border-b border-border/50 transition-colors hover:bg-primary/5"
-            aria-label={`Crear cita con ${emp.name} el ${anchor.toLocaleDateString("es")} a las ${h}:00`}
-          />
-        ))}
+            className={cn("block h-16 w-full border-b border-border/50 transition-colors", trabaja ? "hover:bg-primary/5" : "cursor-default bg-muted/50")}
+            aria-label={trabaja ? `Crear cita con ${emp.name} el ${anchor.toLocaleDateString("es")} a las ${h}:00` : `${emp.name} no trabaja a las ${h}:00`}
+          />;
+        })}
         {showNowLine && (
           <div
             className="pointer-events-none absolute left-0 right-0 z-10 flex items-center"

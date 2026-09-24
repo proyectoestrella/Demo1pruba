@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useSalonStore } from "@/lib/store";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { employees, employeeMap } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
@@ -18,6 +17,7 @@ import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { Button } from "@/components/ui/button";
 import { usePanelV2 } from "@/lib/use-panel-v2";
 import { AgendaColumns } from "@/components/AgendaColumns";
+import { trabajaEn } from "@/lib/horario-equipo";
 
 export const Route = createFileRoute("/app/calendar")({
   component: CalendarRoute,
@@ -123,9 +123,11 @@ function CalendarView() {
   }
 
   function openSlot(day: Date, hour: number) {
+    const professional = equipo.find((e) => trabajaEn(e, day.getDay(), hour * 60, 30));
+    if (!professional) return;
     const date = new Date(day);
     date.setHours(hour, 0, 0, 0);
-    setSlotPrefill({ date, employeeId: employees[0].id });
+    setSlotPrefill({ date, employeeId: professional.id });
     setNewApptOpen(true);
   }
 
@@ -320,15 +322,17 @@ function CalendarView() {
                         isToday && "bg-primary/[0.03]",
                       )}
                     >
-                      {HOURS.map((h) => (
-                        <button
+                      {HOURS.map((h) => {
+                        const trabajaAlguien = equipo.some((e) => trabajaEn(e, day.getDay(), h * 60, 30));
+                        return <button
                           key={h}
                           type="button"
+                          disabled={!trabajaAlguien}
                           onClick={() => openSlot(day, h)}
-                          className="block h-16 w-full border-b border-border/50 transition-colors hover:bg-primary/5"
-                          aria-label={`Crear cita el ${day.toLocaleDateString("es")} a las ${h}:00`}
-                        />
-                      ))}
+                          className={cn("block h-16 w-full border-b border-border/50 transition-colors", trabajaAlguien ? "hover:bg-primary/5" : "cursor-default bg-muted/50")}
+                          aria-label={trabajaAlguien ? `Crear cita el ${day.toLocaleDateString("es")} a las ${h}:00` : `El equipo no trabaja el ${day.toLocaleDateString("es")} a las ${h}:00`}
+                        />;
+                      })}
                       {showNowLine && (
                         <div
                           className="pointer-events-none absolute left-0 right-0 z-10 flex items-center"
@@ -345,7 +349,7 @@ function CalendarView() {
                         if (minutes < 0) return null;
                         const top = (minutes / 60) * 64;
                         const height = (a.duration / 60) * 64;
-                        const emp = employeeMap[a.employeeId];
+                        const emp = equipo.find((e) => e.id === a.employeeId) ?? equipo[0];
                         // El color de fondo marca el profesional; el estado se lee en el
                         // borde y la opacidad, sin tocar la lógica de qué citas se pintan.
                         const isNoShow = a.status === "no-show";
@@ -601,15 +605,17 @@ function DayByEmployee({
               const own = dayAppts.filter((a) => a.employeeId === e.id);
               return (
                 <div key={e.id} className="relative border-l border-border/60">
-                  {HOURS.map((h) => (
-                    <button
+                  {HOURS.map((h) => {
+                    const trabaja = trabajaEn(e, day.getDay(), h * 60, 30);
+                    return <button
                       key={h}
                       type="button"
+                      disabled={!trabaja}
                       onClick={() => onOpenSlot(e.id, h)}
-                      className="block h-16 w-full border-b border-border/50 transition-colors hover:bg-primary/5"
-                      aria-label={`Crear cita con ${e.name} el ${day.toLocaleDateString("es")} a las ${h}:00`}
-                    />
-                  ))}
+                      className={cn("block h-16 w-full border-b border-border/50 transition-colors", trabaja ? "hover:bg-primary/5" : "cursor-default bg-muted/50")}
+                      aria-label={trabaja ? `Crear cita con ${e.name} el ${day.toLocaleDateString("es")} a las ${h}:00` : `${e.name} no trabaja a las ${h}:00`}
+                    />;
+                  })}
                   {showNowLine && (
                     <div
                       className="pointer-events-none absolute left-0 right-0 z-10 flex items-center"
@@ -624,7 +630,7 @@ function DayByEmployee({
                     const start = new Date(a.start);
                     const minutes = (start.getHours() - HOURS[0]) * 60 + start.getMinutes();
                     if (minutes < 0) return null;
-                    const emp = employeeMap[a.employeeId];
+                    const emp = employees.find((e) => e.id === a.employeeId) ?? employees[0];
                     return (
                       <button
                         key={a.id}

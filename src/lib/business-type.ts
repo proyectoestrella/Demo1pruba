@@ -546,6 +546,8 @@ export function placeholderAvatar(name: string, employeeId: EmployeeId): string 
  * qué cuenta como una entrada válida.
  */
 export const MAX_TEAM_ENTRIES = 3;
+/** Límite de profesionales de un salón real; los enlaces de demo conservan su límite original. */
+export const MAX_SALON_TEAM_ENTRIES = 6;
 export const MAX_MENU_ENTRIES = 12;
 const MENU_DURATION_MIN = 5;
 const MENU_DURATION_MAX = 240;

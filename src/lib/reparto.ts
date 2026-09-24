@@ -1,4 +1,5 @@
 import type { Appointment, Employee } from "./mock/types";
+import { franjasProfesional, huecosDeProfesionales, trabajaEn } from "./horario-equipo";
 
 /**
  * Reparto de agenda ("smartSpread", clave "k" del enlace de demo — ver
@@ -45,8 +46,7 @@ export function hourOccupancyPct(
 ): number {
   const weekday = new Date(`${dateKey}T00:00`).getDay();
   const working = employees.filter((e) => {
-    const sched = e.schedule[weekday];
-    return sched && hour >= sched.start && hour < sched.end;
+    return trabajaEn(e, weekday, hour * 60 + 30);
   });
   if (working.length === 0) return 0;
 
@@ -234,42 +234,27 @@ export function findNextAvailableSlot(
     const weekday = date.getDay();
     const dateKey = toDateKey(date);
 
-    const opens = relevantEmployees.map((e) => e.schedule[weekday]).filter(Boolean) as {
-      start: number;
-      end: number;
-    }[];
+    const opens = relevantEmployees.flatMap((e) => franjasProfesional(e, weekday));
     if (opens.length === 0) continue;
 
     // Cierre "de verdad": el del salón (todo el equipo), no solo el del
     // profesional elegido — igual que en DateTimeStep.
-    const salonOpens = employees.map((e) => e.schedule[weekday]).filter(Boolean) as {
-      start: number;
-      end: number;
-    }[];
+    const salonOpens = employees.flatMap((e) => franjasProfesional(e, weekday));
     const salonCloseMin =
-      salonOpens.length > 0 ? Math.max(...salonOpens.map((o) => o.end)) * 60 : undefined;
+      salonOpens.length > 0 ? Math.max(...salonOpens.map((o) => o.end)) : undefined;
     const closeMinOffered =
       salonCloseMin !== undefined ? offeredCloseMin(salonCloseMin, lastSlotBufferMin) : undefined;
 
-    const startHour = Math.min(...opens.map((o) => o.start));
-    const endHour = Math.max(...opens.map((o) => o.end));
-
-    for (let h = startHour; h < endHour; h++) {
-      for (const m of [0, 30]) {
-        const minutesOfDay = h * 60 + m;
+    for (const minutesOfDay of huecosDeProfesionales(relevantEmployees, weekday, durationMin)) {
         if (closeMinOffered !== undefined && minutesOfDay >= closeMinOffered) continue;
+        const h = Math.floor(minutesOfDay / 60);
+        const m = minutesOfDay % 60;
         const timeStr = `${pad2(h)}:${pad2(m)}`;
-        const open = relevantEmployees.some((e) => {
-          const sched = e.schedule[weekday];
-          return sched && h >= sched.start && h + durationMin / 60 <= sched.end;
-        });
-        if (!open) continue;
         const iso = new Date(`${dateKey}T${timeStr}:00`).toISOString();
         const free = relevantEmployees.some(
           (e) => !isSlotTakenLocal(appointments, e.id, iso, durationMin),
         );
         if (free) return { dateKey, time: timeStr };
-      }
     }
   }
   return undefined;
@@ -305,10 +290,10 @@ export function dayOccupancyBars(
   bufferMin = 0,
 ): HourBar[] {
   const weekday = new Date(`${dateKey}T00:00`).getDay();
-  const opens = employees.map((e) => e.schedule[weekday]).filter((s): s is { start: number; end: number } => !!s);
+  const opens = employees.flatMap((e) => franjasProfesional(e, weekday));
   if (opens.length === 0) return [];
-  const openMin = Math.min(...opens.map((o) => o.start)) * 60;
-  const closeMin = Math.max(...opens.map((o) => o.end)) * 60;
+  const openMin = Math.min(...opens.map((o) => o.start));
+  const closeMin = Math.max(...opens.map((o) => o.end));
   const closeMinOffered = offeredCloseMin(closeMin, bufferMin);
   const lastHours = lastOfferedHours(openMin, closeMinOffered);
 

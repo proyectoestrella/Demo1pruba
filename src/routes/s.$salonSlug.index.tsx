@@ -405,7 +405,7 @@ function SalonHome() {
   // equipo de ejemplo del tipo.
   const services = useMemo(() => servicesForType(tipo, profile.menu), [tipo, profile.menu]);
   const serviceMap = useMemo(() => Object.fromEntries(services.map((s) => [s.id, s])), [services]);
-  const employees = useMemo(() => employeesForType(tipo, profile.team), [tipo, profile.team]);
+  const employees = useMemo(() => employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds), [tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds]);
   /**
    * Adam es el único barbero de su barbería. Con un solo profesional, la
    * sección "Equipo" no cuenta nada (una ficha suelta de la persona que ya

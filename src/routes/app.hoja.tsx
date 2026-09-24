@@ -12,6 +12,7 @@ import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { ClientHistorySheet } from "@/components/ClientHistorySheet";
 import { fichaDeClienta } from "@/lib/ficha-clienta";
 import type { Appointment, Client } from "@/lib/mock/types";
+import { franjasProfesional } from "@/lib/horario-equipo";
 
 export const Route = createFileRoute("/app/hoja")({
   validateSearch: (search: Record<string, unknown>) => ({ dia: vistaHoja(search) }),
@@ -33,7 +34,7 @@ function HojaDelDia() {
   const fecha = new Date();
   if (manana) fecha.setDate(fecha.getDate() + 1);
   const hoja = hojaDelDia(citas, fechaLocal(fecha));
-  const grupos = equipo.map((p) => ({ profesional: p, visitas: hoja.filter((v) => v.cita.employeeId === p.id) })).filter((g) => g.visitas.length);
+  const grupos = equipo.map((p) => ({ profesional: p, visitas: hoja.filter((v) => v.cita.employeeId === p.id) }));
 
   return <div className="hoja-dia mx-auto max-w-5xl space-y-5">
     <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-4">
@@ -75,8 +76,10 @@ function HojaDelDia() {
       })}
     </section>}
     {grupos.length === 0 && <p className="rounded-xl border p-6 text-sm text-muted-foreground">No hay citas para este día.</p>}
-    {grupos.map(({ profesional, visitas }) => <section key={profesional.id} className="hoja-grupo rounded-xl border border-border bg-card">
-      <h2 className="border-b border-border px-4 py-2 font-display text-lg">{profesional.name} <span className="ml-2 text-xs font-normal text-muted-foreground">{visitas.length} citas</span></h2>
+    {grupos.map(({ profesional, visitas }) => {
+      const jornadas = franjasProfesional(profesional, fecha.getDay()).map((r) => `${String(Math.floor(r.start / 60)).padStart(2, "0")}:${String(r.start % 60).padStart(2, "0")}–${String(Math.floor(r.end / 60)).padStart(2, "0")}:${String(r.end % 60).padStart(2, "0")}`);
+      return <section key={profesional.id} className="hoja-grupo rounded-xl border border-border bg-card">
+      <h2 className="border-b border-border px-4 py-2 font-display text-lg">{profesional.name} <span className="ml-2 text-xs font-normal text-muted-foreground">{visitas.length} citas · {jornadas.length ? jornadas.join(", ") : "No trabaja"}</span></h2>
       <div className="divide-y divide-border/70">{visitas.map(({ cita, ultimoColor }) => {
         const ficha = fichaDeClienta(cita.clientId, { citas, clientes, servicios, equipo, ahora: new Date() });
         const anteriores = ficha.visitas.filter((v) => +new Date(v.fecha) < +new Date(cita.start)).slice(0, 3);
@@ -100,7 +103,8 @@ function HojaDelDia() {
           <button type="button" className="hoja-ficha col-start-2 mt-1 min-h-11 justify-self-start rounded-md border border-primary/40 px-3 text-xs font-medium text-primary hover:bg-primary/10 sm:col-start-3" onClick={() => setFichaAbierta(clientes.find((c) => c.id === cita.clientId) ?? null)}>Ficha completa</button>
         </div>;
       })}</div>
-    </section>)}
+    </section>;
+    })}
     <AppointmentDetailSheet appointment={selected} open={!!selected} onOpenChange={(open) => !open && setSelected(null)} />
     <ClientHistorySheet client={fichaAbierta} open={!!fichaAbierta} onOpenChange={(open) => !open && setFichaAbierta(null)} />
   </div>;

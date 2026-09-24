@@ -19,8 +19,8 @@ import { useSalonStore } from "./store";
 export function useEquipo(): Employee[] {
   const profile = useSalonStore((s) => s.salonProfile);
   return useMemo(
-    () => employeesForType(inferBusinessType(profile.tagline, profile.name), profile.team),
-    [profile.tagline, profile.name, profile.team],
+    () => employeesForType(inferBusinessType(profile.tagline, profile.name), profile.team, profile.teamHours, profile.openingHours, profile.teamIds),
+    [profile.tagline, profile.name, profile.team, profile.teamHours, profile.openingHours, profile.teamIds],
   );
 }
 

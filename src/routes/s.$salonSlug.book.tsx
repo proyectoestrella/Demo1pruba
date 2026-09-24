@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/re
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
+import { huecosDeProfesionales, trabajaEn } from "@/lib/horario-equipo";
 import type { Appointment, BookingAnswers, Client, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { bookingAnswersComplete, bookingQuestionsEnabled, cleanBookingAnswers, serializeBookingNote } from "@/lib/booking-answers";
 import { useSalonStore, isSlotTaken } from "@/lib/store";
@@ -109,11 +110,12 @@ function resolveEmployee(
   employees: Employee[],
 ): EmployeeId {
   if (stylistChoice && stylistChoice !== "any") return stylistChoice;
-  const startISO = new Date(`${date}T${time}:00`).toISOString();
   const weekday = new Date(`${date}T00:00`).getDay();
+  const [hh, mm] = time.split(":").map(Number);
+  const startMin = hh * 60 + mm;
   const candidate = employees.find((e) => {
-    const sched = e.schedule[weekday];
-    if (!sched) return false;
+    if (!trabajaEn(e, weekday, startMin, durationMin)) return false;
+    const startISO = new Date(`${date}T${time}:00`).toISOString();
     return !isSlotTaken(appointments, e.id, startISO, durationMin);
   });
   return candidate?.id ?? employees[0].id;
@@ -264,7 +266,7 @@ function BookingWizard() {
     () => Object.fromEntries(services.map((s) => [s.id, s])) as Record<string, Service>,
     [services],
   );
-  const employees = useMemo(() => employeesForType(tipo, profile.team), [tipo, profile.team]);
+  const employees = useMemo(() => employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds), [tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds]);
   const employeeMap = useMemo(
     () => Object.fromEntries(employees.map((e) => [e.id, e])) as Record<string, Employee>,
     [employees],
@@ -1182,10 +1184,7 @@ function DateTimeStep({
   }, []);
 
   function scheduleForWeekday(weekday: number) {
-    return relevantEmployees.map((e) => e.schedule[weekday]).filter(Boolean) as {
-      start: number;
-      end: number;
-    }[];
+    return relevantEmployees.flatMap((e) => e.scheduleRanges?.[weekday] ?? []).map((r) => ({ start: r.start / 60, end: r.end / 60 }));
   }
 
   /**
@@ -1194,10 +1193,7 @@ function DateTimeStep({
    * cierre (`u`) se mide contra eso. Con "any" coincide con `scheduleForWeekday`.
    */
   function salonRangeForWeekday(weekday: number) {
-    const opens = employees.map((e) => e.schedule[weekday]).filter(Boolean) as {
-      start: number;
-      end: number;
-    }[];
+    const opens = employees.flatMap((e) => e.scheduleRanges?.[weekday] ?? []).map((r) => ({ start: r.start / 60, end: r.end / 60 }));
     if (opens.length === 0) return null;
     return {
       openMin: Math.min(...opens.map((o) => o.start)) * 60,
@@ -1217,13 +1213,13 @@ function DateTimeStep({
     const closeMinOffered = salonRange
       ? offeredCloseMin(salonRange.closeMin, lastSlotBufferMin)
       : end * 60;
-    for (let h = start; h < end; h++) {
-      for (const m of [0, 30]) {
+    for (const minuto of huecosDeProfesionales(relevantEmployees, weekday, durationMin)) {
+        const h = Math.floor(minuto / 60);
+        const m = minuto % 60;
         if (h * 60 + m >= closeMinOffered) continue;
         const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
         const open = relevantEmployees.some((e) => {
-          const sched = e.schedule[weekday];
-          return sched && h >= sched.start && h + durationMin / 60 <= sched.end;
+          return trabajaEn(e, weekday, minuto, durationMin);
         });
         if (!open) continue;
         const iso = new Date(`${dateKey}T${timeStr}:00`).toISOString();
@@ -1231,7 +1227,6 @@ function DateTimeStep({
           (e) => !isSlotTaken(appointments, e.id, iso, durationMin),
         );
         if (free) return false;
-      }
     }
     return true;
   }
@@ -1276,16 +1271,16 @@ function DateTimeStep({
     const lastHours = salonRange ? lastOfferedHours(salonRange.openMin, closeMinOffered) : [];
 
     const out: PrioritySlot[] = [];
-    for (let h = start; h < end; h++) {
+    for (const minuto of huecosDeProfesionales(relevantEmployees, weekday, durationMin)) {
+      const h = Math.floor(minuto / 60);
       const hourOccupancy = smartSpread ? hourOccupancyPct(appointments, dateKey, h, employees) : 0;
       const busy = smartSpread && isBusyHour(h, hourOccupancy, lastHours);
-      for (const m of [0, 30]) {
+        const m = minuto % 60;
         // "No ofrecer los últimos X minutos": el hueco ni se lista.
         if (h * 60 + m >= closeMinOffered) continue;
         const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
         const open = relevantEmployees.some((e) => {
-          const sched = e.schedule[weekday];
-          return sched && h >= sched.start && h + durationMin / 60 <= sched.end;
+          return trabajaEn(e, weekday, minuto, durationMin);
         });
         if (!open) continue;
         const iso = new Date(`${dateKey}T${timeStr}:00`).toISOString();
@@ -1298,7 +1293,6 @@ function DateTimeStep({
           busy,
           priority: isPriorityTime(timeStr, priorityHours),
         });
-      }
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps

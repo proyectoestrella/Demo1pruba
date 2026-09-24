@@ -15,6 +15,7 @@
  */
 
 import type { Appointment, Employee } from "./mock/types";
+import { franjasProfesional } from "./horario-equipo";
 
 export type PeriodoId = "hoy" | "semana" | "mes" | "personalizado";
 
@@ -268,8 +269,7 @@ export function capacidadDelRango(rango: Rango, equipo: Employee[]): number {
   while (+d < +rango.fin) {
     const dia = d.getDay();
     for (const e of equipo) {
-      const jornada = e.schedule[dia];
-      if (jornada) slots += (jornada.end - jornada.start) * 2;
+      slots += franjasProfesional(e, dia).reduce((total, jornada) => total + (jornada.end - jornada.start) / 30, 0);
     }
     d.setDate(d.getDate() + 1);
   }

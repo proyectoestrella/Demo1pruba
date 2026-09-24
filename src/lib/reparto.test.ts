@@ -246,6 +246,18 @@ describe("findNextAvailableSlot", () => {
     expect(next).toEqual({ dateKey: MONDAY, time: "10:00" }); // libre con "b"
   });
 
+  it("respeta turnos diferentes y el descanso entre dos tramos", () => {
+    const a = employee("a", 10, 15);
+    a.scheduleRanges = Array.from({ length: 7 }, (_, dia) => dia === 1
+      ? [{ start: 600, end: 720 }, { start: 780, end: 900 }]
+      : []);
+    const b = employee("b", 12, 16);
+    b.scheduleRanges = Array.from({ length: 7 }, (_, dia) => dia === 1 ? [{ start: 720, end: 960 }] : []);
+    const appts = [appt("a", 10, 0, 120)];
+    expect(findNextAvailableSlot([a, b], appts, 30, "a", { fromDate })).toEqual({ dateKey: MONDAY, time: "13:00" });
+    expect(findNextAvailableSlot([a, b], [], 30, "b", { fromDate })).toEqual({ dateKey: MONDAY, time: "12:00" });
+  });
+
   it("pasa al día siguiente si hoy no hay hueco para ese profesional", () => {
     const a = employee("a", 10, 14);
     a.schedule[2] = { start: 10, end: 14 }; // también trabaja el martes

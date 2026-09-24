@@ -2,11 +2,11 @@ import marioPhoto from "@/assets/stylist-mario.jpg";
 import diegoPhoto from "@/assets/stylist-diego.jpg";
 import rubenPhoto from "@/assets/stylist-ruben.jpg";
 import type { Employee, EmployeeId, SalonProfile, Service } from "./types";
-import { DEFAULT_OPENING_HOURS } from "../opening-hours";
+import { DEFAULT_OPENING_HOURS, parseRanges } from "../opening-hours";
 import {
   EMPLOYEE_OVERLAY,
   MAX_MENU_ENTRIES,
-  MAX_TEAM_ENTRIES,
+  MAX_SALON_TEAM_ENTRIES,
   SERVICE_CATALOG,
   parseMenuEntry,
   parseTeamEntry,
@@ -105,7 +105,7 @@ function resolveTeamOverrides(team?: string[]): TeamOverrideEntry[] | null {
   const clean = team
     .map((t) => parseTeamEntry(t))
     .filter((t): t is TeamOverrideEntry => t !== null)
-    .slice(0, MAX_TEAM_ENTRIES);
+    .slice(0, MAX_SALON_TEAM_ENTRIES);
   return clean.length ? clean : null;
 }
 
@@ -116,26 +116,74 @@ function resolveTeamOverrides(team?: string[]): TeamOverrideEntry[] | null {
  * render del servidor — antes de que corra ningún efecto de cliente — igual
  * que ya hace `useDisplayProfile` con el resto del perfil.
  */
-export function employeesForType(type: BusinessType, team?: string[]): Employee[] {
-  return buildEmployees(type, team);
+export function employeesForType(
+  type: BusinessType,
+  team?: string[],
+  teamHours?: string[][],
+  openingHours?: string[],
+  teamIds?: string[],
+): Employee[] {
+  return buildEmployees(type, team, teamHours, openingHours, teamIds);
 }
 
-function buildEmployees(type: BusinessType, team?: string[]): Employee[] {
+function buildEmployees(
+  type: BusinessType,
+  team?: string[],
+  teamHours?: string[][],
+  openingHours?: string[],
+  teamIds?: string[],
+): Employee[] {
   // Equipo real: define cuántos profesionales tiene el salón. Los ids,
   // colores y horarios se toman de BASE_EMPLOYEES por orden (mario, diego,
   // ruben) — solo cambian nombre y especialidad, y sobra el resto del equipo
   // de ejemplo si el enlace trae menos de tres.
   const overrides = resolveTeamOverrides(team);
-  const base = overrides ? BASE_EMPLOYEES.slice(0, overrides.length) : BASE_EMPLOYEES;
+  const base = overrides
+    ? Array.from({ length: overrides.length }, (_, i) => {
+        const original = BASE_EMPLOYEES[i % BASE_EMPLOYEES.length];
+        return i < BASE_EMPLOYEES.length ? original : { ...original, id: `profesional-${i + 1}` };
+      })
+    : BASE_EMPLOYEES;
 
   return base.map((baseEmp, i) => {
-    const overlay = EMPLOYEE_OVERLAY[type][baseEmp.id as EmployeeId];
+    const overlayId = BASE_EMPLOYEES[i % BASE_EMPLOYEES.length].id as EmployeeId;
+    const overlay = EMPLOYEE_OVERLAY[type][overlayId];
     const name = overrides?.[i]?.name ?? overlay.name;
     const specialty = overrides?.[i]?.specialty ?? overlay.specialty;
+    const horario = Array.from({ length: 7 }, (_, jsDay) => {
+      const diaPerfil = (jsDay + 6) % 7;
+      const horarioPersonal = teamHours?.[i]?.[diaPerfil];
+      const personal = horarioPersonal !== undefined
+        ? parseRanges(horarioPersonal)
+        : openingHours
+          ? parseRanges(openingHours[diaPerfil])
+          : baseEmp.schedule[jsDay]
+            ? [{ start: baseEmp.schedule[jsDay]!.start * 60, end: baseEmp.schedule[jsDay]!.end * 60 }]
+            : [];
+      const salon = openingHours ? parseRanges(openingHours[diaPerfil]) : personal;
+      return personal.flatMap((p) =>
+        salon.flatMap((s) => {
+          const start = Math.max(p.start, s.start);
+          const end = Math.min(p.end, s.end);
+          return end > start ? [{ start, end }] : [];
+        }),
+      );
+    });
+    const jornada = horario.map((franjas) =>
+      franjas.length
+        ? {
+            start: Math.min(...franjas.map((f) => f.start)) / 60,
+            end: Math.max(...franjas.map((f) => f.end)) / 60,
+          }
+        : null,
+    );
     return {
       ...baseEmp,
+      id: (teamIds?.[i] ?? baseEmp.id) as EmployeeId,
       name,
       specialty,
+      schedule: jornada,
+      scheduleRanges: horario,
       // Las tres fotos de stock son barberos con navaja: fuera de barbería se
       // sustituyen por un avatar de iniciales, nunca por una cara que no
       // corresponde al oficio ni al género del nombre que se está mostrando
@@ -157,8 +205,14 @@ export const employeeMap: Record<string, Employee> = Object.fromEntries(
   employees.map((e) => [e.id, e]),
 );
 
-export function setEmployeesForType(type: BusinessType, team?: string[]) {
-  const next = buildEmployees(type, team);
+export function setEmployeesForType(
+  type: BusinessType,
+  team?: string[],
+  teamHours?: string[][],
+  openingHours?: string[],
+  teamIds?: string[],
+) {
+  const next = buildEmployees(type, team, teamHours, openingHours, teamIds);
   employees.length = 0;
   employees.push(...next);
   for (const key of Object.keys(employeeMap)) delete employeeMap[key];

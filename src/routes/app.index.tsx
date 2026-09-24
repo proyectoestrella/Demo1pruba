@@ -48,6 +48,7 @@ import { CitasPorResolver } from "@/components/CitasPorResolver";
 import { AvisoDeudasHoy } from "@/components/DeudaCliente";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { eur, eurRedondo, hora } from "@/lib/copy";
+import { PrimerosPasos } from "@/components/PrimerosPasos";
 
 const CHART_TOOLTIP_STYLE = {
   background: "var(--color-card)",
@@ -185,6 +186,8 @@ function HomeV1() {
         <h1 className="font-display text-2xl md:text-3xl tracking-tight">{greeting}</h1>
         <p className="text-sm text-muted-foreground">Así va {salonName} hoy.</p>
       </div>
+
+      <PrimerosPasos />
 
       <AvisoDeudasHoy />
       <CitasPorResolver />

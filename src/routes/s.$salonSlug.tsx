@@ -98,8 +98,8 @@ function SalonLayout() {
   // Un solo profesional: sin sección "Equipo" en la home, sin enlace en el
   // menú (ver `navLinks`). Se deriva del equipo activo, no de un flag.
   const NAV_LINKS = useMemo(
-    () => navLinks(esSoloUnProfesional(employeesForType(tipo, profile.team))),
-    [tipo, profile.team],
+    () => navLinks(esSoloUnProfesional(employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds))),
+    [tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds],
   );
 
   // Auditoría de UX, hallazgo C2: los `Link` del flujo de reserva no

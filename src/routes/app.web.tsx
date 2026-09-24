@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
   ExternalLink,
@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { SalonProfile } from "@/lib/mock/types";
+import { useEquipo } from "@/lib/use-equipo";
 
 export const Route = createFileRoute("/app/web")({ component: MiWeb });
 
@@ -42,6 +43,7 @@ const ESPERA_PREVIA_MS = 450;
 
 function MiWeb() {
   const salonProfile = useSalonStore((s) => s.salonProfile);
+  const equipo = useEquipo();
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
   const realSlug = useRealSalonSlug();
   const esReal = Boolean(realSlug);
@@ -161,7 +163,9 @@ function MiWeb() {
   }
 
   async function publicar() {
-    const fallos = validarBorrador(borrador);
+    // El borrador conserva el equipo para compatibilidad con el perfil, pero
+    // aquí ya no se edita: lo gestiona Equipo y admite hasta seis personas.
+    const fallos = validarBorrador({ ...borrador, team: "" });
     setErrores(fallos);
     if (fallos.length > 0) {
       toast.error(
@@ -172,15 +176,18 @@ function MiWeb() {
       return;
     }
 
-    const previo = publicado;
+    const previo = { ...publicado, team: salonProfile.team, teamHours: salonProfile.teamHours, teamIds: salonProfile.teamIds };
     const parche = perfilDesdeBorrador(borrador);
-    const nuevo: SalonProfile = { ...publicado, ...parche };
+    // El equipo se edita en una sola pantalla. No guardar una copia antigua
+    // de nombres ni horarios cuando se publica otro cambio de la web.
+    const { team: _equipoSinEditar, ...parcheWeb } = parche;
+    const nuevo: SalonProfile = { ...salonProfile, ...parcheWeb };
 
     if (!esReal || !realSlug) {
       // Demo de venta: el perfil vive dentro del enlace, no en ninguna tabla.
       // Se aplica en este navegador para que el resto del panel lo vea, pero
       // NO se promete nada que no sea cierto.
-      updateSalonProfile(parche);
+      updateSalonProfile(parcheWeb);
       setPublicado(nuevo);
       setAnterior(previo);
       toast.success("Cambios aplicados en esta demo", {
@@ -208,7 +215,7 @@ function MiWeb() {
       // Ya está arriba: ahora sí se aplica en el panel. Esto vuelve a subirlo
       // por la vía de siempre (`pushSalonProfile`), que es el mismo upsert —
       // repetirlo no cambia nada y mantiene una sola forma de escribir.
-      updateSalonProfile(parche);
+      updateSalonProfile(parcheWeb);
       setPublicado(nuevo);
       setAnterior(previo);
       toast.success("Publicado: tu web ya muestra estos cambios", {
@@ -450,15 +457,9 @@ function MiWeb() {
           </Bloque>
 
           <Bloque titulo="Equipo">
-            <CampoLargo
-              etiqueta="Quién atiende"
-              valor={borrador.team}
-              onChange={(v) => campo("team", v)}
-              errores={errorDe("team")}
-              filas={3}
-              mono
-              pista="Uno por línea, hasta tres: Nombre | Especialidad. Vacío enseña el equipo de ejemplo."
-            />
+            <p className="text-sm text-muted-foreground">Este equipo también aparece en tus reservas. Cambia nombres, especialidades y horarios desde su pantalla.</p>
+            <ul className="mt-3 space-y-1 text-sm">{equipo.map((persona) => <li key={persona.id}>{persona.name}{persona.specialty ? ` · ${persona.specialty}` : ""}</li>)}</ul>
+            <Link to="/app/employees" className="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-primary">Editar equipo y horarios</Link>
           </Bloque>
 
           <Bloque titulo="Preguntas frecuentes">
