@@ -20,6 +20,7 @@ import { conSesion } from "./sesion.middleware";
 import { getSupabaseServerClient } from "../supabase.server";
 import { fusionarPerfil } from "../perfil-parche";
 import { isManualBlockRecord } from "../no-show";
+import { parseDepositNote } from "../deposit-deadline";
 import {
   findPenaltyRow,
   phoneKey,
@@ -596,7 +597,9 @@ export const syncAppointment = createServerFn({ method: "POST" })
       // Una reserva de fuera nace pendiente; el estado lo decide el salón.
       status: manda ? data.status : "pending",
       client_confirmed_at: manda ? (data.clientConfirmedAt ?? null) : null,
-      note: data.note ?? null,
+      // Una reserva pública puede escribir una nota libre, pero nunca debe
+      // poder simular con ella que la señal ya se ha pedido o recibido.
+      note: manda ? (data.note ?? null) : (parseDepositNote(data.note).note ?? null),
       // Cobros y fianzas: solo desde el panel.
       payment_method: manda ? (data.paymentMethod ?? null) : null,
       paid_at: manda ? (data.paidAt ?? null) : null,

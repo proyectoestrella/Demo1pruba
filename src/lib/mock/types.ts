@@ -158,6 +158,10 @@ export interface Appointment {
    * banco.
    */
   depositRequestedAt?: string;
+  /** Vencimiento de la señal. Al llegar la hora, solo avisa; no cancela la cita. */
+  depositDueAt?: string;
+  /** Plazo que se acordó al pedirla, para que «Dar más tiempo» use el mismo. */
+  depositPeriodHours?: 1 | 2 | 4 | 12 | 24;
   depositReceivedAt?: string;
   /** Importe de la señal pedida, en euros — se congela al pedirla por si luego cambia en Ajustes. */
   depositEur?: number;
@@ -276,6 +280,7 @@ export interface SalonProfile {
   depositBizumPhone?: string;
   /** Importe de la señal en euros. Por defecto 10. */
   depositAmountEur?: number;
+  depositDeadlineHours?: 1 | 2 | 4 | 12 | 24;
   /** Ausente: se decide por el tipo de negocio. */
   bookingQuestionsEnabled?: boolean;
   bookingQuestionsRequired?: boolean;

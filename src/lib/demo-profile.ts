@@ -77,6 +77,7 @@ type DemoProfileNegocio = Pick<
   | "depositEnabled"
   | "depositBizumPhone"
   | "depositAmountEur"
+  | "depositDeadlineHours"
   | "bookingQuestionsEnabled"
   | "bookingQuestionsRequired"
 >;
@@ -122,6 +123,7 @@ const KEYS: Record<keyof DemoProfileNegocio, string> = {
   depositEnabled: "fe",
   depositBizumPhone: "fb",
   depositAmountEur: "fa",
+  depositDeadlineHours: "fh",
   bookingQuestionsEnabled: "bq",
   bookingQuestionsRequired: "br",
 };
@@ -169,6 +171,7 @@ export function blankDemoProfile(): DemoProfile {
     depositEnabled: false,
     depositBizumPhone: "",
     depositAmountEur: 0,
+    depositDeadlineHours: 4,
     // undefined conserva el valor por defecto derivado del tipo de negocio.
     bookingQuestionsEnabled: undefined,
     bookingQuestionsRequired: false,
@@ -244,6 +247,11 @@ export function encodeDemoProfile(profile: Partial<DemoProfile>): string {
     }
     if (field === "bookingQuestionsEnabled" || field === "bookingQuestionsRequired") {
       compact[short] = value === true ? 1 : 0;
+      continue;
+    }
+    if (field === "depositDeadlineHours") {
+      if (![1, 2, 4, 12, 24].includes(Number(value))) continue;
+      compact[short] = Number(value);
       continue;
     }
     if (field === "depositAmountEur") {
@@ -434,6 +442,8 @@ export function decodeDemoProfile(raw: string | undefined | null): Partial<DemoP
       out.depositEnabled = value === 1 || value === true || value === "1";
     } else if (field === "bookingQuestionsEnabled" || field === "bookingQuestionsRequired") {
       out[field] = (value === 1 || value === true || value === "1") as never;
+    } else if (field === "depositDeadlineHours") {
+      if ([1, 2, 4, 12, 24].includes(Number(value))) out.depositDeadlineHours = Number(value) as 1 | 2 | 4 | 12 | 24;
     } else if (field === "depositAmountEur") {
       const n = Number(value);
       if (Number.isFinite(n) && n > 0 && n <= 200) out.depositAmountEur = n;

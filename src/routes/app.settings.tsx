@@ -6,6 +6,7 @@ import { useSalonStore } from "@/lib/store";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { inferBusinessType } from "@/lib/business-type";
 import { bookingQuestionsEnabled } from "@/lib/booking-answers";
+import { deadlineHours, DEPOSIT_DEADLINE_OPTIONS, type DepositDeadlineHours } from "@/lib/deposit-deadline";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,7 @@ function Settings() {
   const [depositAmountEur, setDepositAmountEur] = useState(
     String(salonProfile.depositAmountEur || 10),
   );
+  const [depositDeadline, setDepositDeadline] = useState<DepositDeadlineHours>(deadlineHours(salonProfile.depositDeadlineHours));
 
   // Reparto de agenda — hora sugerida y colchón antes del cierre.
   const [smartSpreadEnabled, setSmartSpreadEnabled] = useState(!!salonProfile.smartSpread);
@@ -62,6 +64,7 @@ function Settings() {
     setDepositEnabled(!!salonProfile.depositEnabled);
     setDepositBizumPhone(salonProfile.depositBizumPhone ?? "");
     setDepositAmountEur(String(salonProfile.depositAmountEur || 10));
+    setDepositDeadline(deadlineHours(salonProfile.depositDeadlineHours));
     setQuestionsEnabled(bookingQuestionsEnabled(salonProfile, businessType));
     setQuestionsRequired(!!salonProfile.bookingQuestionsRequired);
   }, [salonProfile, businessType]);
@@ -104,6 +107,7 @@ function Settings() {
       depositEnabled,
       depositBizumPhone: depositBizumPhone.trim(),
       depositAmountEur: depositEnabled ? Math.min(200, Math.max(1, parsedDeposit)) : 0,
+      depositDeadlineHours: depositDeadline,
       bookingQuestionsEnabled: questionsEnabled,
       bookingQuestionsRequired: questionsRequired,
     });
@@ -208,6 +212,13 @@ function Settings() {
               onChange={setDepositAmountEur}
               hint="De 1 a 200 €."
             />
+            <div className="space-y-1.5">
+              <Label htmlFor="deposit-deadline">Plazo para hacer el Bizum</Label>
+              <select id="deposit-deadline" className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={depositDeadline} onChange={(e) => setDepositDeadline(Number(e.target.value) as DepositDeadlineHours)}>
+                {DEPOSIT_DEADLINE_OPTIONS.map((hours) => <option key={hours} value={hours}>{hours} {hours === 1 ? "hora" : "horas"}</option>)}
+              </select>
+              <p className="text-xs text-muted-foreground">Al vencer, tú decides si dar más tiempo o liberar el hueco. Nunca se cancela sola.</p>
+            </div>
           </div>
         )}
         <div className="flex justify-end pt-2">

@@ -20,6 +20,7 @@ import type {
 import { isPenaltyActive } from "./plantones";
 import { isManualBlockRecord, previousPenaltyState } from "./no-show";
 import { parseBookingNote } from "./booking-answers";
+import { parseDepositNote } from "./deposit-deadline";
 
 /** Fila de `appointments` tal y como la devuelve PostgREST. */
 export interface AppointmentRow {
@@ -100,7 +101,8 @@ function num(value: number | string | null | undefined, porDefecto = 0): number 
  * viajan al navegador de un desconocido.
  */
 export function rowToAppointment(row: AppointmentRow, anonimo = false): Appointment {
-  const booking = anonimo ? {} : parseBookingNote(row.note);
+  const deposit = anonimo ? {} : parseDepositNote(row.note);
+  const booking = anonimo ? {} : parseBookingNote(deposit.note);
   return {
     // El id que conoce el navegador es `local_id`; las filas antiguas (y las
     // que creó la reserva pública antes de esto) no lo tienen y caen al uuid.
@@ -120,9 +122,11 @@ export function rowToAppointment(row: AppointmentRow, anonimo = false): Appointm
     // pública, igual que el nombre y la nota.
     paymentMethod: anonimo ? undefined : ((row.payment_method as PaymentMethod) ?? undefined),
     paidAt: anonimo ? undefined : (row.paid_at ?? undefined),
-    depositRequestedAt: anonimo ? undefined : (row.deposit_requested_at ?? undefined),
-    depositReceivedAt: anonimo ? undefined : (row.deposit_received_at ?? undefined),
-    depositEur: anonimo ? undefined : (row.deposit_eur == null ? undefined : num(row.deposit_eur)),
+    depositRequestedAt: anonimo ? undefined : (row.deposit_requested_at ?? deposit.requestedAt),
+    depositDueAt: deposit.dueAt,
+    depositPeriodHours: deposit.hours,
+    depositReceivedAt: anonimo ? undefined : (row.deposit_received_at ?? deposit.receivedAt),
+    depositEur: anonimo ? undefined : (row.deposit_eur == null ? deposit.eur : num(row.deposit_eur)),
   };
 }
 

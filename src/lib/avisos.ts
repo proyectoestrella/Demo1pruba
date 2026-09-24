@@ -36,6 +36,19 @@ export interface PeticionDeFianza {
   /** Número al que se pide el Bizum, tal y como lo escribió el salón en Ajustes. */
   bizumPhone: string;
   importeEur: number;
+  /** Hora límite que el salón acaba de fijar al pedir el Bizum. */
+  deadlineISO: string;
+}
+
+export function plazoDeFianzaEnPalabras(deadlineISO: string, requestedAtISO: string): string {
+  const due = new Date(deadlineISO);
+  const requested = new Date(requestedAtISO);
+  const sameDay = due.toDateString() === requested.toDateString();
+  const nextDay = new Date(requested);
+  nextDay.setDate(nextDay.getDate() + 1);
+  const day = sameDay ? "hoy" : due.toDateString() === nextDay.toDateString()
+    ? "mañana" : due.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  return `tienes hasta ${day} a las ${horaEnPalabras(deadlineISO)} para hacer el Bizum`;
 }
 
 /**
@@ -43,17 +56,17 @@ export interface PeticionDeFianza {
  * propio texto a propósito: la clienta tiene que poder copiarlo sin salir del
  * chat, y el salón tiene que poder leerlo antes de enviarlo.
  */
-export function mensajeDeFianza(p: PeticionDeFianza): string {
+export function mensajeDeFianza(p: PeticionDeFianza, requestedAtISO = new Date().toISOString()): string {
   return (
     `Hola ${p.clientName}, soy ${p.salonName}. ` +
-    `Para confirmar tu cita ${cuandoEnPalabras(p.startISO)}, déjanos ${p.importeEur} € de señal por Bizum al ${p.bizumPhone}. ` +
+    `Para confirmar tu cita ${cuandoEnPalabras(p.startISO)}, déjanos ${p.importeEur} € de señal por Bizum al ${p.bizumPhone}; ${plazoDeFianzaEnPalabras(p.deadlineISO, requestedAtISO)}. ` +
     `En cuanto lo recibamos te la confirmamos. ¡Gracias!`
   );
 }
 
 /** Enlace de WhatsApp listo para abrir con la petición de fianza dentro. */
-export function enlaceDeFianza(telefono: string, p: PeticionDeFianza): string {
-  return whatsappUrl(telefono, mensajeDeFianza(p));
+export function enlaceDeFianza(telefono: string, p: PeticionDeFianza, requestedAtISO?: string): string {
+  return whatsappUrl(telefono, mensajeDeFianza(p, requestedAtISO));
 }
 
 export interface AvisoDeHueco {

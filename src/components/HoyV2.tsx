@@ -29,6 +29,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
+import { ExpiredDepositsNotice } from "@/components/ExpiredDepositsNotice";
 import { RecargosPendientes } from "@/components/RecargosPendientes";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { WalkInDialog } from "@/components/WalkInDialog";
@@ -162,6 +163,7 @@ export function HoyV2() {
       </div>
 
       {mostrarSolicitudes && <PendingRequestsBanner onOpenDetail={setSelected} />}
+      <ExpiredDepositsNotice onOpenDetail={setSelected} />
 
       <PeriodFilter
         value={period}

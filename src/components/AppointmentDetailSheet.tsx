@@ -27,6 +27,8 @@ import { DecisionDeudaDialog } from "@/components/DecisionDeudaDialog";
 import { BotonesDesenlace, useAplicarDesenlace } from "@/components/CitasPorResolver";
 import { Button } from "@/components/ui/button";
 import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
+import { DepositStatusControls } from "@/components/DepositStatusControls";
+import { deadlineHours, depositDueAt } from "@/lib/deposit-deadline";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -101,7 +103,6 @@ export function AppointmentDetailSheet({
   const markClientConfirmed = useSalonStore((s) => s.markClientConfirmed);
   const markPaid = useSalonStore((s) => s.markPaid);
   const markDepositRequested = useSalonStore((s) => s.markDepositRequested);
-  const markDepositReceived = useSalonStore((s) => s.markDepositReceived);
   const appointments = useSalonStore((s) => s.appointments);
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const noShowNoticeHours = useSalonStore((s) => s.salonProfile.noShowNoticeHours ?? 2);
@@ -110,6 +111,7 @@ export function AppointmentDetailSheet({
   const depositEnabled = useSalonStore((s) => !!s.salonProfile.depositEnabled);
   const depositBizumPhone = useSalonStore((s) => s.salonProfile.depositBizumPhone ?? "");
   const depositAmountEur = useSalonStore((s) => s.salonProfile.depositAmountEur ?? 10);
+  const depositDeadlineHours = useSalonStore((s) => deadlineHours(s.salonProfile.depositDeadlineHours));
   // El cliente puede no existir en la store (una cita creada desde la web
   // pública nace con un `clientId` de walk-in que no tiene ficha propia): sin
   // ficha no hay a quién marcar, así que la política de plantón se calla.
@@ -220,14 +222,16 @@ export function AppointmentDetailSheet({
       toast.error("Esta cita no tiene teléfono al que escribir");
       return;
     }
+    const requestedAt = new Date().toISOString();
     const url = enlaceDeFianza(telefono, {
       clientName: appointment.clientName,
       startISO: appointment.start,
       salonName,
       bizumPhone: depositBizumPhone,
       importeEur: depositAmountEur,
-    });
-    markDepositRequested(appointment.id, depositAmountEur);
+      deadlineISO: depositDueAt(requestedAt, depositDeadlineHours),
+    }, requestedAt);
+    markDepositRequested(appointment.id, depositAmountEur, requestedAt);
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
@@ -398,15 +402,15 @@ export function AppointmentDetailSheet({
 
           {/* Fianza por Bizum — solo con la política activa, número puesto en
               Ajustes y una cita que todavía está por confirmar. */}
-          {puedePedirFianza && (
+          {(puedePedirFianza || appointment.depositRequestedAt) && (
             <div className="space-y-2 rounded-xl border border-border/60 bg-muted/30 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Señal por Bizum
               </p>
-              <Button variant="outline" className="w-full gap-2" onClick={handlePedirFianza}>
+              {puedePedirFianza && !appointment.depositReceivedAt && <Button variant="outline" className="w-full gap-2" onClick={handlePedirFianza}>
                 <MessageCircle className="size-4" />
-                Pedir {eur(depositAmountEur)} de señal por WhatsApp
-              </Button>
+                {appointment.depositRequestedAt ? "Reenviar señal por WhatsApp" : `Pedir ${eur(depositAmountEur)} de señal por WhatsApp`}
+              </Button>}
               {appointment.depositRequestedAt && (
                 <p className="text-xs text-muted-foreground">
                   Pedida el{" "}
@@ -417,24 +421,7 @@ export function AppointmentDetailSheet({
                   .
                 </p>
               )}
-              <button
-                type="button"
-                onClick={() => {
-                  markDepositReceived(appointment.id, !appointment.depositReceivedAt);
-                  toast.success(
-                    appointment.depositReceivedAt ? "Señal desmarcada" : "Señal recibida",
-                  );
-                }}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
-                  appointment.depositReceivedAt
-                    ? "border-success/40 bg-success/10 text-success"
-                    : "border-border/60 text-muted-foreground hover:bg-muted/50",
-                )}
-              >
-                <CheckCheck className="size-4 shrink-0" />
-                {appointment.depositReceivedAt ? "Señal recibida" : "Marcar señal recibida"}
-              </button>
+              <DepositStatusControls key={appointment.id} appointment={appointment} hours={depositDeadlineHours} onReleased={() => onOpenChange(false)} />
               <p className="text-xs text-muted-foreground">
                 Se abre tu WhatsApp con el mensaje escrito; lo envías tú. El Bizum llega a tu banco
                 y lo marcas aquí a mano: siShow no cobra ni comprueba nada.

@@ -33,6 +33,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
+import { ExpiredDepositsNotice } from "@/components/ExpiredDepositsNotice";
 import { RecargosPendientes } from "@/components/RecargosPendientes";
 import { KpiCard } from "@/components/KpiCard";
 import { BorderBeam } from "@/components/magicui/border-beam";
@@ -182,6 +183,7 @@ function HomeV1() {
       <AvisoDeudasHoy />
       <CitasPorResolver />
       {mostrarSolicitudes && <PendingRequestsBanner onOpenDetail={setSelected} />}
+      <ExpiredDepositsNotice onOpenDetail={setSelected} />
 
       <PeriodFilter
         value={period}

@@ -22,6 +22,7 @@ import type {
 } from "./mock/types";
 import type { DemoProfile } from "./demo-profile";
 import { recargoActivo } from "./recargo-activo";
+import { deadlineHours, depositDueAt, extendDepositDueAt, effectiveDepositDueAt } from "./deposit-deadline";
 import { inferBusinessType, type BusinessType } from "./business-type";
 import {
   pushAppointment,
@@ -119,7 +120,8 @@ interface SalonState {
    */
   markPaid: (id: string, method: PaymentMethod | null) => void;
   /** Deja constancia de que se ha pedido la señal por Bizum de esta cita. */
-  markDepositRequested: (id: string, eur: number) => void;
+  markDepositRequested: (id: string, eur: number, requestedAt: string) => void;
+  extendDepositDeadline: (id: string) => void;
   /** El dueño confirma a mano que el Bizum llegó (o se desdice). */
   markDepositReceived: (id: string, recibido: boolean) => void;
 
@@ -423,14 +425,27 @@ export const useSalonStore = create<SalonState>()(
         sincronizarCita(get(), id);
       },
 
-      markDepositRequested: (id, eur) => {
+      markDepositRequested: (id, eur, requestedAt) => {
+        const hours = deadlineHours(get().salonProfile.depositDeadlineHours);
         set((s) => ({
           appointments: s.appointments.map((a) =>
             a.id === id
-              ? { ...a, depositRequestedAt: new Date().toISOString(), depositEur: eur }
+              ? { ...a, depositRequestedAt: requestedAt, depositDueAt: depositDueAt(requestedAt, hours), depositPeriodHours: hours, depositEur: eur }
               : a,
           ),
         }));
+        sincronizarCita(get(), id);
+      },
+
+      extendDepositDeadline: (id) => {
+        const defaultHours = deadlineHours(get().salonProfile.depositDeadlineHours);
+        set((s) => ({ appointments: s.appointments.map((a) => {
+          const hours = a.depositPeriodHours ?? defaultHours;
+          const due = effectiveDepositDueAt(a, hours);
+          return a.id === id && due && a.depositRequestedAt && !a.depositReceivedAt
+            ? { ...a, depositDueAt: extendDepositDueAt(due, hours) }
+            : a;
+        }) }));
         sincronizarCita(get(), id);
       },
 
