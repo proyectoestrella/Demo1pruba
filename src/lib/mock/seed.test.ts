@@ -73,6 +73,19 @@ describe("buildSeed — fichas creíbles de peluquería", () => {
         const seed = buildSeed("peluqueria", equipo, carta, { duracionFlexible, smartSpread });
         const claves = seed.appointments.map((a) => `${a.clientId}:${fechaLocal(new Date(a.start))}`);
         expect(new Set(claves).size).toBe(claves.length);
+        const porProfesional = new Map<string, typeof seed.appointments>();
+        for (const cita of seed.appointments) {
+          const key = `${cita.employeeId}:${fechaLocal(new Date(cita.start))}`;
+          porProfesional.set(key, [...(porProfesional.get(key) ?? []), cita]);
+        }
+        let solapamientos = 0;
+        for (const citas of porProfesional.values()) {
+          citas.sort((a, b) => a.start.localeCompare(b.start));
+          for (let i = 1; i < citas.length; i++) {
+            if (+new Date(citas[i - 1].start) + citas[i - 1].duration * 60_000 > +new Date(citas[i].start)) solapamientos++;
+          }
+        }
+        expect(solapamientos).toBe(0);
       }
     }
   });
@@ -82,7 +95,7 @@ describe("buildSeed — fichas creíbles de peluquería", () => {
     const fichas = seed.clients.map((client) =>
       fichaDeClienta(client.id, { citas: seed.appointments, clientes: seed.clients, servicios: carta, equipo, ahora: new Date() }).resumen)
       .filter((ficha) => ficha.numeroVisitas >= 3);
-    expect(fichas.length).toBeGreaterThan(100);
+    expect(fichas.length).toBeGreaterThanOrEqual(400);
     expect(fichas.every((ficha) => ficha.frecuenciaMediaDias !== undefined
       && ficha.frecuenciaMediaDias >= 21 && ficha.frecuenciaMediaDias <= 84)).toBe(true);
     const frecuencias = fichas.map((ficha) => ficha.frecuenciaMediaDias!).sort((a, b) => a - b);
@@ -95,15 +108,69 @@ describe("buildSeed — fichas creíbles de peluquería", () => {
 
   it("tiene nombres completos únicos, apellidos con tilde y homónimas de pila", () => {
     const { clients } = buildSeed("peluqueria", equipo, carta, { duracionFlexible: true });
-    expect(clients.length).toBeGreaterThanOrEqual(120);
-    expect(clients.length).toBeLessThanOrEqual(160);
+    expect(clients.length).toBeGreaterThanOrEqual(400);
+    expect(clients.length).toBeLessThanOrEqual(600);
     expect(new Set(clients.map((c) => c.name)).size).toBe(clients.length);
     expect(clients.some((c) => / (García|López|Martín|Sánchez|Gómez|Muñoz)$/.test(c.name))).toBe(true);
     expect(clients.some((c, i) => clients.slice(i + 1).some((other) =>
       c.name.split(" ")[0] === other.name.split(" ")[0] && c.name !== other.name))).toBe(true);
   });
 
-  it("conserva agenda llena hoy y el sábado, solicitudes y visitas importadas de hace 18 meses", () => {
+  it("llena todos los días abiertos de los últimos 30 y próximos 7, también con carta propia", () => {
+    const cartaPropia = servicesForType("peluqueria", [
+      "Corte mujer~45~30", "Tinte raíz~75~55", "Mechas y balayage~120~95",
+      "Hidratación~30~25", "Recogido de novia~90~90",
+    ]);
+    for (const servicios of [carta, cartaPropia]) {
+      const { appointments } = buildSeed("peluqueria", equipo, servicios, { smartSpread: true, duracionFlexible: true });
+      for (let day = -30; day <= 7; day++) {
+        const date = new Date();
+        date.setDate(date.getDate() + day);
+        if (!equipo.some((employee) => employee.schedule[date.getDay()])) continue;
+        const citas = appointments.filter((a) => fechaLocal(new Date(a.start)) === fechaLocal(date));
+        expect(citas.length).toBeGreaterThanOrEqual(10);
+      }
+    }
+  });
+
+  it("reparte de 4 a 7 citas por profesional en la agenda cercana y de 1 a 4 después", () => {
+    const { appointments } = buildSeed("peluqueria", equipo, carta, { duracionFlexible: true, smartSpread: true });
+    for (let day = -90; day <= 21; day++) {
+      const date = new Date();
+      date.setDate(date.getDate() + day);
+      for (const employee of equipo) {
+        if (!employee.schedule[date.getDay()]) continue;
+        const count = appointments.filter((a) =>
+          a.employeeId === employee.id && fechaLocal(new Date(a.start)) === fechaLocal(date)).length;
+        expect(count).toBeGreaterThanOrEqual(day <= 7 ? 4 : 1);
+        expect(count).toBeLessThanOrEqual(day <= 7 ? 7 : 4);
+      }
+    }
+  });
+
+  it("acota las citas y el estado serializado para localStorage", () => {
+    const seed = buildSeed("peluqueria", equipo, carta, { duracionFlexible: true });
+    expect(seed.appointments.length).toBeLessThan(4_500);
+    const persisted = JSON.stringify({ state: {
+      appointments: seed.appointments, clients: seed.clients, waitlist: seed.waitlist,
+      services: carta, employees: equipo,
+    }, version: 7 });
+    expect(new TextEncoder().encode(persisted).byteLength).toBeLessThan(2_500_000);
+  });
+
+  it("mantiene servicios combinados y los recogidos de evento como visitas únicas", () => {
+    const { appointments } = buildSeed("peluqueria", equipo, carta);
+    expect(appointments.some((a) => a.serviceIds.length > 1)).toBe(true);
+    const visitasPorClienta = new Map<string, number>();
+    for (const cita of appointments) {
+      visitasPorClienta.set(cita.clientId, (visitasPorClienta.get(cita.clientId) ?? 0) + 1);
+    }
+    const eventos = appointments.filter((a) => a.serviceIds.includes("recogido"));
+    expect(eventos.length).toBeGreaterThan(0);
+    expect(eventos.every((a) => visitasPorClienta.get(a.clientId) === 1)).toBe(true);
+  });
+
+  it("conserva agenda llena hoy y el sábado, solicitudes y visitas importadas de hace más de un año", () => {
     const seed = buildSeed("peluqueria", equipo, carta);
     const sabado = new Date();
     sabado.setDate(sabado.getDate() + (6 - sabado.getDay() + 7) % 7);
