@@ -12,6 +12,15 @@ const employees = employeesForType("barberia");
 const services = servicesForType("barberia");
 
 describe("buildSeed — colores de peluquería", () => {
+  it("marca como traídas de TPV 123 solo visitas completadas de hace más de 60 días", () => {
+    const citas = buildSeed("peluqueria", employeesForType("peluqueria"), servicesForType("peluqueria")).appointments;
+    const limite = Date.now() - 60 * 86_400_000;
+    expect(citas.some((c) => c.origen === "tpv123")).toBe(true);
+    expect(citas.every((c) => c.origen !== "tpv123" || (c.status === "completed" && +new Date(c.start) < limite))).toBe(true);
+    expect(citas.filter((c) => c.status === "completed" && +new Date(c.start) < limite).every((c) => c.origen === "tpv123")).toBe(true);
+    const barberia = buildSeed("barberia", employeesForType("barberia"), servicesForType("barberia")).appointments;
+    expect(barberia.every((c) => !c.origen)).toBe(true);
+  });
   it("siembra entre diez y catorce fórmulas variadas y coherentes por clienta y servicio", () => {
     const equipo = employeesForType("peluqueria");
     const carta = servicesForType("peluqueria");

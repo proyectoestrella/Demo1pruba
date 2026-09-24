@@ -300,7 +300,11 @@ function buildAppointments(
     });
   });
 
-  return out;
+  return type === "peluqueria" ? out.map((cita) =>
+    cita.status === "completed" && +new Date(cita.start) < Date.now() - 60 * 86_400_000
+      ? { ...cita, origen: "tpv123" as const }
+      : cita,
+  ) : out;
 }
 
 /**

@@ -35,6 +35,7 @@ import type { Appointment, Client, SalonProfile, WaitlistEntry } from "./mock/ty
 import { manualBlockNote } from "./no-show";
 import { serializeBookingNote } from "./booking-answers";
 import { serializeDepositNote } from "./deposit-deadline";
+import { serializarOrigen } from "./origen-cita";
 
 /** Datos del cliente que acompañan a una cita cuando se conocen (reserva pública, cita por teléfono). */
 export interface ClienteDeCita {
@@ -99,7 +100,7 @@ export function pushAppointment(
     priceEur: appt.priceEur,
     status: appt.status,
     clientConfirmedAt: appt.clientConfirmedAt ?? null,
-    note: serializeDepositNote(serializeBookingNote(appt.note, appt.bookingAnswers), appt) ?? null,
+    note: serializeDepositNote(serializarOrigen(serializeBookingNote(appt.note, appt.bookingAnswers), appt.origen), appt) ?? null,
     paymentMethod: appt.paymentMethod ?? null,
     paidAt: appt.paidAt ?? null,
     depositRequestedAt: appt.depositRequestedAt ?? null,

@@ -111,6 +111,8 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 
 export interface Appointment {
   id: string;
+  /** Procedencia del historial; ausente equivale a siShow. */
+  origen?: "sishow" | "tpv123";
   clientId: string;
   clientName: string;
   /**

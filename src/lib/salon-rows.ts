@@ -21,6 +21,7 @@ import { isPenaltyActive } from "./plantones";
 import { isManualBlockRecord, previousPenaltyState } from "./no-show";
 import { parseBookingNote } from "./booking-answers";
 import { parseDepositNote } from "./deposit-deadline";
+import { leerOrigen } from "./origen-cita";
 
 /** Fila de `appointments` tal y como la devuelve PostgREST. */
 export interface AppointmentRow {
@@ -105,7 +106,8 @@ function num(value: number | string | null | undefined, porDefecto = 0): number 
  */
 export function rowToAppointment(row: AppointmentRow, anonimo = false): Appointment {
   const deposit = anonimo ? {} : parseDepositNote(row.note);
-  const booking = anonimo ? {} : parseBookingNote(deposit.note);
+  const origen = anonimo ? {} : leerOrigen(deposit.note);
+  const booking = anonimo ? {} : parseBookingNote(origen.note);
   return {
     // El id que conoce el navegador es `local_id`; las filas antiguas (y las
     // que creó la reserva pública antes de esto) no lo tienen y caen al uuid.
@@ -121,6 +123,7 @@ export function rowToAppointment(row: AppointmentRow, anonimo = false): Appointm
     clientConfirmedAt: row.client_confirmed_at ?? undefined,
     note: booking.note,
     bookingAnswers: booking.answers,
+    origen: origen.origen,
     colorFormula: anonimo ? undefined : (row.color_formula ?? undefined),
     technicalNotes: anonimo ? undefined : (row.technical_notes ?? undefined),
     reminderSentAt: anonimo ? undefined : (row.reminder_sent_at ?? undefined),
