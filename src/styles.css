@@ -451,4 +451,6 @@
   .indicador-refresco { display: none !important; }
   .hoja-dia .hoja-grupo { break-inside: avoid; border-color: #aaa; margin-bottom: 8mm; }
   .hoja-dia .hoja-visita { break-inside: avoid; padding-top: 2mm; padding-bottom: 2mm; }
+  .hoja-dia .hoja-ficha { display: none !important; }
+  .hoja-dia .hoja-tercera-visita { display: block !important; }
 }

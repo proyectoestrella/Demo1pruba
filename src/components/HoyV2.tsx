@@ -30,6 +30,8 @@ import { StylistDot } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
+import { ClientHistorySheet } from "@/components/ClientHistorySheet";
+import type { Client } from "@/lib/mock/types";
 import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
 import { ExpiredDepositsNotice } from "@/components/ExpiredDepositsNotice";
 import { RecargosPendientes } from "@/components/RecargosPendientes";
@@ -61,12 +63,14 @@ function greetingForHour(hour: number) {
  */
 export function HoyV2() {
   const appointments = useSalonStore((s) => s.appointments);
+  const clients = useSalonStore((s) => s.clients);
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur ?? 0);
   const mostrarSolicitudes = useSalonStore((s) => s.salonProfile.mostrarSolicitudes ?? true);
   const smartSpread = useSalonStore((s) => s.salonProfile.smartSpread ?? false);
   const lastSlotBufferMin = useSalonStore((s) => s.salonProfile.lastSlotBufferMin ?? 0);
   const [selected, setSelected] = useState<Appointment | null>(null);
+  const [fichaAbierta, setFichaAbierta] = useState<Client | null>(null);
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [phoneApptOpen, setPhoneApptOpen] = useState(false);
   const greeting = greetingForHour(new Date().getHours());
@@ -352,11 +356,12 @@ export function HoyV2() {
               const emp = employeeMap[a.employeeId];
               const started = new Date(a.start) <= now;
               return (
+                <div key={a.id} className="flex items-center border-border/60">
                 <button
                   key={a.id}
                   type="button"
                   onClick={() => setSelected(a)}
-                  className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-muted/40"
+                  className="flex min-w-0 flex-1 items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-muted/40"
                 >
                   <div className="w-14 shrink-0 font-display text-lg">
                     {new Date(a.start).toLocaleTimeString("es", {
@@ -382,6 +387,8 @@ export function HoyV2() {
                     <StatusBadge status={a.status} className="shrink-0" />
                   )}
                 </button>
+                <button type="button" className="mr-3 min-h-11 shrink-0 rounded-md px-2 text-xs font-medium text-primary hover:bg-primary/10" onClick={() => setFichaAbierta(clients.find((c) => c.id === a.clientId) ?? null)}>Ficha</button>
+                </div>
               );
             })}
           </div>
@@ -393,6 +400,7 @@ export function HoyV2() {
         open={!!selected}
         onOpenChange={(o) => !o && setSelected(null)}
       />
+      <ClientHistorySheet client={fichaAbierta} open={!!fichaAbierta} onOpenChange={(o) => !o && setFichaAbierta(null)} />
       <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
       {/* `allowChaining`: los sábados de Cardedal son 60 llamadas seguidas. */}
       <NewAppointmentDialog open={phoneApptOpen} onOpenChange={setPhoneApptOpen} allowChaining />

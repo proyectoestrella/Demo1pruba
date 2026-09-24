@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useSalonStore } from "@/lib/store";
-import { historialColores } from "@/lib/colores";
+import { fichaDeClienta } from "@/lib/ficha-clienta";
+import { FichaCompleta } from "@/components/FichaCompleta";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { clientFrequency } from "@/lib/derive";
 import { historialDeFallos, penaltyReasonLabel } from "@/lib/plantones";
 import { BandaDeuda } from "@/components/DeudaCliente";
 import { employeeMap } from "@/lib/mock/salon";
@@ -13,12 +13,11 @@ import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
-import { eur, eurRedondo } from "@/lib/copy";
+import { eur } from "@/lib/copy";
 import type { Client } from "@/lib/mock/types";
 import { StylistDot } from "@/components/StylistAvatar";
 import { ClientAvatar } from "@/components/ClientAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
-import { EmptyState } from "@/components/EmptyState";
 import {
   Dialog,
   DialogContent,
@@ -33,7 +32,7 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
-import { CalendarX, Mail, Phone, CalendarClock, TriangleAlert, Ban, Unlock } from "lucide-react";
+import { Mail, Phone, CalendarClock, TriangleAlert, Ban, Unlock } from "lucide-react";
 
 export interface ClientHistorySheetProps {
   client: Client | null;
@@ -55,13 +54,16 @@ export function ClientHistorySheet({
 }: ClientHistorySheetProps) {
   const isMobile = useIsMobile();
   const appointments = useSalonStore((s) => s.appointments);
+  const clients = useSalonStore((s) => s.clients);
+  const services = useSalonStore((s) => s.services);
+  const equipo = useEquipo();
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const conRecargo = recargoActivo({ noShowFeeEur });
   const updateClient = useSalonStore((s) => s.updateClient);
   const reviewPenalty = useSalonStore((s) => s.reviewPenalty);
   const setManualBlock = useSalonStore((s) => s.setManualBlock);
   // Con un solo profesional, "con Adam" bajo cada visita no informa de nada.
-  const soloUno = esSoloUnProfesional(useEquipo());
+  const soloUno = esSoloUnProfesional(equipo);
   // Igual que AppointmentDetailSheet: la prop llega congelada en el momento
   // del clic (quien abre el sheet guarda una copia). Cobrado/Perdonar cambian
   // el store desde AQUÍ MISMO, con el sheet todavía abierto — sin releer la
@@ -71,7 +73,7 @@ export function ClientHistorySheet({
     clientProp ? s.clients.find((c) => c.id === clientProp.id) : undefined,
   );
   const client = stored ?? clientProp;
-  const stats = client ? clientFrequency(appointments, client.id) : null;
+  const ficha = client ? fichaDeClienta(client.id, { citas: appointments, clientes: clients, servicios: services, equipo, ahora: new Date() }) : null;
   // Plantones y retrasos sin avisar de los últimos 3 meses — ver lib/plantones.ts.
   const plantones = client ? historialDeFallos(appointments, client.id) : null;
 
@@ -89,16 +91,15 @@ export function ClientHistorySheet({
   }
 
   const ownAppointments = client ? appointments.filter((a) => a.clientId === client.id) : [];
-  const colores = client ? historialColores(appointments, client.id, new Date().toISOString()) : [];
   const now = Date.now();
   const upcoming = ownAppointments
     .filter((a) => a.status !== "cancelled" && +new Date(a.start) >= now)
     .sort((a, b) => +new Date(a.start) - +new Date(b.start));
   const history = ownAppointments
-    .filter((a) => +new Date(a.start) < now || a.status === "cancelled")
+    .filter((a) => a.status !== "completed" && (+new Date(a.start) < now || a.status === "cancelled"))
     .sort((a, b) => +new Date(b.start) - +new Date(a.start));
 
-  if (!client || !stats) {
+  if (!client || !ficha) {
     // Se mantiene montado el contenedor vacío para que el cierre no dé un
     // salto visual; sin cliente no hay nada que pintar dentro.
     return isMobile ? (
@@ -176,43 +177,7 @@ export function ClientHistorySheet({
         </div>
       )}
 
-      {/* KPIs del cliente */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
-          <p className="font-display text-xl">{stats.pastVisits}</p>
-          <p className="text-xs text-muted-foreground">Visitas</p>
-        </div>
-        <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
-          <p className="font-display text-xl">{eurRedondo(stats.totalSpent)}</p>
-          <p className="text-xs text-muted-foreground">Gasto total</p>
-        </div>
-        <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
-          <p className="truncate font-display text-xl">{stats.favoriteService ?? "—"}</p>
-          <p className="text-xs text-muted-foreground">Servicio favorito</p>
-        </div>
-        <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
-          <p className="font-display text-xl">
-            {stats.lastVisit
-              ? new Date(stats.lastVisit).toLocaleDateString("es", {
-                  day: "2-digit",
-                  month: "short",
-                })
-              : "—"}
-          </p>
-          <p className="text-xs text-muted-foreground">Última visita</p>
-        </div>
-        <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
-          <p className="font-display text-xl">
-            {stats.nextVisit
-              ? new Date(stats.nextVisit).toLocaleDateString("es", {
-                  day: "2-digit",
-                  month: "short",
-                })
-              : "—"}
-          </p>
-          <p className="text-xs text-muted-foreground">Próxima cita</p>
-        </div>
-      </div>
+      <FichaCompleta ficha={ficha} />
 
       {/* Próximas citas */}
       <div>
@@ -271,29 +236,10 @@ export function ClientHistorySheet({
       </div>
 
       {/* Historial de citas */}
-      <div className="space-y-2 rounded-xl border border-border/60 p-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Color</p>
-        {colores.length ? <>
-          <p className="font-medium">Último: {colores[0].colorFormula}</p>
-          <div className="divide-y divide-border/60 text-sm">
-            {colores.map((a) => <div key={a.id} className="flex gap-3 py-2">
-              <time className="w-24 shrink-0 text-muted-foreground">{new Date(a.start).toLocaleDateString("es-ES")}</time>
-              <span>{a.colorFormula}{a.technicalNotes && <span className="block text-muted-foreground">{a.technicalNotes}</span>}</span>
-            </div>)}
-          </div>
-        </> : <p className="text-sm text-muted-foreground">Aún no hay colores anotados.</p>}
-      </div>
-      <div>
+      {history.length > 0 && <div>
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Historial de citas
+          Otras citas
         </p>
-        {history.length === 0 ? (
-          <EmptyState
-            icon={CalendarX}
-            title="Sin citas todavía"
-            description="Este cliente aún no tiene reservas registradas."
-          />
-        ) : (
           <div className="divide-y divide-border/60">
             {history.map((a) => {
               const emp = employeeMap[a.employeeId];
@@ -318,8 +264,7 @@ export function ClientHistorySheet({
               );
             })}
           </div>
-        )}
-      </div>
+      </div>}
     </div>
   );
 
@@ -328,7 +273,7 @@ export function ClientHistorySheet({
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent>
           <DrawerHeader className="text-left">
-            <DrawerTitle>Ficha de cliente</DrawerTitle>
+            <DrawerTitle>Ficha de {client.name}</DrawerTitle>
             <DrawerDescription>Contacto, historial y observaciones.</DrawerDescription>
           </DrawerHeader>
           <div className="max-h-[75vh] overflow-y-auto px-4 pb-6">{body}</div>
@@ -342,7 +287,7 @@ export function ClientHistorySheet({
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader className="sr-only">
           <DialogTitle>Ficha de {client.name}</DialogTitle>
-          <DialogDescription>Contacto, historial y observaciones del cliente.</DialogDescription>
+          <DialogDescription>Contacto, visitas y observaciones de la clienta.</DialogDescription>
         </DialogHeader>
         {body}
       </DialogContent>

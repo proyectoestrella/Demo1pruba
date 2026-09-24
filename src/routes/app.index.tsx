@@ -33,6 +33,8 @@ import { StylistDot } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
+import { ClientHistorySheet } from "@/components/ClientHistorySheet";
+import type { Client } from "@/lib/mock/types";
 import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
 import { ExpiredDepositsNotice } from "@/components/ExpiredDepositsNotice";
 import { RecargosPendientes } from "@/components/RecargosPendientes";
@@ -77,6 +79,7 @@ function Home() {
 /** El "Inicio" de siempre — sin tocar. Se usa cuando el panel v2 está desactivado. */
 function HomeV1() {
   const appointments = useSalonStore((s) => s.appointments);
+  const clients = useSalonStore((s) => s.clients);
   // Un solo profesional: sin punto de color ni "con Adam" en cada cita.
   const soloUno = esSoloUnProfesional(useEquipo());
   const salonName = useSalonStore((s) => s.salonProfile.name);
@@ -84,6 +87,7 @@ function HomeV1() {
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur ?? 0);
   const revData = revenueByDay(appointments, 30);
   const [selected, setSelected] = useState<Appointment | null>(null);
+  const [fichaAbierta, setFichaAbierta] = useState<Client | null>(null);
   const greeting = greetingForHour(new Date().getHours());
 
   // Periodo de las métricas: "hoy" reproduce exactamente lo de siempre.
@@ -376,11 +380,12 @@ function HomeV1() {
             {todayList.map((a) => {
               const emp = employeeMap[a.employeeId];
               return (
+                <div key={a.id} className="flex items-center">
                 <button
                   key={a.id}
                   type="button"
                   onClick={() => setSelected(a)}
-                  className="flex w-full items-center gap-4 px-6 py-4 text-left transition-colors hover:bg-muted/40"
+                  className="flex min-w-0 flex-1 items-center gap-4 px-6 py-4 text-left transition-colors hover:bg-muted/40"
                 >
                   <div className="w-16 shrink-0 font-display text-xl">
                     {hora(a.start)}
@@ -397,6 +402,8 @@ function HomeV1() {
                   <span className="shrink-0 text-sm font-medium">{eur(a.priceEur)}</span>
                   <StatusBadge status={a.status} className="shrink-0" />
                 </button>
+                <button type="button" className="mr-3 min-h-11 shrink-0 rounded-md px-2 text-xs font-medium text-primary hover:bg-primary/10" onClick={() => setFichaAbierta(clients.find((c) => c.id === a.clientId) ?? null)}>Ficha</button>
+                </div>
               );
             })}
           </div>
@@ -408,6 +415,7 @@ function HomeV1() {
         open={!!selected}
         onOpenChange={(o) => !o && setSelected(null)}
       />
+      <ClientHistorySheet client={fichaAbierta} open={!!fichaAbierta} onOpenChange={(o) => !o && setFichaAbierta(null)} />
     </div>
   );
 }

@@ -9,7 +9,9 @@ import { serviceLabelOf } from "@/lib/appointment-services";
 import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
 import { Button } from "@/components/ui/button";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
-import type { Appointment } from "@/lib/mock/types";
+import { ClientHistorySheet } from "@/components/ClientHistorySheet";
+import { fichaDeClienta } from "@/lib/ficha-clienta";
+import type { Appointment, Client } from "@/lib/mock/types";
 
 export const Route = createFileRoute("/app/hoja")({
   validateSearch: (search: Record<string, unknown>) => ({ dia: vistaHoja(search) }),
@@ -21,11 +23,13 @@ function HojaDelDia() {
   const salon = useSalonStore((s) => s.salonProfile);
   const clientes = useSalonStore((s) => s.clients);
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
+  const servicios = useSalonStore((s) => s.services);
   const equipo = useEquipo();
   const { dia } = Route.useSearch();
   const navigate = useNavigate({ from: "/app/hoja" });
   const manana = dia === "manana";
   const [selected, setSelected] = useState<Appointment | null>(null);
+  const [fichaAbierta, setFichaAbierta] = useState<Client | null>(null);
   const fecha = new Date();
   if (manana) fecha.setDate(fecha.getDate() + 1);
   const hoja = hojaDelDia(citas, fechaLocal(fecha));
@@ -73,17 +77,31 @@ function HojaDelDia() {
     {grupos.length === 0 && <p className="rounded-xl border p-6 text-sm text-muted-foreground">No hay citas para este día.</p>}
     {grupos.map(({ profesional, visitas }) => <section key={profesional.id} className="hoja-grupo rounded-xl border border-border bg-card">
       <h2 className="border-b border-border px-4 py-2 font-display text-lg">{profesional.name} <span className="ml-2 text-xs font-normal text-muted-foreground">{visitas.length} citas</span></h2>
-      <div className="divide-y divide-border/70">{visitas.map(({ cita, ultimoColor }) => <button key={cita.id} type="button" onClick={() => setSelected(cita)} className="hoja-visita grid w-full grid-cols-[4rem_1fr] gap-3 px-4 py-3 text-left hover:bg-muted/30 sm:grid-cols-[4rem_12rem_1fr]">
-        <time className="font-display text-lg tabular-nums">{new Date(cita.start).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</time>
-        <div><p className="font-medium">{cita.clientName}</p><p className="text-xs text-muted-foreground">{serviceLabelOf(cita)} · {cita.duration} min</p></div>
-        <div className="col-start-2 space-y-1 text-sm sm:col-start-3">
-          <p><strong>Color:</strong> {ultimoColor?.colorFormula ?? "Sin color anotado"}</p>
-          {ultimoColor?.technicalNotes && <p><strong>Notas técnicas:</strong> {ultimoColor.technicalNotes}</p>}
-          <BookingAnswersSummary answers={cita.bookingAnswers} />
-          <p className="text-xs text-muted-foreground">Señal: {cita.depositReceivedAt ? "recibida" : cita.depositRequestedAt ? "pedida, pendiente" : "sin pedir"}</p>
-        </div>
-      </button>)}</div>
+      <div className="divide-y divide-border/70">{visitas.map(({ cita, ultimoColor }) => {
+        const ficha = fichaDeClienta(cita.clientId, { citas, clientes, servicios, equipo, ahora: new Date() });
+        const anteriores = ficha.visitas.filter((v) => +new Date(v.fecha) < +new Date(cita.start)).slice(0, 3);
+        return <div key={cita.id} className="hoja-visita grid grid-cols-[4rem_1fr] gap-x-3 px-4 py-3 sm:grid-cols-[4rem_12rem_1fr]">
+          <button type="button" onClick={() => setSelected(cita)} className="col-span-2 grid grid-cols-[4rem_1fr] gap-3 text-left hover:text-primary focus-visible:outline-2 focus-visible:outline-primary sm:col-span-3 sm:grid-cols-[4rem_12rem_1fr]">
+            <time className="font-display text-lg tabular-nums">{new Date(cita.start).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</time>
+            <div><p className="font-medium">{cita.clientName}</p><p className="text-xs text-muted-foreground">{serviceLabelOf(cita)} · {cita.duration} min</p></div>
+            <div className="col-start-2 space-y-1 text-sm sm:col-start-3">
+              <p><strong>Color:</strong> {ultimoColor?.colorFormula ?? "Sin color anotado"}</p>
+              {ultimoColor?.technicalNotes && <p><strong>Notas técnicas:</strong> {ultimoColor.technicalNotes}</p>}
+              <BookingAnswersSummary answers={cita.bookingAnswers} />
+              <p className="text-xs text-muted-foreground">Señal: {cita.depositReceivedAt ? "recibida" : cita.depositRequestedAt ? "pedida, pendiente" : "sin pedir"}</p>
+            </div>
+            <div className="col-start-2 mt-2 space-y-1 text-xs sm:col-start-3">
+            {anteriores.length > 0 && <div><strong className="text-muted-foreground">Visitas anteriores</strong>
+              {anteriores.map((v, i) => <p key={v.id} className={i === 2 ? "hoja-tercera-visita hidden" : ""}>{new Date(v.fecha).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })} · {v.servicios.join(" + ")}{v.colorFormula ? ` · ${v.colorFormula}` : " · Sin color anotado"}</p>)}
+            </div>}
+            {ficha.avisos.length > 0 && <div className="rounded-md bg-[var(--warning)]/10 px-2 py-1">{ficha.avisos.map((a) => <p key={a}>{a}</p>)}</div>}
+            </div>
+          </button>
+          <button type="button" className="hoja-ficha col-start-2 mt-1 min-h-11 justify-self-start rounded-md border border-primary/40 px-3 text-xs font-medium text-primary hover:bg-primary/10 sm:col-start-3" onClick={() => setFichaAbierta(clientes.find((c) => c.id === cita.clientId) ?? null)}>Ficha completa</button>
+        </div>;
+      })}</div>
     </section>)}
     <AppointmentDetailSheet appointment={selected} open={!!selected} onOpenChange={(open) => !open && setSelected(null)} />
+    <ClientHistorySheet client={fichaAbierta} open={!!fichaAbierta} onOpenChange={(open) => !open && setFichaAbierta(null)} />
   </div>;
 }
