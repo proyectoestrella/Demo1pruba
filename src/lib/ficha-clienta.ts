@@ -45,7 +45,7 @@ export function fichaDeClienta(clientId: string, datos: DatosFicha) {
     id: c.id,
     fecha: c.start,
     servicios: c.serviceIds.map((id) => nombresServicio.get(id) ?? id),
-    profesional: nombresEquipo.get(c.employeeId) ?? c.employeeId,
+    profesional: nombresEquipo.get(c.employeeId) ?? (c.employeeId === "sin-indicar" ? "Profesional sin indicar" : c.employeeId),
     duracion: c.duration,
     importe: c.priceEur,
     colorFormula: c.colorFormula,

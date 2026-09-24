@@ -1,11 +1,11 @@
 import type { Client } from "./mock/types";
 
-export type CampoCliente = "nombre" | "apellidos" | "telefono" | "email" | "notas";
+export type CampoCliente = "nombre" | "apellidos" | "telefono" | "telefono2" | "email" | "notas" | "codigo" | "fechaAlta";
 export type MapaColumnas = Partial<Record<CampoCliente, number>>;
 export interface TablaImportacion { cabeceras: string[]; filas: string[][] }
-export interface FilaClienta { fila: number; nombre: string; telefono: string; email?: string; notas?: string; estado: "nueva" | "duplicada" | "error"; motivo?: string }
+export interface FilaClienta { fila: number; nombre: string; telefono: string; otroTelefono?: string; codigo?: string; fechaAlta?: string; email?: string; notas?: string; estado: "nueva" | "duplicada" | "error"; motivo?: string }
 export interface VistaPrevia { filas: FilaClienta[]; nuevas: number; duplicadas: number; errores: number }
-export interface VisitaImportada { fila: number; fecha: string; cliente: Client; servicio: string; importe: number; profesional: string; notas?: string; colorFormula?: string }
+export interface VisitaImportada { fila: number; fecha: string; cliente: Client; servicios: string[]; importe: number; profesional: string; notas?: string; colorFormula?: string }
 
 const normal = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES").trim();
 const claveNombre = (s: string) => normal(s).replace(/\s+/g, " ");
@@ -48,17 +48,33 @@ export function leerCsv(texto: string): TablaImportacion {
 const alias: Record<CampoCliente, string[]> = {
   nombre: ["nombre", "cliente", "nombre cliente", "nombre y apellidos", "nombre completo"],
   apellidos: ["apellidos", "apellido", "primer apellido", "apellidos cliente"],
-  telefono: ["telefono", "movil", "telf", "telf.", "telefono movil", "numero de telefono"],
+  telefono: ["telefono", "telefono2", "movil", "tel movil", "tel movil cliente", "telefono movil", "telefono movil cliente", "telf", "telf.", "numero de telefono"],
+  telefono2: ["telefono1", "tel fijo", "tel fijo cliente", "telefono fijo", "telefono fijo cliente"],
   email: ["email", "e-mail", "correo", "correo electronico"],
   notas: ["observaciones", "notas", "comentarios"],
+  codigo: ["codigocliente", "codigo cliente", "codigo"],
+  fechaAlta: ["ingreso", "fecha alta", "alta"],
 };
+const claveCabecera = (s: string) => normal(s).replace(/[.:]/g, "").replace(/\s+/g, " ");
 export function detectarColumnas(cabeceras: string[]): MapaColumnas {
   const mapa: MapaColumnas = {};
   for (const campo of Object.keys(alias) as CampoCliente[]) {
-    const i = cabeceras.findIndex((c) => alias[campo].includes(normal(c).replace(/[.:]$/, "")));
+    const i = cabeceras.findIndex((c) => alias[campo].includes(claveCabecera(c)));
     if (i >= 0) mapa[campo] = i;
   }
+  // telefono2 es el móvil en TPV 123; si el export trae ambas columnas,
+  // el teléfono fijo queda como secundario.
+  if (mapa.telefono === undefined && mapa.telefono2 !== undefined) mapa.telefono = mapa.telefono2;
   return mapa;
+}
+function fechaImportada(raw: string): string | undefined {
+  if (!raw.trim()) return undefined;
+  let fecha: Date;
+  if (/^\d+(?:\.\d+)?$/.test(raw.trim())) fecha = new Date(Date.UTC(1899, 11, 30) + Number(raw) * 86400000);
+  else if (/^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/.test(raw.trim())) {
+    const [d, m, y] = raw.split(/[/-]/).map(Number); fecha = new Date(y, m - 1, d, 12);
+  } else fecha = new Date(raw);
+  return Number.isFinite(+fecha) && +fecha <= Date.now() ? fecha.toISOString() : undefined;
 }
 export function vistaPreviaClientas(tabla: TablaImportacion, existentes: Client[], mapa: MapaColumnas = detectarColumnas(tabla.cabeceras)): VistaPrevia {
   const vistosTelefono = new Set(existentes.map((c) => normalizarTelefono(c.phone)).filter(Boolean));
@@ -69,12 +85,17 @@ export function vistaPreviaClientas(tabla: TablaImportacion, existentes: Client[
   tabla.filas.forEach((r, index) => {
     if (!r.some((v) => v.trim())) return;
     const nombre = [celda(r, "nombre"), celda(r, "apellidos")].filter(Boolean).join(" ").replace(/\s+/g, " ");
-    const telefono = normalizarTelefono(celda(r, "telefono"));
-    const rawPhone = celda(r, "telefono");
-    const registro: FilaClienta = { fila: index + 2, nombre, telefono, email: celda(r, "email") || undefined, notas: celda(r, "notas") || undefined, estado: "nueva" };
-    if (!nombre || (rawPhone && telefono.length !== 9) || (registro.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registro.email))) {
+    const moviles = [celda(r, "telefono"), celda(r, "telefono2")].filter(Boolean);
+    const movilRaw = moviles.find((p) => /^[67]/.test(normalizarTelefono(p))) ?? moviles[0] ?? "";
+    const telefono = normalizarTelefono(movilRaw);
+    const otroRaw = moviles.find((p) => p !== movilRaw);
+    const notasEntrada = celda(r, "notas");
+    const otroTelefono = otroRaw ? normalizarTelefono(otroRaw) || otroRaw : undefined;
+    const notas = [notasEntrada, otroTelefono ? `Otro teléfono: ${otroTelefono}` : ""].filter(Boolean).join(" · ");
+    const registro: FilaClienta = { fila: index + 2, nombre, telefono, otroTelefono, codigo: celda(r, "codigo") || undefined, fechaAlta: fechaImportada(celda(r, "fechaAlta")), email: celda(r, "email") || undefined, notas: notas || undefined, estado: "nueva" };
+    if (!nombre || (moviles.length > 0 && (!telefono || telefono.length !== 9)) || (registro.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registro.email))) {
       registro.estado = "error";
-      registro.motivo = !nombre ? "Falta el nombre" : rawPhone && telefono.length !== 9 ? "Teléfono no válido" : "Correo no válido";
+      registro.motivo = !nombre ? "Falta el nombre" : moviles.length > 0 && (!telefono || telefono.length !== 9) ? "Teléfono no válido" : "Correo no válido";
     }
     else if ((telefono && (vistosTelefono.has(telefono) || vistosSinTelefono.has(claveNombre(nombre)))) || (!telefono && vistosNombres.has(claveNombre(nombre)))) {
       registro.estado = "duplicada"; registro.motivo = "Ya existe una clienta con ese teléfono o nombre";
@@ -164,32 +185,94 @@ export async function leerTabla(file: File): Promise<TablaImportacion> {
 }
 
 const aliasVisita = {
-  fecha: ["fecha", "fecha visita", "dia"], cliente: ["cliente", "nombre", "nombre cliente"],
-  telefono: ["telefono", "movil", "telf"], servicio: ["servicio", "concepto", "tratamiento"],
+  fecha: ["fecha", "fecha visita", "dia"], codigo: ["codigocliente", "codigo cliente", "codigo", "cod cliente"],
+  cliente: ["cliente", "nombre", "nombre cliente", "clienta", "nombre y apellidos"],
+  venta: ["venta"],
+  concepto: ["concepto", "articulo", "descripcion", "servicio", "tratamiento", "producto"],
   importe: ["importe", "total", "precio"], profesional: ["empleado", "empleada", "empleado/a", "profesional", "trabajador"],
   notas: ["observaciones", "notas", "comentarios"],
 } as const;
-export function importarVisitas(tabla: TablaImportacion, clientas: Client[]): { visitas: VisitaImportada[]; errores: number } {
-  const cols = Object.fromEntries(Object.entries(aliasVisita).map(([k, a]) => [k, tabla.cabeceras.findIndex((h) => (a as readonly string[]).includes(normal(h).replace(/[.:]$/, "")))]));
+export interface OpcionesImportarVisitas {
+  servicios?: { id: string; name: string }[];
+  equipo?: { id: string; name: string }[];
+  codigos?: Map<string, string>;
+}
+function parseFecha(raw: string): Date {
+  if (/^\d+(?:\.\d+)?$/.test(raw)) return new Date(Date.UTC(1899, 11, 30) + Number(raw) * 86400000);
+  const europea = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+  if (europea) return new Date(Number(europea[3]), Number(europea[2]) - 1, Number(europea[1]), 12);
+  return new Date(raw);
+}
+function importeNumero(raw: string): number | undefined {
+  const limpio = raw.replace(/[\s€]/g, "");
+  if (!limpio) return 0;
+  const n = Number(limpio.includes(",") ? limpio.replace(/\./g, "").replace(",", ".") : limpio);
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+}
+function encontrarNombre<T extends { name: string }>(texto: string, lista: T[]): T | undefined {
+  const objetivo = claveNombre(texto);
+  if (!objetivo) return undefined;
+  const exacto = lista.find((x) => claveNombre(x.name) === objetivo);
+  if (exacto) return exacto;
+  const tokens = objetivo.split(" ").filter((x) => x.length > 1);
+  return lista.map((x) => {
+    const nombre = claveNombre(x.name).split(" ").filter((t) => t.length > 1);
+    const coincidencias = tokens.filter((t) => nombre.some((n) => n.includes(t) || t.includes(n))).length;
+    return { x, score: coincidencias / Math.max(1, Math.min(tokens.length, nombre.length)) };
+  })
+    .filter((c) => c.score >= 0.6).sort((a, b) => b.score - a.score)[0]?.x;
+}
+export function importarVisitas(tabla: TablaImportacion, clientas: Client[], opciones: OpcionesImportarVisitas = {}): { visitas: VisitaImportada[]; errores: number; noEnlazadas: number; lineas: number } {
+  const cols = Object.fromEntries(Object.entries(aliasVisita).map(([k, a]) => [k, tabla.cabeceras.findIndex((h) => (a as readonly string[]).includes(claveCabecera(h)))])) as Record<keyof typeof aliasVisita, number>;
   const get = (r: string[], k: keyof typeof aliasVisita) => cols[k] < 0 ? "" : (r[cols[k]] ?? "").trim();
-  const visitas: VisitaImportada[] = []; let errores = 0;
+  const codigos = opciones.codigos ?? new Map<string, string>();
+  const acumuladas = new Map<string, VisitaImportada & { productos: string[]; observaciones: string[] }>();
+  let errores = 0, noEnlazadas = 0, lineas = 0;
+  let codigoActual = "", nombreActual = "", fechaActual = "";
   tabla.filas.forEach((r, i) => {
-    const telefono = normalizarTelefono(get(r, "telefono")); const nombre = claveNombre(get(r, "cliente"));
-    const cliente = clientas.find((c) => telefono ? normalizarTelefono(c.phone) === telefono : claveNombre(c.name) === nombre);
-    const raw = get(r, "fecha");
-    let fecha: Date;
-    if (/^\d+(?:\.\d+)?$/.test(raw)) fecha = new Date(Date.UTC(1899, 11, 30) + Number(raw) * 86400000);
-    else if (/^\d{1,2}[/-]\d{1,2}[/-]\d{4}/.test(raw)) {
-      const [d, m, y] = raw.split(/[/-]/).map(Number); fecha = new Date(y, m - 1, d, 12);
-    } else fecha = new Date(raw);
-    const servicio = get(r, "servicio"), notas = get(r, "notas");
-    if (!cliente || !servicio || !Number.isFinite(+fecha) || +fecha > Date.now()) { errores++; return; }
-    const importeTexto = get(r, "importe").replace(/[\s€]/g, "");
-    const importe = Number(importeTexto.includes(",") ? importeTexto.replace(/\./g, "").replace(",", ".") : importeTexto);
-    if (importeTexto && (!Number.isFinite(importe) || importe < 0)) { errores++; return; }
-    visitas.push({ fila: i + 2, fecha: fecha.toISOString(), cliente, servicio, importe: Number.isFinite(importe) ? importe : 0,
-      profesional: get(r, "profesional"), notas: notas || undefined,
-      colorFormula: /\b\d{1,2}[./]\d{1,2}\b|\bvol(?:umen(?:es)?)?\b/i.test(notas) ? notas : undefined });
+    let codigo = get(r, "codigo"), nombre = get(r, "cliente"), rawFecha = get(r, "fecha");
+    const nuevaClienta = (!!codigo && codigo !== codigoActual) || (!!nombre && claveNombre(nombre) !== claveNombre(nombreActual));
+    if (nuevaClienta && !rawFecha) fechaActual = "";
+    if (codigo) codigoActual = codigo;
+    if (nombre) nombreActual = nombre;
+    if (rawFecha) fechaActual = rawFecha;
+    codigo ||= codigoActual; nombre ||= nombreActual; rawFecha ||= fechaActual;
+    const concepto = get(r, "concepto") || get(r, "venta");
+    const importeTexto = get(r, "importe");
+    // Cabeceras de grupo en informes: conservan la clienta para sus filas siguientes.
+    if (!concepto && !importeTexto) return;
+    lineas++;
+    const clienteId = (codigo && codigos.get(codigo)) || undefined;
+    const cliente = (clienteId ? clientas.find((c) => c.id === clienteId) : undefined) ??
+      (nombre ? encontrarNombre(nombre, clientas) : undefined);
+    if (!cliente) { noEnlazadas++; return; }
+    const fecha = parseFecha(rawFecha);
+    const importe = importeNumero(importeTexto);
+    if (!Number.isFinite(+fecha) || +fecha > Date.now() || importe === undefined) { errores++; return; }
+    const clave = `${cliente.id}|${fecha.toISOString().slice(0, 10)}`;
+    let visita = acumuladas.get(clave);
+    if (!visita) {
+      visita = { fila: i + 2, fecha: fecha.toISOString(), cliente, servicios: [], importe: 0, profesional: "", productos: [], observaciones: [] };
+      acumuladas.set(clave, visita);
+    }
+    visita.importe += importe;
+    const servicio = encontrarNombre(concepto, opciones.servicios ?? []);
+    if (servicio && !visita.servicios.includes(servicio.id)) visita.servicios.push(servicio.id);
+    else if (concepto) visita.productos.push(concepto);
+    const empleadoRaw = get(r, "profesional");
+    if (empleadoRaw) {
+      const empleado = encontrarNombre(empleadoRaw, opciones.equipo ?? []);
+      if (empleado) visita.profesional = empleado.id;
+      else visita.observaciones.push(`Empleado: ${empleadoRaw}`);
+    }
+    const nota = get(r, "notas"); if (nota) {
+      visita.observaciones.push(nota);
+      if (/\b\d{1,2}[./]\d{1,2}\b|\bvol(?:umen(?:es)?)?\b/i.test(nota)) visita.colorFormula = nota;
+    }
   });
-  return { visitas, errores };
+  const visitas = [...acumuladas.values()].map(({ productos, observaciones, ...v }) => {
+    const notas = [...new Set([...productos.map((p) => `Producto: ${p}`), ...observaciones])].join(" · ");
+    return { ...v, notas: notas || undefined };
+  });
+  return { visitas, errores, noEnlazadas, lineas };
 }

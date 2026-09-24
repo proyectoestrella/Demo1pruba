@@ -1,14 +1,44 @@
+import { useState } from "react";
 import { BookingAnswersSummary } from "./BookingAnswersSummary";
 import { eur } from "@/lib/copy";
 import type { fichaDeClienta } from "@/lib/ficha-clienta";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 type Ficha = ReturnType<typeof fichaDeClienta>;
 const fecha = (iso?: string) => iso ? new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
 /** Cuaderno técnico de la clienta, con la fórmula a la vista en cada visita. */
-export function FichaCompleta({ ficha }: { ficha: Ficha }) {
+export interface DatosColorTPV { fecha: string; producto: string; cantidad: string; raiz: string; medios: string; puntas: string; tiempo: string; notas: string }
+export function FichaCompleta({ ficha, onAddColor }: { ficha: Ficha; onAddColor?: (datos: DatosColorTPV) => void }) {
   const { resumen, avisos, visitas } = ficha;
+  const [formularioColor, setFormularioColor] = useState(false);
+  const [mensajeColor, setMensajeColor] = useState("");
+  const [color, setColor] = useState<DatosColorTPV>({ fecha: new Date().toLocaleDateString("sv-SE"), producto: "", cantidad: "", raiz: "", medios: "", puntas: "", tiempo: "", notas: "" });
+  function guardarColor() {
+    if (!onAddColor || !color.fecha || !color.producto.trim()) return;
+    onAddColor(color);
+    setMensajeColor("Color añadido a la ficha.");
+    setColor((actual) => ({ ...actual, producto: "", cantidad: "", raiz: "", medios: "", puntas: "", tiempo: "", notas: "" }));
+  }
   return <section className="space-y-4" aria-label="Ficha completa">
+    {onAddColor && <div className="rounded-xl border border-primary/30 bg-primary/5 p-4" data-vaul-no-drag>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div><h3 className="font-semibold">Ficha técnica del color</h3><p className="text-sm text-muted-foreground">Anota aquí el color que consultas en TPV 123.</p></div>
+        <Button type="button" variant={formularioColor ? "outline" : "default"} onClick={() => { setFormularioColor((v) => !v); setMensajeColor(""); }} className="min-h-11">{formularioColor ? "Cerrar" : "Añadir color de TPV 123"}</Button>
+      </div>
+      {formularioColor && <div className="mt-4 space-y-3">
+        <label className="block space-y-1 text-sm">Fecha<Input type="date" max={new Date().toLocaleDateString("sv-SE")} value={color.fecha} onChange={(e) => setColor({ ...color, fecha: e.target.value })} className="min-h-11" /></label>
+        <label className="block space-y-1 text-sm">Producto / tinte<Input value={color.producto} onChange={(e) => setColor({ ...color, producto: e.target.value })} placeholder="7.1 + 8.0" className="min-h-11" /></label>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {([ ["cantidad", "Cantidad"], ["raiz", "Raíz"], ["medios", "Medios"], ["puntas", "Puntas"], ["tiempo", "Tiempo"] ] as const).map(([key, label]) => <label key={key} className="space-y-1 text-sm">{label}<Input value={color[key]} onChange={(e) => setColor({ ...color, [key]: e.target.value })} placeholder={key === "tiempo" ? "35 min" : ""} className="min-h-11" /></label>)}
+        </div>
+        <label className="block space-y-1 text-sm">Notas<Textarea rows={2} value={color.notas} onChange={(e) => setColor({ ...color, notas: e.target.value })} className="resize-y" /></label>
+        <Button type="button" onClick={guardarColor} disabled={!color.producto.trim() || !color.fecha || color.fecha > new Date().toLocaleDateString("sv-SE")} className="min-h-11 w-full sm:w-auto">Guardar color y anotar otro</Button>
+        {mensajeColor && <p role="status" className="text-sm text-primary">{mensajeColor}</p>}
+      </div>}
+    </div>}
     <div className="rounded-xl border border-border/70 bg-card p-4">
       <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Resumen de la ficha</p>
       <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">

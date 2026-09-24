@@ -709,7 +709,7 @@ export const deleteAppointment = createServerFn({ method: "POST" })
 /** Alta directa de una ficha, también cuando aún no tiene ninguna cita. */
 export const saveClient = createServerFn({ method: "POST" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug, name: z.string().min(1), phone: z.string(), email: z.string().email().optional(), notes: z.string().optional() }))
+  .inputValidator(z.object({ slug, name: z.string().min(1), phone: z.string(), email: z.string().email().optional(), notes: z.string().optional(), createdAt: z.string().datetime().optional() }))
   .handler(async ({ data }) => {
     await exigirAcceso(data.slug);
     const supabase = getSupabaseServerClient();
@@ -722,7 +722,8 @@ export const saveClient = createServerFn({ method: "POST" })
       if (previa) return { synced: true as const };
     }
     const fila = { salon_slug: data.slug, name: data.name, phone: data.phone || null,
-      phone_key: key || null, email: data.email ?? null, notes: data.notes ?? null };
+      phone_key: key || null, email: data.email ?? null, notes: data.notes ?? null,
+      ...(data.createdAt ? { created_at: data.createdAt } : {}) };
     const result = key
       ? await supabase.from("clients").upsert(fila, { onConflict: "salon_slug,phone_key" })
       : await supabase.from("clients").insert(fila);

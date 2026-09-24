@@ -48,11 +48,41 @@ test("lee la primera hoja xlsx con cadenas compartidas y DEFLATE", async () => {
 
 test("visitas enlazadas y fórmula de color en observaciones", () => {
   const tabla = leerCsv("Fecha,Cliente,Concepto,Importe,Empleada,Observaciones\n15/02/2025,Marta Martín,Tinte,45,Lucía,7/1 con 20 vol\n16/02/2025,Desconocida,Corte,20,Lucía,\n");
-  const r = importarVisitas(tabla, [existente]);
+  const r = importarVisitas(tabla, [existente], { servicios: [{ id: "tinte", name: "Tinte" }], equipo: [{ id: "lucia", name: "Lucía" }] });
   expect(r.visitas).toHaveLength(1);
-  expect(r.errores).toBe(1);
+  expect(r.noEnlazadas).toBe(1);
   expect(r.visitas[0].colorFormula).toBe("7/1 con 20 vol");
   expect(r.visitas[0].notas).toBe("7/1 con 20 vol");
+});
+
+test("importa clientas desde etiquetas de pantalla TPV 123 y minimiza sus datos", () => {
+  const tabla = leerCsv("Código;Nombre;Apellidos;DNI/CIF;Email;Tel. Móvil;Tel. Fijo;Dirección;C.P.;Población;Provincia;Fecha Alta;Última Visita;Cumpleaños\n42;María;Pérez;123;mp@example.es;911 222 333;612 345 678;Calle 1;28001;Madrid;Madrid;15/02/2024;10/03/2025;01/01/1990\n");
+  const previa = vistaPreviaClientas(tabla, []);
+  expect(previa.filas[0]).toMatchObject({ nombre: "María Pérez", telefono: "612345678", otroTelefono: "911222333", codigo: "42", email: "mp@example.es", fechaAlta: expect.any(String), notas: "Otro teléfono: 911222333" });
+});
+
+test("importa clientas desde nombres de base de datos de TPV 123", () => {
+  const tabla = leerCsv("codigocliente,nombre,apellidos,nif,email,telefono2,telefono1,Direccion,cp,poblacion,provincia,ingreso,ultimavisita,clientestexto3,nacimiento\n7,Lucía,Sanz,123,ls@example.es,699111222,915551111,Calle,08001,Barcelona,Barcelona,45123,45130,,32000\n");
+  const previa = vistaPreviaClientas(tabla, []);
+  expect(previa.filas[0]).toMatchObject({ nombre: "Lucía Sanz", telefono: "699111222", otroTelefono: "915551111", codigo: "7", email: "ls@example.es" });
+  expect(new Date(previa.filas[0].fechaAlta!).toISOString().slice(0, 10)).toBe("2023-07-16");
+});
+
+test("agrupa el histórico plano por clienta y fecha, enlaza por código y aproxima servicios y equipo", () => {
+  const tabla = leerCsv("Código Cliente,Cliente,Factura,Fecha,Venta,Concepto,Empleado,Precio\n42,María Pérez,F1,10/03/2025,,Corte de puntas,Ana,20\n42,María Pérez,F1,10/03/2025,,Color raíz,Ana,35\n88,Desconocida,F2,11/03/2025,,Corte,Ana,20\n");
+  const maria = { ...existente, id: "maria", name: "María Pérez" };
+  const r = importarVisitas(tabla, [maria], { codigos: new Map([["42", "maria"]]), servicios: [{ id: "corte", name: "Corte de puntas" }], equipo: [{ id: "ana", name: "Ana" }] });
+  expect(r.visitas).toHaveLength(1);
+  expect(r.visitas[0]).toMatchObject({ servicios: ["corte"], importe: 55, profesional: "ana", notas: "Producto: Color raíz" });
+  expect([r.noEnlazadas, r.lineas]).toEqual([1, 3]);
+});
+
+test("agrupa el histórico de informe con cabecera de clienta y conceptos bajo ella", () => {
+  const tabla = leerCsv("Código,Nombre,Fecha,Artículo,Precio\n42,María Pérez,,,\n,,05/04/2025,Corte,18\n,,05/04/2025,Champú,12\n");
+  const maria = { ...existente, id: "maria", name: "María Pérez" };
+  const r = importarVisitas(tabla, [maria], { codigos: new Map([["42", "maria"]]), servicios: [{ id: "corte", name: "Corte" }] });
+  expect(r.visitas).toHaveLength(1);
+  expect(r.visitas[0]).toMatchObject({ servicios: ["corte"], importe: 30, notas: "Producto: Champú" });
 });
 
 test("permite asignar la columna del nombre y explica el formato .xls antiguo", async () => {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSalonStore } from "@/lib/store";
 import { fichaDeClienta } from "@/lib/ficha-clienta";
-import { FichaCompleta } from "@/components/FichaCompleta";
+import { FichaCompleta, type DatosColorTPV } from "@/components/FichaCompleta";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Textarea } from "@/components/ui/textarea";
@@ -60,6 +60,7 @@ export function ClientHistorySheet({
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const conRecargo = recargoActivo({ noShowFeeEur });
   const updateClient = useSalonStore((s) => s.updateClient);
+  const addAppointment = useSalonStore((s) => s.addAppointment);
   const reviewPenalty = useSalonStore((s) => s.reviewPenalty);
   const setManualBlock = useSalonStore((s) => s.setManualBlock);
   // Con un solo profesional, "con Adam" bajo cada visita no informa de nada.
@@ -177,7 +178,11 @@ export function ClientHistorySheet({
         </div>
       )}
 
-      <FichaCompleta ficha={ficha} />
+      <FichaCompleta ficha={ficha} onAddColor={(datos: DatosColorTPV) => {
+        const formula = [datos.producto.trim(), datos.cantidad.trim(), datos.raiz.trim() && `${datos.raiz.trim()} raíz`, datos.medios.trim() && `medios ${datos.medios.trim()}`, datos.puntas.trim() && `puntas ${datos.puntas.trim()}`, datos.tiempo.trim()].filter(Boolean).join(", ");
+        const fecha = new Date(`${datos.fecha}T12:00:00`).toISOString();
+        addAppointment({ clientId: client.id, clientName: client.name, serviceIds: [], employeeId: equipo[0]?.id ?? "mario", start: fecha, duration: 0, priceEur: 0, status: "completed", origen: "tpv123", colorFormula: formula, technicalNotes: datos.notas.trim() || undefined }, { name: client.name, phone: client.phone, email: client.email });
+      }} />
 
       {/* Próximas citas */}
       <div>

@@ -127,7 +127,7 @@ interface SalonState {
   markDepositReceived: (id: string, recibido: boolean) => void;
 
   // Clients
-  addClient: (c: Omit<Client, "id" | "createdAt">) => Client;
+  addClient: (c: Omit<Client, "id" | "createdAt"> & { createdAt?: string }) => Client;
   updateClient: (id: string, patch: Partial<Client>) => void;
   deleteClient: (id: string) => void;
   /** Bloquea o desbloquea a mano la reserva online, sin crear una deuda. */
@@ -465,7 +465,7 @@ export const useSalonStore = create<SalonState>()(
         const client: Client = {
           ...c,
           id: `c-new-${crypto.randomUUID()}`,
-          createdAt: new Date().toISOString(),
+          createdAt: c.createdAt ?? new Date().toISOString(),
         };
         set((s) => ({ clients: [...s.clients, client] }));
         pushClient(get().realSalonSlug, client);

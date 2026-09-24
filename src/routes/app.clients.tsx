@@ -104,6 +104,14 @@ function Clients() {
     enRiesgo: allRows.filter((r) => r.tag === "inactivo").length,
   };
 
+  const limiteColor = now + 14 * DAY_MS;
+  const proximasSinColor = allRows.flatMap((client) => {
+    const cita = appointments.filter((a) => a.clientId === client.id && (a.status === "confirmed" || a.status === "pending") && +new Date(a.start) >= now && +new Date(a.start) <= limiteColor)
+      .sort((a, b) => +new Date(a.start) - +new Date(b.start))[0];
+    const tieneColor = appointments.some((a) => a.clientId === client.id && a.status === "completed" && +new Date(a.start) < now && !!a.colorFormula?.trim());
+    return cita && !tieneColor ? [{ client, cita }] : [];
+  }).sort((a, b) => +new Date(a.cita.start) - +new Date(b.cita.start));
+
   // Solo se ofrece el filtro cuando hay a quién filtrar: una pestaña "Me
   // deben" vacía es ruido en cualquier demo sin plantones.
   const hayPenalizados = conRecargo && allRows.some((r) => (r.penaltyEur ?? 0) > 0);
@@ -130,6 +138,21 @@ function Clients() {
         description="Tus clientes, ordenados por lo que se han gastado contigo."
       />
       <Button type="button" variant="outline" onClick={() => setImportarAbierto(true)}>Importar desde TPV 123</Button>
+
+      <section aria-labelledby="color-pendiente" className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div><h2 id="color-pendiente" className="font-display text-lg">Color pendiente</h2><p className="text-sm text-muted-foreground">Citadas en los próximos 14 días sin color anotado.</p></div>
+          <strong className="rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">{proximasSinColor.length} {proximasSinColor.length === 1 ? "clienta por pasar" : "clientas por pasar"}</strong>
+        </div>
+        {proximasSinColor.length ? <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+          {proximasSinColor.map(({ client, cita }) => <li key={client.id}>
+            <button type="button" onClick={() => setSelected(client)} className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border border-border/70 bg-card px-3 py-2 text-left hover:bg-muted/50">
+              <span className="min-w-0 truncate font-medium">{client.name}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">{new Date(cita.start).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" })} · Abrir ficha</span>
+            </button>
+          </li>)}
+        </ul> : <p className="mt-3 text-sm text-muted-foreground">No hay fichas de color pendientes.</p>}
+      </section>
 
       {/* KPIs — panorama de la cartera antes de bajar al listado. */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
