@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
@@ -812,6 +812,11 @@ function BookingWizard() {
                     salón.
                   </div>
                 )}
+
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Tus datos los trata {profile.name} para gestionar tu cita y el historial de tus servicios.{" "}
+                  <Link to="/s/$salonSlug/privacidad" params={{ salonSlug }} search={(prev) => prev} className="font-medium text-primary underline-offset-2 hover:underline">Más información</Link>
+                </p>
 
                 <label className="flex items-start gap-3 text-sm text-muted-foreground">
                   <Checkbox

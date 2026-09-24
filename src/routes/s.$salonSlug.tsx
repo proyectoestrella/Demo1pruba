@@ -384,7 +384,7 @@ function SalonLayout() {
         <div className="border-t border-border/60">
           <div className="mx-auto flex max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] flex-col gap-2 px-5 py-6 text-xs text-muted-foreground sm:flex-row sm:justify-between">
             <p>© {profile.name}</p>
-            <p>Privacidad · Términos · Política de cancelación</p>
+            <p><Link to="/s/$salonSlug/privacidad" params={{ salonSlug }} search={(prev) => prev} className="hover:text-foreground hover:underline">Privacidad</Link> · Términos · Política de cancelación</p>
           </div>
         </div>
       </footer>

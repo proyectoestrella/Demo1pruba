@@ -29,6 +29,7 @@ import { Route as AppCalendarRouteImport } from './routes/app.calendar'
 import { Route as AppAppointmentsRouteImport } from './routes/app.appointments'
 import { Route as ApiFotoRouteImport } from './routes/api.foto'
 import { Route as SSalonSlugIndexRouteImport } from './routes/s.$salonSlug.index'
+import { Route as SSalonSlugPrivacidadRouteImport } from './routes/s.$salonSlug.privacidad'
 import { Route as SSalonSlugDosierRouteImport } from './routes/s.$salonSlug.dosier'
 import { Route as SSalonSlugConfirmationRouteImport } from './routes/s.$salonSlug.confirmation'
 import { Route as SSalonSlugBookRouteImport } from './routes/s.$salonSlug.book'
@@ -133,6 +134,11 @@ const SSalonSlugIndexRoute = SSalonSlugIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SSalonSlugRoute,
 } as any)
+const SSalonSlugPrivacidadRoute = SSalonSlugPrivacidadRouteImport.update({
+  id: '/privacidad',
+  path: '/privacidad',
+  getParentRoute: () => SSalonSlugRoute,
+} as any)
 const SSalonSlugDosierRoute = SSalonSlugDosierRouteImport.update({
   id: '/dosier',
   path: '/dosier',
@@ -172,6 +178,7 @@ export interface FileRoutesByFullPath {
   '/s/$salonSlug/book': typeof SSalonSlugBookRoute
   '/s/$salonSlug/confirmation': typeof SSalonSlugConfirmationRoute
   '/s/$salonSlug/dosier': typeof SSalonSlugDosierRoute
+  '/s/$salonSlug/privacidad': typeof SSalonSlugPrivacidadRoute
   '/s/$salonSlug/': typeof SSalonSlugIndexRoute
 }
 export interface FileRoutesByTo {
@@ -195,6 +202,7 @@ export interface FileRoutesByTo {
   '/s/$salonSlug/book': typeof SSalonSlugBookRoute
   '/s/$salonSlug/confirmation': typeof SSalonSlugConfirmationRoute
   '/s/$salonSlug/dosier': typeof SSalonSlugDosierRoute
+  '/s/$salonSlug/privacidad': typeof SSalonSlugPrivacidadRoute
   '/s/$salonSlug': typeof SSalonSlugIndexRoute
 }
 export interface FileRoutesById {
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/s/$salonSlug/book': typeof SSalonSlugBookRoute
   '/s/$salonSlug/confirmation': typeof SSalonSlugConfirmationRoute
   '/s/$salonSlug/dosier': typeof SSalonSlugDosierRoute
+  '/s/$salonSlug/privacidad': typeof SSalonSlugPrivacidadRoute
   '/s/$salonSlug/': typeof SSalonSlugIndexRoute
 }
 export interface FileRouteTypes {
@@ -248,6 +257,7 @@ export interface FileRouteTypes {
     | '/s/$salonSlug/book'
     | '/s/$salonSlug/confirmation'
     | '/s/$salonSlug/dosier'
+    | '/s/$salonSlug/privacidad'
     | '/s/$salonSlug/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/s/$salonSlug/book'
     | '/s/$salonSlug/confirmation'
     | '/s/$salonSlug/dosier'
+    | '/s/$salonSlug/privacidad'
     | '/s/$salonSlug'
   id:
     | '__root__'
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/s/$salonSlug/book'
     | '/s/$salonSlug/confirmation'
     | '/s/$salonSlug/dosier'
+    | '/s/$salonSlug/privacidad'
     | '/s/$salonSlug/'
   fileRoutesById: FileRoutesById
 }
@@ -451,6 +463,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSalonSlugIndexRouteImport
       parentRoute: typeof SSalonSlugRoute
     }
+    '/s/$salonSlug/privacidad': {
+      id: '/s/$salonSlug/privacidad'
+      path: '/privacidad'
+      fullPath: '/s/$salonSlug/privacidad'
+      preLoaderRoute: typeof SSalonSlugPrivacidadRouteImport
+      parentRoute: typeof SSalonSlugRoute
+    }
     '/s/$salonSlug/dosier': {
       id: '/s/$salonSlug/dosier'
       path: '/dosier'
@@ -511,6 +530,7 @@ interface SSalonSlugRouteChildren {
   SSalonSlugBookRoute: typeof SSalonSlugBookRoute
   SSalonSlugConfirmationRoute: typeof SSalonSlugConfirmationRoute
   SSalonSlugDosierRoute: typeof SSalonSlugDosierRoute
+  SSalonSlugPrivacidadRoute: typeof SSalonSlugPrivacidadRoute
   SSalonSlugIndexRoute: typeof SSalonSlugIndexRoute
 }
 
@@ -518,6 +538,7 @@ const SSalonSlugRouteChildren: SSalonSlugRouteChildren = {
   SSalonSlugBookRoute: SSalonSlugBookRoute,
   SSalonSlugConfirmationRoute: SSalonSlugConfirmationRoute,
   SSalonSlugDosierRoute: SSalonSlugDosierRoute,
+  SSalonSlugPrivacidadRoute: SSalonSlugPrivacidadRoute,
   SSalonSlugIndexRoute: SSalonSlugIndexRoute,
 }
 
