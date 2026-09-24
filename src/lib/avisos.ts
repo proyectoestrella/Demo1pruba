@@ -98,3 +98,26 @@ export function mensajeDeHueco(a: AvisoDeHueco): string {
 export function enlaceDeHueco(telefono: string, a: AvisoDeHueco): string {
   return whatsappUrl(telefono, mensajeDeHueco(a));
 }
+
+export interface RecordatorioDeCita {
+  clientName: string;
+  salonName: string;
+  startISO: string;
+  servicio: string;
+  direccion: string;
+  /** Solo se menciona si el salón ya pidió la señal y sigue sin marcarla como recibida. */
+  senalPendiente?: { importeEur: number; bizumPhone: string; deadlineISO?: string };
+}
+
+export function mensajeRecordatorio(a: RecordatorioDeCita): string {
+  const senal = a.senalPendiente;
+  const plazo = senal?.deadlineISO
+    ? ` antes del ${new Date(senal.deadlineISO).toLocaleDateString("es-ES", { day: "numeric", month: "long" })} a las ${horaEnPalabras(senal.deadlineISO)}`
+    : "";
+  return `Hola ${a.clientName}, te recordamos tu cita en ${a.salonName} ${cuandoEnPalabras(a.startISO)} para ${a.servicio}. Te esperamos en ${a.direccion}.` +
+    (senal ? ` Si aún no lo has hecho, puedes enviarnos la señal de ${senal.importeEur} € por Bizum al ${senal.bizumPhone}${plazo}. ¡Gracias!` : " ¡Hasta pronto!");
+}
+
+export function enlaceRecordatorio(telefono: string, a: RecordatorioDeCita): string {
+  return whatsappUrl(telefono, mensajeRecordatorio(a));
+}

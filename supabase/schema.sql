@@ -135,6 +135,7 @@ alter table appointments add column if not exists deposit_received_at timestampt
 alter table appointments add column if not exists deposit_eur numeric;
 alter table appointments add column if not exists color_formula text;
 alter table appointments add column if not exists technical_notes text;
+alter table appointments add column if not exists reminder_sent_at timestamptz;
 
 -- Caducidad del bloqueo por plantón: a los 30 días de `penalty_at` el cliente
 -- vuelve a poder reservar solo, salvo que el dueño marque `penalty_keep`. La

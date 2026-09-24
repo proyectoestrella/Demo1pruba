@@ -47,6 +47,7 @@ const APPOINTMENT_COLS_NUEVAS =
   "payment_method, paid_at, deposit_requested_at, deposit_received_at, deposit_eur";
 // TODO: aplicar las columnas técnicas de supabase/schema.sql en producción.
 const APPOINTMENT_COLS_TECNICAS = "color_formula, technical_notes";
+const APPOINTMENT_COLS_RECORDATORIO = "reminder_sent_at";
 const CLIENT_COLS_BASE = "id, name, phone, email, notes, penalty_eur, penalty_note, created_at";
 const CLIENT_COLS_NUEVAS = "penalty_at, penalty_keep, penalty_block";
 const WAITLIST_COLS =
@@ -61,6 +62,7 @@ const CAMPOS_NUEVOS_CITA = [
   "deposit_eur",
 ];
 const CAMPOS_TECNICOS_CITA = ["color_formula", "technical_notes"];
+const CAMPOS_RECORDATORIO_CITA = ["reminder_sent_at"];
 const CAMPOS_NUEVOS_CLIENTE = ["penalty_at", "penalty_keep", "penalty_block"];
 
 /**
@@ -361,6 +363,12 @@ export const listSalonData = createServerFn({ method: "GET" })
        */
       async function traer<T>(tabla: string, base: string, nuevas: string) {
         if (tabla === "appointments") {
+          const conRecordatorio = await supabase!
+            .from(tabla)
+            .select(`${base}, ${nuevas}, ${APPOINTMENT_COLS_TECNICAS}, ${APPOINTMENT_COLS_RECORDATORIO}`)
+            .eq("salon_slug", data.slug);
+          if (!conRecordatorio.error) return { data: (conRecordatorio.data ?? []) as unknown as T[], error: null };
+          if (!faltaEsquema(conRecordatorio.error)) return { data: [] as T[], error: conRecordatorio.error };
           const tecnicas = await supabase!
             .from(tabla)
             .select(`${base}, ${nuevas}, ${APPOINTMENT_COLS_TECNICAS}`)
@@ -522,6 +530,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
       depositEur: z.number().nullable().optional(),
       colorFormula: z.string().nullable().optional(),
       technicalNotes: z.string().nullable().optional(),
+      reminderSentAt: z.string().nullable().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -621,6 +630,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
       deposit_eur: manda ? (data.depositEur ?? null) : null,
       color_formula: manda ? (data.colorFormula ?? null) : null,
       technical_notes: manda ? (data.technicalNotes ?? null) : null,
+      reminder_sent_at: manda ? (data.reminderSentAt ?? null) : null,
     };
     // Solo se toca `client_id` cuando esta llamada sabe de qué cliente habla.
     // Un "confirmar" desde el panel no lleva teléfono, y machacar la columna
@@ -631,7 +641,13 @@ export const syncAppointment = createServerFn({ method: "POST" })
       .from("appointments")
       .upsert(fila, { onConflict: "salon_slug,local_id" });
     if (faltaEsquema(error)) {
-      const sinTecnicas = sinCampos(fila, CAMPOS_TECNICOS_CITA);
+      const sinRecordatorio = sinCampos(fila, CAMPOS_RECORDATORIO_CITA);
+      const { error: errorTecnicas } = await supabase
+        .from("appointments")
+        .upsert(sinRecordatorio, { onConflict: "salon_slug,local_id" });
+      if (!errorTecnicas) return { synced: true as const };
+      if (!faltaEsquema(errorTecnicas)) throw new Error(`syncAppointment: ${errorTecnicas.message}`);
+      const sinTecnicas = sinCampos(sinRecordatorio, CAMPOS_TECNICOS_CITA);
       const { error: errorAnterior } = await supabase
         .from("appointments")
         .upsert(sinTecnicas, { onConflict: "salon_slug,local_id" });

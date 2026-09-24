@@ -168,6 +168,8 @@ export interface Appointment {
   depositReceivedAt?: string;
   /** Importe de la señal pedida, en euros — se congela al pedirla por si luego cambia en Ajustes. */
   depositEur?: number;
+  /** Lo marca el salón después de enviar el recordatorio desde su WhatsApp. */
+  reminderSentAt?: string;
 }
 
 export interface BookingAnswers {
