@@ -29,6 +29,7 @@ import { Route as AppClientsRouteImport } from './routes/app.clients'
 import { Route as AppCalendarRouteImport } from './routes/app.calendar'
 import { Route as AppAppointmentsRouteImport } from './routes/app.appointments'
 import { Route as ApiFotoRouteImport } from './routes/api.foto'
+import { Route as ApiCalendarioRouteImport } from './routes/api.calendario'
 import { Route as SSalonSlugIndexRouteImport } from './routes/s.$salonSlug.index'
 import { Route as SSalonSlugPrivacidadRouteImport } from './routes/s.$salonSlug.privacidad'
 import { Route as SSalonSlugDosierRouteImport } from './routes/s.$salonSlug.dosier'
@@ -135,6 +136,11 @@ const ApiFotoRoute = ApiFotoRouteImport.update({
   path: '/api/foto',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCalendarioRoute = ApiCalendarioRouteImport.update({
+  id: '/api/calendario',
+  path: '/api/calendario',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SSalonSlugIndexRoute = SSalonSlugIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -167,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/rutero': typeof RuteroRoute
+  '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/calendar': typeof AppCalendarRoute
@@ -193,6 +200,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/rutero': typeof RuteroRoute
+  '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/calendar': typeof AppCalendarRoute
@@ -220,6 +228,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/rutero': typeof RuteroRoute
+  '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/calendar': typeof AppCalendarRoute
@@ -249,6 +258,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/rutero'
+    | '/api/calendario'
     | '/api/foto'
     | '/app/appointments'
     | '/app/calendar'
@@ -275,6 +285,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/rutero'
+    | '/api/calendario'
     | '/api/foto'
     | '/app/appointments'
     | '/app/calendar'
@@ -301,6 +312,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/rutero'
+    | '/api/calendario'
     | '/api/foto'
     | '/app/appointments'
     | '/app/calendar'
@@ -329,6 +341,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   RuteroRoute: typeof RuteroRoute
+  ApiCalendarioRoute: typeof ApiCalendarioRoute
   ApiFotoRoute: typeof ApiFotoRoute
   SSalonSlugRoute: typeof SSalonSlugRouteWithChildren
 }
@@ -475,6 +488,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiFotoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/calendario': {
+      id: '/api/calendario'
+      path: '/api/calendario'
+      fullPath: '/api/calendario'
+      preLoaderRoute: typeof ApiCalendarioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/s/$salonSlug/': {
       id: '/s/$salonSlug/'
       path: '/'
@@ -573,6 +593,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   RuteroRoute: RuteroRoute,
+  ApiCalendarioRoute: ApiCalendarioRoute,
   ApiFotoRoute: ApiFotoRoute,
   SSalonSlugRoute: SSalonSlugRouteWithChildren,
 }

@@ -3,6 +3,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ArrowUpRight } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
+import { useEquipo } from "@/lib/use-equipo";
+import { getCalendarSubscription, regenerateCalendarSubscription } from "@/lib/api/calendar.functions";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { inferBusinessType } from "@/lib/business-type";
 import { bookingQuestionsEnabled } from "@/lib/booking-answers";
@@ -28,7 +30,24 @@ export const Route = createFileRoute("/app/settings")({ component: Settings });
  */
 function Settings() {
   const salonProfile = useSalonStore((s) => s.salonProfile);
+  const realSlug = useSalonStore((s) => s.realSalonSlug);
+  const equipo = useEquipo();
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
+  const [calendarToken, setCalendarToken] = useState<string | null>(null);
+  const [calendarError, setCalendarError] = useState(false);
+  const [calendarBusy, setCalendarBusy] = useState(false);
+  const [profesional, setProfesional] = useState("");
+  useEffect(() => {
+    if (!realSlug) { setCalendarToken(null); return; }
+    let activo = true;
+    void getCalendarSubscription({ data: { slug: realSlug } }).then(({ token }) => {
+      if (activo) { setCalendarToken(token); setCalendarError(false); }
+    }).catch(() => { if (activo) setCalendarError(true); });
+    return () => { activo = false; };
+  }, [realSlug]);
+  const calendarUrl = realSlug && calendarToken && typeof window !== "undefined"
+    ? `${window.location.origin}/api/calendario?token=${calendarToken}${profesional ? `&profesional=${encodeURIComponent(profesional)}` : ""}`
+    : "";
   const businessType = inferBusinessType(salonProfile.tagline, salonProfile.name);
   const [questionsEnabled, setQuestionsEnabled] = useState(bookingQuestionsEnabled(salonProfile, businessType));
   const [questionsRequired, setQuestionsRequired] = useState(!!salonProfile.bookingQuestionsRequired);
@@ -130,6 +149,32 @@ function Settings() {
         <Switch id="duracion-flexible" checked={duracionFlexible} onCheckedChange={setDuracionFlexible} />
         </div>
         <div className="mt-4 flex justify-end"><Button onClick={handleSave}>Guardar cambios</Button></div>
+      </div>
+
+      <div className="space-y-4 rounded-xl border border-border/60 bg-card p-6">
+        <div>
+          <h2 className="font-display text-lg">Ver tus citas en Google Calendar o en el calendario del iPhone</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Tu calendario la actualiza cada pocas horas; la agenda al minuto está en siShow. Solo aparecen citas confirmadas, con hora, servicio y nombre de pila.</p>
+        </div>
+        {!realSlug ? <p className="text-sm text-muted-foreground">La suscripción se activa cuando el salón es real. En esta demo puedes ver cómo quedará el ajuste.</p> : <>
+          {calendarError && <p className="text-sm text-destructive">No se pudo cargar el enlace. Comprueba que el calendario esté activado en el servidor y vuelve a abrir Ajustes.</p>}
+          {calendarToken && <>
+            <label className="block space-y-1 text-sm"><span>Calendario</span>
+              <select value={profesional} onChange={(e) => setProfesional(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                <option value="">Todo el salón</option>
+                {equipo.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </label>
+            <div className="flex flex-wrap gap-2"><Input readOnly aria-label="Enlace del calendario" value={calendarUrl} className="min-w-0 flex-1 text-xs" /><Button variant="outline" onClick={() => { void navigator.clipboard.writeText(calendarUrl).then(() => toast.success("Enlace copiado")).catch(() => toast.error("No se pudo copiar el enlace")); }}>Copiar enlace</Button></div>
+            <p className="text-xs text-muted-foreground">Este enlace es privado: quien lo tenga podrá ver esas citas. Si lo regeneras, el anterior dejará de funcionar.</p>
+          </>}
+          <Button disabled={calendarBusy} variant={calendarToken ? "outline" : "default"} onClick={() => {
+            setCalendarBusy(true);
+            void regenerateCalendarSubscription({ data: { slug: realSlug } }).then(({ token }) => {
+              setCalendarToken(token); setCalendarError(false); toast.success(calendarToken ? "Enlace nuevo creado" : "Calendario activado");
+            }).catch(() => { setCalendarError(true); toast.error("No se pudo crear el enlace"); }).finally(() => setCalendarBusy(false));
+          }}>{calendarToken ? "Regenerar enlace" : "Crear enlace"}</Button>
+        </>}
       </div>
 
       <Link

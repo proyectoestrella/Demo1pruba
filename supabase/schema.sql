@@ -54,6 +54,15 @@ create table if not exists salons (
   updated_at timestamptz not null default now()
 );
 
+-- Enlace secreto para suscribir el calendario del salón. Solo el servidor
+-- (service role) lee esta tabla; regenerar el token invalida la URL anterior.
+create table if not exists calendar_subscriptions (
+  salon_slug text primary key references salons (slug) on delete cascade,
+  token text not null unique,
+  updated_at timestamptz not null default now()
+);
+alter table calendar_subscriptions enable row level security;
+
 -- Columnas que el `create table if not exists` de arriba NO añade cuando la
 -- tabla ya existía de una versión anterior (fue el caso en producción el
 -- 19/09/2026: `client_confirmed_at` y `notes` faltaban y el panel no cargaba).
