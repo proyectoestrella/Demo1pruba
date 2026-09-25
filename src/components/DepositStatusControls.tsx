@@ -19,17 +19,17 @@ export function DepositStatusControls({ appointment, hours, onReleased }: {
   const state = depositState(appointment, now ?? new Date(0), hours);
   const due = effectiveDepositDueAt(appointment, hours);
   if (state === "none") return null;
-  if (state === "received") return <button type="button" className="text-sm font-medium text-success underline-offset-2 hover:underline" onClick={() => { markReceived(appointment.id, false); toast.success("Señal desmarcada"); }}>Señal recibida · Desmarcar</button>;
+  if (state === "received") return <button type="button" className="text-sm font-medium text-success underline-offset-2 hover:underline" onClick={() => { markReceived(appointment.id, false); }}>Señal recibida · Desmarcar</button>;
   if (state === "requested") return <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-medium text-foreground">
     Vence a las {due && new Date(due).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
     {due && new Date(due).toDateString() !== now?.toDateString() &&
       ` del ${new Date(due).toLocaleDateString("es-ES", { day: "numeric", month: "long" })}`}
-  </p><Button size="sm" variant="outline" onClick={() => { markReceived(appointment.id, true); toast.success("Señal recibida"); }}>Ha llegado</Button></div>;
+  </p><Button size="sm" variant="outline" onClick={() => { markReceived(appointment.id, true); }}>Ha llegado</Button></div>;
   return <div className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3">
     <p className="text-sm font-semibold text-destructive">Señal vencida</p>
     <div className="flex flex-wrap gap-2">
-      <Button size="sm" onClick={() => { markReceived(appointment.id, true); toast.success("Señal recibida"); }}>Ha llegado</Button>
-      <Button size="sm" variant="outline" onClick={() => { extend(appointment.id); toast.success("Plazo ampliado"); }}>Dar más tiempo</Button>
+      <Button size="sm" onClick={() => { markReceived(appointment.id, true); }}>Ha llegado</Button>
+      <Button size="sm" variant="outline" onClick={() => { extend(appointment.id); }}>Dar más tiempo</Button>
       <Button size="sm" variant="outline" className="text-destructive" onClick={() => setConfirmRelease(true)}>Liberar el hueco</Button>
     </div>
     {confirmRelease && <div className="space-y-2 border-t border-destructive/30 pt-2 text-sm">

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getSupabaseServerClient } from "@/lib/supabase.server";
 import { generarCalendarioIcs, type CitaCalendario } from "@/lib/calendario-ics";
+import { nombreServicioLibre } from "@/lib/appointment-services";
 import { servicesForType } from "@/lib/mock/salon";
 import { inferBusinessType } from "@/lib/business-type";
 import type { SalonProfile } from "@/lib/mock/types";
@@ -39,7 +40,7 @@ export const Route = createFileRoute("/api/calendario")({
       const lote = (filas ?? []) as Fila[];
       for (const fila of lote) citas.push({
         id: fila.local_id ?? fila.id, clientName: fila.client_name ?? "Cliente",
-        service: fila.service_id.split(",").map((id) => servicios[id] ?? "Servicio").join(" + "),
+        service: fila.service_id.split(",").map((id) => servicios[id] ?? nombreServicioLibre(id) ?? "Servicio").join(" + "),
         employeeId: fila.employee_id, start: fila.start_at, duration: fila.duration_min, status: fila.status,
       });
       if (lote.length < 500) break;

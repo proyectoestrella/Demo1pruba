@@ -261,6 +261,15 @@ export interface SalonProfile {
   address: string;
   /** El salón fija la duración al aceptar cada solicitud. */
   duracionFlexible?: boolean;
+  /** Cómo abre el calendario del panel (ver `lib/preferencias-calendario.ts`). */
+  calendario?: {
+    vista?: "dia" | "tres" | "semana" | "mes" | "cronograma";
+    /** 0 domingo · 1 lunes · 6 sábado. */
+    primerDia?: 0 | 1 | 6;
+    /** Horas visibles de la rejilla, en horas enteras. */
+    desde?: number;
+    hasta?: number;
+  };
   phone: string;
   instagram: string;
   /** Siete cadenas, lunes a domingo: "10:00–13:30, 17:00–20:00" o "Cerrado". Ver lib/opening-hours.ts */
@@ -290,6 +299,13 @@ export interface SalonProfile {
    * de la demo y el salón la ve en su móvil, que es de lo que se trata.
    */
   heroImage?: string;
+  /** Logo del salón para el círculo del menú y la portada. Vacío: la inicial. */
+  logoUrl?: string;
+  /** Textos de WhatsApp de la dueña (9h). Vacío o ausente: el texto de siempre. */
+  plantillas?: { recordatorio?: string; confirmacion?: string };
+  /** Color elegido por la dueña (9h): servicio → 1-6 de la paleta; profesional → 1-4. */
+  coloresServicio?: Record<string, number>;
+  coloresProfesional?: Record<string, number>;
   /**
    * Equipo real del salón, de 1 a 6 entradas ("Nombre" o "Nombre~Especialidad"
    * — ver `parseTeamEntry` en business-type.ts). Vacío o ausente = el equipo

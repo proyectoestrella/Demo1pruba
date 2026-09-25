@@ -369,22 +369,22 @@ export function aiInsights(
     {
       icon: "heart",
       tone: "success" as const,
-      title: employees.length < 2 ? "Clientes que repiten" : "Campeón en fidelización",
+      title: employees.length < 2 ? "Clientas que repiten" : "Campeón en fidelización",
       body: champion
-        ? `${champion.name} tiene la mayor tasa de clientes que repiten del equipo — ${champion.pct}% vuelven.`
+        ? `${champion.name} tiene la mayor tasa de clientas que repiten del equipo — ${champion.pct}% vuelven.`
         : employees.length < 2
-          ? "Trabajas solo: no hay a quién comparar. Mira la ficha de cada cliente para ver quién repite."
-          : "Todavía no hay suficientes clientes con dos visitas como para comparar al equipo.",
+          ? "Trabajas solo: no hay a quién comparar. Mira la ficha de cada clienta para ver quién repite."
+          : "Todavía no hay suficientes clientas con dos visitas como para comparar al equipo.",
       // Esta sí se sostiene siempre: la lista de clientes existe haya o no
       // campeón, y es exactamente lo que el texto invita a mirar.
-      action: champion ? `Ver clientes de ${champion.name}` : "Ver clientes",
+      action: champion ? `Ver clientas de ${champion.name}` : "Ver clientas",
     },
     {
       icon: "calendar-clock",
       tone: "primary" as const,
       title: "Patrón de reserva recurrente",
       body: regreso
-        ? `Tus clientes vuelven cada ${regreso.semanasMedia} ${regreso.semanasMedia === 1 ? "semana" : "semanas"} de media. ${
+        ? `Tus clientas vuelven cada ${regreso.semanasMedia} ${regreso.semanasMedia === 1 ? "semana" : "semanas"} de media. ${
             regreso.tocanEstaSemana === 0
               ? "Ninguno tiene que volver esta semana."
               : `${regreso.tocanEstaSemana} ${regreso.tocanEstaSemana === 1 ? "tendría" : "tendrían"} que volver esta semana y no ${regreso.tocanEstaSemana === 1 ? "tiene" : "tienen"} cita puesta.`

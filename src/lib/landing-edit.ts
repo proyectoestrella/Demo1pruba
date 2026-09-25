@@ -37,6 +37,8 @@ export interface BorradorLanding {
   phone: string;
   instagram: string;
   heroImage: string;
+  /** Enlace al logo; vacío = la inicial. */
+  logoUrl: string;
   specialties: string;
   /** Nota media y número de reseñas de su ficha de Google, tal y como se teclean. */
   rating: string;
@@ -92,6 +94,7 @@ export function borradorDesdePerfil(p: SalonProfile): BorradorLanding {
     phone: p.phone ?? "",
     instagram: p.instagram ?? "",
     heroImage: p.heroImage ?? "",
+    logoUrl: p.logoUrl ?? "",
     specialties: (p.specialties ?? []).join(", "),
     rating: String(p.rating ?? 0),
     reviewCount: String(p.reviewCount ?? 0),
@@ -120,6 +123,7 @@ function digitos(v: string): string {
 }
 
 const EXT_FOTO = /\.(jpe?g|png|webp|avif)(\?.*)?$/i;
+const EXT_LOGO = /\.(jpe?g|png|webp|avif|svg)(\?.*)?$/i;
 
 /**
  * Todo lo que impide publicar, en español y diciendo qué hay que hacer. Lista
@@ -142,7 +146,10 @@ export function validarBorrador(b: BorradorLanding): ErrorCampo[] {
 
   const foto = b.heroImage.trim();
   if (foto) {
-    if (!/^https?:\/\//i.test(foto)) {
+    // La foto de las demos llega por el proxy propio (/api/foto?…): vale tal cual.
+    if (/^\/api\/foto\?/.test(foto)) {
+      /* foto propia de siShow */
+    } else if (!/^https?:\/\//i.test(foto)) {
       errores.push({
         campo: "heroImage",
         mensaje: "La dirección de la foto de portada tiene que empezar por http:// o https://.",
@@ -152,6 +159,15 @@ export function validarBorrador(b: BorradorLanding): ErrorCampo[] {
         campo: "heroImage",
         mensaje: "La foto de portada tiene que acabar en .jpg, .png, .webp o .avif. Si el enlace no acaba así, no es una foto.",
       });
+    }
+  }
+
+  const logo = b.logoUrl.trim();
+  if (logo) {
+    if (!/^(https?:\/\/|\/)/i.test(logo)) {
+      errores.push({ campo: "logoUrl", mensaje: "La dirección del logo tiene que empezar por http:// o https://." });
+    } else if (!EXT_LOGO.test(logo)) {
+      errores.push({ campo: "logoUrl", mensaje: "El logo tiene que acabar en .png, .jpg, .webp o .svg. Si el enlace no acaba así, no es una imagen." });
     }
   }
 
@@ -315,6 +331,7 @@ export function perfilDesdeBorrador(b: BorradorLanding): Partial<SalonProfile> {
     phone: b.phone.trim(),
     instagram: b.instagram.trim(),
     heroImage: b.heroImage.trim(),
+    logoUrl: b.logoUrl.trim(),
     rating: Number(b.rating.replace(",", ".")) || 0,
     reviewCount: Math.round(Number(b.reviewCount.replace(/\s/g, "")) || 0),
     specialties: b.specialties

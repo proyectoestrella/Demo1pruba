@@ -36,7 +36,7 @@ export function TeamShowcase({ members }: { members: TeamMember[] }) {
   return (
     <div className="flex w-full select-none flex-col items-start gap-8 md:flex-row md:gap-10 lg:gap-14">
       {/* Rejilla de retratos */}
-      <div className="flex flex-shrink-0 gap-2 overflow-x-auto pb-1 md:gap-3 md:pb-0">
+      <div className="flex max-w-full flex-shrink-0 gap-2 overflow-x-auto pb-1 md:gap-3 md:pb-0">
         <div className="flex flex-col gap-2 md:gap-3">
           {col1.map((member) => (
             <PhotoCard
@@ -112,7 +112,9 @@ function PhotoCard({
         loading="lazy"
         className="h-full w-full object-cover transition-[filter] duration-500 motion-reduce:transition-none"
         style={{
-          filter: isActive ? "grayscale(0) brightness(1)" : "grayscale(1) brightness(0.77)",
+          // Los avatares de relleno (iniciales en pastel) no se apagan: en gris
+          // parecen un error. Solo las fotos de verdad se destacan al pasar.
+          filter: isActive || member.image.startsWith("data:") ? "grayscale(0) brightness(1)" : "grayscale(1) brightness(0.77)",
         }}
       />
     </div>

@@ -69,7 +69,7 @@ export function WalkInDialog({ open, onOpenChange }: WalkInDialogProps) {
       toast.error(soloUno ? "Elige un servicio" : "Elige servicio y " + professionalWord(tipo));
       return;
     }
-    const clientName = name.trim() || "Cliente sin cita";
+    const clientName = name.trim() || "Clienta sin cita";
     addAppointment({
       clientId: `walkin-${Date.now()}`,
       clientName,
@@ -81,7 +81,7 @@ export function WalkInDialog({ open, onOpenChange }: WalkInDialogProps) {
       status: "confirmed",
       note: "Sin cita — entró directamente",
     });
-    toast.success("Cliente en agenda", {
+    toast.success("Clienta en agenda", {
       description: `${clientName} · ${service.name} · ahora`,
     });
     onOpenChange(false);

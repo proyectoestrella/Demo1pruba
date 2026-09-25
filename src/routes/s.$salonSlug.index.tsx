@@ -1,4 +1,6 @@
 import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
+import { DEMO_PARAM } from "@/lib/demo-profile";
+import { logoDelSalon } from "@/lib/logo-salon";
 import {
   ArrowRight,
   CalendarCheck,
@@ -30,6 +32,7 @@ import {
   professionalWord,
   showsRealPhotos,
   type BusinessType,
+  placeholderAvatar,
 } from "@/lib/business-type";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import type { EmployeeId } from "@/lib/mock/types";
@@ -56,7 +59,6 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
-import { AuroraText } from "@/components/magicui/aurora-text";
 import { AvatarCircles } from "@/components/magicui/avatar-circles";
 import { BentoCard, BentoGrid } from "@/components/magicui/bento-grid";
 import { BorderBeam } from "@/components/magicui/border-beam";
@@ -220,7 +222,7 @@ function bentoItemsFor(
   noShowNoticeHours: number,
   single: boolean,
   proName?: string,
-  regla: ReglaSenal = reglaSenal({}),
+  textoSenal = "",
 ) {
   const palabra = professionalWord(tipo);
   // Señal por Bizum (caso PeluChic): el salón no penaliza, pide una señal al
@@ -229,7 +231,9 @@ function bentoItemsFor(
   const cancelacion =
     recargoActivo({ noShowFeeEur })
       ? `Hasta ${noShowNoticeHours} h antes, sin coste. Después, ${eur(noShowFeeEur)} de penalización.`
-      : resumenCancelacionSenal(regla, eur);
+      : textoSenal
+        ? textoSenal
+        : "Hasta 24 horas antes, sin coste y sin dar explicaciones.";
   return [
     {
       Icon: CalendarCheck,
@@ -374,6 +378,11 @@ function SectionHeading({
 function SalonHome() {
   const { salonSlug } = Route.useParams();
   const profile = useDisplayProfile();
+  // La demo (enlace ?d= o navegador sin salón real) resuelve su logo de la
+  // lista estática de demos; un salón real, solo el que haya guardado.
+  const sinSalonReal = useSalonStore((s) => !s.realSalonSlug);
+  const conEnlaceDemo = useRouterState({ select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string" });
+  const logoPortada = logoDelSalon(profile, sinSalonReal || conEnlaceDemo);
   const tipo = useBusinessType();
   // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
   // en la cadena "2" — de ahí el `String(...)` antes de comparar.
@@ -424,18 +433,24 @@ function SalonHome() {
   // Salón con un solo profesional (caso Adam): la sección de equipo, el
   // bento "Eliges barbero" y la FAQ de elegir profesional no tienen sentido.
   const soloPro = employees[0];
-  const regla = reglaSenal(profile);
+  // La señal sale de UNA regla (9j): la carta, la tarjeta de cancelación y la
+  // FAQ dicen lo mismo, y nada si el salón no la pide.
+  const reglaDeSenal = reglaSenal(profile);
+  const textoSenal = reglaDeSenal.activa ? respuestaFaqSenal(reglaDeSenal, (n) => eur(n).replace(",00", "")) : "";
   const bentoItems = bentoItemsFor(
     tipo,
     noShowFeeEur,
     noShowNoticeHours,
     soloUno,
     soloPro?.name,
-    regla,
+    textoSenal,
   );
-  const faq = faqPublica(tipo, noShowFeeEur, noShowNoticeHours, profile.faq, soloUno, respuestaFaqSenal(regla, eur)).map(
+  const faq = faqPublica(tipo, noShowFeeEur, noShowNoticeHours, profile.faq, soloUno, respuestaFaqSenal(reglaDeSenal, eur)).map(
     (entry) => {
       if (profile.faq?.length) return entry;
+      if (entry.q === "¿Hace falta pagar por adelantado?") {
+        return { ...entry, a: respuestaFaqSenal(reglaDeSenal, (n) => eur(n).replace(",00", "")) };
+      }
       if (soloUno && entry.q === "¿Quién me va a atender?" && soloPro) {
         return { ...entry, a: `Siempre te atiende ${soloPro.name}, sin turnos ni sustitutos.` };
       }
@@ -493,8 +508,9 @@ function SalonHome() {
           height={1280}
           fetchPriority="high"
         />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/92 via-black/60 to-black/25" />
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(75%_60%_at_15%_50%,rgba(0,0,0,0.55),transparent_70%)]" />
+        {/* Velo en tinta café sobre la foto (nunca negro puro): lo justo para
+            que el texto blanco se lea encima de cualquier portada. */}
+        <div className="absolute inset-0 -z-10 bg-cafe/60" />
 
         <div className="mx-auto w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-20 sm:py-24 md:py-32">
           <AnimatedGroup variants={HERO_IN} className="max-w-2xl space-y-6">
@@ -536,6 +552,11 @@ function SalonHome() {
               </div>
             </div>
 
+            {logoPortada && (
+              <span className="mb-4 block size-[72px] overflow-hidden rounded-full border border-white/40 bg-white shadow-[0_6px_20px_rgba(0,0,0,0.18)]">
+                <img src={logoPortada} alt={`Logo de ${profile.name}`} className="h-full w-full object-cover" />
+              </span>
+            )}
             <h1
               className={cn(
                 "font-display leading-[1.05] text-balance",
@@ -778,7 +799,7 @@ function SalonHome() {
                                 <p className="font-medium">{label.name}</p>
                                 <p className="text-sm text-muted-foreground">
                                   {s.durationMin} min
-                                  {servicioLlevaSenal(regla, s) ? " · con señal" : ""}
+                                  {servicioLlevaSenal(reglaDeSenal, s) ? " · con señal" : ""}
                                 </p>
                               </div>
                               <span className="flex shrink-0 items-center gap-2 font-display text-lg">
@@ -822,6 +843,28 @@ function SalonHome() {
             /* Retratos grandes en vez de avatares pequeños: en una barbería
                la cara del que te va a cortar es parte de lo que se vende. */
             <Reveal>
+              {employees.every((e) => fotoDe(e) === placeholderAvatar(e.name, e.id)) ? (
+                // Sin ninguna foto, el collage de retratos solo enseñaba letras
+                // gigantes montadas unas sobre otras: fichas sencillas y legibles.
+                <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {employees.map((e, i) => (
+                    <li key={e.id} className="flex items-center gap-4 rounded-[20px] border border-lino bg-background p-5">
+                      <span
+                        className="grid size-16 shrink-0 place-items-center rounded-full border border-cafe/30 font-display text-2xl text-cafe"
+                        style={{ background: `var(--pro-${(i % 4) + 1})` }}
+                        aria-hidden="true"
+                      >
+                        {e.name.trim().charAt(0).toUpperCase()}
+                      </span>
+                      <span className="min-w-0">
+                        <b className="block font-display text-xl font-medium">{e.name}</b>
+                        <span className="block text-sm text-muted-foreground">{e.specialty}</span>
+                        <span className="block text-[13px] text-cafe-suave tabular-nums">{e.yearsExperience} años de experiencia</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
               <TeamShowcase
                 members={employees.map((e) => ({
                   id: e.id,
@@ -830,6 +873,7 @@ function SalonHome() {
                   image: fotoDe(e),
                 }))}
               />
+              )}
             </Reveal>
           )}
         </div>
@@ -885,7 +929,7 @@ function SalonHome() {
             <div>
               <p className="text-xs uppercase tracking-[0.25em] text-primary">Reseñas</p>
               <h2 className="mt-2 font-display text-3xl md:text-4xl">
-                Lo que dicen nuestros clientes
+                Lo que dicen de nosotros
               </h2>
             </div>
             <div className="flex items-center gap-1.5 text-sm">
@@ -901,7 +945,7 @@ function SalonHome() {
 
           {/* Muro en dos filas que se cruzan. Se para al pasar el ratón para
               poder leer la que te interese. */}
-          <Reveal className="relative">
+          <Reveal className="relative [mask-image:linear-gradient(to_right,transparent,#000_7%,#000_93%,transparent)]">
             <Marquee pauseOnHover className="[--duration:38s] [--gap:1.25rem]">
               {reviews.map((r) => (
                 <ReviewCard key={r.name} {...r} />
@@ -912,9 +956,8 @@ function SalonHome() {
                 <ReviewCard key={r.name} {...r} />
               ))}
             </Marquee>
-            {/* Desvanecido lateral para que las tarjetas no se corten en seco. */}
-            <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-background sm:w-28" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background sm:w-28" />
+            {/* Sin degradados pintados (DESIGN.md): el borde del carrusel se
+                recorta con una máscara, así las tarjetas no se cortan en seco. */}
           </Reveal>
         </section>
       )}
@@ -1003,14 +1046,11 @@ function SalonHome() {
 
       {/* CTA final */}
       <section className="relative isolate overflow-hidden border-t border-border/40">
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 -z-10 bg-[radial-gradient(60%_80%_at_50%_0%,color-mix(in_oklab,var(--color-primary)_18%,transparent),transparent)]"
-        />
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-nata" />
         <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-20 text-center md:py-28">
           <Reveal className="flex flex-col items-center">
             <h2 className="font-display text-3xl md:text-5xl">
-              ¿Nos vemos <AuroraText colors={["#d6ab68", "#f0e6d2", "#b98a4d"]}>pronto</AuroraText>?
+              ¿Nos vemos pronto?
             </h2>
             <p className="mt-3 text-muted-foreground">
               {soloUno

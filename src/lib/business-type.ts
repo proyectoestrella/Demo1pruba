@@ -507,10 +507,12 @@ export function fotoDeProfesional(
   return fotoDeEjemplo;
 }
 
+// Pasteles «Arena» (DESIGN.md: taupe claro, salvia clara, nata tostada) con
+// las iniciales en café: nunca texto blanco sobre un color fuerte.
 const AVATAR_COLOR_HEX: Record<EmployeeId, string> = {
-  mario: "#a63a52",
-  diego: "#3f6fa8",
-  ruben: "#4a4a4a",
+  mario: "#EDE2D6",
+  diego: "#DDE8DD",
+  ruben: "#F1E4CF",
 };
 
 function initialsOf(name: string): string {
@@ -526,9 +528,9 @@ function initialsOf(name: string): string {
 
 /** Avatar de iniciales como data-URI, para cuando no hay foto real que mostrar. */
 export function placeholderAvatar(name: string, employeeId: EmployeeId): string {
-  const hex = AVATAR_COLOR_HEX[employeeId] ?? "#8a6a3b";
+  const hex = AVATAR_COLOR_HEX[employeeId] ?? "#EADFD2";
   const label = initialsOf(name);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240"><rect width="240" height="240" rx="120" fill="${hex}"/><text x="120" y="136" font-family="system-ui,-apple-system,sans-serif" font-size="88" font-weight="600" fill="#fff" text-anchor="middle">${label}</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240"><rect width="240" height="240" rx="120" fill="${hex}"/><text x="120" y="136" font-family="Manrope,system-ui,-apple-system,sans-serif" font-size="84" font-weight="800" fill="#3B2F2A" text-anchor="middle">${label}</text></svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 

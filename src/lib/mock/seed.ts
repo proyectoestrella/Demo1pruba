@@ -1,6 +1,6 @@
 import { employees as defaultEmployees, services as defaultServices } from "./salon";
 import { recargoActivo } from "../recargo-activo";
-import type { Appointment, Client, Employee, EmployeeId, Service, WaitlistEntry } from "./types";
+import type { Appointment, Client, Employee, EmployeeId, PaymentMethod, Service, WaitlistEntry } from "./types";
 import {
   FIRST_NAMES_BY_TYPE,
   LAST_NAMES,
@@ -680,9 +680,34 @@ export function buildSeed(
 
   return {
     clients: finalClients,
-    appointments,
+    appointments: sembrarCobros(appointments),
     waitlist: buildWaitlist(type, employees, services),
   };
+}
+
+/**
+ * Solo DEMO (lote 9d). Las citas completadas que ya terminaron salen
+ * cobradas, con la hora de fin como fecha de cobro y un reparto fijo de
+ * métodos (6 de cada 10 tarjeta, 3 efectivo, 1 Bizum). Sin esto, «Cobrado»
+ * saldría a 0 € en toda la demo. De hoy, solo lo de la mañana. Un salón real
+ * no pasa por aquí: sus cobros son los que marca.
+ */
+export function sembrarCobros(appointments: Appointment[], ahora = Date.now()): Appointment[] {
+  const METODOS: PaymentMethod[] = ["tarjeta", "tarjeta", "efectivo", "tarjeta", "bizum", "tarjeta", "efectivo", "tarjeta", "efectivo", "tarjeta"];
+  // Hoy: lo de la mañana (terminado antes de las 14:00) ya vino y está
+  // cobrado; lo de la tarde se queda sin marcar para que «¿Vinieron?» tenga
+  // material. Así «Llevas X € cobrados» es creíble a cualquier hora.
+  const hoy = new Date(ahora);
+  const inicioHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()).getTime();
+  const corteManana = Math.min(ahora, inicioHoy + 14 * 3_600_000);
+  return appointments.map((a, i) => {
+    if (a.paidAt) return a;
+    const ini = +new Date(a.start);
+    const fin = ini + a.duration * 60_000;
+    const mananaDeHoy = a.status === "confirmed" && ini >= inicioHoy && fin <= corteManana;
+    if (!(a.status === "completed" && fin <= ahora) && !mananaDeHoy) return a;
+    return { ...a, status: "completed" as const, paidAt: new Date(fin).toISOString(), paymentMethod: METODOS[i % METODOS.length] };
+  });
 }
 
 /**

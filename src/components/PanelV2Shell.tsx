@@ -20,7 +20,6 @@ import { usePanelPublicLink } from "@/lib/panel-public-link";
 import { useSalonStore } from "@/lib/store";
 import { moduloVisible, type ModuloOcultable } from "@/lib/demo-profile";
 import { Logo } from "@/components/Logo";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { BotonCerrarSesion } from "@/components/BotonCerrarSesion";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { BuscadorGlobal } from "@/components/BuscadorGlobal";
@@ -74,7 +73,7 @@ type NavItem = {
 const MAIN_ITEMS: NavItem[] = [
   { to: "/app", label: "Hoy", icon: Home, exact: true },
   { to: "/app/calendar", label: "Agenda", icon: CalendarDays },
-  { to: "/app/clients", label: "Clientes", icon: Users },
+  { to: "/app/clients", label: "Clientas", icon: Users },
 ];
 
 const MORE_ITEMS: NavItem[] = [
@@ -177,7 +176,6 @@ export function PanelV2Shell() {
             >
               <Sparkles className="h-4 w-4" />
             </Button>
-            <ThemeToggle />
           </div>
         </header>
 

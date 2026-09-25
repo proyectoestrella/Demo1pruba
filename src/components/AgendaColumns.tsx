@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useSalonStore } from "@/lib/store";
+import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
@@ -50,6 +50,7 @@ function startOfWeek(anchor: Date) {
  * caben en una pantalla de 390px sin convertirse en ilegibles.
  */
 export function AgendaColumns() {
+  const carta = selectServiceMap(useSalonStore((s) => s.services));
   const appointments = useSalonStore((s) => s.appointments);
   const employees = useEquipo();
   // Con un solo profesional no hay columnas que comparar: ni selector de
@@ -166,7 +167,7 @@ export function AgendaColumns() {
               }}
             >
               <p className="truncate font-medium leading-tight text-foreground">{a.clientName}</p>
-              <p className="truncate text-muted-foreground">{serviceLabelOf(a)}</p>
+              <p className="truncate text-muted-foreground">{serviceLabelOf(a, carta)}</p>
             </button>
           );
         })}

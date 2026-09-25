@@ -198,7 +198,7 @@ describe("aiInsights en un salón de un solo profesional", () => {
 
   it("no corona a nadie campeón del equipo cuando el equipo es una persona", () => {
     const card = aiInsights(historial("mario"), SOLO, AHORA).find(
-      (c) => c.title === "Clientes que repiten",
+      (c) => c.title === "Clientas que repiten",
     );
     expect(card).toBeDefined();
     expect(card!.body).toContain("Trabajas solo");

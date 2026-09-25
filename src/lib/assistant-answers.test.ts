@@ -5,7 +5,7 @@
  *   bun test
  */
 import { expect, test } from "bun:test";
-import { answerFor } from "./assistant-answers";
+import { SUGGESTION_GROUPS, answerFor } from "./assistant-answers";
 import { employees, services } from "./mock/salon";
 import type { Appointment, Client } from "./mock/types";
 
@@ -185,4 +185,11 @@ test("nombre de pila ambiguo y prioridad de ingresos", () => {
   expect(respuesta).toContain("Marta Martín");
   expect(respuesta).toContain("Marta Gómez");
   expect(answerFor("ingresos", datos)).not.toContain("Ficha de Inés");
+});
+
+test("todas las preguntas sugeridas tienen respuesta, también las de «clientas»", () => {
+  const ctx = { appointments: [], clients: [], services, employees, waitlist: [], salonName: "Prueba", now: new Date("2026-09-25T12:00:00") } as unknown as Parameters<typeof answerFor>[1];
+  for (const g of SUGGESTION_GROUPS) {
+    for (const q of g.items) expect(answerFor(q, ctx)).not.toContain("No sé responder a eso");
+  }
 });

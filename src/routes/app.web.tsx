@@ -1,14 +1,25 @@
+import { VersionesWeb } from "@/components/VersionesWeb";
+import { useVersiones, webDe } from "@/lib/versiones-maqueta";
+import { conCambio, guardarPerfil } from "@/lib/deshacer-maqueta";
+import { miembroAhora, usePermisos } from "@/lib/accesos-panel";
+import { puede } from "@/lib/permisos";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePlegado } from "@/lib/use-plegado";
+import { AvatarSalon } from "@/components/AvatarSalon";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
+  Copy,
   ExternalLink,
+  Info,
   Loader2,
   Monitor,
   RefreshCw,
   Smartphone,
   TriangleAlert,
+  ChevronDown,
 } from "lucide-react";
+import { usePanelPublicLink } from "@/lib/panel-public-link";
 
 import { useSalonStore } from "@/lib/store";
 import { useRealSalonSlug } from "@/lib/use-real-salon";
@@ -45,8 +56,19 @@ function MiWeb() {
   const salonProfile = useSalonStore((s) => s.salonProfile);
   const equipo = useEquipo();
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
+  const permisosWeb = usePermisos();
   const realSlug = useRealSalonSlug();
   const esReal = Boolean(realSlug);
+  const enlacePublico = usePanelPublicLink();
+  const copiarEnlace = async () => {
+    const url = new URL(enlacePublico, window.location.origin).toString();
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Enlace copiado");
+    } catch {
+      toast.error("No se ha podido copiar. Abre tu web y copia el enlace desde allí.");
+    }
+  };
   const slugPrevia = realSlug ?? salonProfile.slug ?? "demo";
 
   /** Lo último que se sabe publicado: el punto al que vuelve «Descartar» y la base de «Deshacer». */
@@ -162,10 +184,23 @@ function MiWeb() {
     setErrores((e) => e.filter((err) => err.campo !== clave));
   }
 
-  async function publicar() {
+  /**
+   * Lote 12: aplica en el panel lo publicado dejando su fila en el historial
+   * (sin otro aviso: el de publicar ya lleva «Deshacer») y guarda la versión.
+   * La primera vez guarda también cómo estaba antes, para poder volver.
+   */
+  function publicarEnPanel(parcheWeb: Partial<SalonProfile>, previo: SalonProfile, tipo: "perfil.publicar" | "perfil.restaurar") {
+    const { versiones, guardar } = { versiones: useVersiones.getState().porSalon[slugPrevia] ?? [], guardar: useVersiones.getState().guardar };
+    const autor = miembroAhora()?.displayName ?? null;
+    if (versiones.length === 0) guardar(slugPrevia, webDe(previo), null, new Date(Date.now() - 1000).toISOString());
+    conCambio(() => guardarPerfil(parcheWeb as never, tipo));
+    guardar(slugPrevia, webDe({ ...previo, ...parcheWeb }), autor);
+  }
+
+  async function publicar(desde: BorradorLanding = borrador, tipo: "perfil.publicar" | "perfil.restaurar" = "perfil.publicar") {
     // El borrador conserva el equipo para compatibilidad con el perfil, pero
     // aquí ya no se edita: lo gestiona Equipo y admite hasta seis personas.
-    const fallos = validarBorrador({ ...borrador, team: "" });
+    const fallos = validarBorrador({ ...desde, team: "" });
     setErrores(fallos);
     if (fallos.length > 0) {
       toast.error(
@@ -177,7 +212,7 @@ function MiWeb() {
     }
 
     const previo = { ...publicado, team: salonProfile.team, teamHours: salonProfile.teamHours, teamIds: salonProfile.teamIds };
-    const parche = perfilDesdeBorrador(borrador);
+    const parche = perfilDesdeBorrador(desde);
     // El equipo se edita en una sola pantalla. No guardar una copia antigua
     // de nombres ni horarios cuando se publica otro cambio de la web.
     const { team: _equipoSinEditar, ...parcheWeb } = parche;
@@ -187,10 +222,10 @@ function MiWeb() {
       // Demo de venta: el perfil vive dentro del enlace, no en ninguna tabla.
       // Se aplica en este navegador para que el resto del panel lo vea, pero
       // NO se promete nada que no sea cierto.
-      updateSalonProfile(parcheWeb);
+      publicarEnPanel(parcheWeb, previo, tipo);
       setPublicado(nuevo);
       setAnterior(previo);
-      toast.success("Cambios aplicados en esta demo", {
+      toast.success(tipo === "perfil.restaurar" ? "Versión restaurada en esta demo" : "Cambios aplicados en esta demo", {
         description: "No se ha publicado nada: una demo no tiene web propia que actualizar.",
       });
       return;
@@ -215,10 +250,10 @@ function MiWeb() {
       // Ya está arriba: ahora sí se aplica en el panel. Esto vuelve a subirlo
       // por la vía de siempre (`pushSalonProfile`), que es el mismo upsert —
       // repetirlo no cambia nada y mantiene una sola forma de escribir.
-      updateSalonProfile(parcheWeb);
+      publicarEnPanel(parcheWeb, previo, tipo);
       setPublicado(nuevo);
       setAnterior(previo);
-      toast.success("Publicado: tu web ya muestra estos cambios", {
+      toast.success(tipo === "perfil.restaurar" ? "Restaurada: tu web vuelve a esa versión" : "Publicado: tu web ya muestra estos cambios", {
         description: "Cualquiera que abra tu enlace lo ve ya.",
       });
     } catch (err) {
@@ -272,15 +307,15 @@ function MiWeb() {
     errores.filter((e) => e.campo === clave).map((e) => e.mensaje);
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-1 flex-col gap-5">
       <PageHeader
-        title="Mi web"
-        description="Lo que ven tus clientes cuando abren tu enlace. Cámbialo aquí y míralo al momento."
+        title="Mi página de reservas"
+        description="Lo que ven tus clientas cuando abren tu enlace. Cámbialo aquí y míralo al momento."
       />
 
       {!esReal && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
-          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+        <div className="flex items-start gap-2.5 rounded-2xl bg-salvia-clara px-4 py-3 text-[12.5px] text-hoja-tinta">
+          <Info className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
           <p>
             <strong>Esto es una demo de venta.</strong> Aquí no hay ninguna web publicada que
             actualizar: los cambios se ven en la vista previa y en esta tablet, pero no salen a
@@ -292,9 +327,11 @@ function MiWeb() {
       {errores.length > 0 && (
         <div
           role="alert"
-          className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm"
+          className="flex gap-2.5 rounded-2xl border border-melocoton-borde bg-melocoton px-4 py-3 text-[12.5px] text-melocoton-tinta"
         >
-          <p className="font-medium">
+          <TriangleAlert className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
+          <div>
+          <p className="font-bold">
             {errores.length === 1
               ? "Hay algo que revisar antes de publicar:"
               : `Hay ${errores.length} cosas que revisar antes de publicar:`}
@@ -304,16 +341,17 @@ function MiWeb() {
               <li key={`${e.campo}-${i}`}>{e.mensaje}</li>
             ))}
           </ul>
+          </div>
         </div>
       )}
 
       {/* Barra de acciones. Pegajosa arriba: en un iPad, con el editor largo,
           el botón de publicar tiene que estar siempre a un dedo. */}
-      <div className="sticky top-16 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-card/95 p-3 backdrop-blur">
+      <div className="sticky top-[71px] z-10 flex flex-wrap items-center gap-2 rounded-[20px] border border-border bg-card/95 p-2.5 backdrop-blur max-md:top-[118px]">
         <Button
-          onClick={publicar}
+          onClick={() => publicar()}
           disabled={guardando || !sucio}
-          className="min-h-11 flex-1 sm:flex-none"
+          className="h-[42px] flex-1 sm:flex-none"
         >
           {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {esReal ? "Publicar cambios" : "Aplicar en la demo"}
@@ -322,29 +360,61 @@ function MiWeb() {
           variant="outline"
           onClick={descartar}
           disabled={guardando || !sucio}
-          className="min-h-11"
+          className="h-[42px]"
         >
           Descartar
         </Button>
         {anterior && (
-          <Button variant="outline" onClick={deshacer} disabled={guardando} className="min-h-11">
+          <Button variant="outline" onClick={deshacer} disabled={guardando} className="h-[42px]">
             <RefreshCw className="h-4 w-4" />
             Deshacer
           </Button>
         )}
-        <span className="ml-auto text-xs text-muted-foreground">
+        <VersionesWeb
+          slug={slugPrevia}
+          actual={webDe(publicado)}
+          puedeRestaurar={puede(permisosWeb, "web.restaurar-version")}
+          onVer={(web) => {
+            // Solo en la vista previa: no se publica hasta darle a Publicar.
+            setBorrador(borradorDesdePerfil({ ...publicado, ...web } as SalonProfile));
+            setErrores([]);
+          }}
+          onRestaurar={(web) => {
+            const b = borradorDesdePerfil({ ...publicado, ...web } as SalonProfile);
+            setBorrador(b);
+            void publicar(b, "perfil.restaurar");
+          }}
+        />
+        <span
+          className={cn(
+            "inline-flex h-6 items-center rounded-full px-2.5 text-[12.5px] font-bold",
+            sucio ? "border-[1.5px] border-dashed border-moca bg-card text-primary" : "bg-salvia-clara text-hoja-tinta",
+          )}
+        >
           {sucio ? "Cambios sin publicar" : "Todo publicado"}
         </span>
+        <div className="flex w-full gap-2 sm:ml-auto sm:w-auto">
+          <Button variant="outline" className="h-[42px] flex-1 sm:flex-none" onClick={copiarEnlace}>
+            <Copy className="size-[18px]" strokeWidth={1.6} />
+            Copiar enlace
+          </Button>
+          <Button variant="outline" className="h-[42px] flex-1 sm:flex-none" asChild>
+            <a href={enlacePublico} target="_blank" rel="noreferrer">
+              <ExternalLink className="size-[18px]" strokeWidth={1.6} />
+              Ver en tu web
+            </a>
+          </Button>
+        </div>
       </div>
 
       {/* `min-w-0` en la rejilla y en sus dos columnas: sin él, la columna de
           la vista previa impone su ancho real (390 px del móvil simulado) como
           ancho mínimo de la única columna que hay en móvil, y la pantalla
           entera se iba 42 px a la derecha con los campos cortados. */}
-      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:group-data-[panel=abierto]/panel:grid-cols-1">
         {/* ---------------- Editor ---------------- */}
         <div className="min-w-0 space-y-5">
-          <Bloque titulo="Lo primero que se ve">
+          <Bloque titulo="Lo primero que se ve" abierto forzar={errores.length > 0}>
             <Campo
               etiqueta="Nombre del salón"
               valor={borrador.name}
@@ -377,9 +447,24 @@ function MiWeb() {
               errores={errorDe("heroImage")}
               pista="Vacío usa una foto de ejemplo. Tiene que acabar en .jpg, .png o .webp."
             />
+            <div className="flex items-start gap-4">
+              <div className="min-w-0 flex-1">
+                <Campo
+                  etiqueta="Logo (enlace)"
+                  valor={borrador.logoUrl}
+                  onChange={(v) => campo("logoUrl", v)}
+                  errores={errorDe("logoUrl")}
+                  pista="Sale en el círculo del menú y en la portada de tu web. Vacío: la inicial del salón."
+                />
+              </div>
+              <div className="mt-7 flex shrink-0 flex-col items-center gap-1">
+                <AvatarSalon size={56} logoForzado={borrador.logoUrl.trim() ? borrador.logoUrl.trim() : undefined} />
+                <span className="text-[11.5px] text-cafe-suave">Vista previa</span>
+              </div>
+            </div>
           </Bloque>
 
-          <Bloque titulo="Cómo te encuentran">
+          <Bloque titulo="Cómo te encuentran" forzar={errores.length > 0}>
             <Campo
               etiqueta="Dirección"
               valor={borrador.address}
@@ -400,7 +485,7 @@ function MiWeb() {
             />
           </Bloque>
 
-          <Bloque titulo="Tus reseñas de Google">
+          <Bloque titulo="Tus reseñas de Google" forzar={errores.length > 0}>
             <div className="grid gap-4 sm:grid-cols-2">
               <Campo
                 etiqueta="Nota"
@@ -418,11 +503,11 @@ function MiWeb() {
             </div>
           </Bloque>
 
-          <Bloque titulo="Horario">
+          <Bloque titulo="Horario" forzar={errores.length > 0}>
             <div className="grid gap-2 sm:grid-cols-2">
               {DAY_LABELS_ES.map((etiqueta, i) => (
                 <div key={etiqueta} className="flex items-center gap-2">
-                  <span className="w-20 shrink-0 text-xs text-muted-foreground">{etiqueta}</span>
+                  <span className="w-20 shrink-0 text-[12.5px] font-bold text-cafe-medio">{etiqueta}</span>
                   <Input
                     aria-label={etiqueta}
                     value={borrador.openingHours[i] ?? ""}
@@ -433,7 +518,7 @@ function MiWeb() {
                       )
                     }
                     placeholder="10:00–14:00, 17:00–20:00 · o Cerrado"
-                    className="h-11 font-mono text-xs"
+                    className="h-11 text-[13px] tabular-nums"
                   />
                 </div>
               ))}
@@ -444,7 +529,7 @@ function MiWeb() {
             </p>
           </Bloque>
 
-          <Bloque titulo="Servicios y precios">
+          <Bloque titulo="Servicios y precios" forzar={errores.length > 0}>
             <CampoLargo
               etiqueta="Tu carta"
               valor={borrador.menu}
@@ -456,13 +541,13 @@ function MiWeb() {
             />
           </Bloque>
 
-          <Bloque titulo="Equipo">
-            <p className="text-sm text-muted-foreground">Este equipo también aparece en tus reservas. Cambia nombres, especialidades y horarios desde su pantalla.</p>
+          <Bloque titulo="Equipo" forzar={errores.length > 0}>
+            <p className="text-[13px] text-muted-foreground">Este equipo también aparece en tus reservas. Cambia nombres, especialidades y horarios desde su pantalla.</p>
             <ul className="mt-3 space-y-1 text-sm">{equipo.map((persona) => <li key={persona.id}>{persona.name}{persona.specialty ? ` · ${persona.specialty}` : ""}</li>)}</ul>
-            <Link to="/app/employees" className="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-primary">Editar equipo y horarios</Link>
+            <Link to="/app/employees" className="mt-3 inline-flex h-[34px] items-center rounded-full border border-input bg-card px-[13px] text-[12.5px] font-bold hover:bg-nata">Editar equipo y horarios</Link>
           </Bloque>
 
-          <Bloque titulo="Preguntas frecuentes">
+          <Bloque titulo="Preguntas frecuentes" forzar={errores.length > 0}>
             <CampoLargo
               etiqueta="Lo que te preguntan siempre"
               valor={borrador.faq}
@@ -473,7 +558,7 @@ function MiWeb() {
             />
           </Bloque>
 
-          <Bloque titulo="Franjas prioritarias">
+          <Bloque titulo="Franjas prioritarias" forzar={errores.length > 0}>
             <CampoLargo
               etiqueta="Las horas que quieres llenar primero"
               valor={borrador.priorityHours}
@@ -487,34 +572,33 @@ function MiWeb() {
         </div>
 
         {/* ---------------- Vista previa ---------------- */}
-        <div className="min-w-0 lg:sticky lg:top-32 lg:h-[calc(100vh-11rem)]">
-          <div className="flex h-full min-w-0 flex-col rounded-xl border border-border/60 bg-muted/30 p-3">
-            <div className="mb-3 flex items-center gap-2">
-              <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                Tu web, de verdad
-              </p>
-              <div className="ml-auto flex items-center gap-1">
-                <Button
-                  variant={dispositivo === "movil" ? "default" : "outline"}
-                  size="icon"
-                  className="h-11 w-11"
-                  onClick={() => setDispositivo("movil")}
-                  aria-label="Ver en móvil"
-                  title="Ver en móvil"
-                >
-                  <Smartphone className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={dispositivo === "escritorio" ? "default" : "outline"}
-                  size="icon"
-                  className="h-11 w-11"
-                  onClick={() => setDispositivo("escritorio")}
-                  aria-label="Ver en ordenador"
-                  title="Ver en ordenador"
-                >
-                  <Monitor className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" className="h-11 w-11" asChild>
+        <div className="min-w-0 lg:sticky lg:top-[152px] lg:h-[calc(100dvh-180px)]">
+          <div className="flex h-full min-w-0 flex-col rounded-[20px] border border-border bg-perla p-3.5">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <div className="min-w-0">
+                <h2 className="text-base font-extrabold tracking-[-0.01em]">Así la ve tu clienta</h2>
+                <p className="text-[12.5px] text-muted-foreground">Tu web de verdad, con los cambios sin publicar.</p>
+              </div>
+              <div className="ml-auto flex items-center gap-1.5">
+                <div role="tablist" aria-label="Tamaño de la vista previa" className="inline-flex gap-0.5 rounded-full border border-border bg-nata p-1">
+                  {([["movil", "Móvil", Smartphone], ["escritorio", "Ordenador", Monitor]] as const).map(([id, texto, Icono]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      role="tab"
+                      aria-selected={dispositivo === id}
+                      onClick={() => setDispositivo(id)}
+                      className={cn(
+                        "inline-flex h-[34px] items-center gap-1.5 rounded-full px-3 text-[13px] font-bold text-cafe-medio",
+                        dispositivo === id && "bg-card text-foreground shadow-[0_1px_3px_rgba(59,47,42,0.12)]",
+                      )}
+                    >
+                      <Icono className="size-4" strokeWidth={1.6} />
+                      {texto}
+                    </button>
+                  ))}
+                </div>
+                <Button variant="outline" size="icon" className="size-[42px]" asChild>
                   <a
                     href={urlPintada}
                     target="_blank"
@@ -522,7 +606,7 @@ function MiWeb() {
                     aria-label="Abrir la vista previa en otra pestaña"
                     title="Abrir en otra pestaña"
                   >
-                    <ExternalLink className="h-4 w-4" />
+                    <ExternalLink className="size-[18px]" strokeWidth={1.6} />
                   </a>
                 </Button>
               </div>
@@ -539,7 +623,7 @@ function MiWeb() {
               />
             </Marco>
 
-            <p className="mt-2 text-center text-xs text-muted-foreground">
+            <p className="mt-2 text-center text-[12.5px] text-muted-foreground">
               {alDia
                 ? dispositivo === "movil"
                   ? "Así la ven desde el móvil, que es por donde entran casi todos."
@@ -586,7 +670,7 @@ function Marco({ ancho, children }: { ancho: number; children: React.ReactNode }
           centra. Dentro va el marco a su tamaño real, escalado desde la
           esquina — centrar un elemento más ancho que su hueco no funciona. */}
       <div
-        className="mx-auto h-full overflow-hidden rounded-xl border border-border shadow-sm"
+        className="mx-auto h-full overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--sombra-tarjeta)]"
         style={{ width: ancho * escala }}
       >
         <div
@@ -604,11 +688,22 @@ function Marco({ ancho, children }: { ancho: number; children: React.ReactNode }
   );
 }
 
-function Bloque({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+/**
+ * Bloque del editor, plegable desde su título (recordado en el navegador).
+ * Si hay errores al publicar se abren todos, para que ninguno quede escondido.
+ */
+function Bloque({ titulo, children, abierto: porDefecto = false, forzar = false }: { titulo: string; children: React.ReactNode; abierto?: boolean; forzar?: boolean }) {
+  const [abierto, alternar] = usePlegado(`mi-pagina:${titulo}`, porDefecto);
+  const visible = abierto || forzar;
   return (
-    <section className="space-y-4 rounded-xl border border-border/60 bg-card p-5">
-      <h2 className="text-xs uppercase tracking-widest text-muted-foreground">{titulo}</h2>
-      {children}
+    <section className="rounded-[20px] border border-border bg-card">
+      <h2>
+        <button type="button" aria-expanded={visible} onClick={alternar} className="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-beige/50">
+          <span className="flex-1 text-base font-extrabold tracking-[-0.01em]">{titulo}</span>
+          <ChevronDown className={cn("size-5 shrink-0 text-cafe-medio transition-transform", visible && "rotate-180")} strokeWidth={1.6} aria-hidden="true" />
+        </button>
+      </h2>
+      {visible && <div className="space-y-4 px-5 pb-5">{children}</div>}
     </section>
   );
 }
@@ -616,7 +711,7 @@ function Bloque({ titulo, children }: { titulo: string; children: React.ReactNod
 function Fallos({ mensajes }: { mensajes: string[] }) {
   if (mensajes.length === 0) return null;
   return (
-    <ul className="space-y-1 text-xs text-destructive">
+    <ul className="space-y-1 text-[12.5px] text-melocoton-tinta">
       {mensajes.map((m, i) => (
         <li key={i}>{m}</li>
       ))}
@@ -641,16 +736,16 @@ function Campo({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs uppercase tracking-widest text-muted-foreground">{etiqueta}</Label>
+      <Label className="text-[12.5px] font-bold text-cafe-medio">{etiqueta}</Label>
       <Input
         type={tipo}
         value={valor}
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={errores.length > 0}
-        className={cn("h-11", errores.length > 0 && "border-destructive")}
+        className={cn("h-11", errores.length > 0 && "border-melocoton-tinta")}
       />
       <Fallos mensajes={errores} />
-      {pista ? <p className="text-xs text-muted-foreground">{pista}</p> : null}
+      {pista ? <p className="text-[12.5px] text-muted-foreground">{pista}</p> : null}
     </div>
   );
 }
@@ -674,7 +769,7 @@ function CampoLargo({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs uppercase tracking-widest text-muted-foreground">{etiqueta}</Label>
+      <Label className="text-[12.5px] font-bold text-cafe-medio">{etiqueta}</Label>
       <Textarea
         value={valor}
         onChange={(e) => onChange(e.target.value)}
@@ -683,11 +778,11 @@ function CampoLargo({
         className={cn(
           "resize-y",
           mono && "font-mono text-xs",
-          errores.length > 0 && "border-destructive",
+          errores.length > 0 && "border-melocoton-tinta",
         )}
       />
       <Fallos mensajes={errores} />
-      {pista ? <p className="text-xs text-muted-foreground">{pista}</p> : null}
+      {pista ? <p className="text-[12.5px] text-muted-foreground">{pista}</p> : null}
     </div>
   );
 }

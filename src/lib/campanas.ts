@@ -131,10 +131,10 @@ export function clientesQueNoVuelven(
 
   return {
     id: "no-vuelven",
-    titulo: "Clientes que no vuelven",
+    titulo: "Clientas que no vuelven",
     resumenAQuien: `Sin cita desde hace más de ${SEMANAS_INACTIVIDAD} semanas`,
     cifra: personas.length,
-    cifraLabel: personas.length === 1 ? "cliente" : "clientes",
+    cifraLabel: personas.length === 1 ? "clienta" : "clientas",
     personas,
     mensaje: `Hola, soy de ${salonName}. Hace tiempo que no te vemos por aquí y nos encantaría cuidarte de nuevo. ¿Te reservamos un hueco esta semana?`,
     coste: COSTE_INCLUIDO,
@@ -164,7 +164,7 @@ interface HuecoFlojo {
  * incompletas). `null` si no hay ningún cruce con capacidad — agenda vacía o
  * cerrado siempre.
  */
-function calcularHuecoFlojo(
+export function calcularHuecoFlojo(
   appointments: Appointment[],
   employees: Employee[],
   now: Date,
@@ -251,7 +251,7 @@ export function huecosFlojos(
   return {
     id: "huecos-flojos",
     titulo: `Llena los ${hueco.diaLabel} por la ${hueco.franjaLabel}`,
-    resumenAQuien: "Tus clientes activos, para que prueben ese horario",
+    resumenAQuien: "Tus clientas activas, para que prueben ese horario",
     cifra: hueco.huecosLibres,
     cifraLabel: `huecos libres los ${hueco.diaLabel} por la ${hueco.franjaLabel} cada semana (${hueco.ocupacionPct}% de ocupación)`,
     personas,
@@ -305,7 +305,7 @@ export function segundaVisita(
     titulo: "Segunda visita",
     resumenAQuien: `Una sola cita en los últimos ${DIAS_SEGUNDA_VISITA} días`,
     cifra: personas.length,
-    cifraLabel: personas.length === 1 ? "cliente nuevo" : "clientes nuevos",
+    cifraLabel: personas.length === 1 ? "clienta nueva" : "clientas nuevas",
     personas,
     mensaje: `¡Hola! Nos alegró mucho tenerte por primera vez en ${salonName}. ¿Te reservamos ya tu segunda cita para seguir cuidando tu imagen?`,
     coste: COSTE_INCLUIDO,
@@ -366,7 +366,7 @@ export function resenaTrasLaCita(
     titulo: "Reseña tras la cita",
     resumenAQuien: `Atendidos en los últimos ${DIAS_RESENA} días`,
     cifra: personas.length,
-    cifraLabel: personas.length === 1 ? "cliente" : "clientes",
+    cifraLabel: personas.length === 1 ? "clienta" : "clientas",
     personas,
     mensaje: `Gracias por venir a ${salonName}. Si te has ido contento, nos ayudaría muchísimo que nos dejaras una reseña en Google: ${enlace}`,
     coste: COSTE_INCLUIDO,
@@ -451,7 +451,7 @@ export function servicioQueMasDeja(
     titulo: `Ofrece ${comboService.name.toLowerCase()}`,
     resumenAQuien: `Piden ${baseService.name.toLowerCase()} pero nunca ${comboService.name.toLowerCase()}`,
     cifra: personas.length,
-    cifraLabel: personas.length === 1 ? "cliente" : "clientes",
+    cifraLabel: personas.length === 1 ? "clienta" : "clientas",
     personas,
     mensaje: `¿Ya has probado ${comboService.name.toLowerCase()}? A quienes reservan ${baseService.name.toLowerCase()} en ${salonName} les suele encantar — la próxima vez que vengas, pregúntanos.`,
     coste: COSTE_INCLUIDO,
@@ -513,7 +513,7 @@ export const COMPARATIVA_OTRAS_PLATAFORMAS: { concepto: string; otras: string; s
     otras: "25 € cada campaña",
     siShow: "Sin coste extra: la mandas tú por WhatsApp en un toque",
   },
-  // Lo que no existe no se vende como incluido: el recordatorio automático
-  // está en desarrollo y así se dice también en la pantalla de marketing.
-  { concepto: "Recordatorios por WhatsApp", otras: "35 €/mes", siShow: "En desarrollo" },
+  // Lo que no existe no se vende: no hay recordatorio automático. Lo que hay
+  // es el envío a mano, uno a uno, desde la hoja de mañana.
+  { concepto: "Recordatorios por WhatsApp", otras: "35 €/mes", siShow: "Sin coste extra: los mandas tú con un toque desde la hoja de mañana" },
 ];

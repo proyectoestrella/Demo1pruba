@@ -38,11 +38,13 @@ describe("resolutores con la demo PeluChic (cifras contrastadas con los datos)",
     expect(pedir("cuanto dura el tinte").cifras[0].valor).toBe(tinte.durationMin);
   });
 
-  test("cobrado es solo lo que tiene paidAt: en la demo nadie ha marcado cobros", () => {
+  test("cobrado es solo lo que tiene paidAt (con o sin cobros en la semilla)", () => {
     const r = pedir("cuanto he cobrado este mes");
-    expect(d.citas.some((c) => c.paidAt)).toBe(false);
-    expect(r.cifras[0].valor).toBe(0);
-    expect(r.texto).toContain("no has marcado ningún cobro");
+    const cobrado = d.citas
+      .filter((c) => fechaEnZona(c.start, TZ).slice(0, 7) === "2026-09" && c.paidAt && c.status !== "cancelled" && c.status !== "blocked" && c.status !== "no-show")
+      .reduce((t, c) => t + c.priceEur, 0);
+    expect(r.cifras[0].valor).toBe(cobrado);
+    if (!cobrado) expect(r.texto).toContain("no has marcado ningún cobro");
   });
 
   test("los huecos no pisan ninguna cita y caen dentro de la jornada", () => {

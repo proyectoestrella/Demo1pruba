@@ -13,6 +13,7 @@ import { Route as RuteroRouteImport } from './routes/rutero'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as AceptarRouteImport } from './routes/aceptar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as SSalonSlugRouteImport } from './routes/s.$salonSlug'
@@ -55,6 +56,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AceptarRoute = AceptarRouteImport.update({
+  id: '/aceptar',
+  path: '/aceptar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -175,6 +181,7 @@ const SSalonSlugBookRoute = SSalonSlugBookRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/aceptar': typeof AceptarRoute
   '/app': typeof AppRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
@@ -204,6 +211,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/aceptar': typeof AceptarRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/rutero': typeof RuteroRoute
@@ -232,6 +240,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/aceptar': typeof AceptarRoute
   '/app': typeof AppRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
@@ -263,6 +272,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/aceptar'
     | '/app'
     | '/dashboard'
     | '/login'
@@ -292,6 +302,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/aceptar'
     | '/dashboard'
     | '/login'
     | '/rutero'
@@ -319,6 +330,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/aceptar'
     | '/app'
     | '/dashboard'
     | '/login'
@@ -349,6 +361,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AceptarRoute: typeof AceptarRoute
   AppRoute: typeof AppRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
@@ -387,6 +400,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/aceptar': {
+      id: '/aceptar'
+      path: '/aceptar'
+      fullPath: '/aceptar'
+      preLoaderRoute: typeof AceptarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -609,6 +629,7 @@ const SSalonSlugRouteWithChildren = SSalonSlugRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AceptarRoute: AceptarRoute,
   AppRoute: AppRouteWithChildren,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,

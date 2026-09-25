@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
+import { useCitasVisibles, usePermisos } from "@/lib/accesos-panel";
+import { puede } from "@/lib/permisos";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { clientFrequency } from "@/lib/derive";
 import { buscarClientas } from "@/lib/buscar-clientas";
-import type { Client } from "@/lib/mock/types";
-import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/PageHeader";
+import { fichaDeClienta } from "@/lib/ficha-clienta";
+import { useEquipo } from "@/lib/use-equipo";
+import { toDateKey } from "@/lib/reparto";
+import type { Appointment, Client } from "@/lib/mock/types";
 import { EmptyState } from "@/components/EmptyState";
 import { ClientAvatar } from "@/components/ClientAvatar";
 import { ClientHistorySheet } from "@/components/ClientHistorySheet";
@@ -22,10 +25,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { eur, eurRedondo } from "@/lib/copy";
+import { eur, eurRedondo, hora } from "@/lib/copy";
 import { cn } from "@/lib/utils";
-import { Users, UserPlus, Repeat, UserX, Search } from "lucide-react";
+import { Users, Search, Download } from "lucide-react";
 
 export const Route = createFileRoute("/app/clients")({ component: Clients });
 
@@ -40,11 +42,13 @@ const NEW_DAYS = 30;
 type ClientTag = "nuevo" | "habitual" | "inactivo" | "activo";
 
 const TAG_CONFIG: Record<ClientTag, { label: string; className: string }> = {
-  nuevo: { label: "Nuevo", className: "bg-primary/10 text-primary" },
-  habitual: { label: "Habitual", className: "bg-success/15 text-success" },
-  inactivo: { label: "Inactivo", className: "bg-destructive/10 text-destructive" },
-  activo: { label: "Activo", className: "bg-muted text-muted-foreground" },
+  nuevo: { label: "Nueva", className: "bg-salvia-clara text-hoja-tinta" },
+  habitual: { label: "Habitual", className: "bg-nata text-cafe-medio" },
+  inactivo: { label: "Inactiva", className: "bg-arena text-cafe-medio" },
+  activo: { label: "Activa", className: "bg-nata text-cafe-medio" },
 };
+
+const chip = "inline-flex h-6 items-center gap-1 rounded-full px-2.5 text-[12.5px] font-bold whitespace-nowrap";
 
 type Row = Client & ReturnType<typeof clientFrequency>;
 
@@ -66,29 +70,38 @@ function tagFor(row: Row, now: number): ClientTag {
 
 function TagPill({ tag }: { tag: ClientTag }) {
   const cfg = TAG_CONFIG[tag];
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
-        cfg.className,
-      )}
-    >
-      {cfg.label}
-    </span>
-  );
+  return <span className={cn(chip, cfg.className)}>{cfg.label}</span>;
 }
 
+const fechaCortaSinAnio = (iso?: string) =>
+  iso ? new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "") : "—";
+
+type Filtro = "todos" | "hoy" | ClientTag | "color" | "penalizado";
+
 function Clients() {
-  const appointments = useSalonStore((s) => s.appointments);
-  const clients = useSalonStore((s) => s.clients);
+  // Lote 11: sin «ver todas», sus clientas (las que tienen o tuvieron cita con
+  // ella), empezando por las de hoy; el buscador encuentra a cualquiera para darle cita.
+  const permisos = usePermisos();
+  const todasLasClientas = puede(permisos, "clienta.ver-todas");
+  const appointments = useCitasVisibles();
+  const todasLasCitas = useSalonStore((s) => s.appointments);
+  const clientesSalon = useSalonStore((s) => s.clients);
+  const propias = useMemo(() => new Set(appointments.map((a) => a.clientId)), [appointments]);
+  const clients = useMemo(() => (todasLasClientas ? clientesSalon : clientesSalon.filter((c) => propias.has(c.id))), [todasLasClientas, clientesSalon, propias]);
+  const services = useSalonStore((s) => s.services);
+  const equipo = useEquipo();
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const conRecargo = recargoActivo({ noShowFeeEur });
   const [selected, setSelected] = useState<Client | null>(null);
   const [importarAbierto, setImportarAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState("");
-  const [filtro, setFiltro] = useState<"todos" | ClientTag | "penalizado">("todos");
+  const [filtro, setFiltro] = useState<Filtro>(todasLasClientas ? "todos" : "hoy");
+  /** Filas a la vista: de 20 en 20, y vuelve a 20 al cambiar filtro o búsqueda. */
+  const [cuantas, setCuantas] = useState(20);
+  useEffect(() => setCuantas(20), [filtro, busqueda]);
 
   const now = Date.now();
+  const hoyClave = toDateKey(new Date());
 
   // El recorte va DESPUÉS de buscar: al revés, el buscador solo miraría dentro
   // de los 40 primeros. Y ya no se esconde a quien no tiene visitas todavía:
@@ -104,6 +117,18 @@ function Clients() {
     enRiesgo: allRows.filter((r) => r.tag === "inactivo").length,
   };
 
+  // Citas de hoy por clienta: «Hoy 12:00» en la fila y el filtro «Vienen hoy».
+  const citaDeHoy = useMemo(() => {
+    const m = new Map<string, Appointment>();
+    for (const a of appointments) {
+      if (a.status === "cancelled" || a.status === "blocked") continue;
+      if (toDateKey(new Date(a.start)) !== hoyClave) continue;
+      const previa = m.get(a.clientId);
+      if (!previa || +new Date(a.start) < +new Date(previa.start)) m.set(a.clientId, a);
+    }
+    return m;
+  }, [appointments, hoyClave]);
+
   const limiteColor = now + 14 * DAY_MS;
   const proximasSinColor = allRows.flatMap((client) => {
     const cita = appointments.filter((a) => a.clientId === client.id && (a.status === "confirmed" || a.status === "pending") && +new Date(a.start) >= now && +new Date(a.start) <= limiteColor)
@@ -111,60 +136,105 @@ function Clients() {
     const tieneColor = appointments.some((a) => a.clientId === client.id && a.status === "completed" && +new Date(a.start) < now && !!a.colorFormula?.trim());
     return cita && !tieneColor ? [{ client, cita }] : [];
   }).sort((a, b) => +new Date(a.cita.start) - +new Date(b.cita.start));
+  const colorPendiente = new Set(proximasSinColor.map((x) => x.client.id));
 
   // Solo se ofrece el filtro cuando hay a quién filtrar: una pestaña "Me
   // deben" vacía es ruido en cualquier demo sin plantones.
-  const hayPenalizados = conRecargo && allRows.some((r) => (r.penaltyEur ?? 0) > 0);
+  const hayPenalizados = conRecargo && puede(permisos, "recargo.gestionar") && allRows.some((r) => (r.penaltyEur ?? 0) > 0);
 
   const buscados = buscarClientas(busqueda, { clientes: clients, citas: appointments });
+  // Fuera de las suyas: las del salón que coinciden, solo para darles cita (ficha reducida).
+  const otrasDelSalon = !todasLasClientas && busqueda.trim().length >= 2
+    ? buscarClientas(busqueda, { clientes: clientesSalon, citas: todasLasCitas }).filter((c) => !propias.has(c.id)).slice(0, 5)
+    : [];
   const ordenBusqueda = new Map(buscados.map((c, i) => [c.id, i]));
-  const filtroEfectivo = filtro === "penalizado" && !conRecargo ? "todos" : filtro;
+  const filtroEfectivo: Filtro = filtro === "penalizado" && !conRecargo ? "todos" : filtro;
+  const pasa = (c: Row & { tag: ClientTag }) => {
+    switch (filtroEfectivo) {
+      case "todos":
+        return true;
+      case "hoy":
+        return citaDeHoy.has(c.id);
+      case "color":
+        return colorPendiente.has(c.id);
+      case "penalizado":
+        return (c.penaltyEur ?? 0) > 0;
+      default:
+        return c.tag === filtroEfectivo;
+    }
+  };
   const rows = allRows
-    .filter((c) =>
-      filtroEfectivo === "todos"
-        ? true
-        : filtroEfectivo === "penalizado"
-          ? (c.penaltyEur ?? 0) > 0
-          : c.tag === filtro,
-    )
+    .filter(pasa)
     .filter((c) => ordenBusqueda.has(c.id))
-    .sort((a, b) => busqueda.trim() ? (ordenBusqueda.get(a.id)! - ordenBusqueda.get(b.id)!) : b.totalSpent - a.totalSpent)
+    .sort((a, b) =>
+      busqueda.trim()
+        ? ordenBusqueda.get(a.id)! - ordenBusqueda.get(b.id)!
+        : filtroEfectivo === "hoy"
+          ? +new Date(citaDeHoy.get(a.id)!.start) - +new Date(citaDeHoy.get(b.id)!.start)
+          : b.totalSpent - a.totalSpent,
+    )
     .slice(0, 60);
 
+  // Frecuencia y servicio habitual salen de la ficha (con la carta viva), solo
+  // para las filas que se ven.
+  const fichas = new Map(
+    rows.map((c) => [
+      c.id,
+      fichaDeClienta(c.id, { citas: appointments, clientes: clients, servicios: services, equipo, ahora: new Date(now) }).resumen,
+    ]),
+  );
+  const frecuencia = (id: string) => {
+    const d = fichas.get(id)?.frecuenciaMediaDias;
+    if (d === undefined) return "—";
+    return d < 14 ? `cada ${d} días` : `cada ${Math.round(d / 7)} sem.`;
+  };
+  const semanasSinVenir = (r: Row) => (r.lastVisit ? Math.floor((now - +new Date(r.lastVisit)) / (7 * DAY_MS)) : null);
+
+  const estado = (c: Row & { tag: ClientTag }) => {
+    const hoy = citaDeHoy.get(c.id);
+    const sem = semanasSinVenir(c);
+    return (
+      <div className="flex flex-wrap gap-1">
+        {hoy && <span className={cn(chip, "bg-salvia-clara text-hoja-tinta tabular-nums")}>Hoy {hora(hoy.start)}</span>}
+        {colorPendiente.has(c.id) && <span className={cn(chip, "bg-melocoton text-melocoton-tinta")}>Color pendiente</span>}
+        {conRecargo && (c.penaltyEur ?? 0) > 0 && (
+          <span className={cn(chip, "bg-melocoton text-melocoton-tinta")}>Debe {eur(c.penaltyEur!)}</span>
+        )}
+        {!hoy && c.tag === "inactivo" && sem !== null ? (
+          <span className={cn(chip, "bg-arena text-cafe-medio tabular-nums")}>{sem} sem. sin venir</span>
+        ) : (
+          !hoy && <TagPill tag={c.tag} />
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Clientes"
-        description="Tus clientes, ordenados por lo que se han gastado contigo."
-      />
-      <Button type="button" variant="outline" onClick={() => setImportarAbierto(true)}>Importar desde TPV 123</Button>
-
-      <section aria-labelledby="color-pendiente" className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <div><h2 id="color-pendiente" className="font-display text-lg">Color pendiente</h2><p className="text-sm text-muted-foreground">Citadas en los próximos 14 días sin color anotado.</p></div>
-          <strong className="rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">{proximasSinColor.length} {proximasSinColor.length === 1 ? "clienta por pasar" : "clientas por pasar"}</strong>
+    <div className="flex flex-1 flex-col gap-5">
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="min-w-0">
+          <h1 className="text-[26px] leading-[1.1] font-extrabold tracking-[-0.02em] md:text-[32px]">Clientas</h1>
+          {/* La cartera en una línea de texto, como las cifras de Hoy. */}
+          <p className="mt-2 flex flex-wrap items-baseline gap-x-2 text-[15px] text-cafe-medio">
+            <span className="whitespace-nowrap"><b className="text-foreground tabular-nums">{kpis.total}</b> clientas</span>
+            <span className="text-taupe" aria-hidden="true">·</span>
+            <span className="whitespace-nowrap" title="Dadas de alta en 30 días"><b className="text-foreground tabular-nums">{kpis.nuevos}</b> nuevas este mes</span>
+            <span className="text-taupe" aria-hidden="true">·</span>
+            <span className="whitespace-nowrap" title="Tres visitas o más"><b className="text-foreground tabular-nums">{kpis.habituales}</b> recurrentes</span>
+            {kpis.enRiesgo > 0 && (
+              <>
+                <span className="text-taupe" aria-hidden="true">·</span>
+                <button type="button" onClick={() => setFiltro("inactivo")} className="whitespace-nowrap hover:text-foreground" title="Más de 60 días sin venir: ver las inactivas">
+                  <b className="text-primary tabular-nums">{kpis.enRiesgo}</b> en riesgo
+                </button>
+              </>
+            )}
+          </p>
         </div>
-        {proximasSinColor.length ? <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-          {proximasSinColor.map(({ client, cita }) => <li key={client.id}>
-            <button type="button" onClick={() => setSelected(client)} className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border border-border/70 bg-card px-3 py-2 text-left hover:bg-muted/50">
-              <span className="min-w-0 truncate font-medium">{client.name}</span>
-              <span className="shrink-0 text-xs text-muted-foreground">{new Date(cita.start).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" })} · Abrir ficha</span>
-            </button>
-          </li>)}
-        </ul> : <p className="mt-3 text-sm text-muted-foreground">No hay fichas de color pendientes.</p>}
-      </section>
-
-      {/* KPIs — panorama de la cartera antes de bajar al listado. */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatTile icon={Users} label="Clientes totales" value={kpis.total} />
-        <StatTile icon={UserPlus} label="Nuevos este mes" value={kpis.nuevos} tone="primary" />
-        <StatTile icon={Repeat} label="Recurrentes" value={kpis.habituales} tone="success" />
-        <StatTile
-          icon={UserX}
-          label="En riesgo"
-          value={kpis.enRiesgo}
-          tone={kpis.enRiesgo > 0 ? "destructive" : "default"}
-        />
+        {puede(permisos, "clienta.importar") && <Button type="button" variant="outline" className="md:ml-auto" onClick={() => setImportarAbierto(true)}>
+          <Download className="size-[18px]" strokeWidth={1.6} />
+          Importar desde TPV 123
+        </Button>}
       </div>
 
       {/* Recargos pendientes destacados: Adam pidió esto expresamente el
@@ -172,30 +242,36 @@ function Clients() {
           no hay ninguno pendiente. */}
       {conRecargo && <RecargosPendientes title="Recargos pendientes" />}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Nombre, teléfono, correo, notas o color…"
-            className="pl-9"
-          />
-        </div>
-
-        <Tabs value={filtroEfectivo} onValueChange={(v) => setFiltro(v as typeof filtro)}>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <Tabs value={filtroEfectivo} onValueChange={(v) => setFiltro(v as Filtro)} className="sin-scrollbar min-w-0 max-w-full overflow-x-auto [mask-image:linear-gradient(to_right,black_88%,transparent)] lg:[mask-image:none]">
           <TabsList>
-            <TabsTrigger value="todos">Todos</TabsTrigger>
-            <TabsTrigger value="nuevo">Nuevos</TabsTrigger>
+            <TabsTrigger value="todos">Todas</TabsTrigger>
+            <TabsTrigger value="hoy">Vienen hoy <span className="ml-1 tabular-nums text-muted-foreground">{citaDeHoy.size}</span></TabsTrigger>
+            <TabsTrigger value="nuevo">Nuevas</TabsTrigger>
             <TabsTrigger value="habitual">Habituales</TabsTrigger>
-            <TabsTrigger value="inactivo">Inactivos</TabsTrigger>
+            <TabsTrigger value="inactivo">Inactivas</TabsTrigger>
+            <TabsTrigger value="color">Color pendiente <span className="ml-1 tabular-nums text-muted-foreground">{proximasSinColor.length}</span></TabsTrigger>
             {hayPenalizados && <TabsTrigger value="penalizado">Me deben</TabsTrigger>}
           </TabsList>
         </Tabs>
+        <label className="flex h-[42px] items-center gap-2 rounded-full border border-input bg-card px-3.5 text-muted-foreground lg:ml-auto lg:w-[340px]">
+          <Search className="size-[18px] shrink-0" strokeWidth={1.6} />
+          <input
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Filtrar: nombre, teléfono, notas o color"
+            aria-label="Filtrar clientas"
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          />
+        </label>
       </div>
 
+      {filtroEfectivo === "color" && (
+        <p className="-mt-2 text-[12.5px] text-muted-foreground">Citadas en los próximos 14 días y sin ningún color anotado: ábrelas y añade su fórmula de TPV 123 antes de que lleguen.</p>
+      )}
+
       {rows.length === 0 ? (
-        <div className="rounded-xl border border-border/60 bg-card">
+        <div className="flex-1 rounded-[20px] border border-border bg-card">
           {/* Dos vacíos muy distintos, y hasta ahora los dos decían lo mismo.
               Un salón que acaba de empezar, sin ningún cliente todavía y sin
               haber tocado ningún filtro, leía "prueba con otro término de
@@ -203,132 +279,110 @@ function Clients() {
           {allRows.length === 0 ? (
             <EmptyState
               icon={Users}
-              title="Todavía no tienes clientes"
-              description="Aquí irá apareciendo cada persona que reserve contigo: su teléfono, lo que suele pedir y cuándo vino por última vez. La ficha se crea sola con la primera cita, no hay que apuntar a nadie a mano."
+              title="Todavía no tienes clientas"
+              description="Aquí irá apareciendo cada persona que reserve contigo: su teléfono, lo que suele pedir y cuándo vino por última vez. La ficha se crea sola con la primera cita, o tráelas todas desde TPV 123."
             />
           ) : (
             <EmptyState
               icon={Users}
-              title="Ningún cliente coincide"
-              description="Prueba con otro término de búsqueda o quita el filtro."
+              title="Ninguna clienta coincide"
+              description="Prueba con otro nombre o quita el filtro."
             />
           )}
         </div>
       ) : (
         <>
-          {/* Desktop table */}
-          <div className="hidden min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card md:block">
+          {/* PC: tabla */}
+          <div className="@container hidden min-w-0 flex-1 overflow-x-auto rounded-[20px] border border-border bg-card md:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Teléfono</TableHead>
-                  <TableHead>Visitas</TableHead>
-                  <TableHead>Servicio favorito</TableHead>
-                  <TableHead>Última visita</TableHead>
-                  <TableHead>Próxima cita</TableHead>
-                  <TableHead className="text-right">Gasto total</TableHead>
+                  <TableHead>Clienta</TableHead>
+                  <TableHead className="@max-[520px]:hidden">Última visita</TableHead>
+                  <TableHead className="text-right @max-[420px]:hidden">Visitas</TableHead>
+                  <TableHead className="group-data-[panel=abierto]/panel:hidden">Frecuencia</TableHead>
+                  <TableHead className="hidden xl:table-cell xl:group-data-[panel=abierto]/panel:hidden">Servicio habitual</TableHead>
+                  <TableHead className="group-data-[panel=abierto]/panel:hidden">Próxima cita</TableHead>
+                  <TableHead className="text-right @max-[600px]:hidden">Gasto orient.</TableHead>
                   <TableHead>Estado</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-border/50">
-                {rows.map((c) => (
-                  <TableRow
-                    key={c.id}
-                    className="cursor-pointer hover:bg-muted/40"
-                    onClick={() => setSelected(c)}
-                  >
-                    <TableCell className="font-medium">
+              <TableBody>
+                {rows.slice(0, cuantas).map((c) => (
+                  <TableRow key={c.id} className="cursor-pointer" onClick={() => setSelected(c)}>
+                    <TableCell>
                       <div className="flex items-center gap-3">
                         <ClientAvatar name={c.name} size="sm" />
-                        <span className="truncate">{c.name}</span>
-                        {conRecargo && (c.penaltyEur ?? 0) > 0 && (
-                          <Badge variant="destructive" className="shrink-0 text-[10px]">
-                            Debe {eur(c.penaltyEur!)}
-                          </Badge>
-                        )}
+                        <div className="min-w-0 leading-tight">
+                          <b className="block truncate">{c.name}</b>
+                          <span className="text-[12.5px] text-muted-foreground tabular-nums">{c.phone}</span>
+                        </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{c.phone}</TableCell>
-                    <TableCell>{c.pastVisits}</TableCell>
-                    <TableCell className="text-muted-foreground">{c.favoriteService}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {c.lastVisit
-                        ? new Date(c.lastVisit).toLocaleDateString("es", {
-                            month: "short",
-                            day: "numeric",
-                          })
-                        : "—"}
-                    </TableCell>
-                    {/* "Próxima cita" existe porque hasta ahora era lo que
-                        enseñaba "Última visita" sin decirlo: el dato hacía
-                        falta, solo que en su propia columna. */}
-                    <TableCell className="text-muted-foreground">
-                      {c.nextVisit
-                        ? new Date(c.nextVisit).toLocaleDateString("es", {
-                            month: "short",
-                            day: "numeric",
-                          })
-                        : "—"}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">{eurRedondo(c.totalSpent)}</TableCell>
-                    <TableCell>
-                      <TagPill tag={c.tag} />
-                    </TableCell>
+                    <TableCell className="tabular-nums @max-[520px]:hidden">{fechaCortaSinAnio(c.lastVisit)}</TableCell>
+                    <TableCell className="text-right tabular-nums @max-[420px]:hidden">{c.pastVisits}</TableCell>
+                    <TableCell className="text-muted-foreground group-data-[panel=abierto]/panel:hidden">{frecuencia(c.id)}</TableCell>
+                    <TableCell className="hidden text-muted-foreground xl:table-cell xl:group-data-[panel=abierto]/panel:hidden">{fichas.get(c.id)?.servicioHabitual ?? "—"}</TableCell>
+                    <TableCell className="tabular-nums group-data-[panel=abierto]/panel:hidden">{fechaCortaSinAnio(c.nextVisit)}</TableCell>
+                    <TableCell className="text-right font-bold tabular-nums @max-[600px]:hidden">{eurRedondo(c.totalSpent)}</TableCell>
+                    <TableCell>{estado(c)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
 
-          {/* Mobile stacked cards */}
-          <div className="space-y-3 md:hidden">
-            {rows.map((c) => (
+          {/* Móvil: tarjetas */}
+          <div className="overflow-hidden rounded-[20px] border border-border bg-card md:hidden">
+            {rows.slice(0, cuantas).map((c) => (
               <button
                 key={c.id}
                 type="button"
                 onClick={() => setSelected(c)}
-                className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card p-4 text-left"
+                className="flex w-full items-center gap-3 border-t border-border px-4 py-3 text-left first:border-t-0"
               >
                 <ClientAvatar name={c.name} size="md" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="truncate font-medium">{c.name}</p>
-                    <span className="shrink-0 font-medium">{eurRedondo(c.totalSpent)}</span>
+                    <b className="truncate">{c.name}</b>
+                    <span className="shrink-0 font-bold tabular-nums">{eurRedondo(c.totalSpent)}</span>
                   </div>
-                  <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {c.pastVisits} {c.pastVisits === 1 ? "visita" : "visitas"} · {c.favoriteService}{" "}
-                    · {c.phone}
+                  <p className="truncate text-[12.5px] text-muted-foreground tabular-nums">
+                    {c.pastVisits} {c.pastVisits === 1 ? "visita" : "visitas"} · última {fechaCortaSinAnio(c.lastVisit)} · {frecuencia(c.id)}
                   </p>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    Última visita:{" "}
-                    {c.lastVisit
-                      ? new Date(c.lastVisit).toLocaleDateString("es", {
-                          month: "short",
-                          day: "numeric",
-                        })
-                      : "—"}
-                    {" · Próxima: "}
-                    {c.nextVisit
-                      ? new Date(c.nextVisit).toLocaleDateString("es", {
-                          month: "short",
-                          day: "numeric",
-                        })
-                      : "—"}
-                  </p>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    <TagPill tag={c.tag} />
-                    {conRecargo && (c.penaltyEur ?? 0) > 0 && (
-                      <Badge variant="destructive" className="text-[10px]">
-                        Debe {eur(c.penaltyEur!)}
-                      </Badge>
-                    )}
-                  </div>
+                  <div className="mt-1.5">{estado(c)}</div>
                 </div>
               </button>
             ))}
           </div>
+          {rows.length > cuantas && (
+            <button
+              type="button"
+              onClick={() => setCuantas((n) => n + 20)}
+              className="inline-flex items-center gap-1 self-start rounded-full px-3 py-2 text-[13.5px] font-bold text-cafe-medio hover:bg-beige"
+            >
+              Ver {Math.min(20, rows.length - cuantas)} más
+              <span className="font-semibold text-cafe-suave tabular-nums">· {cuantas} de {rows.length}</span>
+            </button>
+          )}
         </>
+      )}
+
+      {otrasDelSalon.length > 0 && (
+        <section className="rounded-2xl border border-lino bg-card px-4 py-3">
+          <h2 className="text-[13.5px] font-bold text-cafe-medio">Otras clientas del salón · para darles cita</h2>
+          <ul className="mt-1.5 divide-y divide-lino">
+            {otrasDelSalon.map((c) => (
+              <li key={c.id}>
+                <button type="button" onClick={() => setSelected(c)} className="flex w-full items-center gap-3 py-2 text-left hover:text-foreground">
+                  <ClientAvatar name={c.name} size="md" />
+                  <span className="min-w-0 flex-1 truncate font-semibold">{c.name}</span>
+                  <span className="text-[12.5px] text-muted-foreground tabular-nums">{c.phone}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <ClientHistorySheet
@@ -337,34 +391,6 @@ function Clients() {
         onOpenChange={(o) => !o && setSelected(null)}
       />
       <ImportarClientasDialog open={importarAbierto} onOpenChange={setImportarAbierto} />
-    </div>
-  );
-}
-
-function StatTile({
-  icon: Icon,
-  label,
-  value,
-  tone = "default",
-}: {
-  icon: typeof Users;
-  label: string;
-  value: number;
-  tone?: "default" | "primary" | "success" | "destructive";
-}) {
-  const toneClasses = {
-    default: "bg-muted text-muted-foreground",
-    primary: "bg-primary/10 text-primary",
-    success: "bg-success/15 text-success",
-    destructive: "bg-destructive/10 text-destructive",
-  }[tone];
-  return (
-    <div className="min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card p-4">
-      <div className={cn("flex size-8 items-center justify-center rounded-full", toneClasses)}>
-        <Icon className="size-4" aria-hidden="true" />
-      </div>
-      <p className="mt-3 font-display text-2xl tabular-nums">{value}</p>
-      <p className="mt-0.5 text-xs leading-tight text-muted-foreground">{label}</p>
     </div>
   );
 }

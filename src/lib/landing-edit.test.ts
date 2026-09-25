@@ -134,6 +134,10 @@ describe("validarBorrador", () => {
     expect(errores[0].mensaje).toContain(".jpg");
   });
 
+  it("acepta la foto del proxy propio de siShow (/api/foto?…), la de las demos", () => {
+    expect(validarBorrador(borradorValido({ heroImage: "/api/foto?place=ChIJc&i=0" }))).toEqual([]);
+  });
+
   it("rechaza una foto sin http", () => {
     const errores = validarBorrador(borradorValido({ heroImage: "local.jpg" }));
     expect(errores[0].mensaje).toContain("https://");
@@ -288,5 +292,20 @@ describe("parseFaqEntry", () => {
     expect(parseFaqEntry("~Sí")).toBeNull();
     expect(parseFaqEntry("¿Y?~")).toBeNull();
     expect(parseFaqEntry("")).toBeNull();
+  });
+});
+
+describe("logo del salón en el editor", () => {
+  const conLogo = (logoUrl: string) => ({ ...borradorDesdePerfil(PERFIL_BASE), logoUrl });
+  const erroresLogo = (b: BorradorLanding) => validarBorrador(b).filter((e) => e.campo === "logoUrl");
+  it("vacío, un enlace de imagen o un fichero de la demo valen, y se guardan limpios", () => {
+    expect(erroresLogo(conLogo(""))).toEqual([]);
+    expect(erroresLogo(conLogo("https://misalon.es/logo.svg"))).toEqual([]);
+    expect(erroresLogo(conLogo("/demo/peluchic-logo.png"))).toEqual([]);
+    expect(perfilDesdeBorrador(conLogo("  https://misalon.es/logo.png ")).logoUrl).toBe("https://misalon.es/logo.png");
+  });
+  it("rechaza lo que no es un enlace o no es una imagen", () => {
+    expect(erroresLogo(conLogo("logo.png"))).toHaveLength(1);
+    expect(erroresLogo(conLogo("https://misalon.es/"))).toHaveLength(1);
   });
 });

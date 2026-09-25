@@ -108,3 +108,16 @@ test("guarda el código de TPV 123 y el cumpleaños, y no duplica al reimportar 
   const sinPrevias = vistaPreviaClientas(tabla, [], mapa);
   expect(sinPrevias.filas[0]).toMatchObject({ codigo: "0042", nacimiento: "1990-05-04", fechaAlta: "2020-02-01T11:00:00.000Z", estado: "nueva" });
 });
+
+test("detecta la columna de cumpleaños con los nombres habituales, y es opcional", () => {
+  for (const cabecera of ["Nacimiento", "Cumpleaños", "cumpleanos", "Fecha de nacimiento", "FECHA NACIMIENTO"]) {
+    const tabla = leerCsv(`nombre;telefono;${cabecera}\r\nMarta;612345678;04/05/1990\r\n`);
+    const mapa = detectarColumnas(tabla.cabeceras);
+    expect(mapa.nacimiento).toBe(2);
+    expect(vistaPreviaClientas(tabla, [], mapa).filas[0].nacimiento).toBe("1990-05-04");
+  }
+  const sinCumple = leerCsv("nombre;telefono\r\nLucía;699888777\r\n");
+  const mapa = detectarColumnas(sinCumple.cabeceras);
+  expect(mapa.nacimiento).toBeUndefined();
+  expect(vistaPreviaClientas(sinCumple, [], mapa).filas[0]).toMatchObject({ nacimiento: undefined, estado: "nueva" });
+});

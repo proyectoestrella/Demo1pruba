@@ -1,8 +1,11 @@
+import { avisar, marcarAvisoDeCita } from "@/lib/deshacer-maqueta";
 import { useEffect, useState } from "react";
+import { SenalCita } from "@/components/SenalCita";
+import { VentanaConfirmar } from "@/components/VentanaConfirmar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
-import { useSalonStore } from "@/lib/store";
+import { selectServiceMap, useSalonStore } from "@/lib/store";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
@@ -28,6 +31,9 @@ import { BotonesDesenlace, useAplicarDesenlace } from "@/components/CitasPorReso
 import { Button } from "@/components/ui/button";
 import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
 import { DepositStatusControls } from "@/components/DepositStatusControls";
+import { useMiEmployeeId, usePermisos } from "@/lib/accesos-panel";
+import { puede, type AccionId } from "@/lib/permisos";
+import { deadlineHours, depositDueAt } from "@/lib/deposit-deadline";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -109,8 +115,11 @@ export function AppointmentDetailSheet({
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const markClientConfirmed = useSalonStore((s) => s.markClientConfirmed);
   const markPaid = useSalonStore((s) => s.markPaid);
-  const pedirSenal = useSalonStore((s) => s.pedirSenal);
-  const reglaSen = reglaSenal(useSalonStore((s) => s.salonProfile));
+  // Lote 11: cada bloque solo si el rol puede hacerlo sobre ESTA cita (la suya, si es estilista).
+  const permisos = usePermisos();
+  const mio = useMiEmployeeId();
+  const puedeEn = (accion: AccionId) => !!appointment && puede(permisos, accion, { employeeId: appointment.employeeId, miEmployeeId: mio });
+  const markDepositRequested = useSalonStore((s) => s.markDepositRequested);
   const appointments = useSalonStore((s) => s.appointments);
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const noShowNoticeHours = useSalonStore((s) => s.salonProfile.noShowNoticeHours ?? 2);
@@ -119,6 +128,7 @@ export function AppointmentDetailSheet({
   const depositEnabled = useSalonStore((s) => !!s.salonProfile.depositEnabled);
   const depositBizumPhone = useSalonStore((s) => s.salonProfile.depositBizumPhone ?? "");
   const depositAmountEur = useSalonStore((s) => s.salonProfile.depositAmountEur ?? 10);
+  const reglaSen = reglaSenal(useSalonStore((s) => s.salonProfile));
   const depositDeadlineHours = reglaSen.ventanaHoras;
   // El cliente puede no existir en la store (una cita creada desde la web
   // pública nace con un `clientId` de walk-in que no tiene ficha propia): sin
@@ -127,6 +137,17 @@ export function AppointmentDetailSheet({
     appointmentProp ? s.clients.find((c) => c.id === appointmentProp.clientId) : undefined,
   );
   const [confirmOpen, setConfirmOpen] = useState(false);
+  /**
+   * Ventana de confirmar con previsualización (9f). Guarda su propia copia de
+   * la cita porque el panel se cierra al abrirla: un panel modal no dejaría
+   * usar una ventana que vive fuera de él.
+   */
+  const [aConfirmar, setAConfirmar] = useState<Appointment | null>(null);
+  const abrirVentana = () => {
+    if (!appointment) return;
+    setAConfirmar(appointment);
+    onOpenChange(false);
+  };
   /** Qué desenlace ha elegido el dueño, mientras decide qué hace con el dinero. */
   const [decision, setDecision] = useState<Desenlace | null>(null);
   const aplicarDesenlace = useAplicarDesenlace();
@@ -147,7 +168,8 @@ export function AppointmentDetailSheet({
     if (conRecargo && d !== "vino") preguntarPorLaDeuda(d);
   }
 
-  const serviceNames = appointment ? serviceNamesOf(appointment) : [];
+  const carta = selectServiceMap(useSalonStore((s) => s.services));
+  const serviceNames = appointment ? serviceNamesOf(appointment, carta) : [];
   // Cuántas veces ha plantado este cliente en los últimos 3 meses, con las
   // mismas palabras que su ficha — ver lib/plantones.ts.
   const plantones = appointment ? historialDeFallos(appointments, appointment.clientId) : null;
@@ -173,7 +195,6 @@ export function AppointmentDetailSheet({
   function handleDurationChange(minutes: number) {
     if (!appointment) return;
     updateAppointment(appointment.id, { duration: minutes });
-    toast.success("Duración actualizada");
   }
 
   function handleTimeChange(time: string) {
@@ -182,7 +203,6 @@ export function AppointmentDetailSheet({
     const next = new Date(start);
     next.setHours(hh, mm, 0, 0);
     updateAppointment(appointment.id, { start: next.toISOString() });
-    toast.success("Hora actualizada");
   }
 
   /**
@@ -196,14 +216,8 @@ export function AppointmentDetailSheet({
     if (!yyyy || !mm || !dd) return;
     const next = new Date(start);
     next.setFullYear(yyyy, mm - 1, dd);
+    // Lote 12: el aviso «Movida la cita de…» con «Deshacer» lo pone el registro de cambios.
     updateAppointment(appointment.id, { start: next.toISOString() });
-    toast.success("Cita movida", {
-      description: next.toLocaleDateString("es", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-      }),
-    });
   }
 
   /** Cierre de caja: marcar cobrada eligiendo cómo, o desmarcarla. Aquí no se cobra nada. */
@@ -211,11 +225,6 @@ export function AppointmentDetailSheet({
     if (!appointment) return;
     const yaCobradaAsi = appointment.paidAt && appointment.paymentMethod === metodo;
     markPaid(appointment.id, yaCobradaAsi ? null : metodo);
-    toast.success(
-      yaCobradaAsi
-        ? "Marcada como no cobrada"
-        : `Cobrada en ${PAYMENT_METHOD_LABELS[metodo].toLowerCase()}`,
-    );
   }
 
   /**
@@ -251,21 +260,8 @@ export function AppointmentDetailSheet({
       deadlineISO: preparada.venceISO,
       plantilla: reglaSen.plantilla,
     }, requestedAt);
+    markDepositRequested(appointment.id, depositAmountEur, requestedAt);
     useSalonStore.getState().abrirWhatsAppDeCita(appointment.id, url);
-    // Abrir WhatsApp no es enviar: la señal pasa a «pedida» solo cuando la
-    // dueña confirma que lo ha mandado (antes se marcaba al abrirlo).
-    toast("¿Has enviado el WhatsApp de la señal?", {
-      description: "Márcalo para que empiece a contar el plazo.",
-      duration: 20_000,
-      action: {
-        label: "Sí, enviado",
-        onClick: () => {
-          const error = pedirSenal(appointment.id);
-          if (error) toast.error("No se ha podido marcar la señal como pedida", { description: mensajeErrorSenal(error) });
-          else toast.success("Señal pedida");
-        },
-      },
-    });
   }
 
   function handleCancel() {
@@ -275,7 +271,6 @@ export function AppointmentDetailSheet({
     // antes de cobrar — nunca se aplica sola.
     const dentroDeAviso = isWithinNoticeWindow(appointment.start, noShowNoticeHours);
     cancelAppointment(appointment.id);
-    toast.success("Cita cancelada", { description: appointment.clientName });
     setConfirmOpen(false);
     if (conRecargo && dentroDeAviso && client) {
       preguntarPorLaDeuda("no-vino");
@@ -285,9 +280,11 @@ export function AppointmentDetailSheet({
   }
 
   return (
+    <>
+    <VentanaConfirmar cita={aConfirmar} onCerrar={() => setAConfirmar(null)} />
     <Sheet open={open && !!appointment} onOpenChange={onOpenChange}>
       {appointment && start && (
-        <SheetContent className="flex flex-col gap-6 sm:max-w-md">
+        <SheetContent panel="detalle-cita" className="flex flex-col gap-6 overflow-y-auto">
           <SheetHeader>
             <SheetTitle>{appointment.clientName}</SheetTitle>
             <SheetDescription>Detalle de la cita</SheetDescription>
@@ -412,7 +409,13 @@ export function AppointmentDetailSheet({
             </div>
           )}
 
-          <div className="space-y-1.5">
+          {appointment.status === "pending" && (
+            <Button onClick={abrirVentana} className="self-start">
+              Confirmar cita…
+            </Button>
+          )}
+
+          {(puedeEn("cita.mover") || puedeEn("cita.editar")) && <div className="space-y-1.5">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Fecha, duración y hora
             </p>
@@ -447,40 +450,16 @@ export function AppointmentDetailSheet({
                 onChange={(e) => handleTimeChange(e.target.value)}
               />
             </div>
-          </div>
+          </div>}
 
-          {/* Fianza por Bizum — solo con la política activa, número puesto en
-              Ajustes y una cita que todavía está por confirmar. */}
-          {(puedePedirFianza || appointment.depositRequestedAt) && (
-            <div className="space-y-2 rounded-xl border border-border/60 bg-muted/30 p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Señal por Bizum
-              </p>
-              {puedePedirFianza && !appointment.depositReceivedAt && <Button variant="outline" className="w-full gap-2" onClick={handlePedirFianza}>
-                <MessageCircle className="size-4" />
-                {appointment.depositRequestedAt ? "Reenviar señal por WhatsApp" : `Pedir ${eur(depositAmountEur)} de señal por WhatsApp`}
-              </Button>}
-              {appointment.depositRequestedAt && (
-                <p className="text-xs text-muted-foreground">
-                  Pedida el{" "}
-                  {new Date(appointment.depositRequestedAt).toLocaleDateString("es", {
-                    day: "numeric",
-                    month: "short",
-                  })}
-                  .
-                </p>
-              )}
-              <DepositStatusControls key={appointment.id} appointment={appointment} hours={depositDeadlineHours} onReleased={() => onOpenChange(false)} />
-              <p className="text-xs text-muted-foreground">
-                Se abre tu WhatsApp con el mensaje escrito; lo envías tú. El Bizum llega a tu banco
-                y lo marcas aquí a mano: siShow no cobra ni comprueba nada.
-              </p>
-            </div>
-          )}
+          {/* Señal (9j): estado del ciclo y sus acciones, según la regla de Ajustes. */}
+          {puedeEn("senal.gestionar") && <SenalCita key={appointment.id} cita={appointment} />}
 
           {/* Cierre de caja — cómo se cobró esta cita. Sin pasarela de pago:
               esto es el cuaderno del mostrador, en digital. */}
-          <div className="space-y-1.5">
+          {!puedeEn("cita.cobrar") ? (
+            <p className="rounded-xl border border-lino bg-superficie px-3 py-2 text-[13px] text-cafe-medio">Cobro: lo marca quien atiende la cita.</p>
+          ) : <div className="space-y-1.5">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Cobro
             </p>
@@ -510,17 +489,18 @@ export function AppointmentDetailSheet({
                 ? `Cobrada el ${new Date(appointment.paidAt).toLocaleDateString("es", { day: "numeric", month: "short" })} · vuelve a pulsar para desmarcarla.`
                 : "Marca cómo se ha cobrado y entrará en el cierre del día. No se procesa ningún pago."}
             </p>
-          </div>
+          </div>}
 
-          <div className="space-y-1.5">
+          {(puedeEn("cita.marcar-asistencia") || puedeEn("cita.editar")) && <div className="space-y-1.5">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Cambiar estado
             </p>
             <Select
               value={appointment.status}
               onValueChange={(v) => {
+                // Confirmar una solicitud pasa por la ventana con la ficha (9f).
+                if (appointment.status === "pending" && v === "confirmed") return abrirVentana();
                 updateAppointment(appointment.id, { status: v as AppointmentStatus });
-                toast.success("Estado actualizado");
                 if (conRecargo && v === "no-show") preguntarPorLaDeuda("no-vino");
                 if (conRecargo && v === "late") preguntarPorLaDeuda("tarde");
               }}
@@ -539,7 +519,7 @@ export function AppointmentDetailSheet({
             <p className="text-xs text-muted-foreground">
               Es el estado que llevas tú en la agenda.
             </p>
-          </div>
+          </div>}
 
           <div className="space-y-1.5">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -550,11 +530,8 @@ export function AppointmentDetailSheet({
               onClick={() => {
                 const yaConfirmada = !!appointment.clientConfirmedAt;
                 markClientConfirmed(appointment.id, !yaConfirmada);
-                toast.success(
-                  yaConfirmada
-                    ? "Marcada como no confirmada"
-                    : "Marcada como confirmada por el cliente",
-                );
+                const nombre = appointment.clientName.split(" ")[0];
+                avisar(yaConfirmada ? `${nombre}: sin confirmar` : `${nombre} ha confirmado`, () => markClientConfirmed(appointment.id, yaConfirmada));
               }}
               className={cn(
                 "flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
@@ -573,7 +550,7 @@ export function AppointmentDetailSheet({
                   })}
                 </span>
               ) : (
-                <span>El cliente aún no ha confirmado</span>
+                <span>La clienta aún no ha confirmado</span>
               )}
             </button>
             <p className="text-xs text-muted-foreground">
@@ -582,37 +559,17 @@ export function AppointmentDetailSheet({
             </p>
           </div>
 
-          <SheetFooter className="mt-auto">
-            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full text-destructive hover:text-destructive"
-                  disabled={appointment.status === "cancelled"}
-                >
-                  Cancelar cita
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>¿Cancelar esta cita?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Se marcará como cancelada para {appointment.clientName}. Esta acción no se puede
-                    deshacer.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Volver</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleCancel}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Sí, cancelar
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </SheetFooter>
+          {puedeEn("cita.cancelar") && <SheetFooter className="mt-auto">
+            {/* Lote 12: sin «¿Seguro?»: se cancela al momento y se deshace desde el aviso o el historial. */}
+            <Button
+              variant="outline"
+              className="w-full text-destructive hover:text-destructive"
+              disabled={appointment.status === "cancelled"}
+              onClick={handleCancel}
+            >
+              Cancelar cita
+            </Button>
+          </SheetFooter>}
 
           {/* Las tres decisiones de Adam sobre el dinero: anotarla, perdonarla
               o bloquear. Nunca se aplica ninguna sola, y todas se deshacen. */}
@@ -626,5 +583,6 @@ export function AppointmentDetailSheet({
         </SheetContent>
       )}
     </Sheet>
+    </>
   );
 }

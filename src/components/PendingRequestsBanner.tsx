@@ -1,4 +1,10 @@
+import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
+import { ChevronDown } from "lucide-react";
+import { usePlegado } from "@/lib/use-plegado";
+import { VentanaConfirmar } from "@/components/VentanaConfirmar";
+import { DuracionOtra } from "@/components/DuracionOtra";
 import { toast } from "sonner";
 import { AlertTriangle, Clock, Clock3, MessageCircle } from "lucide-react";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
@@ -14,7 +20,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { StylistDot } from "@/components/StylistAvatar";
 import { Button } from "@/components/ui/button";
 import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
-import { DepositStatusControls } from "@/components/DepositStatusControls";
+import { SenalCita } from "@/components/SenalCita";
+import { deadlineHours, depositDueAt } from "@/lib/deposit-deadline";
 import {
   Select,
   SelectContent,
@@ -27,6 +34,8 @@ import { importeSenal, mensajeErrorSenal, prepararPeticionSenal, reglaSenal } fr
 export interface PendingRequestsBannerProps {
   /** Abre el detalle de la cita (AppointmentDetailSheet) para cambiar duración u hora. */
   onOpenDetail: (appointment: Appointment) => void;
+  /** Clave para plegar el bloque desde su cabecera (recordado); sin ella, siempre abierto. */
+  plegable?: string;
 }
 
 /** Mismos valores que el desplegable de duración de `NewAppointmentDialog`. */
@@ -45,8 +54,9 @@ const DURATION_OPTIONS_MIN = [15, 30, 40, 45, 60, 75, 90, 120, 150, 180];
  * salón, no con la de catálogo. Con `duracionFlexible` apagado el bloque se
  * comporta exactamente igual que antes.
  */
-export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerProps) {
-  const appointments = useSalonStore((s) => s.appointments);
+export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequestsBannerProps) {
+  const [abierto, alternar] = usePlegado(plegable, !plegable);
+  const appointments = useCitasVisibles();
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
@@ -57,7 +67,7 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
   const depositEnabled = useSalonStore((s) => !!s.salonProfile.depositEnabled);
   const depositBizumPhone = useSalonStore((s) => s.salonProfile.depositBizumPhone ?? "");
   // Con un solo profesional, "con Adam" en cada solicitud es ruido.
-  const soloUno = esSoloUnProfesional(useEquipo());
+  const soloUno = esSoloUnProfesional(useEquipoVisible());
   const depositAmountEur = useSalonStore((s) => s.salonProfile.depositAmountEur ?? 10);
   const depositDeadlineHours = reglaSen.ventanaHoras;
   const duracionFlexible = useSalonStore((s) => !!s.salonProfile.duracionFlexible);
@@ -66,6 +76,9 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
 
   // Duración elegida por el salón para cada tarjeta, mientras no se confirma.
   const [duracionPorTarjeta, setDuracionPorTarjeta] = useState<Record<string, number>>({});
+  /** Tarjeta con el campo «Otra…» abierto. */
+  const [otraEn, setOtraEn] = useState<string | null>(null);
+  const [aConfirmar, setAConfirmar] = useState<{ cita: Appointment; duracion: number } | null>(null);
 
   const pending = appointments
     .filter((a) => a.status === "pending")
@@ -73,16 +86,13 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
 
   if (pending.length === 0) return null;
 
+  // Confirmar abre la ventana con la ficha y la propuesta (9f), no confirma a ciegas.
   function handleConfirm(a: Appointment) {
-    updateAppointment(a.id, { status: "confirmed" });
-    toast.success("Cita confirmada", { description: a.clientName });
+    setAConfirmar({ cita: a, duracion: a.duration });
   }
 
   function handleConfirmConDuracion(a: Appointment, duracion: number) {
-    updateAppointment(a.id, { status: "confirmed", duration: duracion });
-    toast.success("Cita confirmada", {
-      description: `${a.clientName} · ${duracion} min`,
-    });
+    setAConfirmar({ cita: a, duracion });
   }
 
   /**
@@ -92,75 +102,11 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
    * devuelve la solicitud exactamente al estado que tenía.
    */
   function handleReject(a: Appointment) {
-    const estadoPrevio = a.status;
+    // Lote 12: el aviso con «Deshacer» lo pone el registro de cambios.
     // Rechazar es cancelar por parte del salón: si ya había señal, se devuelve.
     cancelAppointment(a.id, { porSalon: true });
-    toast.success("Solicitud rechazada", {
-      description: a.clientName,
-      duration: 8000,
-      action: {
-        label: "Deshacer",
-        onClick: () => {
-          updateAppointment(a.id, { status: estadoPrevio });
-          toast.success("Solicitud recuperada", { description: a.clientName });
-        },
-      },
-    });
   }
 
-  /**
-   * Pedir la señal por Bizum sin abrir el detalle: María (PeluChic) la pide a
-   * toda clienta nueva, así que tiene que estar en la misma fila donde ve la
-   * solicitud. Abre WhatsApp con el mensaje escrito — lo envía ella.
-   */
-  /** Lo que debe esta cita: lo ya fijado o, si no, lo que dice la regla del salón. */
-  function importeDeLaCita(a: Appointment): number {
-    return a.depositEur && a.depositEur > 0
-      ? a.depositEur
-      : importeSenal(reglaSen, { serviceIds: a.serviceIds, durationMin: a.duration, priceEur: a.priceEur }) || depositAmountEur;
-  }
-
-  function handleFianza(a: Appointment) {
-    if (a.depositReceivedAt) return;
-    const telefono = clients.find((c) => c.id === a.clientId)?.phone ?? "";
-    if (!telefono) {
-      toast.error("Esta solicitud no trae teléfono al que escribir");
-      return;
-    }
-    const requestedAt = new Date().toISOString();
-    // Misma comprobación que al confirmar el envío: si no se puede pedir (cita
-    // pasada, ya recibida…), no se abre WhatsApp; y el plazo del mensaje es
-    // el que quedará, nunca después de la cita.
-    const preparada = prepararPeticionSenal(a, reglaSen, importeDeLaCita(a), new Date(requestedAt));
-    if (!preparada.ok) {
-      toast.error(mensajeErrorSenal(preparada.error));
-      return;
-    }
-    const url = enlaceDeFianza(telefono, {
-      clientName: a.clientName,
-      startISO: a.start,
-      salonName,
-      bizumPhone: depositBizumPhone,
-      importeEur: preparada.importeEur,
-      deadlineISO: preparada.venceISO,
-      plantilla: reglaSen.plantilla,
-    }, requestedAt);
-    useSalonStore.getState().abrirWhatsAppDeCita(a.id, url);
-    // Abrir WhatsApp no es enviar: la señal pasa a «pedida» solo cuando la
-    // dueña confirma que lo ha mandado (antes se marcaba al abrirlo).
-    toast("¿Has enviado el WhatsApp de la señal?", {
-      description: "Márcalo para que empiece a contar el plazo.",
-      duration: 20_000,
-      action: {
-        label: "Sí, enviado",
-        onClick: () => {
-          const error = pedirSenal(a.id);
-          if (error) toast.error("No se ha podido marcar la señal como pedida", { description: mensajeErrorSenal(error) });
-          else toast.success("Señal pedida");
-        },
-      },
-    });
-  }
 
   /**
    * Próxima cita del mismo profesional tras el fin de `a` (con la duración que
@@ -187,12 +133,15 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
   return (
     <div
       data-tour="pending-requests"
-      className="overflow-hidden rounded-xl border-2 border-[var(--warning)]/50 bg-[var(--warning)]/10 shadow-sm"
+      className="overflow-hidden rounded-[20px] border-[1.5px] border-dashed border-moca bg-card"
     >
-      <div className="flex items-center gap-2 border-b border-[var(--warning)]/30 px-5 py-3">
-        <Clock className="size-4 shrink-0 text-[var(--warning)]" />
+      <div
+        className={cn("flex items-center gap-2.5 px-5 py-4", abierto && "border-b border-border", plegable && "cursor-pointer hover:bg-beige/50")}
+        {...(plegable ? { role: "button", tabIndex: 0, "aria-expanded": abierto, onClick: alternar, onKeyDown: (e: React.KeyboardEvent) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), alternar()) } : {})}
+      >
+        <Clock className="size-[18px] shrink-0 text-primary" strokeWidth={1.6} />
         <div className="min-w-0">
-          <h2 className="font-display text-base text-foreground">
+          <h2 className="text-base font-extrabold tracking-[-0.01em] text-foreground">
             {duracionFlexible
               ? `${pending.length} ${pending.length === 1 ? "solicitud" : "solicitudes"} por confirmar`
               : `${pending.length} ${
@@ -200,13 +149,17 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                 } de confirmar`}
           </h2>
           {duracionFlexible && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[12.5px] text-muted-foreground">
               Ajusta la duración de cada una antes de aceptarla: la decides tú, no la clienta.
             </p>
           )}
         </div>
+        {plegable && (
+          <ChevronDown className={cn("ml-auto size-5 shrink-0 text-cafe-medio transition-transform", abierto && "rotate-180")} strokeWidth={1.6} aria-hidden="true" />
+        )}
       </div>
-      <div className="divide-y divide-[var(--warning)]/20">
+      {abierto && (
+      <div className="divide-y divide-border">
         {pending.map((a) => {
           const emp = employeeMap[a.employeeId];
 
@@ -217,10 +170,10 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                 className="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-medium">{a.clientName}</p>
+                  <p className="truncate font-bold">{a.clientName}</p>
                   <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                     <StylistDot employeeId={a.employeeId} className="size-2" />
-                    {serviceLabelOf(a)} ·{" "}
+                    {serviceLabelOf(a, serviceMap)} ·{" "}
                     {new Date(a.start).toLocaleString("es", {
                       day: "numeric",
                       month: "short",
@@ -230,34 +183,19 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                     · con {emp.name}
                   </p>
                   <BookingAnswersSummary answers={a.bookingAnswers} />
-                  <DepositStatusControls appointment={a} hours={depositDeadlineHours} />
+                  <SenalCita cita={a} compacta />
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
                   <Button size="sm" onClick={() => handleConfirm(a)}>
                     Confirmar
                   </Button>
-                  {pideFianza && !a.depositReceivedAt && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5"
-                      onClick={() => handleFianza(a)}
-                    >
-                      <MessageCircle className="size-3.5" />
-                      {a.depositReceivedAt
-                        ? "Señal recibida"
-                        : a.depositRequestedAt
-                          ? "Reenviar señal"
-                          : `Pedir ${eur(depositAmountEur)} de señal`}
-                    </Button>
-                  )}
                   <Button size="sm" variant="outline" onClick={() => onOpenDetail(a)}>
                     Cambiar fecha/hora
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-destructive hover:text-destructive"
+                    className="text-melocoton-tinta hover:bg-melocoton hover:text-melocoton-tinta"
                     onClick={() => handleReject(a)}
                   >
                     Rechazar
@@ -284,10 +222,10 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
           return (
             <div key={a.id} className="flex flex-col gap-3 px-5 py-4">
               <div className="min-w-0">
-                <p className="truncate font-medium">{a.clientName}</p>
+                <p className="truncate font-bold">{a.clientName}</p>
                 <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                   {!soloUno && <StylistDot employeeId={a.employeeId} className="size-2" />}
-                  {serviceLabelOf(a)} ·{" "}
+                  {serviceLabelOf(a, serviceMap)} ·{" "}
                   {new Date(a.start).toLocaleString("es", {
                     day: "numeric",
                     month: "short",
@@ -297,10 +235,10 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                   {soloUno ? "" : ` · con ${emp.name}`}
                 </p>
                 <BookingAnswersSummary answers={a.bookingAnswers} />
-                <DepositStatusControls appointment={a} hours={depositDeadlineHours} />
+                <SenalCita cita={a} compacta />
               </div>
 
-              <div className="flex flex-col gap-1.5 rounded-lg bg-background/60 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-1.5 rounded-2xl bg-nata px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 space-y-1">
                   <p className="text-xs font-medium text-foreground">Duración propuesta</p>
                   {recordada && (
@@ -319,9 +257,11 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                 </div>
                 <Select
                   value={String(duracionElegida)}
-                  onValueChange={(v) =>
-                    setDuracionPorTarjeta((prev) => ({ ...prev, [a.id]: Number(v) }))
-                  }
+                  onValueChange={(v) => {
+                    if (v === "otra") return setOtraEn(a.id);
+                    setOtraEn(null);
+                    setDuracionPorTarjeta((prev) => ({ ...prev, [a.id]: Number(v) }));
+                  }}
                 >
                   <SelectTrigger
                     className="w-full sm:w-32"
@@ -335,12 +275,27 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                         {min} min
                       </SelectItem>
                     ))}
+                    <SelectItem value="otra">Otra…</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              {otraEn === a.id && (
+                <div className="flex justify-end">
+                  <DuracionOtra
+                    valor={duracionElegida}
+                    abiertoAlInicio
+                    onCancelar={() => setOtraEn(null)}
+                    claseChip="h-9 rounded-full px-3.5 text-[13px] font-bold text-cafe-medio"
+                    onElegir={(min) => {
+                      setDuracionPorTarjeta((prev) => ({ ...prev, [a.id]: min }));
+                      setOtraEn(null);
+                    }}
+                  />
+                </div>
+              )}
 
               {solape && (
-                <p className="flex items-start gap-1.5 text-xs text-[var(--warning)]">
+                <p className="flex items-start gap-1.5 text-[12.5px] text-melocoton-tinta">
                   <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
                   Se solapa con la cita de las{" "}
                   {new Date(solape.start).toLocaleTimeString("es", {
@@ -354,28 +309,13 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                 <Button size="sm" onClick={() => handleConfirmConDuracion(a, duracionElegida)}>
                   Confirmar con esta duración
                 </Button>
-                {pideFianza && !a.depositReceivedAt && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-1.5"
-                    onClick={() => handleFianza(a)}
-                  >
-                    <MessageCircle className="size-3.5" />
-                    {a.depositReceivedAt
-                      ? "Señal recibida"
-                      : a.depositRequestedAt
-                        ? "Reenviar señal"
-                        : `Pedir ${eur(depositAmountEur)} de señal`}
-                  </Button>
-                )}
                 <Button size="sm" variant="outline" onClick={() => onOpenDetail(a)}>
                   Cambiar fecha/hora
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-destructive hover:text-destructive"
+                  className="text-melocoton-tinta hover:bg-melocoton hover:text-melocoton-tinta"
                   onClick={() => handleReject(a)}
                 >
                   Rechazar
@@ -385,6 +325,16 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
           );
         })}
       </div>
+      )}
+      <VentanaConfirmar
+        cita={aConfirmar?.cita ?? null}
+        duracionInicial={aConfirmar?.duracion}
+        onCerrar={() => setAConfirmar(null)}
+        onCambiar={(c) => {
+          setAConfirmar(null);
+          onOpenDetail(c);
+        }}
+      />
     </div>
   );
 }

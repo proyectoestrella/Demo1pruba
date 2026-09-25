@@ -82,7 +82,7 @@ export function clientasDePregunta(question: string, clients: Client[]): { match
 }
 
 function respuestaFicha(matches: Client[], ctx: Required<SalonContext>): string {
-  if (!matches.length) return "No encuentro a esa clienta. Prueba con su nombre completo en el buscador de Clientes.";
+  if (!matches.length) return "No encuentro a esa clienta. Prueba con su nombre completo en el buscador de Clientas.";
   if (matches.length > 1) return `${matches.length} clientas coinciden con ese nombre:\n${matches.map((c) => `• ${c.name}`).join("\n")}\nEscribe el nombre completo para elegir una.`;
   const clienta = matches[0];
   const ficha = fichaDeClienta(clienta.id, { citas: ctx.appointments, clientes: ctx.clients, servicios: ctx.services, equipo: ctx.employees, ahora: ctx.now });
@@ -353,6 +353,10 @@ const INTENTS: Intent[] = [
   {
     keywords: [
       "clientes inactivos",
+      "clientas inactivas",
+      "clientas estan inactivas",
+      "clientas que no vuelven",
+      "clientas perdidas",
       "clientes estan inactivos",
       "clientes que no vuelven",
       "quien no ha vuelto",
@@ -361,13 +365,13 @@ const INTENTS: Intent[] = [
     ],
     answer: ({ appointments, clients, now }) => {
       const inactive = inactiveClients(appointments, clients, now, 45);
-      if (!inactive.length) return "No hay clientes inactivos: todos han vuelto en los últimos 45 días.";
+      if (!inactive.length) return "No hay clientas inactivas: todas han vuelto en los últimos 45 días.";
       const lines = inactive.slice(0, 5).map(({ client, freq }) => {
         const days = freq.lastVisit ? Math.round((+now - +new Date(freq.lastVisit)) / DAY_MS) : null;
         return `• ${client.name} — ${days === null ? "sin fecha" : `hace ${days} días`}`;
       });
       return [
-        `${inactive.length} cliente${inactive.length === 1 ? "" : "s"} sin volver en más de 45 días:`,
+        `${inactive.length} clienta${inactive.length === 1 ? "" : "s"} sin volver en más de 45 días:`,
         ...lines,
         "",
         "Recomendación: un mensaje personal a los primeros de la lista suele traerlos de vuelta.",
@@ -381,13 +385,16 @@ const INTENTS: Intent[] = [
       "recurrencia de clientes",
       "cuantos son recurrentes",
       "clientes son recurrentes",
+      "clientas son recurrentes",
+      "clientas que repiten",
+      "recurrencia de clientas",
       "clientes que repiten",
     ],
     answer: ({ appointments }) => {
       const { total, returning, oneOff } = newVsReturning(appointments);
-      if (!total) return "Todavía no hay clientes con citas registradas.";
+      if (!total) return "Todavía no hay clientas con citas registradas.";
       const ratePct = Math.round((returning / total) * 100);
-      return `De ${total} clientes con citas, ${returning} repiten (${ratePct}%) y ${oneOff} han venido una sola vez. Cuanto más alto el porcentaje de recurrencia, menos dependes de captar gente nueva cada semana.`;
+      return `De ${total} clientas con citas, ${returning} repiten (${ratePct}%) y ${oneOff} han venido una sola vez. Cuanto más alto el porcentaje de recurrencia, menos dependes de captar gente nueva cada semana.`;
     },
   },
 
@@ -450,7 +457,7 @@ const INTENTS: Intent[] = [
     },
   },
   {
-    keywords: ["citas hoy", "cuantas citas", "agenda de hoy", "cuantos clientes hoy", "citas tengo hoy"],
+    keywords: ["citas hoy", "cuantas citas", "agenda de hoy", "cuantos clientes hoy", "cuantas clientas hoy", "citas tengo hoy"],
     answer: ({ appointments, now }) => {
       const list = activeToday(appointments, now);
       if (!list.length) return "Hoy no hay ninguna cita en la agenda.";
@@ -470,7 +477,7 @@ const INTENTS: Intent[] = [
       const mix = serviceMix(appointments);
       const bits: string[] = [];
       if (weak) bits.push(`lanza una promo el ${weak.label}, es tu franja más floja`);
-      if (inactive.length) bits.push(`escribe a los ${Math.min(3, inactive.length)} clientes que llevan más sin volver`);
+      if (inactive.length) bits.push(`escribe a las ${Math.min(3, inactive.length)} clientas que llevan más sin volver`);
       if (mix.length) bits.push(`asegura hueco para "${mix[0].name}", es tu servicio estrella`);
       if (!bits.length) return "Todavía no hay datos suficientes para una recomendación con criterio.";
       return ["Tres cosas con las que empezaría hoy:", ...bits.map((b, i) => `${i + 1}. ${b[0].toUpperCase()}${b.slice(1)}.`)].join("\n");
@@ -539,17 +546,17 @@ const INTENTS: Intent[] = [
     },
   },
   {
-    keywords: ["cliente nuevo", "clientes nuevos", "captacion"],
+    keywords: ["cliente nuevo", "clientes nuevos", "clienta nueva", "clientas nuevas", "captacion"],
     answer: ({ appointments }) => {
       const t = newClientsTrend(appointments);
-      return `Estimación de clientes nuevos esta semana: ${t.current} (la semana pasada, ${t.previous}). Ojo: sale de una heurística sobre los clientes de la semana, no de un registro real de altas.`;
+      return `Estimación de clientas nuevas esta semana: ${t.current} (la semana pasada, ${t.previous}). Ojo: sale de una heurística sobre los clientes de la semana, no de un registro real de altas.`;
     },
   },
   {
-    keywords: ["mejor cliente", "quien gasta", "cliente que mas"],
+    keywords: ["mejor cliente", "mejor clienta", "quien gasta", "cliente que mas", "clienta que mas"],
     answer: ({ appointments }) => {
       const top = topClient(appointments);
-      if (!top) return "Todavía no hay historial de gasto por cliente.";
+      if (!top) return "Todavía no hay historial de gasto por clienta.";
       return `${top.name} es quien más ha dejado en caja: ${eur(top.total)} en ${top.visits} visitas.`;
     },
   },
@@ -602,8 +609,8 @@ export const SUGGESTION_GROUPS: { topic: string; items: string[] }[] = [
     ],
   },
   {
-    topic: "Clientes",
-    items: ["¿Qué clientes están inactivos?", "¿Cuántos clientes son recurrentes?"],
+    topic: "Clientas",
+    items: ["¿Qué clientas están inactivas?", "¿Cuántas clientas son recurrentes?"],
   },
   { topic: "Tus clientas", items: ["¿Qué se ha hecho Marta Martín?", "¿Qué color lleva Marisol?", "Ficha de Cristina", "Historial de Valentina"] },
   {
@@ -640,6 +647,6 @@ export function answerFor(question: string, ctx: SalonContext): string {
   return [
     "No sé responder a eso — solo consulto los datos de tu propio salón, no invento.",
     "",
-    "Puedo hablarte de ingresos (totales, por servicio, por mes), ocupación (global o por profesional), franjas fuertes y flojas, clientes (nuevos, recurrentes, inactivos, quién gasta más), cancelaciones y ausencias, agenda de hoy y próxima, lista de espera, tarifas o una recomendación para hoy.",
+    "Puedo hablarte de ingresos (totales, por servicio, por mes), ocupación (global o por profesional), franjas fuertes y flojas, clientas (nuevas, recurrentes, inactivas, quién gasta más), cancelaciones y ausencias, agenda de hoy y próxima, lista de espera, tarifas o una recomendación para hoy.",
   ].join("\n");
 }

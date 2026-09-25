@@ -74,9 +74,14 @@ describe("responder", () => {
     expect(a.tipo === "respuesta" && a.intencion).toBe("clientas-inactivas");
     const b = nuevo().responder("quiero mandar sms a todas mis clientas");
     expect(b.tipo === "escalar" && b.intencion).toBe("no-campanas-automaticas");
+    // «Por cobrar» del mes con el criterio de Analítica: todo lo del mes sin
+    // cobrar, hecho o por hacer. La cifra se calcula de los datos de la semilla
+    // (con o sin cobros marcados).
     const c = nuevo().responder("cuánto he facturado este mes");
-    expect(c.tipo === "respuesta" && c.texto).toContain("de citas ya hechas");
-    expect(c.tipo === "respuesta" && c.texto).toContain("de las que faltan");
+    const { euros } = require("./resolutores/tipos") as typeof import("./resolutores/tipos");
+    const mes = datosPeluChic().citas.filter((x) => x.start.slice(0, 7) === "2026-09" && x.status !== "cancelled" && x.status !== "blocked" && x.status !== "no-show" && !x.paidAt);
+    const falta = mes.reduce((t, x) => t + x.priceEur, 0);
+    expect(c.tipo === "respuesta" && c.texto).toContain(falta ? `${euros(falta)} ` : "cobr");
   });
 
   test("7c: dos intenciones vecinas en la misma pregunta → pregunta cuál", () => {

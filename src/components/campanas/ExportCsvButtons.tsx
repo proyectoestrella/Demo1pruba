@@ -103,7 +103,7 @@ export function ExportCsvButtons({
         <span className="text-xs text-muted-foreground">{textoRango(rango)}</span>
       ) : (
         <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
-          <SelectTrigger className="w-[170px]" aria-label="Periodo a exportar">
+          <SelectTrigger className="w-[130px] sm:w-[170px]" aria-label="Periodo a exportar">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -116,10 +116,10 @@ export function ExportCsvButtons({
         </Select>
       )}
       <Button variant="outline" size="sm" className="gap-1.5" onClick={exportarCitas}>
-        <Download className="h-3.5 w-3.5" /> Exportar a Excel (CSV)
+        <Download className="h-3.5 w-3.5" /> <span className="sm:hidden">Excel</span><span className="hidden sm:inline">Exportar a Excel (CSV)</span>
       </Button>
       <Button variant="outline" size="sm" className="gap-1.5" onClick={exportarResumenMes}>
-        <FileSpreadsheet className="h-3.5 w-3.5" /> Resumen del mes
+        <FileSpreadsheet className="h-3.5 w-3.5" /> <span className="sm:hidden">Resumen</span><span className="hidden sm:inline">Resumen del mes</span>
       </Button>
     </div>
   );

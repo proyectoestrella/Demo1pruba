@@ -11,7 +11,7 @@ import { employeesForType } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { Instagram, MapPin, Phone, Lock, Menu, TriangleAlert } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { logoDelSalon } from "@/lib/logo-salon";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollProgress } from "@/components/magicui/scroll-progress";
@@ -80,6 +80,10 @@ function SalonLayout() {
   const onBooking =
     path.includes("/book") || path.includes("/confirmation") || path.includes("/waitlist");
   const profile = useDisplayProfile();
+  // Logo del salón en la barra y el pie; en demo, el de la lista de demos (ver logo-salon.ts).
+  const sinSalonReal = useSalonStore((st) => !st.realSalonSlug);
+  const conEnlaceDemo = useRouterState({ select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string" });
+  const logoSalon = logoDelSalon(profile, sinSalonReal || conEnlaceDemo);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const demoRawParam = useRouterState({
     select: (s) => (s.location.search as Record<string, unknown>)?.[DEMO_PARAM],
@@ -235,7 +239,7 @@ function SalonLayout() {
     >
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
         {/* Barra de avance de lectura, pegada al borde inferior de la cabecera. */}
-        <ScrollProgress className="absolute inset-x-0 bottom-0 top-auto h-0.5 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
+        <ScrollProgress className="absolute inset-x-0 bottom-0 top-auto h-0.5 bg-none bg-primary" />
         <div className="mx-auto flex max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] items-center justify-between gap-4 px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
             <Link
@@ -243,7 +247,13 @@ function SalonLayout() {
               params={{ salonSlug }}
               className="flex min-w-0 items-center gap-2"
             >
-              <Logo label={profile.name} />
+              {logoSalon ? (
+                <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
+                  <img src={logoSalon} alt={`Logo de ${profile.name}`} className="h-full w-full object-cover" />
+                </span>
+              ) : (
+                <Logo label={profile.name} />
+              )}
               <div className="min-w-0 leading-tight">
                 {/* Nombres largos ("THE BEST SHAVE & BARBER") se partían feo
                     a una línea truncada; con dos líneas dejan de cortar
@@ -300,7 +310,6 @@ function SalonLayout() {
             {/* 44px de zona táctil (auditoría de UX, hallazgo C9): el
                 componente base mide 32px, de sobra en escritorio con ratón
                 pero por debajo del mínimo recomendado en móvil. */}
-            <ThemeToggle className="h-11 w-11" />
             {!onBooking && (
               <>
                 {/* Menú móvil */}
@@ -351,7 +360,13 @@ function SalonLayout() {
         <div className="mx-auto grid max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] gap-10 px-5 py-16 md:grid-cols-4">
           <div className="md:col-span-2">
             <div className="flex items-center gap-2">
-              <Logo label={profile.name} />
+              {logoSalon ? (
+                <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
+                  <img src={logoSalon} alt={`Logo de ${profile.name}`} className="h-full w-full object-cover" />
+                </span>
+              ) : (
+                <Logo label={profile.name} />
+              )}
               <span className="font-display text-lg">{profile.name}</span>
             </div>
             {profile.about ? (

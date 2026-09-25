@@ -59,7 +59,7 @@ export function citasToCsv(
   /** Formulario del salón, para exportar las respuestas con el texto de su pregunta. */
   formulario?: { perfil: Parameters<typeof respuestasLegibles>[0]; tipo: BusinessType },
 ): string {
-  const header = fila(["Fecha", "Hora", "Cliente", "Servicio", "Profesional", "Precio (€)", "Estado", "Respuestas al reservar"]);
+  const header = fila(["Fecha", "Hora", "Clienta", "Servicio", "Profesional", "Precio (€)", "Estado", "Respuestas al reservar"]);
   const filas = appointments
     .slice()
     .sort((a, b) => +new Date(a.start) - +new Date(b.start))

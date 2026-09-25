@@ -58,11 +58,11 @@ export function SelectorPeriodo({ className }: { className?: string }) {
   }
 
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-1.5", className)}>
       <div
         role="group"
         aria-label="Periodo de las estadísticas"
-        className="grid grid-cols-4 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1"
+        className="grid w-full grid-cols-4 gap-0.5 rounded-full border border-border bg-nata p-1 sm:inline-flex sm:w-auto"
       >
         {BOTONES.map((id) => {
           const activo = periodo === id;
@@ -74,7 +74,7 @@ export function SelectorPeriodo({ className }: { className?: string }) {
           const contenido = esFechas ? (
             <>
               <CalendarDays className="hidden h-4 w-4 shrink-0 sm:block" aria-hidden="true" />
-              <span className="truncate">Fechas</span>
+              <span className="truncate"><span className="sm:hidden">Fechas</span><span className="hidden sm:inline">Personalizado</span></span>
             </>
           ) : (
             <>
@@ -84,10 +84,10 @@ export function SelectorPeriodo({ className }: { className?: string }) {
           );
           const clases = cn(
             // 44 px de alto: el mínimo para tocar sin fallar con el iPad en la mano.
-            "flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 text-sm font-medium transition-colors",
+            "flex h-[38px] min-w-0 items-center justify-center gap-1.5 rounded-full px-2 text-[13px] font-bold transition-colors sm:px-[15px] [@media(pointer:coarse)]:h-11",
             activo
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:bg-background hover:text-foreground",
+              ? "bg-card text-foreground shadow-[0_1px_3px_rgba(59,47,42,0.12)]"
+              : "text-cafe-medio hover:text-foreground",
           );
 
           if (!esFechas) {
@@ -150,8 +150,8 @@ export function SelectorPeriodo({ className }: { className?: string }) {
           );
         })}
       </div>
-      <p className="text-xs text-muted-foreground" aria-live="polite">
-        Estás viendo <strong className="font-medium text-foreground">{textoRango(rango)}</strong>
+      <p className="text-[12.5px] text-muted-foreground" aria-live="polite">
+        Estás viendo <strong className="font-bold text-foreground">{textoRango(rango)}</strong>
       </p>
     </div>
   );

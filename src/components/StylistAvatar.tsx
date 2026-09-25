@@ -92,7 +92,7 @@ export function StylistAvatar({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full font-semibold text-white select-none",
+        "flex shrink-0 items-center justify-center rounded-full font-bold text-foreground select-none",
         AVATAR_SIZE_CLASSES[size],
         className,
       )}
