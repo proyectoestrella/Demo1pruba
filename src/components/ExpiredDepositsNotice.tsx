@@ -1,18 +1,33 @@
 import type { Appointment } from "@/lib/mock/types";
-import { depositState, deadlineHours } from "@/lib/deposit-deadline";
+import { estadoSenal, reglaSenal } from "@/lib/senal-maqueta";
 import { useClientNow } from "@/lib/use-client-now";
 import { useSalonStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 
+/**
+ * Aviso de Hoy: señales pedidas cuyo plazo pasó sin recibirlas (9j). Nunca
+ * libera nada solo (salvo con la liberación automática, que es de BACKEND):
+ * lleva a la cita, donde la dueña da más tiempo o libera el hueco.
+ */
 export function ExpiredDepositsNotice({ onOpenDetail }: { onOpenDetail: (appointment: Appointment) => void }) {
   const appointments = useSalonStore((s) => s.appointments);
-  const hours = useSalonStore((s) => deadlineHours(s.salonProfile.depositDeadlineHours));
+  const perfil = useSalonStore((s) => s.salonProfile);
   const now = useClientNow();
   if (!now) return null;
-  const expired = appointments.filter((a) => depositState(a, now, hours) === "expired");
-  if (!expired.length) return null;
-  return <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3">
-    <p className="font-medium text-destructive">{expired.length} {expired.length === 1 ? "señal vencida" : "señales vencidas"}</p>
-    <Button size="sm" variant="outline" onClick={() => onOpenDetail(expired[0])}>Ver cita</Button>
-  </div>;
+  const regla = reglaSenal(perfil);
+  const vencidas = appointments.filter((a) => estadoSenal(a, regla, now) === "vencida");
+  if (!vencidas.length) return null;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-melocoton-borde bg-melocoton px-4 py-3">
+      <div>
+        <p className="font-bold text-melocoton-tinta">
+          {vencidas.length} {vencidas.length === 1 ? "señal vencida" : "señales vencidas"}
+        </p>
+        <p className="text-[12.5px] text-melocoton-tinta">Pasó el plazo sin recibirla. Da más tiempo o libera el hueco desde la cita.</p>
+      </div>
+      <Button size="sm" variant="outline" onClick={() => onOpenDetail(vencidas[0])}>
+        Ver {vencidas.length === 1 ? "la cita" : "la primera"}
+      </Button>
+    </div>
+  );
 }

@@ -6,6 +6,7 @@ import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { serviceLabelOf } from "@/lib/appointment-services";
+import { estadoSenal, reglaSenal } from "@/lib/senal-maqueta";
 import { agendaDeHoy, dineroDelRango } from "@/lib/dinero";
 import { esCobrable } from "@/lib/caja";
 import { duracionRecordada } from "@/lib/derive";
@@ -85,6 +86,7 @@ export function HoyArena() {
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
   const salonName = useSalonStore((s) => s.salonProfile.name);
+  const perfilSalon = useSalonStore((s) => s.salonProfile);
   const mostrarSolicitudes = useSalonStore((s) => s.salonProfile.mostrarSolicitudes ?? true);
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur ?? 0);
   const horasSenal = useSalonStore((s) => deadlineHours(s.salonProfile.depositDeadlineHours));
@@ -110,7 +112,9 @@ export function HoyArena() {
   const terminadas = hoy.filter((a) => terminada(a, ahora));
   const sinMarcar = terminadas.filter((a) => a.status === "pending" || a.status === "confirmed").length;
   const solicitudesVisibles = mostrarSolicitudes ? pendientes.length : 0;
-  const pendienteDeTi = solicitudesVisibles + sinMarcar;
+  const reglaDeSenal = reglaSenal(perfilSalon);
+  const senalesVencidas = appointments.filter((a) => estadoSenal(a, reglaDeSenal, ahora) === "vencida").length;
+  const pendienteDeTi = solicitudesVisibles + sinMarcar + senalesVencidas;
   const manana = new Date(ahora);
   manana.setDate(manana.getDate() + 1);
   const filasManana = hojaDelDia(appointments, fechaLocal(manana)).sort((x, y) => +new Date(x.cita.start) - +new Date(y.cita.start));
@@ -118,7 +122,7 @@ export function HoyArena() {
   const conRecargo = recargoActivo({ noShowFeeEur });
   const avisos =
     (conRecargo ? resumenDeDeuda(clients).personas : 0) +
-    appointments.filter((a) => depositState(a, ahora, horasSenal) === "expired").length;
+    senalesVencidas;
 
   const nombreCorto = (a: Appointment) => {
     const e = equipo.find((x) => x.id === a.employeeId);
@@ -167,7 +171,7 @@ export function HoyArena() {
           <Detalle>
             {pendienteDeTi === 0
               ? "Nada pendiente: todo al día."
-              : [solicitudesVisibles > 0 && `${solicitudesVisibles} ${solicitudesVisibles === 1 ? "solicitud" : "solicitudes"}`, sinMarcar > 0 && `${sinMarcar} por marcar`].filter(Boolean).join(" · ")}
+              : [solicitudesVisibles > 0 && `${solicitudesVisibles} ${solicitudesVisibles === 1 ? "solicitud" : "solicitudes"}`, sinMarcar > 0 && `${sinMarcar} por marcar`, senalesVencidas > 0 && `${senalesVencidas} ${senalesVencidas === 1 ? "señal vencida" : "señales vencidas"}`].filter(Boolean).join(" · ")}
           </Detalle>
         </TarjetaCifra>
       </div>
@@ -406,8 +410,9 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
                   <DropdownMenuItem onClick={() => setEditando(editando === a.id ? null : a.id)}>Cambiar la duración</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onAbrirDetalle(a)}>Cambiar fecha u hora</DropdownMenuItem>
                   {pideFianza && !a.depositReceivedAt && (
-                    <DropdownMenuItem onClick={() => pedirSenal(a)}>
-                      {a.depositRequestedAt ? "Reenviar la señal" : `Pedir ${eur(depositAmountEur)} de señal`}
+                    <DropdownMenuItem onClick={() => confirmar(a, elegida)}>
+                      {/* La señal se pide desde la ventana, con su ciclo (9j): abrir WhatsApp no es enviar. */}
+                      Señal…
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />

@@ -15,6 +15,7 @@ import { iniciales } from "@/lib/calendario-arena";
 import type { Appointment } from "@/lib/mock/types";
 import { Button } from "@/components/ui/button";
 import { DuracionOtra } from "@/components/DuracionOtra";
+import { SenalCita } from "@/components/SenalCita";
 import { cn } from "@/lib/utils";
 
 /**
@@ -22,11 +23,10 @@ import { cn } from "@/lib/utils";
  * Citas o el detalle de una cita, se abre esta ventana en vez de confirmar a
  * ciegas: a la izquierda la ficha resumida de la clienta (visitas, último
  * color, avisos, deuda) y a la derecha la propuesta (servicio, profesional,
- * día, hora, duración editable, precio y señal según Ajustes).
+ * día, hora, duración editable, precio y la señal con su ciclo (9j)).
  *
  * Es una ventana, no un diálogo modal: centrada, sin velo, con sombra, se
- * mueve cogiéndola por la cabecera y se cierra con Esc o con la X. No cambia
- * la lógica de la señal: solo dice lo que hay configurado.
+ * mueve cogiéndola por la cabecera y se cierra con Esc o con la X.
  */
 export function VentanaConfirmar({
   cita,
@@ -61,9 +61,6 @@ function Ventana({
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur ?? 0);
-  const depositEnabled = useSalonStore((s) => !!s.salonProfile.depositEnabled);
-  const depositBizumPhone = useSalonStore((s) => s.salonProfile.depositBizumPhone ?? "");
-  const depositAmountEur = useSalonStore((s) => s.salonProfile.depositAmountEur ?? 10);
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const direccion = useSalonStore((s) => s.salonProfile.address);
   const plantillaConfirmacion = useSalonStore((s) => s.salonProfile.plantillas?.confirmacion);
@@ -76,7 +73,6 @@ function Ventana({
   const profesional = equipo.find((e) => e.id === cita.employeeId);
   const [duracion, setDuracion] = useState(duracionInicial ?? cita.duration);
   const deuda = recargoActivo({ noShowFeeEur }) ? (cliente?.penaltyEur ?? 0) : 0;
-  const pideSenal = depositEnabled && !!depositBizumPhone.trim();
   const fecha = new Date(cita.start);
   const fin = new Date(+fecha + duracion * 60_000);
   const dia = fecha.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
@@ -285,11 +281,8 @@ function Ventana({
               <DuracionOtra valor={duracion} onElegir={setDuracion} claseChip={chip(false)} />
             </div>
           </div>
-          <p className="rounded-2xl bg-nata px-3.5 py-2.5 text-[13px] text-cafe-medio">
-            {pideSenal
-              ? `Señal configurada: ${eur(depositAmountEur)} por Bizum. Pídela después desde la cita si hace falta.`
-              : "Sin señal: no está activada en Ajustes."}
-          </p>
+          {/* La señal según la regla de Ajustes (9j), con sus acciones. */}
+          <SenalCita cita={appointments.find((a) => a.id === cita.id) ?? cita} compacta />
         </section>
       </div>
 

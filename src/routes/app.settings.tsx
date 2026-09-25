@@ -7,6 +7,7 @@ import { usePlegado } from "@/lib/use-plegado";
 import { cn } from "@/lib/utils";
 import { AjustesMensajes } from "@/components/AjustesMensajes";
 import { AjustesColores } from "@/components/AjustesColores";
+import { AjustesSenal } from "@/components/AjustesSenal";
 import { useSalonStore } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
 import { getCalendarSubscription, regenerateCalendarSubscription } from "@/lib/api/calendar.functions";
@@ -107,15 +108,6 @@ function Settings() {
       toast.error("El aviso mínimo tiene que estar entre 1 y 48 horas");
       return;
     }
-    const parsedDeposit = Number(depositAmountEur.replace(",", "."));
-    if (depositEnabled && (!Number.isFinite(parsedDeposit) || parsedDeposit <= 0 || parsedDeposit > 200)) {
-      toast.error("La señal tiene que estar entre 0 y 200 €");
-      return;
-    }
-    if (depositEnabled && depositBizumPhone.replace(/\D/g, "").length < 9) {
-      toast.error("Escribe el número de Bizum al que te tienen que pagar la señal");
-      return;
-    }
 
     const parsedBuffer = Number(lastSlotBufferMin);
     if (
@@ -131,10 +123,8 @@ function Settings() {
       noShowNoticeHours: Math.min(48, Math.max(1, Math.round(parsedNotice) || 2)),
       smartSpread: smartSpreadEnabled,
       lastSlotBufferMin: smartSpreadEnabled ? Math.min(240, Math.max(0, Math.round(parsedBuffer))) : 0,
-      depositEnabled,
-      depositBizumPhone: depositBizumPhone.trim(),
-      depositAmountEur: depositEnabled ? Math.min(200, Math.max(1, parsedDeposit)) : 0,
-      depositDeadlineHours: depositDeadline,
+      // La señal se guarda en su propio bloque (AjustesSenal): aquí no se toca,
+      // para no pisarla con valores viejos de este formulario.
       bookingQuestionsEnabled: questionsEnabled,
       bookingQuestionsRequired: questionsRequired,
       duracionFlexible,
@@ -250,7 +240,7 @@ function Settings() {
           <AjustesMensajes />
         </SeccionAjustes>
 
-        <SeccionAjustes titulo="Plantones y señal" resumen="Penalización por no venir y señal por Bizum">
+        <SeccionAjustes titulo="Plantones y señal" resumen="Penalización por no venir y la regla de la señal">
           <div className={fila}>
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -270,34 +260,7 @@ function Settings() {
             )}
             {guardar}
           </div>
-          {/* Fianza por Bizum — lo pidió María (PeluChic) para clientas nuevas. */}
-          <div className={fila}>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <Label className="text-[15px] font-extrabold">Señal por Bizum</Label>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Añade un botón en cada solicitud pendiente que abre tu WhatsApp con el mensaje ya
-                  escrito para pedir la señal. El Bizum llega a tu banco y lo marcas tú a mano:{" "}
-                  <strong>siShow no cobra ni comprueba ningún pago.</strong>
-                </p>
-              </div>
-              <Switch checked={depositEnabled} onCheckedChange={setDepositEnabled} />
-            </div>
-            {depositEnabled && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Número de Bizum" value={depositBizumPhone} onChange={setDepositBizumPhone} hint="El que aparecerá escrito en el mensaje." />
-                <Field label="Importe de la señal (€)" value={depositAmountEur} onChange={setDepositAmountEur} hint="De 1 a 200 €." />
-                <div className="space-y-1.5">
-                  <Label htmlFor="deposit-deadline">Plazo para hacer el Bizum</Label>
-                  <select id="deposit-deadline" className="flex h-10 w-full rounded-xl border border-input bg-blanco px-3 text-sm" value={depositDeadline} onChange={(e) => setDepositDeadline(Number(e.target.value) as DepositDeadlineHours)}>
-                    {DEPOSIT_DEADLINE_OPTIONS.map((hours) => <option key={hours} value={hours}>{hours} {hours === 1 ? "hora" : "horas"}</option>)}
-                  </select>
-                  <p className="text-xs text-muted-foreground">Al vencer, tú decides si dar más tiempo o liberar el hueco. Nunca se cancela sola.</p>
-                </div>
-              </div>
-            )}
-            {guardar}
-          </div>
+          <AjustesSenal />
         </SeccionAjustes>
 
         <SeccionAjustes titulo="Colores" resumen="El color de cada servicio y de cada profesional en el calendario">

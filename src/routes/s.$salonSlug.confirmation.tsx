@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, CalendarPlus, Download, MapPin } from "lucide-react";
-import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
+import { employeesForType, servicesForType } from "@/lib/mock/salon";
+import { reglaSenal, textoSenalPublico } from "@/lib/senal-maqueta";
 import { useSalonStore } from "@/lib/store";
 import { duracionFlexibleActiva } from "@/lib/duracion-flexible";
 import { recargoActivo } from "@/lib/recargo-activo";
@@ -151,7 +152,13 @@ function Confirmation() {
     );
   }
 
-  const deposit = depositFor(total, totalMin);
+  // El único mensaje sobre la señal (9j): el de la regla del salón, o nada.
+  const textoSenal = textoSenalPublico(
+    reglaSenal(profile),
+    { duration: totalMin, serviceIds: chosen.map((s) => s.id), priceEur: total },
+    profile.name,
+    (n) => eur(n).replace(",00", ""),
+  );
   const dateLabel = date
     ? new Date(`${date}T${time || "00:00"}`).toLocaleDateString("es-ES", {
         weekday: "long",
@@ -241,10 +248,8 @@ function Confirmation() {
           ) : (
             <Row k="Precio del servicio" v={eur(total)} />
           )}
-          {requiresDeposit(totalMin) && (
-            <Row k="Depósito a pagar en el salón" v={eur(deposit)} accent />
-          )}
         </div>
+        {textoSenal && <p className="mt-4 rounded-xl bg-miel px-3.5 py-2.5 text-sm text-cafe">{textoSenal}</p>}
 
         {flexNota && (
           <p className="mt-4 text-sm font-medium text-foreground">{flexNota}</p>

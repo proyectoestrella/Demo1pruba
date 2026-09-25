@@ -19,7 +19,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { StylistDot } from "@/components/StylistAvatar";
 import { Button } from "@/components/ui/button";
 import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
-import { DepositStatusControls } from "@/components/DepositStatusControls";
+import { SenalCita } from "@/components/SenalCita";
 import { deadlineHours, depositDueAt } from "@/lib/deposit-deadline";
 import {
   Select,
@@ -114,30 +114,6 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
     });
   }
 
-  /**
-   * Pedir la señal por Bizum sin abrir el detalle: María (PeluChic) la pide a
-   * toda clienta nueva, así que tiene que estar en la misma fila donde ve la
-   * solicitud. Abre WhatsApp con el mensaje escrito — lo envía ella.
-   */
-  function handleFianza(a: Appointment) {
-    if (a.depositReceivedAt) return;
-    const telefono = clients.find((c) => c.id === a.clientId)?.phone ?? "";
-    if (!telefono) {
-      toast.error("Esta solicitud no trae teléfono al que escribir");
-      return;
-    }
-    const requestedAt = new Date().toISOString();
-    const url = enlaceDeFianza(telefono, {
-      clientName: a.clientName,
-      startISO: a.start,
-      salonName,
-      bizumPhone: depositBizumPhone,
-      importeEur: depositAmountEur,
-      deadlineISO: depositDueAt(requestedAt, depositDeadlineHours),
-    }, requestedAt);
-    markDepositRequested(a.id, depositAmountEur, requestedAt);
-    window.open(url, "_blank", "noopener,noreferrer");
-  }
 
   /**
    * Próxima cita del mismo profesional tras el fin de `a` (con la duración que
@@ -214,27 +190,12 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
                     · con {emp.name}
                   </p>
                   <BookingAnswersSummary answers={a.bookingAnswers} />
-                  <DepositStatusControls appointment={a} hours={depositDeadlineHours} />
+                  <SenalCita cita={a} compacta />
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
                   <Button size="sm" onClick={() => handleConfirm(a)}>
                     Confirmar
                   </Button>
-                  {pideFianza && !a.depositReceivedAt && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5"
-                      onClick={() => handleFianza(a)}
-                    >
-                      <MessageCircle className="size-3.5" />
-                      {a.depositReceivedAt
-                        ? "Señal recibida"
-                        : a.depositRequestedAt
-                          ? "Reenviar señal"
-                          : `Pedir ${eur(depositAmountEur)} de señal`}
-                    </Button>
-                  )}
                   <Button size="sm" variant="outline" onClick={() => onOpenDetail(a)}>
                     Cambiar fecha/hora
                   </Button>
@@ -281,7 +242,7 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
                   {soloUno ? "" : ` · con ${emp.name}`}
                 </p>
                 <BookingAnswersSummary answers={a.bookingAnswers} />
-                <DepositStatusControls appointment={a} hours={depositDeadlineHours} />
+                <SenalCita cita={a} compacta />
               </div>
 
               <div className="flex flex-col gap-1.5 rounded-2xl bg-nata px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
@@ -355,21 +316,6 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
                 <Button size="sm" onClick={() => handleConfirmConDuracion(a, duracionElegida)}>
                   Confirmar con esta duración
                 </Button>
-                {pideFianza && !a.depositReceivedAt && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-1.5"
-                    onClick={() => handleFianza(a)}
-                  >
-                    <MessageCircle className="size-3.5" />
-                    {a.depositReceivedAt
-                      ? "Señal recibida"
-                      : a.depositRequestedAt
-                        ? "Reenviar señal"
-                        : `Pedir ${eur(depositAmountEur)} de señal`}
-                  </Button>
-                )}
                 <Button size="sm" variant="outline" onClick={() => onOpenDetail(a)}>
                   Cambiar fecha/hora
                 </Button>

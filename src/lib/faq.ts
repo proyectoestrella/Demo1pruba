@@ -61,9 +61,9 @@ export function faqPorDefecto(
     { q: "¿Puedo cancelar o cambiar la cita?", a: respuestaCancelacion },
     {
       q: "¿Hace falta pagar por adelantado?",
-      a: `Solo en los servicios largos, de más de ${DEPOSIT_THRESHOLD_MIN} minutos: se pide un depósito del ${Math.round(
-        DEPOSIT_RATE * 100,
-      )}% que se descuenta del total y se abona en el salón.`,
+      // Sin la regla del salón a mano, lo único cierto es esto; la web pública
+      // lo sustituye por la respuesta de la regla de la señal (9j).
+      a: "No. Pagas en el salón, después del servicio.",
     },
     {
       q: "¿Atendéis sin cita previa?",

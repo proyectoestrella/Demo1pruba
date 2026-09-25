@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { SenalCita } from "@/components/SenalCita";
 import { VentanaConfirmar } from "@/components/VentanaConfirmar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -444,34 +445,8 @@ export function AppointmentDetailSheet({
             </div>
           </div>
 
-          {/* Fianza por Bizum — solo con la política activa, número puesto en
-              Ajustes y una cita que todavía está por confirmar. */}
-          {(puedePedirFianza || appointment.depositRequestedAt) && (
-            <div className="space-y-2 rounded-xl border border-border/60 bg-muted/30 p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Señal por Bizum
-              </p>
-              {puedePedirFianza && !appointment.depositReceivedAt && <Button variant="outline" className="w-full gap-2" onClick={handlePedirFianza}>
-                <MessageCircle className="size-4" />
-                {appointment.depositRequestedAt ? "Reenviar señal por WhatsApp" : `Pedir ${eur(depositAmountEur)} de señal por WhatsApp`}
-              </Button>}
-              {appointment.depositRequestedAt && (
-                <p className="text-xs text-muted-foreground">
-                  Pedida el{" "}
-                  {new Date(appointment.depositRequestedAt).toLocaleDateString("es", {
-                    day: "numeric",
-                    month: "short",
-                  })}
-                  .
-                </p>
-              )}
-              <DepositStatusControls key={appointment.id} appointment={appointment} hours={depositDeadlineHours} onReleased={() => onOpenChange(false)} />
-              <p className="text-xs text-muted-foreground">
-                Se abre tu WhatsApp con el mensaje escrito; lo envías tú. El Bizum llega a tu banco
-                y lo marcas aquí a mano: siShow no cobra ni comprueba nada.
-              </p>
-            </div>
-          )}
+          {/* Señal (9j): estado del ciclo y sus acciones, según la regla de Ajustes. */}
+          <SenalCita key={appointment.id} cita={appointment} />
 
           {/* Cierre de caja — cómo se cobró esta cita. Sin pasarela de pago:
               esto es el cuaderno del mostrador, en digital. */}

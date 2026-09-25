@@ -176,6 +176,20 @@ export interface Appointment {
   depositReceivedAt?: string;
   /** Importe de la señal pedida, en euros — se congela al pedirla por si luego cambia en Ajustes. */
   depositEur?: number;
+  /**
+   * Ciclo de la señal (contrato de BACKEND, contrato-senal.md §2). Mismos
+   * nombres que su rama: al fusionar, estos campos coinciden. «vencida» no se
+   * guarda: se calcula.
+   */
+  depositStatus?: "por_pedir" | "pedida" | "recibida" | "aplicada" | "devuelta" | "retenida" | "anulada";
+  depositReceivedEur?: number;
+  depositMethod?: "bizum" | "efectivo" | "tarjeta" | "transferencia";
+  depositAppliedAt?: string;
+  depositAppliedEur?: number;
+  depositRefundedEur?: number;
+  depositRefundedAt?: string;
+  depositRetainedAt?: string;
+  depositNote?: string;
   /** Lo marca el salón después de enviar el recordatorio desde su WhatsApp. */
   reminderSentAt?: string;
 }
@@ -319,6 +333,16 @@ export interface SalonProfile {
   /** Importe de la señal en euros. Por defecto 10. */
   depositAmountEur?: number;
   depositDeadlineHours?: 1 | 2 | 4 | 12 | 24;
+  /** Regla de la señal (contrato de BACKEND §1): mismos nombres que su rama. */
+  depositMode?: "fijo" | "porcentaje";
+  depositPercent?: number;
+  depositAppliesTo?: "todas" | "nuevas" | "duracion" | "servicios";
+  depositMinMinutes?: number;
+  depositServiceIds?: string[];
+  depositAuto?: boolean;
+  depositAutoRelease?: boolean;
+  depositCancelHours?: number;
+  depositTemplate?: string;
   /** Ausente: se decide por el tipo de negocio. */
   bookingQuestionsEnabled?: boolean;
   bookingQuestionsRequired?: boolean;
