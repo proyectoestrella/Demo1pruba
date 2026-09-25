@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { usePermisos } from "@/lib/accesos-panel";
+import { puede } from "@/lib/permisos";
 import { useSalonStore } from "@/lib/store";
 import { requiresDeposit } from "@/lib/mock/salon";
 import { eur, eurRedondo } from "@/lib/copy";
@@ -36,6 +38,10 @@ function ServicesPage() {
   const services = useSalonStore((s) => s.services);
   const updateService = useSalonStore((s) => s.updateService);
   const deleteService = useSalonStore((s) => s.deleteService);
+  // Lote 11: recepción ve la carta pero no la cambia ni ve lo que deja cada servicio.
+  const permisos = usePermisos();
+  const edita = puede(permisos, "servicio.editar");
+  const veDinero = puede(permisos, "dinero.ver-global");
   const appointments = useSalonStore((s) => s.appointments);
 
   // Últimos 30 días: cuántas veces se ha pedido cada servicio y lo que ha
@@ -90,9 +96,11 @@ function ServicesPage() {
         title="Servicios y precios"
         description="Tu carta: lo que ofreces, cuánto dura y cuánto cuesta. El color es el que tiene en la agenda."
         actions={
-          <Button className="gap-1.5" onClick={openCreate}>
-            <Plus className="size-[18px]" strokeWidth={1.6} /> Nuevo servicio
-          </Button>
+          edita ? (
+            <Button className="gap-1.5" onClick={openCreate}>
+              <Plus className="size-[18px]" strokeWidth={1.6} /> Nuevo servicio
+            </Button>
+          ) : undefined
         }
       />
 
@@ -126,7 +134,7 @@ function ServicesPage() {
                       {s.category && <p className="text-[12.5px] text-muted-foreground">{s.category}</p>}
                     </div>
                     <span className="text-xl font-extrabold tabular-nums">{eur(s.priceEur).replace(",00", "")}</span>
-                    <DropdownMenu>
+                    {edita && <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="size-9" aria-label={`Opciones de ${s.name}`}>
                           <MoreHorizontal className="size-[18px]" strokeWidth={1.6} />
@@ -138,7 +146,7 @@ function ServicesPage() {
                           Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
-                    </DropdownMenu>
+                    </DropdownMenu>}
                   </div>
                   {s.description && <p className="mt-1 text-[13px] text-muted-foreground">{s.description}</p>}
                   <div className="mt-3 mb-4 flex flex-wrap items-center gap-1.5">
@@ -160,13 +168,13 @@ function ServicesPage() {
                     </span>
                     <label className="flex items-center gap-2 text-[12.5px] font-bold text-cafe-medio">
                       {s.active === false ? "Oculto" : "Se puede reservar"}
-                      <Switch
+                      {edita && <Switch
                         checked={s.active !== false}
                         onCheckedChange={(checked) => {
                           updateService(s.id, { active: checked });
                           toast.success(checked ? "Servicio activado" : "Servicio desactivado", { description: s.name });
                         }}
-                      />
+                      />}
                     </label>
                   </div>
                 </div>
@@ -192,7 +200,7 @@ function ServicesPage() {
                 ))}
               </div>
             </section>
-            <section className="rounded-[20px] border border-border bg-card">
+            {veDinero && <section className="rounded-[20px] border border-border bg-card">
               <div className="flex flex-wrap items-baseline gap-x-2.5 px-5 py-4">
                 <h2 className="text-base font-extrabold tracking-[-0.01em]">Lo que deja cada servicio</h2>
                 <span className="text-[12.5px] text-muted-foreground">Ingresos estimados en 30 días y lo que rinde cada hora</span>
@@ -209,7 +217,7 @@ function ServicesPage() {
                   </div>
                 ))}
               </div>
-            </section>
+            </section>}
           </div>
         </>
       )}

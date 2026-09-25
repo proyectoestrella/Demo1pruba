@@ -1,3 +1,5 @@
+import { usePermisos } from "@/lib/accesos-panel";
+import { puede } from "@/lib/permisos";
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
@@ -118,6 +120,7 @@ function DeudaBadge({
 
 function Appointments() {
   const appointments = useCitasVisibles();
+  const puedeExportar = puede(usePermisos(), "exportar.excel");
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const conRecargo = recargoActivo({ noShowFeeEur });
   const clients = useSalonStore((s) => s.clients);
@@ -169,11 +172,11 @@ function Appointments() {
         description={soloUno ? "Todas tus reservas." : "Todas las reservas de tu equipo."}
         actions={
           <>
-            <ExportCsvButtons
+            {puedeExportar && <ExportCsvButtons
               appointments={appointments}
               services={services}
               employees={employees}
-            />
+            />}
             <Button size="sm" className="hidden gap-1.5 md:inline-flex" onClick={() => setNewApptOpen(true)}>
               <Plus className="h-4 w-4" /> Nueva cita
             </Button>

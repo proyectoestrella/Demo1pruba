@@ -30,6 +30,8 @@ import { BotonesDesenlace, useAplicarDesenlace } from "@/components/CitasPorReso
 import { Button } from "@/components/ui/button";
 import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
 import { DepositStatusControls } from "@/components/DepositStatusControls";
+import { useMiEmployeeId, usePermisos } from "@/lib/accesos-panel";
+import { puede, type AccionId } from "@/lib/permisos";
 import { deadlineHours, depositDueAt } from "@/lib/deposit-deadline";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -111,6 +113,10 @@ export function AppointmentDetailSheet({
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const markClientConfirmed = useSalonStore((s) => s.markClientConfirmed);
   const markPaid = useSalonStore((s) => s.markPaid);
+  // Lote 11: cada bloque solo si el rol puede hacerlo sobre ESTA cita (la suya, si es estilista).
+  const permisos = usePermisos();
+  const mio = useMiEmployeeId();
+  const puedeEn = (accion: AccionId) => !!appointment && puede(permisos, accion, { employeeId: appointment.employeeId, miEmployeeId: mio });
   const markDepositRequested = useSalonStore((s) => s.markDepositRequested);
   const appointments = useSalonStore((s) => s.appointments);
   const salonName = useSalonStore((s) => s.salonProfile.name);
@@ -408,7 +414,7 @@ export function AppointmentDetailSheet({
             </Button>
           )}
 
-          <div className="space-y-1.5">
+          {(puedeEn("cita.mover") || puedeEn("cita.editar")) && <div className="space-y-1.5">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Fecha, duración y hora
             </p>
@@ -443,14 +449,16 @@ export function AppointmentDetailSheet({
                 onChange={(e) => handleTimeChange(e.target.value)}
               />
             </div>
-          </div>
+          </div>}
 
           {/* Señal (9j): estado del ciclo y sus acciones, según la regla de Ajustes. */}
-          <SenalCita key={appointment.id} cita={appointment} />
+          {puedeEn("senal.gestionar") && <SenalCita key={appointment.id} cita={appointment} />}
 
           {/* Cierre de caja — cómo se cobró esta cita. Sin pasarela de pago:
               esto es el cuaderno del mostrador, en digital. */}
-          <div className="space-y-1.5">
+          {!puedeEn("cita.cobrar") ? (
+            <p className="rounded-xl border border-lino bg-superficie px-3 py-2 text-[13px] text-cafe-medio">Cobro: lo marca quien atiende la cita.</p>
+          ) : <div className="space-y-1.5">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Cobro
             </p>
@@ -480,9 +488,9 @@ export function AppointmentDetailSheet({
                 ? `Cobrada el ${new Date(appointment.paidAt).toLocaleDateString("es", { day: "numeric", month: "short" })} · vuelve a pulsar para desmarcarla.`
                 : "Marca cómo se ha cobrado y entrará en el cierre del día. No se procesa ningún pago."}
             </p>
-          </div>
+          </div>}
 
-          <div className="space-y-1.5">
+          {(puedeEn("cita.marcar-asistencia") || puedeEn("cita.editar")) && <div className="space-y-1.5">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Cambiar estado
             </p>
@@ -511,7 +519,7 @@ export function AppointmentDetailSheet({
             <p className="text-xs text-muted-foreground">
               Es el estado que llevas tú en la agenda.
             </p>
-          </div>
+          </div>}
 
           <div className="space-y-1.5">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -554,7 +562,7 @@ export function AppointmentDetailSheet({
             </p>
           </div>
 
-          <SheetFooter className="mt-auto">
+          {puedeEn("cita.cancelar") && <SheetFooter className="mt-auto">
             <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
               <AlertDialogTrigger asChild>
                 <Button
@@ -584,7 +592,7 @@ export function AppointmentDetailSheet({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </SheetFooter>
+          </SheetFooter>}
 
           {/* Las tres decisiones de Adam sobre el dinero: anotarla, perdonarla
               o bloquear. Nunca se aplica ninguna sola, y todas se deshacen. */}
