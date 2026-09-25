@@ -262,7 +262,7 @@ export function AppointmentDetailSheet({
   return (
     <Sheet open={open && !!appointment} onOpenChange={onOpenChange}>
       {appointment && start && (
-        <SheetContent className="flex flex-col gap-6 overflow-y-auto">
+        <SheetContent panel="detalle-cita" className="flex flex-col gap-6 overflow-y-auto">
           <SheetHeader>
             <SheetTitle>{appointment.clientName}</SheetTitle>
             <SheetDescription>Detalle de la cita</SheetDescription>

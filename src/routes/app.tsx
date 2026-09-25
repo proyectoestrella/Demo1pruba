@@ -189,7 +189,8 @@ function DashboardLayoutV1() {
   const [newApptOpen, setNewApptOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   // Con un panel lateral abierto (asistente, ficha, detalle), en PC el
-  // contenido deja 440 px a la derecha: el panel empuja, no tapa.
+  // contenido deja el ancho del panel a la derecha (--ancho-panel, que la
+  // dueña puede cambiar arrastrando su borde): el panel empuja, no tapa.
   const conPanel = useHayPanelLateral();
 
   // Primera visita al panel: se ofrece el tour una sola vez. Solo en la home
@@ -207,7 +208,7 @@ function DashboardLayoutV1() {
 
       <div
         data-panel={conPanel ? "abierto" : "cerrado"}
-        className={cn("group/panel flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ease-out", conPanel && "lg:pr-[440px]")}
+        className={cn("group/panel flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ease-out", conPanel && "lg:pr-[var(--ancho-panel,440px)]")}
       >
         <CabeceraArena
           onAsistente={() => setAssistantOpen(true)}
@@ -229,6 +230,7 @@ function DashboardLayoutV1() {
       <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
         <SheetContent
           side="right"
+          panel="asistente"
           className="flex w-full flex-col gap-0 p-0"
         >
           <SheetHeader className="border-b border-border/60 px-4 py-4 text-left">

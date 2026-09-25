@@ -230,7 +230,7 @@ function Clients() {
       {conRecargo && <RecargosPendientes title="Recargos pendientes" />}
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <Tabs value={filtroEfectivo} onValueChange={(v) => setFiltro(v as Filtro)}>
+        <Tabs value={filtroEfectivo} onValueChange={(v) => setFiltro(v as Filtro)} className="sin-scrollbar min-w-0 max-w-full overflow-x-auto">
           <TabsList>
             <TabsTrigger value="todos">Todas</TabsTrigger>
             <TabsTrigger value="hoy">Vienen hoy <span className="ml-1 tabular-nums text-muted-foreground">{citaDeHoy.size}</span></TabsTrigger>
@@ -280,17 +280,17 @@ function Clients() {
       ) : (
         <>
           {/* PC: tabla */}
-          <div className="hidden min-w-0 flex-1 overflow-hidden rounded-[20px] border border-border bg-card md:block">
+          <div className="@container hidden min-w-0 flex-1 overflow-x-auto rounded-[20px] border border-border bg-card md:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead>Clienta</TableHead>
-                  <TableHead>Última visita</TableHead>
-                  <TableHead className="text-right">Visitas</TableHead>
+                  <TableHead className="@max-[520px]:hidden">Última visita</TableHead>
+                  <TableHead className="text-right @max-[420px]:hidden">Visitas</TableHead>
                   <TableHead className="group-data-[panel=abierto]/panel:hidden">Frecuencia</TableHead>
                   <TableHead className="hidden xl:table-cell xl:group-data-[panel=abierto]/panel:hidden">Servicio habitual</TableHead>
                   <TableHead className="group-data-[panel=abierto]/panel:hidden">Próxima cita</TableHead>
-                  <TableHead className="text-right">Gasto orient.</TableHead>
+                  <TableHead className="text-right @max-[600px]:hidden">Gasto orient.</TableHead>
                   <TableHead>Estado</TableHead>
                 </TableRow>
               </TableHeader>
@@ -306,12 +306,12 @@ function Clients() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="tabular-nums">{fechaCortaSinAnio(c.lastVisit)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{c.pastVisits}</TableCell>
+                    <TableCell className="tabular-nums @max-[520px]:hidden">{fechaCortaSinAnio(c.lastVisit)}</TableCell>
+                    <TableCell className="text-right tabular-nums @max-[420px]:hidden">{c.pastVisits}</TableCell>
                     <TableCell className="text-muted-foreground group-data-[panel=abierto]/panel:hidden">{frecuencia(c.id)}</TableCell>
                     <TableCell className="hidden text-muted-foreground xl:table-cell xl:group-data-[panel=abierto]/panel:hidden">{fichas.get(c.id)?.servicioHabitual ?? "—"}</TableCell>
                     <TableCell className="tabular-nums group-data-[panel=abierto]/panel:hidden">{fechaCortaSinAnio(c.nextVisit)}</TableCell>
-                    <TableCell className="text-right font-bold tabular-nums">{eurRedondo(c.totalSpent)}</TableCell>
+                    <TableCell className="text-right font-bold tabular-nums @max-[600px]:hidden">{eurRedondo(c.totalSpent)}</TableCell>
                     <TableCell>{estado(c)}</TableCell>
                   </TableRow>
                 ))}

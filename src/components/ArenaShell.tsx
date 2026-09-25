@@ -268,7 +268,7 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
       <div className="md:hidden">
         <Marca compacta />
       </div>
-      <div className="order-last w-full md:order-none md:w-auto md:flex-[0_1_420px]">
+      <div className="order-last w-full min-w-0 md:order-none md:w-auto md:flex-[0_1_420px]">
         <BuscadorGlobal variante="campo" />
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
@@ -276,11 +276,11 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
           data-tour="assistant"
           variant="outline"
           onClick={onAsistente}
-          className="h-[42px] gap-2 rounded-full border-input bg-card px-0 text-sm font-bold hover:bg-nata md:px-[18px]"
+          className="h-[42px] gap-2 rounded-full border-input bg-card px-0 text-sm font-bold hover:bg-nata md:px-[18px] md:group-data-[panel=abierto]/panel:w-[42px] md:group-data-[panel=abierto]/panel:px-0"
           aria-label="Asistente"
         >
           <Sparkles className="size-[18px]" strokeWidth={1.6} />
-          <span className="hidden md:inline">Asistente</span>
+          <span className="hidden md:inline md:group-data-[panel=abierto]/panel:hidden">Asistente</span>
         </Button>
         {onTour && (
           <button
@@ -303,11 +303,12 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
         </button>
         <Button
           data-tour="new-appointment"
+          aria-label="Nueva cita"
           onClick={onNuevaCita}
-          className="hidden h-[42px] gap-2 rounded-full px-[18px] text-sm font-bold md:inline-flex"
+          className="hidden h-[42px] gap-2 rounded-full px-[18px] text-sm font-bold md:inline-flex md:group-data-[panel=abierto]/panel:w-[42px] md:group-data-[panel=abierto]/panel:px-0"
         >
           <Plus className="size-[18px]" strokeWidth={1.6} />
-          Nueva cita
+          <span className="group-data-[panel=abierto]/panel:hidden">Nueva cita</span>
         </Button>
       </div>
     </header>

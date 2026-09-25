@@ -242,15 +242,15 @@ function Appointments() {
       ) : (
         <>
           {/* Desktop: clean table, no vertical borders */}
-          <div className="hidden min-w-0 flex-1 overflow-hidden rounded-[20px] border border-border bg-card md:block">
+          <div className="@container hidden min-w-0 flex-1 overflow-x-auto rounded-[20px] border border-border bg-card md:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead>Cuándo</TableHead>
                   <TableHead>Clienta</TableHead>
-                  <TableHead>Servicio</TableHead>
-                  {!soloUno && <TableHead>Profesional</TableHead>}
-                  <TableHead className="text-right">Precio</TableHead>
+                  <TableHead className="@max-[560px]:hidden">Servicio</TableHead>
+                  {!soloUno && <TableHead className="@max-[680px]:hidden">Profesional</TableHead>}
+                  <TableHead className="text-right @max-[440px]:hidden">Precio</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
@@ -264,7 +264,7 @@ function Appointments() {
                       className="cursor-pointer"
                       onClick={() => setSelected(a)}
                     >
-                      <TableCell className="whitespace-nowrap tabular-nums">
+                      <TableCell className="whitespace-nowrap tabular-nums @max-[440px]:whitespace-normal">
                         {new Date(a.start).toLocaleString("es", {
                           month: "short",
                           day: "numeric",
@@ -278,16 +278,16 @@ function Appointments() {
                           {conRecargo && <DeudaBadge clientId={a.clientId} clients={clients} />}
                         </span>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{serviceLabelOf(a, carta)}</TableCell>
+                      <TableCell className="text-muted-foreground @max-[560px]:hidden">{serviceLabelOf(a, carta)}</TableCell>
                       {!soloUno && (
-                        <TableCell>
+                        <TableCell className="@max-[680px]:hidden">
                           <span className="inline-flex items-center gap-1.5">
                             {!soloUno && <StylistDot employeeId={a.employeeId} />}
                             {e.name}
                           </span>
                         </TableCell>
                       )}
-                      <TableCell className="text-right font-bold tabular-nums">{eur(a.priceEur)}</TableCell>
+                      <TableCell className="text-right font-bold tabular-nums @max-[440px]:hidden">{eur(a.priceEur)}</TableCell>
                       <TableCell>
                         <StatusBadge status={a.status} />
                         {conRecargo && <RecargoChip appointment={a} client={clientById.get(a.clientId)} />}

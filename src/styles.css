@@ -506,3 +506,12 @@
   .hoja-dia .hoja-ficha { display: none !important; }
   .hoja-dia .hoja-tercera-visita { display: block !important; }
 }
+
+/* Mientras se arrastra el borde de un panel lateral (9e): sin transiciones que
+   lo retrasen, sin seleccionar texto y con el cursor de redimensionar en toda
+   la pantalla. */
+:root[data-arrastrando-panel] * {
+  transition: none !important;
+  user-select: none !important;
+  cursor: col-resize !important;
+}

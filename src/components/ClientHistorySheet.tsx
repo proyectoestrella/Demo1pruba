@@ -299,7 +299,7 @@ export function ClientHistorySheet({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0">
+        <SheetContent side="right" panel="ficha" className="flex w-full flex-col gap-0 p-0">
           <SheetHeader className="border-b border-border px-5 py-4 text-left">
             <SheetTitle className="text-base font-extrabold">Ficha de clienta</SheetTitle>
             <SheetDescription className="sr-only">Contacto, visitas, color y observaciones de {client.name}.</SheetDescription>
