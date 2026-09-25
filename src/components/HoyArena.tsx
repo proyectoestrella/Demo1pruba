@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Check, ChevronDown, Clock3, FileText, MoreHorizontal } from "lucide-react";
@@ -35,7 +35,6 @@ import { AvisoDeudasHoy } from "@/components/DeudaCliente";
 import { ExpiredDepositsNotice } from "@/components/ExpiredDepositsNotice";
 import { RecargosPendientes } from "@/components/RecargosPendientes";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,7 +53,7 @@ import {
  */
 
 const tituloBloque = "text-[17px] font-extrabold tracking-[-0.01em]";
-const bloque = "rounded-[24px] bg-card p-5 md:p-7";
+const bloque = "rounded-[24px] border border-lino bg-card p-5 md:p-7";
 
 function fechaDeHoy(ahora: Date) {
   const texto = ahora.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
@@ -159,47 +158,51 @@ export function HoyArena() {
         </Button>
       </header>
 
-      {/* Lo que pide respuesta y lo que está pasando. */}
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1.15fr_1fr] lg:gap-8 lg:group-data-[panel=abierto]/panel:grid-cols-1">
-        {mostrarSolicitudes && pendientes.length > 0 ? (
-          <EstoTeEspera pendientes={pendientes} onAbrirDetalle={setSeleccionada} />
-        ) : (
-          <section className={bloque}>
-            <h2 className={tituloBloque}>Nada te espera</h2>
-            <p className="mt-1 text-[14px] text-muted-foreground">Cuando entre una solicitud por tu página aparecerá aquí para que la confirmes.</p>
-          </section>
-        )}
-        <AhoraYSiguientes hoy={hoy} ahora={ahora} carta={carta} services={services} detalle={nombreCorto} onAbrir={setSeleccionada} />
-      </div>
+      {/* Lo único que pide respuesta, y solo si lo hay. */}
+      {mostrarSolicitudes && pendientes.length > 0 && <EstoTeEspera pendientes={pendientes} onAbrirDetalle={setSeleccionada} />}
 
-      {/* El resto del día, plegado en pestañas: nada se ha quitado. */}
-      <section className={cn(bloque, "flex-1")}>
-        <Tabs defaultValue="vinieron">
-          <TabsList>
-            <TabsTrigger value="vinieron">
-              ¿Vinieron?{sinMarcar > 0 && <span className="ml-1.5 tabular-nums text-muted-foreground">{sinMarcar}</span>}
-            </TabsTrigger>
-            <TabsTrigger value="manana">
-              Mañana{sinRecordar > 0 && <span className="ml-1.5 tabular-nums text-muted-foreground">{sinRecordar}</span>}
-            </TabsTrigger>
-            <TabsTrigger value="avisos">
-              Avisos{avisos > 0 && <span className="ml-1.5 tabular-nums text-muted-foreground">{avisos}</span>}
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="vinieron" className="mt-5">
-            <Vinieron terminadas={terminadas} carta={carta} detalle={nombreCorto} clients={clients} />
-          </TabsContent>
-          <TabsContent value="manana" className="mt-5">
-            <Manana filas={filasManana} pendientes={sinRecordar} dia={manana} carta={carta} detalle={nombreCorto} />
-          </TabsContent>
-          <TabsContent value="avisos" className="mt-5 space-y-4">
-            {avisos === 0 && <p className="text-[14px] text-muted-foreground">Nada pendiente: ni deudas, ni señales vencidas, ni recargos.</p>}
-            <AvisoDeudasHoy />
-            <ExpiredDepositsNotice onOpenDetail={setSeleccionada} />
-            {conRecargo && <RecargosPendientes title="Recargos pendientes" />}
-          </TabsContent>
-        </Tabs>
-      </section>
+      {/* El resto del día, plegado: cada bloque dice cuánto hay dentro. */}
+      <Plegables
+        porDefecto={mostrarSolicitudes && pendientes.length > 0 ? null : "ahora"}
+        items={[
+          {
+            id: "ahora",
+            titulo: "Ahora y siguientes",
+            contador: hoy.filter((a) => !terminada(a, ahora)).length,
+            resumen: "Las citas que quedan hoy",
+            tour: "today-list",
+            contenido: <AhoraYSiguientes hoy={hoy} ahora={ahora} carta={carta} services={services} detalle={nombreCorto} onAbrir={setSeleccionada} />,
+          },
+          {
+            id: "vinieron",
+            titulo: "¿Vinieron?",
+            contador: sinMarcar,
+            resumen: sinMarcar > 0 ? "Citas terminadas sin marcar" : "Todas las terminadas están marcadas",
+            contenido: <Vinieron terminadas={terminadas} carta={carta} detalle={nombreCorto} clients={clients} />,
+          },
+          {
+            id: "manana",
+            titulo: "Mañana y recordatorios",
+            contador: sinRecordar,
+            resumen: filasManana.length === 0 ? "Mañana no hay citas" : sinRecordar > 0 ? "Sin recordar" : "Todas recordadas",
+            contenido: <Manana filas={filasManana} pendientes={sinRecordar} dia={manana} carta={carta} detalle={nombreCorto} />,
+          },
+          {
+            id: "avisos",
+            titulo: "Avisos",
+            contador: avisos,
+            resumen: avisos > 0 ? "Deudas, señales vencidas o recargos" : "Nada pendiente",
+            contenido: (
+              <div className="space-y-4">
+                {avisos === 0 && <p className="text-[14px] text-muted-foreground">Nada pendiente: ni deudas, ni señales vencidas, ni recargos.</p>}
+                <AvisoDeudasHoy />
+                <ExpiredDepositsNotice onOpenDetail={setSeleccionada} />
+                {conRecargo && <RecargosPendientes title="Recargos pendientes" />}
+              </div>
+            ),
+          },
+        ]}
+      />
 
       <AppointmentDetailSheet
         appointment={seleccionada}
@@ -230,6 +233,8 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
   const pideFianza = depositEnabled && !!depositBizumPhone.trim();
   const [duracionPorTarjeta, setDuracionPorTarjeta] = useState<Record<string, number>>({});
   const [editando, setEditando] = useState<string | null>(null);
+  const [todas, setTodas] = useState(false);
+  const visibles = todas ? pendientes : pendientes.slice(0, 3);
 
   function confirmar(a: Appointment, duracion: number) {
     updateAppointment(a.id, { status: "confirmed", duration: duracion });
@@ -290,7 +295,7 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
       </div>
       <p className="mt-1 text-[14px] text-muted-foreground">Al confirmarla queda en tu agenda. El aviso a la clienta lo mandas tú por WhatsApp desde su ficha, con un toque.</p>
       <ul className="mt-5 divide-y divide-lino">
-        {pendientes.map((a) => {
+        {visibles.map((a) => {
           const catalogoMin = a.serviceIds.reduce((sum, id) => sum + (serviceMap[id]?.durationMin ?? 0), 0);
           const recordada = duracionRecordada(appointments, a.clientId, a.serviceIds, catalogoMin);
           const propuesta = recordada?.minutos ?? (catalogoMin || a.duration);
@@ -355,7 +360,86 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
           );
         })}
       </ul>
+      {pendientes.length > 3 && (
+        <button type="button" onClick={() => setTodas((v) => !v)} className="mt-2 inline-flex items-center gap-1 text-[13.5px] font-bold text-cafe-medio hover:text-foreground">
+          {todas ? "Ver menos" : `Ver las ${pendientes.length - 3} restantes`}
+          <ChevronDown className={cn("size-4 transition-transform", todas && "rotate-180")} strokeWidth={1.6} />
+        </button>
+      )}
     </section>
+  );
+}
+
+/* ---------- Plegables ---------- */
+
+const CLAVE_PLEGABLES = "sishow-hoy-abiertos";
+
+interface Plegable {
+  id: string;
+  titulo: string;
+  contador: number;
+  resumen: string;
+  tour?: string;
+  contenido: ReactNode;
+}
+
+/**
+ * Acordeón de Hoy: cabecera clara con contador y flecha. Recuerda en este
+ * navegador cuáles abrió la dueña; la primera vez abre como mucho uno.
+ */
+function Plegables({ items, porDefecto }: { items: Plegable[]; porDefecto: string | null }) {
+  const [abiertos, setAbiertos] = useState<string[]>(porDefecto ? [porDefecto] : []);
+  useEffect(() => {
+    try {
+      const guardado = window.localStorage.getItem(CLAVE_PLEGABLES);
+      if (guardado) setAbiertos(JSON.parse(guardado) as string[]);
+    } catch {
+      /* sin almacenamiento: se queda el de por defecto */
+    }
+  }, []);
+  const alternar = (id: string) =>
+    setAbiertos((prev) => {
+      const nuevos = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      try {
+        window.localStorage.setItem(CLAVE_PLEGABLES, JSON.stringify(nuevos));
+      } catch {
+        /* sin almacenamiento: solo dura esta visita */
+      }
+      return nuevos;
+    });
+  return (
+    <div className="divide-y divide-lino overflow-hidden rounded-[24px] border border-lino bg-card">
+      {items.map((it) => {
+        const abierto = abiertos.includes(it.id);
+        return (
+          <section key={it.id} data-tour={it.tour}>
+            <h2>
+              <button
+                type="button"
+                aria-expanded={abierto}
+                aria-controls={`plegable-${it.id}`}
+                onClick={() => alternar(it.id)}
+                className="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-beige/60 md:px-7"
+              >
+                <span className="text-[16px] font-extrabold tracking-[-0.01em]">{it.titulo}</span>
+                {it.contador > 0 && (
+                  <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-salvia-clara px-2 text-[12.5px] font-bold text-hoja-tinta tabular-nums">
+                    {it.contador}
+                  </span>
+                )}
+                <span className="ml-auto hidden truncate text-[13.5px] text-muted-foreground sm:block">{it.resumen}</span>
+                <ChevronDown className={cn("size-5 shrink-0 text-cafe-medio transition-transform", abierto && "rotate-180")} strokeWidth={1.6} />
+              </button>
+            </h2>
+            {abierto && (
+              <div id={`plegable-${it.id}`} className="px-5 pb-6 md:px-7">
+                {it.contenido}
+              </div>
+            )}
+          </section>
+        );
+      })}
+    </div>
   );
 }
 
@@ -380,17 +464,11 @@ function AhoraYSiguientes({
   const quedan = hoy.filter((a) => !terminada(a, ahora));
   const siguientes = todas ? quedan : quedan.slice(0, 5);
   return (
-    <section data-tour="today-list" className={bloque}>
-      <div className="flex items-baseline gap-3">
-        <h2 className={tituloBloque}>Ahora y siguientes</h2>
-        <Link to="/app/calendar" className="ml-auto text-[13.5px] font-bold text-cafe-medio hover:text-foreground">
-          Ver calendario
-        </Link>
-      </div>
+    <div>
       {siguientes.length === 0 ? (
         <p className="mt-1 text-[14px] text-muted-foreground">No queda ninguna cita hoy. Las de mañana están en el calendario.</p>
       ) : (
-        <ul className="mt-4">
+        <ul>
           {siguientes.map((a) => {
             const ahoraMismo = enCurso(a, ahora);
             return (
@@ -426,7 +504,10 @@ function AhoraYSiguientes({
           <ChevronDown className={cn("size-4 transition-transform", todas && "rotate-180")} strokeWidth={1.6} />
         </button>
       )}
-    </section>
+      <Link to="/app/calendar" className="mt-3 block text-[13.5px] font-bold text-cafe-medio hover:text-foreground">
+        Ver calendario
+      </Link>
+    </div>
   );
 }
 
