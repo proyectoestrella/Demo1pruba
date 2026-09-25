@@ -217,7 +217,7 @@ function DashboardLayoutV1() {
         {/* Contenido a todo el ancho con gutter de 28 px; en móvil, 16 px y
             hueco para la barra inferior. El último bloque de cada pantalla
             puede crecer hasta el borde (flex-1). */}
-        <main className="flex min-w-0 flex-1 flex-col px-4 pt-4 pb-[100px] md:px-7 md:pt-6 md:pb-7">
+        <main className="flex min-w-0 flex-1 flex-col px-4 pt-5 pb-[100px] md:px-8 md:pt-8 md:pb-8">
           <Outlet />
         </main>
       </div>

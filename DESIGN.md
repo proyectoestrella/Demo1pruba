@@ -144,6 +144,53 @@ Frases cortas en segunda persona, verbos activos y sentence case. Cada botón di
 - **Nunca mayúsculas** fuera de la etiqueta de 11 px.
 - **Nunca un aviso de alarma** para lo que solo está pendiente de la dueña.
 
+## «Arena · calma» (lote 8, en propuesta: Hoy y Calendario)
+
+Tras ver el panel, Tomás pidió menos ruido, más aire y un fondo menos blanco. Esta capa se
+aplica encima de todo lo anterior y manda cuando choca.
+
+### Fondos (nombres y roles)
+
+| Nombre | Hex | Uso |
+|---|---|---|
+| Página | `#F7F2EA` | Fondo de toda la aplicación (antes blanco puro) |
+| Superficie | `#FBF8F3` | Bloques y tarjetas (`--card`) |
+| Beige | `#F1EAE0` | Superficie hundida, hover, pestañas, segmento |
+| Nata (menú) | `#EFE7DA` | Menú lateral |
+| Taupe claro | `#E8DDCF` | Chips neutros. **Sin texto secundario encima** (4,49:1) |
+| Salvia suave | `#E8EFE6` | Fila «ahora», botón «Vino», bloques en calma |
+| Blanco | `#FFFFFF` | Solo lo que debe destacar: campo activo, opción elegida, cita seleccionada |
+| Lino / lino fuerte | `#E6DCCF` / `#D8CBBB` | Separadores / bordes de campo, un punto más cálidos |
+| Café medio / café suave | `#665650` / `#6F6058` | Texto sobre pasteles / texto secundario, un punto más oscuros |
+
+Contraste medido (WCAG 2.1): café ≥ 9,6:1 en todos los fondos; café medio ≥ 5,2:1; café
+suave ≥ 4,77:1 en página, superficie, beige, menú y salvia clara (4,49 en taupe claro: no
+usar); hoja tinta ≥ 5,0:1; melocotón tinta ≥ 5,1:1. El moca fuerte como TEXTO solo va sobre
+página o superficie (4,72 y 4,97); como fondo de botón con texto blanco, 5,26:1.
+
+### Densidad y jerarquía
+
+- **Una pregunta por pantalla** (Hoy: «¿qué me toca ahora?») y **una idea por bloque**.
+- Como mucho **dos o tres bloques** visibles sin scroll. Lo secundario se pliega en pestañas,
+  en «Ver más» o en un panel que se abre; **nunca se elimina**.
+- Cifras: **un solo número grande por bloque**; los resúmenes van en una línea de texto
+  («18 citas · 4 huecos libres · 675 € estimados»), no en cuatro tarjetas.
+- **Una acción primaria por fila**; el resto en un menú «…». Las opciones de detalle (por
+  ejemplo, las duraciones) se despliegan al pedirlas.
+- Agrupar por **espacio y tono**, no por cajas: bloques sin borde sobre la página, con
+  separadores lino finos dentro. 32 px entre bloques, 20-28 px dentro, filas de 12-16 px.
+- Menos tamaños de letra: 34 (saludo), 24 (título de pantalla), 17 (título de bloque), 15
+  (nombre), 13,5 (secundario). Iconos solo donde ayudan a encontrar.
+- Nada que exija leer una leyenda: la leyenda de colores del calendario va plegada en
+  «Colores», y cada cita dice su servicio al pasar el ratón o al pulsarla.
+
+### Calendario en calma
+
+Una sola fila de controles; el resumen del día en texto pequeño bajo el título; solo líneas de
+hora (sin medias horas); filas de 120 px como mínimo; las citas dicen nombre y hora (el
+servicio, en el aviso y en el detalle); los huecos libres son un «+» discreto que enseña su
+franja al pasar; huecos libres y ocupación del día, tras «Ver huecos libres y ocupación».
+
 ## Cómo verlo en local desde un worktree
 
 El checkout principal sirve la demo en su puerto de siempre; cada rama de diseño se mira desde

@@ -48,6 +48,12 @@
 
   /* Paleta «Arena» con nombre propio, para usarla como `bg-nata`, `text-cafe-suave`… */
   --color-perla: var(--perla);
+  --color-pagina: var(--pagina);
+  --color-superficie: var(--superficie);
+  --color-beige: var(--beige);
+  --color-taupe-claro: var(--taupe-claro);
+  --color-blanco: var(--blanco);
+  --color-salvia-suave: var(--salvia-suave);
   --color-nata: var(--nata);
   --color-arena: var(--arena);
   --color-taupe: var(--taupe);
@@ -106,18 +112,27 @@
   --radius: 0.75rem;
 
   /* ---- Identidad «Arena»: los tokens con nombre (DESIGN.md) ---- */
-  --perla: #FCFAF7;
-  --nata: #F6F1EA;
+  /* «Arena · calma» (lote 8): la página es crema, las superficies nata y
+     beige, y el blanco puro queda para lo que tiene que destacar (campo
+     activo, cita seleccionada). Contrastes medidos: ver DESIGN.md. */
+  --pagina: #F7F2EA;
+  --superficie: #FBF8F3;
+  --beige: #F1EAE0;
+  --taupe-claro: #E8DDCF;
+  --blanco: #FFFFFF;
+  --perla: #F4EEE5;
+  --nata: #EFE7DA;
   --arena: #EADFD2;
   --taupe: #D9C7B5;
-  --lino: #EAE1D8;
-  --lino-fuerte: #DCCFC1;
+  --lino: #E6DCCF;
+  --lino-fuerte: #D8CBBB;
   --cafe: #3B2F2A;
-  --cafe-medio: #6B5B52;
-  --cafe-suave: #7A6A60;
+  --cafe-medio: #665650;
+  --cafe-suave: #6F6058;
   --moca: #A47B5C;
   --moca-fuerte: #8A6446;
   --salvia-clara: #DDE8DD;
+  --salvia-suave: #E8EFE6;
   --salvia: #9FB8A3;
   --hoja: #4F6F58;
   --hoja-tinta: #45624E;
@@ -137,11 +152,11 @@
   --k-tinta: #1F2633;
   --k-tinta2: #4A5363;
   --k-gris: #7B8494;
-  --k-linea: #E8ECF2;
-  --k-linea-media: #F2F4F8;
-  --k-linea-f: #D3DAE5;
-  --k-cab: #F7F9FC;
-  --k-cab-hoy: #E6ECFD;
+  --k-linea: #ECE4D9;
+  --k-linea-media: #F3EDE4;
+  --k-linea-f: #DDD2C4;
+  --k-cab: #F4EEE5;
+  --k-cab-hoy: #E8EFE6;
   --k-ahora: #3B5BDB;
   --k-libre: #F1FAF6;
   --k-libre-b: #8CCFB2;
@@ -153,22 +168,22 @@
   --k-pro-3: #9A82DA;
 
   /* ---- Roles de shadcn, resueltos sobre esa paleta ---- */
-  --background: #FFFFFF;
+  --background: var(--pagina);
   --foreground: var(--cafe);
 
-  --card: #FFFFFF;
+  --card: var(--superficie);
   --card-foreground: var(--cafe);
-  --popover: #FFFFFF;
+  --popover: var(--superficie);
   --popover-foreground: var(--cafe);
 
   /* Acción: moca fuerte, 5,3:1 con blanco. */
   --primary: var(--moca-fuerte);
   --primary-foreground: #FFFFFF;
 
-  --secondary: var(--nata);
+  --secondary: var(--beige);
   --secondary-foreground: var(--cafe);
 
-  --muted: var(--nata);
+  --muted: var(--beige);
   --muted-foreground: var(--cafe-suave);
 
   --accent: var(--arena);
