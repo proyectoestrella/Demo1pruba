@@ -15,7 +15,8 @@
  * vacía) y el asistente dice «eso no lo tengo». Nunca un valor inventado.
  */
 
-export type PlanSishow = "reservas" | "reservas-asistente" | "todo-incluido";
+import type { PlanSishow } from "../plan";
+export type { PlanSishow };
 
 export interface CitaA {
   id: string;
