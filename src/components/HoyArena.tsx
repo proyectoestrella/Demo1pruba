@@ -350,6 +350,7 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
                     </button>
                   ))}
                   <DuracionOtra
+                    valor={elegida}
                     onElegir={(min) => setDuracionPorTarjeta((prev) => ({ ...prev, [a.id]: min }))}
                     claseChip="h-9 rounded-full px-3.5 text-[13px] font-bold text-cafe-medio hover:bg-superficie"
                   />

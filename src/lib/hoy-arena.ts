@@ -112,18 +112,28 @@ export const DURACION_MINIMA = 5;
 export const DURACION_MAXIMA = 480;
 
 /**
- * Valida los minutos que escribe la dueña en «Otra…». Devuelve los minutos o
- * el motivo, dicho para ella, por el que no valen.
+ * Lee una duración escrita a mano en «Otra…» y la valida. Acepta minutos
+ * («150», «90 min»), horas y minutos («2:30», «2 h 30», «2h30», «1 h 5 min»)
+ * y horas solas («2 h»). Devuelve los minutos o el motivo, dicho para ella.
  */
 export function minutosPersonalizados(texto: string): { minutos: number } | { error: string } {
-  const limpio = texto.trim().replace(/\s*min(utos)?\.?$/i, "");
-  if (!limpio) return { error: "Escribe los minutos." };
-  if (!/^\d+$/.test(limpio)) return { error: "Solo un número de minutos, por ejemplo 35." };
-  const minutos = Number(limpio);
+  const t = texto.trim().toLowerCase().replace(/\s+/g, " ");
+  if (!t) return { error: "Escribe la duración, por ejemplo 2:30 o 150." };
+  let minutos: number | null = null;
+  let m: RegExpExecArray | null;
+  if ((m = /^(\d{1,3})(?: ?min(?:utos)?\.?)?$/.exec(t))) minutos = Number(m[1]);
+  else if ((m = /^(\d{1,2}):(\d{2})$/.exec(t))) minutos = Number(m[1]) * 60 + Number(m[2]);
+  else if ((m = /^(\d{1,2}) ?h(?:oras?)?\.?(?: ?y)?(?: ?(\d{1,2})(?: ?min(?:utos)?\.?)?)?$/.exec(t))) minutos = Number(m[1]) * 60 + Number(m[2] ?? 0);
+  if (minutos === null) return { error: "No lo entiendo: escribe por ejemplo 2:30, 2 h 30 o 150." };
   if (minutos < DURACION_MINIMA) return { error: "Como mínimo, 5 minutos." };
-  if (minutos > DURACION_MAXIMA) return { error: "Como máximo, 8 horas (480 minutos)." };
-  if (minutos % 5 !== 0) return { error: "En pasos de 5 minutos: por ejemplo 35 o 40." };
+  if (minutos > DURACION_MAXIMA) return { error: "Como máximo, 8 horas." };
+  if (minutos % 5 !== 0) return { error: "En pasos de 5 minutos: por ejemplo 2:30 o 2:35." };
   return { minutos };
+}
+
+/** Ajusta a la rejilla de 5 minutos y a los límites (5 min a 8 h). */
+export function acotarDuracion(minutos: number): number {
+  return Math.min(DURACION_MAXIMA, Math.max(DURACION_MINIMA, Math.round(minutos / 5) * 5));
 }
 
 /** Seis pasteles fríos del calendario, uno por servicio, por orden de la carta. */

@@ -329,6 +329,7 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
               {otraEn === a.id && (
                 <div className="flex justify-end">
                   <DuracionOtra
+                    valor={duracionElegida}
                     abiertoAlInicio
                     onCancelar={() => setOtraEn(null)}
                     claseChip="h-9 rounded-full px-3.5 text-[13px] font-bold text-cafe-medio"

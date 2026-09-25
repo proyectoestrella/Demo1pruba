@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Appointment, Employee, Service } from "./mock/types";
 import {
+  acotarDuracion,
   minutosPersonalizados,
   citasDelDia,
   colorServicio,
@@ -130,17 +131,24 @@ describe("colorServicio", () => {
 });
 
 describe("duración escrita a mano («Otra…»)", () => {
-  test("acepta minutos en pasos de 5 entre 5 y 480, con o sin «min»", () => {
-    expect(minutosPersonalizados("35")).toEqual({ minutos: 35 });
-    expect(minutosPersonalizados(" 480 min ")).toEqual({ minutos: 480 });
-    expect(minutosPersonalizados("5")).toEqual({ minutos: 5 });
+  test("acepta minutos, horas:minutos, «2 h 30» y horas solas", () => {
+    expect(minutosPersonalizados("150")).toEqual({ minutos: 150 });
+    expect(minutosPersonalizados(" 90 min ")).toEqual({ minutos: 90 });
+    expect(minutosPersonalizados("2:30")).toEqual({ minutos: 150 });
+    expect(minutosPersonalizados("2 h 30")).toEqual({ minutos: 150 });
+    expect(minutosPersonalizados("2h30")).toEqual({ minutos: 150 });
+    expect(minutosPersonalizados("1 h y 15 min")).toEqual({ minutos: 75 });
+    expect(minutosPersonalizados("3 horas")).toEqual({ minutos: 180 });
+    expect(minutosPersonalizados("8:00")).toEqual({ minutos: 480 });
   });
-  test("rechaza lo vacío, lo que no es número, lo que se sale y lo que no va de 5 en 5", () => {
-    expect(minutosPersonalizados("")).toEqual({ error: "Escribe los minutos." });
-    expect(minutosPersonalizados("1h")).toEqual({ error: "Solo un número de minutos, por ejemplo 35." });
-    expect(minutosPersonalizados("-10")).toEqual({ error: "Solo un número de minutos, por ejemplo 35." });
+  test("rechaza lo vacío, lo ilegible, lo que se sale y lo que no va de 5 en 5", () => {
+    expect(minutosPersonalizados("")).toEqual({ error: "Escribe la duración, por ejemplo 2:30 o 150." });
+    expect(minutosPersonalizados("mucho")).toEqual({ error: "No lo entiendo: escribe por ejemplo 2:30, 2 h 30 o 150." });
     expect(minutosPersonalizados("0")).toEqual({ error: "Como mínimo, 5 minutos." });
-    expect(minutosPersonalizados("485")).toEqual({ error: "Como máximo, 8 horas (480 minutos)." });
-    expect(minutosPersonalizados("37")).toEqual({ error: "En pasos de 5 minutos: por ejemplo 35 o 40." });
+    expect(minutosPersonalizados("8:05")).toEqual({ error: "Como máximo, 8 horas." });
+    expect(minutosPersonalizados("2:37")).toEqual({ error: "En pasos de 5 minutos: por ejemplo 2:30 o 2:35." });
+  });
+  test("acotar lleva a la rejilla de 5 y a los límites", () => {
+    expect([acotarDuracion(0), acotarDuracion(62), acotarDuracion(999)]).toEqual([5, 60, 480]);
   });
 });

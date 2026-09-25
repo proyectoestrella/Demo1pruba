@@ -644,7 +644,7 @@ export function NewAppointmentDialog({
                         {duracionLegible(min)}
                       </button>
                     ))}
-                    <DuracionOtra onElegir={setDuracionManual} claseChip={opcion(false)} />
+                    <DuracionOtra valor={totalMin} onElegir={setDuracionManual} claseChip={opcion(false)} />
                   </div>
                   {recordada && duracionManual === null && (
                     <p className="mt-2 flex items-start gap-1.5 text-[12.5px] text-primary">
@@ -656,7 +656,7 @@ export function NewAppointmentDialog({
                     </p>
                   )}
                   {duracionManual !== null && duracionManual !== catalogoMin && (
-                    <p className="mt-2 text-[12.5px] text-muted-foreground">La carta dice {catalogoMin} min: esta cita va con {duracionManual}.</p>
+                    <p className="mt-2 text-[12.5px] text-muted-foreground">La carta dice {duracionLegible(catalogoMin)}: esta cita dura {duracionLegible(duracionManual)}.</p>
                   )}
 
                   <label className={cn(etiquetaCampo, "mt-5")} htmlFor="na-note">
