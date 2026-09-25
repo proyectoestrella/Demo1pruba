@@ -96,3 +96,37 @@ describe("deshacer en la store", () => {
     expect(useSalonStore.getState().cambios.length).toBe(n);
   });
 });
+
+describe("deshacer cambios del perfil (lote 9b)", () => {
+  it("cada campo que cambia deja su propio cambio, con su inverso", () => {
+    const antes = useSalonStore.getState().salonProfile.about;
+    useSalonStore.getState().updateSalonProfile({ about: "Texto nuevo de la landing", teamHours: [["10:00–14:00"]] as never });
+    const [c1, c2] = useSalonStore.getState().cambios;
+    expect([c1.tipo, c2.tipo]).toEqual(["perfil.campo", "perfil.campo"]);
+    const about = useSalonStore.getState().cambios.find((c) => c.idEntidad === "about")!;
+    expect(about.resumen).toBe("Cambiado el texto «Sobre nosotros»");
+    expect(useSalonStore.getState().deshacerCambio(about.id).ok).toBe(true);
+    expect(useSalonStore.getState().salonProfile.about).toBe(antes);
+  });
+
+  it("una estilista no deshace un cambio de la landing; la gerente sí", () => {
+    useSalonStore.setState({ miembro: { userId: "maria", rol: "gerente", employeeId: null, displayName: "María" } });
+    useSalonStore.getState().updateSalonProfile({ address: "Calle Nueva 1" });
+    const c = useSalonStore.getState().cambios[0];
+    useSalonStore.setState({ miembro: { userId: "maria2", rol: "estilista", employeeId: "noelia", displayName: null } });
+    expect(useSalonStore.getState().estadoDeshacer(c.id)).toEqual({ puede: false, motivo: "PERMISO" });
+  });
+
+  it("cargar un perfil (en pausa) no deja nada en el historial", async () => {
+    const { conRegistroEnPausa } = await import("./store");
+    const n = useSalonStore.getState().cambios.length;
+    conRegistroEnPausa(() => useSalonStore.getState().updateSalonProfile({ name: "Otro salón cargado" }));
+    expect(useSalonStore.getState().cambios.length).toBe(n);
+  });
+
+  it("las marcas internas de la lista de configuración no se registran", () => {
+    const n = useSalonStore.getState().cambios.length;
+    useSalonStore.getState().updateSalonProfile({ setupChecklistHidden: true } as never);
+    expect(useSalonStore.getState().cambios.length).toBe(n);
+  });
+});

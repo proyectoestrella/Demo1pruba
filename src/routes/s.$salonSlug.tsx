@@ -1,3 +1,4 @@
+import { conRegistroEnPausa } from "@/lib/store";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { useRealSalon, useRealSalonSlug } from "@/lib/use-real-salon";
@@ -155,7 +156,8 @@ function SalonLayout() {
     // encima en Supabase. El enlace de demo de Adam sigue abriendo, pero
     // enseñando su salón de verdad. Ver `useRealSalon`.
     if (useSalonStore.getState().realSalonSlug === salonSlug) return;
-    updateSalonProfile({ ...blankDemoProfile(), ...fromUrl });
+    // Aplicar el enlace de demo es cargar, no cambiar: sin historial (lote 9b).
+    conRegistroEnPausa(() => updateSalonProfile({ ...blankDemoProfile(), ...fromUrl }));
     applyBusinessType(inferBusinessType(fromUrl.tagline, fromUrl.name), {
       team: fromUrl.team,
       menu: fromUrl.menu,

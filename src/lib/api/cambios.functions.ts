@@ -17,7 +17,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { accionDe, DIAS_RETENCION, TIPOS_CAMBIO } from "../cambios";
+import { accionesDeCambio, DIAS_RETENCION, TIPOS_CAMBIO } from "../cambios";
 import { getSupabaseServerClient } from "../supabase.server";
 import { exigirAcceso } from "./autorizacion.server";
 import { exigirAcciones } from "./guardas";
@@ -48,7 +48,7 @@ export const guardarCambio = createServerFn({ method: "POST" })
     const quien = await exigirAcceso(data.slug);
     // Una demo no guarda historial en el servidor: vive en su navegador.
     if (quien.tipo !== "miembro") return { guardado: false as const, motivo: "demo" as const };
-    exigirAcciones(quien, [accionDe(data.cambio.tipo)]);
+    exigirAcciones(quien, accionesDeCambio(data.cambio));
     const sb = getSupabaseServerClient();
     if (!sb) return { guardado: false as const, motivo: "sin-backend" as const };
     const c = data.cambio;

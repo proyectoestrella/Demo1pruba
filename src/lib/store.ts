@@ -1,12 +1,12 @@
 import { create } from "zustand";
 import { PERMISOS_DEMO, permisosDe, puede, type MiembroActual } from "./permisos";
 import {
-  accionDe, aplicarDeshacerEnLista, cambioDeDeshacer, inverso, podar, puedeDeshacer,
+  accionesDeCambio, aplicarDeshacerEnLista, resumenCampoPerfil, cambioDeDeshacer, inverso, podar, puedeDeshacer,
   registrarCambio as registrarCambioPuro,
   type Cambio, type ContextoDeshacer, type EntidadCambio, type EstadoDeshacer, type MotivoNoDeshacer, type TipoCambio,
 } from "./cambios";
 import {
-  ACCIONES_REGISTRADAS, ACCIONES_SIN_REGISTRO, resumenCita, resumenClienta, resumenServicio, tipoCambioCita, tipoCambioClienta,
+  ACCIONES_REGISTRADAS, ACCIONES_SIN_REGISTRO, CAMPOS_PERFIL_SIN_REGISTRO, resumenCita, resumenClienta, resumenServicio, tipoCambioCita, tipoCambioClienta,
 } from "./registro-cambios";
 import type { PeriodoId, RangoPersonalizado } from "./periodos";
 import { persist, createJSONStorage } from "zustand/middleware";
@@ -472,10 +472,11 @@ function contextoDeshacer(st: SalonState, c: Cambio): ContextoDeshacer {
     huecoLibre = solapaConAgenda(st.appointments, { employeeId: destino.employeeId, start: destino.start, duration: destino.duration, excluirId: cita.id }).length === 0;
   }
   const empleadas = [cita?.employeeId, c.antes.employeeId as string | undefined].filter(Boolean) as string[];
-  const accion = accionDe(c.tipo);
-  const puedeLaAccion = empleadas.length
-    ? empleadas.every((e) => puede(permisos, accion, { employeeId: e, miEmployeeId: st.miembro?.employeeId ?? null }))
-    : puede(permisos, accion);
+  const puedeLaAccion = accionesDeCambio(c).every((accion) =>
+    empleadas.length
+      ? empleadas.every((e) => puede(permisos, accion, { employeeId: e, miEmployeeId: st.miembro?.employeeId ?? null }))
+      : puede(permisos, accion),
+  );
   return {
     actual: estadoActualDe(st, c),
     cambios: st.cambios,
@@ -509,7 +510,8 @@ export const useSalonStore = create<SalonState>()(
       };
       const sincronizarCarta = () => {
         if (!get().realSalonSlug) return;
-        get().updateSalonProfile({ menu: menuDesdeServicios(get().services) });
+        // Ya queda registrado como cambio del servicio: la carta del perfil es su reflejo.
+        conRegistroEnPausa(() => get().updateSalonProfile({ menu: menuDesdeServicios(get().services) }));
       };
       return {
       appointments: seedAppointments,
@@ -1300,6 +1302,31 @@ function instalarRegistroDeCambios() {
       }
     };
   }
+  // Perfil (lote 9b): un cambio por campo que cambia, con su inverso. Las
+  // cargas (salón real, demo por enlace) llaman en pausa y no registran.
+  const actualizarPerfil = st.updateSalonProfile as (patch: Partial<SalonProfile>) => void;
+  envueltas.updateSalonProfile = (patch: Partial<SalonProfile>) => {
+    if (profundidad > 0 || registroEnPausa()) return actualizarPerfil(patch);
+    profundidad++;
+    try {
+      const antes = useSalonStore.getState().salonProfile as unknown as Record<string, unknown>;
+      actualizarPerfil(patch);
+      const s = useSalonStore.getState();
+      const despues = s.salonProfile as unknown as Record<string, unknown>;
+      for (const clave of Object.keys(patch)) {
+        if (CAMPOS_PERFIL_SIN_REGISTRO.has(clave)) continue;
+        const c = registrarCambioPuro({
+          id: nuevoIdCambio(), tipo: "perfil.campo", entidad: "perfil", idEntidad: clave,
+          antes: { [clave]: antes[clave] ?? null }, despues: { [clave]: despues[clave] ?? null },
+          resumen: resumenCampoPerfil(clave),
+          autor: s.miembro?.userId ?? null, autorNombre: s.miembro?.displayName ?? null, fecha: new Date().toISOString(),
+        });
+        if (c) s.registrarCambio(c);
+      }
+    } finally {
+      profundidad--;
+    }
+  };
   for (const accion of ACCIONES_SIN_REGISTRO) {
     const original = st[accion] as ((...a: unknown[]) => unknown) | undefined;
     if (typeof original === "function") envueltas[accion] = (...args: unknown[]) => conRegistroEnPausa(() => original(...args));

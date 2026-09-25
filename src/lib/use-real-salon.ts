@@ -5,7 +5,7 @@ import { registrarAviso } from "./avisos-sync";
 import { blankDemoProfile } from "./demo-profile";
 import { inferBusinessType } from "./business-type";
 import { resolveActiveProfile } from "./salon-rows";
-import { useSalonStore } from "./store";
+import { conRegistroEnPausa, useSalonStore } from "./store";
 import type { Appointment, Client, SalonProfile, WaitlistEntry } from "./mock/types";
 
 /** Lo que dice el aviso cuando la agenda de un salón real no ha podido cargarse. */
@@ -127,7 +127,8 @@ export async function resolverSalonReal(
   // cambio del dueño puede viajar a Supabase antes de tener los datos reales.
   store.setRealSalonSlug(null);
   // 1. Perfil (con realSalonSlug a null → no se reenvía a Supabase).
-  store.updateSalonProfile({ ...blankDemoProfile(), ...profile, slug });
+  // Cargar no es cambiar: no deja entradas en el historial (lote 9b).
+  conRegistroEnPausa(() => store.updateSalonProfile({ ...blankDemoProfile(), ...profile, slug }));
   // 2. Equipo, carta, y el resto del idioma del negocio.
   store.applyBusinessType(inferBusinessType(profile.tagline, profile.name), {
     team: profile.team,

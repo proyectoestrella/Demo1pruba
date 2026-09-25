@@ -112,4 +112,7 @@ export const ACCIONES_REGISTRADAS: Array<{ accion: string; entidad: EntidadCambi
 ];
 
 /** Acciones automáticas: lo que hagan por dentro NO se registra como hecho por una persona. */
-export const ACCIONES_SIN_REGISTRO = ["liberarSenalesVencidas", "hydrateFromServer", "applyBusinessType", "applyDemo", "vaciarDatosDeEjemplo"];
+export const ACCIONES_SIN_REGISTRO = ["liberarSenalesVencidas", "hydrateFromServer", "applyBusinessType", "applyDemo", "vaciarDatosDeEjemplo", "resetSalonProfile"];
+
+/** Campos del perfil que son marcas internas, no decisiones de la dueña. */
+export const CAMPOS_PERFIL_SIN_REGISTRO = new Set(["setupChecklistHidden", "setupChecklistDone", "id", "slug"]);

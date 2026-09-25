@@ -14,7 +14,7 @@ describe("guardia del historial y las versiones", () => {
     const c = cuerpo(cambios, "guardarCambio");
     expect(c).toContain("autor: quien.userId");
     expect(c).not.toContain("c.autor");
-    expect(c).toContain("exigirAcciones(quien, [accionDe(data.cambio.tipo)])");
+    expect(c).toContain("exigirAcciones(quien, accionesDeCambio(data.cambio))");
   });
   it("listarCambios exige historial.ver", () => {
     expect(cuerpo(cambios, "listarCambios")).toContain('exigirAcciones(quien, ["historial.ver"])');

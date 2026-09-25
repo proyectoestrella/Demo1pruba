@@ -14,13 +14,14 @@
  * Diseño en docs/diseno-deshacer.md; contrato en docs/contrato-deshacer.md.
  */
 import type { AccionId } from "./permisos";
+import { accionesDeParchePerfil } from "./api/guardas";
 
 export const TIPOS_CAMBIO = [
   "cita.cancelar", "cita.rechazar", "cita.confirmar", "cita.marcar-asistencia", "cita.cobrar", "cita.mover", "cita.editar",
   "senal.pedir", "senal.prorrogar", "senal.recibir", "senal.aplicar", "senal.devolver", "senal.retener",
   "recargo.aplicar", "recargo.perdonar", "recargo.cobrar", "clienta.bloquear",
   "servicio.editar", "servicio.borrar", "profesional.editar", "horario.editar",
-  "preguntas.editar", "ajustes.editar", "perfil.publicar", "perfil.restaurar",
+  "preguntas.editar", "ajustes.editar", "perfil.publicar", "perfil.restaurar", "perfil.campo",
 ] as const;
 export type TipoCambio = (typeof TIPOS_CAMBIO)[number];
 
@@ -161,8 +162,36 @@ export function accionDe(tipo: TipoCambio): AccionId {
     "ajustes.editar": "salon.editar",
     "perfil.publicar": "web.publicar",
     "perfil.restaurar": "web.restaurar-version",
+    // Por defecto; el permiso real depende del campo (ver accionesDeCambio).
+    "perfil.campo": "salon.editar",
   };
   return m[tipo];
+}
+
+/**
+ * Los permisos que pide un cambio concreto: un campo del perfil pide el de su
+ * parte (web, equipo, carta, ajustes, plan); el resto, el de su tipo.
+ */
+export function accionesDeCambio(c: Pick<Cambio, "tipo" | "idEntidad">): AccionId[] {
+  return c.tipo === "perfil.campo" ? accionesDeParchePerfil([c.idEntidad]) : [accionDe(c.tipo)];
+}
+
+/** Cómo se llama cada campo del perfil en el historial. */
+const NOMBRE_CAMPO: Record<string, string> = {
+  name: "el nombre del salón", tagline: "el tipo de negocio", about: "el texto «Sobre nosotros»", address: "la dirección",
+  phone: "el teléfono", instagram: "el Instagram", heroImage: "la foto de portada", galleryPhotos: "la galería",
+  photoCount: "las fotos", specialties: "las especialidades", faq: "las preguntas frecuentes",
+  openingHours: "el horario del salón", team: "el equipo", teamIds: "el equipo", teamHours: "el horario del equipo",
+  menu: "la carta", preguntasReserva: "las preguntas de reserva", bookingQuestionsEnabled: "las preguntas de reserva",
+  bookingQuestionsRequired: "las preguntas de reserva", duracionFlexible: "la duración flexible",
+  noShowFeeEur: "el recargo por plantón", noShowNoticeHours: "el aviso del plantón", timeZone: "la zona horaria",
+  lastSlotBufferMin: "el margen de la última hora", priorityHours: "las horas prioritarias", smartSpread: "el reparto de agenda",
+  depositTemplate: "el mensaje de la señal", plantillas: "los mensajes de WhatsApp", colores: "los colores",
+  logo: "el logo", plan: "el plan",
+};
+export function resumenCampoPerfil(clave: string): string {
+  const n = NOMBRE_CAMPO[clave] ?? (clave.startsWith("deposit") ? "la regla de la señal" : `«${clave}»`);
+  return `Cambiado ${n}`;
 }
 
 export interface ContextoDeshacer {

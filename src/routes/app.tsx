@@ -1,3 +1,4 @@
+import { conRegistroEnPausa } from "@/lib/store";
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import {
@@ -247,7 +248,8 @@ function useApplyDemoFromUrl() {
     // Un salón real ya resuelto manda sobre el enlace — ver el mismo guardia en
     // s.$salonSlug.tsx y `useRealSalon`.
     if (useSalonStore.getState().realSalonSlug) return;
-    updateSalonProfile({ ...blankDemoProfile(), ...fromUrl });
+    // Aplicar el enlace de demo es cargar, no cambiar: sin historial (lote 9b).
+    conRegistroEnPausa(() => updateSalonProfile({ ...blankDemoProfile(), ...fromUrl }));
     // Las mismas opciones que aplica la web pública (s.$salonSlug.tsx): sin
     // `duracionFlexible` aquí, abrir el panel directamente por `/app?d=…`
     // resembraba la agenda SIN la clienta de la duración flexible.
