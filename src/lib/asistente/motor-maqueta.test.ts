@@ -26,7 +26,17 @@ describe("motor de maqueta del asistente", () => {
     expect(responder("hola", ctx).tipo).toBe("respuesta");
     const e = responder("no me funciona la web", ctx);
     expect(e.tipo).toBe("escalar");
-    if (e.tipo === "escalar") expect(e.mensaje).toContain("PeluChic");
+    if (e.tipo === "escalar") {
+      expect(e.pasos.length).toBeGreaterThan(0);
+      expect(e.guia).toContain("§8");
+      expect(e.contacto.mensaje).toContain("PeluChic");
+    }
+    const plan = responder("puedo añadir otra estilista", ctx);
+    expect(plan.tipo).toBe("escalar");
+    if (plan.tipo === "escalar") {
+      expect(plan.pasos[0]).toContain("3 profesionales");
+      expect(plan.contacto.correo).toBe("ejemplo@sishow.com");
+    }
     const dobles: Client[] = [...clients, { ...clients[0], id: "otra", name: `${clients[0].name.split(" ")[0]} Otra` }];
     const d = responder(`ficha de ${clients[0].name.split(" ")[0]}`, { ...ctx, clients: dobles });
     expect(d.tipo).toBe("elegir");

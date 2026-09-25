@@ -11,7 +11,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowUp, Copy, Mail, RotateCcw, Sparkles } from "lucide-react";
+import { ArrowUp, BookOpen, Copy, Mail, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useSalonStore } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
@@ -216,24 +216,40 @@ function Respuesta({ r, onAccion, onPreguntar }: { r: RespuestaAsistente; onAcci
       () => toast.success(`${que} copiado`),
       () => toast.error("No se pudo copiar"),
     );
+  // Escalado (dudas técnicas y fuera de plan): primero los pasos, luego la guía y,
+  // solo al final, el contacto «si sigue igual».
   return (
     <div className={caja}>
-      <p>{r.texto}</p>
-      <p className="mt-2 flex items-center gap-2 rounded-xl bg-nata px-3 py-2 font-bold">
-        <Mail className="size-4 shrink-0 text-cafe-medio" strokeWidth={1.7} aria-hidden="true" />
-        <span className="min-w-0 flex-1 truncate">{r.correo}</span>
-        <button type="button" onClick={() => copiar(r.correo, "Correo")} aria-label="Copiar el correo" className="grid size-7 place-items-center rounded-full hover:bg-card">
-          <Copy className="size-3.5" strokeWidth={1.8} />
-        </button>
-      </p>
-      <p className="mt-2 rounded-xl border border-lino bg-superficie px-3 py-2 text-[13px] text-cafe-medio">{r.mensaje}</p>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        <button type="button" onClick={() => copiar(r.mensaje, "Mensaje")} className={chip}>
-          Copiar mensaje
-        </button>
-        <a href={`mailto:${r.correo}?subject=${encodeURIComponent("Ayuda con siShow")}&body=${encodeURIComponent(r.mensaje)}`} className={chip}>
-          Abrir el correo
-        </a>
+      <p className="font-bold">{r.texto}</p>
+      <ol className="mt-1.5 list-decimal space-y-1 pl-5 text-[13.5px]">
+        {r.pasos.map((p) => (
+          <li key={p}>{p}</li>
+        ))}
+      </ol>
+      {r.guia && (
+        <p className="mt-2 flex items-center gap-1.5 text-[13px] text-cafe-medio">
+          <BookOpen className="size-4 shrink-0" strokeWidth={1.7} aria-hidden="true" />
+          En la guía de uso: <b className="text-cafe">{r.guia}</b>
+        </p>
+      )}
+      <div className="mt-3 border-t border-lino pt-2.5">
+        <p className="text-[13px] text-cafe-medio">{r.contacto.cierre}</p>
+        <p className="mt-1.5 flex items-center gap-2 rounded-xl bg-nata px-3 py-2 font-bold">
+          <Mail className="size-4 shrink-0 text-cafe-medio" strokeWidth={1.7} aria-hidden="true" />
+          <span className="min-w-0 flex-1 truncate">{r.contacto.correo}</span>
+          <button type="button" onClick={() => copiar(r.contacto.correo, "Correo")} aria-label="Copiar el correo" className="grid size-7 place-items-center rounded-full hover:bg-card">
+            <Copy className="size-3.5" strokeWidth={1.8} />
+          </button>
+        </p>
+        <p className="mt-2 rounded-xl border border-lino bg-superficie px-3 py-2 text-[13px] text-cafe-medio">{r.contacto.mensaje}</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <button type="button" onClick={() => copiar(r.contacto.mensaje, "Mensaje")} className={chip}>
+            Copiar mensaje
+          </button>
+          <a href={`mailto:${r.contacto.correo}?subject=${encodeURIComponent("Ayuda con siShow")}&body=${encodeURIComponent(r.contacto.mensaje)}`} className={chip}>
+            Abrir el correo
+          </a>
+        </div>
       </div>
     </div>
   );

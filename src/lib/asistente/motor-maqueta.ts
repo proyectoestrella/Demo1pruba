@@ -1,5 +1,6 @@
 import { answerFor, clientasDePregunta, type SalonContext } from "../assistant-answers";
 import { CHARLA, FAMILIAS, type FamiliaAsistente } from "./catalogo-arena";
+import { SOPORTE, type CasoSoporte } from "./soporte-arena";
 
 /**
  * SUSTITUTO TEMPORAL del motor del asistente de BACKEND (lote 10). Da al
@@ -30,7 +31,12 @@ export type RespuestaAsistente =
   | { tipo: "respuesta"; texto: string; cifra: string | null; accion: Accion | null }
   | { tipo: "elegir"; texto: string; opciones: { etiqueta: string; pregunta: string }[] }
   | { tipo: "no-se"; texto: string; sugerencias: string[] }
-  | { tipo: "escalar"; texto: string; correo: string; mensaje: string };
+  /**
+   * Dudas técnicas y funciones fuera del plan: PRIMERO los pasos y el apartado
+   * de la guía; el contacto va al final, «si sigue igual». El panel lo pinta
+   * en ese orden.
+   */
+  | { tipo: "escalar"; texto: string; pasos: string[]; guia: string | null; contacto: { correo: string; mensaje: string; cierre: string } };
 
 /** Normaliza como pide la especificación §0: minúsculas, sin tildes ni signos, abreviaturas. */
 export function normalizar(t: string): string {
@@ -107,18 +113,37 @@ export function cifraDe(texto: string): string | null {
 
 const ESCALAR = /no (me )?funciona|error|se ha roto|no carga|no puedo entrar|hablar con (alguien|una persona)|soporte|ayuda humana/;
 
+/** El caso de soporte más parecido a la pregunta, si se parece lo bastante. */
+export function casoDeSoporte(pregunta: string): CasoSoporte | null {
+  const mejor = SOPORTE.map((c) => ({ c, s: Math.max(...c.ejemplos.map((e) => parecido(pregunta, e))) })).sort((a, b) => b.s - a.s)[0];
+  return mejor && mejor.s >= 0.5 ? mejor.c : null;
+}
+
+function escalado(pregunta: string, salon: string, caso: CasoSoporte | null): RespuestaAsistente {
+  const tecnica = !caso || caso.tipo === "tecnica";
+  return {
+    tipo: "escalar",
+    texto: tecnica ? "Prueba esto:" : "Eso no entra en tu plan, pero hoy puedes hacer esto:",
+    pasos: caso?.pasos ?? ["Recarga la página.", "Si sigue igual, cierra sesión y vuelve a entrar desde el enlace del panel."],
+    guia: caso ? caso.guia : "§0 Antes de empezar",
+    contacto: {
+      cierre: tecnica ? "Si sigue igual, escríbenos con este mensaje:" : "Si quieres activarlo, escríbenos con este mensaje:",
+      correo: CORREO_SISHOW,
+      mensaje:
+        caso?.mensaje?.replace("María de PeluChic", `de ${salon}`) ??
+        `Hola, soy de ${salon}. ${pregunta.trim().replace(/^./, (x) => x.toUpperCase())}. Me pasa desde [cuándo], en [móvil / iPad / ordenador]. Adjunto una captura.`,
+    },
+  };
+}
+
 export function responder(pregunta: string, ctx: SalonContext): RespuestaAsistente {
   const q = normalizar(pregunta);
   if (!q) return { tipo: "no-se", texto: "Escríbeme lo que quieres saber.", sugerencias: FAMILIAS.slice(0, 3).map((f) => f.ejemplos[0]) };
 
-  if (ESCALAR.test(q) || /^(quiero hablar con alguien|persona|soporte)$/.test(q)) {
-    return {
-      tipo: "escalar",
-      texto: "Te pongo con el equipo de siShow. Copia este mensaje y mándalo a nuestro correo; te contestamos lo antes posible.",
-      correo: CORREO_SISHOW,
-      mensaje: `Hola, soy de ${ctx.salonName}. Tengo un problema: «${pregunta.trim()}». Me pasa desde hoy, en [móvil / iPad / ordenador]. Adjunto una captura.`,
-    };
-  }
+  // Dudas técnicas y funciones fuera del plan: primero la solución y la guía.
+  const caso = casoDeSoporte(pregunta);
+  if (caso) return escalado(pregunta, ctx.salonName, caso);
+  if (ESCALAR.test(q)) return escalado(pregunta, ctx.salonName, null);
 
   const charla = CHARLA.find((c) => c.ejemplos.some((e) => normalizar(e) === q));
   if (charla) return { tipo: "respuesta", texto: charla.respuesta.replace(/\s*\[[^\]]+\]/g, ""), cifra: null, accion: null };
