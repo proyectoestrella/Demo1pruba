@@ -114,3 +114,36 @@ create table if not exists leads_demo (
 );
 create index if not exists leads_demo_salon_slug_idx on leads_demo (salon_slug);
 alter table leads_demo enable row level security;
+
+-- 9. Lote 3: columnas propias para lo que iba en `note`/`penalty_note`, tpv_code, birthday, updated_at + trigger (26/09) ---
+
+alter table appointments add column if not exists booking_answers jsonb;
+alter table appointments add column if not exists deposit_due_at timestamptz;
+alter table appointments add column if not exists deposit_period_hours smallint;
+alter table appointments add column if not exists origen text not null default 'sishow';
+
+alter table clients add column if not exists manual_block boolean not null default false;
+alter table clients add column if not exists tpv_code text;
+alter table clients add column if not exists birthday date;
+create index if not exists clients_salon_tpv_code_idx on clients (salon_slug, tpv_code);
+
+alter table appointments add column if not exists updated_at timestamptz not null default now();
+alter table clients add column if not exists updated_at timestamptz not null default now();
+
+create or replace function sishow_set_updated_at() returns trigger
+language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists appointments_set_updated_at on appointments;
+create trigger appointments_set_updated_at
+  before update on appointments
+  for each row execute function sishow_set_updated_at();
+
+drop trigger if exists clients_set_updated_at on clients;
+create trigger clients_set_updated_at
+  before update on clients
+  for each row execute function sishow_set_updated_at();

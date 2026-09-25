@@ -328,3 +328,54 @@ create table if not exists leads_demo (
 );
 create index if not exists leads_demo_salon_slug_idx on leads_demo (salon_slug);
 alter table leads_demo enable row level security;
+
+-- ---------------------------------------------------------------------------
+-- 26/09/2026 — Lote 3: lo que iba codificado en texto pasa a columnas propias
+--
+-- Hasta hoy, dentro de `appointments.note` viajaban tres cosas con marcadores
+-- (`[siShow:reserva:v1:…]`, `[siShow:senal:v1:…]`, `[siShow:origen:v1:tpv123]`)
+-- y el bloqueo manual iba en `clients.penalty_note` como JSON. Aquí nacen
+-- sus columnas. La lectura es compatible durante una versión: si la columna
+-- viene a null, se sigue leyendo el marcador (src/lib/salon-rows.ts). El
+-- relleno de las filas antiguas lo hace `bun run scripts/migrar-notas.ts`,
+-- con los mismos parsers que el código, no SQL con expresiones regulares.
+-- ---------------------------------------------------------------------------
+
+-- Respuestas de la clienta al pedir la cita (largo del pelo, etc.).
+alter table appointments add column if not exists booking_answers jsonb;
+-- Plazo de la señal por Bizum: vencimiento y horas acordadas.
+alter table appointments add column if not exists deposit_due_at timestamptz;
+alter table appointments add column if not exists deposit_period_hours smallint;
+-- Procedencia del historial: 'sishow' (la app) o 'tpv123' (importado).
+alter table appointments add column if not exists origen text not null default 'sishow';
+
+-- Bloqueo manual de la reserva online, separado de la deuda por plantón.
+alter table clients add column if not exists manual_block boolean not null default false;
+-- Código de clienta en TPV 123 (para volver a importar sin duplicar) y cumpleaños.
+alter table clients add column if not exists tpv_code text;
+alter table clients add column if not exists birthday date;
+create index if not exists clients_salon_tpv_code_idx on clients (salon_slug, tpv_code);
+
+-- `updated_at` como DATO, no como cerrojo: el panel escribe parches por
+-- campos (ver syncAppointmentPatch) y el último en tocar un campo gana. La
+-- columna sirve para saber cuándo cambió una fila y para depurar.
+alter table appointments add column if not exists updated_at timestamptz not null default now();
+alter table clients add column if not exists updated_at timestamptz not null default now();
+
+create or replace function sishow_set_updated_at() returns trigger
+language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists appointments_set_updated_at on appointments;
+create trigger appointments_set_updated_at
+  before update on appointments
+  for each row execute function sishow_set_updated_at();
+
+drop trigger if exists clients_set_updated_at on clients;
+create trigger clients_set_updated_at
+  before update on clients
+  for each row execute function sishow_set_updated_at();
