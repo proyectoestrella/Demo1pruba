@@ -103,7 +103,7 @@ export function HoyV2() {
         : "Ocupación semanal";
   const cajaLabel = period === "hoy" ? "Caja de hoy" : `Caja ${suffix}`;
   const clientesLabel =
-    period === "hoy" || period === "semana" ? "Clientes nuevos" : `Clientes nuevos ${suffix}`;
+    period === "hoy" || period === "semana" ? "Clientas nuevas" : `Clientas nuevas ${suffix}`;
 
   const horasDeHoy = useMemo(
     () => dayOccupancyBars(appointments, toDateKey(now), employees, lastSlotBufferMin),
@@ -218,7 +218,7 @@ export function HoyV2() {
           format={(n) => Math.round(n).toString()}
           context={weeklyContext}
           goodDirection="up"
-          unitLabel="clientes"
+          unitLabel="clientas"
         />
       </div>
 

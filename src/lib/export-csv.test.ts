@@ -40,7 +40,7 @@ describe("citasToCsv", () => {
     const csv = citasToCsv([], SERVICES, EMPLOYEES);
     expect(csv.startsWith(BOM)).toBe(true);
     const cabecera = csv.slice(BOM.length).split("\r\n")[0];
-    expect(cabecera).toBe("Fecha;Hora;Cliente;Servicio;Profesional;Precio (€);Estado");
+    expect(cabecera).toBe("Fecha;Hora;Clienta;Servicio;Profesional;Precio (€);Estado");
   });
 
   it("vuelca cada cita en una fila con sus datos resueltos", () => {

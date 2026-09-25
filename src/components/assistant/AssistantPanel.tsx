@@ -136,7 +136,7 @@ function Welcome() {
   return (
     <div className="flex flex-col items-start gap-5 py-4">
       <div className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-sm text-muted-foreground">
-        Pregúntame por los números de tu salón: ingresos, ocupación, clientes, agenda o una
+        Pregúntame por los números de tu salón: ingresos, ocupación, clientas, agenda o una
         recomendación. Respondo calculando sobre tus propias reservas — no invento nada ni consulto
         fuera.
       </div>

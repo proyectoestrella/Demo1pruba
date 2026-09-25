@@ -83,7 +83,7 @@ export function CampanasPanel() {
           <EmptyState
             icon={Users}
             title="Todavía no hay datos suficientes"
-            description="En cuanto tengas más citas y clientes, aquí aparecerán campañas concretas para enviar."
+            description="En cuanto tengas más citas y clientas, aquí aparecerán campañas concretas para enviar."
           />
         </div>
       ) : (
@@ -115,7 +115,7 @@ function ResumenBanner({ recuperables, huecos }: { recuperables: number; huecos:
   if (recuperables === 0 && huecos === 0) return null;
   const partes: string[] = [];
   if (recuperables > 0) {
-    partes.push(`recuperar ${recuperables} ${recuperables === 1 ? "cliente" : "clientes"}`);
+    partes.push(`recuperar ${recuperables} ${recuperables === 1 ? "clienta" : "clientas"}`);
   }
   if (huecos > 0) {
     partes.push(`rellenar ${huecos} ${huecos === 1 ? "hueco" : "huecos"}`);

@@ -343,7 +343,7 @@ function AltaEnListaDialog({
                   id="we-name"
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
-                  placeholder="Nombre del cliente"
+                  placeholder="Nombre de la clienta"
                 />
               </div>
               <div className="space-y-1.5">

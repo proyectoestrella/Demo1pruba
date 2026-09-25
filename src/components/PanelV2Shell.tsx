@@ -73,7 +73,7 @@ type NavItem = {
 const MAIN_ITEMS: NavItem[] = [
   { to: "/app", label: "Hoy", icon: Home, exact: true },
   { to: "/app/calendar", label: "Agenda", icon: CalendarDays },
-  { to: "/app/clients", label: "Clientes", icon: Users },
+  { to: "/app/clients", label: "Clientas", icon: Users },
 ];
 
 const MORE_ITEMS: NavItem[] = [

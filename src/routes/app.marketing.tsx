@@ -1,9 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { clientFrequency, mostBookedService } from "@/lib/derive";
 import { beforeLoadSiModuloVisible, useRedirigirSiModuloOculto } from "@/lib/route-guards";
 import { PageHeader } from "@/components/PageHeader";
-import { ComingSoonAction } from "@/components/ComingSoonAction";
 import { CampanasPanel } from "@/components/campanas/CampanasPanel";
 import { Megaphone, Sparkles, MessageCircle } from "lucide-react";
 
@@ -33,14 +32,12 @@ function Marketing() {
     {
       icon: Sparkles,
       title: "Oferta de fidelidad",
-      body: `Premia a tus ${topSpenders.length} clientes con más gasto con un servicio de cortesía.`,
-      cta: "Preparar recompensa",
+      body: `Premia a tus ${topSpenders.length} clientas con más gasto con un servicio de cortesía.`,
     },
     {
       icon: MessageCircle,
       title: "Caption para Instagram",
-      body: `Destaca "${topService}", tu servicio más reservado esta temporada.`,
-      cta: "Generar caption",
+      body: `Destaca «${topService}», tu servicio más reservado esta temporada.`,
     },
   ];
 
@@ -55,9 +52,9 @@ function Marketing() {
 
       <div className="space-y-4 pt-2">
         <div>
-          <h2 className="text-xl font-extrabold tracking-[-0.02em]">Más ideas para más adelante</h2>
+          <h2 className="text-xl font-extrabold tracking-[-0.02em]">Más ideas</h2>
           <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-            Sugerencias calculadas a partir de tus reservas, todavía sin lista ni mensaje.
+            Dos ideas calculadas con tus reservas, sin lista ni mensaje todavía, y dónde están los recordatorios.
           </p>
         </div>
 
@@ -69,7 +66,8 @@ function Marketing() {
               </span>
               <h3 className="mt-3 text-base font-extrabold">{s.title}</h3>
               <p className="mt-1 text-[13px] text-muted-foreground">{s.body}</p>
-              <ComingSoonAction label={s.cta} />
+              {/* Idea sin nada detrás todavía: se dice, sin botón que no hace nada. */}
+              <p className="mt-4 inline-flex rounded-full bg-beige px-3 py-1 text-[12px] font-bold text-cafe-medio">Idea, sin lista ni mensaje todavía</p>
             </div>
           ))}
         <div className="rounded-[20px] border border-border bg-card p-5">
@@ -79,9 +77,12 @@ function Marketing() {
           <div>
             <h3 className="mt-3 text-base font-extrabold">Recordatorios por WhatsApp</h3>
             <p className="mt-1 text-[13px] text-muted-foreground">
-              Lo estamos terminando: recordatorio y confirmación de cada cita por WhatsApp desde el
-              panel. Hoy las campañas de arriba te dejan lista y mensaje para mandarlos tú.
+              Los mandas tú, uno a uno y con un toque, desde la hoja de mañana: cada recordatorio abre
+              tu WhatsApp con el mensaje ya escrito.
             </p>
+            <Link to="/app/hoja" search={{ dia: "manana" }} className="mt-4 inline-flex text-[13px] font-bold text-cafe-medio hover:text-foreground">
+              Abrir la hoja de mañana
+            </Link>
           </div>
         </div>
         </div>

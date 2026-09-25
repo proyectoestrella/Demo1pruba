@@ -54,7 +54,7 @@ export function citasToCsv(
   services: Record<string, Service>,
   employees: Record<string, Employee>,
 ): string {
-  const header = fila(["Fecha", "Hora", "Cliente", "Servicio", "Profesional", "Precio (€)", "Estado"]);
+  const header = fila(["Fecha", "Hora", "Clienta", "Servicio", "Profesional", "Precio (€)", "Estado"]);
   const filas = appointments
     .slice()
     .sort((a, b) => +new Date(a.start) - +new Date(b.start))

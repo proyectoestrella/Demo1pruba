@@ -528,7 +528,7 @@ export function AppointmentDetailSheet({
                 toast.success(
                   yaConfirmada
                     ? "Marcada como no confirmada"
-                    : "Marcada como confirmada por el cliente",
+                    : "Marcada como confirmada por la clienta",
                 );
               }}
               className={cn(
@@ -548,7 +548,7 @@ export function AppointmentDetailSheet({
                   })}
                 </span>
               ) : (
-                <span>El cliente aún no ha confirmado</span>
+                <span>La clienta aún no ha confirmado</span>
               )}
             </button>
             <p className="text-xs text-muted-foreground">
