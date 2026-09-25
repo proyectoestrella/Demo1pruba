@@ -460,3 +460,39 @@ create table if not exists salon_invitaciones (
 create index if not exists salon_invitaciones_salon_idx on salon_invitaciones (salon_slug);
 -- Mismo criterio que el resto: RLS activado y sin políticas; solo el servidor.
 alter table salon_invitaciones enable row level security;
+
+-- 12. Historial de cambios y versiones del perfil (lote 9, 26/09) ------------
+-- Cada acción reversible guarda SOLO los campos que cambia (antes/después).
+-- El id lo genera el navegador: subir dos veces el mismo cambio no lo duplica.
+create table if not exists cambios (
+  id text primary key,
+  salon_slug text not null,
+  tipo text not null,
+  entidad text not null check (entidad in ('cita','clienta','servicio','perfil')),
+  id_entidad text not null,
+  antes jsonb not null,
+  despues jsonb not null,
+  resumen text not null,
+  autor uuid references auth.users (id) on delete set null,
+  autor_nombre text,
+  fecha timestamptz not null default now(),
+  deshecho_en timestamptz,
+  deshecho_por uuid references auth.users (id) on delete set null,
+  deshace_a text references cambios (id) on delete set null,
+  aviso_enviado boolean not null default false
+);
+create index if not exists cambios_salon_fecha_idx on cambios (salon_slug, fecha desc);
+alter table cambios enable row level security;
+
+-- Cada «Publicar» de Mi página guarda la versión publicada.
+create table if not exists perfil_versiones (
+  id uuid primary key,
+  salon_slug text not null,
+  perfil jsonb not null,
+  publicado_por uuid references auth.users (id) on delete set null,
+  autor_nombre text,
+  fecha timestamptz not null default now(),
+  nota text
+);
+create index if not exists perfil_versiones_salon_fecha_idx on perfil_versiones (salon_slug, fecha desc);
+alter table perfil_versiones enable row level security;
