@@ -45,6 +45,7 @@ import {
   DrawerDescription,
   DrawerFooter,
 } from "@/components/ui/drawer";
+import { duracionElegida } from "@/lib/duracion-flexible";
 
 // NOTE: these must use local time components (not toISOString, which is UTC)
 // so a slot clicked at "9:00" in the calendar prefills the form as 9:00, not
@@ -386,7 +387,7 @@ export function NewAppointmentDialog({
           vez tardó otra cosa. */}
       <div className="space-y-1.5">
         <Label>Duración</Label>
-        <Select value={String(totalMin)} onValueChange={(v) => setDuracionManual(Number(v))}>
+        <Select value={String(totalMin)} onValueChange={(v) => setDuracionManual(duracionElegida(v))}>
           <SelectTrigger aria-label="Duración de la cita">
             <SelectValue />
           </SelectTrigger>
