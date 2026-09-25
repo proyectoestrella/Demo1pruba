@@ -109,7 +109,9 @@ export function HoyArena() {
   const porCobrar = Math.max(0, valorDelDia - dinero.cobrado);
 
   // Lo de las pestañas, contado para que la pestaña diga cuánto hay dentro.
-  const terminadas = hoy.filter((a) => terminada(a, ahora));
+  // Una solicitud sin confirmar se resuelve en «Solicitudes» (confirmar o rechazar), no en
+  // «¿Vinieron?»: así no cuenta dos veces en «Pendiente de ti» y coincide con el asistente.
+  const terminadas = hoy.filter((a) => terminada(a, ahora) && !(mostrarSolicitudes && a.status === "pending"));
   const sinMarcar = terminadas.filter((a) => a.status === "pending" || a.status === "confirmed").length;
   const solicitudesVisibles = mostrarSolicitudes ? pendientes.length : 0;
   const reglaDeSenal = reglaSenal(perfilSalon);
