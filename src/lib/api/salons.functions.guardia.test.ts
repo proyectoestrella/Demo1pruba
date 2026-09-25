@@ -33,6 +33,8 @@ const DEL_DUENO = [
   "saveClientNotes",
   "saveClient",
   "syncAppointmentPatch",
+  "listarVersiones",
+  "restaurarVersion",
 ];
 
 /**
