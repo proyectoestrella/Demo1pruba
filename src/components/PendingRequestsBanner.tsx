@@ -1,3 +1,4 @@
+import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
@@ -54,7 +55,7 @@ const DURATION_OPTIONS_MIN = [15, 30, 40, 45, 60, 75, 90, 120, 150, 180];
  */
 export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequestsBannerProps) {
   const [abierto, alternar] = usePlegado(plegable, !plegable);
-  const appointments = useSalonStore((s) => s.appointments);
+  const appointments = useCitasVisibles();
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
@@ -64,7 +65,7 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
   const depositEnabled = useSalonStore((s) => !!s.salonProfile.depositEnabled);
   const depositBizumPhone = useSalonStore((s) => s.salonProfile.depositBizumPhone ?? "");
   // Con un solo profesional, "con Adam" en cada solicitud es ruido.
-  const soloUno = esSoloUnProfesional(useEquipo());
+  const soloUno = esSoloUnProfesional(useEquipoVisible());
   const depositAmountEur = useSalonStore((s) => s.salonProfile.depositAmountEur ?? 10);
   const depositDeadlineHours = useSalonStore((s) => deadlineHours(s.salonProfile.depositDeadlineHours));
   const duracionFlexible = useSalonStore((s) => !!s.salonProfile.duracionFlexible);

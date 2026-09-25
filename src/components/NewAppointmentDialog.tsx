@@ -1,3 +1,4 @@
+import { useEquipoParaDarCita } from "@/lib/accesos-panel";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -121,7 +122,8 @@ export function NewAppointmentDialog({
   const [serviceIds, setServiceIds] = useState<string[]>(() =>
     [defaultServiceId ?? activeServices[0]?.id].filter((id): id is string => !!id),
   );
-  const employees = useEquipo();
+  // Lote 11: sin «crear para otra», solo su profesional; las citas de todas siguen para no pisar.
+  const employees = useEquipoParaDarCita();
   // Con un solo profesional no hay a quién asignar: se asigna solo y el
   // selector desaparece del formulario.
   const soloUno = esSoloUnProfesional(employees);

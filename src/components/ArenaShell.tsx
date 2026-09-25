@@ -32,7 +32,7 @@ import { TOTAL_PASOS, useProgresoPrimerosPasos } from "@/components/PrimerosPaso
 import { Button } from "@/components/ui/button";
 import { AvatarSalon } from "@/components/AvatarSalon";
 import { VerComo } from "@/components/VerComo";
-import { useCitasVisibles, useEsDemo, useMiembroActual, usePermisos, veRuta } from "@/lib/use-permisos";
+import { useCitasVisibles, useEsDemo, useMiembroActual, usePermisos, veRuta } from "@/lib/accesos-panel";
 import { NOMBRE_ROL } from "@/lib/accesos-maqueta";
 import {
   Sheet,

@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { historialDeFallos, penaltyReasonLabel } from "@/lib/plantones";
 import { BandaDeuda } from "@/components/DeudaCliente";
+import { useMiEmployeeId, usePermisos } from "@/lib/accesos-panel";
+import { puede } from "@/lib/permisos";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
@@ -55,6 +57,9 @@ export function ClientHistorySheet({
   const addAppointment = useSalonStore((s) => s.addAppointment);
   const reviewPenalty = useSalonStore((s) => s.reviewPenalty);
   const setManualBlock = useSalonStore((s) => s.setManualBlock);
+  // Lote 11: sin «ver todas», la ficha completa solo de quien ha tenido cita con ella.
+  const permisos = usePermisos();
+  const mio = useMiEmployeeId();
   // Con un solo profesional, "con Adam" bajo cada visita no informa de nada.
   const soloUno = esSoloUnProfesional(equipo);
   // Igual que AppointmentDetailSheet: la prop llega congelada en el momento
@@ -120,7 +125,27 @@ export function ClientHistorySheet({
   }
   const accion = "inline-flex h-[34px] items-center gap-1.5 rounded-full border border-input bg-card px-[13px] text-[12.5px] font-bold hover:bg-nata";
 
-  const body = (
+  const ajena = !puede(permisos, "clienta.ver-todas") && !appointments.some((a) => a.clientId === client.id && a.employeeId === mio);
+  const puedeBloquear = puede(permisos, "clienta.bloquear");
+  const veDeudas = puede(permisos, "recargo.gestionar");
+
+  const body = ajena ? (
+    <div>
+      <div className="flex items-center gap-3">
+        <ClientAvatar name={client.name} size="xl" />
+        <div className="min-w-0">
+          <p className="font-display text-[26px] leading-tight font-medium">{client.name}</p>
+          <p className="text-muted-foreground tabular-nums">{client.phone}</p>
+        </div>
+      </div>
+      <p className="mt-5 rounded-2xl border border-lino bg-superficie px-4 py-3 text-[14px] text-cafe-medio">
+        Esta clienta no es tuya todavía. Puedes darle cita y, desde entonces, verás su ficha.
+      </p>
+      <Button className="mt-4 rounded-full px-5 font-bold" onClick={() => setNuevaAbierta(true)}>
+        Darle cita
+      </Button>
+    </div>
+  ) : (
     <div>
       {/* Identidad y acciones */}
       <div className="flex items-center gap-3">
@@ -162,7 +187,7 @@ export function ClientHistorySheet({
       )}
 
       <div className="mt-3.5 space-y-3">
-      {(!conRecargo || client.manualBlock) && (
+      {puedeBloquear && (!conRecargo || client.manualBlock) && (
         // Vaul no debe interpretar el toque del botón como arrastre del cajón.
         <div data-vaul-no-drag className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border px-4 py-3">
           <p className="text-[12.5px] font-bold">
@@ -182,7 +207,7 @@ export function ClientHistorySheet({
       {/* Contador de plantones — el contexto antes que la deuda: saber que
           alguien ha fallado dos veces en tres meses cambia la decisión aunque
           ya te haya pagado la penalización. */}
-      {plantones && (
+      {veDeudas && plantones && (
         <div className="flex items-center gap-2.5 rounded-2xl border border-melocoton-borde bg-melocoton px-3.5 py-3 text-melocoton-tinta">
           <TriangleAlert className="size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
           <p className="text-[12.5px]">{plantones}</p>
@@ -192,7 +217,7 @@ export function ClientHistorySheet({
       {/* Lo que debe y las tres salidas: cobrada, perdonada, o bloquear.
           Mismo componente que el inicio y el detalle de la cita, para que las
           tres pantallas no puedan decir cosas distintas. */}
-      {conRecargo && <BandaDeuda client={client} />}
+      {conRecargo && veDeudas && <BandaDeuda client={client} />}
       {conRecargo && (client.penaltyEur ?? 0) > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <p>

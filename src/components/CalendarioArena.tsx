@@ -1,3 +1,4 @@
+import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, Palette, Settings2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -97,10 +98,10 @@ function useAhora() {
  * «Nueva cita» abierta. Sin él, hoy y la vista preferida.
  */
 export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: string; nueva?: boolean } } = {}) {
-  const appointments = useSalonStore((s) => s.appointments);
+  const appointments = useCitasVisibles();
   const services = useSalonStore((s) => s.services);
   const guardadas = useSalonStore((s) => s.salonProfile.calendario);
-  const equipo = useEquipo();
+  const equipo = useEquipoVisible();
   const soloUno = esSoloUnProfesional(equipo);
   const carta = useMemo(() => selectServiceMap(services), [services]);
   const ahora = useAhora();

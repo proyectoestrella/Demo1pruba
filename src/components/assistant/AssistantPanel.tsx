@@ -22,6 +22,10 @@ import type { Accion } from "@/lib/asistente/resolutores/tipos";
 import { crearFuentesPanel } from "@/lib/asistente/fuentes-panel";
 import { whatsappUrl } from "@/lib/campanas";
 import { usePanelPublicLink } from "@/lib/panel-public-link";
+import { filtrarCitas, useMiEmployeeId, usePermisos } from "@/lib/accesos-panel";
+import { alcance, puede, type Permisos } from "@/lib/permisos";
+import { POR_ID } from "@/lib/asistente/intenciones";
+import { useAccesosDemo } from "@/lib/accesos-maqueta";
 import { ClientHistorySheet } from "@/components/ClientHistorySheet";
 import { cn } from "@/lib/utils";
 
@@ -60,7 +64,11 @@ export function AssistantPanel({ className }: { className?: string }) {
   const navigate = useNavigate();
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [texto, setTexto] = useState("");
-  const temas = useMemo(() => guiaAsistente(4), []);
+  const permisosTemas = usePermisos();
+  const temas = useMemo(() => {
+    const veDinero = puede(permisosTemas, "dinero.ver-global") || alcance(permisosTemas, "dinero.ver-propio") === "propio";
+    return guiaAsistente(4).filter((t) => (t.id !== "marketing" || puede(permisosTemas, "marketing.usar")) && (t.id !== "dinero" || veDinero) && (t.id !== "configuracion" || puede(permisosTemas, "salon.editar")));
+  }, [permisosTemas]);
   const [tema, setTema] = useState(temas[0]?.id ?? "hoy");
   const [fichaId, setFichaId] = useState<string | null>(null);
   const clienta = useSalonStore((s) => s.clients.find((c) => c.id === fichaId) ?? null);
@@ -69,6 +77,12 @@ export function AssistantPanel({ className }: { className?: string }) {
   // El equipo cambia poco; la store se lee en cada pregunta y así ve la cita creada hace un segundo.
   const equipoRef = useRef(equipo);
   equipoRef.current = equipo;
+  // Lote 11: el asistente responde con lo que ve quien pregunta (la estilista, lo suyo).
+  const permisos = usePermisos();
+  const mio = useMiEmployeeId();
+  const accesoRef = useRef({ permisos, mio });
+  accesoRef.current = { permisos, mio };
+  const gerente = useAccesosDemo((s) => s.miembros?.find((m) => m.rol === "gerente" && m.estado === "activa")?.displayName ?? null);
   // El mismo enlace que «Ver tu web» del menú (en una demo lleva su ?d=).
   const enlace = usePanelPublicLink();
   const enlaceRef = useRef(enlace);
@@ -77,8 +91,15 @@ export function AssistantPanel({ className }: { className?: string }) {
     () =>
       crearAsistente(
         crearFuentesPanel(
-          () => useSalonStore.getState(),
-          () => equipoRef.current,
+          () => {
+            const st = useSalonStore.getState();
+            const { permisos: p, mio: m } = accesoRef.current;
+            if (puede(p, "cita.ver-todas")) return st;
+            const citas = filtrarCitas(st.appointments, p, m);
+            const suyas = new Set(citas.map((c) => c.clientId));
+            return { ...st, appointments: citas, clients: st.clients.filter((c) => suyas.has(c.id)) };
+          },
+          () => (puede(accesoRef.current.permisos, "cita.ver-todas") ? equipoRef.current : equipoRef.current.filter((e) => e.id === accesoRef.current.mio)),
           { enlace: () => (typeof window === "undefined" ? enlaceRef.current : new URL(enlaceRef.current, window.location.origin).href) },
         ),
       ),
@@ -102,7 +123,7 @@ export function AssistantPanel({ className }: { className?: string }) {
   function preguntar(pregunta: string) {
     const limpia = pregunta.trim();
     if (!limpia) return;
-    const r = asistente.responder(limpia);
+    const r = fueraDeSuRol(asistente.responder(limpia), permisos, gerente);
     const id = Date.now();
     setMensajes((m) => [...m, { id, de: "yo", texto: limpia }, { id: id + 1, de: "asistente", r }]);
     setTexto("");
@@ -208,9 +229,11 @@ export function AssistantPanel({ className }: { className?: string }) {
               {ej}
             </button>
           ))}
-          <Link to="/app/settings" className="self-center px-1 text-[12.5px] font-bold text-hoja-tinta hover:underline">
-            Ver todas
-          </Link>
+          {permisosTemas.paginas.has("ajustes") && (
+            <Link to="/app/settings" className="self-center px-1 text-[12.5px] font-bold text-hoja-tinta hover:underline">
+              Ver todas
+            </Link>
+          )}
         </div>
       </div>
 
@@ -363,4 +386,26 @@ function conNegrita(texto: string): ReactNode[] {
       trozo
     ),
   );
+}
+
+/**
+ * Lo que su rol no ve (lote 11): marketing sin `marketing.usar`, dinero sin
+ * ningún permiso de dinero. En vez de la cifra, quién lo lleva y qué puede
+ * preguntar ella.
+ */
+function fueraDeSuRol(r: RespuestaAsistente, p: Permisos, gerente: string | null): RespuestaAsistente {
+  if (r.tipo !== "respuesta" && r.tipo !== "elegir") return r;
+  const categoria = r.intencion ? POR_ID.get(r.intencion)?.categoria : undefined;
+  const veDinero = puede(p, "dinero.ver-global") || alcance(p, "dinero.ver-propio") === "propio";
+  const bloqueada = (categoria === "marketing" && !puede(p, "marketing.usar")) || (categoria === "dinero" && !veDinero);
+  if (!bloqueada) return r;
+  const quien = gerente ? `Eso lo ve ${gerente}` : "Eso lo ve la gerente del salón";
+  return {
+    tipo: "respuesta",
+    intencion: r.intencion ?? "fuera-de-rol",
+    texto: `${quien}. Tú puedes preguntarme por tu agenda y tus clientas.`,
+    cifras: [],
+    acciones: [],
+    sugerencias: ["¿Cuántas citas tengo hoy?", "¿Qué huecos me quedan hoy?"],
+  };
 }

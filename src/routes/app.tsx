@@ -20,7 +20,7 @@ import { hasSeenTour, startTour } from "@/lib/tour";
 import { BarraInferior, CabeceraArena, MenuLateral, TODOS_LOS_ITEMS, estaActivo } from "@/components/ArenaShell";
 import { FranjaVerComo } from "@/components/VerComo";
 import { SinPermiso } from "@/components/SinPermiso";
-import { usePermisos, veRuta } from "@/lib/use-permisos";
+import { usePermisos, veRuta } from "@/lib/accesos-panel";
 import { useHayPanelLateral } from "@/lib/panel-lateral";
 import { cn } from "@/lib/utils";
 import {

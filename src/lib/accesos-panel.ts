@@ -1,9 +1,13 @@
 /**
- * Quién mira el panel y qué puede ver y hacer (lote 11). Misma API que la de
- * BACKEND (`docs/contrato-accesos.md`): `useMiembroActual()`, `usePermisos()`.
- * CONECTAR: en un salón real, el miembro viene del servidor; aquí, mientras
- * no llega, un salón real mira como gerente (lo de siempre: todo miembro manda).
- * En una demo, el miembro es el elegido en «Ver como» (por defecto, la gerente).
+ * Quién mira el panel y qué puede ver y hacer (lote 11). Misma API que
+ * `src/lib/use-permisos.ts` de BACKEND (`useMiembroActual`, `usePermisos`,
+ * `saludo`), en otro fichero para no chocar en la fusión, más lo que la
+ * pantalla necesita: citas y equipo visibles, ruta → página y «Ver como».
+ *
+ * CONECTAR: en un salón real, `useMiembroActual` pasa a leer `s.miembro` de la
+ * store (lo guarda `app.tsx` al cargar, en la rama de BACKEND). Mientras no
+ * llega, un salón real mira como gerente, como hasta ahora. En una demo, el
+ * miembro es el elegido en «Ver como» (por defecto, la gerente).
  */
 import { useEffect, useMemo } from "react";
 import { useSalonStore } from "./store";
@@ -104,4 +108,23 @@ export function useEquipoVisible(): Employee[] {
   const p = usePermisos();
   const mio = useMiEmployeeId();
   return useMemo(() => (puede(p, "cita.ver-todas") ? equipo : equipo.filter((e) => e.id === mio)), [equipo, p, mio]);
+}
+
+/** A quién puede dar cita: a cualquiera con «crear para otra»; si no, solo a ella. */
+export function useEquipoParaDarCita(): Employee[] {
+  const equipo = useEquipo();
+  const p = usePermisos();
+  const mio = useMiEmployeeId();
+  return useMemo(() => {
+    if (puede(p, "cita.crear-para-otra")) return equipo;
+    const suya = equipo.filter((e) => e.id === mio);
+    return suya.length ? suya : equipo;
+  }, [equipo, p, mio]);
+}
+
+/** «Buenos días, Noelia» / «Buenas tardes» sin nombre. Igual que `saludo` de BACKEND. */
+export function saludo(nombre: string | null | undefined, hora: number): string {
+  const franja = hora < 14 ? "Buenos días" : hora < 21 ? "Buenas tardes" : "Buenas noches";
+  const pila = nombre?.trim().split(/\s+/)[0];
+  return pila ? `${franja}, ${pila}` : franja;
 }

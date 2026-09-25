@@ -1,3 +1,4 @@
+import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Printer, TriangleAlert } from "lucide-react";
@@ -23,12 +24,12 @@ export const Route = createFileRoute("/app/hoja")({
 });
 
 function HojaDelDia() {
-  const citas = useSalonStore((s) => s.appointments);
+  const citas = useCitasVisibles();
   const salon = useSalonStore((s) => s.salonProfile);
   const clientes = useSalonStore((s) => s.clients);
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const servicios = useSalonStore((s) => s.services);
-  const equipo = useEquipo();
+  const equipo = useEquipoVisible();
   const { dia } = Route.useSearch();
   const navigate = useNavigate({ from: "/app/hoja" });
   const manana = dia === "manana";

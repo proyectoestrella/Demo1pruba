@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
+import { useCitasVisibles, usePermisos } from "@/lib/accesos-panel";
+import { puede } from "@/lib/permisos";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { clientFrequency } from "@/lib/derive";
 import { buscarClientas } from "@/lib/buscar-clientas";
@@ -77,8 +79,15 @@ const fechaCortaSinAnio = (iso?: string) =>
 type Filtro = "todos" | "hoy" | ClientTag | "color" | "penalizado";
 
 function Clients() {
-  const appointments = useSalonStore((s) => s.appointments);
-  const clients = useSalonStore((s) => s.clients);
+  // Lote 11: sin «ver todas», sus clientas (las que tienen o tuvieron cita con
+  // ella), empezando por las de hoy; el buscador encuentra a cualquiera para darle cita.
+  const permisos = usePermisos();
+  const todasLasClientas = puede(permisos, "clienta.ver-todas");
+  const appointments = useCitasVisibles();
+  const todasLasCitas = useSalonStore((s) => s.appointments);
+  const clientesSalon = useSalonStore((s) => s.clients);
+  const propias = useMemo(() => new Set(appointments.map((a) => a.clientId)), [appointments]);
+  const clients = useMemo(() => (todasLasClientas ? clientesSalon : clientesSalon.filter((c) => propias.has(c.id))), [todasLasClientas, clientesSalon, propias]);
   const services = useSalonStore((s) => s.services);
   const equipo = useEquipo();
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
@@ -86,7 +95,7 @@ function Clients() {
   const [selected, setSelected] = useState<Client | null>(null);
   const [importarAbierto, setImportarAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState("");
-  const [filtro, setFiltro] = useState<Filtro>("todos");
+  const [filtro, setFiltro] = useState<Filtro>(todasLasClientas ? "todos" : "hoy");
   /** Filas a la vista: de 20 en 20, y vuelve a 20 al cambiar filtro o búsqueda. */
   const [cuantas, setCuantas] = useState(20);
   useEffect(() => setCuantas(20), [filtro, busqueda]);
@@ -131,9 +140,13 @@ function Clients() {
 
   // Solo se ofrece el filtro cuando hay a quién filtrar: una pestaña "Me
   // deben" vacía es ruido en cualquier demo sin plantones.
-  const hayPenalizados = conRecargo && allRows.some((r) => (r.penaltyEur ?? 0) > 0);
+  const hayPenalizados = conRecargo && puede(permisos, "recargo.gestionar") && allRows.some((r) => (r.penaltyEur ?? 0) > 0);
 
   const buscados = buscarClientas(busqueda, { clientes: clients, citas: appointments });
+  // Fuera de las suyas: las del salón que coinciden, solo para darles cita (ficha reducida).
+  const otrasDelSalon = !todasLasClientas && busqueda.trim().length >= 2
+    ? buscarClientas(busqueda, { clientes: clientesSalon, citas: todasLasCitas }).filter((c) => !propias.has(c.id)).slice(0, 5)
+    : [];
   const ordenBusqueda = new Map(buscados.map((c, i) => [c.id, i]));
   const filtroEfectivo: Filtro = filtro === "penalizado" && !conRecargo ? "todos" : filtro;
   const pasa = (c: Row & { tag: ClientTag }) => {
@@ -218,10 +231,10 @@ function Clients() {
             )}
           </p>
         </div>
-        <Button type="button" variant="outline" className="md:ml-auto" onClick={() => setImportarAbierto(true)}>
+        {puede(permisos, "clienta.importar") && <Button type="button" variant="outline" className="md:ml-auto" onClick={() => setImportarAbierto(true)}>
           <Download className="size-[18px]" strokeWidth={1.6} />
           Importar desde TPV 123
-        </Button>
+        </Button>}
       </div>
 
       {/* Recargos pendientes destacados: Adam pidió esto expresamente el
@@ -353,6 +366,23 @@ function Clients() {
             </button>
           )}
         </>
+      )}
+
+      {otrasDelSalon.length > 0 && (
+        <section className="rounded-2xl border border-lino bg-card px-4 py-3">
+          <h2 className="text-[13.5px] font-bold text-cafe-medio">Otras clientas del salón · para darles cita</h2>
+          <ul className="mt-1.5 divide-y divide-lino">
+            {otrasDelSalon.map((c) => (
+              <li key={c.id}>
+                <button type="button" onClick={() => setSelected(c)} className="flex w-full items-center gap-3 py-2 text-left hover:text-foreground">
+                  <ClientAvatar name={c.name} size="md" />
+                  <span className="min-w-0 flex-1 truncate font-semibold">{c.name}</span>
+                  <span className="text-[12.5px] text-muted-foreground tabular-nums">{c.phone}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <ClientHistorySheet

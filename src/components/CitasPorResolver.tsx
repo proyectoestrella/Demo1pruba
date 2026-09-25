@@ -1,3 +1,4 @@
+import { useCitasVisibles } from "@/lib/accesos-panel";
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { usePlegado } from "@/lib/use-plegado";
@@ -117,7 +118,7 @@ export interface CitasPorResolverProps {
 export function CitasPorResolver({ limite = 5, className, plegable }: CitasPorResolverProps) {
   const [abierto, alternar] = usePlegado(plegable, !plegable);
   const carta = selectServiceMap(useSalonStore((s) => s.services));
-  const appointments = useSalonStore((s) => s.appointments);
+  const appointments = useCitasVisibles();
   const clients = useSalonStore((s) => s.clients);
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const conRecargo = recargoActivo({ noShowFeeEur });

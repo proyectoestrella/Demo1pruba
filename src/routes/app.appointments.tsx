@@ -1,3 +1,4 @@
+import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -116,7 +117,7 @@ function DeudaBadge({
 }
 
 function Appointments() {
-  const appointments = useSalonStore((s) => s.appointments);
+  const appointments = useCitasVisibles();
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const conRecargo = recargoActivo({ noShowFeeEur });
   const clients = useSalonStore((s) => s.clients);
@@ -127,7 +128,7 @@ function Appointments() {
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const [status, setStatus] = useState<string>("all");
   const [emp, setEmp] = useState<string>("all");
-  const employees = useEquipo();
+  const employees = useEquipoVisible();
   // Un solo profesional: sin filtro ni columna "por profesional".
   const soloUno = esSoloUnProfesional(employees);
   const [busqueda, setBusqueda] = useState("");

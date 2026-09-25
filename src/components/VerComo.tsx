@@ -1,6 +1,6 @@
 import { Eye } from "lucide-react";
 import { useAccesosDemo, NOMBRE_ROL } from "@/lib/accesos-maqueta";
-import { useEsDemo, useMiembroActual } from "@/lib/use-permisos";
+import { useEsDemo, useMiembroActual } from "@/lib/accesos-panel";
 import { cn } from "@/lib/utils";
 
 /**

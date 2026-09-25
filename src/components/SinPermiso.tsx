@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { LockKeyhole, MessageCircle } from "lucide-react";
 import { useAccesosDemo, NOMBRE_ROL, type Miembro } from "@/lib/accesos-maqueta";
-import { useMiembroActual } from "@/lib/use-permisos";
+import { useMiembroActual } from "@/lib/accesos-panel";
 import { whatsappUrl } from "@/lib/campanas";
 import { Button } from "@/components/ui/button";
 import type { Rol } from "@/lib/permisos";

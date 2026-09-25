@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { Bell, CalendarDays, Check, ChevronDown, Clock3, Euro, FileText, MoreHorizontal } from "lucide-react";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
+import { saludo, useCitasVisibles, useEquipoVisible, useMiembroActual, usePermisos } from "@/lib/accesos-panel";
+import { alcance, puede } from "@/lib/permisos";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { estadoSenal, reglaSenal } from "@/lib/senal-maqueta";
@@ -82,15 +84,22 @@ function BotonMas({ etiqueta, children }: { etiqueta: string; children: ReactNod
 }
 
 export function HoyArena() {
-  const appointments = useSalonStore((s) => s.appointments);
+  // Lote 11: lo que se pinta es lo que le toca a quien mira (la estilista, lo suyo).
+  const appointments = useCitasVisibles();
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
   const salonName = useSalonStore((s) => s.salonProfile.name);
+  const miembro = useMiembroActual();
+  const permisos = usePermisos();
+  // Dinero: el del salón (gerente), el suyo (estilista) o ninguno (recepción, subencargada).
+  const veDinero = puede(permisos, "dinero.ver-global") || alcance(permisos, "dinero.ver-propio") === "propio";
+  const dineroPropio = !puede(permisos, "dinero.ver-global");
+  const veDeudas = puede(permisos, "recargo.gestionar");
   const perfilSalon = useSalonStore((s) => s.salonProfile);
   const mostrarSolicitudes = useSalonStore((s) => s.salonProfile.mostrarSolicitudes ?? true);
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur ?? 0);
   const horasSenal = useSalonStore((s) => deadlineHours(s.salonProfile.depositDeadlineHours));
-  const equipo = useEquipo();
+  const equipo = useEquipoVisible();
   const soloUno = esSoloUnProfesional(equipo);
   const carta = selectServiceMap(services);
   const [seleccionada, setSeleccionada] = useState<Appointment | null>(null);
@@ -123,7 +132,7 @@ export function HoyArena() {
   const sinRecordar = filasManana.filter((f) => !f.cita.reminderSentAt).length;
   const conRecargo = recargoActivo({ noShowFeeEur });
   const avisos =
-    (conRecargo ? resumenDeDeuda(clients).personas : 0) +
+    (conRecargo && veDeudas ? resumenDeDeuda(clients).personas : 0) +
     senalesVencidas;
 
   const nombreCorto = (a: Appointment) => {
@@ -138,7 +147,7 @@ export function HoyArena() {
         <div className="min-w-0">
           <p className="text-[13px] font-semibold text-muted-foreground tabular-nums">{fechaDeHoy(ahora)}</p>
           <h1 className="mt-1 font-display text-[28px] leading-[1.1] font-medium tracking-[-0.02em] md:text-[34px]">
-            {saludoPara(ahora.getHours())}, {salonName}
+            {miembro?.displayName ? saludo(miembro.displayName, ahora.getHours()) : `${saludoPara(ahora.getHours())}, ${salonName}`}
           </h1>
         </div>
         <Button variant="ghost" asChild className="text-cafe-medio md:ml-auto">
@@ -159,7 +168,8 @@ export function HoyArena() {
           <Cifra extra={agenda.minutosLibres > 0 ? `· ${duracionCorta(agenda.minutosLibres)}` : undefined}>{agenda.huecos.length}</Cifra>
           <Detalle>{agenda.huecos.length ? agenda.detalleHuecos : "Hoy ya no queda ningún hueco de media hora."}</Detalle>
         </TarjetaCifra>
-        <TarjetaCifra icono={Euro} titulo="Ingresos de hoy">
+        {veDinero ? (
+        <TarjetaCifra icono={Euro} titulo={dineroPropio ? "Lo tuyo de hoy" : "Ingresos de hoy"}>
           <Cifra>{eurRedondo(valorDelDia)}</Cifra>
           <Detalle>
             {dinero.cobrado === 0 && dinero.sinCobroMarcado > 0 && !esDemo
@@ -168,6 +178,13 @@ export function HoyArena() {
           </Detalle>
           <Barra pct={valorDelDia ? Math.round((dinero.cobrado / valorDelDia) * 100) : 0} texto="Cobrado del total del día" oculto />
         </TarjetaCifra>
+        ) : (
+          // Sin dinero (recepción, subencargada): cuántas citas quedan por cobrar, no cuánto.
+          <TarjetaCifra icono={Euro} titulo="Citas por cobrar">
+            <Cifra>{hoy.filter((a) => esCobrable(a) && !a.paidAt).length}</Cifra>
+            <Detalle>Las cobra quien atiende la cita.</Detalle>
+          </TarjetaCifra>
+        )}
         <TarjetaCifra icono={Bell} titulo="Pendiente de ti" destacada={pendienteDeTi > 0} href={solicitudesVisibles > 0 ? "#espera" : undefined} to={solicitudesVisibles > 0 ? undefined : "/app/appointments"}>
           <Cifra>{pendienteDeTi}</Cifra>
           <Detalle>
@@ -211,13 +228,13 @@ export function HoyArena() {
             id: "avisos",
             titulo: "Avisos",
             contador: avisos,
-            resumen: avisos > 0 ? "Deudas, señales vencidas o recargos" : "Nada pendiente",
+            resumen: avisos > 0 ? (veDeudas ? "Deudas, señales vencidas o recargos" : "Señales vencidas") : "Nada pendiente",
             contenido: (
               <div className="space-y-4">
-                {avisos === 0 && <p className="text-[14px] text-muted-foreground">Nada pendiente: ni deudas, ni señales vencidas, ni recargos.</p>}
-                <AvisoDeudasHoy />
+                {avisos === 0 && <p className="text-[14px] text-muted-foreground">{veDeudas ? "Nada pendiente: ni deudas, ni señales vencidas, ni recargos." : "Nada pendiente: ninguna señal vencida."}</p>}
+                {veDeudas && <AvisoDeudasHoy />}
                 <ExpiredDepositsNotice onOpenDetail={setSeleccionada} />
-                {conRecargo && <RecargosPendientes title="Recargos pendientes" />}
+                {conRecargo && veDeudas && <RecargosPendientes title="Recargos pendientes" />}
               </div>
             ),
           },

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { filtrarCitas, paginaDeRuta, veRuta } from "./use-permisos";
+import { filtrarCitas, paginaDeRuta, veRuta } from "./accesos-panel";
 import { permisosDe } from "./permisos";
 import type { Appointment } from "./mock/types";
 

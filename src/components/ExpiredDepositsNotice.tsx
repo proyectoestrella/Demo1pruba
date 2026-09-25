@@ -1,6 +1,7 @@
 import type { Appointment } from "@/lib/mock/types";
 import { estadoSenal, reglaSenal } from "@/lib/senal-maqueta";
 import { useClientNow } from "@/lib/use-client-now";
+import { useCitasVisibles } from "@/lib/accesos-panel";
 import { useSalonStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 
@@ -10,7 +11,7 @@ import { Button } from "@/components/ui/button";
  * lleva a la cita, donde la dueña da más tiempo o libera el hueco.
  */
 export function ExpiredDepositsNotice({ onOpenDetail }: { onOpenDetail: (appointment: Appointment) => void }) {
-  const appointments = useSalonStore((s) => s.appointments);
+  const appointments = useCitasVisibles();
   const perfil = useSalonStore((s) => s.salonProfile);
   const now = useClientNow();
   if (!now) return null;
