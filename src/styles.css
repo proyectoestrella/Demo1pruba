@@ -6,17 +6,16 @@
 @import "driver.js/dist/driver.css";
 
 /*
- * Dark mode: the app ships dark-by-default (premium barbershop convention),
- * with a light palette available via the `.dark` class toggle (see
- * src/components/ThemeToggle.tsx and the inline anti-flash script in
- * src/routes/__root.tsx). The `.dark { ... }` block below mirrors every
- * token declared in `:root` — keep both blocks in sync when adding tokens.
+ * Solo modo claro. La identidad «Arena» (ver DESIGN.md) es blanca en PC y en
+ * móvil: no existe bloque `.dark` ni conmutador de tema. La variante `dark:`
+ * de Tailwind se conserva declarada para que las clases heredadas de
+ * componentes de terceros no rompan, pero nunca se activa.
  */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --font-display: "Fraunces", ui-serif, Georgia, serif;
-  --font-sans: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -47,6 +46,26 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
 
+  /* Paleta «Arena» con nombre propio, para usarla como `bg-nata`, `text-cafe-suave`… */
+  --color-perla: var(--perla);
+  --color-nata: var(--nata);
+  --color-arena: var(--arena);
+  --color-taupe: var(--taupe);
+  --color-lino: var(--lino);
+  --color-lino-fuerte: var(--lino-fuerte);
+  --color-cafe: var(--cafe);
+  --color-cafe-medio: var(--cafe-medio);
+  --color-cafe-suave: var(--cafe-suave);
+  --color-moca: var(--moca);
+  --color-moca-fuerte: var(--moca-fuerte);
+  --color-salvia-clara: var(--salvia-clara);
+  --color-salvia: var(--salvia);
+  --color-hoja: var(--hoja);
+  --color-hoja-tinta: var(--hoja-tinta);
+  --color-melocoton: var(--melocoton);
+  --color-melocoton-borde: var(--melocoton-borde);
+  --color-melocoton-tinta: var(--melocoton-tinta);
+
   --color-stylist-mario: var(--stylist-mario);
   --color-stylist-diego: var(--stylist-diego);
   --color-stylist-ruben: var(--stylist-ruben);
@@ -71,127 +90,98 @@
 }
 
 :root {
+  /* Radios: 8 · 12 (campos, citas) · 16 · 20 (tarjetas) · 999 (píldoras). */
   --radius: 0.75rem;
 
-  /* Warm cream/paper background, ink black foreground */
-  --background: oklch(0.98 0.003 85);
-  --foreground: oklch(0.17 0.01 60);
+  /* ---- Identidad «Arena»: los tokens con nombre (DESIGN.md) ---- */
+  --perla: #FCFAF7;
+  --nata: #F6F1EA;
+  --arena: #EADFD2;
+  --taupe: #D9C7B5;
+  --lino: #EAE1D8;
+  --lino-fuerte: #DCCFC1;
+  --cafe: #3B2F2A;
+  --cafe-medio: #6B5B52;
+  --cafe-suave: #7A6A60;
+  --moca: #A47B5C;
+  --moca-fuerte: #8A6446;
+  --salvia-clara: #DDE8DD;
+  --salvia: #9FB8A3;
+  --hoja: #4F6F58;
+  --hoja-tinta: #45624E;
+  --melocoton: #F3DED1;
+  --melocoton-borde: #E6C6B2;
+  --melocoton-tinta: #7E4F33;
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.17 0.01 60);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.17 0.01 60);
+  /* Paleta del calendario: un pastel frío por servicio (fondo · borde). */
+  --serv-1: #DDEBFB; --serv-1-borde: #5B8FD6;
+  --serv-2: #EAE3FB; --serv-2-borde: #8E76D8;
+  --serv-3: #D7F2E6; --serv-3-borde: #3EA67C;
+  --serv-4: #FCE4ED; --serv-4-borde: #D9728F;
+  --serv-5: #FEE8D8; --serv-5-borde: #E08A50;
+  --serv-6: #FBF2CB; --serv-6-borde: #C8A21F;
 
-  /* Deep brass accent (carbón + latón palette) */
-  --primary: oklch(0.42 0.09 65);
-  --primary-foreground: oklch(0.98 0.003 85);
+  /* ---- Roles de shadcn, resueltos sobre esa paleta ---- */
+  --background: #FFFFFF;
+  --foreground: var(--cafe);
 
-  --secondary: oklch(0.95 0.008 65);
-  --secondary-foreground: oklch(0.17 0.01 60);
+  --card: #FFFFFF;
+  --card-foreground: var(--cafe);
+  --popover: #FFFFFF;
+  --popover-foreground: var(--cafe);
 
-  --muted: oklch(0.95 0.007 65);
-  --muted-foreground: oklch(0.48 0.02 65);
+  /* Acción: moca fuerte, 5,3:1 con blanco. */
+  --primary: var(--moca-fuerte);
+  --primary-foreground: #FFFFFF;
 
-  --accent: oklch(0.92 0.025 65);
-  --accent-foreground: oklch(0.17 0.01 60);
+  --secondary: var(--nata);
+  --secondary-foreground: var(--cafe);
 
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.98 0.003 85);
+  --muted: var(--nata);
+  --muted-foreground: var(--cafe-suave);
 
-  --success: oklch(0.62 0.14 150);
-  --warning: oklch(0.75 0.15 70);
+  --accent: var(--arena);
+  --accent-foreground: var(--cafe);
 
-  --border: oklch(0.89 0.01 65);
-  --input: oklch(0.89 0.01 65);
-  --ring: oklch(0.42 0.09 65);
+  /* Nunca rojo saturado: lo destructivo va en la tinta del melocotón. */
+  --destructive: var(--melocoton-tinta);
+  --destructive-foreground: #FFFFFF;
 
-  /* Per-stylist colors. Lightness is kept <= ~0.58 so white avatar-initial text
-     (StylistAvatar, see src/components/StylistAvatar.tsx) stays close to AA
-     contrast; --stylist-mario was oklch(0.7 ...) originally which was too light
-     for white text and has been deepened here. */
-  --stylist-mario: oklch(0.55 0.17 10);        /* rose/berry (was too-light pink) */
-  --stylist-diego: oklch(0.55 0.16 245);    /* blue */
-  --stylist-ruben: oklch(0.25 0.01 60);        /* near-black */
-  /* Extra generic stylist tones for additional team members beyond mario/diego/ruben. */
-  --stylist-1: oklch(0.5 0.13 165);           /* teal/green */
-  --stylist-2: oklch(0.55 0.17 70);           /* amber/ochre */
-  --stylist-3: oklch(0.48 0.18 300);          /* plum/violet */
+  --success: var(--hoja);
+  /* «Te espera» no es una alarma: el aviso pendiente se pinta en moca. */
+  --warning: var(--moca-fuerte);
 
-  --chart-1: oklch(0.42 0.09 65);
-  --chart-2: oklch(0.55 0.16 245);
-  --chart-3: oklch(0.7 0.15 0);
-  --chart-4: oklch(0.62 0.14 150);
-  --chart-5: oklch(0.75 0.15 70);
+  --border: var(--lino);
+  --input: var(--lino-fuerte);
+  --ring: var(--moca);
 
-  --sidebar: oklch(0.16 0.01 60);
-  --sidebar-foreground: oklch(0.95 0.005 80);
-  --sidebar-primary: oklch(0.42 0.09 65);
-  --sidebar-primary-foreground: oklch(0.98 0.003 85);
-  --sidebar-accent: oklch(0.22 0.01 60);
-  --sidebar-accent-foreground: oklch(0.95 0.005 80);
-  --sidebar-border: oklch(0.25 0.01 60);
-  --sidebar-ring: oklch(0.42 0.09 65);
-}
+  /* Profesionales: pasteles con texto café (StylistAvatar ya no usa texto blanco). */
+  --stylist-mario: #EDE2D6;
+  --stylist-diego: #DDE8DD;
+  --stylist-ruben: #F1E4CF;
+  --stylist-1: var(--serv-1);
+  --stylist-2: var(--serv-2);
+  --stylist-3: var(--serv-3);
 
-.dark {
-  /* Carbón cálido: warm charcoal background, warm off-white foreground */
-  --background: oklch(0.16 0.006 60);
-  --foreground: oklch(0.94 0.004 85);
+  /* Gráficas: una sola serie en moca; el resto de la escala, marrones y salvia. */
+  --chart-1: var(--moca);
+  --chart-2: var(--moca-fuerte);
+  --chart-3: var(--salvia);
+  --chart-4: var(--hoja);
+  --chart-5: var(--taupe);
 
-  --card: oklch(0.21 0.007 60);
-  --card-foreground: oklch(0.94 0.004 85);
-  --popover: oklch(0.21 0.007 60);
-  --popover-foreground: oklch(0.94 0.004 85);
+  --sidebar: var(--nata);
+  --sidebar-foreground: var(--cafe);
+  --sidebar-primary: var(--moca-fuerte);
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: var(--arena);
+  --sidebar-accent-foreground: var(--cafe);
+  --sidebar-border: var(--lino);
+  --sidebar-ring: var(--moca);
 
-  /* Latón claro accent — legible on carbón background */
-  --primary: oklch(0.72 0.11 75);
-  --primary-foreground: oklch(0.16 0.006 60);
-
-  --secondary: oklch(0.26 0.008 60);
-  --secondary-foreground: oklch(0.94 0.004 85);
-
-  --muted: oklch(0.24 0.007 60);
-  --muted-foreground: oklch(0.7 0.012 70);
-
-  --accent: oklch(0.28 0.012 65);
-  --accent-foreground: oklch(0.94 0.004 85);
-
-  --destructive: oklch(0.6 0.2 25);
-  --destructive-foreground: oklch(0.16 0.006 60);
-
-  --success: oklch(0.68 0.14 150);
-  --warning: oklch(0.78 0.14 70);
-
-  --border: oklch(0.28 0.008 60);
-  --input: oklch(0.28 0.008 60);
-  --ring: oklch(0.72 0.11 75);
-
-  /* Per-stylist colors, brightened relative to :root so they read distinctly
-     against the carbón background while keeping white avatar-initial text
-     (StylistAvatar) at/near AA contrast — none pushed past ~0.62 lightness. */
-  --stylist-mario: oklch(0.6 0.16 10);         /* rose/berry */
-  --stylist-diego: oklch(0.62 0.14 245);    /* blue */
-  --stylist-ruben: oklch(0.4 0.015 60);        /* charcoal-grey (was near-black, unreadable on dark bg) */
-  --stylist-1: oklch(0.58 0.12 165);          /* teal/green */
-  --stylist-2: oklch(0.62 0.15 70);           /* amber/ochre */
-  --stylist-3: oklch(0.56 0.16 300);          /* plum/violet */
-
-  --chart-1: oklch(0.72 0.11 75);
-  --chart-2: oklch(0.62 0.14 245);
-  --chart-3: oklch(0.72 0.15 0);
-  --chart-4: oklch(0.68 0.14 150);
-  --chart-5: oklch(0.78 0.14 70);
-
-  /* Sidebar stays darker than --card so it keeps differentiating itself in
-     dark mode too (not just inverting to lighter-than-content). */
-  --sidebar: oklch(0.12 0.005 60);
-  --sidebar-foreground: oklch(0.92 0.004 85);
-  --sidebar-primary: oklch(0.72 0.11 75);
-  --sidebar-primary-foreground: oklch(0.16 0.006 60);
-  --sidebar-accent: oklch(0.19 0.007 60);
-  --sidebar-accent-foreground: oklch(0.92 0.004 85);
-  --sidebar-border: oklch(0.22 0.008 60);
-  --sidebar-ring: oklch(0.72 0.11 75);
+  --sombra-tarjeta: 0 1px 2px rgba(59, 47, 42, 0.05);
+  --sombra-panel: -12px 0 40px rgba(59, 47, 42, 0.10);
+  --sombra-flotante: 0 12px 32px rgba(59, 47, 42, 0.12);
 }
 
 /* Animaciones que exigen los componentes de MagicUI. Vienen en el campo
@@ -290,13 +280,17 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-feature-settings: "ss01", "cv11";
   }
 
-  h1, h2, h3, h4, .font-display {
+  /* Fraunces solo donde hay una persona (saludo, nombres): se pide con
+     `font-display`; los títulos por defecto van en Manrope. */
+  .font-display {
     font-family: var(--font-display);
-    font-feature-settings: "ss01";
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -342,7 +336,7 @@
 
 /* -----------------------------------------------------------------------
  * Tour guiado (driver.js) vestido con los tokens del tema. Sin esto el
- * popover sale blanco puro y canta muchísimo sobre el fondo carbón.
+ * popover saldría con los grises de fábrica en vez de con la paleta «Arena».
  *
  * OJO: este bloque va FUERA de `@layer`. El CSS de driver.js se importa sin
  * capa, y en la cascada lo no-encapado gana a cualquier capa por mucha
@@ -353,7 +347,7 @@
   color: var(--color-foreground);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
-  box-shadow: 0 20px 50px -12px rgb(0 0 0 / 0.5);
+  box-shadow: var(--sombra-flotante);
   max-width: 22rem;
   padding: 1.25rem;
 }

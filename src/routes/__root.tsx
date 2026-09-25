@@ -124,7 +124,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
         {
           rel: "stylesheet",
-          href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter+Tight:wght@300;400;500;600;700&display=swap",
+          href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap",
         },
       ],
     };
@@ -135,26 +135,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
-// Runs before hydration to avoid a flash of the wrong theme / SSR-vs-client
-// class mismatch: the server always renders `<html class="dark">` (dark is
-// the default), and this script removes the class as early as possible if
-// the visitor previously chose light mode.
+// Solo hay modo claro (identidad «Arena», ver DESIGN.md). Quien tuviera
+// guardada la preferencia «dark» del panel antiguo la pierde aquí, para que
+// ningún navegador arranque con la clase `dark` heredada.
 const THEME_ANTI_FLASH_SCRIPT = `
 (function () {
   try {
-    var t = window.localStorage.getItem("trimly-theme");
-    // La web pública de reservas arranca en claro salvo que el visitante
-    // haya elegido oscuro a mano; el panel sigue oscuro por defecto.
-    if (t === "light" || (t !== "dark" && window.location.pathname.indexOf("/s/") === 0)) {
-      document.documentElement.classList.remove("dark");
-    }
+    document.documentElement.classList.remove("dark");
+    window.localStorage.removeItem("trimly-theme");
   } catch (e) {}
 })();
 `;
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="es">
       <head>
         <HeadContent />
       </head>

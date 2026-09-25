@@ -33,7 +33,6 @@ import { inferBusinessType } from "@/lib/business-type";
 import { ViewSwitcher } from "@/components/ViewSwitcher";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { Logo } from "@/components/Logo";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { PanelV2Shell } from "@/components/PanelV2Shell";
 import { BuscadorGlobal } from "@/components/BuscadorGlobal";
@@ -422,7 +421,6 @@ function DashboardLayoutV1() {
               <Sparkles className="h-4 w-4" />
               <span className="hidden md:inline">Asistente</span>
             </Button>
-            <ThemeToggle />
             <Button
               data-tour="new-appointment"
               size="sm"

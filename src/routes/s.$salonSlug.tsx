@@ -10,7 +10,6 @@ import { employeesForType } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { Instagram, MapPin, Phone, Lock, Menu, TriangleAlert } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollProgress } from "@/components/magicui/scroll-progress";
@@ -298,7 +297,6 @@ function SalonLayout() {
             {/* 44px de zona táctil (auditoría de UX, hallazgo C9): el
                 componente base mide 32px, de sobra en escritorio con ratón
                 pero por debajo del mínimo recomendado en móvil. */}
-            <ThemeToggle className="h-11 w-11" />
             {!onBooking && (
               <>
                 {/* Menú móvil */}
