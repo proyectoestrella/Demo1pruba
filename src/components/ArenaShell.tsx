@@ -53,6 +53,8 @@ export type NavItem = {
   exact?: boolean;
   /** Módulo que esta demo puede ocultar (ver `demo-profile.ts`). Ausente = siempre visible. */
   modulo?: ModuloOcultable;
+  /** Subapartados que solo se despliegan cuando este apartado o uno de ellos está activo. */
+  hijos?: NavItem[];
 };
 
 export const GRUPOS_NAV: { label: string | null; items: NavItem[] }[] = [
@@ -60,11 +62,17 @@ export const GRUPOS_NAV: { label: string | null; items: NavItem[] }[] = [
     label: null,
     items: [
       { to: "/app", label: "Hoy", icon: Home, exact: true },
-      { to: "/app/calendar", label: "Calendario", icon: Calendar },
+      {
+        to: "/app/calendar",
+        label: "Calendario",
+        icon: Calendar,
+        hijos: [
+          { to: "/app/appointments", label: "Citas", icon: ListChecks },
+          { to: "/app/waitlist", label: "Lista de espera", icon: Clock, modulo: "lista-espera" },
+        ],
+      },
       { to: "/app/clients", label: "Clientas", icon: Users },
       { to: "/app/hoja", label: "Hoja del día", icon: FileText },
-      { to: "/app/appointments", label: "Citas", icon: ListChecks },
-      { to: "/app/waitlist", label: "Lista de espera", icon: Clock, modulo: "lista-espera" },
     ],
   },
   {
@@ -93,17 +101,26 @@ const BARRA_MOVIL: NavItem[] = [
   { to: "/app/web", label: "Mi página", icon: Globe },
 ];
 
-export const TODOS_LOS_ITEMS: NavItem[] = GRUPOS_NAV.flatMap((g) => g.items);
+/** Todos los apartados, con los subapartados aplanados. */
+export const TODOS_LOS_ITEMS: NavItem[] = GRUPOS_NAV.flatMap((g) =>
+  g.items.flatMap((i) => [i, ...(i.hijos ?? [])]),
+);
 
 export function estaActivo(item: NavItem, path: string) {
   return item.exact ? path === item.to : path === item.to || path.startsWith(item.to + "/");
 }
 
+/** Activo él mismo o alguno de sus subapartados: así Calendario se queda abierto en Citas. */
+export function estaActivoConHijos(item: NavItem, path: string) {
+  return estaActivo(item, path) || (item.hijos ?? []).some((h) => estaActivo(h, path));
+}
+
 function useGruposVisibles() {
   const modulosOcultos = useSalonStore((s) => s.salonProfile.modulosOcultos);
+  const visible = (i: NavItem) => !i.modulo || moduloVisible({ modulosOcultos }, i.modulo);
   return GRUPOS_NAV.map((g) => ({
     ...g,
-    items: g.items.filter((i) => !i.modulo || moduloVisible({ modulosOcultos }, i.modulo)),
+    items: g.items.filter(visible).map((i) => (i.hijos ? { ...i, hijos: i.hijos.filter(visible) } : i)),
   })).filter((g) => g.items.length > 0);
 }
 
@@ -147,7 +164,7 @@ function Marca({ compacta = false }: { compacta?: boolean }) {
   );
 }
 
-function EnlaceNav({ item, active, contador, onNavigate }: { item: NavItem; active: boolean; contador?: number; onNavigate?: () => void }) {
+function EnlaceNav({ item, active, contador, onNavigate, hijo = false }: { item: NavItem; active: boolean; contador?: number; onNavigate?: () => void; hijo?: boolean }) {
   return (
     <Link
       to={item.to}
@@ -155,6 +172,7 @@ function EnlaceNav({ item, active, contador, onNavigate }: { item: NavItem; acti
       aria-current={active ? "page" : undefined}
       className={cn(
         "flex h-10 items-center gap-[11px] rounded-xl border px-3 text-sm font-semibold transition-colors",
+        hijo && "ml-7 h-9 text-[13px]",
         active
           ? "border-border bg-card text-foreground shadow-[var(--sombra-tarjeta)]"
           : "border-transparent text-cafe-medio hover:bg-arena hover:text-cafe-medio",
@@ -175,15 +193,17 @@ function ProgresoPrimerosPasos() {
   const { progreso, pendientes, oculto } = useProgresoPrimerosPasos();
   if (oculto || progreso >= TOTAL_PASOS) return null;
   const faltan = pendientes.slice(0, 2).map((p) => p.toLowerCase()).join(" y ");
+  // Por debajo de 860 px de alto se queda en una línea con su barra: sigue
+  // guiando la primera semana sin empujar el menú a un scroll.
   return (
     <Link
       to="/app/settings"
-      className="mb-3 block rounded-2xl bg-salvia-clara p-3 text-xs hover:text-foreground"
+      className="mb-3 block rounded-2xl bg-salvia-clara p-3 text-xs hover:text-foreground [@media(max-height:859px)]:px-3 [@media(max-height:859px)]:py-2"
     >
       <b className="block text-hoja-tinta">
         Primeros pasos · {progreso} de {TOTAL_PASOS}
       </b>
-      <span className="text-muted-foreground">Te faltan {faltan}</span>
+      <span className="text-muted-foreground [@media(max-height:859px)]:hidden">Te faltan {faltan}</span>
       <span className="mt-2.5 flex h-1.5 overflow-hidden rounded-full bg-card" aria-hidden="true">
         <i className="block bg-hoja" style={{ width: `${Math.round((progreso / TOTAL_PASOS) * 100)}%` }} />
       </span>
@@ -224,17 +244,22 @@ export function MenuLateral({ path }: { path: string }) {
         {grupos.map((g, gi) => (
           <div key={g.label ?? gi} className="flex flex-col gap-0.5">
             {g.label && (
-              <p className="px-3 pt-4 pb-1.5 text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase">
+              <p className="px-3 pt-3 pb-1.5 text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase">
                 {g.label}
               </p>
             )}
             {g.items.map((item) => (
-              <EnlaceNav
-                key={item.to}
-                item={item}
-                active={estaActivo(item, path)}
-                contador={item.to === "/app" ? pendientes : undefined}
-              />
+              <div key={item.to} className="flex flex-col gap-0.5">
+                <EnlaceNav
+                  item={item}
+                  active={estaActivo(item, path)}
+                  contador={item.to === "/app" ? pendientes : undefined}
+                />
+                {item.hijos && estaActivoConHijos(item, path) &&
+                  item.hijos.map((h) => (
+                    <EnlaceNav key={h.to} item={h} active={estaActivo(h, path)} hijo />
+                  ))}
+              </div>
             ))}
           </div>
         ))}
@@ -359,7 +384,9 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
   const [masAbierto, setMasAbierto] = useState(false);
   const apartado = useFabApartado();
   const enBarra = new Set(BARRA_MOVIL.map((i) => i.to));
-  const restantes = grupos.flatMap((g) => g.items).filter((i) => !enBarra.has(i.to));
+  const restantes = grupos
+    .flatMap((g) => g.items.flatMap((i) => [i, ...(i.hijos ?? [])]))
+    .filter((i) => !enBarra.has(i.to));
   const activoEnMas = restantes.some((i) => estaActivo(i, path));
   const clase = (active: boolean) =>
     cn(
