@@ -999,6 +999,8 @@ export const syncAppointmentPatch = createServerFn({ method: "POST" })
       localId: z.string().min(1),
       patch: z.record(z.string(), z.unknown()),
       permitirSolape: z.boolean().optional(),
+      /** «deshacer»: este parche deshace un cambio (auditoría, lote 9b). */
+      origen: z.enum(["deshacer"]).optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -1037,7 +1039,17 @@ export const syncAppointmentPatch = createServerFn({ method: "POST" })
         .eq("salon_slug", data.slug)
         .eq("local_id", data.localId)
         .select("id");
-      if (!error) return filas?.length ? { synced: true as const } : { synced: false as const, reason: "sin-fila" as const };
+      if (!error) {
+        if (!filas?.length) return { synced: false as const, reason: "sin-fila" as const };
+        // Auditoría: cuándo se deshizo algo en esta cita. Aparte y sin romper
+        // si la columna aún no existe (supabase/pendiente.sql, sección 13).
+        if (data.origen === "deshacer") {
+          const { error: e2 } = await supabase
+            .from("appointments").update({ ultimo_deshacer_en: new Date().toISOString() }).eq("salon_slug", data.slug).eq("local_id", data.localId);
+          if (e2 && !faltaEsquema(e2)) console.warn(`syncAppointmentPatch (origen deshacer): ${e2.message}`);
+        }
+        return { synced: true as const };
+      }
       if (!faltaEsquema(error) || nivel === NIVELES_CITA.length) throw new Error(`syncAppointmentPatch: ${error.message}`);
       // Sin esa columna en producción, el campo no se puede parchear suelto:
       // se manda la cita entera, que sí sabe volcarlo a la nota legado.

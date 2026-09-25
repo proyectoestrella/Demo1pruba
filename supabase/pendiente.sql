@@ -18,6 +18,7 @@
 --      selección de citas de mañana del recordatorio por email.
 --  11. Accesos y roles (lote 8): columnas de salon_members e invitaciones.
 --  12. Historial de cambios y versiones del perfil (lote 9).
+--  13. Auditoría del deshacer en la cita (lote 9b).
 --
 -- `supabase/schema.sql` sigue siendo la fuente completa: este fichero es el
 -- subconjunto que producción todavía no tiene. Después de aplicarlo, los dos
@@ -255,3 +256,8 @@ create table if not exists perfil_versiones (
 );
 create index if not exists perfil_versiones_salon_fecha_idx on perfil_versiones (salon_slug, fecha desc);
 alter table perfil_versiones enable row level security;
+
+-- 13. Auditoría del deshacer en la cita (lote 9b, 26/09) ---------------------
+-- Cuándo se deshizo algo en esta cita por última vez. No se reutiliza `origen`:
+-- esa columna es la procedencia (sishow/tpv123) y la usa la importación.
+alter table appointments add column if not exists ultimo_deshacer_en timestamptz;

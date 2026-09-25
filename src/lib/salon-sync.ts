@@ -115,6 +115,8 @@ export function pushAppointment(
 /** Opciones del panel al guardar. Ver el contrato de solapes en lib/solape.ts. */
 export interface OpcionesGuardado {
   permitirSolape?: boolean;
+  /** «deshacer»: el parche deshace un cambio (auditoría en la cita, lote 9b). */
+  origen?: "deshacer";
 }
 
 /**
@@ -186,7 +188,9 @@ export function pushAppointmentPatch(
   if (!slug) return;
   const quien = (cliente?.name ?? appt.clientName ?? "").trim();
   subir(quien ? `la cita de ${quien}` : "la cita", async () => {
-    const r = await syncAppointmentPatch({ data: { slug, localId: appt.id, patch, permitirSolape: opciones.permitirSolape === true } });
+    const r = await syncAppointmentPatch({
+      data: { slug, localId: appt.id, patch, permitirSolape: opciones.permitirSolape === true, ...(opciones.origen ? { origen: opciones.origen } : {}) },
+    });
     if (!r.synced && r.reason === "sin-fila") {
       return exigirGuardado(await syncAppointment({ data: appointmentPayload(slug, appt, cliente, opciones) }));
     }

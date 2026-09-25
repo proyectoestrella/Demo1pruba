@@ -39,3 +39,13 @@ describe("versión ligera de los ajustes (lote 9b)", () => {
     expect(c).toContain('"Antes de cambiar ajustes"');
   });
 });
+
+describe("auditoría del deshacer en la cita (lote 9b)", () => {
+  it("el parche de deshacer marca ultimo_deshacer_en sin tocar la columna origen", () => {
+    const c = cuerpo(salons, "syncAppointmentPatch");
+    expect(c).toContain('origen: z.enum(["deshacer"]).optional()');
+    expect(c).toContain('update({ ultimo_deshacer_en:');
+    const store = readFileSync(new URL("../store.ts", import.meta.url), "utf8");
+    expect(store).toContain('{ origen: "deshacer" }');
+  });
+});

@@ -967,7 +967,13 @@ export const useSalonStore = create<SalonState>()(
           if (c.entidad === "cita") {
             const antes = get().appointments.find((a) => a.id === c.idEntidad);
             set((s) => ({ appointments: s.appointments.map((a) => (a.id === c.idEntidad ? quitarVacios({ ...a, ...parche }) : a)) }));
-            sincronizarCita(get(), c.idEntidad, antes);
+            // Como sincronizarCita, pero con la marca de auditoría del deshacer.
+            const ahora = get();
+            const cita = ahora.appointments.find((a) => a.id === c.idEntidad);
+            if (ahora.realSalonSlug && cita && antes) {
+              const p = camposCambiados(antes, cita);
+              if (Object.keys(p).length) pushAppointmentPatch(ahora.realSalonSlug, cita, p, clienteDeLaCita(ahora, cita), { origen: "deshacer" });
+            }
           } else if (c.entidad === "clienta") {
             set((s) => ({ clients: s.clients.map((x) => (x.id === c.idEntidad ? quitarVacios({ ...x, ...parche }) : x)) }));
             const cliente = get().clients.find((x) => x.id === c.idEntidad);
