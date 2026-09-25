@@ -97,6 +97,31 @@ describe("responder", () => {
     }
   });
 
+  test("7e: comparar periodos da las mismas cifras que Analítica", () => {
+    const { resumenDePeriodo, comparar } = require("../periodos") as typeof import("../periodos");
+    const d = datosPeluChic();
+    for (const [q, tipo] of [["cuántas tengo esta semana comparado con la anterior", "semana"], ["como va el mes comparado con el pasado", "mes"]] as const) {
+      const a = asistentePeluChic({ ahora: AHORA_CORPUS }).asistente;
+      let r = a.responder(q);
+      if (r.tipo === "elegir") r = a.responder(r.opciones.find((o) => /compar/i.test(o.etiqueta))!.pregunta);
+      expect(r.tipo === "respuesta" && r.intencion).toBe("comparar-periodos");
+      if (r.tipo !== "respuesta") continue;
+      const ana = resumenDePeriodo(d.citas, tipo, d.equipo, AHORA_CORPUS);
+      expect(r.cifras.find((x) => x.etiqueta === "citas")?.valor).toBe(ana.actual.citas);
+      expect(r.cifras.find((x) => x.etiqueta === "citas antes")?.valor).toBe(ana.previo.citas);
+      expect(r.cifras.find((x) => x.etiqueta === "variación")?.valor).toBe(comparar(ana.actual.citas, ana.previo.citas).variacionPct!);
+      expect(r.texto).toContain(`${ana.actual.ocupacion} %`);
+    }
+  });
+
+  test("7e: reservas por confirmar y libras a kilos", () => {
+    const r = nuevo().responder("reservas nuevas esperando que las confirme");
+    expect(r.tipo === "respuesta" && r.intencion).toBe("solicitudes-pendientes");
+    expect(nuevo().responder("como convierto libras a kilos").tipo).toBe("no-se");
+    const l = nuevo().responder("Sara cuando libra un rato la semana que viene?");
+    expect(l.tipo === "respuesta" && l.intencion).toBe("hueco-profesional");
+  });
+
   test("fuera del dominio: sin nada del salón no adivina", () => {
     for (const q of ["¿cuánto vale el iPhone?", "dame una receta de lentejas", "cuando es la luna llena este mes"]) expect([q, nuevo().responder(q).tipo]).toEqual([q, "no-se"]);
     expect(nuevo().responder("puedo ver las citas en el iphone").tipo).toBe("respuesta");
