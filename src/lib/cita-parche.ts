@@ -80,3 +80,23 @@ export function filaSinLote3(fila: Record<string, unknown>): Record<string, unkn
   for (const c of COLUMNAS_LOTE3_CITA) delete copia[c];
   return copia;
 }
+
+/**
+ * Los campos de la cita que han cambiado entre `antes` y `despues`, listos
+ * para un parche por campos. Un campo que desaparece viaja como `undefined`
+ * (se borra). Lo usan las acciones del panel que no reciben un parche
+ * explícito (cancelar, cobrar, pedir o recibir la señal, confirmar
+ * asistencia…): hasta el 25/09/2026 mandaban la cita ENTERA y podían pisar lo
+ * que otro aparato hubiera cambiado en otros campos.
+ */
+export function camposCambiados(antes: Appointment, despues: Appointment): Partial<Appointment> {
+  const out: Record<string, unknown> = {};
+  const claves = new Set([...Object.keys(antes), ...Object.keys(despues)]);
+  for (const k of claves) {
+    if (k === "id") continue;
+    const a = (antes as unknown as Record<string, unknown>)[k];
+    const d = (despues as unknown as Record<string, unknown>)[k];
+    if (JSON.stringify(a) !== JSON.stringify(d)) out[k] = d;
+  }
+  return out as Partial<Appointment>;
+}

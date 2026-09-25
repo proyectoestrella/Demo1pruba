@@ -25,6 +25,7 @@ import { recargoActivo } from "./recargo-activo";
 import { deadlineHours, depositDueAt, extendDepositDueAt, effectiveDepositDueAt } from "./deposit-deadline";
 import { inferBusinessType, menuDesdeServicios, slugForId, type BusinessType } from "./business-type";
 import { solapaConAgenda } from "./solape";
+import { camposCambiados } from "./cita-parche";
 import {
   type OpcionesGuardado,
   cambioSinGuardar,
@@ -339,10 +340,21 @@ function conservarSinGuardar<T extends { id: string }>(remotas: T[], locales: T[
   return fusion;
 }
 
-function sincronizarCita(state: SalonState, id: string) {
+/**
+ * Sube un cambio de una cita hecho desde el panel. Con `antes` viaja SOLO lo
+ * que ha cambiado (parche por campos, ver cita-parche.ts); sin él, la cita
+ * entera, como hasta ahora.
+ */
+function sincronizarCita(state: SalonState, id: string, antes?: Appointment) {
   if (!state.realSalonSlug) return;
   const appt = state.appointments.find((a) => a.id === id);
   if (!appt) return;
+  if (antes) {
+    const patch = camposCambiados(antes, appt);
+    if (!Object.keys(patch).length) return;
+    pushAppointmentPatch(state.realSalonSlug, appt, patch, clienteDeLaCita(state, appt));
+    return;
+  }
   pushAppointment(state.realSalonSlug, appt, clienteDeLaCita(state, appt));
 }
 
@@ -409,6 +421,7 @@ export const useSalonStore = create<SalonState>()(
         if (appt) pushAppointmentPatch(state.realSalonSlug, appt, patch, clienteDeLaCita(state, appt), opciones);
       },
       cancelAppointment: (id) => {
+        const antes = get().appointments.find((a) => a.id === id);
         const hueco = get().appointments.find((a) => a.id === id)?.start ?? null;
         set((s) => ({
           appointments: s.appointments.map((a) =>
@@ -418,10 +431,11 @@ export const useSalonStore = create<SalonState>()(
           // avisar al siguiente de la lista de espera con la hora concreta.
           lastFreedSlot: hueco,
         }));
-        sincronizarCita(get(), id);
+        sincronizarCita(get(), id, antes);
       },
 
       markClientConfirmed: (id, confirmed) => {
+        const antes = get().appointments.find((a) => a.id === id);
         set((s) => ({
           appointments: s.appointments.map((a) =>
             a.id === id
@@ -429,7 +443,7 @@ export const useSalonStore = create<SalonState>()(
               : a,
           ),
         }));
-        sincronizarCita(get(), id);
+        sincronizarCita(get(), id, antes);
       },
       deleteAppointment: (id) => {
         set((s) => ({
@@ -465,6 +479,7 @@ export const useSalonStore = create<SalonState>()(
       },
 
       markPaid: (id, method) => {
+        const antes = get().appointments.find((a) => a.id === id);
         set((s) => ({
           appointments: s.appointments.map((a) =>
             a.id === id
@@ -474,10 +489,11 @@ export const useSalonStore = create<SalonState>()(
               : a,
           ),
         }));
-        sincronizarCita(get(), id);
+        sincronizarCita(get(), id, antes);
       },
 
       markDepositRequested: (id, eur, requestedAt) => {
+        const antes = get().appointments.find((a) => a.id === id);
         const hours = deadlineHours(get().salonProfile.depositDeadlineHours);
         set((s) => ({
           appointments: s.appointments.map((a) =>
@@ -486,10 +502,11 @@ export const useSalonStore = create<SalonState>()(
               : a,
           ),
         }));
-        sincronizarCita(get(), id);
+        sincronizarCita(get(), id, antes);
       },
 
       extendDepositDeadline: (id) => {
+        const antes = get().appointments.find((a) => a.id === id);
         const defaultHours = deadlineHours(get().salonProfile.depositDeadlineHours);
         set((s) => ({ appointments: s.appointments.map((a) => {
           const hours = a.depositPeriodHours ?? defaultHours;
@@ -498,10 +515,11 @@ export const useSalonStore = create<SalonState>()(
             ? { ...a, depositDueAt: extendDepositDueAt(due, hours) }
             : a;
         }) }));
-        sincronizarCita(get(), id);
+        sincronizarCita(get(), id, antes);
       },
 
       markDepositReceived: (id, recibido) => {
+        const antes = get().appointments.find((a) => a.id === id);
         set((s) => ({
           appointments: s.appointments.map((a) =>
             a.id === id
@@ -509,7 +527,7 @@ export const useSalonStore = create<SalonState>()(
               : a,
           ),
         }));
-        sincronizarCita(get(), id);
+        sincronizarCita(get(), id, antes);
       },
 
       addClient: (c) => {
