@@ -18,7 +18,8 @@ import { z } from "zod";
 import { acceso, exigirAcceso } from "./autorizacion.server";
 import { accionesDeParcheCita, accionesDeParchePerfil, exigirAcciones } from "./guardas";
 import { recortarDatosPanel } from "./recorte";
-import type { Rol } from "../permisos";
+import { alcance, permisosDe, type Rol } from "../permisos";
+import { PermisoDenegado } from "./autorizacion";
 import { tieneMando, vistaEfectiva } from "./autorizacion";
 import { conSesion } from "./sesion.middleware";
 import { getSupabaseServerClient } from "../supabase.server";
@@ -1120,11 +1121,23 @@ export const saveClientNotes = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     // Las notas son texto libre del salón sobre una persona con nombre y
     // teléfono. Escribirlas —y leerlas— es del dueño.
-    exigirAcciones(await exigirAcceso(data.slug), ["clienta.editar"]);
+    const quien = await exigirAcceso(data.slug);
+    exigirAcciones(quien, ["clienta.editar"]);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
     const id = await localizarCliente(supabase, data.slug, data.phone);
     if (!id) return { synced: false as const };
+    // Alcance «propio» (estilista): solo clientas que tienen cita con ella.
+    if (quien.tipo === "miembro" && alcance(permisosDe(quien.rol), "clienta.editar") === "propio") {
+      const { data: suya } = await supabase
+        .from("appointments")
+        .select("id")
+        .eq("salon_slug", data.slug)
+        .eq("client_id", id)
+        .eq("employee_id", quien.employeeId ?? "")
+        .limit(1);
+      if (!quien.employeeId || !suya?.length) throw new PermisoDenegado("clienta.editar");
+    }
     const { error } = await supabase.from("clients").update({ notes: data.notes }).eq("id", id);
     if (error) throw new Error(`saveClientNotes: ${error.message}`);
     return { synced: true as const };
