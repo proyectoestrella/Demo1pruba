@@ -288,7 +288,7 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
           {pendientes.length}
         </span>
       </div>
-      <p className="mt-1 text-[14px] text-muted-foreground">Confírmalas y la clienta recibe el aviso.</p>
+      <p className="mt-1 text-[14px] text-muted-foreground">Al confirmarla queda en tu agenda. El aviso a la clienta lo mandas tú por WhatsApp desde su ficha, con un toque.</p>
       <ul className="mt-5 divide-y divide-lino">
         {pendientes.map((a) => {
           const catalogoMin = a.serviceIds.reduce((sum, id) => sum + (serviceMap[id]?.durationMin ?? 0), 0);

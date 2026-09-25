@@ -30,7 +30,7 @@ const STEPS: Step[] = [
   {
     selector: '[data-tour="pending-requests"]',
     title: "Esto te espera",
-    description: "Pon la duración con un toque y confirma: la clienta recibe el aviso al momento.",
+    description: "Confirma cada solicitud y queda en tu agenda. El aviso a la clienta lo mandas tú por WhatsApp desde su ficha.",
   },
   {
     selector: '[data-tour="today-list"]',
