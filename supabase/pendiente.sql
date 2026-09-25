@@ -147,3 +147,29 @@ drop trigger if exists clients_set_updated_at on clients;
 create trigger clients_set_updated_at
   before update on clients
   for each row execute function sishow_set_updated_at();
+
+-- 10. Ciclo de vida de la señal (25/09, noche) -----------------------------------
+alter table appointments add column if not exists deposit_status text;
+alter table appointments add column if not exists deposit_method text;
+alter table appointments add column if not exists deposit_received_eur numeric;
+alter table appointments add column if not exists deposit_applied_at timestamptz;
+alter table appointments add column if not exists deposit_applied_eur numeric;
+alter table appointments add column if not exists deposit_refunded_at timestamptz;
+alter table appointments add column if not exists deposit_refunded_eur numeric;
+alter table appointments add column if not exists deposit_retained_at timestamptz;
+alter table appointments add column if not exists deposit_note text;
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'appointments_deposit_status_chk') then
+    alter table appointments add constraint appointments_deposit_status_chk
+      check (deposit_status is null or deposit_status in ('por_pedir','pedida','recibida','aplicada','devuelta','retenida','anulada'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'appointments_deposit_method_chk') then
+    alter table appointments add constraint appointments_deposit_method_chk
+      check (deposit_method is null or deposit_method in ('bizum','efectivo','tarjeta','transferencia'));
+  end if;
+end $$;
+update appointments set deposit_status = case
+    when deposit_received_at is not null then 'recibida'
+    else 'pedida' end,
+  deposit_received_eur = case when deposit_received_at is not null then deposit_eur else null end
+  where deposit_status is null and deposit_requested_at is not null;

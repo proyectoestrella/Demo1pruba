@@ -379,3 +379,40 @@ drop trigger if exists clients_set_updated_at on clients;
 create trigger clients_set_updated_at
   before update on clients
   for each row execute function sishow_set_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- 25/09/2026 (noche) — Ciclo de vida de la señal (Método A, lib/senal.ts)
+--
+-- La señal va en la propia cita (es 1:1 con ella y así viaja con el parche
+-- por campos, el refresco y los niveles de esquema que ya existen).
+-- `deposit_eur` es el importe DEBIDO; lo recibido, aplicado y devuelto va
+-- aparte porque puede no coincidir si cambia el servicio. `vencida` no se
+-- guarda: se calcula con `deposit_due_at`. siShow nunca cobra: todo esto lo
+-- apunta la dueña.
+-- ---------------------------------------------------------------------------
+alter table appointments add column if not exists deposit_status text;
+alter table appointments add column if not exists deposit_method text;
+alter table appointments add column if not exists deposit_received_eur numeric;
+alter table appointments add column if not exists deposit_applied_at timestamptz;
+alter table appointments add column if not exists deposit_applied_eur numeric;
+alter table appointments add column if not exists deposit_refunded_at timestamptz;
+alter table appointments add column if not exists deposit_refunded_eur numeric;
+alter table appointments add column if not exists deposit_retained_at timestamptz;
+alter table appointments add column if not exists deposit_note text;
+-- Valores válidos, sin romper filas antiguas (null = sin estado guardado).
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'appointments_deposit_status_chk') then
+    alter table appointments add constraint appointments_deposit_status_chk
+      check (deposit_status is null or deposit_status in ('por_pedir','pedida','recibida','aplicada','devuelta','retenida','anulada'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'appointments_deposit_method_chk') then
+    alter table appointments add constraint appointments_deposit_method_chk
+      check (deposit_method is null or deposit_method in ('bizum','efectivo','tarjeta','transferencia'));
+  end if;
+end $$;
+-- Rellena el estado de las citas que ya tenían señal por fechas.
+update appointments set deposit_status = case
+    when deposit_received_at is not null then 'recibida'
+    else 'pedida' end,
+  deposit_received_eur = case when deposit_received_at is not null then deposit_eur else null end
+  where deposit_status is null and deposit_requested_at is not null;

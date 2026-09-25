@@ -71,8 +71,13 @@ const WAITLIST_COLS =
  * todavía no tiene esas columnas (`faltaEsquema`), con el anterior. Así un
  * despliegue nunca depende de que el DDL se haya aplicado antes.
  */
+/** Ciclo de vida de la señal (25/09/2026). Es el nivel más reciente. */
+const NIVEL_SENAL = ["deposit_status", "deposit_method", "deposit_received_eur", "deposit_applied_at", "deposit_applied_eur", "deposit_refunded_at", "deposit_refunded_eur", "deposit_retained_at", "deposit_note"];
+/** Lote 3: lo que iba codificado en `note`. Al quitarlo, la nota vuelve a llevar los marcadores. */
+const NIVEL_LOTE3 = ["booking_answers", "deposit_due_at", "deposit_period_hours", "origen", "updated_at"];
 const NIVELES_CITA: string[][] = [
-  ["booking_answers", "deposit_due_at", "deposit_period_hours", "origen", "updated_at"],
+  NIVEL_SENAL,
+  NIVEL_LOTE3,
   ["reminder_sent_at"],
   ["color_formula", "technical_notes"],
   ["payment_method", "paid_at", "deposit_requested_at", "deposit_received_at", "deposit_eur"],
@@ -92,10 +97,10 @@ function selectsPorNivel(base: string, niveles: string[][]): string[] {
 }
 
 /** Campos de una cita o una ficha que solo existen tras el DDL de caja, fianzas y caducidad. */
-const CAMPOS_NUEVOS_CITA = NIVELES_CITA[3];
-const CAMPOS_TECNICOS_CITA = NIVELES_CITA[2];
-const CAMPOS_RECORDATORIO_CITA = NIVELES_CITA[1];
-const CAMPOS_LOTE3_CITA = NIVELES_CITA[0];
+const CAMPOS_NUEVOS_CITA = NIVELES_CITA[4];
+const CAMPOS_TECNICOS_CITA = NIVELES_CITA[3];
+const CAMPOS_RECORDATORIO_CITA = NIVELES_CITA[2];
+const CAMPOS_LOTE3_CITA = NIVEL_LOTE3;
 const CAMPOS_NUEVOS_CLIENTE = NIVELES_CLIENTE[1];
 const CAMPOS_LOTE3_CLIENTE = NIVELES_CLIENTE[0];
 
@@ -555,6 +560,15 @@ export const syncAppointment = createServerFn({ method: "POST" })
       depositRequestedAt: z.string().nullable().optional(),
       depositReceivedAt: z.string().nullable().optional(),
       depositEur: z.number().nullable().optional(),
+      depositStatus: z.enum(["por_pedir", "pedida", "recibida", "aplicada", "devuelta", "retenida", "anulada"]).nullable().optional(),
+      depositMethod: z.enum(["bizum", "efectivo", "tarjeta", "transferencia"]).nullable().optional(),
+      depositReceivedEur: z.number().nonnegative().nullable().optional(),
+      depositAppliedAt: z.string().nullable().optional(),
+      depositAppliedEur: z.number().nonnegative().nullable().optional(),
+      depositRefundedAt: z.string().nullable().optional(),
+      depositRefundedEur: z.number().nonnegative().nullable().optional(),
+      depositRetainedAt: z.string().nullable().optional(),
+      depositNote: z.string().max(500).nullable().optional(),
       colorFormula: z.string().nullable().optional(),
       technicalNotes: z.string().nullable().optional(),
       reminderSentAt: z.string().nullable().optional(),
@@ -712,6 +726,17 @@ export const syncAppointment = createServerFn({ method: "POST" })
       deposit_due_at: manda ? (data.depositDueAt ?? null) : null,
       deposit_period_hours: manda ? (data.depositPeriodHours ?? null) : null,
       origen: manda ? (data.origen ?? "sishow") : "sishow",
+      // Señal: solo el panel escribe su estado. La reserva pública nunca
+      // puede decir que ya la pagó (la señal automática la pone el servidor, abajo).
+      deposit_status: manda ? (data.depositStatus ?? null) : null,
+      deposit_method: manda ? (data.depositMethod ?? null) : null,
+      deposit_received_eur: manda ? (data.depositReceivedEur ?? null) : null,
+      deposit_applied_at: manda ? (data.depositAppliedAt ?? null) : null,
+      deposit_applied_eur: manda ? (data.depositAppliedEur ?? null) : null,
+      deposit_refunded_at: manda ? (data.depositRefundedAt ?? null) : null,
+      deposit_refunded_eur: manda ? (data.depositRefundedEur ?? null) : null,
+      deposit_retained_at: manda ? (data.depositRetainedAt ?? null) : null,
+      deposit_note: manda ? (data.depositNote ?? null) : null,
     };
     // Solo se toca `client_id` cuando esta llamada sabe de qué cliente habla.
     // Un "confirmar" desde el panel no lleva teléfono, y machacar la columna
@@ -790,7 +815,7 @@ async function escribirCita(
     if (!error) return;
     if (!faltaEsquema(error) || nivel === NIVELES_CITA.length) throw new Error(`syncAppointment: ${error.message}`);
     console.warn(`syncAppointment: faltan columnas (${NIVELES_CITA[nivel].join(", ")}); aplica supabase/pendiente.sql`);
-    actual = nivel === 0 ? filaSinLote3(actual) : sinCampos(actual, NIVELES_CITA[nivel]);
+    actual = NIVELES_CITA[nivel] === NIVEL_LOTE3 ? filaSinLote3(actual) : sinCampos(actual, NIVELES_CITA[nivel]);
   }
 }
 

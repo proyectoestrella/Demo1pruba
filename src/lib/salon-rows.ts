@@ -62,6 +62,16 @@ export interface AppointmentRow {
   deposit_period_hours?: number | null;
   origen?: string | null;
   updated_at?: string | null;
+  /** Ciclo de vida de la señal (25/09/2026, lib/senal.ts). */
+  deposit_status?: string | null;
+  deposit_method?: string | null;
+  deposit_received_eur?: number | string | null;
+  deposit_applied_at?: string | null;
+  deposit_applied_eur?: number | string | null;
+  deposit_refunded_at?: string | null;
+  deposit_refunded_eur?: number | string | null;
+  deposit_retained_at?: string | null;
+  deposit_note?: string | null;
 }
 
 /** Fila de `clients` tal y como la devuelve PostgREST. */
@@ -153,6 +163,18 @@ export function rowToAppointment(row: AppointmentRow, anonimo = false): Appointm
     depositPeriodHours: (row.deposit_period_hours as Appointment["depositPeriodHours"]) ?? deposit.hours,
     depositReceivedAt: anonimo ? undefined : (row.deposit_received_at ?? deposit.receivedAt),
     depositEur: anonimo ? undefined : (row.deposit_eur == null ? deposit.eur : num(row.deposit_eur)),
+    // La web pública no ve nada de la señal de otras clientas.
+    ...(anonimo ? {} : {
+      depositStatus: (row.deposit_status as Appointment["depositStatus"]) ?? undefined,
+      depositMethod: (row.deposit_method as Appointment["depositMethod"]) ?? undefined,
+      depositReceivedEur: row.deposit_received_eur == null ? undefined : num(row.deposit_received_eur),
+      depositAppliedAt: row.deposit_applied_at ?? undefined,
+      depositAppliedEur: row.deposit_applied_eur == null ? undefined : num(row.deposit_applied_eur),
+      depositRefundedAt: row.deposit_refunded_at ?? undefined,
+      depositRefundedEur: row.deposit_refunded_eur == null ? undefined : num(row.deposit_refunded_eur),
+      depositRetainedAt: row.deposit_retained_at ?? undefined,
+      depositNote: row.deposit_note ?? undefined,
+    }),
   };
 }
 

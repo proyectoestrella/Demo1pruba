@@ -178,7 +178,27 @@ export interface Appointment {
   depositEur?: number;
   /** Lo marca el salón después de enviar el recordatorio desde su WhatsApp. */
   reminderSentAt?: string;
+  /**
+   * Ciclo de vida de la señal (lib/senal.ts). `depositEur` es el importe
+   * DEBIDO; lo recibido, aplicado o devuelto va aparte porque puede no
+   * coincidir (reajuste al cambiar de servicio). Ausente = sin señal o cita
+   * anterior al 25/09/2026 (se deduce de las fechas, ver `estadoSenal`).
+   */
+  depositStatus?: EstadoSenalGuardado;
+  depositMethod?: MetodoSenal;
+  depositReceivedEur?: number;
+  depositAppliedAt?: string;
+  depositAppliedEur?: number;
+  depositRefundedAt?: string;
+  depositRefundedEur?: number;
+  depositRetainedAt?: string;
+  depositNote?: string;
 }
+
+/** Estados que se guardan. `vencida` no se guarda: se calcula con la hora (ver `estadoSenal`). */
+export type EstadoSenalGuardado = "por_pedir" | "pedida" | "recibida" | "aplicada" | "devuelta" | "retenida" | "anulada";
+/** Cómo llegó la señal. siShow no la cobra: lo apunta la dueña. */
+export type MetodoSenal = "bizum" | "efectivo" | "tarjeta" | "transferencia";
 
 export interface BookingAnswers {
   hairLength?: "Corto" | "Medio" | "Largo" | "Muy largo";
