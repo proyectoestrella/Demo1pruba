@@ -12,6 +12,7 @@ import { AjustesSenal } from "@/components/AjustesSenal";
 import { AjustesPreguntas } from "@/components/AjustesPreguntas";
 import { GuiaAsistente } from "@/components/GuiaAsistente";
 import { AjustesAccesos } from "@/components/AjustesAccesos";
+import { HistorialCambios } from "@/components/HistorialCambios";
 import { usePermisos } from "@/lib/accesos-panel";
 import { puede } from "@/lib/permisos";
 import { useSalonStore } from "@/lib/store";
@@ -275,6 +276,12 @@ function Settings() {
           </div>
           <AjustesSenal />
         </SeccionAjustes>
+
+        {puede(permisos, "historial.ver") && (
+          <SeccionAjustes titulo="Historial de cambios" resumen="Quién cambió qué, antes y después, y deshacerlo">
+            <HistorialCambios />
+          </SeccionAjustes>
+        )}
 
         {puede(permisos, "accesos.gestionar") && (
           <SeccionAjustes titulo="Accesos" resumen="Quién entra en el panel, con qué rol y a qué profesional corresponde">
