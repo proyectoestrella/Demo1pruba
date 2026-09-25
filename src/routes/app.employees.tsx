@@ -1,3 +1,4 @@
+import { guardarPerfil } from "@/lib/deshacer-maqueta";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
 import type { Service } from "@/lib/mock/types";
@@ -43,7 +44,8 @@ function Team() {
   const visible = useRedirigirSiModuloOculto("equipo");
   const appointments = useSalonStore((s) => s.appointments);
   const profile = useSalonStore((s) => s.salonProfile);
-  const update = useSalonStore((s) => s.updateSalonProfile);
+  // Lote 12: cada cambio del equipo queda en el historial y se puede deshacer.
+  const update = guardarPerfil;
   const employees = useEquipo();
   const tipo = useBusinessType();
   const carta = selectServiceMap(useSalonStore((s) => s.services));

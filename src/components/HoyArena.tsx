@@ -348,19 +348,8 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
     setAConfirmar({ cita: a, duracion });
   }
   function rechazar(a: Appointment) {
-    const estadoPrevio = a.status;
+    // Lote 12: el aviso con «Deshacer» lo pone el registro de cambios.
     cancelAppointment(a.id);
-    toast.success("Solicitud rechazada", {
-      description: a.clientName,
-      duration: 8000,
-      action: {
-        label: "Deshacer",
-        onClick: () => {
-          updateAppointment(a.id, { status: estadoPrevio });
-          toast.success("Solicitud recuperada", { description: a.clientName });
-        },
-      },
-    });
   }
   function pedirSenal(a: Appointment) {
     if (a.depositReceivedAt) return;

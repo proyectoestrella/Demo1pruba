@@ -1,5 +1,5 @@
 import { usePermisos } from "@/lib/accesos-panel";
-import { puede } from "@/lib/permisos";
+import { alcance, puede } from "@/lib/permisos";
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
@@ -120,7 +120,10 @@ function DeudaBadge({
 
 function Appointments() {
   const appointments = useCitasVisibles();
-  const puedeExportar = puede(usePermisos(), "exportar.excel");
+  const permisosCitas = usePermisos();
+  const puedeExportar = puede(permisosCitas, "exportar.excel");
+  // Lote 12: recepción no ve precios (sin dinero.ver-*).
+  const veDinero = puede(permisosCitas, "dinero.ver-global") || !!alcance(permisosCitas, "dinero.ver-propio");
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const conRecargo = recargoActivo({ noShowFeeEur });
   const clients = useSalonStore((s) => s.clients);
@@ -136,7 +139,6 @@ function Appointments() {
   const soloUno = esSoloUnProfesional(employees);
   const [busqueda, setBusqueda] = useState("");
   const [selected, setSelected] = useState<Appointment | null>(null);
-  const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
   const [newApptOpen, setNewApptOpen] = useState(false);
   /** Filas a la vista: de 20 en 20; vuelve a 20 al filtrar o buscar. */
   const [cuantas, setCuantas] = useState(20);
@@ -154,16 +156,10 @@ function Appointments() {
     .slice(0, 60);
 
   function handleStatusChange(a: Appointment, next: AppointmentStatus) {
+    // Lote 12: el aviso con «Deshacer» lo pone el registro de cambios.
     updateAppointment(a.id, { status: next });
-    toast.success("Estado actualizado", { description: a.clientName });
   }
 
-  function handleCancelConfirm() {
-    if (!cancelTarget) return;
-    cancelAppointment(cancelTarget.id);
-    toast.success("Cita cancelada", { description: cancelTarget.clientName });
-    setCancelTarget(null);
-  }
 
   return (
     <div className="flex flex-1 flex-col gap-5">
@@ -254,7 +250,7 @@ function Appointments() {
                   <TableHead>Clienta</TableHead>
                   <TableHead className="@max-[560px]:hidden">Servicio</TableHead>
                   {!soloUno && <TableHead className="@max-[680px]:hidden">Profesional</TableHead>}
-                  <TableHead className="text-right @max-[440px]:hidden">Precio</TableHead>
+                  {veDinero && <TableHead className="text-right @max-[440px]:hidden">Precio</TableHead>}
                   <TableHead>Estado</TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
@@ -291,7 +287,7 @@ function Appointments() {
                           </span>
                         </TableCell>
                       )}
-                      <TableCell className="text-right font-bold tabular-nums @max-[440px]:hidden">{eur(a.priceEur)}</TableCell>
+                      {veDinero && <TableCell className="text-right font-bold tabular-nums @max-[440px]:hidden">{eur(a.priceEur)}</TableCell>}
                       <TableCell>
                         <StatusBadge status={a.status} />
                         {conRecargo && <RecargoChip appointment={a} client={clientById.get(a.clientId)} />}
@@ -324,7 +320,7 @@ function Appointments() {
                             <DropdownMenuItem
                               disabled={a.status === "cancelled"}
                               className="text-destructive focus:text-destructive"
-                              onClick={() => setCancelTarget(a)}
+                              onClick={() => cancelAppointment(a.id)}
                             >
                               Cancelar
                             </DropdownMenuItem>
@@ -390,7 +386,7 @@ function Appointments() {
                           <DropdownMenuItem
                             disabled={a.status === "cancelled"}
                             className="text-destructive focus:text-destructive"
-                            onClick={() => setCancelTarget(a)}
+                            onClick={() => cancelAppointment(a.id)}
                           >
                             Cancelar
                           </DropdownMenuItem>
@@ -406,7 +402,7 @@ function Appointments() {
                         {soloUno ? "" : ` · ${e.name}`}
                       </span>
                     </span>
-                    <span className="shrink-0 font-bold tabular-nums">{eur(a.priceEur)}</span>
+                    {veDinero && <span className="shrink-0 font-bold tabular-nums">{eur(a.priceEur)}</span>}
                   </div>
                   <div className="mt-3">
                     <StatusBadge status={a.status} />
@@ -436,26 +432,6 @@ function Appointments() {
       />
       <NewAppointmentDialog open={newApptOpen} onOpenChange={setNewApptOpen} />
 
-      <AlertDialog open={!!cancelTarget} onOpenChange={(o) => !o && setCancelTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Cancelar esta cita?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {cancelTarget &&
-                `Se marcará como cancelada para ${cancelTarget.clientName}. Esta acción no se puede deshacer.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Volver</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleCancelConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Sí, cancelar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

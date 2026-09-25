@@ -1,3 +1,4 @@
+import { avisar, conCambio, deshacerConAviso } from "@/lib/deshacer-maqueta";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BadgeEuro, HandHeart, Ban } from "lucide-react";
@@ -75,21 +76,11 @@ export function DecisionDeudaDialog({
   /** Aplica una decisión y deja el "Deshacer" cargado con lo que había antes. */
   function aplicar(estado: EstadoDeuda, mensaje: string, detalle: string) {
     if (!client || !recargoActivo(useSalonStore.getState().salonProfile)) return;
-    const previo = estadoDeudaDe(client);
     const id = client.id;
-    setDeuda(id, estado);
+    const { cambio } = conCambio(() => setDeuda(id, estado));
     onOpenChange(false);
-    toast.success(mensaje, {
-      description: detalle,
-      duration: 9000,
-      action: {
-        label: "Deshacer",
-        onClick: () => {
-          setDeuda(id, previo);
-          toast.success("Deshecho", { description: `${client.name} vuelve a estar como estaba.` });
-        },
-      },
-    });
+    void detalle;
+    if (cambio) avisar(mensaje, () => deshacerConAviso(cambio.id), cambio.id);
   }
 
   const cantidad = Number(importe.replace(",", ".")) || 0;

@@ -128,3 +128,12 @@ export function saludo(nombre: string | null | undefined, hora: number): string 
   const pila = nombre?.trim().split(/\s+/)[0];
   return pila ? `${franja}, ${pila}` : franja;
 }
+
+/** El miembro actual fuera de React (para el registro de cambios). */
+export function miembroAhora(): Miembro | null {
+  const s = useSalonStore.getState();
+  if (s.realSalonSlug) return null; // CONECTAR: s.miembro
+  const { miembros, verComo } = useAccesosDemo.getState();
+  const activos = (miembros ?? []).filter((m) => m.estado === "activa");
+  return activos.find((m) => m.userId === verComo) ?? activos.find((m) => m.rol === "gerente") ?? null;
+}

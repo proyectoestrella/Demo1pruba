@@ -1,3 +1,4 @@
+import { guardarPerfil } from "@/lib/deshacer-maqueta";
 import { useSalonStore } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
 import { indiceColorServicio } from "@/lib/hoy-arena";
@@ -37,7 +38,7 @@ export function AjustesColores() {
                       role="radio"
                       aria-checked={actual === n}
                       aria-label={`Color ${n}`}
-                      onClick={() => updateSalonProfile({ coloresServicio: { ...coloresServicio, [s.id]: n } })}
+                      onClick={() => guardarPerfil({ coloresServicio: { ...coloresServicio, [s.id]: n } })}
                       className={muestra(actual === n)}
                       style={{ background: `var(--serv-${n})` }}
                     />
@@ -65,7 +66,7 @@ export function AjustesColores() {
                       role="radio"
                       aria-checked={actual === n}
                       aria-label={`Color ${n}`}
-                      onClick={() => updateSalonProfile({ coloresProfesional: { ...coloresProfesional, [e.id]: n } })}
+                      onClick={() => guardarPerfil({ coloresProfesional: { ...coloresProfesional, [e.id]: n } })}
                       className={muestra(actual === n)}
                       style={{ background: `var(--pro-${n})` }}
                     />

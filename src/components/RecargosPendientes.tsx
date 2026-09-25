@@ -51,7 +51,6 @@ export function RecargosPendientes({ clientId, title, className }: RecargosPendi
 
   function handlePerdonar(client: Client) {
     clearPenalty(client.id, "perdonado");
-    toast.success(`Recargo perdonado a ${client.name}`);
   }
 
   function handleMantener(client: Client) {
@@ -61,7 +60,6 @@ export function RecargosPendientes({ clientId, title, className }: RecargosPendi
 
   function handleCobrado(client: Client) {
     clearPenalty(client.id, "cobrado");
-    toast.success(`Recargo de ${client.name} marcado como pagado`);
   }
 
   if (!recargoActivo({ noShowFeeEur })) return null;

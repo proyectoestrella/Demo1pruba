@@ -1,3 +1,4 @@
+import { conCambio, deshacerConAviso, marcarAvisoDeCita } from "@/lib/deshacer-maqueta";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
@@ -114,18 +115,20 @@ function Ventana({
   }, [onCerrar]);
 
   function confirmar() {
-    updateAppointment(cita.id, { status: "confirmed", duration: duracion });
+    const { cambio } = conCambio(() => updateAppointment(cita.id, { status: "confirmed", duration: duracion }));
     // El aviso a la clienta lo manda la dueña: el toast trae el WhatsApp ya
-    // escrito, con su texto de Ajustes o el de siempre (9h).
+    // escrito, con su texto de Ajustes o el de siempre (9h), y «Deshacer» (lote 12).
     const telefono = cliente?.phone;
-    toast.success("Cita confirmada", {
+    toast.success(cambio?.resumen ?? "Cita confirmada", {
       description: `${cita.clientName} · ${duracionCorta(duracion)}`,
       duration: 10000,
+      ...(cambio ? { cancel: { label: "Deshacer", onClick: () => deshacerConAviso(cambio.id) } } : {}),
       ...(telefono
         ? {
             action: {
               label: "Avisar por WhatsApp",
               onClick: () => {
+                marcarAvisoDeCita(cita.id);
                 const texto = mensajeConfirmacionDe(plantillaConfirmacion, {
                   nombre: (cita.clientName || "").split(" ")[0],
                   salon: salonName,
@@ -143,19 +146,8 @@ function Ventana({
     onCerrar();
   }
   function rechazar() {
-    const estadoPrevio = cita.status;
+    // Lote 12: el aviso con «Deshacer» lo pone el registro de cambios.
     cancelAppointment(cita.id);
-    toast.success("Solicitud rechazada", {
-      description: cita.clientName,
-      duration: 8000,
-      action: {
-        label: "Deshacer",
-        onClick: () => {
-          updateAppointment(cita.id, { status: estadoPrevio });
-          toast.success("Solicitud recuperada", { description: cita.clientName });
-        },
-      },
-    });
     onCerrar();
   }
 

@@ -1,3 +1,4 @@
+import { guardarPerfil } from "@/lib/deshacer-maqueta";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Plus, TriangleAlert } from "lucide-react";
@@ -70,7 +71,7 @@ export function AjustesPreguntas() {
     if (vacias.length) return toast.error("Escribe el texto de cada pregunta activa, o desactívala.");
     const sinOpciones = lista.filter((q) => q.activa && q.tipo === "opcion" && (q.opciones?.filter(Boolean).length ?? 0) < 2);
     if (sinOpciones.length) return toast.error("Las preguntas de «Elegir una opción» necesitan al menos dos opciones.");
-    updateSalonProfile({
+    guardarPerfil({
       preguntasReserva: lista.map((q) => ({
         ...q,
         texto: q.texto.trim(),
@@ -79,7 +80,6 @@ export function AjustesPreguntas() {
       })),
     });
     setCambios(false);
-    toast.success("Preguntas guardadas");
   };
 
   const campo = "h-9 rounded-xl border border-input bg-blanco px-2.5 text-[13.5px]";

@@ -100,19 +100,8 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
    * devuelve la solicitud exactamente al estado que tenía.
    */
   function handleReject(a: Appointment) {
-    const estadoPrevio = a.status;
+    // Lote 12: el aviso con «Deshacer» lo pone el registro de cambios.
     cancelAppointment(a.id);
-    toast.success("Solicitud rechazada", {
-      description: a.clientName,
-      duration: 8000,
-      action: {
-        label: "Deshacer",
-        onClick: () => {
-          updateAppointment(a.id, { status: estadoPrevio });
-          toast.success("Solicitud recuperada", { description: a.clientName });
-        },
-      },
-    });
   }
 
 

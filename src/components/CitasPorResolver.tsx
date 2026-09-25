@@ -1,3 +1,4 @@
+import { avisar, conCambio, deshacerConAviso } from "@/lib/deshacer-maqueta";
 import { useCitasVisibles } from "@/lib/accesos-panel";
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
@@ -76,26 +77,15 @@ export function useAplicarDesenlace() {
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
 
   return function aplicar(a: Appointment, d: Desenlace) {
-    const previo = a.status;
-    updateAppointment(a.id, { status: ESTADO_POR_DESENLACE[d] });
+    const { cambio } = conCambio(() => updateAppointment(a.id, { status: ESTADO_POR_DESENLACE[d] }));
+    const nombre = (a.clientName || "").split(" ")[0];
     const mensajes: Record<Desenlace, string> = {
-      vino: `${a.clientName} vino`,
-      tarde: `${a.clientName} llegó tarde sin avisar`,
-      "no-vino": `${a.clientName} no vino`,
+      vino: `${nombre} vino`,
+      tarde: `${nombre} llegó tarde sin avisar`,
+      "no-vino": `${nombre} no vino`,
     };
-    toast.success(mensajes[d], {
-      description: new Date(a.start).toLocaleString("es", {
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      duration: 9000,
-      action: {
-        label: "Deshacer",
-        onClick: () => updateAppointment(a.id, { status: previo }),
-      },
-    });
+    // Lote 12: el mismo aviso con «Deshacer», sobre el registro de cambios.
+    if (cambio) avisar(mensajes[d], () => deshacerConAviso(cambio.id), cambio.id);
   };
 }
 

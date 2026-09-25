@@ -1,3 +1,4 @@
+import { avisar } from "@/lib/deshacer-maqueta";
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -90,8 +91,12 @@ function Waitlist() {
 
   function handleDelete() {
     if (!deleteTarget) return;
-    deleteWaitlist(deleteTarget.id);
-    toast.success("Eliminado de la lista de espera", { description: deleteTarget.clientName });
+    const quitada = deleteTarget;
+    deleteWaitlist(quitada.id);
+    // Lote 12: deshacer la vuelve a poner tal cual (mismo id y fecha de alta).
+    avisar(`${quitada.clientName.split(" ")[0]} fuera de la lista de espera`, () =>
+      useSalonStore.setState((st) => ({ waitlist: st.waitlist.some((w) => w.id === quitada.id) ? st.waitlist : [...st.waitlist, quitada] })),
+    );
     setDeleteTarget(null);
   }
 
@@ -217,8 +222,8 @@ function Waitlist() {
         open={altaOpen}
         onOpenChange={setAltaOpen}
         onSave={(datos) => {
-          addWaitlist(datos);
-          toast.success("Apuntado en la lista de espera", { description: datos.clientName });
+          const nueva = addWaitlist(datos);
+          avisar(`${datos.clientName.split(" ")[0]} apuntada en la lista de espera`, () => deleteWaitlist(nueva.id));
         }}
       />
 

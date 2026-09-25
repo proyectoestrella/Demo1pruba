@@ -20,6 +20,7 @@ import { hasSeenTour, startTour } from "@/lib/tour";
 import { BarraInferior, CabeceraArena, MenuLateral, TODOS_LOS_ITEMS, estaActivo } from "@/components/ArenaShell";
 import { FranjaVerComo } from "@/components/VerComo";
 import { SinPermiso } from "@/components/SinPermiso";
+import { instalarAtajoDeshacer, instalarRegistro } from "@/lib/deshacer-maqueta";
 import { usePermisos, veRuta } from "@/lib/accesos-panel";
 import { useHayPanelLateral } from "@/lib/panel-lateral";
 import { cn } from "@/lib/utils";
@@ -152,6 +153,11 @@ function useTituloDelPanel() {
 }
 
 function DashboardLayout() {
+  // Lote 12: cada acción reversible deja un cambio con «Deshacer» (y Ctrl+Z).
+  useEffect(() => {
+    instalarRegistro();
+    return instalarAtajoDeshacer();
+  }, []);
   // Sincroniza `?v=2`/`?v=1` con la preferencia guardada del panel — tiene
   // que correr para TODAS las rutas /app/*, entren o no por aquí primero.
   useSyncPanelV2FromUrl();

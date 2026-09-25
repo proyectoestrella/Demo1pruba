@@ -1,3 +1,4 @@
+import { avisar } from "@/lib/deshacer-maqueta";
 import { useEquipoParaDarCita } from "@/lib/accesos-panel";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -380,9 +381,9 @@ export function NewAppointmentDialog({
       clientPhone ? { name: clientName, phone: clientPhone, email: clientEmail } : undefined,
     );
 
-    toast.success("Cita creada", {
-      description: `${clientName} · ${chosen.map((s) => s.name).join(" + ")}`,
-    });
+    // Lote 12: «Cita de Ana guardada · vie 10:00» con «Deshacer» (la borra).
+    const cuando = new Date(appt.start).toLocaleString("es-ES", { weekday: "short", hour: "2-digit", minute: "2-digit" }).replace(",", "");
+    avisar(`Cita de ${clientName.split(" ")[0]} guardada · ${cuando}`, () => useSalonStore.getState().deleteAppointment(appt.id));
     onCreated?.(appt);
 
     if (encadenar) {

@@ -169,7 +169,8 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <Outlet />
       <ControlesIpad />
-      <Toaster position="top-center" />
+      {/* Lote 12: abajo, como mucho tres a la vez; en móvil, por encima de la barra inferior. */}
+      <Toaster position="bottom-center" visibleToasts={3} mobileOffset={{ bottom: 92 }} />
       {/* Lo que NO se ha guardado tiene que verse: ver lib/avisos-sync.ts. */}
       <AvisosDeSincronizacion />
     </QueryClientProvider>

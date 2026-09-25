@@ -1,3 +1,4 @@
+import { guardarPerfil } from "@/lib/deshacer-maqueta";
 import { CamposPreferenciasCalendario } from "@/components/CamposPreferenciasCalendario";
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -124,7 +125,7 @@ function Settings() {
       return;
     }
 
-    updateSalonProfile({
+    guardarPerfil({
       noShowFeeEur: noShowEnabled ? Math.min(50, Math.max(0, parsedFee)) : 0,
       noShowNoticeHours: Math.min(48, Math.max(1, Math.round(parsedNotice) || 2)),
       smartSpread: smartSpreadEnabled,
@@ -135,7 +136,6 @@ function Settings() {
       bookingQuestionsRequired: questionsRequired,
       duracionFlexible,
     });
-    toast.success("Cambios guardados");
   }
 
   const guardar = (

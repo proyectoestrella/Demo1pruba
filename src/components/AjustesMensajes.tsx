@@ -1,3 +1,4 @@
+import { guardarPerfil } from "@/lib/deshacer-maqueta";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useSalonStore } from "@/lib/store";
@@ -21,8 +22,7 @@ export function AjustesMensajes() {
 
   const guardar = (clave: "confirmacion" | "recordatorio", texto: string, porDefecto: string) => {
     const limpio = texto.trim();
-    updateSalonProfile({ plantillas: { ...plantillas, [clave]: !limpio || limpio === porDefecto ? undefined : limpio } });
-    toast.success(limpio && limpio !== porDefecto ? "Texto guardado" : "Vuelve el texto de siempre");
+    guardarPerfil({ plantillas: { ...plantillas, [clave]: !limpio || limpio === porDefecto ? undefined : limpio } });
   };
 
   return (

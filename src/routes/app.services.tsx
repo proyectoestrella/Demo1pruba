@@ -73,7 +73,6 @@ function ServicesPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
 
   function openCreate() {
     setEditing(null);
@@ -82,12 +81,6 @@ function ServicesPage() {
   function openEdit(s: Service) {
     setEditing(s);
     setFormOpen(true);
-  }
-  function handleDelete() {
-    if (!deleteTarget) return;
-    deleteService(deleteTarget.id);
-    toast.success("Servicio eliminado", { description: deleteTarget.name });
-    setDeleteTarget(null);
   }
 
   return (
@@ -142,7 +135,7 @@ function ServicesPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => openEdit(s)}>Editar</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(s)}>
+                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteService(s.id)}>
                           Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -172,7 +165,6 @@ function ServicesPage() {
                         checked={s.active !== false}
                         onCheckedChange={(checked) => {
                           updateService(s.id, { active: checked });
-                          toast.success(checked ? "Servicio activado" : "Servicio desactivado", { description: s.name });
                         }}
                       />}
                     </label>
@@ -224,22 +216,6 @@ function ServicesPage() {
 
       <ServiceFormSheet open={formOpen} onOpenChange={setFormOpen} service={editing} />
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar este servicio?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteTarget && `"${deleteTarget.name}" dejará de estar disponible para reservar. Esta acción no se puede deshacer.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Volver</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Sí, eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

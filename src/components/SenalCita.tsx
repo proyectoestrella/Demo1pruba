@@ -1,3 +1,4 @@
+import { marcarAvisoDeCita } from "@/lib/deshacer-maqueta";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useSalonStore } from "@/lib/store";
@@ -61,7 +62,8 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
 
   if (estado === "no_aplica" && !regla.bizum) return null;
 
-  const resultado = (error: string | null, ok: string) => (error ? toast.error(mensajeErrorSenal(error as never)) : toast.success(ok));
+  // Lote 12: el aviso de lo hecho (con «Deshacer») lo pone el registro de cambios; aquí solo los errores.
+  const resultado = (error: string | null, _ok: string) => (error ? toast.error(mensajeErrorSenal(error as never)) : undefined);
 
   function pedir() {
     const p = prepararPeticionSenal(cita, regla, estado === "no_aplica" ? regla.importeEur : undefined);
@@ -106,7 +108,10 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
             size="sm"
             className={btn}
             onClick={() => {
-              resultado(acciones.pedirSenal(cita.id, preguntaEnvio.importeEur, preguntaEnvio.venceISO, regla.plazoHoras), "Señal pedida: corre el plazo");
+              const error = acciones.pedirSenal(cita.id, preguntaEnvio.importeEur, preguntaEnvio.venceISO, regla.plazoHoras);
+              resultado(error, "Señal pedida: corre el plazo");
+              // Ya le ha escrito por WhatsApp: si se deshace, se le avisa de nuevo.
+              if (!error) marcarAvisoDeCita(cita.id);
               setPreguntaEnvio(null);
             }}
           >

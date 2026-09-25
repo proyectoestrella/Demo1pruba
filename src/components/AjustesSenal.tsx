@@ -1,3 +1,4 @@
+import { guardarPerfil } from "@/lib/deshacer-maqueta";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useSalonStore } from "@/lib/store";
@@ -70,8 +71,7 @@ export function AjustesSenal() {
       depositCancelHours: Math.min(168, Math.max(0, Math.round(num(f.depositCancelHours)) || 24)),
       depositTemplate: f.depositTemplate.trim() || undefined,
     };
-    updateSalonProfile(patch);
-    toast.success("Señal guardada");
+    guardarPerfil(patch);
   }
 
   const regla = reglaSenal({ ...perfil, ...{ depositEnabled: f.depositEnabled, depositBizumPhone: f.depositBizumPhone, depositMode: f.depositMode, depositAmountEur: Number(f.depositAmountEur) || 10, depositPercent: Number(f.depositPercent) || 20, depositCancelHours: Number(f.depositCancelHours) || 24 } });

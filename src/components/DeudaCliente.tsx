@@ -1,3 +1,4 @@
+import { avisar, conCambio, deshacerConAviso } from "@/lib/deshacer-maqueta";
 import { toast } from "sonner";
 import { BadgeEuro, Ban, HandHeart, Unlock } from "lucide-react";
 import { estadoDeudaDe, useSalonStore, type EstadoDeuda } from "@/lib/store";
@@ -24,19 +25,9 @@ function useAccionesDeuda() {
   const setDeuda = useSalonStore((s) => s.setDeuda);
 
   return function aplicar(client: Client, estado: EstadoDeuda, mensaje: string, detalle: string) {
-    const previo = estadoDeudaDe(client);
-    setDeuda(client.id, estado);
-    toast.success(mensaje, {
-      description: detalle,
-      duration: 9000,
-      action: {
-        label: "Deshacer",
-        onClick: () => {
-          setDeuda(client.id, previo);
-          toast.success("Deshecho", { description: `${client.name} vuelve a estar como estaba.` });
-        },
-      },
-    });
+    const { cambio } = conCambio(() => setDeuda(client.id, estado));
+    void detalle;
+    if (cambio) avisar(mensaje, () => deshacerConAviso(cambio.id), cambio.id);
   };
 }
 
