@@ -357,7 +357,7 @@ export function deshacerRecibida(c: CitaCiclo, ahora: Date = new Date()): Result
 export function aplicarSenal(
   c: CitaCiclo,
   ahora: Date = new Date(),
-): ResultadoSenal & { aCobrarEur?: number } {
+): { ok: true; patch: Partial<Appointment>; aCobrarEur: number } {
   const precio = c.priceEur;
   if (estadoSenal(c, ahora) !== "recibida") return { ok: true, patch: {}, aCobrarEur: precio };
   const recibido = c.depositReceivedEur ?? c.depositEur ?? 0;
