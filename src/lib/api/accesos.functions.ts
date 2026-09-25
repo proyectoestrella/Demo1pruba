@@ -18,8 +18,18 @@ import { z } from "zod";
 import { rolVigente } from "../permisos";
 import { getSupabaseServerClient } from "../supabase.server";
 import {
-  aceptarInvitacion, cambiarRol, darDeBaja, invitarMiembro, listarAccesos, reenviarInvitacion, revocarInvitacion,
-  type DepsAccesos, type InvitacionFila, type MiembroFila,
+  aceptarInvitacion,
+  cambiarRol,
+  darDeBaja,
+  invitarMiembro,
+  listarAccesos,
+  reactivarMiembro,
+  reenviarInvitacion,
+  revocarInvitacion,
+  vincularEmpleada,
+  type DepsAccesos,
+  type InvitacionFila,
+  type MiembroFila,
 } from "./accesos";
 import { exigirAcceso, usuarioDeLaPeticion } from "./autorizacion.server";
 import { conSesion } from "./sesion.middleware";
@@ -42,7 +52,10 @@ function origen(): string {
  */
 async function accesoReal(salonSlug: string) {
   const a = await exigirAcceso(salonSlug);
-  if (a.tipo === "demo") throw new Error("En una demo no hay accesos que gestionar: se activan al dar de alta el salón.");
+  if (a.tipo === "demo")
+    throw new Error(
+      "En una demo no hay accesos que gestionar: se activan al dar de alta el salón.",
+    );
   return a;
 }
 
@@ -53,12 +66,19 @@ function depsDe(salonSlug: string): DepsAccesos {
     ahora: () => new Date(),
     nuevoId: () => randomUUID(),
     plan: async () => {
-      const { data } = await sb.from("salons").select("profile").eq("slug", salonSlug).maybeSingle();
+      const { data } = await sb
+        .from("salons")
+        .select("profile")
+        .eq("slug", salonSlug)
+        .maybeSingle();
       const p = (data as { profile?: { plan?: string } } | null)?.profile;
       return p?.plan ?? null;
     },
     miembros: async () => {
-      const { data, error } = await sb.from("salon_members").select("*").eq("salon_slug", salonSlug);
+      const { data, error } = await sb
+        .from("salon_members")
+        .select("*")
+        .eq("salon_slug", salonSlug);
       if (error) throw new Error(`salon_members: ${error.message}`);
       const filas = (data ?? []) as Array<Record<string, string | null>>;
       return filas.map(
@@ -73,8 +93,14 @@ function depsDe(salonSlug: string): DepsAccesos {
       );
     },
     invitaciones: async () => {
-      const { data, error } = await sb.from("salon_invitaciones").select("*").eq("salon_slug", salonSlug);
-      if (error) throw new Error(`salon_invitaciones (¿falta aplicar supabase/pendiente.sql?): ${error.message}`);
+      const { data, error } = await sb
+        .from("salon_invitaciones")
+        .select("*")
+        .eq("salon_slug", salonSlug);
+      if (error)
+        throw new Error(
+          `salon_invitaciones (¿falta aplicar supabase/pendiente.sql?): ${error.message}`,
+        );
       return ((data ?? []) as Array<Record<string, unknown>>).map(
         (f): InvitacionFila => ({
           id: f.id as string,
@@ -92,8 +118,17 @@ function depsDe(salonSlug: string): DepsAccesos {
     },
     guardarInvitacion: async (i) => {
       const { error } = await sb.from("salon_invitaciones").upsert({
-        id: i.id, salon_slug: salonSlug, email: i.email, rol: i.rol, employee_id: i.employeeId, display_name: i.displayName,
-        invited_by: i.invitedBy, creada: i.creada, caduca: i.caduca, aceptada_en: i.aceptadaEn, revocada: i.revocada,
+        id: i.id,
+        salon_slug: salonSlug,
+        email: i.email,
+        rol: i.rol,
+        employee_id: i.employeeId,
+        display_name: i.displayName,
+        invited_by: i.invitedBy,
+        creada: i.creada,
+        caduca: i.caduca,
+        aceptada_en: i.aceptadaEn,
+        revocada: i.revocada,
       });
       if (error) throw new Error(`salon_invitaciones: ${error.message}`);
     },
@@ -102,14 +137,23 @@ function depsDe(salonSlug: string): DepsAccesos {
       const inv = await sb.auth.admin.inviteUserByEmail(email, { redirectTo: volverA });
       if (!inv.error) return;
       // Ya tiene usuario (p. ej. es miembro de otro salón): basta un enlace mágico normal.
-      const otp = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: volverA, shouldCreateUser: false } });
+      const otp = await sb.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: volverA, shouldCreateUser: false },
+      });
       if (otp.error) throw new Error(`No se pudo enviar la invitación: ${otp.error.message}`);
     },
     guardarMiembro: async (m) => {
       const { error } = await sb.from("salon_members").upsert(
         {
-          user_id: m.userId, salon_slug: salonSlug, rol: m.rol, email: m.email, employee_id: m.employeeId,
-          display_name: m.displayName, estado: m.estado, actualizado: new Date().toISOString(),
+          user_id: m.userId,
+          salon_slug: salonSlug,
+          rol: m.rol,
+          email: m.email,
+          employee_id: m.employeeId,
+          display_name: m.displayName,
+          estado: m.estado,
+          actualizado: new Date().toISOString(),
         },
         { onConflict: "user_id,salon_slug" },
       );
@@ -139,7 +183,16 @@ export const invitarAlSalon = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) =>
-    invitarMiembro(await accesoReal(data.slug), { email: data.email, rol: data.rol, employeeId: data.employeeId, displayName: data.displayName }, depsDe(data.slug)),
+    invitarMiembro(
+      await accesoReal(data.slug),
+      {
+        email: data.email,
+        rol: data.rol,
+        employeeId: data.employeeId,
+        displayName: data.displayName,
+      },
+      depsDe(data.slug),
+    ),
   );
 
 export const aceptarInvitacionAlSalon = createServerFn({ method: "POST" })
@@ -147,26 +200,65 @@ export const aceptarInvitacionAlSalon = createServerFn({ method: "POST" })
   .inputValidator(z.object({ slug, invitacionId: z.string().min(1) }))
   .handler(async ({ data }) => {
     const userId = await usuarioDeLaPeticion();
-    if (!userId) return { ok: false as const, codigo: "NO_EXISTE" as const, motivo: "Entra primero con el enlace del correo." };
+    if (!userId)
+      return {
+        ok: false as const,
+        codigo: "NO_EXISTE" as const,
+        motivo: "Entra primero con el enlace del correo.",
+      };
     return aceptarInvitacion(userId, data.invitacionId, depsDe(data.slug));
   });
 
 export const cambiarRolMiembro = createServerFn({ method: "POST" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug, userId: z.string().min(1), rol: z.string(), employeeId: z.string().nullable().optional() }))
-  .handler(async ({ data }) => cambiarRol(await accesoReal(data.slug), data.userId, { rol: data.rol, employeeId: data.employeeId }, depsDe(data.slug)));
+  .inputValidator(
+    z.object({
+      slug,
+      userId: z.string().min(1),
+      rol: z.string(),
+      employeeId: z.string().nullable().optional(),
+    }),
+  )
+  .handler(async ({ data }) =>
+    cambiarRol(
+      await accesoReal(data.slug),
+      data.userId,
+      { rol: data.rol, employeeId: data.employeeId },
+      depsDe(data.slug),
+    ),
+  );
 
 export const darDeBajaMiembro = createServerFn({ method: "POST" })
   .middleware([conSesion])
   .inputValidator(z.object({ slug, userId: z.string().min(1) }))
-  .handler(async ({ data }) => darDeBaja(await accesoReal(data.slug), data.userId, depsDe(data.slug)));
+  .handler(async ({ data }) =>
+    darDeBaja(await accesoReal(data.slug), data.userId, depsDe(data.slug)),
+  );
 
 export const revocarInvitacionAlSalon = createServerFn({ method: "POST" })
   .middleware([conSesion])
   .inputValidator(z.object({ slug, invitacionId: z.string().min(1) }))
-  .handler(async ({ data }) => revocarInvitacion(await accesoReal(data.slug), data.invitacionId, depsDe(data.slug)));
+  .handler(async ({ data }) =>
+    revocarInvitacion(await accesoReal(data.slug), data.invitacionId, depsDe(data.slug)),
+  );
 
 export const reenviarInvitacionAlSalon = createServerFn({ method: "POST" })
   .middleware([conSesion])
   .inputValidator(z.object({ slug, invitacionId: z.string().min(1) }))
-  .handler(async ({ data }) => reenviarInvitacion(await accesoReal(data.slug), data.invitacionId, depsDe(data.slug)));
+  .handler(async ({ data }) =>
+    reenviarInvitacion(await accesoReal(data.slug), data.invitacionId, depsDe(data.slug)),
+  );
+
+export const vincularEmpleadaDelSalon = createServerFn({ method: "POST" })
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug, userId: z.string().min(1), employeeId: z.string().nullable() }))
+  .handler(async ({ data }) =>
+    vincularEmpleada(await accesoReal(data.slug), data.userId, data.employeeId, depsDe(data.slug)),
+  );
+
+export const reactivarMiembroDelSalon = createServerFn({ method: "POST" })
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug, userId: z.string().min(1) }))
+  .handler(async ({ data }) =>
+    reactivarMiembro(await accesoReal(data.slug), data.userId, depsDe(data.slug)),
+  );

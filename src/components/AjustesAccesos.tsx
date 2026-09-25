@@ -1,8 +1,14 @@
 import { useState } from "react";
-import { Mail, MoreHorizontal, Plus, UserPlus } from "lucide-react";
+import { Loader2, Mail, MoreHorizontal, Plus, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import { accesos, EXPLICA_ROL, NOMBRE_ROL, useAccesosDemo, type Miembro, type ResultadoAccesos } from "@/lib/accesos-maqueta";
-import { useEsDemo, useMiembroActual, usePlanSalon, useTienePlan } from "@/lib/accesos-panel";
+import { EXPLICA_ROL, NOMBRE_ROL } from "@/lib/accesos-maqueta";
+import {
+  useAccesos,
+  useEsDemo,
+  useMiembroActual,
+  useTienePlan,
+  type ResultadoAccesosPanel,
+} from "@/lib/accesos-panel";
 import { ROLES, type Rol } from "@/lib/permisos";
 import { useEquipo } from "@/lib/use-equipo";
 import { AvatarPersona } from "@/components/ArenaShell";
@@ -20,47 +26,102 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-const fechaCorta = (iso?: string) => (iso ? new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "") : "");
+const fechaCorta = (iso?: string) =>
+  iso
+    ? new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "")
+    : "";
+
+function resultado(r: ResultadoAccesosPanel, ok: string, deshacer?: () => void) {
+  if (r.ok)
+    toast.success(ok, deshacer ? { action: { label: "Deshacer", onClick: deshacer } } : undefined);
+  else
+    toast.error(
+      r.mensaje,
+      r.codigo === "PLAN"
+        ? {
+            description:
+              "Con el plan Todo incluido puedes usar los cuatro. Escríbenos a ejemplo@sishow.com.",
+          }
+        : undefined,
+    );
+}
 
 /**
- * Ajustes › Accesos (lote 11): quién entra en el panel y con qué rol. Solo
- * para quien tiene `accesos.gestionar`. En una demo trabaja en el navegador;
- * CONECTAR: en un salón real, las funciones de `accesos.functions.ts`.
+ * Ajustes › Accesos (lote 10, conectado): quién entra en el panel y con qué
+ * rol. Solo para quien tiene `accesos.gestionar`. `useAccesos()` (en
+ * `accesos-panel.ts`) da la misma API en demo (la maqueta, envuelta en
+ * promesas) y en un salón real (las funciones de servidor de
+ * `accesos.functions.ts`), así que esta pantalla no distingue una de otra.
  */
 export function AjustesAccesos() {
   const esDemo = useEsDemo();
-  const plan = usePlanSalon();
   const equipo = useEquipo();
   const yo = useMiembroActual();
-  // Se lee la lista para que la pantalla se repinte con cada cambio.
-  const miembros = useAccesosDemo((s) => s.miembros);
-  const lista = (miembros ?? []).filter((m) => m.estado !== "baja");
+  const acc = useAccesos();
+  const lista = acc.miembros;
   const [invitar, setInvitar] = useState<{ employeeId: string | null } | null>(null);
+  // userId (o id de invitación) de la fila con una acción en marcha: para no
+  // dejar pulsar dos veces y para enseñar que se está esperando al servidor.
+  const [ocupado, setOcupado] = useState<string | null>(null);
 
-  if (!esDemo) {
+  async function ejecutar(
+    id: string,
+    accion: () => Promise<ResultadoAccesosPanel>,
+    ok: string,
+    deshacer?: () => void,
+  ) {
+    setOcupado(id);
+    try {
+      resultado(await accion(), ok, deshacer);
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  if (!esDemo && acc.cargando && lista.length === 0) {
     return (
-      <p className="text-[14px] text-cafe-medio">
-        Aquí podrás invitar a tu equipo con su correo y decidir qué ve cada una. Llega en cuanto tu salón tenga activados los accesos.
-      </p>
+      <div className="flex items-center gap-2 rounded-2xl border border-lino px-4 py-6 text-[14px] text-cafe-medio">
+        <Loader2 className="size-4 animate-spin" strokeWidth={2} aria-hidden="true" />
+        Cargando accesos…
+      </div>
+    );
+  }
+
+  if (!esDemo && acc.error) {
+    return (
+      <div className="space-y-3 rounded-2xl border border-lino px-4 py-6 text-[14px] text-cafe-medio">
+        <p>No se pudo cargar Accesos: {acc.error}</p>
+        <Button variant="outline" size="sm" onClick={acc.recargar}>
+          Reintentar
+        </Button>
+      </div>
     );
   }
 
   const sinCuenta = equipo.filter((e) => !lista.some((m) => m.employeeId === e.id));
   const nombreDe = (id: string | null) => equipo.find((e) => e.id === id)?.name ?? null;
 
-  function resultado(r: ResultadoAccesos, ok: string, deshacer?: () => void) {
-    if (r.ok) toast.success(ok, deshacer ? { action: { label: "Deshacer", onClick: deshacer } } : undefined);
-    else toast.error(r.mensaje, r.codigo === "PLAN" ? { description: "Con el plan Todo incluido puedes usar los cuatro. Escríbenos a ejemplo@sishow.com." } : undefined);
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <p className="min-w-0 flex-1 text-[14px] text-cafe-medio">Quién entra en el panel y qué puede hacer. Cada persona entra con un enlace a su correo, sin contraseña.</p>
-        <Button className="gap-1.5 rounded-full font-bold" onClick={() => setInvitar({ employeeId: null })}>
+        <p className="min-w-0 flex-1 text-[14px] text-cafe-medio">
+          Quién entra en el panel y qué puede hacer. Cada persona entra con un enlace a su correo,
+          sin contraseña.
+        </p>
+        <Button
+          className="gap-1.5 rounded-full font-bold"
+          onClick={() => setInvitar({ employeeId: null })}
+        >
           <Plus className="size-4" strokeWidth={1.8} /> Invitar
         </Button>
       </div>
@@ -68,83 +129,151 @@ export function AjustesAccesos() {
       <ul className="divide-y divide-lino overflow-hidden rounded-2xl border border-lino">
         {lista.map((m) => {
           const vinculo = nombreDe(m.employeeId);
+          const puedeEditar = esDemo || m.estado === "activa";
+          const enCurso = ocupado === m.userId;
           return (
             <li key={m.userId} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <AvatarPersona nombre={m.displayName ?? m.email} size={36} />
               <div className="min-w-0 flex-1 leading-tight">
                 <p className="truncate font-bold">
                   {m.displayName ?? m.email}
-                  {yo?.userId === m.userId && <span className="ml-1.5 text-[12.5px] font-semibold text-muted-foreground">· tú</span>}
+                  {yo?.userId === m.userId && (
+                    <span className="ml-1.5 text-[12.5px] font-semibold text-muted-foreground">
+                      · tú
+                    </span>
+                  )}
                 </p>
                 <p className="truncate text-[12.5px] text-muted-foreground">
-                  {m.estado === "invitada" ? `Invitación enviada el ${fechaCorta(m.invitadaEn)} · caduca el ${fechaCorta(m.caducaEn)}` : m.email}
+                  {m.estado === "invitada"
+                    ? `Invitación enviada el ${fechaCorta(m.invitadaEn)} · caduca el ${fechaCorta(m.caducaEn)}`
+                    : m.email}
                 </p>
               </div>
-              <span className={cn("rounded-full px-2.5 py-0.5 text-[12.5px] font-bold", m.estado === "invitada" ? "bg-arena text-cafe-medio" : "bg-salvia-clara text-hoja-tinta")}>
-                {m.estado === "invitada" ? "Invitada · " : ""}
+              <span
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 text-[12.5px] font-bold",
+                  m.estado === "invitada"
+                    ? "bg-arena text-cafe-medio"
+                    : "bg-salvia-clara text-hoja-tinta",
+                )}
+              >
+                {m.estado === "invitada" ? (m.caducada ? "Caducada · " : "Invitada · ") : ""}
                 {NOMBRE_ROL[m.rol]}
                 {vinculo && m.rol !== "gerente" ? ` → ${vinculo}` : ""}
               </span>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="size-9" aria-label={`Opciones de ${m.displayName ?? m.email}`}>
-                    <MoreHorizontal className="size-[18px]" strokeWidth={1.6} />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-9"
+                    disabled={enCurso}
+                    aria-label={`Opciones de ${m.displayName ?? m.email}`}
+                  >
+                    {enCurso ? (
+                      <Loader2 className="size-[18px] animate-spin" strokeWidth={1.6} />
+                    ) : (
+                      <MoreHorizontal className="size-[18px]" strokeWidth={1.6} />
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {m.estado === "invitada" && (
                     <>
-                      <DropdownMenuItem onClick={() => resultado(accesos.reenviarInvitacion(m.userId), `Invitación reenviada a ${m.email}`)}>Reenviar invitación</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => resultado(accesos.revocarInvitacion(m.userId), "Invitación anulada", () => accesos.restaurar(m))}>Anular invitación</DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          ejecutar(
+                            m.userId,
+                            () => acc.reenviarInvitacion(m),
+                            `Invitación reenviada a ${m.email}`,
+                          )
+                        }
+                      >
+                        Reenviar invitación
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          ejecutar(
+                            m.userId,
+                            () => acc.revocarInvitacion(m),
+                            "Invitación anulada",
+                            esDemo
+                              ? () => ejecutar(m.userId, () => acc.restaurar(m), "Restaurada")
+                              : undefined,
+                          )
+                        }
+                      >
+                        Anular invitación
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                     </>
                   )}
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Cambiar rol</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                      <DropdownMenuRadioGroup
-                        value={m.rol}
-                        onValueChange={(v) => {
-                          const antes: Miembro = { ...m };
-                          resultado(accesos.cambiarRol(m.userId, v as Rol, plan), `${m.displayName ?? m.email} ahora es ${NOMBRE_ROL[v as Rol].toLowerCase()}`, () => accesos.restaurar(antes));
-                        }}
-                      >
-                        {ROLES.map((r) => (
-                          <DropdownMenuRadioItem key={r} value={r}>
-                            {NOMBRE_ROL[r]}
-                          </DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Vincular a profesional</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                      <DropdownMenuRadioGroup
-                        value={m.employeeId ?? ""}
-                        onValueChange={(v) => {
-                          const antes: Miembro = { ...m };
-                          resultado(accesos.vincular(m.userId, v || null), v ? `${m.displayName ?? m.email} es ${nombreDe(v)} en el equipo` : "Sin vincular", () => accesos.restaurar(antes));
-                        }}
-                      >
-                        <DropdownMenuRadioItem value="">Nadie</DropdownMenuRadioItem>
-                        {equipo.map((e) => (
-                          <DropdownMenuRadioItem key={e.id} value={e.id}>
-                            {e.name}
-                          </DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
+                  {puedeEditar && (
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>Cambiar rol</DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuRadioGroup
+                          value={m.rol}
+                          onValueChange={(v) => {
+                            const rol = v as Rol;
+                            ejecutar(
+                              m.userId,
+                              () => acc.cambiarRol(m, rol),
+                              `${m.displayName ?? m.email} ahora es ${NOMBRE_ROL[rol].toLowerCase()}`,
+                              () => ejecutar(m.userId, () => acc.restaurar(m), "Deshecho"),
+                            );
+                          }}
+                        >
+                          {ROLES.map((r) => (
+                            <DropdownMenuRadioItem key={r} value={r}>
+                              {NOMBRE_ROL[r]}
+                            </DropdownMenuRadioItem>
+                          ))}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  )}
+                  {puedeEditar && (
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>Vincular a profesional</DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuRadioGroup
+                          value={m.employeeId ?? ""}
+                          onValueChange={(v) => {
+                            const employeeId = v || null;
+                            ejecutar(
+                              m.userId,
+                              () => acc.vincular(m, employeeId),
+                              employeeId
+                                ? `${m.displayName ?? m.email} es ${nombreDe(employeeId)} en el equipo`
+                                : "Sin vincular",
+                              () => ejecutar(m.userId, () => acc.restaurar(m), "Deshecho"),
+                            );
+                          }}
+                        >
+                          <DropdownMenuRadioItem value="">Nadie</DropdownMenuRadioItem>
+                          {equipo.map((e) => (
+                            <DropdownMenuRadioItem key={e.id} value={e.id}>
+                              {e.name}
+                            </DropdownMenuRadioItem>
+                          ))}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  )}
                   {m.estado === "activa" && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
-                        onClick={() => {
-                          const antes: Miembro = { ...m };
-                          resultado(accesos.darDeBaja(m.userId), `${m.displayName ?? m.email} ya no entra al panel. Sus citas se quedan.`, () => accesos.restaurar(antes));
-                        }}
+                        onClick={() =>
+                          ejecutar(
+                            m.userId,
+                            () => acc.darDeBaja(m),
+                            `${m.displayName ?? m.email} ya no entra al panel. Sus citas se quedan.`,
+                            () => ejecutar(m.userId, () => acc.restaurar(m), "Restaurada"),
+                          )
+                        }
                       >
                         Dar de baja
                       </DropdownMenuItem>
@@ -162,7 +291,12 @@ export function AjustesAccesos() {
           <p className="text-[13px] font-bold text-cafe-medio">Profesionales sin cuenta</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {sinCuenta.map((e) => (
-              <button key={e.id} type="button" onClick={() => setInvitar({ employeeId: e.id })} className="inline-flex items-center gap-1.5 rounded-full border border-lino bg-superficie px-3 py-1 text-[13px] font-semibold hover:border-salvia hover:bg-salvia-suave">
+              <button
+                key={e.id}
+                type="button"
+                onClick={() => setInvitar({ employeeId: e.id })}
+                className="inline-flex items-center gap-1.5 rounded-full border border-lino bg-superficie px-3 py-1 text-[13px] font-semibold hover:border-salvia hover:bg-salvia-suave"
+              >
                 <UserPlus className="size-3.5" strokeWidth={1.8} /> Invitar a {e.name}
               </button>
             ))}
@@ -174,8 +308,8 @@ export function AjustesAccesos() {
         abierta={!!invitar}
         employeeIdInicial={invitar?.employeeId ?? null}
         onCerrar={() => setInvitar(null)}
-        onInvitar={(d) => {
-          const r = accesos.invitarMiembro(d, plan);
+        onInvitar={async (d) => {
+          const r = await acc.invitar(d);
           resultado(r, `Invitación enviada a ${d.email}`);
           if (r.ok) setInvitar(null);
         }}
@@ -193,7 +327,12 @@ function HojaInvitar({
   abierta: boolean;
   employeeIdInicial: string | null;
   onCerrar: () => void;
-  onInvitar: (d: { email: string; rol: Rol; employeeId: string | null; displayName: string | null }) => void;
+  onInvitar: (d: {
+    email: string;
+    rol: Rol;
+    employeeId: string | null;
+    displayName: string | null;
+  }) => Promise<void>;
 }) {
   const equipo = useEquipo();
   const rolesAmpliados = useTienePlan("roles-ampliados");
@@ -201,6 +340,7 @@ function HojaInvitar({
   const [rol, setRol] = useState<Rol>("estilista");
   const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [clave, setClave] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
   // Al abrir, parte de la profesional pulsada (si se abrió desde «Invitar a Sara»).
   const k = `${abierta}-${employeeIdInicial}`;
   if (abierta && clave !== k) {
@@ -208,6 +348,7 @@ function HojaInvitar({
     setEmail("");
     setRol("estilista");
     setEmployeeId(employeeIdInicial);
+    setEnviando(false);
   }
   const valido = /^\S+@\S+\.\S+$/.test(email.trim()) && (rol !== "estilista" || !!employeeId);
   const nombre = equipo.find((e) => e.id === employeeId)?.name.split(" ")[0] ?? null;
@@ -216,32 +357,69 @@ function HojaInvitar({
       <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
         <SheetHeader className="border-b border-border px-5 py-4 text-left">
           <SheetTitle className="text-base font-extrabold">Invitar al panel</SheetTitle>
-          <SheetDescription>Le llega un enlace a su correo: al abrirlo entra directamente, sin contraseña. Caduca en 7 días.</SheetDescription>
+          <SheetDescription>
+            Le llega un enlace a su correo: al abrirlo entra directamente, sin contraseña. Caduca en
+            7 días.
+          </SheetDescription>
         </SheetHeader>
         <form
           className="flex min-h-0 flex-1 flex-col"
           onSubmit={(e) => {
             e.preventDefault();
-            if (valido) onInvitar({ email: email.trim(), rol, employeeId: rol === "gerente" && !employeeId ? null : employeeId, displayName: nombre });
+            if (!valido || enviando) return;
+            setEnviando(true);
+            onInvitar({
+              email: email.trim(),
+              rol,
+              employeeId: rol === "gerente" && !employeeId ? null : employeeId,
+              displayName: nombre,
+            }).finally(() => setEnviando(false));
           }}
         >
           <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
             <label className="block space-y-1.5">
               <span className="text-[13px] font-bold">Correo</span>
               <span className="flex items-center gap-2">
-                <Mail className="size-4 text-muted-foreground" strokeWidth={1.7} aria-hidden="true" />
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="sara@correo.com" autoComplete="off" />
+                <Mail
+                  className="size-4 text-muted-foreground"
+                  strokeWidth={1.7}
+                  aria-hidden="true"
+                />
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="sara@correo.com"
+                  autoComplete="off"
+                />
               </span>
             </label>
             <fieldset className="space-y-2">
               <legend className="text-[13px] font-bold">Qué puede hacer</legend>
               {ROLES.map((r) => (
-                <label key={r} className={cn("flex cursor-pointer gap-3 rounded-2xl border px-3.5 py-2.5", rol === r ? "border-salvia bg-salvia-suave" : "border-lino hover:bg-beige/50")}>
-                  <input type="radio" name="rol" value={r} checked={rol === r} onChange={() => setRol(r)} className="mt-1 accent-[var(--hoja)]" />
+                <label
+                  key={r}
+                  className={cn(
+                    "flex cursor-pointer gap-3 rounded-2xl border px-3.5 py-2.5",
+                    rol === r ? "border-salvia bg-salvia-suave" : "border-lino hover:bg-beige/50",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="rol"
+                    value={r}
+                    checked={rol === r}
+                    onChange={() => setRol(r)}
+                    className="mt-1 accent-[var(--hoja)]"
+                  />
                   <span>
                     <b className="block text-[14px]">
                       {NOMBRE_ROL[r]}
-                      {!rolesAmpliados && (r === "subencargado" || r === "recepcion") && <span className="ml-1.5 rounded-full bg-salvia-clara px-2 py-0.5 text-[11.5px] text-hoja-tinta">Todo incluido</span>}
+                      {!rolesAmpliados && (r === "subencargado" || r === "recepcion") && (
+                        <span className="ml-1.5 rounded-full bg-salvia-clara px-2 py-0.5 text-[11.5px] text-hoja-tinta">
+                          Todo incluido
+                        </span>
+                      )}
                     </b>
                     <span className="block text-[13px] text-cafe-medio">{EXPLICA_ROL[r]}</span>
                   </span>
@@ -250,13 +428,17 @@ function HojaInvitar({
             </fieldset>
             {(rol === "estilista" || rol === "gerente") && (
               <label className="block space-y-1.5">
-                <span className="text-[13px] font-bold">¿Quién es en tu equipo?{rol === "gerente" ? " (si también atiende)" : ""}</span>
+                <span className="text-[13px] font-bold">
+                  ¿Quién es en tu equipo?{rol === "gerente" ? " (si también atiende)" : ""}
+                </span>
                 <select
                   value={employeeId ?? ""}
                   onChange={(e) => setEmployeeId(e.target.value || null)}
                   className="h-10 w-full rounded-xl border border-input bg-blanco px-3 text-[14px]"
                 >
-                  <option value="">{rol === "estilista" ? "Elige una profesional" : "Nadie"}</option>
+                  <option value="">
+                    {rol === "estilista" ? "Elige una profesional" : "Nadie"}
+                  </option>
                   {equipo.map((e) => (
                     <option key={e.id} value={e.id}>
                       {e.name}
@@ -267,8 +449,15 @@ function HojaInvitar({
             )}
           </div>
           <SheetFooter className="border-t border-border px-5 py-4">
-            <Button type="submit" disabled={!valido} className="w-full rounded-full font-bold">
-              Enviar invitación
+            <Button
+              type="submit"
+              disabled={!valido || enviando}
+              className="w-full gap-1.5 rounded-full font-bold"
+            >
+              {enviando && (
+                <Loader2 className="size-4 animate-spin" strokeWidth={2} aria-hidden="true" />
+              )}
+              {enviando ? "Enviando…" : "Enviar invitación"}
             </Button>
           </SheetFooter>
         </form>
