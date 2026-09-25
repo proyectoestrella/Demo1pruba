@@ -18,6 +18,7 @@ import { servicesForType } from "../mock/salon";
 import type { SalonProfile } from "../mock/types";
 import { citasParaRecordarManana, emailRecordatorio } from "../recordatorio-email";
 import { getSupabaseServerClient } from "../supabase.server";
+import { nombreServicioLibre } from "../appointment-services";
 
 interface FilaCita {
   id: string;
@@ -101,7 +102,7 @@ export async function enviarRecordatoriosDeManana(
       clientName: cita.clients?.name ?? cita.client_name ?? "",
       salonName: perfil.name,
       startISO: cita.start_at,
-      servicio: cita.service_id.split(",").map((id) => servicios[id] ?? "tu servicio").join(" + "),
+      servicio: cita.service_id.split(",").map((id) => servicios[id] ?? nombreServicioLibre(id) ?? "tu servicio").join(" + "),
       direccion: perfil.address,
       senalPendiente,
     });

@@ -1,5 +1,6 @@
 import type { Appointment, BookingAnswers, Client, Employee, Service } from "./mock/types";
 import { depositState } from "./deposit-deadline";
+import { nombreServicioLibre } from "./appointment-services";
 
 const DIA = 86_400_000;
 /** Avisar solo si hay un hábito demostrado de color de menos de ocho semanas. */
@@ -44,7 +45,7 @@ export function fichaDeClienta(clientId: string, datos: DatosFicha) {
   const visitas: VisitaFicha[] = completas.map((c) => ({
     id: c.id,
     fecha: c.start,
-    servicios: c.serviceIds.map((id) => nombresServicio.get(id) ?? id),
+    servicios: c.serviceIds.map((id) => nombresServicio.get(id) ?? nombreServicioLibre(id) ?? id),
     profesional: nombresEquipo.get(c.employeeId) ?? (c.employeeId === "sin-indicar" ? "Profesional sin indicar" : c.employeeId),
     duracion: c.duration,
     importe: c.priceEur,
@@ -71,7 +72,7 @@ export function fichaDeClienta(clientId: string, datos: DatosFicha) {
     gastoTotal: visitas.reduce((s, v) => s + v.importe, 0),
     gastoUltimos12Meses: visitas.filter((v) => +new Date(v.fecha) >= new Date(datos.ahora.getFullYear() - 1, datos.ahora.getMonth(), datos.ahora.getDate()).getTime())
       .reduce((s, v) => s + v.importe, 0),
-    servicioHabitual: servicioHabitualId ? nombresServicio.get(servicioHabitualId) ?? servicioHabitualId : undefined,
+    servicioHabitual: servicioHabitualId ? nombresServicio.get(servicioHabitualId) ?? nombreServicioLibre(servicioHabitualId) ?? servicioHabitualId : undefined,
     profesionalHabitual: profesionalHabitualId ? nombresEquipo.get(profesionalHabitualId) ?? profesionalHabitualId : undefined,
     proximaCita: proxima?.start,
     ultimoColor: ultimoColor ? { formula: ultimoColor.colorFormula!, fecha: ultimoColor.fecha } : undefined,

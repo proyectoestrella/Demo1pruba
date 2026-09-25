@@ -1,5 +1,6 @@
 import type { Appointment, Employee, Service } from "./mock/types";
 import { STATUS_OPTIONS } from "./appointment-status";
+import { nombreServicioLibre } from "./appointment-services";
 
 /**
  * Exportación de citas y resumen mensual a CSV, generados en cliente con
@@ -63,7 +64,7 @@ export function citasToCsv(
         fechaEs(a.start),
         horaEs(a.start),
         a.clientName,
-        a.serviceIds.map((id) => services[id]?.name ?? id).join(" + "),
+        a.serviceIds.map((id) => services[id]?.name ?? nombreServicioLibre(id) ?? id).join(" + "),
         employees[a.employeeId]?.name ?? a.employeeId,
         a.priceEur,
         ESTADO_LABEL[a.status] ?? a.status,

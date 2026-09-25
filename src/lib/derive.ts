@@ -1,5 +1,6 @@
 import { employees, serviceMap } from "./mock/salon";
 import type { Appointment, Employee } from "./mock/types";
+import { nombreServicioLibre } from "./appointment-services";
 
 const DAY_MS = 86400_000;
 
@@ -92,15 +93,27 @@ export function serviceMix(appts: Appointment[]) {
   appts.forEach((a) => {
     if (a.status === "cancelled") return;
     const own = a.serviceIds.map((id) => serviceMap[id]).filter(Boolean);
-    if (!own.length) return;
-    // El precio de la cita es la suma de sus servicios; se reparte entre ellos
-    // en proporción a su precio de catálogo para que la facturación por
-    // servicio siga cuadrando con la total aunque la cita lleve varios.
+    // Servicios libres de una sola cita (`libre:<nombre>`): cuentan con su
+    // nombre y se agrupan por él; no tienen precio de catálogo.
+    const libres = a.serviceIds.filter((id) => !serviceMap[id] && nombreServicioLibre(id) !== null);
+    if (!own.length && !libres.length) return;
+    // El precio de la cita es la suma de sus servicios. Sin libres, se reparte
+    // en proporción al precio de catálogo, para que la facturación por
+    // servicio cuadre con la total. Con libres, los de carta se quedan su
+    // precio de catálogo y el resto va a partes iguales a los libres.
     const catalogo = own.reduce((s, sv) => s + sv.priceEur, 0);
+    const resto = Math.max(0, a.priceEur - catalogo);
     own.forEach((s) => {
       if (!counts[s.id]) counts[s.id] = { name: s.name, bookings: 0, revenue: 0 };
       counts[s.id].bookings += 1;
-      counts[s.id].revenue += catalogo > 0 ? (a.priceEur * s.priceEur) / catalogo : 0;
+      counts[s.id].revenue += libres.length
+        ? Math.min(s.priceEur, a.priceEur)
+        : catalogo > 0 ? (a.priceEur * s.priceEur) / catalogo : 0;
+    });
+    libres.forEach((id) => {
+      if (!counts[id]) counts[id] = { name: nombreServicioLibre(id)!, bookings: 0, revenue: 0 };
+      counts[id].bookings += 1;
+      counts[id].revenue += resto / libres.length;
     });
   });
   return Object.values(counts).sort((a, b) => b.bookings - a.bookings);
