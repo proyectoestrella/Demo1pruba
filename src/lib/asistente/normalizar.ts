@@ -27,7 +27,12 @@ export const ABREVIATURAS: Record<string, string> = {
   dnd: "donde", cdo: "cuando", qdo: "cuando", cnd: "cuando",
   cto: "cuanto", cta: "cuanta", ctos: "cuantos", ctas: "cuantas",
   tngo: "tengo", tng: "tengo", tgo: "tengo",
-  hy: "hoy", oy: "hoy",
+  hy: "hoy", oy: "hoy", hoi: "hoy",
+  mnna: "manana", mana: "manana",
+  cuants: "cuantas", qntas: "cuantas", qntos: "cuantos",
+  smn: "semana", cts: "citas",
+  pelu: "peluqueria", movil: "telefono",
+  sacado: "dinero",
   finde: "fin de semana",
   sem: "semana", sema: "semana",
   prox: "proxima", proxi: "proxima", sig: "siguiente", sigte: "siguiente",
@@ -91,15 +96,16 @@ export function numerosEnCifras(palabras: string[]): string[] {
 
 /**
  * Texto normalizado: sin tildes, sin signos (se conservan los dígitos, los
- * dos puntos de una hora «17:30» y la barra de una fecha «5/10»), con las
+ * dos puntos de una hora «17:30» y la barra o el guion de una fecha «5/10»,
+ * «03-10»), con las
  * abreviaturas expandidas y los números en cifras.
  */
 export function normalizar(texto: string): string {
   const limpio = sinTildes(texto)
     .replace(/€/g, " euros ")
     .replace(/(\d)[.,](\d)/g, "$1.$2") // 12,5 → 12.5
-    .replace(/[^a-z0-9:/.\s]/g, " ")
-    .replace(/(?<!\d)[.:/]|[.:/](?!\d)/g, " ")
+    .replace(/[^a-z0-9:/.\-\s]/g, " ")
+    .replace(/(?<!\d)[.:/-]|[.:/-](?!\d)/g, " ")
     .replace(/\s+/g, " ")
     .trim();
   const palabras = limpio
