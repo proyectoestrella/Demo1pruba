@@ -83,21 +83,18 @@ function Waitlist() {
   const tipo = useBusinessType();
   const serviceMap = selectServiceMap(services);
 
-  const [deleteTarget, setDeleteTarget] = useState<WaitlistEntry | null>(null);
   const [convertTarget, setConvertTarget] = useState<WaitlistEntry | null>(null);
   const [convertOpen, setConvertOpen] = useState(false);
   const [altaOpen, setAltaOpen] = useState(false);
   const [avisoTarget, setAvisoTarget] = useState<WaitlistEntry | null>(null);
 
-  function handleDelete() {
-    if (!deleteTarget) return;
-    const quitada = deleteTarget;
+  // Lote 12e: sin «¿Seguro?»: se quita al momento y se deshace desde el aviso.
+  function handleDelete(quitada: WaitlistEntry) {
     deleteWaitlist(quitada.id);
     // Lote 12: deshacer la vuelve a poner tal cual (mismo id y fecha de alta).
     avisar(`${quitada.clientName.split(" ")[0]} fuera de la lista de espera`, () =>
       useSalonStore.setState((st) => ({ waitlist: st.waitlist.some((w) => w.id === quitada.id) ? st.waitlist : [...st.waitlist, quitada] })),
     );
-    setDeleteTarget(null);
   }
 
   function openConvert(w: WaitlistEntry) {
@@ -206,7 +203,7 @@ function Waitlist() {
                     size="icon"
                     variant="outline"
                     className="size-[34px] text-melocoton-tinta hover:bg-melocoton hover:text-melocoton-tinta"
-                    onClick={() => setDeleteTarget(w)}
+                    onClick={() => handleDelete(w)}
                     aria-label={`Quitar a ${w.clientName} de la lista de espera`}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -249,25 +246,6 @@ function Waitlist() {
         onCreated={handleConverted}
       />
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Quitar de la lista de espera?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteTarget && `${deleteTarget.clientName} dejará de estar en la lista de espera.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Volver</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Sí, quitar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

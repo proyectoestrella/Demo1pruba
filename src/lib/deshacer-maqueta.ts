@@ -11,6 +11,7 @@
  */
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { createElement } from "react";
 import { toast } from "sonner";
 import {
   aplicarDeshacerEnLista,
@@ -204,7 +205,9 @@ export function avisar(texto: string, deshacer: () => void, id?: string) {
     toast.dismiss(toastId);
     deshacer();
   };
-  toast(texto, { id: toastId, duration: SEGUNDOS_AVISO * 1000, action: { label: "Deshacer", onClick: hacer } });
+  // Barra de tiempo discreta (12e): se vacía en 10 s y se para, como el aviso, al pasar el ratón.
+  const barra = createElement("span", { className: "barra-deshacer", style: { animationDuration: `${SEGUNDOS_AVISO}s` }, "aria-hidden": true });
+  toast(texto, { id: toastId, duration: SEGUNDOS_AVISO * 1000, description: barra, action: { label: "Deshacer", onClick: hacer } });
   ultimo = { deshacer: hacer, hasta: Date.now() + SEGUNDOS_AVISO * 1000, toastId };
 }
 
