@@ -69,6 +69,34 @@ describe("responder", () => {
     expect(n.tipo === "respuesta" && n.tambien).toBeFalsy();
   });
 
+  test("7c: fallos que encontró FRONTEND en el panel", () => {
+    const a = nuevo().responder("qien no ha venido desde hace 2 meses");
+    expect(a.tipo === "respuesta" && a.intencion).toBe("clientas-inactivas");
+    const b = nuevo().responder("quiero mandar sms a todas mis clientas");
+    expect(b.tipo === "escalar" && b.intencion).toBe("no-campanas-automaticas");
+    const c = nuevo().responder("cuánto he facturado este mes");
+    expect(c.tipo === "respuesta" && c.texto).toContain("de citas ya hechas");
+    expect(c.tipo === "respuesta" && c.texto).toContain("de las que faltan");
+  });
+
+  test("7c: dos intenciones vecinas en la misma pregunta → pregunta cuál", () => {
+    const r = nuevo().responder("que le queda a noelia hoy y cual es la siguiente?");
+    expect(r.tipo === "respuesta" ? r.intencion : r.tipo).not.toBe("lista-citas-hoy");
+    const s = nuevo().responder("a quien se le paso el plazo de la señal");
+    expect(s.tipo === "respuesta" && s.intencion).toBe("senales-vencidas");
+    const t = nuevo().responder("cual es el plazo para la señal");
+    expect(t.tipo === "respuesta" && t.intencion).toBe("regla-senal");
+  });
+
+  test("7c: vocabulario coloquial del salón y cálculos sueltos", () => {
+    expect(nuevo().responder("¿quién está ahora en cabina?").tipo).toBe("respuesta");
+    expect(nuevo().responder("no se ni que preguntarte").tipo === "respuesta").toBe(true);
+    for (const q of ["cuanto cuesta un iphone 17 ahora?", "sabes algo de la renta de este año?", "cuanto es 15% de 340?"]) {
+      const r = nuevo().responder(q);
+      expect([q, r.tipo === "respuesta" && ["negocio", "plan", "tecnica"].includes(require("./intenciones").POR_ID.get(r.intencion)?.grupo) && require("./intenciones").POR_ID.get(r.intencion)?.categoria !== "ayuda"]).toEqual([q, false]);
+    }
+  });
+
   test("fuera del dominio: sin nada del salón no adivina", () => {
     for (const q of ["¿cuánto vale el iPhone?", "dame una receta de lentejas", "cuando es la luna llena este mes"]) expect([q, nuevo().responder(q).tipo]).toEqual([q, "no-se"]);
     expect(nuevo().responder("puedo ver las citas en el iphone").tipo).toBe("respuesta");
