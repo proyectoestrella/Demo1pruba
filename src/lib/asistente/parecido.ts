@@ -53,7 +53,7 @@ export const FRASES: Array<[RegExp, string]> = [
 export const SINONIMOS: string[][] = [
   ["clienta", "cliente", "clientes", "clientas", "chica", "chicas", "senora", "senoras", "persona", "personas", "gente", "chico", "chicos", "senor"],
   ["cita", "citas", "reserva", "reservas", "turno", "turnos", "visita", "visitas", "servicio_reservado"],
-  ["hueco", "huecos", "libre", "libres", "gap", "disponible", "disponibles", "disponibilidad", "sitio", "hueco_libre", "libra", "librar", "libran"],
+  ["hueco", "huecos", "libre", "libres", "gap", "disponible", "disponibles", "disponibilidad", "sitio", "hueco_libre", "librar", "libran"],
   ["vino", "vinieron", "asistio", "asistieron", "aparecio", "llego", "llegaron", "acudio", "presento"],
   ["planton", "plantones", "faltar", "falto", "faltaron", "ausencia", "ausencias", "noshow"],
   ["dinero", "caja", "ingreso", "ingresos", "facturado", "facturacion", "facturar", "facturamos", "facturo", "cobrado", "cobrada", "cobro", "cobros", "cobrar", "cobramos", "ganado", "ganamos", "ganancia", "ganancias", "recaudado", "recaudacion", "euros", "pasta", "ventas", "venta", "sacar", "sacamos", "sacado", "sacar"],
@@ -117,6 +117,8 @@ const SIN_RAIZ = new Set([
   "quien", "quienes", "cuando", "cuanto", "cuanta", "cuantos", "cuantas", "donde", "como", "cual", "cuales",
   "alguien", "nadie", "nada", "todo", "toda", "todos", "todas", "cada", "otro", "otra", "mas", "menos", "no",
   "porque", "hoy", "ayer", "ahora", "luego", "despues", "antes",
+  // «libra(s)» es peso o moneda: no se recorta a «libr-» ni se confunde con «libre».
+  "libra", "libras",
   ...FRASES.map(([, rep]) => rep),
 ]);
 

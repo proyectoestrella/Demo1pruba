@@ -20,7 +20,7 @@ const LEXICO = new RegExp(
       "marcar", "marcad\\w*", "pendientes?", "abiert\\w*", "abr\\w*", "cerrad\\w*", "cierr\\w*", "sillon", "cargad\\w*",
       // personas
       "clientas?", "clientes?", "gente", "cartera", "nuevas?", "inactiv\\w*", "fiel\\w*", "recurrente\\w*",
-      "profesional\\w*", "equipo", "estilista\\w*", "peluquer\\w*", "trabaj\\w*", "libra\\w*", "horario\\w*",
+      "profesional\\w*", "equipo", "estilista\\w*", "peluquer\\w*", "trabaj\\w*", "librar", "libran", "horario\\w*",
       "telefono", "movil", "email", "correo", "contact\\w*", "notas?", "apunt\\w*", "anot\\w*", "observaci\\w*",
       "cumple\\w*", "deb\\w*", "deuda\\w*", "recargo\\w*", "bloque\\w*", "ficha\\w*", "gastad[oa]", "gasta", "gastan", "gastado",
       // servicios y dinero

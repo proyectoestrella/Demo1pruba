@@ -28,7 +28,7 @@ export const PISTAS: Pista[] = [
   // ── Hoy ──
   { id: "proxima-cita", re: r(`\\b(?:siguiente|proxima cita|a quien le toca|quien (?:esta|hay|viene) ahora|ahora (?:esta|hay)|ahora mismo|en el sillon|en la silla)\\b`) },
   { id: "lista-citas-hoy", re: r(`\\b(?:que citas me quedan|citas que (?:me )?quedan|lista de (?:las )?citas|quienes vienen|que me queda (?:hoy|por hoy)|que queda hoy)\\b`) },
-  { id: "huecos-hoy", re: r(`\\b(?:huecos?|libres?|sitio|disponib\\w*|queda sitio|algo libre|tiempo libre|libra\\w*)\\b`), peso: 0.4 },
+  { id: "huecos-hoy", re: r(`\\b(?:huecos?|libres?|sitio|disponib\\w*|queda sitio|algo libre|tiempo libre|librar|libran|libra (?:un|el|la|esta))\\b`), peso: 0.4 },
   { id: "ocupacion-hoy", re: r(`\\b(?:ocupaci\\w*|ocupad[oa]s?|porcentaje|llen[oa]s?|cargad[oa]s?|reservad[oa]s?)\\b`), peso: 0.4 },
   { id: "ingresos-hoy", re: r(`\\b${DINERO}\\b.*\\bhoy\\b|\\bhoy\\b.*\\b${DINERO}\\b`) },
   { id: "pendiente-de-ti", re: r(`\\b(?:que|algo) (?:tengo )?pendiente\\b|\\bpor resolver\\b|\\bme falta por hacer\\b|\\balgo esperandome\\b|\\bque me espera\\b`), peso: 0.35 },
@@ -167,6 +167,7 @@ export const PISTAS: Pista[] = [
   { id: "proxima-cita", re: r(`\\ben cabina\\b|\\ben el sillon\\b`), peso: 0.45 },
   { id: "clientas-nuevas", re: r(`\\bpor primera vez\\b`), peso: 0.45 },
   { id: "quien-trabaja", re: r(`\\bquien(?:es)? (?:viene|vienen|esta) a (?:currar|trabajar)\\b|\\bquien curra\\b`), peso: 0.55 },
+  { id: "solicitudes-pendientes", re: r(`\\breservas nuevas\\b|\\besperando (?:a )?que (?:las |la )?confirme\\b|\\bque (?:las|la) confirme\\b|\\bpendientes? de (?:que )?(?:las )?confirm\\w*`), peso: 0.6 },
 ];
 
 const POR_INTENCION = new Map<string, Pista[]>();
