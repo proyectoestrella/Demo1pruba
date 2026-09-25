@@ -849,7 +849,8 @@ export const deleteAppointment = createServerFn({ method: "POST" })
 /** Alta directa de una ficha, también cuando aún no tiene ninguna cita. */
 export const saveClient = createServerFn({ method: "POST" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug, name: z.string().min(1), phone: z.string(), email: z.string().email().optional(), notes: z.string().optional(), createdAt: z.string().datetime().optional() }))
+  .inputValidator(z.object({ slug, name: z.string().min(1), phone: z.string(), email: z.string().email().optional(), notes: z.string().optional(), createdAt: z.string().datetime().optional(),
+    tpvCode: z.string().max(40).optional(), birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }))
   .handler(async ({ data }) => {
     await exigirAcceso(data.slug);
     const supabase = getSupabaseServerClient();
@@ -861,13 +862,24 @@ export const saveClient = createServerFn({ method: "POST" })
       if (buscarError) throw new Error(`saveClient: ${buscarError.message}`);
       if (previa) return { synced: true as const };
     }
-    const fila = { salon_slug: data.slug, name: data.name, phone: data.phone || null,
+    // tpv_code y birthday solo si vienen: un alta a mano no debe borrar lo importado.
+    let fila: Record<string, unknown> = { salon_slug: data.slug, name: data.name, phone: data.phone || null,
       phone_key: key || null, email: data.email ?? null, notes: data.notes ?? null,
-      ...(data.createdAt ? { created_at: data.createdAt } : {}) };
-    const result = key
-      ? await supabase.from("clients").upsert(fila, { onConflict: "salon_slug,phone_key" })
-      : await supabase.from("clients").insert(fila);
-    if (result.error) throw new Error(`saveClient: ${result.error.message}`);
+      ...(data.createdAt ? { created_at: data.createdAt } : {}),
+      ...(data.tpvCode ? { tpv_code: data.tpvCode } : {}),
+      ...(data.birthday ? { birthday: data.birthday } : {}) };
+    // Baja de nivel de esquema si producción aún no tiene alguna columna
+    // (ver NIVELES_CLIENTE): la ficha se guarda sin ese dato antes que no
+    // guardarse.
+    for (let nivel = 0; nivel <= NIVELES_CLIENTE.length; nivel++) {
+      const result = key
+        ? await supabase.from("clients").upsert(fila, { onConflict: "salon_slug,phone_key" })
+        : await supabase.from("clients").insert(fila);
+      if (!result.error) return { synced: true as const };
+      if (!faltaEsquema(result.error) || nivel === NIVELES_CLIENTE.length) throw new Error(`saveClient: ${result.error.message}`);
+      console.warn(`saveClient: faltan columnas (${NIVELES_CLIENTE[nivel].join(", ")}); aplica supabase/pendiente.sql`);
+      fila = sinCampos(fila, NIVELES_CLIENTE[nivel]);
+    }
     return { synced: true as const };
   });
 

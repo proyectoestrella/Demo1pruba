@@ -357,6 +357,7 @@ export function pushClient(slug: string | null, cliente: Client): void {
   const clave = `${slug}|${cliente.name}`;
   const pending = subir(`la ficha de ${cliente.name}`, () => saveClient({ data: {
     slug, name: cliente.name, phone: cliente.phone, email: cliente.email, notes: cliente.notes, createdAt: cliente.createdAt,
+    tpvCode: cliente.tpvCode, birthday: cliente.birthday,
   } }));
   altasPendientes.set(clave, pending);
   void pending.finally(() => { if (altasPendientes.get(clave) === pending) altasPendientes.delete(clave); });

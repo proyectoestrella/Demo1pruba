@@ -96,3 +96,15 @@ test("detecta el mismo nombre si alguna ficha no tiene teléfono", () => {
   const r = vistaPreviaClientas(tabla, []);
   expect([r.nuevas, r.duplicadas]).toEqual([1, 1]);
 });
+
+test("guarda el código de TPV 123 y el cumpleaños, y no duplica al reimportar por código", () => {
+  const tabla = leerCsv("codigocliente;nombre;apellidos;telefono2;ingreso;nacimiento\r\n0042;Marta;Martín;612345678;01/02/2020;04/05/1990\r\n0043;Lucía;Pérez;699888777;15/03/2021;\r\n");
+  const mapa = detectarColumnas(tabla.cabeceras);
+  expect(mapa.nacimiento).toBe(5);
+  const yaImportada: Client = { id: "c-1", name: "Marta Martín", phone: "600000000", createdAt: "2020-02-01T00:00:00.000Z", tpvCode: "0042" };
+  const previa = vistaPreviaClientas(tabla, [yaImportada], mapa);
+  expect(previa.filas[0]).toMatchObject({ codigo: "0042", estado: "duplicada", motivo: "Ya está importada con ese código de TPV 123" });
+  expect(previa.filas[1]).toMatchObject({ codigo: "0043", nacimiento: undefined, estado: "nueva" });
+  const sinPrevias = vistaPreviaClientas(tabla, [], mapa);
+  expect(sinPrevias.filas[0]).toMatchObject({ codigo: "0042", nacimiento: "1990-05-04", fechaAlta: "2020-02-01T11:00:00.000Z", estado: "nueva" });
+});

@@ -55,13 +55,14 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
     const nuevas: Client[] = [];
     const codigos = new Map<string, string>();
     for (const fila of previa.filas.filter((f) => f.estado === "nueva")) {
-      const client = addClient({ name: fila.nombre, phone: fila.telefono, email: fila.email, notes: fila.notas, createdAt: fila.fechaAlta });
+      const client = addClient({ name: fila.nombre, phone: fila.telefono, email: fila.email, notes: fila.notas, createdAt: fila.fechaAlta, tpvCode: fila.codigo, birthday: fila.nacimiento });
       nuevas.push(client);
       if (fila.codigo) codigos.set(fila.codigo, client.id);
     }
     const normalizar = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     for (const fila of previa.filas.filter((f) => f.codigo && !codigos.has(f.codigo))) {
-      const existente = clientes.find((c) => normalizar(c.name) === normalizar(fila.nombre));
+      // Primero por el código guardado en la ficha (importaciones anteriores); si no, por nombre.
+      const existente = clientes.find((c) => c.tpvCode === fila.codigo) ?? clientes.find((c) => normalizar(c.name) === normalizar(fila.nombre));
       if (existente) codigos.set(fila.codigo!, existente.id);
     }
     const historial = visitas ? importarVisitas(visitas, [...clientes, ...nuevas], { servicios, equipo, codigos }) : { visitas: [], errores: 0, noEnlazadas: 0, lineas: 0 };
