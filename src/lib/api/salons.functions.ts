@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 /**
  * Backend de los salones REALES (los que pagan), frente a las ~54 demos de
  * venta que siguen viviendo enteras dentro del enlace `?d=…`.
@@ -19,6 +20,7 @@ import { acceso, exigirAcceso } from "./autorizacion.server";
 import { accionesDeParcheCita, accionesDeParchePerfil, exigirAcciones } from "./guardas";
 import { recortarDatosPanel } from "./recorte";
 import { alcance, permisosDe, type MiembroActual } from "../permisos";
+import { DIAS_RETENCION } from "../cambios";
 import { PermisoDenegado } from "./autorizacion";
 import { tieneMando, vistaEfectiva } from "./autorizacion";
 import { conSesion } from "./sesion.middleware";
@@ -332,9 +334,86 @@ export const saveSalonProfile = createServerFn({ method: "POST" })
         return { synced: false as const, motivo: "falta-esquema" as const };
       }
       if (error) throw new Error(`saveSalonProfile: ${error.message}`);
+      // Versión de lo publicado (lote 9): «Restaurar esta versión». Si la tabla
+      // aún no existe, publicar sigue funcionando igual.
+      await guardarVersion(supabase, data.slug, data.profile, quien.tipo === "miembro" ? quien : null, null);
       return { synced: true as const };
     },
   );
+
+/* ---------------------------------------------------------------------- */
+/* Versiones del perfil (lote 9)                                           */
+/* ---------------------------------------------------------------------- */
+
+const VERSIONES_MINIMAS = 30;
+
+async function guardarVersion(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  salonSlug: string,
+  profile: Record<string, unknown>,
+  autor: { userId: string; displayName: string | null } | null,
+  nota: string | null,
+): Promise<string | null> {
+  const id = randomUUID();
+  const { error } = await supabase.from("perfil_versiones").insert({
+    id, salon_slug: salonSlug, perfil: profile, publicado_por: autor?.userId ?? null, autor_nombre: autor?.displayName ?? null, nota,
+  });
+  if (error) {
+    console.warn(`perfil_versiones (¿falta aplicar supabase/pendiente.sql?): ${error.message}`);
+    return null;
+  }
+  // Se quedan las 30 últimas o las de los últimos 90 días, lo que dé más.
+  const { data: viejas } = await supabase
+    .from("perfil_versiones").select("id, fecha").eq("salon_slug", salonSlug).order("fecha", { ascending: false }).range(VERSIONES_MINIMAS, 1000);
+  const limite = Date.now() - DIAS_RETENCION * 86_400_000;
+  const borrar = (viejas ?? []).filter((v: { fecha: string }) => Date.parse(v.fecha) < limite).map((v: { id: string }) => v.id);
+  if (borrar.length) await supabase.from("perfil_versiones").delete().in("id", borrar);
+  return id;
+}
+
+export const listarVersiones = createServerFn({ method: "GET" })
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug }))
+  .handler(async ({ data }) => {
+    exigirAcciones(await exigirAcceso(data.slug), ["web.restaurar-version"]);
+    const supabase = getSupabaseServerClient();
+    if (!supabase) return { versiones: [] };
+    const { data: filas, error } = await supabase
+      .from("perfil_versiones").select("id, fecha, autor_nombre, nota").eq("salon_slug", data.slug).order("fecha", { ascending: false }).limit(60);
+    if (error) return { versiones: [] };
+    return {
+      versiones: (filas ?? []).map((f: { id: string; fecha: string; autor_nombre: string | null; nota: string | null }) => ({
+        id: f.id, fecha: f.fecha, autorNombre: f.autor_nombre, nota: f.nota,
+      })),
+    };
+  });
+
+/** Publica de nuevo una versión anterior (como versión nueva) y lo deja en el historial. */
+export const restaurarVersion = createServerFn({ method: "POST" })
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug, versionId: z.string().min(8) }))
+  .handler(async ({ data }): Promise<{ ok: true; profile: Record<string, JsonPerfil> } | { ok: false; motivo: string }> => {
+    const quien = await exigirAcceso(data.slug);
+    exigirAcciones(quien, ["web.restaurar-version"]);
+    const supabase = getSupabaseServerClient();
+    if (!supabase) return { ok: false, motivo: "sin-backend" };
+    const { data: v } = await supabase.from("perfil_versiones").select("perfil, fecha").eq("id", data.versionId).eq("salon_slug", data.slug).maybeSingle();
+    if (!v) return { ok: false, motivo: "Esa versión ya no existe." };
+    const { data: actual } = await supabase.from("salons").select("profile").eq("slug", data.slug).maybeSingle();
+    const { error } = await supabase.from("salons").update({ profile: v.perfil, updated_at: new Date().toISOString() }).eq("slug", data.slug);
+    if (error) return { ok: false, motivo: "No se ha podido restaurar. Tu web sigue como estaba." };
+    const autor = quien.tipo === "miembro" ? quien : null;
+    await guardarVersion(supabase, data.slug, v.perfil as Record<string, unknown>, autor, `Restaurada la versión del ${String(v.fecha).slice(0, 10)}`);
+    await supabase.from("cambios").insert({
+      id: randomUUID(), salon_slug: data.slug, tipo: "perfil.restaurar", entidad: "perfil", id_entidad: "perfil",
+      antes: { perfil: (actual as { profile?: unknown } | null)?.profile ?? null }, despues: { perfil: v.perfil },
+      resumen: `Restaurada la versión de tu página del ${String(v.fecha).slice(0, 10)}`,
+      autor: autor?.userId ?? null, autor_nombre: autor?.displayName ?? null, fecha: new Date().toISOString(), aviso_enviado: false,
+    });
+    return { ok: true, profile: v.perfil as Record<string, JsonPerfil> };
+  });
+
+type JsonPerfil = string | number | boolean | null | JsonPerfil[] | { [k: string]: JsonPerfil };
 
 /**
  * Guarda SOLO los campos que han cambiado, fusionándolos con lo que hay en la
