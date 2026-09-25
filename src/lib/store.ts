@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { MiembroActual } from "./permisos";
 import type { PeriodoId, RangoPersonalizado } from "./periodos";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { seedAppointments, seedWaitlist, clients as seedClients, buildSeed } from "./mock/seed";
@@ -108,6 +109,13 @@ interface SalonState {
    * Adam no siga creyéndose su panel al abrir luego una demo cualquiera.
    */
   realSalonSlug: string | null;
+  /**
+   * Quién ha entrado al panel de un salón real (lote 8): rol, profesional
+   * vinculada y nombre para el saludo. `null` en una demo. NO se persiste
+   * (no está en `partialize`): lo da el servidor en cada carga.
+   */
+  miembro: MiembroActual | null;
+  setMiembro: (m: MiembroActual | null) => void;
   /** Resultado de identificar el slug; la reserva pública espera esta respuesta. */
   publicBookingResolution: {
     slug: string;
@@ -429,6 +437,7 @@ export const useSalonStore = create<SalonState>()(
       panelV2: false,
       demoActive: false,
       realSalonSlug: null,
+      miembro: null,
       publicBookingResolution: null,
       lastFreedSlot: null,
       periodoAnalitica: "hoy",
@@ -842,6 +851,7 @@ export const useSalonStore = create<SalonState>()(
       deleteDemo: (id) => set((s) => ({ savedDemos: s.savedDemos.filter((d) => d.id !== id) })),
 
       setRealSalonSlug: (slug) => set({ realSalonSlug: slug }),
+      setMiembro: (m) => set({ miembro: m }),
       setPublicBookingResolution: (value) => set({ publicBookingResolution: value }),
 
       hydrateFromServer: ({ appointments, clients, waitlist }) =>

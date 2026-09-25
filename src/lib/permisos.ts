@@ -35,6 +35,13 @@ export type AccionId = (typeof ACCIONES)[number];
 
 export type Alcance = "propio" | "todo";
 
+/** Quién ha entrado al panel de un salón real: lo devuelve `accesoAlPanel`. */
+export interface MiembroActual {
+  rol: Rol;
+  employeeId: string | null;
+  displayName: string | null;
+}
+
 export interface Permisos {
   rol: Rol;
   paginas: ReadonlySet<PaginaId>;

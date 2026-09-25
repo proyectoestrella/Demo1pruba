@@ -18,7 +18,7 @@ import { z } from "zod";
 import { acceso, exigirAcceso } from "./autorizacion.server";
 import { accionesDeParcheCita, accionesDeParchePerfil, exigirAcciones } from "./guardas";
 import { recortarDatosPanel } from "./recorte";
-import { alcance, permisosDe, type Rol } from "../permisos";
+import { alcance, permisosDe, type MiembroActual } from "../permisos";
 import { PermisoDenegado } from "./autorizacion";
 import { tieneMando, vistaEfectiva } from "./autorizacion";
 import { conSesion } from "./sesion.middleware";
@@ -238,11 +238,7 @@ export const accesoAlPanel = createServerFn({ method: "GET" })
     },
   );
 
-export interface MiembroActual {
-  rol: Rol;
-  employeeId: string | null;
-  displayName: string | null;
-}
+export type { MiembroActual } from "../permisos";
 
 /* ---------------------------------------------------------------------- */
 /* Perfil                                                                  */

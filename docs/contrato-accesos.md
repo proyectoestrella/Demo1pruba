@@ -61,16 +61,27 @@ interface Permisos {
 }
 ```
 
-## 2. Lo que expone BACKEND
+## 2. Lo que expone BACKEND (implementado en el lote 8)
 
 | Pieza | Fichero | Uso |
 |---|---|---|
-| `permisosDe(rol)`, `puede(p, accion, sobreEmployeeId?)`, `alcance(p, accion)`, `vePagina(p, pagina)` | `src/lib/permisos.ts` | Puras. Las mismas que usa el servidor |
-| `miembroActual()` | selector de la store (`useSalonStore`) | El `Miembro` que devuelve el servidor al cargar el salón. `null` en una demo |
-| `usePermisos()` | `src/lib/use-permisos.ts` | `permisosDe(miembro.rol)`. En una demo, los de `gerente` |
-| `accesoAlPanel` | ya existe | Pasa a devolver además `miembro` |
-| `listarMiembros`, `invitarMiembro`, `reenviarInvitacion`, `revocarInvitacion`, `cambiarRol`, `darDeBaja` | `src/lib/api/accesos.functions.ts` | Para Ajustes › Accesos. Todas exigen `accesos.gestionar` en el servidor |
-| `aceptarInvitacion(id)` | idem | Para la ruta `/aceptar?inv=` |
+| `permisosDe(rol)`, `puede(p, accion, { employeeId, miEmployeeId }?)`, `alcance(p, accion)`, `vePagina(p, pagina)`, `PERMISOS_DEMO` | `src/lib/permisos.ts` | Puras. Son las mismas que usa el servidor. La tabla acción × rol es la tuya, copiada fila a fila |
+| `MiembroActual` `{ rol, employeeId, displayName }` | `src/lib/permisos.ts` | Lo devuelve `accesoAlPanel` |
+| `useSalonStore().miembro` / `setMiembro` | `src/lib/store.ts` | La ruta `/app` lo rellena al cargar y **no se persiste**. Vale `null` en una demo |
+| `useMiembroActual()`, `usePermisos()`, `saludo(nombre, hora)` | `src/lib/use-permisos.ts` | En una demo, o mientras se resuelve, los permisos son los de la gerente |
+| `accesoAlPanel({ slug })` | `src/lib/api/salons.functions.ts` | `{ real, permitido, miembro }` |
+| `listarMiembros({ slug })` | `src/lib/api/accesos.functions.ts` | `{ miembros, invitaciones (con caducada) }` |
+| `invitarAlSalon({ slug, email, rol, employeeId?, displayName? })` | idem | `{ ok: true, dato: { invitacionId } }` o `{ ok: false, codigo, motivo }` |
+| `aceptarInvitacionAlSalon({ slug, invitacionId })` | idem | Para la ruta `/aceptar?s=&inv=`, que es la vuelta del correo |
+| `cambiarRolMiembro`, `darDeBajaMiembro`, `revocarInvitacionAlSalon`, `reenviarInvitacionAlSalon` | idem | Mismo tipo de resultado |
+
+Los `codigo` de error son `PERMISO`, `PLAN`, `DATOS`, `ULTIMA_GERENTE`, `NO_EXISTE`, `CADUCADA`, `OTRO_CORREO` y `YA_MIEMBRO`. En todos, `motivo` ya viene redactado para mostrarlo tal cual. Una acción sin permiso lanza `PermisoDenegado` (código `PERMISO_DENEGADO`), con un texto para la persona. En una demo, las funciones de accesos lanzan un aviso: en las demos no hay cuentas.
+
+**Datos que llegan a cada rol.** El servidor ya los recorta en `listSalonData`:
+- Sin `cita.ver-todas`, las citas ajenas llegan con `bloqueOcupado: true`: inicio, duración y profesional, sin clienta, sin servicios y con el precio a 0. No se pintan, y solo sirven para calcular huecos y solapes.
+- Sin `clienta.ver-todas`, llegan solo las clientas que tienen cita con ella.
+- La lista de espera solo llega con `lista-espera.gestionar`.
+- El perfil del salón es público (web de reservas). Ocultar la landing o los horarios de otras a una estilista se hace en la pantalla.
 
 ## 3. Reglas para la pantalla
 

@@ -76,8 +76,10 @@ export const Route = createFileRoute("/app")({
         : useSalonStore.getState().salonProfile.slug;
     if (!slug) return;
     try {
-      const { real, permitido } = await accesoAlPanel({ data: { slug } });
+      const { real, permitido, miembro } = await accesoAlPanel({ data: { slug } });
       if (real && !permitido) throw redirect({ to: "/login", replace: true });
+      // Rol y nombre de quien entra (lote 8): para usePermisos() y el saludo.
+      useSalonStore.getState().setMiembro(miembro ?? null);
     } catch (err) {
       // El `redirect` de TanStack se lanza como excepción: hay que dejarlo
       // pasar. Cualquier otro fallo se ignora y decide `GuardiaDelPanel`.
