@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { usePlegado } from "@/lib/use-plegado";
 import { toast } from "sonner";
 import { Check, Clock3, UserX, HelpCircle } from "lucide-react";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
@@ -100,6 +102,8 @@ export interface CitasPorResolverProps {
   /** Cuántas filas se enseñan de golpe. El resto se cuenta al pie. */
   limite?: number;
   className?: string;
+  /** Clave para plegar el bloque desde su cabecera (recordado); sin ella, siempre abierto. */
+  plegable?: string;
 }
 
 /**
@@ -110,7 +114,8 @@ export interface CitasPorResolverProps {
  * preguntaba en ningún sitio: había que entrar a la ficha del cliente y
  * marcarlo a mano, y por eso Adam no usaba lo que le vendimos.
  */
-export function CitasPorResolver({ limite = 5, className }: CitasPorResolverProps) {
+export function CitasPorResolver({ limite = 5, className, plegable }: CitasPorResolverProps) {
+  const [abierto, alternar] = usePlegado(plegable, !plegable);
   const carta = selectServiceMap(useSalonStore((s) => s.services));
   const appointments = useSalonStore((s) => s.appointments);
   const clients = useSalonStore((s) => s.clients);
@@ -148,7 +153,10 @@ export function CitasPorResolver({ limite = 5, className }: CitasPorResolverProp
             className,
           )}
         >
-          <div className="flex flex-wrap items-center gap-2.5 px-5 py-4">
+          <div
+            className={cn("flex items-center gap-2.5 px-5 py-4", plegable && "cursor-pointer hover:bg-beige/50")}
+            {...(plegable ? { role: "button", tabIndex: 0, "aria-expanded": abierto, onClick: alternar, onKeyDown: (e: React.KeyboardEvent) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), alternar()) } : {})}
+          >
             <HelpCircle className="size-[18px] shrink-0 text-primary" strokeWidth={1.6} aria-hidden="true" />
             <div className="min-w-0">
               <p className="text-base leading-tight font-extrabold tracking-[-0.01em]">
@@ -160,7 +168,12 @@ export function CitasPorResolver({ limite = 5, className }: CitasPorResolverProp
                 {conRecargo ? " y te aviso si alguien te queda a deber" : ""}.
               </p>
             </div>
+            {plegable && (
+              <ChevronDown className={cn("ml-auto size-5 shrink-0 text-cafe-medio transition-transform", abierto && "rotate-180")} strokeWidth={1.6} aria-hidden="true" />
+            )}
           </div>
+          {abierto && (
+          <>
           <div className="divide-y divide-border border-t border-border">
             {visibles.map((a) => (
               <div key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
@@ -187,6 +200,8 @@ export function CitasPorResolver({ limite = 5, className }: CitasPorResolverProp
             <p className="border-t border-border px-5 py-2.5 text-[12.5px] text-muted-foreground">
               Y {pendientes.length - visibles.length} más. Ve marcando: desaparecen solas de aquí.
             </p>
+          )}
+          </>
           )}
         </div>
       )}

@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { cn } from "@/lib/utils";
+import { ChevronDown } from "lucide-react";
+import { usePlegado } from "@/lib/use-plegado";
 import { DuracionOtra } from "@/components/DuracionOtra";
 import { toast } from "sonner";
 import { AlertTriangle, Clock, Clock3, MessageCircle } from "lucide-react";
@@ -28,6 +31,8 @@ import {
 export interface PendingRequestsBannerProps {
   /** Abre el detalle de la cita (AppointmentDetailSheet) para cambiar duración u hora. */
   onOpenDetail: (appointment: Appointment) => void;
+  /** Clave para plegar el bloque desde su cabecera (recordado); sin ella, siempre abierto. */
+  plegable?: string;
 }
 
 /** Mismos valores que el desplegable de duración de `NewAppointmentDialog`. */
@@ -46,7 +51,8 @@ const DURATION_OPTIONS_MIN = [15, 30, 40, 45, 60, 75, 90, 120, 150, 180];
  * salón, no con la de catálogo. Con `duracionFlexible` apagado el bloque se
  * comporta exactamente igual que antes.
  */
-export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerProps) {
+export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequestsBannerProps) {
+  const [abierto, alternar] = usePlegado(plegable, !plegable);
   const appointments = useSalonStore((s) => s.appointments);
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
@@ -161,7 +167,10 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
       data-tour="pending-requests"
       className="overflow-hidden rounded-[20px] border-[1.5px] border-dashed border-moca bg-card"
     >
-      <div className="flex items-center gap-2.5 border-b border-border px-5 py-4">
+      <div
+        className={cn("flex items-center gap-2.5 px-5 py-4", abierto && "border-b border-border", plegable && "cursor-pointer hover:bg-beige/50")}
+        {...(plegable ? { role: "button", tabIndex: 0, "aria-expanded": abierto, onClick: alternar, onKeyDown: (e: React.KeyboardEvent) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), alternar()) } : {})}
+      >
         <Clock className="size-[18px] shrink-0 text-primary" strokeWidth={1.6} />
         <div className="min-w-0">
           <h2 className="text-base font-extrabold tracking-[-0.01em] text-foreground">
@@ -177,7 +186,11 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
             </p>
           )}
         </div>
+        {plegable && (
+          <ChevronDown className={cn("ml-auto size-5 shrink-0 text-cafe-medio transition-transform", abierto && "rotate-180")} strokeWidth={1.6} aria-hidden="true" />
+        )}
       </div>
+      {abierto && (
       <div className="divide-y divide-border">
         {pending.map((a) => {
           const emp = employeeMap[a.employeeId];
@@ -373,6 +386,7 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
           );
         })}
       </div>
+      )}
     </div>
   );
 }

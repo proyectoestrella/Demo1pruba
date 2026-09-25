@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { recargoActivo } from "@/lib/recargo-activo";
@@ -25,7 +25,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { eur, eurRedondo, hora } from "@/lib/copy";
 import { cn } from "@/lib/utils";
-import { Users, UserPlus, Repeat, UserX, Search, Download } from "lucide-react";
+import { Users, Search, Download } from "lucide-react";
 
 export const Route = createFileRoute("/app/clients")({ component: Clients });
 
@@ -87,6 +87,9 @@ function Clients() {
   const [importarAbierto, setImportarAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
+  /** Filas a la vista: de 20 en 20, y vuelve a 20 al cambiar filtro o búsqueda. */
+  const [cuantas, setCuantas] = useState(20);
+  useEffect(() => setCuantas(20), [filtro, busqueda]);
 
   const now = Date.now();
   const hoyClave = toDateKey(new Date());
@@ -198,22 +201,27 @@ function Clients() {
       <div className="flex flex-wrap items-end gap-4">
         <div className="min-w-0">
           <h1 className="text-[26px] leading-[1.1] font-extrabold tracking-[-0.02em] md:text-[32px]">Clientas</h1>
-          <p className="mt-1 text-muted-foreground">
-            <span className="tabular-nums">{kpis.total}</span> clientas · pulsa una para abrir su ficha
+          {/* La cartera en una línea de texto, como las cifras de Hoy. */}
+          <p className="mt-2 flex flex-wrap items-baseline gap-x-2 text-[15px] text-cafe-medio">
+            <span className="whitespace-nowrap"><b className="text-foreground tabular-nums">{kpis.total}</b> clientas</span>
+            <span className="text-taupe" aria-hidden="true">·</span>
+            <span className="whitespace-nowrap" title="Dadas de alta en 30 días"><b className="text-foreground tabular-nums">{kpis.nuevos}</b> nuevas este mes</span>
+            <span className="text-taupe" aria-hidden="true">·</span>
+            <span className="whitespace-nowrap" title="Tres visitas o más"><b className="text-foreground tabular-nums">{kpis.habituales}</b> recurrentes</span>
+            {kpis.enRiesgo > 0 && (
+              <>
+                <span className="text-taupe" aria-hidden="true">·</span>
+                <button type="button" onClick={() => setFiltro("inactivo")} className="whitespace-nowrap hover:text-foreground" title="Más de 60 días sin venir: ver las inactivas">
+                  <b className="text-primary tabular-nums">{kpis.enRiesgo}</b> en riesgo
+                </button>
+              </>
+            )}
           </p>
         </div>
         <Button type="button" variant="outline" className="md:ml-auto" onClick={() => setImportarAbierto(true)}>
           <Download className="size-[18px]" strokeWidth={1.6} />
           Importar desde TPV 123
         </Button>
-      </div>
-
-      {/* Panorama de la cartera antes de bajar al listado. */}
-      <div className="grid grid-cols-2 gap-2 md:gap-3 lg:grid-cols-4 lg:group-data-[panel=abierto]/panel:grid-cols-2">
-        <StatTile icon={Users} label="Clientas" value={kpis.total} detalle="En tu cartera" />
-        <StatTile icon={UserPlus} label="Nuevas este mes" value={kpis.nuevos} detalle="Dadas de alta en 30 días" />
-        <StatTile icon={Repeat} label="Recurrentes" value={kpis.habituales} detalle="Tres visitas o más" />
-        <StatTile icon={UserX} label="En riesgo" value={kpis.enRiesgo} detalle="Más de 60 días sin venir" espera={kpis.enRiesgo > 0} />
       </div>
 
       {/* Recargos pendientes destacados: Adam pidió esto expresamente el
@@ -279,15 +287,15 @@ function Clients() {
                   <TableHead>Clienta</TableHead>
                   <TableHead>Última visita</TableHead>
                   <TableHead className="text-right">Visitas</TableHead>
-                  <TableHead>Frecuencia</TableHead>
-                  <TableHead className="hidden xl:table-cell">Servicio habitual</TableHead>
-                  <TableHead>Próxima cita</TableHead>
+                  <TableHead className="group-data-[panel=abierto]/panel:hidden">Frecuencia</TableHead>
+                  <TableHead className="hidden xl:table-cell xl:group-data-[panel=abierto]/panel:hidden">Servicio habitual</TableHead>
+                  <TableHead className="group-data-[panel=abierto]/panel:hidden">Próxima cita</TableHead>
                   <TableHead className="text-right">Gasto orient.</TableHead>
                   <TableHead>Estado</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((c) => (
+                {rows.slice(0, cuantas).map((c) => (
                   <TableRow key={c.id} className="cursor-pointer" onClick={() => setSelected(c)}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -300,9 +308,9 @@ function Clients() {
                     </TableCell>
                     <TableCell className="tabular-nums">{fechaCortaSinAnio(c.lastVisit)}</TableCell>
                     <TableCell className="text-right tabular-nums">{c.pastVisits}</TableCell>
-                    <TableCell className="text-muted-foreground">{frecuencia(c.id)}</TableCell>
-                    <TableCell className="hidden text-muted-foreground xl:table-cell">{fichas.get(c.id)?.servicioHabitual ?? "—"}</TableCell>
-                    <TableCell className="tabular-nums">{fechaCortaSinAnio(c.nextVisit)}</TableCell>
+                    <TableCell className="text-muted-foreground group-data-[panel=abierto]/panel:hidden">{frecuencia(c.id)}</TableCell>
+                    <TableCell className="hidden text-muted-foreground xl:table-cell xl:group-data-[panel=abierto]/panel:hidden">{fichas.get(c.id)?.servicioHabitual ?? "—"}</TableCell>
+                    <TableCell className="tabular-nums group-data-[panel=abierto]/panel:hidden">{fechaCortaSinAnio(c.nextVisit)}</TableCell>
                     <TableCell className="text-right font-bold tabular-nums">{eurRedondo(c.totalSpent)}</TableCell>
                     <TableCell>{estado(c)}</TableCell>
                   </TableRow>
@@ -313,7 +321,7 @@ function Clients() {
 
           {/* Móvil: tarjetas */}
           <div className="overflow-hidden rounded-[20px] border border-border bg-card md:hidden">
-            {rows.map((c) => (
+            {rows.slice(0, cuantas).map((c) => (
               <button
                 key={c.id}
                 type="button"
@@ -334,6 +342,16 @@ function Clients() {
               </button>
             ))}
           </div>
+          {rows.length > cuantas && (
+            <button
+              type="button"
+              onClick={() => setCuantas((n) => n + 20)}
+              className="inline-flex items-center gap-1 self-start rounded-full px-3 py-2 text-[13.5px] font-bold text-cafe-medio hover:bg-beige"
+            >
+              Ver {Math.min(20, rows.length - cuantas)} más
+              <span className="font-semibold text-cafe-suave tabular-nums">· {cuantas} de {rows.length}</span>
+            </button>
+          )}
         </>
       )}
 
@@ -343,36 +361,6 @@ function Clients() {
         onOpenChange={(o) => !o && setSelected(null)}
       />
       <ImportarClientasDialog open={importarAbierto} onOpenChange={setImportarAbierto} />
-    </div>
-  );
-}
-
-function StatTile({
-  icon: Icon,
-  label,
-  value,
-  detalle,
-  espera = false,
-}: {
-  icon: typeof Users;
-  label: string;
-  value: number;
-  detalle: string;
-  espera?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "min-w-0 rounded-[20px] px-4 py-3 md:px-5 md:py-4",
-        espera ? "border-[1.5px] border-dashed border-moca bg-nata" : "border border-border bg-card",
-      )}
-    >
-      <div className={cn("flex items-center gap-1.5 text-[12.5px] font-bold", espera ? "text-primary" : "text-muted-foreground")}>
-        <Icon className="size-[15px]" strokeWidth={1.6} aria-hidden="true" />
-        {label}
-      </div>
-      <p className="mt-0.5 text-[22px] leading-tight font-extrabold tabular-nums md:text-[26px]">{value}</p>
-      <p className="text-[12.5px] text-muted-foreground">{detalle}</p>
     </div>
   );
 }

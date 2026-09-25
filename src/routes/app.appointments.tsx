@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
@@ -134,6 +134,9 @@ function Appointments() {
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
   const [newApptOpen, setNewApptOpen] = useState(false);
+  /** Filas a la vista: de 20 en 20; vuelve a 20 al filtrar o buscar. */
+  const [cuantas, setCuantas] = useState(20);
+  useEffect(() => setCuantas(20), [status, emp, busqueda]);
   const mostrarSolicitudes = useSalonStore((s) => s.salonProfile.mostrarSolicitudes ?? true);
 
   // El recorte va al final: si se aplicara antes, buscar solo miraría dentro de
@@ -177,8 +180,9 @@ function Appointments() {
         }
       />
 
-      <CitasPorResolver />
-      {mostrarSolicitudes && <PendingRequestsBanner onOpenDetail={setSelected} />}
+      {/* Plegados desde su cabecera: la tabla queda a la vista al entrar. */}
+      <CitasPorResolver plegable="citas-por-resolver" />
+      {mostrarSolicitudes && <PendingRequestsBanner plegable="citas-solicitudes" onOpenDetail={setSelected} />}
 
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex h-[42px] w-full items-center gap-2 rounded-full border border-input bg-card px-3.5 text-muted-foreground sm:w-[320px]">
@@ -192,7 +196,7 @@ function Appointments() {
           />
         </label>
         <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="h-[42px] w-[190px] rounded-full">
+          <SelectTrigger className="h-[42px] w-[calc(50%-4px)] sm:w-[190px] rounded-full">
             <SelectValue placeholder="Estado" />
           </SelectTrigger>
           <SelectContent>
@@ -208,7 +212,7 @@ function Appointments() {
         {/* Filtrar "por profesional" con un solo profesional no filtra nada. */}
         {!soloUno && (
           <Select value={emp} onValueChange={setEmp}>
-            <SelectTrigger className="h-[42px] w-[170px] rounded-full">
+            <SelectTrigger className="h-[42px] w-[calc(50%-4px)] sm:w-[170px] rounded-full">
               <SelectValue placeholder="Profesional" />
             </SelectTrigger>
             <SelectContent>
@@ -252,7 +256,7 @@ function Appointments() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((a) => {
+                {filtered.slice(0, cuantas).map((a) => {
                   const e = employeeMap[a.employeeId];
                   return (
                     <TableRow
@@ -332,7 +336,7 @@ function Appointments() {
 
           {/* Mobile: stacked cards, never a horizontal-scroll table */}
           <div className="overflow-hidden rounded-[20px] border border-border bg-card md:hidden">
-            {filtered.map((a) => {
+            {filtered.slice(0, cuantas).map((a) => {
               const e = employeeMap[a.employeeId];
               return (
                 <div
@@ -408,6 +412,16 @@ function Appointments() {
               );
             })}
           </div>
+          {filtered.length > cuantas && (
+            <button
+              type="button"
+              onClick={() => setCuantas((n) => n + 20)}
+              className="inline-flex items-center gap-1 self-start rounded-full px-3 py-2 text-[13.5px] font-bold text-cafe-medio hover:bg-beige"
+            >
+              Ver {Math.min(20, filtered.length - cuantas)} más
+              <span className="font-semibold text-cafe-suave tabular-nums">· {cuantas} de {filtered.length}</span>
+            </button>
+          )}
         </>
       )}
 

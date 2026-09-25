@@ -41,13 +41,16 @@ export function FichaCompleta({ ficha, onAddColor, antesDelHistorial }: { ficha:
     : resumen.frecuenciaMediaDias < 14 ? `${resumen.frecuenciaMediaDias} días` : `${Math.round(resumen.frecuenciaMediaDias / 7)} sem.`;
 
   return <section aria-label="Ficha completa">
-    {/* Cuatro cifras */}
-    <div className="grid grid-cols-4 gap-2">
-      <Cifra valor={String(resumen.numeroVisitas)} etiqueta="Visitas" />
-      <Cifra valor={frecuencia} etiqueta="Frecuencia" />
-      <Cifra valor={eur(resumen.gastoTotal).replace(",00", "")} etiqueta="Gasto orient." />
-      <Cifra valor={fechaCorta(resumen.ultimaVisita)} etiqueta="Última visita" />
-    </div>
+    {/* Cuatro cifras en una línea de texto, como en Hoy: no se cortan en el móvil. */}
+    <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-2xl bg-nata px-3.5 py-2.5 text-[14px] text-cafe-medio">
+      <Cifra valor={String(resumen.numeroVisitas)} etiqueta={resumen.numeroVisitas === 1 ? "visita" : "visitas"} />
+      <span className="text-taupe" aria-hidden="true">·</span>
+      <Cifra valor={frecuencia} etiqueta="de frecuencia" />
+      <span className="text-taupe" aria-hidden="true">·</span>
+      <Cifra valor={eur(resumen.gastoTotal).replace(",00", "")} etiqueta="de gasto orientativo" />
+      <span className="text-taupe" aria-hidden="true">·</span>
+      <Cifra valor={fechaCorta(resumen.ultimaVisita)} etiqueta="última visita" delante />
+    </p>
     <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12.5px]">
       <Dato etiqueta="Servicio habitual" valor={resumen.servicioHabitual ?? "—"} />
       <Dato etiqueta="Profesional habitual" valor={resumen.profesionalHabitual ?? "—"} />
@@ -110,11 +113,12 @@ export function FichaCompleta({ ficha, onAddColor, antesDelHistorial }: { ficha:
   </section>;
 }
 
-function Cifra({ valor, etiqueta }: { valor: string; etiqueta: string }) {
-  return <div className="min-w-0 rounded-2xl bg-nata px-2.5 py-2.5">
-    <p className="truncate text-base font-extrabold tabular-nums">{valor}</p>
-    <p className="text-[11px] font-bold tracking-[0.04em] text-muted-foreground uppercase">{etiqueta}</p>
-  </div>;
+function Cifra({ valor, etiqueta, delante = false }: { valor: string; etiqueta: string; delante?: boolean }) {
+  return <span className="whitespace-nowrap">
+    {delante && `${etiqueta} `}
+    <b className="font-extrabold text-foreground tabular-nums">{valor}</b>
+    {!delante && ` ${etiqueta}`}
+  </span>;
 }
 
 function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
