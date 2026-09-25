@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useImagenConRespaldo } from "@/lib/imagen-rota";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType } from "@/lib/mock/salon";
@@ -1624,7 +1625,7 @@ function BookingSummary({
   // Misma razón que en la portada del hero (`s.$salonSlug.index.tsx`): una
   // foto propia puede dejar de cargar con el tiempo (404 de Google, ficha
   // cambiada…) aunque el enlace de la demo no haya cambiado.
-  const [falloFoto, setFalloFoto] = useState<string | null>(null);
+  const foto = useImagenConRespaldo(profile.heroImage, heroImg);
   if (variant === "bar") {
     return (
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 px-5 py-3 backdrop-blur lg:hidden">
@@ -1666,8 +1667,9 @@ function BookingSummary({
         <div className="mb-4 flex items-center gap-3">
           <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg">
             <img
-              src={(profile.heroImage && profile.heroImage !== falloFoto && profile.heroImage) || heroImg}
-              onError={() => profile.heroImage && setFalloFoto(profile.heroImage)}
+              src={foto.src}
+              ref={foto.ref}
+              onError={foto.onError}
               alt=""
               className="h-full w-full object-cover"
             />

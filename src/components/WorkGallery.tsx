@@ -7,6 +7,7 @@ import galleryRecorte from "@/assets/gallery-recorte.jpg";
 import galleryDegradado from "@/assets/gallery-degradado.jpg";
 import gallerySalon from "@/assets/gallery-salon.jpg";
 import { inferBusinessType } from "@/lib/business-type";
+import { useImagenesRotas } from "@/lib/imagen-rota";
 
 /**
  * Fotos de relleno, para cuando el local no tiene suficientes suyas.
@@ -39,7 +40,10 @@ export function WorkGallery({ photos = [], tipo }: { photos?: string[]; tipo?: s
   // la fila con las de ejemplo: una rejilla con un hueco se lee como error, y
   // lo que se está enseñando es cómo quedaría su web, no un inventario de su
   // ficha. Las suyas van primero, que son las que le van a llamar la atención.
-  const propias = photos.map((src, i) => ({ src, alt: `Foto ${i + 1} del local` }));
+  // Una foto propia que no carga (sin clave de Google, foto retirada) se quita
+  // y su hueco lo rellena una de ejemplo.
+  const { rotas, marcar, vigilar } = useImagenesRotas();
+  const propias = photos.filter((src) => !rotas.has(src)).map((src, i) => ({ src, alt: `Foto ${i + 1} del local` }));
   const faltan = Math.max(0, MINIMO_EN_REJILLA - propias.length);
   const images = [...propias, ...relleno(tipo).slice(0, faltan)];
   const openImage = openIndex !== null ? images[openIndex] : null;
@@ -62,7 +66,7 @@ export function WorkGallery({ photos = [], tipo }: { photos?: string[]; tipo?: s
                   onClick={() => setOpenIndex(i)}
                   className="group relative block aspect-square w-full overflow-hidden rounded-2xl border border-border/60 transition-colors hover:border-primary/40"
                 >
-                  <img src={img.src} alt={img.alt} className="h-full w-full object-cover" />
+                  <img src={img.src} ref={vigilar(img.src)} onError={() => marcar(img.src)} alt={img.alt} className="h-full w-full object-cover" />
                   <span className="absolute bottom-2 right-2 flex size-7 items-center justify-center rounded-full bg-black/50 text-white opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
                     <Expand className="h-3.5 w-3.5" />
                   </span>

@@ -41,6 +41,7 @@ import { useMemo, useState } from "react";
 import { isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
 import { useClientNow } from "@/lib/use-client-now";
 import { galleryPhotosFor } from "@/lib/demo-photos";
+import { useImagenConRespaldo } from "@/lib/imagen-rota";
 import heroImg from "@/assets/hero-salon.jpg";
 import heroSalonImg from "@/assets/gallery-salon.jpg";
 import { WorkGallery } from "@/components/WorkGallery";
@@ -386,10 +387,9 @@ function SalonHome() {
   const tipo = useBusinessType();
   // Una portada propia puede dejar de cargar sin que nadie lo sepa: el enlace
   // de demo la trae fija (caso PeluChic, foto de Google Places servida por
-  // `/api/foto`), y esa foto concreta puede desaparecer de la ficha con el
-  // tiempo aunque el enlace no haya cambiado. Sin este fallback, un 404 deja
-  // un icono de imagen rota a pantalla completa en vez de la de ejemplo.
-  const [falloHero, setFalloHero] = useState<string | null>(null);
+  // `/api/foto`), y esa foto puede desaparecer de la ficha, o faltar la clave
+  // de Google (503). Sin respaldo queda un icono de imagen rota a pantalla completa.
+  const portada = useImagenConRespaldo(profile.heroImage, tipo === "barberia" ? heroImg : heroSalonImg);
   // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
   // en la cadena "2" — de ahí el `String(...)` antes de comparar.
   const isV2 = useRouterState({
@@ -500,16 +500,15 @@ function SalonHome() {
        * ---------------------------------------------------------------- */}
       <section className="relative isolate flex min-h-[85vh] items-end overflow-hidden text-white sm:items-center">
         <img
-          src={
-            (profile.heroImage && profile.heroImage !== falloHero && profile.heroImage) ||
-            // Sin foto propia (hay dos locales del rutero cuya ficha de Google
-            // está vacía), o si la propia dejó de cargar (404 de Google, ficha
-            // cambiada…), se usa una de ejemplo, pero no la misma para todos:
-            // un sillón de barbero de portada en una peluquería de señoras
-            // canta tanto como una foto mala.
-            (tipo === "barberia" ? heroImg : heroSalonImg)
-          }
-          onError={() => profile.heroImage && setFalloHero(profile.heroImage)}
+          // Sin foto propia (hay dos locales del rutero cuya ficha de Google
+          // está vacía), o si la propia no carga (404 o 503 de /api/foto,
+          // ficha cambiada…), se usa una de ejemplo, pero no la misma para
+          // todos: un sillón de barbero de portada en una peluquería de
+          // señoras canta tanto como una foto mala. El fallo puede llegar
+          // antes de hidratar: lo cubre useImagenConRespaldo.
+          src={portada.src}
+          ref={portada.ref}
+          onError={portada.onError}
           alt={`Interior de ${profile.name}`}
           className="absolute inset-0 -z-20 h-full w-full object-cover"
           width={1920}
