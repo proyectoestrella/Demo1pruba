@@ -333,6 +333,8 @@ export interface SalonProfile {
   /** Importe de la señal en euros. Por defecto 10. */
   depositAmountEur?: number;
   depositDeadlineHours?: 1 | 2 | 4 | 12 | 24;
+  /** Preguntas propias del formulario de reserva (contrato-preguntas.md §1), en orden; máximo 12. */
+  preguntasReserva?: import("../preguntas-maqueta").PreguntaReserva[];
   /** Regla de la señal (contrato de BACKEND §1): mismos nombres que su rama. */
   depositMode?: "fijo" | "porcentaje";
   depositPercent?: number;

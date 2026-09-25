@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { AjustesMensajes } from "@/components/AjustesMensajes";
 import { AjustesColores } from "@/components/AjustesColores";
 import { AjustesSenal } from "@/components/AjustesSenal";
+import { AjustesPreguntas } from "@/components/AjustesPreguntas";
 import { useSalonStore } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
 import { getCalendarSubscription, regenerateCalendarSubscription } from "@/lib/api/calendar.functions";
@@ -190,18 +191,25 @@ function Settings() {
 
         <SeccionAjustes titulo="Reservas por internet" resumen="Preguntas al reservar, reparto de agenda y lo que dice tu web">
           <div className={fila}>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <Label className="text-[15px] font-extrabold">Preguntas al reservar</Label>
-                <p className="mt-1 text-sm text-muted-foreground">Pregunta por el largo de pelo, el color actual y los tratamientos químicos recientes para preparar cada cita. Por ahora son esas tres; todavía no se pueden escribir preguntas propias.</p>
-              </div>
-              <Switch aria-label="Activar preguntas al reservar" checked={questionsEnabled} onCheckedChange={setQuestionsEnabled} />
+            <div>
+              <h3 className="text-[15px] font-extrabold">Preguntas al reservar</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Lo que preguntas a la clienta al reservar, para preparar la cita. Tú eliges qué, en qué orden y para qué servicios.</p>
             </div>
-            {questionsEnabled && <div className="flex items-center justify-between gap-4">
-              <div><Label>Respuestas obligatorias</Label><p className="mt-1 text-sm text-muted-foreground">Si está desactivado, la clienta puede dejar las preguntas sin responder.</p></div>
-              <Switch aria-label="Hacer obligatorias las preguntas" checked={questionsRequired} onCheckedChange={setQuestionsRequired} />
-            </div>}
-            {guardar}
+            {/* Los interruptores de siempre solo cuentan mientras no hay lista propia (contrato §2). */}
+            {!salonProfile.preguntasReserva && (
+              <div className="space-y-3 rounded-2xl bg-nata p-3.5">
+                <div className="flex items-center justify-between gap-4">
+                  <div><Label>Preguntar al reservar</Label><p className="mt-0.5 text-[12.5px] text-muted-foreground">Mientras no guardes tu lista, se hacen las tres de siempre.</p></div>
+                  <Switch aria-label="Activar preguntas al reservar" checked={questionsEnabled} onCheckedChange={setQuestionsEnabled} />
+                </div>
+                {questionsEnabled && <div className="flex items-center justify-between gap-4">
+                  <div><Label>Respuestas obligatorias</Label></div>
+                  <Switch aria-label="Hacer obligatorias las preguntas" checked={questionsRequired} onCheckedChange={setQuestionsRequired} />
+                </div>}
+                {guardar}
+              </div>
+            )}
+            <AjustesPreguntas />
           </div>
           <div className={fila}>
             <div className="flex items-center justify-between gap-4">
