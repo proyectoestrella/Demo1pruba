@@ -69,6 +69,8 @@ import {
   pushWaitlistDeletion,
   pushWaitlistEntry,
   type ClienteDeCita,
+  pushCambio,
+  pushAvisoEnviado,
 } from "./salon-sync";
 
 interface SalonState {
@@ -936,9 +938,14 @@ export const useSalonStore = create<SalonState>()(
       setRealSalonSlug: (slug) => set({ realSalonSlug: slug }),
       setMiembro: (m) => set({ miembro: m }),
 
-      registrarCambio: (c) => set((s) => ({ cambios: podar([c, ...s.cambios.filter((x) => x.id !== c.id)], new Date()) })),
-      marcarAvisoEnviado: (cambioId) =>
-        set((s) => ({ cambios: s.cambios.map((c) => (c.id === cambioId ? { ...c, avisoEnviado: true } : c)) })),
+      registrarCambio: (c) => {
+        set((s) => ({ cambios: podar([c, ...s.cambios.filter((x) => x.id !== c.id)], new Date()) }));
+        pushCambio(get().realSalonSlug, c);
+      },
+      marcarAvisoEnviado: (cambioId) => {
+        set((s) => ({ cambios: s.cambios.map((c) => (c.id === cambioId ? { ...c, avisoEnviado: true } : c)) }));
+        pushAvisoEnviado(get().realSalonSlug, cambioId);
+      },
 
       estadoDeshacer: (cambioId) => {
         const st = get();
@@ -988,6 +995,9 @@ export const useSalonStore = create<SalonState>()(
         const m = get().miembro;
         const d = cambioDeDeshacer(c, { id: nuevoIdCambio(), autor: m?.userId ?? null, autorNombre: m?.displayName ?? null, fecha: new Date().toISOString() });
         set((s) => ({ cambios: podar(aplicarDeshacerEnLista(s.cambios, c, d), new Date()) }));
+        // El dato ya viajó por su parche (con sus permisos); esto cuenta el deshacer
+        // y marca el original como deshecho también en el servidor.
+        pushCambio(get().realSalonSlug, d);
         return e.aviso ? { ok: true, aviso: e.aviso } : { ok: true };
       },
       setPublicBookingResolution: (value) => set({ publicBookingResolution: value }),

@@ -34,6 +34,8 @@ import {
   syncWaitlistEntry,
 } from "./api/salons.functions";
 import { registrarAviso } from "./avisos-sync";
+import type { Cambio } from "./cambios";
+import { guardarCambio, marcarAvisoEnviadoServidor } from "./api/cambios.functions";
 import type { Appointment, Client, SalonProfile, WaitlistEntry } from "./mock/types";
 import { manualBlockNote } from "./no-show";
 
@@ -372,4 +374,25 @@ export function pushClient(slug: string | null, cliente: Client): void {
   } }));
   altasPendientes.set(clave, pending);
   void pending.finally(() => { if (altasPendientes.get(clave) === pending) altasPendientes.delete(clave); });
+}
+
+/** Sube un cambio del historial (lote 9). La autora la pone el servidor. */
+export function pushCambio(slug: string | null, c: Cambio): void {
+  if (!slug) return;
+  subir(`el historial («${c.resumen}»)`, () =>
+    guardarCambio({
+      data: {
+        slug,
+        cambio: {
+          id: c.id, tipo: c.tipo, entidad: c.entidad, idEntidad: c.idEntidad, antes: c.antes, despues: c.despues,
+          resumen: c.resumen, fecha: c.fecha, deshaceA: c.deshaceA, avisoEnviado: c.avisoEnviado,
+        },
+      },
+    }),
+  );
+}
+
+export function pushAvisoEnviado(slug: string | null, cambioId: string): void {
+  if (!slug) return;
+  subir("el aviso a la clienta", () => marcarAvisoEnviadoServidor({ data: { slug, cambioId } }));
 }
