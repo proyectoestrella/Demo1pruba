@@ -177,6 +177,16 @@ const PREGUNTA: Record<string, string> = {
   "duracion-flexible": "¿Fijo yo la duración al confirmar?",
   "calendario-suscrito": "¿Puedo ver las citas en mi Google Calendar?",
   "equipo-y-colores": "¿De qué color sale cada una en el calendario?",
+  "saludo": "Hola",
+  "gracias": "Gracias",
+  "quien-eres": "¿Quién eres?",
+  "que-sabes-hacer": "¿Qué sabes hacer?",
+  "despedida": "Hasta luego",
+  "buen-trabajo": "¡Buen trabajo!",
+  "como-estas": "¿Qué tal estás?",
+  "no-entiendo": "No te he entendido",
+  "ayuda-humana": "Quiero hablar con una persona",
+  "broma": "Cuéntame un chiste",
   "que-puedo-preguntar": "¿Qué te puedo preguntar?",
   "como-preguntar": "¿Cómo te pregunto mejor?"
 };
@@ -308,6 +318,8 @@ export function reencaminar(id: string, e: Entidades, hoy: string): string {
     case "ocupacion-periodo":
       if (pro) return "ocupacion-profesional";
       return esHoy ? "ocupacion-hoy" : "ocupacion-periodo";
+    case "servicio-mas-pedido":
+      return pro ? "lo-que-mas-hace" : id;
     case "previsto-periodo":
       return pro ? "dinero-profesional" : id;
     case "cumpleanos":
