@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
-import { useSalonStore } from "@/lib/store";
+import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { employeeMap } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
@@ -121,6 +121,10 @@ function Appointments() {
   const conRecargo = recargoActivo({ noShowFeeEur });
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
+  // Nombres de la carta VIVA del panel, no del catálogo de ejemplo: si la
+  // dueña renombra un servicio, la lista de citas tiene que decir el nombre
+  // nuevo (verificado el 26/09/2026: seguía enseñando el viejo).
+  const mapaServicios = useMemo(() => selectServiceMap(services), [services]);
   const clientById = new Map(clients.map((c) => [c.id, c] as const));
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
@@ -273,7 +277,7 @@ function Appointments() {
                           {conRecargo && <DeudaBadge clientId={a.clientId} clients={clients} />}
                         </span>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{serviceLabelOf(a)}</TableCell>
+                      <TableCell className="text-muted-foreground">{serviceLabelOf(a, mapaServicios)}</TableCell>
                       {!soloUno && (
                         <TableCell>
                           <span className="inline-flex items-center gap-1.5">
@@ -393,7 +397,7 @@ function Appointments() {
                     <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-muted-foreground">
                       <StylistDot employeeId={a.employeeId} />
                       <span className="truncate">
-                        {serviceLabelOf(a)}
+                        {serviceLabelOf(a, mapaServicios)}
                         {soloUno ? "" : ` · ${e.name}`}
                       </span>
                     </span>
