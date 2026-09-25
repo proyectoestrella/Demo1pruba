@@ -63,6 +63,10 @@ export const gastoClienta: Resolutor = (c) => {
 
 export const datosClienta: Resolutor = (c) => {
   const cl = c.clienta!;
+  if (/\bcumple/.test(c.pregunta)) {
+    if (!cl.birthday || !/^\d{4}-\d{2}-\d{2}/.test(cl.birthday)) return respuesta(`No tengo apuntado el cumpleaños de ${pila(cl.name)}.`, { acciones: [ficha(cl.id)] });
+    return respuesta(`${pila(cl.name)} cumple años el **${fechaLarga(`2000-${cl.birthday.slice(5, 10)}`)}**.`, { acciones: [ficha(cl.id)] });
+  }
   if (!cl.phone && !cl.email) return respuesta(`De ${cl.name} no tengo teléfono ni email apuntados.`, { acciones: [ficha(cl.id)] });
   const partes = [cl.phone && `**${cl.phone}**`, cl.email].filter(Boolean);
   return respuesta(`${cl.name}: ${partes.join(" · ")}.`, {

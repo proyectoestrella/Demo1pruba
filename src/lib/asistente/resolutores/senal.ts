@@ -70,8 +70,7 @@ export const reglaSenal: Resolutor = (c) => {
   const ajustes = { tipo: "ver-seccion" as const, etiqueta: "Abrir Ajustes › Señal", destino: "Ajustes › Señal" };
   if (!r) return respuesta(`${NO_LO_TENGO}: no encuentro la configuración de la señal.`, { acciones: [ajustes] });
   if (!r.activa) return respuesta("**No pides señal** ahora mismo. Se activa en Ajustes › Señal.", { acciones: [ajustes] });
-  const pol = c.fuentes.senal.politicaCancelacion();
-  return respuesta(`Pides **${r.resumen}**.${pol ? ` ${mayus(pol)}` : ""}`.replace(/\.\.$/, "."), { acciones: [ajustes] });
+  return respuesta(`Pides **${r.resumen}**.`, { acciones: [ajustes] });
 };
 
 export const senalesRecibidas: Resolutor = (c) => {

@@ -4,7 +4,7 @@ import {
   activa, citasDe, citasDelDia, cuando, estaSemana, esteMes, etiquetaRelativa, hora, nombrePro, ocupacion, porDia, rangoDe,
 } from "./calculos";
 import { reparto, textoHuecos } from "./hoy";
-import { duracion, enPeriodo, lista, mayus, NO_LO_TENGO, pct, pila, plural, respuesta, type Contexto, type Rango, type Resolutor } from "./tipos";
+import { duracion, enPeriodo, lista, listaConResto, mayus, NO_LO_TENGO, pct, pila, plural, respuesta, type Contexto, type Rango, type Resolutor } from "./tipos";
 
 function diaPedido(c: Contexto): string {
   const f = c.e.fecha;
@@ -165,9 +165,8 @@ export const listaEspera: Resolutor = (c) => {
   if (sv) l = l.filter((x) => x.serviceId === sv.id);
   if (pro) l = l.filter((x) => x.preferredEmployeeId === pro.id);
   const filtro = sv || pro ? `para ${[sv?.name, pro && pila(pro.name)].filter(Boolean).join(" con ")}` : "";
-  const items = l.slice(0, 3).map((x) => `${x.clientName}${x.preferredRange ? ` (${x.preferredRange})` : ""}`);
-  const mas = l.length > 3 ? ` y ${l.length - 3} más` : "";
-  const detalle = !filtro ? `: ${lista(items)}${mas}` : items.length ? `; ${filtro} ${l.length === 1 ? "está" : "están"} ${lista(items)}${mas}` : `, pero ninguna ${filtro}`;
+  const items = l.slice(0, 3).map((x) => `${x.clientName}${x.preferredRange ? ` (${x.preferredRange.charAt(0).toLowerCase()}${x.preferredRange.slice(1)})` : ""}`);
+  const detalle = !filtro ? `: ${listaConResto(items, l.length)}` : items.length ? `; ${filtro} ${l.length === 1 ? "está" : "están"} ${listaConResto(items, l.length)}` : `, pero ninguna ${filtro}`;
   return respuesta(`Hay **${total} en lista de espera**${detalle}.`, {
     cifras: [{ etiqueta: "en lista de espera", valor: total }],
     acciones: [{ tipo: "ver-seccion", etiqueta: "Ver lista de espera", destino: "Lista de espera" }],

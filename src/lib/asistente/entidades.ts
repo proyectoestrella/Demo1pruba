@@ -11,7 +11,8 @@
  * responde con los datos de otra clienta.
  */
 import type { ClientaA as Client, ProfesionalA as Employee, ServicioA as Service } from "./fuentes";
-import { ZONA_HORARIA_SALON, fechaEnZona } from "../zona-horaria";
+import { ZONA_HORARIA_SALON } from "../zona-horaria";
+import { diaEnZona as fechaEnZona } from "./reloj";
 import { normalizar, PALABRAS_VACIAS } from "./normalizar";
 import { damerau, SINONIMOS } from "./parecido";
 
@@ -137,7 +138,7 @@ export function extraerFecha(
     const l = sumarDias(lunesDe(hoy), -7);
     return periodo(l, sumarDias(l, 6), "la semana pasada");
   });
-  probar(/\b(?:esta|toda la) semana\b/, () => periodo(lunesDe(hoy), sumarDias(lunesDe(hoy), 6), "esta semana"));
+  probar(/\b(?:esta|toda la|de la) semana\b/, () => periodo(lunesDe(hoy), sumarDias(lunesDe(hoy), 6), "esta semana"));
   probar(/\b(?:este |el )?fin de semana\b/, () => {
     const s = sumarDias(lunesDe(hoy), 5);
     return periodo(s, sumarDias(s, 1), "este fin de semana");
@@ -151,7 +152,7 @@ export function extraerFecha(
     const [y, m] = mesHoy === 1 ? [anio - 1, 12] : [anio, mesHoy - 1];
     return periodo(dia2(y, m, 1), dia2(y, m, ultimoDiaDelMes(y, m)), MESES[m - 1]);
   });
-  probar(/\beste mes\b|\bmes actual\b|\bde mes\b/, () => periodo(dia2(anio, mesHoy, 1), dia2(anio, mesHoy, ultimoDiaDelMes(anio, mesHoy)), "este mes"));
+  probar(/\beste mes\b|\bmes actual\b|\bde mes\b|\bdel mes\b/, () => periodo(dia2(anio, mesHoy, 1), dia2(anio, mesHoy, ultimoDiaDelMes(anio, mesHoy)), "este mes"));
   probar(/\beste ano\b|\bano actual\b/, () => periodo(dia2(anio, 1, 1), dia2(anio, 12, 31), `${anio}`));
   probar(/\bano pasado\b/, () => periodo(dia2(anio - 1, 1, 1), dia2(anio - 1, 12, 31), `${anio - 1}`));
   // Días sueltos.
@@ -219,8 +220,30 @@ export function extraerNumero(texto: string): number | null {
 const sinAcentos = (s: string) => normalizar(s);
 
 /** ¿Aparece esta palabra (o con una falta, si es larga) en la pregunta? */
+/**
+ * Nombres de pila frecuentes: si la pregunta nombra a alguien que NO está en la
+ * cartera («color de Zoraida»), se trata igual como una clienta, para que la
+ * intención sea la de clienta y la respuesta diga «no la encuentro», nunca el
+ * dato de otra.
+ */
+export const NOMBRES_COMUNES = new Set(
+  ("maria carmen ana laura marta lucia elena paula isabel cristina sara noelia andrea raquel pilar rosa julia sofia alba " +
+    "irene nuria patricia beatriz silvia eva claudia lorena teresa angela monica sandra natalia rocia rocio sonia susana " +
+    "victoria alicia ines marina carla celia clara daniela valeria martina aitana adriana alejandra alicia amparo aurora " +
+    "belen blanca carolina concha consuelo diana dolores emma encarna esther estefania eugenia fatima gloria helena ingrid " +
+    "irene jimena josefa juana julia lidia lola lourdes luisa macarena manuela margarita maribel marisa marisol mercedes " +
+    "miriam montse nerea olga paloma pepa rebeca regina ruth salma sheila tamara vanesa veronica virginia yolanda zoraida " +
+    "jose antonio manuel francisco david juan javier daniel carlos jesus alejandro miguel rafael pedro pablo angel sergio " +
+    "fernando jorge luis alberto alvaro adrian diego raul enrique ramon ivan andres oscar ruben mario marcos victor hugo " +
+    "mateo lucas leo martin nicolas samuel gonzalo tomas").split(" "),
+);
+
+/**
+ * La palabra exacta, o con una falta si es larga. Nunca con falta si la
+ * palabra de la pregunta es otro nombre de pila: «Marta» no es «María».
+ */
 function contienePalabra(palabras: string[], objetivo: string): boolean {
-  return palabras.some((p) => p === objetivo || (objetivo.length >= 5 && p.length >= 5 && damerau(p, objetivo) <= 1));
+  return palabras.some((p) => p === objetivo || (objetivo.length >= 5 && p.length >= 5 && !NOMBRES_COMUNES.has(p) && damerau(p, objetivo) <= 1));
 }
 
 /** Profesional por su nombre (primer nombre o completo). Si hay dos con el mismo nombre, las dos. */
@@ -233,7 +256,7 @@ export function extraerProfesional(texto: string, equipo: Employee[]): Employee[
 }
 
 /** Alias de servicios de la especificación: palabra de la pregunta → palabras que buscar en el nombre. */
-const ALIAS_SERVICIO: Record<string, string[]> = {
+export const ALIAS_SERVICIO: Record<string, string[]> = {
   tinte: ["tinte", "color", "coloracion", "tintar", "tenir"],
   mechas: ["mechas", "balayage", "reflejos", "babylights"],
   corte: ["corte", "cortar", "pelar", "pelado"],
@@ -287,7 +310,13 @@ export type ClientaEncontrada =
  * de pila, y hay varias, se pregunta. `null` si la pregunta no nombra a nadie.
  * `excluir`: palabras ya usadas por otra entidad (una profesional llamada igual).
  */
-export function extraerClienta(texto: string, clientes: Client[], excluir: string[] = []): ClientaEncontrada | null {
+export function extraerClienta(
+  texto: string,
+  clientes: Client[],
+  excluir: string[] = [],
+  /** Palabras del vocabulario del asistente: nunca casan con un nombre por parecido («renta» no es «Renata»). */
+  vocabulario?: ReadonlySet<string>,
+): ClientaEncontrada | null {
   const fuera = new Set([...NO_ES_NOMBRE, ...excluir.map(sinAcentos)]);
   const candidatas = normalizar(texto).split(" ").filter((p) => p.length >= 3 && !/^\d/.test(p) && !fuera.has(p));
   if (!candidatas.length) return null;
@@ -299,7 +328,7 @@ export function extraerClienta(texto: string, clientes: Client[], excluir: strin
       let conFalta = 0;
       for (const p of candidatas) {
         if (nombre.includes(p)) exactas++;
-        else if (p.length >= 5 && nombre.some((n) => n.length >= 5 && damerau(n, p) <= 1)) conFalta++;
+        else if (p.length >= 5 && !vocabulario?.has(p) && !NOMBRES_COMUNES.has(p) && nombre.some((n) => n.length >= 5 && damerau(n, p) <= 1)) conFalta++;
       }
       return { c, exactas, conFalta, total: exactas + conFalta };
     })
@@ -308,6 +337,22 @@ export function extraerClienta(texto: string, clientes: Client[], excluir: strin
   const mejor = Math.max(...puntos.map((x) => x.total * 10 + x.exactas));
   const empatadas = puntos.filter((x) => x.total * 10 + x.exactas === mejor).map((x) => x.c);
   if (empatadas.length === 1) return { tipo: "una", clienta: empatadas[0] };
+  // Desempate por el nombre COMPLETO, mirando todas las palabras de la
+  // pregunta (también las que se apartaron por parecer vocabulario, como
+  // «cortés» por «corte»): gana la única cuyo nombre está entero en la
+  // pregunta y cubre más palabras. «Marta Ruiz» → Marta Ruiz, no Marta Ruiz
+  // García; «Paula García Cortés» → esa, no Paula García. Si no hay una sola,
+  // se pregunta.
+  const todas = new Set(normalizar(texto).split(" "));
+  const cubiertas = empatadas
+    .map((c) => {
+      const n = sinAcentos(c.name).split(" ").filter(Boolean);
+      return { c, entero: n.every((w) => todas.has(w)), k: n.filter((w) => todas.has(w)).length };
+    })
+    .filter((x) => x.entero && x.k >= 2);
+  const maxK = Math.max(0, ...cubiertas.map((x) => x.k));
+  const ganadoras = cubiertas.filter((x) => x.k === maxK);
+  if (ganadoras.length === 1) return { tipo: "una", clienta: ganadoras[0].c };
   return { tipo: "varias", opciones: empatadas.slice(0, 5), buscado };
 }
 
@@ -316,6 +361,8 @@ export function extraerClienta(texto: string, clientes: Client[], excluir: strin
 /* ------------------------------------------------------------------------ */
 
 export interface ContextoEntidades {
+  /** Palabras del vocabulario del asistente (ver extraerClienta). */
+  vocabulario?: ReadonlySet<string>;
   clientes: Client[];
   equipo: Employee[];
   servicios: Service[];
@@ -349,6 +396,6 @@ export function extraerEntidades(texto: string, ctx: ContextoEntidades): Entidad
     numero: extraerNumero(resto),
     profesionales,
     servicios,
-    clienta: extraerClienta(resto, ctx.clientes, usadas),
+    clienta: extraerClienta(resto, ctx.clientes, usadas, ctx.vocabulario),
   };
 }

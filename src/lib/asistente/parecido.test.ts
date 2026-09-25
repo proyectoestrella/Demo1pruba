@@ -63,7 +63,13 @@ describe("clasificar con umbral y margen", () => {
   });
 
   it("si dos quedan empatadas, pregunta en vez de elegir", () => {
-    const r = clasificar("citas", catalogo);
+    // Simétricas: lo que las distingue («hoy» / «mañana») pesa lo mismo en las dos.
+    const simetrico = prepararCandidatos([
+      { id: "citas_hoy", ejemplos: ["cuántas citas tengo hoy"] },
+      { id: "citas_manana", ejemplos: ["cuántas citas tengo mañana"] },
+      { id: "plantones", ejemplos: ["quién no ha venido"] },
+    ]);
+    const r = clasificar("cuantas citas tengo", simetrico);
     expect(r.tipo).toBe("dudosa");
     if (r.tipo === "dudosa") expect(r.opciones.map((o) => o.id).sort()).toEqual(["citas_hoy", "citas_manana"]);
   });

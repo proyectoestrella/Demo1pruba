@@ -5,6 +5,7 @@
  * para las familias con pocos, y el reencaminado por entidades («citas hoy»
  * con una fecha que no es hoy es «citas de un día»).
  */
+import { EJEMPLOS_EXTRA } from "./ejemplos-extra";
 import { ESPECIFICACION, type FamiliaEspecificacion } from "./especificacion";
 import { sumarDias, type Entidades } from "./entidades";
 import type { PlanSishow } from "./fuentes";
@@ -22,9 +23,8 @@ export interface Intencion extends FamiliaEspecificacion {
   pregunta: string;
 }
 
-/** Marcadores que sustituyen a los nombres propios en ejemplos y preguntas. */
-export const MARCA_CLIENTA = "zzclienta";
-export const MARCA_PRO = "zzpro";
+import { enmascarar, MARCA_CLIENTA, MARCA_PRO } from "./mascara";
+export { MARCA_CLIENTA, MARCA_PRO };
 
 /** Nombres que usan los ejemplos del documento, y qué son. */
 const NOMBRES_EJEMPLO: Record<string, string> = {
@@ -56,6 +56,7 @@ const REQUIERE: Record<string, Entidad[]> = {
   "clienta-bloqueada": ["clienta"],
   "profesional-habitual": ["clienta"],
   "buscar-clienta": ["clienta"],
+  "senal-cita": ["clienta"],
   "precio-servicio": ["servicio"],
   "duracion-servicio": ["servicio"],
   "primer-hueco-servicio": ["servicio"],
@@ -66,12 +67,14 @@ const REQUIERE: Record<string, Entidad[]> = {
 /** Ejemplos añadidos: familias con pocos en el documento y formulaciones de la sonda. */
 const EXTRA: Record<string, string[]> = {
   "citas-hoy": ["espera un momento cuantas citas hay", "cuantas citas hay"],
+  "citas-profesional-periodo": ["como va sara", "que tal va noelia", "como lo lleva maria"],
   "citas-manana": ["q citas tengo mñn", "cuantas citas hay mañana", "y mañana"],
   "citas-dia": ["quien viene el sabado", "citas del viernes", "que hay el jueves"],
   "citas-periodo": ["citas de la semana que viene", "cuantas citas este mes"],
   "cobrado-periodo": ["cuanto hemos facturado esta semana", "ingresos de septiembre"],
   "plantones": ["cuantas han faltado este mes", "quien no ha venido"],
-  "ultima-visita-clienta": ["cuanto hace que no viene lucia"],
+  "ultima-visita-clienta": ["cuanto hace que no viene lucia", "cuando vino lucia", "cuando vino marta por ultima vez", "la ultima vez de elena"],
+  "ultimo-color-clienta": ["color de marta", "que color lleva elena", "formula de paula"],
   "huecos-hoy": ["tengo algun hueco libre esta tarde"],
   "resumen-mes": ["que tal vamos", "como va el mes"],
   "senales-pendientes": ["cuantas señales me faltan por cobrar"],
@@ -90,6 +93,131 @@ const EXTRA: Record<string, string[]> = {
   "tec-whatsapp-no-abre": ["no se abre el whatsapp", "el boton de whatsapp no va", "no me abre whatsapp al avisar"],
 };
 
+/** Pregunta limpia, con tildes, para botones y sugerencias. */
+const PREGUNTA: Record<string, string> = {
+  "citas-hoy": "¿Cuántas citas tengo hoy?",
+  "citas-hoy-profesional": "¿Cuántas citas tiene hoy cada una?",
+  "proxima-cita": "¿Quién viene ahora?",
+  "lista-citas-hoy": "¿Qué citas me quedan hoy?",
+  "huecos-hoy": "¿Qué huecos me quedan hoy?",
+  "ocupacion-hoy": "¿Cómo de llena está la agenda hoy?",
+  "ingresos-hoy": "¿Cuánto llevo cobrado hoy?",
+  "pendiente-de-ti": "¿Qué tengo pendiente?",
+  "solicitudes-pendientes": "¿Qué solicitudes tengo por confirmar?",
+  "por-marcar": "¿Qué citas me faltan por marcar?",
+  "abierto-ahora": "¿Estamos abiertos ahora?",
+  "colores-hoy": "¿Qué colores hay hoy?",
+  "citas-dia": "¿Cuántas citas hay el sábado?",
+  "citas-manana": "¿Cuántas citas tengo mañana?",
+  "huecos-dia": "¿Qué huecos hay el sábado?",
+  "primer-hueco-servicio": "¿Cuándo cabe unas mechas?",
+  "hueco-profesional": "¿Cuándo tiene hueco Sara?",
+  "citas-periodo": "¿Cuántas citas llevo esta semana?",
+  "ocupacion-periodo": "¿Qué ocupación llevamos este mes?",
+  "proxima-cita-clienta": "¿Cuándo viene una clienta?",
+  "recordatorios-manana": "¿Qué recordatorios faltan para mañana?",
+  "lista-espera": "¿Quién está en lista de espera?",
+  "franja-floja": "¿Cuál es mi franja más floja?",
+  "dia-mas-lleno": "¿Qué día hay más citas esta semana?",
+  "cancelaciones": "¿Cuántas cancelaciones llevo esta semana?",
+  "plantones": "¿Quién no ha venido este mes?",
+  "ultima-visita-clienta": "¿Cuándo vino por última vez una clienta?",
+  "ultimo-color-clienta": "¿Qué color le pusimos a una clienta?",
+  "frecuencia-clienta": "¿Cada cuánto viene una clienta?",
+  "gasto-clienta": "¿Cuánto lleva gastado una clienta?",
+  "datos-clienta": "¿Cuál es el teléfono de una clienta?",
+  "notas-clienta": "¿Qué tengo apuntado de una clienta?",
+  "clientas-total": "¿Cuántas clientas tengo?",
+  "clientas-nuevas": "¿Cuántas clientas nuevas este mes?",
+  "clientas-recurrentes": "¿Cuántas clientas repiten?",
+  "clientas-inactivas": "¿Quién lleva tiempo sin venir?",
+  "mejores-clientas": "¿Quiénes son mis mejores clientas?",
+  "color-pendiente": "¿A quién le falta el color apuntado?",
+  "cumpleanos": "¿Quién cumple años esta semana?",
+  "clientas-con-deuda": "¿Quién me debe dinero?",
+  "clienta-bloqueada": "¿Puede reservar una clienta por internet?",
+  "buscar-clienta": "¿Quién es esta clienta?",
+  "horario-profesional": "¿Qué horario tiene cada una?",
+  "quien-trabaja": "¿Quién trabaja el sábado?",
+  "citas-profesional-periodo": "¿Cuántas citas lleva cada una este mes?",
+  "ocupacion-profesional": "¿Cómo de llena va cada una?",
+  "dinero-profesional": "¿Cuánto lleva cobrado cada una?",
+  "lo-que-mas-hace": "¿Qué es lo que más hace cada una?",
+  "profesional-habitual": "¿Con quién va siempre una clienta?",
+  "precio-servicio": "¿Cuánto cuesta un tinte?",
+  "duracion-servicio": "¿Cuánto duran unas mechas?",
+  "servicio-mas-pedido": "¿Qué es lo más pedido?",
+  "servicio-mas-rentable": "¿Qué servicio deja más por hora?",
+  "carta": "¿Qué servicios tengo?",
+  "veces-servicio": "¿Cuántos tintes llevo este mes?",
+  "cobrado-periodo": "¿Cuánto llevo cobrado este mes?",
+  "previsto-periodo": "¿Cuánto tengo previsto la semana que viene?",
+  "estimacion-mes": "¿Cuánto voy a hacer este mes?",
+  "cobro-por-metodo": "¿Cuánto he cobrado en tarjeta, efectivo y Bizum?",
+  "comparar-periodos": "¿Cómo va este mes comparado con el pasado?",
+  "precio-medio": "¿Cuánto deja cada cita de media?",
+  "dinero-servicio": "¿Cuánto han dejado las mechas este mes?",
+  "resumen-mes": "¿Qué tal va el mes?",
+  "senales-pendientes": "¿Qué señales estoy esperando?",
+  "senales-vencidas": "¿Hay señales vencidas?",
+  "senal-cita": "¿Ha pagado la señal una clienta?",
+  "regla-senal": "¿Cuánto pido de señal?",
+  "senales-recibidas": "¿Cuántas señales he recibido este mes?",
+  "campanas": "¿Qué campaña me conviene?",
+  "recuperables": "¿Cuántas clientas puedo recuperar?",
+  "huecos-flojos": "¿Cómo lleno los huecos flojos?",
+  "segunda-visita": "¿Quién vino una vez y no ha vuelto?",
+  "resenas": "¿A quién pido una reseña?",
+  "horario-salon": "¿Qué horario tiene el salón?",
+  "enlace-reservas": "¿Cuál es mi enlace de reservas?",
+  "politica-cancelacion": "¿Qué dice mi web sobre cancelar?",
+  "preguntas-reserva": "¿Qué pregunto al reservar?",
+  "plantones-config": "¿Cobro algo si no vienen?",
+  "mensajes-whatsapp": "¿Qué dice el recordatorio de WhatsApp?",
+  "duracion-flexible": "¿Fijo yo la duración al confirmar?",
+  "calendario-suscrito": "¿Puedo ver las citas en mi Google Calendar?",
+  "equipo-y-colores": "¿De qué color sale cada una en el calendario?",
+  "que-puedo-preguntar": "¿Qué te puedo preguntar?",
+  "como-preguntar": "¿Cómo te pregunto mejor?"
+};
+
+/** Plantillas para rehacer una pregunta con la entidad elegida en un botón. */
+const PLANTILLA: Record<string, string> = {
+  "citas-hoy-profesional": "¿Cuántas citas tiene hoy {pro}?",
+  "hueco-profesional": "¿Cuándo tiene hueco {pro}?",
+  "horario-profesional": "¿Qué horario tiene {pro}?",
+  "ocupacion-profesional": "¿Cómo de llena va {pro} este mes?",
+  "dinero-profesional": "¿Cuánto lleva cobrado {pro} este mes?",
+  "lo-que-mas-hace": "¿Qué es lo que más hace {pro}?",
+  "citas-profesional-periodo": "¿Cuántas citas lleva {pro} este mes?",
+  "proxima-cita-clienta": "¿Cuándo viene {clienta}?",
+  "ultima-visita-clienta": "¿Cuándo vino por última vez {clienta}?",
+  "ultimo-color-clienta": "¿Qué color le pusimos a {clienta}?",
+  "frecuencia-clienta": "¿Cada cuánto viene {clienta}?",
+  "gasto-clienta": "¿Cuánto lleva gastado {clienta}?",
+  "datos-clienta": "¿Cuál es el teléfono de {clienta}?",
+  "notas-clienta": "¿Qué tengo apuntado de {clienta}?",
+  "clienta-bloqueada": "¿Puede reservar {clienta} por internet?",
+  "profesional-habitual": "¿Con quién va siempre {clienta}?",
+  "buscar-clienta": "¿Quién es {clienta}?",
+  "senal-cita": "¿Ha pagado la señal {clienta}?",
+  "precio-servicio": "¿Cuánto cuesta {servicio}?",
+  "duracion-servicio": "¿Cuánto dura {servicio}?",
+  "primer-hueco-servicio": "¿Cuándo cabe {servicio}?",
+  "veces-servicio": "¿Cuántas veces he hecho {servicio} este mes?",
+  "dinero-servicio": "¿Cuánto ha dejado {servicio} este mes?",
+};
+
+/** La pregunta de un botón con la entidad ya puesta («¿Cuándo viene Marta Ruiz?»). */
+export function preguntaCon(id: string, v: { clienta?: string; pro?: string; servicio?: string } = {}): string {
+  const t = PLANTILLA[id];
+  const base = POR_ID.get(id)?.pregunta ?? id;
+  if (!t) return base;
+  const faltan = (t.includes("{clienta}") && !v.clienta) || (t.includes("{pro}") && !v.pro) || (t.includes("{servicio}") && !v.servicio);
+  if (faltan) return base;
+  return t.replace("{clienta}", v.clienta ?? "").replace("{pro}", v.pro ?? "").replace("{servicio}", v.servicio ?? "");
+}
+
 function planMinimoDe(texto?: string): PlanSishow | null | undefined {
   if (!texto) return undefined;
   const t = normalizar(texto);
@@ -99,12 +227,12 @@ function planMinimoDe(texto?: string): PlanSishow | null | undefined {
   return "reservas";
 }
 
-/** Sustituye los nombres del documento por su marca. */
+const PROS_EJEMPLO = Object.entries(NOMBRES_EJEMPLO).filter(([, v]) => v === MARCA_PRO).map(([k]) => k);
+const CLIENTAS_EJEMPLO = Object.entries(NOMBRES_EJEMPLO).filter(([, v]) => v === MARCA_CLIENTA).map(([k]) => k);
+
+/** Un ejemplo del documento, enmascarado igual que se enmascaran las preguntas. */
 export function enmascararEjemplo(texto: string): string {
-  return normalizar(texto)
-    .split(" ")
-    .map((p) => NOMBRES_EJEMPLO[p] ?? p)
-    .join(" ");
+  return enmascarar(texto, { pros: PROS_EJEMPLO, clientas: CLIENTAS_EJEMPLO });
 }
 
 function preguntaDe(f: FamiliaEspecificacion): string {
@@ -115,11 +243,28 @@ function preguntaDe(f: FamiliaEspecificacion): string {
 
 export const INTENCIONES: Intencion[] = ESPECIFICACION.map((f) => ({
   ...f,
-  ejemplos: [...f.ejemplos, ...(EXTRA[f.id] ?? [])],
+  ejemplos: [...f.ejemplos, ...(EXTRA[f.id] ?? []), ...(EJEMPLOS_EXTRA[f.id] ?? [])],
   requiere: REQUIERE[f.id] ?? [],
   planMinimo: f.grupo === "plan" ? planMinimoDe(f.plan) : undefined,
-  pregunta: preguntaDe(f),
+  pregunta: PREGUNTA[f.id] ?? preguntaDe(f),
 }));
+
+/**
+ * Vocabulario del asistente: las palabras de los ejemplos (sin los nombres de
+ * ejemplo) y sus comienzos de 5 letras o más («renta» por «rentable»). Una
+ * palabra de aquí nunca se toma por el nombre de una clienta con una falta.
+ */
+export const VOCABULARIO: ReadonlySet<string> = (() => {
+  const v = new Set<string>();
+  for (const i of INTENCIONES)
+    for (const e of i.ejemplos)
+      for (const w of normalizar(e).split(" ")) {
+        if (w.length < 3 || NOMBRES_EJEMPLO[w]) continue;
+        v.add(w);
+        for (let n = 5; n < w.length; n++) v.add(w.slice(0, n));
+      }
+  return v;
+})();
 
 export const POR_ID: Map<string, Intencion> = new Map(INTENCIONES.map((i) => [i.id, i]));
 
@@ -149,7 +294,7 @@ export function reencaminar(id: string, e: Entidades, hoy: string): string {
     case "citas-periodo":
       if (cli && !pro && id !== "citas-periodo") return "proxima-cita-clienta";
       if (f?.tipo === "periodo") return pro ? "citas-profesional-periodo" : "citas-periodo";
-      if (pro && esHoy) return "citas-hoy-profesional";
+      if (pro && (esHoy || f?.tipo === "dia")) return "citas-hoy-profesional";
       if (pro) return "citas-profesional-periodo";
       if (esHoy) return id === "lista-citas-hoy" ? id : "citas-hoy";
       if (manana) return "citas-manana";
@@ -163,13 +308,19 @@ export function reencaminar(id: string, e: Entidades, hoy: string): string {
     case "ocupacion-periodo":
       if (pro) return "ocupacion-profesional";
       return esHoy ? "ocupacion-hoy" : "ocupacion-periodo";
+    case "previsto-periodo":
+      return pro ? "dinero-profesional" : id;
+    case "cumpleanos":
+      return e.clienta?.tipo === "una" ? "datos-clienta" : id;
     case "ingresos-hoy":
     case "cobrado-periodo":
       if (pro) return "dinero-profesional";
       if (e.servicios.length) return "dinero-servicio";
       return esHoy ? "ingresos-hoy" : "cobrado-periodo";
-    case "ultima-visita-clienta":
-    case "proxima-cita-clienta":
+    case "citas-hoy-profesional":
+    case "citas-profesional-periodo":
+      if (f?.tipo === "periodo") return "citas-profesional-periodo";
+      if (id === "citas-profesional-periodo" && f?.tipo === "dia") return "citas-hoy-profesional";
       return id;
     default:
       return id;

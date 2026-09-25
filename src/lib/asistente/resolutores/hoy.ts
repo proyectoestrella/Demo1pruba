@@ -3,7 +3,7 @@ import { sumarDias } from "../entidades";
 import {
   activa, citasDelDia, citasDe, cuando, etiquetaRelativa, dineroDe, esDeColor, fin, hora, nombrePro, nombreServicios, ocupacion, soloHoy,
 } from "./calculos";
-import { duracion, euros, lista, mayus, NO_LO_TENGO, pila, plural, respuesta, type Contexto, type Resolutor } from "./tipos";
+import { duracion, euros, lista, listaConResto, mayus, NO_LO_TENGO, pila, plural, respuesta, type Contexto, type Resolutor } from "./tipos";
 
 const verCalendario = (dia: string) => ({ tipo: "ver-calendario" as const, etiqueta: "Ver calendario", dia });
 
@@ -49,7 +49,10 @@ export const proximaCita: Resolutor = (c) => {
   const ahora = citas.filter((x) => Date.parse(x.start) <= t && fin(x) > t);
   const sig = citas.find((x) => Date.parse(x.start) > t);
   const partes: string[] = [];
-  if (ahora.length) partes.push(`Ahora está **${ahora.map((x) => `${x.clientName} con ${nombrePro(x.employeeId, c.estado)}`).join("** y **")}**`);
+  if (ahora.length) {
+    const quien = ahora.map((x) => `${pila(x.clientName)} con ${nombrePro(x.employeeId, c.estado)}`);
+    partes.push(ahora.length === 1 ? `Ahora está **${ahora[0].clientName}** con ${nombrePro(ahora[0].employeeId, c.estado)}` : `Ahora hay **${ahora.length} en el sillón**: ${lista(quien)}`);
+  }
   if (sig) {
     const min = Math.round((Date.parse(sig.start) - t) / 60_000);
     const dentro = min < 120 ? `, dentro de ${duracion(min)}` : "";
@@ -64,10 +67,8 @@ export const listaCitasHoy: Resolutor = (c) => {
   const t = c.estado.ahora.getTime();
   const quedan = citasDelDia(c.estado, c.hoy).filter((x) => fin(x) > t && x.status !== "no-show");
   if (!quedan.length) return respuesta("Hoy ya no te queda **ninguna cita**.", { acciones: [{ tipo: "ver-hoja", etiqueta: "Ver hoja del día", dia: c.hoy }] });
-  const max = 8;
-  const items = quedan.slice(0, max).map((x) => `${hora(x.start, c.estado)} ${pila(x.clientName)} (${nombreServicios(x, c.estado)})`);
-  const resto = quedan.length > max ? ` y ${quedan.length - max} más` : "";
-  return respuesta(`Te ${quedan.length === 1 ? "queda" : "quedan"} **${quedan.length}**: ${lista(items)}${resto}.`, {
+  const items = quedan.slice(0, 8).map((x) => `${hora(x.start, c.estado)} ${pila(x.clientName)} (${nombreServicios(x, c.estado)})`);
+  return respuesta(`Te ${quedan.length === 1 ? "queda" : "quedan"} **${quedan.length}**: ${listaConResto(items, quedan.length)}.`, {
     cifras: [{ etiqueta: "citas que quedan hoy", valor: quedan.length, unidad: "citas" }],
     acciones: [{ tipo: "ver-hoja", etiqueta: "Ver hoja del día", dia: c.hoy }],
   });
@@ -175,7 +176,7 @@ export const coloresHoy: Resolutor = (c) => {
   }
   const partes = [con.slice(0, 3).join(". ")];
   if (sin.length) partes.push(`A ${lista(sin.slice(0, 3))} le${sin.length > 1 ? "s" : ""} falta el color anotado`);
-  return respuesta(`Hoy hay **${plural(citas.length, "cita de color", "de color")}**. ${partes.filter(Boolean).join(". ")}.`, {
+  return respuesta(`Hoy hay **${plural(citas.length, "cita de color", "citas de color")}**. ${partes.filter(Boolean).join(". ")}.`, {
     cifras: [{ etiqueta: "citas de color hoy", valor: citas.length, unidad: "citas" }],
     acciones: [{ tipo: "ver-hoja", etiqueta: "Ver hoja del día", dia: c.hoy }],
   });

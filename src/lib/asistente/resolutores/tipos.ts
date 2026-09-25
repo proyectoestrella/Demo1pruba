@@ -90,6 +90,17 @@ export function lista(items: string[]): string {
   return `${items.slice(0, -1).join(", ")} y ${items[items.length - 1]}`;
 }
 
+/** «a, b y c», o «a, b, c y 7 más» si hay más de las que se enseñan. */
+export function listaConResto(items: string[], total: number): string {
+  const resto = total - items.length;
+  return resto > 0 ? `${items.join(", ")} y ${resto} más` : lista(items);
+}
+
+/** Frase con punto final. */
+export function conPunto(t: string): string {
+  return /[.!?…»]$/.test(t.trim()) ? t.trim() : `${t.trim()}.`;
+}
+
 export function plural(n: number, uno: string, varios: string): string {
   return `${n.toLocaleString("es-ES")} ${n === 1 ? uno : varios}`;
 }

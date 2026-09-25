@@ -55,7 +55,8 @@ export const vecesServicio: Resolutor = (c) => {
   const x = contarServicios(citasDe(c.estado, r), c.estado).find((y) => y.id === s.id);
   const veces = x?.veces ?? 0;
   const eur = x ? `, que ${veces === 1 ? "ha" : "han"} dejado ${euros(x.euros)} según tarifa` : "";
-  return respuesta(`${mayus(enPeriodo(r.etiqueta))} llevas **${plural(veces, s.name, s.name)}**${eur}.`.replace(`${veces} ${s.name}`, `${veces} × ${s.name}`), {
+  const verbo = r.hasta < c.hoy ? "hiciste" : "has hecho";
+  return respuesta(`${mayus(enPeriodo(r.etiqueta))} ${verbo} ${s.name} **${plural(veces, "vez", "veces")}**${eur}.`, {
     cifras: [{ etiqueta: s.name, valor: veces, unidad: "veces" }],
   });
 };

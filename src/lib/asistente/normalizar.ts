@@ -103,6 +103,7 @@ export function numerosEnCifras(palabras: string[]): string[] {
 export function normalizar(texto: string): string {
   const limpio = sinTildes(texto)
     .replace(/€/g, " euros ")
+    .replace(/%/g, " porcentaje ")
     .replace(/(\d)[.,](\d)/g, "$1.$2") // 12,5 → 12.5
     .replace(/[^a-z0-9:/.\-\s]/g, " ")
     .replace(/(?<!\d)[.:/-]|[.:/-](?!\d)/g, " ")

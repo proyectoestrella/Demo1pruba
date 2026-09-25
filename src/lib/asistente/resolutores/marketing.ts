@@ -1,6 +1,6 @@
 /** Resolutores de «marketing»: las cifras vienen de las fuentes (campañas del panel). */
 import { visitasPorClienta } from "./calculos";
-import { NO_LO_TENGO, plural, respuesta, type Resolutor } from "./tipos";
+import { conPunto, NO_LO_TENGO, plural, respuesta, type Resolutor } from "./tipos";
 
 const verMarketing = { tipo: "ver-seccion" as const, etiqueta: "Ver Marketing", destino: "Marketing" };
 const preparar = { tipo: "ver-seccion" as const, etiqueta: "Preparar mensaje", destino: "Marketing" };
@@ -10,7 +10,7 @@ export const campanas: Resolutor = (c) => {
   if (!l) return respuesta(`${NO_LO_TENGO}: las campañas no están disponibles.`);
   const top = [...l].sort((a, b) => b.personas - a.personas)[0];
   if (!top) return respuesta("Ahora mismo **no hay ninguna campaña** que merezca la pena.");
-  return respuesta(`La que más rinde ahora: **«${top.titulo}»**, ${plural(top.personas, "persona", "personas")} con el mensaje ya escrito.${top.motivo ? ` ${top.motivo}` : ""}`, {
+  return respuesta(`La que más rinde ahora: **«${top.titulo}»**, ${plural(top.personas, "persona", "personas")} con el mensaje ya escrito.${top.motivo ? ` ${conPunto(top.motivo)}` : ""}`, {
     cifras: [{ etiqueta: top.titulo, valor: top.personas, unidad: "clientas" }],
     acciones: [verMarketing],
   });

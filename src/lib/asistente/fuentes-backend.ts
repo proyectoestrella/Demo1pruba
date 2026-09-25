@@ -59,6 +59,19 @@ export function crearFuentesBackend(d: DatosBackend): FuentesAsistente {
   const ahora = () => d.ahora ?? new Date();
   const regla = () => reglaSenal(d.perfil);
   const porId = new Map(d.citas.map((c) => [c.id, c]));
+  let porClienta: Map<string, Appointment[]> | null = null;
+  /** Citas de una clienta (fichaDeClienta filtra por ella: pasarle solo las suyas ahorra recorrer toda la agenda). */
+  const citasDe = (clientId: string): Appointment[] => {
+    if (!porClienta) {
+      porClienta = new Map();
+      for (const c of d.citas) {
+        let l = porClienta.get(c.clientId);
+        if (!l) porClienta.set(c.clientId, (l = []));
+        l.push(c);
+      }
+    }
+    return porClienta.get(clientId) ?? [];
+  };
   let indice: Map<string, Appointment[]> | null = null;
   /** Citas que ocupan agenda (ni anuladas ni plantones), por día del salón. */
   const ocupanDia = (dia: string): Appointment[] => {
@@ -142,7 +155,7 @@ export function crearFuentesBackend(d: DatosBackend): FuentesAsistente {
 
     fichaClienta: (id) => {
       if (!d.clientes.some((c) => c.id === id)) return null;
-      const f = fichaDeClienta(id, { citas: d.citas, clientes: d.clientes, servicios: d.servicios, equipo: d.equipo, ahora: ahora() });
+      const f = fichaDeClienta(id, { citas: citasDe(id), clientes: d.clientes, servicios: d.servicios, equipo: d.equipo, ahora: ahora() });
       const prox = f.resumen.proximaCita ? d.citas.find((c) => c.clientId === id && c.start === f.resumen.proximaCita) : undefined;
       return {
         visitas: f.visitas.map((v) => ({ fecha: v.fecha, servicios: v.servicios, profesional: v.profesional, importe: v.importe, duracion: v.duracion })),
@@ -184,7 +197,7 @@ export function crearFuentesBackend(d: DatosBackend): FuentesAsistente {
         if (!r.activa) return { activa: false, resumen: "" };
         const cuanto = r.modo === "porcentaje" ? `el ${r.porcentaje} %` : euros(r.importeFijoEur);
         const aQuien = r.aplicaA === "nuevas" ? " en la primera visita" : r.aplicaA === "duracion" ? ` en los servicios de ${r.minutosMinimos} minutos o más` : r.aplicaA === "servicios" ? " en algunos servicios" : " en todas las citas";
-        return { activa: true, resumen: `${cuanto}${aQuien}, con ${r.ventanaHoras} h de plazo` };
+        return { activa: true, resumen: `${cuanto}${aQuien}, con ${r.ventanaHoras} h de plazo; se devuelve si cancelan con más de ${r.horasCancelacion} h` };
       },
       estado: (cita) => {
         const c = porId.get(cita.id);

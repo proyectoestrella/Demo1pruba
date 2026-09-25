@@ -22,8 +22,8 @@ import { normalizar, PALABRAS_VACIAS, raiz } from "./normalizar";
 /** Frases que significan una sola cosa. Se buscan sobre el texto normalizado. */
 export const FRASES: Array<[RegExp, string]> = [
   [/\blista de espera\b/g, "listaespera"],
-  [/\bno (?:ha |han )?(?:venido|vino|vinieron|aparecido|aparecio|se (?:ha )?presentado|se presento|asistio|acudio)\b/g, "planton"],
-  [/\bno show(?:s)?\b|\bnoshow(?:s)?\b/g, "planton"],
+  [/\bno (?:me )?(?:ha |han )?(?:venido|vino|vinieron|aparecido|aparecio|aparecieron|se (?:ha |han )?presentad[oa]s?|se present(?:o|aron|an|a)|asistio|acudio|acudieron)\b/g, "planton"],
+  [/\bno show(?:s)?\b|\bnoshow(?:s)?\b|\bdado planton\b/g, "planton"],
   [/\bfin de semana\b/g, "findesemana"],
   [/\bpasado manana\b/g, "pasadomanana"],
   [/\bla semana (?:que viene|proxima|siguiente)\b|\bproxima semana\b|\bsemana que viene\b/g, "semanaproxima"],
@@ -32,8 +32,18 @@ export const FRASES: Array<[RegExp, string]> = [
   [/\bmes pasado\b|\bmes anterior\b/g, "mespasado"],
   [/\bcuanto (?:dinero )?(?:llevo|llevamos|he hecho|hemos hecho|he sacado|hemos sacado)\b/g, "dinero"],
   [/\bpor que\b/g, "porque"],
-  [/\bcuanto cuesta\b|\bcuanto vale\b|\bque precio\b/g, "precio"],
+  [/\bcuanto cuesta\b|\bcuanto vale\b|\bque precio\b|\ba cuanto (?:esta|sale|lo tenemos)\b|\bcuanto cobr\w* por\b/g, "precio"],
   [/\bsin cita\b|\bsin reserva\b|\bwalk ?in\b/g, "sincita"],
+  // Clientas que se han ido: «no vuelven», «sin venir», «hace mucho que no viene».
+  [/\bno (?:ha |han )?(?:vuelto|vuelve|vuelven|volvio|volvieron|repetido)\b|\bsin venir\b|\bhace (?:mucho|tiempo) que no (?:viene|vienen)\b|\bperdidas\b/g, "inactiva"],
+  [/\bprimera vez\b|\bprimera visita\b/g, "nueva"],
+  [/\bsin (?:marcar|cerrar|desenlace)\b|\bpor marcar\b|\bmarcar si (?:vino|vinieron)\b/g, "pormarcar"],
+  [/\b(?:mas|mejor) a cuenta\b|\bmas rentable\b|\bmas renta\b|\bque mas renta\b|\bdeja mas por hora\b|\bpor hora\b/g, "rentable"],
+  [/\bfuera de plazo\b|\bse (?:le |les )?(?:ha )?pas(?:o|ado) el plazo\b|\bplazo vencido\b/g, "vencida"],
+  [/\bno (?:te |me )?(?:has |he )?entend\w*\b|\bno me entiendes\b/g, "noentiendo"],
+  [/\bforma de pago\b|\bmetodo de pago\b|\btarjeta y (?:cuanto en )?efectivo\b/g, "metodopago"],
+  [/\bprimer hueco\b|\bcuando (?:cabe|caben|puedo meter|hay sitio)\b|\bdonde cabe\b/g, "primerhueco"],
+  [/\bmuy bien hecho\b|\bbien hecho\b|\beres (?:un|una) crack\b|\bque (?:bien|maquina)\b/g, "buentrabajo"],
 ];
 
 /**
@@ -43,22 +53,22 @@ export const FRASES: Array<[RegExp, string]> = [
 export const SINONIMOS: string[][] = [
   ["clienta", "cliente", "clientes", "clientas", "chica", "chicas", "senora", "senoras", "persona", "personas", "gente", "chico", "chicos", "senor"],
   ["cita", "citas", "reserva", "reservas", "turno", "turnos", "visita", "visitas", "servicio_reservado"],
-  ["hueco", "huecos", "libre", "libres", "gap", "disponible", "disponibles", "disponibilidad", "sitio", "hueco_libre"],
+  ["hueco", "huecos", "libre", "libres", "gap", "disponible", "disponibles", "disponibilidad", "sitio", "hueco_libre", "libra", "librar", "libran"],
   ["vino", "vinieron", "asistio", "asistieron", "aparecio", "llego", "llegaron", "acudio", "presento"],
   ["planton", "plantones", "faltar", "falto", "faltaron", "ausencia", "ausencias", "noshow"],
-  ["dinero", "caja", "ingreso", "ingresos", "facturado", "facturacion", "facturar", "factura", "cobrado", "cobrada", "cobro", "cobros", "ganado", "ganancia", "ganancias", "recaudado", "recaudacion", "euros", "pasta", "ventas", "venta"],
-  ["tinte", "tintes", "color", "colores", "coloracion", "tenir", "tinto"],
+  ["dinero", "caja", "ingreso", "ingresos", "facturado", "facturacion", "facturar", "facturamos", "facturo", "cobrado", "cobrada", "cobro", "cobros", "cobrar", "cobramos", "ganado", "ganamos", "ganancia", "ganancias", "recaudado", "recaudacion", "euros", "pasta", "ventas", "venta", "sacar", "sacamos", "sacado", "sacar"],
+  ["tinte", "tintes", "color", "colores", "coloracion", "tenir", "tinto", "formula", "formulas"],
   ["mechas", "mecha", "balayage", "reflejos", "babylights"],
-  ["cancelar", "cancelada", "canceladas", "cancelado", "cancelacion", "cancelaciones", "anular", "anulada", "anulacion", "cancelo", "cancelaron", "anulo"],
+  ["cancelar", "cancelada", "canceladas", "cancelado", "cancelacion", "cancelaciones", "anular", "anulada", "anulado", "anulacion", "cancelo", "cancelaron", "anulo", "borrar", "borro", "eliminar", "elimino", "quitar"],
   ["profesional", "profesionales", "estilista", "estilistas", "peluquera", "peluqueras", "peluquero", "barbero", "barberos", "empleada", "empleadas", "empleado", "trabajadora", "trabajadoras", "equipo", "companera", "companeras"],
-  ["senal", "senales", "fianza", "fianzas", "deposito", "depositos", "adelanto", "anticipo", "bizum"],
+  ["senal", "senales", "fianza", "fianzas", "deposito", "depositos", "adelanto", "anticipo"],
   ["corte", "cortes", "cortar", "pelado"],
   ["peinado", "peinados", "peinar", "recogido", "recogidos"],
   ["precio", "precios", "tarifa", "tarifas", "coste", "cuesta", "vale", "cobrar_por"],
-  ["servicio", "servicios", "tratamiento", "tratamientos", "trabajo"],
+  ["servicio", "servicios", "tratamiento", "tratamientos", "ofrecemos", "ofrezco", "carta"],
   ["hoy", "hoydia"],
   ["manana", "mananas"],
-  ["ocupacion", "ocupada", "ocupado", "lleno", "llena", "completo", "completa", "hueco_ocupado"],
+  ["ocupacion", "ocupada", "ocupado", "lleno", "llena", "llenos", "llenas", "completo", "completa", "porcentaje", "cargada", "cargadas", "hueco_ocupado"],
   ["nueva", "nuevas", "nuevo", "nuevos", "primera_vez", "primeriza"],
   ["recordatorio", "recordatorios", "recordar", "avisar", "aviso", "avisos"],
   ["ficha", "fichas", "historial", "historico"],
@@ -68,6 +78,16 @@ export const SINONIMOS: string[][] = [
   ["ano", "anos", "anual"],
   ["propina", "propinas"],
   ["hola", "buenas", "buenos", "hey", "saludos"],
+  ["telefono", "movil", "email", "correo", "mail", "contacto", "contactar", "contacto_de", "llamar"],
+  ["abierto", "abiertos", "abierta", "abrimos", "abre", "abrir", "abris", "cerrado", "cerrada", "cierra", "cerramos"],
+  ["vencida", "vencidas", "vencido", "caducada", "caducadas", "caducado", "expirada", "expiradas", "plazo"],
+  ["anotar", "anoto", "apuntar", "apunto", "apuntado", "guardar", "guardo", "anotado"],
+  ["crear", "creo", "meter", "meto", "anadir", "anado", "agregar", "nueva_cita"],
+  ["volver", "vuelven", "vuelve", "repiten", "repetir", "repite", "regresan", "fieles", "fiel", "recurrentes"],
+  ["broma", "chiste", "chistes", "gracioso", "graciosa", "divertido"],
+  ["preguntar", "preguntarte", "escribirte", "hablarte", "hablo", "pregunto"],
+  ["enlace", "link", "url", "pagina", "web"],
+  ["pendiente", "pendientes", "esperando", "espero", "falta", "faltan"],
 ];
 
 const CANON = (() => {
@@ -147,7 +167,7 @@ export function casan(a: string, b: string): number {
   if (a === b) return 1;
   if (/^\d/.test(a) || /^\d/.test(b)) return 0;
   const tope = faltasPermitidas(Math.min(a.length, b.length));
-  if (tope === 0) return 0;
+  if (tope === 0 || Math.abs(a.length - b.length) > tope) return 0;
   return damerau(a, b) <= tope ? 0.8 : 0;
 }
 
@@ -220,8 +240,140 @@ export interface CandidatoPreparado {
   ejemplos: EjemploPreparado[];
 }
 
+/**
+ * Peso de cada término según en cuántas intenciones aparece (IDF): «señal»,
+ * «plazo» o «email» deciden; «cuanto», «citas» u «hoy» apenas. Un término que
+ * no sale en ningún ejemplo pesa como uno raro: la pregunta que habla de otra
+ * cosa («el precio de la luz») pierde parecido con todo.
+ */
+export interface Pesos {
+  idf: Map<string, number>;
+  desconocido: number;
+  /** Término → candidatos (por posición) que lo usan en algún ejemplo. */
+  indice: Map<string, Set<number>>;
+  /** Pesos de los términos de cada ejemplo, calculados una vez. */
+  pesosEjemplo: WeakMap<EjemploPreparado, number[]>;
+}
+
+const PESOS = new WeakMap<CandidatoPreparado[], Pesos>();
+
 export function prepararCandidatos(candidatos: Candidato[]): CandidatoPreparado[] {
-  return candidatos.map((c) => ({ id: c.id, ejemplos: c.ejemplos.map(prepararEjemplo) }));
+  const out = candidatos.map((c) => ({ id: c.id, ejemplos: c.ejemplos.map(prepararEjemplo) }));
+  const df = new Map<string, number>();
+  const indice = new Map<string, Set<number>>();
+  out.forEach((c, i) => {
+    for (const t of new Set(c.ejemplos.flatMap((e) => e.terminos))) {
+      df.set(t, (df.get(t) ?? 0) + 1);
+      let s = indice.get(t);
+      if (!s) indice.set(t, (s = new Set()));
+      s.add(i);
+    }
+  });
+  const n = out.length;
+  const idf = new Map<string, number>();
+  for (const [t, d] of df) idf.set(t, Math.log((n + 1) / (d + 0.5)));
+  const pesosEjemplo = new WeakMap<EjemploPreparado, number[]>();
+  for (const c of out) for (const e of c.ejemplos) pesosEjemplo.set(e, e.terminos.map((t) => idf.get(t)!));
+  PESOS.set(out, { idf, desconocido: Math.log((n + 1) / 1.5), indice, pesosEjemplo });
+  return out;
+}
+
+const EQUIVALENTES = new WeakMap<Pesos, Map<string, Map<string, number>>>();
+
+/**
+ * Palabras del catálogo que casan con `t` (exacta = 1, con falta = 0,8).
+ * Se calcula una vez por término: el bucle de comparación ya no llama a
+ * Damerau, solo consulta este mapa.
+ */
+function equivalentes(t: string, w: Pesos): Map<string, number> {
+  let m = EQUIVALENTES.get(w);
+  if (!m) EQUIVALENTES.set(w, (m = new Map()));
+  let v = m.get(t);
+  if (!v) {
+    v = new Map();
+    for (const k of w.idf.keys()) {
+      const c = casan(t, k);
+      if (c > 0) v.set(k, c);
+    }
+    if (m.size > 50_000) m.clear();
+    m.set(t, v);
+  }
+  return v;
+}
+
+/** Parte de la pregunta que el catálogo no conoce (0 = todo conocido, 1 = nada). */
+export function desconocidos(pregunta: string, candidatos: CandidatoPreparado[]): number {
+  const w = PESOS.get(candidatos);
+  const t = terminos(pregunta).filter((x) => !x.startsWith("zz"));
+  if (!w || !t.length) return 0;
+  // Por peso, no por número: una palabra ajena pesa como una rara, y «receta
+  // de lentejas fácil» es casi toda ajena aunque «fácil» salga en algún ejemplo.
+  const pesoDe = (x: string) => w.idf.get(x) ?? w.desconocido;
+  const total = t.reduce((a, x) => a + pesoDe(x), 0);
+  const fuera = t.filter((x) => !conocida(x, w)).reduce((a, x) => a + pesoDe(x), 0);
+  return total ? fuera / total : 0;
+}
+
+const PESO_CACHE = new WeakMap<Pesos, Map<string, number>>();
+const CONOCIDA = new WeakMap<Pesos, Map<string, boolean>>();
+
+/** ¿La conoce el catálogo, exacta o con una falta? Cacheado por término. */
+function conocida(t: string, w: Pesos): boolean {
+  let m = CONOCIDA.get(w);
+  if (!m) CONOCIDA.set(w, (m = new Map()));
+  let v = m.get(t);
+  if (v === undefined) {
+    v = w.idf.has(t);
+    if (!v) for (const k of w.idf.keys()) if (casan(t, k) > 0) { v = true; break; }
+    m.set(t, v);
+  }
+  return v;
+}
+
+function peso(t: string, w: Pesos): number {
+  const v = w.idf.get(t);
+  if (v !== undefined) return v;
+  let m = PESO_CACHE.get(w);
+  if (!m) PESO_CACHE.set(w, (m = new Map()));
+  let x = m.get(t);
+  if (x === undefined) {
+    // Con una falta, el peso de la palabra conocida más parecida.
+    x = w.desconocido;
+    for (const [k, y] of w.idf) if (casan(t, k) > 0) { x = y; break; }
+    m.set(t, x);
+  }
+  return x;
+}
+
+function jaccardPonderado(
+  pregunta: string[],
+  pp: number[],
+  ejemplo: string[],
+  pe: number[],
+  eq: (p: string, e: string) => number = casan,
+): number {
+  if (!pregunta.length || !ejemplo.length) return 0;
+  const usados = new Set<number>();
+  let suma = 0;
+  pregunta.forEach((p, qi) => {
+    let mejor = 0;
+    let idx = -1;
+    ejemplo.forEach((e, i) => {
+      if (usados.has(i)) return;
+      const c = eq(p, e);
+      if (c > mejor) {
+        mejor = c;
+        idx = i;
+      }
+    });
+    if (idx >= 0) {
+      usados.add(idx);
+      suma += mejor * Math.min(pp[qi], pe[idx]);
+    }
+  });
+  const wq = pp.reduce((a, b) => a + b, 0);
+  const we = pe.reduce((a, b) => a + b, 0);
+  return suma / (wq + we - suma);
 }
 
 export type Clasificacion =
@@ -240,8 +392,29 @@ export interface OpcionesClasificar {
 /** Puntuación de cada candidato (su mejor ejemplo), de mayor a menor. */
 export function puntuar(pregunta: string, candidatos: CandidatoPreparado[]): Array<{ id: string; puntuacion: number }> {
   const p = prepararEjemplo(pregunta);
+  const w = PESOS.get(candidatos);
+  if (!w) {
+    return candidatos
+      .map((c) => ({ id: c.id, puntuacion: Math.max(0, ...c.ejemplos.map((e) => parecido(p, e))) }))
+      .sort((a, b) => b.puntuacion - a.puntuacion);
+  }
+  const pp = p.terminos.map((t) => peso(t, w));
+  const eqs = p.terminos.map((t) => equivalentes(t, w));
+  const eqDe = new Map(p.terminos.map((t, i) => [t, eqs[i]]));
+  const eq = (a: string, b: string) => (a === b ? 1 : (eqDe.get(a)?.get(b) ?? 0));
+  // Solo pueden puntuar las intenciones que comparten alguna palabra (exacta o con falta) con la pregunta.
+  const vivos = new Set<number>();
+  for (const m of eqs) for (const k of m.keys()) for (const i of w.indice.get(k) ?? []) vivos.add(i);
   return candidatos
-    .map((c) => ({ id: c.id, puntuacion: Math.max(0, ...c.ejemplos.map((e) => parecido(p, e))) }))
+    .map((c, i) => ({
+      id: c.id,
+      puntuacion: !vivos.has(i)
+        ? 0
+        : Math.max(
+            0,
+            ...c.ejemplos.map((e) => 0.8 * jaccardPonderado(p.terminos, pp, e.terminos, w.pesosEjemplo.get(e)!, eq) + 0.2 * jaccard(p.trigramas, e.trigramas)),
+          ),
+    }))
     .sort((a, b) => b.puntuacion - a.puntuacion);
 }
 
