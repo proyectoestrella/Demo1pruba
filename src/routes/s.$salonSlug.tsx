@@ -10,6 +10,7 @@ import { employeesForType } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { Instagram, MapPin, Phone, Lock, Menu, TriangleAlert } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { logoDelSalon } from "@/lib/logo-salon";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollProgress } from "@/components/magicui/scroll-progress";
@@ -78,6 +79,10 @@ function SalonLayout() {
   const onBooking =
     path.includes("/book") || path.includes("/confirmation") || path.includes("/waitlist");
   const profile = useDisplayProfile();
+  // Logo del salón en la barra y el pie; en demo, el de la lista de demos (ver logo-salon.ts).
+  const sinSalonReal = useSalonStore((st) => !st.realSalonSlug);
+  const conEnlaceDemo = useRouterState({ select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string" });
+  const logoSalon = logoDelSalon(profile, sinSalonReal || conEnlaceDemo);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const demoRawParam = useRouterState({
     select: (s) => (s.location.search as Record<string, unknown>)?.[DEMO_PARAM],
@@ -240,7 +245,13 @@ function SalonLayout() {
               params={{ salonSlug }}
               className="flex min-w-0 items-center gap-2"
             >
-              <Logo label={profile.name} />
+              {logoSalon ? (
+                <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
+                  <img src={logoSalon} alt={`Logo de ${profile.name}`} className="h-full w-full object-cover" />
+                </span>
+              ) : (
+                <Logo label={profile.name} />
+              )}
               <div className="min-w-0 leading-tight">
                 {/* Nombres largos ("THE BEST SHAVE & BARBER") se partían feo
                     a una línea truncada; con dos líneas dejan de cortar
@@ -347,7 +358,13 @@ function SalonLayout() {
         <div className="mx-auto grid max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] gap-10 px-5 py-16 md:grid-cols-4">
           <div className="md:col-span-2">
             <div className="flex items-center gap-2">
-              <Logo label={profile.name} />
+              {logoSalon ? (
+                <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
+                  <img src={logoSalon} alt={`Logo de ${profile.name}`} className="h-full w-full object-cover" />
+                </span>
+              ) : (
+                <Logo label={profile.name} />
+              )}
               <span className="font-display text-lg">{profile.name}</span>
             </div>
             {profile.about ? (

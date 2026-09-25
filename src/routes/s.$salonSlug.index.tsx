@@ -1,4 +1,6 @@
 import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
+import { DEMO_PARAM } from "@/lib/demo-profile";
+import { logoDelSalon } from "@/lib/logo-salon";
 import {
   ArrowRight,
   CalendarCheck,
@@ -375,6 +377,11 @@ function SectionHeading({
 function SalonHome() {
   const { salonSlug } = Route.useParams();
   const profile = useDisplayProfile();
+  // La demo (enlace ?d= o navegador sin salón real) resuelve su logo de la
+  // lista estática de demos; un salón real, solo el que haya guardado.
+  const sinSalonReal = useSalonStore((s) => !s.realSalonSlug);
+  const conEnlaceDemo = useRouterState({ select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string" });
+  const logoPortada = logoDelSalon(profile, sinSalonReal || conEnlaceDemo);
   const tipo = useBusinessType();
   // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
   // en la cadena "2" — de ahí el `String(...)` antes de comparar.
@@ -544,6 +551,11 @@ function SalonHome() {
               </div>
             </div>
 
+            {logoPortada && (
+              <span className="mb-4 block size-[72px] overflow-hidden rounded-full border border-white/40 bg-white shadow-[0_6px_20px_rgba(0,0,0,0.18)]">
+                <img src={logoPortada} alt={`Logo de ${profile.name}`} className="h-full w-full object-cover" />
+              </span>
+            )}
             <h1
               className={cn(
                 "font-display leading-[1.05] text-balance",

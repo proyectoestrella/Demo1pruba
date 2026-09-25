@@ -216,6 +216,15 @@ cabeceras de bloque de 10,5 px y «Primeros pasos» en una línea: cabe sin scro
   Ajustes. La rejilla respeta exactamente las horas visibles; si alguna cita cae fuera, una
   línea bajo la rejilla lo dice y «Ver todo el día» la ensancha solo mientras se mira.
 
+### Logo del salón
+
+`salonProfile.logoUrl` (opcional, en «Mi página de reservas» › «Lo primero que se ve», con
+vista previa). Se pinta recortado al círculo, `object-fit: cover`, sobre blanco con borde
+lino, en el menú (arriba y en el bloque de usuario), en la barra y el pie de la web pública
+y en su portada. Sin logo, o si la imagen no carga, la inicial. Las demos resuelven su logo
+de una lista estática (`LOGOS_DEMO` en `lib/logo-salon.ts`, ficheros en `public/demo/`),
+así el enlace `?d=` no crece; un salón real con el mismo nombre no lo hereda.
+
 ## Cómo verlo en local desde un worktree
 
 El checkout principal sirve la demo en su puerto de siempre; cada rama de diseño se mira desde

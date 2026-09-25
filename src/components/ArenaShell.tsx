@@ -30,6 +30,7 @@ import { BuscadorGlobal } from "@/components/BuscadorGlobal";
 import { BotonCerrarSesion } from "@/components/BotonCerrarSesion";
 import { TOTAL_PASOS, useProgresoPrimerosPasos } from "@/components/PrimerosPasos";
 import { Button } from "@/components/ui/button";
+import { AvatarSalon } from "@/components/AvatarSalon";
 import {
   Sheet,
   SheetContent,
@@ -133,19 +134,10 @@ function ciudadDe(direccion: string | undefined): string {
 function Marca({ compacta = false }: { compacta?: boolean }) {
   const name = useSalonStore((s) => s.salonProfile.name);
   const address = useSalonStore((s) => s.salonProfile.address);
-  const inicial = name.trim().charAt(0).toUpperCase() || "?";
   const ciudad = ciudadDe(address);
   return (
     <Link to="/app" className="flex items-center gap-2.5 hover:text-foreground">
-      <b
-        className={cn(
-          "grid shrink-0 place-items-center rounded-xl bg-primary font-display font-medium text-primary-foreground",
-          compacta ? "size-8 text-base" : "size-[38px] text-[19px]",
-        )}
-        aria-hidden="true"
-      >
-        {inicial}
-      </b>
+      <AvatarSalon size={compacta ? 32 : 40} claseInicial="bg-primary font-display font-medium text-primary-foreground" />
       <span className="min-w-0 leading-tight">
         <strong className={cn("block truncate", compacta ? "text-sm font-extrabold" : "text-[15px]")}>{name}</strong>
         {!compacta && (
@@ -208,12 +200,9 @@ function ProgresoPrimerosPasos() {
 function BloqueUsuario() {
   const name = useSalonStore((s) => s.salonProfile.name);
   const publicLink = usePanelPublicLink();
-  const inicial = name.trim().charAt(0).toUpperCase() || "?";
   return (
     <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2.5">
-      <span className="grid size-[34px] shrink-0 place-items-center rounded-full bg-stylist-mario text-xs font-extrabold" aria-hidden="true">
-        {inicial}
-      </span>
+      <AvatarSalon size={34} />
       <div className="min-w-0 flex-1 leading-tight">
         <b className="block truncate text-[13px]">{name}</b>
         <a href={publicLink} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary">

@@ -250,6 +250,8 @@ export interface SalonProfile {
    * de la demo y el salón la ve en su móvil, que es de lo que se trata.
    */
   heroImage?: string;
+  /** Logo del salón para el círculo del menú y la portada. Vacío: la inicial. */
+  logoUrl?: string;
   /**
    * Equipo real del salón, de 1 a 6 entradas ("Nombre" o "Nombre~Especialidad"
    * — ver `parseTeamEntry` en business-type.ts). Vacío o ausente = el equipo

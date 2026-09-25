@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AvatarSalon } from "@/components/AvatarSalon";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -410,6 +411,21 @@ function MiWeb() {
               errores={errorDe("heroImage")}
               pista="Vacío usa una foto de ejemplo. Tiene que acabar en .jpg, .png o .webp."
             />
+            <div className="flex items-start gap-4">
+              <div className="min-w-0 flex-1">
+                <Campo
+                  etiqueta="Logo (enlace)"
+                  valor={borrador.logoUrl}
+                  onChange={(v) => campo("logoUrl", v)}
+                  errores={errorDe("logoUrl")}
+                  pista="Sale en el círculo del menú y en la portada de tu web. Vacío: la inicial del salón."
+                />
+              </div>
+              <div className="mt-7 flex shrink-0 flex-col items-center gap-1">
+                <AvatarSalon size={56} logoForzado={borrador.logoUrl.trim() ? borrador.logoUrl.trim() : undefined} />
+                <span className="text-[11.5px] text-cafe-suave">Vista previa</span>
+              </div>
+            </div>
           </Bloque>
 
           <Bloque titulo="Cómo te encuentran">
