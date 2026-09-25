@@ -71,3 +71,16 @@ test("los huecos empiezan en el siguiente múltiplo de 5 minutos", () => {
   expect(r.detalleHuecos).toBe("Sara 18:45");
   expect(r.minutosLibres).toBe(75);
 });
+
+test("demo: de hoy, lo terminado antes de las 14:00 vino y está cobrado; la tarde queda por marcar", async () => {
+  const { sembrarCobros } = await import("./mock/seed");
+  const r = sembrarCobros(
+    [
+      cita({ start: "2026-09-25T10:00:00", status: "confirmed" }),
+      cita({ start: "2026-09-25T15:00:00", status: "confirmed" }),
+      cita({ start: "2026-09-25T19:30:00", status: "confirmed" }),
+    ],
+    +new Date("2026-09-25T18:44:00"),
+  );
+  expect(r.map((a) => [a.status, !!a.paidAt])).toEqual([["completed", true], ["confirmed", false], ["confirmed", false]]);
+});
