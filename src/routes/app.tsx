@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { sincronizarColores } from "@/lib/colores-elegidos";
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { useRealSalon } from "@/lib/use-real-salon";
@@ -192,6 +193,10 @@ function DashboardLayoutV1() {
   // contenido deja el ancho del panel a la derecha (--ancho-panel, que la
   // dueña puede cambiar arrastrando su borde): el panel empuja, no tapa.
   const conPanel = useHayPanelLateral();
+  // Colores elegidos por la dueña en Ajustes (9h): se sincronizan antes de pintar.
+  const coloresServicio = useSalonStore((s) => s.salonProfile.coloresServicio);
+  const coloresProfesional = useSalonStore((s) => s.salonProfile.coloresProfesional);
+  sincronizarColores(coloresServicio, coloresProfesional);
 
   // Primera visita al panel: se ofrece el tour una sola vez. Solo en la home
   // (/app), que es donde están anclados casi todos los pasos. Se espera a que

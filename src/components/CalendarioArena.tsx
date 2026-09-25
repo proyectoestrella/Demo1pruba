@@ -456,7 +456,7 @@ function Leyenda({ vista, porPro, services, equipo }: { vista: Vista; porPro: bo
         <b className="text-k-tinta">Profesional:</b>
         {equipo.map((e, i) => (
           <span key={e.id} className="flex items-center gap-1.5">
-            <i className="inline-block size-3.5 rounded-[4px] border border-cafe" style={{ background: colorProfesional(i) }} />
+            <i className="inline-block size-3.5 rounded-[4px] border border-cafe" style={{ background: colorProfesional(i, e.id) }} />
             {e.name}
           </span>
         ))}

@@ -9,6 +9,8 @@ import { fichaDeClienta } from "@/lib/ficha-clienta";
 import { duracionCorta, opcionesDeDuracion } from "@/lib/hoy-arena";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { eur, hora } from "@/lib/copy";
+import { whatsappUrl } from "@/lib/campanas";
+import { mensajeConfirmacionDe } from "@/lib/plantillas-whatsapp";
 import { iniciales } from "@/lib/calendario-arena";
 import type { Appointment } from "@/lib/mock/types";
 import { Button } from "@/components/ui/button";
@@ -62,6 +64,9 @@ function Ventana({
   const depositEnabled = useSalonStore((s) => !!s.salonProfile.depositEnabled);
   const depositBizumPhone = useSalonStore((s) => s.salonProfile.depositBizumPhone ?? "");
   const depositAmountEur = useSalonStore((s) => s.salonProfile.depositAmountEur ?? 10);
+  const salonName = useSalonStore((s) => s.salonProfile.name);
+  const direccion = useSalonStore((s) => s.salonProfile.address);
+  const plantillaConfirmacion = useSalonStore((s) => s.salonProfile.plantillas?.confirmacion);
   const equipo = useEquipo();
   const carta = selectServiceMap(services);
   const titulo = useId();
@@ -114,7 +119,31 @@ function Ventana({
 
   function confirmar() {
     updateAppointment(cita.id, { status: "confirmed", duration: duracion });
-    toast.success("Cita confirmada", { description: `${cita.clientName} · ${duracionCorta(duracion)}` });
+    // El aviso a la clienta lo manda la dueña: el toast trae el WhatsApp ya
+    // escrito, con su texto de Ajustes o el de siempre (9h).
+    const telefono = cliente?.phone;
+    toast.success("Cita confirmada", {
+      description: `${cita.clientName} · ${duracionCorta(duracion)}`,
+      duration: 10000,
+      ...(telefono
+        ? {
+            action: {
+              label: "Avisar por WhatsApp",
+              onClick: () => {
+                const texto = mensajeConfirmacionDe(plantillaConfirmacion, {
+                  nombre: (cita.clientName || "").split(" ")[0],
+                  salon: salonName,
+                  startISO: cita.start,
+                  servicio: serviceLabelOf(cita, carta),
+                  profesional: profesional?.name,
+                  direccion: direccion,
+                });
+                window.open(whatsappUrl(telefono, texto), "_blank", "noopener,noreferrer");
+              },
+            },
+          }
+        : {}),
+    });
     onCerrar();
   }
   function rechazar() {

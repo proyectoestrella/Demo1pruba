@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { colorElegidoProfesional } from "@/lib/colores-elegidos";
 import { hora } from "@/lib/copy";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { franjasProfesional } from "@/lib/horario-equipo";
@@ -42,7 +43,7 @@ export type ColumnaRejilla = {
 };
 
 /** Pasteles por profesional cuando la rejilla junta a todo el equipo. */
-export const colorProfesional = (i: number) => `var(--pro-${(i % 4) + 1})`;
+export const colorProfesional = (i: number, id?: string) => `var(--pro-${colorElegidoProfesional(id) ?? (i % 4) + 1})`;
 
 export function RejillaCalendario({
   columnas,
@@ -307,7 +308,7 @@ function ColumnaDia({
             a={a}
             carta={carta}
             services={services}
-            fondo={colorPor === "profesional" ? colorProfesional(Math.max(0, iPro)) : undefined}
+            fondo={colorPor === "profesional" ? colorProfesional(Math.max(0, iPro), a.employeeId) : undefined}
             pro={colorPor === "profesional" && pro ? pro.name : undefined}
             estrecha={total >= 3}
             style={style}

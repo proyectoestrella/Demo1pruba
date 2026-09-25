@@ -252,6 +252,11 @@ export interface SalonProfile {
   heroImage?: string;
   /** Logo del salón para el círculo del menú y la portada. Vacío: la inicial. */
   logoUrl?: string;
+  /** Textos de WhatsApp de la dueña (9h). Vacío o ausente: el texto de siempre. */
+  plantillas?: { recordatorio?: string; confirmacion?: string };
+  /** Color elegido por la dueña (9h): servicio → 1-6 de la paleta; profesional → 1-4. */
+  coloresServicio?: Record<string, number>;
+  coloresProfesional?: Record<string, number>;
   /**
    * Equipo real del salón, de 1 a 6 entradas ("Nombre" o "Nombre~Especialidad"
    * — ver `parseTeamEntry` en business-type.ts). Vacío o ausente = el equipo

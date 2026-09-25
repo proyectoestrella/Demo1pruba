@@ -2,7 +2,11 @@ import { CamposPreferenciasCalendario } from "@/components/CamposPreferenciasCal
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, ChevronDown } from "lucide-react";
+import { usePlegado } from "@/lib/use-plegado";
+import { cn } from "@/lib/utils";
+import { AjustesMensajes } from "@/components/AjustesMensajes";
+import { AjustesColores } from "@/components/AjustesColores";
 import { useSalonStore } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
 import { getCalendarSubscription, regenerateCalendarSubscription } from "@/lib/api/calendar.functions";
@@ -138,203 +142,188 @@ function Settings() {
     toast.success("Cambios guardados");
   }
 
+  const guardar = (
+    <div className="flex justify-end pt-1">
+      <Button onClick={handleSave}>Guardar cambios</Button>
+    </div>
+  );
+  const fila = "space-y-4 border-t border-lino pt-5 first:border-t-0 first:pt-0";
+
   return (
     <div className="flex flex-1 flex-col gap-5">
-      <PageHeader title="Ajustes" description="Las políticas de tu salón: plantones, señal y reparto de agenda." />
-
-      <div className="grid flex-1 items-start gap-4 xl:grid-cols-2 xl:group-data-[panel=abierto]/panel:grid-cols-1">
-      <div className="flex min-w-0 flex-col gap-4">
+      <PageHeader title="Ajustes" description="Cómo funciona tu salón: agenda, reservas, mensajes, plantones, señal y colores." />
       <PrimerosPasos enAjustes />
 
-      <div className="rounded-[20px] border border-border bg-card p-5">
-        <div className="flex items-center justify-between gap-4">
-        <div>
-          <Label htmlFor="duracion-flexible" className="text-base font-extrabold">La duración de cada cita la decido yo al aceptarla</Label>
-          <p className="mt-1 text-sm text-muted-foreground">La web muestra una duración orientativa. Cuando llegue la solicitud, podrás fijar los minutos antes de confirmarla.</p>
-        </div>
-        <Switch id="duracion-flexible" checked={duracionFlexible} onCheckedChange={setDuracionFlexible} />
-        </div>
-        <div className="mt-4 flex justify-end"><Button onClick={handleSave}>Guardar cambios</Button></div>
-      </div>
-
-      <div className="rounded-[20px] border border-border bg-card p-5">
-        <h2 className="text-base font-extrabold">Cómo se abre tu calendario</h2>
-        <p className="mt-1 mb-4 text-sm text-muted-foreground">Se guarda al cambiarlo. También lo tienes en el engranaje del propio calendario.</p>
-        <div className="max-w-md"><CamposPreferenciasCalendario /></div>
-      </div>
-
-      <div className="space-y-4 rounded-[20px] border border-border bg-card p-5">
-        <div>
-          <h2 className="text-base font-extrabold">Ver tus citas en Google Calendar o en el calendario del iPhone</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Tu calendario la actualiza cada pocas horas; la agenda al minuto está en siShow. Solo aparecen citas confirmadas, con hora, servicio y nombre de pila.</p>
-        </div>
-        {!realSlug ? <p className="text-sm text-muted-foreground">La suscripción se activa cuando el salón es real. En esta demo puedes ver cómo quedará el ajuste.</p> : <>
-          {calendarError && <p className="text-sm text-melocoton-tinta">No se pudo cargar el enlace. Comprueba que el calendario esté activado en el servidor y vuelve a abrir Ajustes.</p>}
-          {calendarToken && <>
-            <label className="block space-y-1 text-sm"><span>Calendario</span>
-              <select value={profesional} onChange={(e) => setProfesional(e.target.value)} className="flex h-10 w-full rounded-xl border border-input bg-card px-3 text-sm">
-                <option value="">Todo el salón</option>
-                {equipo.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </label>
-            <div className="flex flex-wrap gap-2"><Input readOnly aria-label="Enlace del calendario" value={calendarUrl} className="min-w-0 flex-1 text-xs" /><Button variant="outline" onClick={() => { void navigator.clipboard.writeText(calendarUrl).then(() => toast.success("Enlace copiado")).catch(() => toast.error("No se pudo copiar el enlace")); }}>Copiar enlace</Button></div>
-            <p className="text-xs text-muted-foreground">Este enlace es privado: quien lo tenga podrá ver esas citas. Si lo regeneras, el anterior dejará de funcionar.</p>
-          </>}
-          <Button disabled={calendarBusy} variant={calendarToken ? "outline" : "default"} onClick={() => {
-            setCalendarBusy(true);
-            void regenerateCalendarSubscription({ data: { slug: realSlug } }).then(({ token }) => {
-              setCalendarToken(token); setCalendarError(false); toast.success(calendarToken ? "Enlace nuevo creado" : "Calendario activado");
-            }).catch(() => { setCalendarError(true); toast.error("No se pudo crear el enlace"); }).finally(() => setCalendarBusy(false));
-          }}>{calendarToken ? "Regenerar enlace" : "Crear enlace"}</Button>
-        </>}
-      </div>
-
-      <Link
-        to="/app/web"
-        className="flex items-center justify-between gap-4 rounded-[20px] border border-border bg-nata p-5 transition-colors hover:border-moca hover:text-foreground"
-      >
-        <div>
-          <p className="text-base font-extrabold">Mi página de reservas</p>
-          <p className="mt-1 text-sm text-cafe-medio">
-            El nombre, la foto, la presentación, el teléfono, la dirección, el horario, los
-            servicios y precios, el equipo y las preguntas frecuentes se cambian en{" "}
-            <strong>Mi página de reservas</strong>, viendo el resultado mientras escribes.
-          </p>
-        </div>
-        <ArrowUpRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-      </Link>
-
-      </div>
-      <div className="flex min-w-0 flex-col gap-4">
-      <div className="space-y-4 rounded-[20px] border border-border bg-card p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <Label className="text-base font-extrabold">Preguntas al reservar</Label>
-            <p className="mt-1 text-sm text-muted-foreground">Pregunta por el largo de pelo, el color actual y los tratamientos químicos recientes para preparar cada cita.</p>
-          </div>
-          <Switch aria-label="Activar preguntas al reservar" checked={questionsEnabled} onCheckedChange={setQuestionsEnabled} />
-        </div>
-        {questionsEnabled && <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-4">
-          <div><Label>Respuestas obligatorias</Label><p className="mt-1 text-sm text-muted-foreground">Si está desactivado, la clienta puede dejar las preguntas sin responder.</p></div>
-          <Switch aria-label="Hacer obligatorias las preguntas" checked={questionsRequired} onCheckedChange={setQuestionsRequired} />
-        </div>}
-        <div className="flex justify-end"><Button onClick={handleSave}>Guardar cambios</Button></div>
-      </div>
-
-      <div className="space-y-4 rounded-[20px] border border-border bg-card p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <Label className="text-base font-extrabold">Plantones</Label>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Cobra una penalización a quien cancela tarde o no viene, antes de que pueda volver a
-              reservar. Tú decides en cada caso si la aplicas o la perdonas.
-            </p>
-          </div>
-          <Switch checked={noShowEnabled} onCheckedChange={setNoShowEnabled} />
-        </div>
-        {noShowEnabled && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Penalización (€)"
-              value={noShowFeeEur}
-              onChange={setNoShowFeeEur}
-              hint="De 0 a 50 €."
-            />
-            <Field
-              label="Aviso mínimo (h)"
-              value={noShowNoticeHours}
-              onChange={setNoShowNoticeHours}
-              hint="Cancelar con menos margen cuenta como plantón. De 1 a 48 horas."
-            />
-          </div>
-        )}
-        <div className="flex justify-end pt-2">
-          <Button onClick={handleSave}>Guardar cambios</Button>
-        </div>
-      </div>
-
-      {/* Fianza por Bizum — lo pidió María (PeluChic) para clientas nuevas.
-          Se configura aquí y solo aquí: nada depende de tocar la URL. */}
-      <div className="space-y-4 rounded-[20px] border border-border bg-card p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <Label className="text-base font-extrabold">Señal por Bizum</Label>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Añade un botón en cada solicitud pendiente que abre tu WhatsApp con el mensaje ya
-              escrito para pedir la señal. El Bizum llega a tu banco y lo marcas tú a mano:{" "}
-              <strong>siShow no cobra ni comprueba ningún pago.</strong>
-            </p>
-          </div>
-          <Switch checked={depositEnabled} onCheckedChange={setDepositEnabled} />
-        </div>
-        {depositEnabled && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Número de Bizum"
-              value={depositBizumPhone}
-              onChange={setDepositBizumPhone}
-              hint="El que aparecerá escrito en el mensaje."
-            />
-            <Field
-              label="Importe de la señal (€)"
-              value={depositAmountEur}
-              onChange={setDepositAmountEur}
-              hint="De 1 a 200 €."
-            />
-            <div className="space-y-1.5">
-              <Label htmlFor="deposit-deadline">Plazo para hacer el Bizum</Label>
-              <select id="deposit-deadline" className="flex h-10 w-full rounded-xl border border-input bg-card px-3 text-sm" value={depositDeadline} onChange={(e) => setDepositDeadline(Number(e.target.value) as DepositDeadlineHours)}>
-                {DEPOSIT_DEADLINE_OPTIONS.map((hours) => <option key={hours} value={hours}>{hours} {hours === 1 ? "hora" : "horas"}</option>)}
-              </select>
-              <p className="text-xs text-muted-foreground">Al vencer, tú decides si dar más tiempo o liberar el hueco. Nunca se cancela sola.</p>
+      <div className="flex max-w-4xl flex-col gap-3">
+        <SeccionAjustes titulo="Tu agenda" resumen="Duración al aceptar, cómo se abre el calendario y verlo en tu móvil" abierta>
+          <div className={fila}>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="duracion-flexible" className="text-[15px] font-extrabold">La duración de cada cita la decido yo al aceptarla</Label>
+                <p className="mt-1 text-sm text-muted-foreground">La web muestra una duración orientativa. Cuando llegue la solicitud, podrás fijar los minutos antes de confirmarla.</p>
+              </div>
+              <Switch id="duracion-flexible" checked={duracionFlexible} onCheckedChange={setDuracionFlexible} />
             </div>
+            {guardar}
           </div>
-        )}
-        <div className="flex justify-end pt-2">
-          <Button onClick={handleSave}>Guardar cambios</Button>
-        </div>
-      </div>
-
-      <div className="space-y-4 rounded-[20px] border border-border bg-card p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <Label className="text-base font-extrabold">Reparto de agenda</Label>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Sugiere una hora más tranquila cuando alguien elige una franja con espera (12:00–14:00
-              o las últimas horas del día). Nunca le impide elegir la suya.
-            </p>
+          <div className={fila}>
+            <h3 className="text-[15px] font-extrabold">Cómo se abre tu calendario</h3>
+            <p className="-mt-2 text-sm text-muted-foreground">Se guarda al cambiarlo. También lo tienes en el engranaje del propio calendario.</p>
+            <div className="max-w-md"><CamposPreferenciasCalendario /></div>
           </div>
-          <Switch checked={smartSpreadEnabled} onCheckedChange={setSmartSpreadEnabled} />
-        </div>
-        {smartSpreadEnabled && (
-          <Field
-            label="No ofrecer los últimos (min)"
-            value={lastSlotBufferMin}
-            onChange={setLastSlotBufferMin}
-            hint="Minutos antes del cierre que dejan de ofertarse. De 0 a 240."
-          />
-        )}
-        <div className="flex justify-end pt-2">
-          <Button onClick={handleSave}>Guardar cambios</Button>
-        </div>
-      </div>
+          <div className={fila}>
+            <div>
+              <h3 className="text-[15px] font-extrabold">Ver tus citas en Google Calendar o en el calendario del iPhone</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Tu calendario la actualiza cada pocas horas; la agenda al minuto está en siShow. Solo aparecen citas confirmadas, con hora, servicio y nombre de pila.</p>
+            </div>
+            {!realSlug ? <p className="text-sm text-muted-foreground">La suscripción se activa cuando el salón es real. En esta demo puedes ver cómo quedará el ajuste.</p> : <>
+              {calendarError && <p className="text-sm text-melocoton-tinta">No se pudo cargar el enlace. Comprueba que el calendario esté activado en el servidor y vuelve a abrir Ajustes.</p>}
+              {calendarToken && <>
+                <label className="block space-y-1 text-sm"><span>Calendario</span>
+                  <select value={profesional} onChange={(e) => setProfesional(e.target.value)} className="flex h-10 w-full rounded-xl border border-input bg-blanco px-3 text-sm">
+                    <option value="">Todo el salón</option>
+                    {equipo.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </label>
+                <div className="flex flex-wrap gap-2"><Input readOnly aria-label="Enlace del calendario" value={calendarUrl} className="min-w-0 flex-1 text-xs" /><Button variant="outline" onClick={() => { void navigator.clipboard.writeText(calendarUrl).then(() => toast.success("Enlace copiado")).catch(() => toast.error("No se pudo copiar el enlace")); }}>Copiar enlace</Button></div>
+                <p className="text-xs text-muted-foreground">Este enlace es privado: quien lo tenga podrá ver esas citas. Si lo regeneras, el anterior dejará de funcionar.</p>
+              </>}
+              <Button disabled={calendarBusy} variant={calendarToken ? "outline" : "default"} onClick={() => {
+                setCalendarBusy(true);
+                void regenerateCalendarSubscription({ data: { slug: realSlug } }).then(({ token }) => {
+                  setCalendarToken(token); setCalendarError(false); toast.success(calendarToken ? "Enlace nuevo creado" : "Calendario activado");
+                }).catch(() => { setCalendarError(true); toast.error("No se pudo crear el enlace"); }).finally(() => setCalendarBusy(false));
+              }}>{calendarToken ? "Regenerar enlace" : "Crear enlace"}</Button>
+            </>}
+          </div>
+        </SeccionAjustes>
 
-      <div className="rounded-[20px] border border-border bg-card p-5">
-        <p className="text-base font-extrabold">Política de cancelación</p>
-        <p className="mt-2 text-sm">
-          Cancelación gratuita hasta 24 h antes. Si no vienes o cancelas más tarde, pierdes la señal.
-        </p>
-      </div>
-      <div className="rounded-[20px] border border-border bg-card p-5">
-        <p className="text-base font-extrabold">Regla de la señal</p>
-        <p className="mt-2 text-sm">
-          Los servicios de más de <strong>90 minutos</strong> requieren un{" "}
-          <strong>20 % de señal</strong>.
-        </p>
-      </div>
-      </div>
+        <SeccionAjustes titulo="Reservas por internet" resumen="Preguntas al reservar, reparto de agenda y lo que dice tu web">
+          <div className={fila}>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label className="text-[15px] font-extrabold">Preguntas al reservar</Label>
+                <p className="mt-1 text-sm text-muted-foreground">Pregunta por el largo de pelo, el color actual y los tratamientos químicos recientes para preparar cada cita. Por ahora son esas tres; todavía no se pueden escribir preguntas propias.</p>
+              </div>
+              <Switch aria-label="Activar preguntas al reservar" checked={questionsEnabled} onCheckedChange={setQuestionsEnabled} />
+            </div>
+            {questionsEnabled && <div className="flex items-center justify-between gap-4">
+              <div><Label>Respuestas obligatorias</Label><p className="mt-1 text-sm text-muted-foreground">Si está desactivado, la clienta puede dejar las preguntas sin responder.</p></div>
+              <Switch aria-label="Hacer obligatorias las preguntas" checked={questionsRequired} onCheckedChange={setQuestionsRequired} />
+            </div>}
+            {guardar}
+          </div>
+          <div className={fila}>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label className="text-[15px] font-extrabold">Reparto de agenda</Label>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Sugiere una hora más tranquila cuando alguien elige una franja con espera (12:00–14:00
+                  o las últimas horas del día). Nunca le impide elegir la suya.
+                </p>
+              </div>
+              <Switch checked={smartSpreadEnabled} onCheckedChange={setSmartSpreadEnabled} />
+            </div>
+            {smartSpreadEnabled && (
+              <Field label="No ofrecer los últimos (min)" value={lastSlotBufferMin} onChange={setLastSlotBufferMin} hint="Minutos antes del cierre que dejan de ofertarse. De 0 a 240." />
+            )}
+            {guardar}
+          </div>
+          <div className={fila}>
+            <Link
+              to="/app/web"
+              className="flex items-center justify-between gap-4 rounded-2xl border border-lino bg-nata p-4 transition-colors hover:border-moca hover:text-foreground"
+            >
+              <div>
+                <p className="text-[15px] font-extrabold">Lo que se lee en tu web</p>
+                <p className="mt-1 text-sm text-cafe-medio">
+                  El nombre, la foto, el horario, los servicios, el equipo y las preguntas frecuentes
+                  —también tu política de cancelación— se cambian en <strong>Mi página de reservas</strong>, viendo el resultado.
+                </p>
+              </div>
+              <ArrowUpRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            </Link>
+          </div>
+        </SeccionAjustes>
+
+        <SeccionAjustes titulo="Mensajes de WhatsApp" resumen="El texto de la confirmación y del recordatorio, a tu manera">
+          <AjustesMensajes />
+        </SeccionAjustes>
+
+        <SeccionAjustes titulo="Plantones y señal" resumen="Penalización por no venir y señal por Bizum">
+          <div className={fila}>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label className="text-[15px] font-extrabold">Plantones</Label>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Cobra una penalización a quien cancela tarde o no viene, antes de que pueda volver a
+                  reservar. Tú decides en cada caso si la aplicas o la perdonas.
+                </p>
+              </div>
+              <Switch checked={noShowEnabled} onCheckedChange={setNoShowEnabled} />
+            </div>
+            {noShowEnabled && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Penalización (€)" value={noShowFeeEur} onChange={setNoShowFeeEur} hint="De 0 a 50 €." />
+                <Field label="Aviso mínimo (h)" value={noShowNoticeHours} onChange={setNoShowNoticeHours} hint="Cancelar con menos margen cuenta como plantón. De 1 a 48 horas." />
+              </div>
+            )}
+            {guardar}
+          </div>
+          {/* Fianza por Bizum — lo pidió María (PeluChic) para clientas nuevas. */}
+          <div className={fila}>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label className="text-[15px] font-extrabold">Señal por Bizum</Label>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Añade un botón en cada solicitud pendiente que abre tu WhatsApp con el mensaje ya
+                  escrito para pedir la señal. El Bizum llega a tu banco y lo marcas tú a mano:{" "}
+                  <strong>siShow no cobra ni comprueba ningún pago.</strong>
+                </p>
+              </div>
+              <Switch checked={depositEnabled} onCheckedChange={setDepositEnabled} />
+            </div>
+            {depositEnabled && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Número de Bizum" value={depositBizumPhone} onChange={setDepositBizumPhone} hint="El que aparecerá escrito en el mensaje." />
+                <Field label="Importe de la señal (€)" value={depositAmountEur} onChange={setDepositAmountEur} hint="De 1 a 200 €." />
+                <div className="space-y-1.5">
+                  <Label htmlFor="deposit-deadline">Plazo para hacer el Bizum</Label>
+                  <select id="deposit-deadline" className="flex h-10 w-full rounded-xl border border-input bg-blanco px-3 text-sm" value={depositDeadline} onChange={(e) => setDepositDeadline(Number(e.target.value) as DepositDeadlineHours)}>
+                    {DEPOSIT_DEADLINE_OPTIONS.map((hours) => <option key={hours} value={hours}>{hours} {hours === 1 ? "hora" : "horas"}</option>)}
+                  </select>
+                  <p className="text-xs text-muted-foreground">Al vencer, tú decides si dar más tiempo o liberar el hueco. Nunca se cancela sola.</p>
+                </div>
+              </div>
+            )}
+            {guardar}
+          </div>
+        </SeccionAjustes>
+
+        <SeccionAjustes titulo="Colores" resumen="El color de cada servicio y de cada profesional en el calendario">
+          <AjustesColores />
+        </SeccionAjustes>
       </div>
     </div>
+  );
+}
+
+/** Sección de Ajustes plegable desde su título; recuerda si la dueña la dejó abierta. */
+function SeccionAjustes({ titulo, resumen, abierta = false, children }: { titulo: string; resumen: string; abierta?: boolean; children: React.ReactNode }) {
+  const [abierto, alternar] = usePlegado(`ajustes:${titulo}`, abierta);
+  return (
+    <section className="overflow-hidden rounded-[20px] border border-border bg-card">
+      <h2>
+        <button type="button" aria-expanded={abierto} onClick={alternar} className="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-beige/50">
+          <span className="min-w-0 flex-1">
+            <span className="block text-[16px] font-extrabold tracking-[-0.01em]">{titulo}</span>
+            <span className="block truncate text-[13px] text-muted-foreground">{resumen}</span>
+          </span>
+          <ChevronDown className={cn("size-5 shrink-0 text-cafe-medio transition-transform", abierto && "rotate-180")} strokeWidth={1.6} aria-hidden="true" />
+        </button>
+      </h2>
+      {abierto && <div className="space-y-5 border-t border-lino px-5 py-5">{children}</div>}
+    </section>
   );
 }
 

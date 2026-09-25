@@ -1,4 +1,5 @@
 import type { Appointment, Employee, Service } from "./mock/types";
+import { colorElegidoServicio } from "./colores-elegidos";
 import { franjasProfesional } from "./horario-equipo";
 import { toDateKey } from "./reparto";
 
@@ -144,6 +145,8 @@ export const COLORES_SERVICIO = 6;
  * servicios que no están en la carta reciben el último color.
  */
 export function indiceColorServicio(serviceId: string | undefined, servicios: Service[]): number {
+  const elegido = colorElegidoServicio(serviceId);
+  if (elegido) return elegido;
   const i = servicios.findIndex((s) => s.id === serviceId);
   return i < 0 ? COLORES_SERVICIO : (i % COLORES_SERVICIO) + 1;
 }

@@ -3,7 +3,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Printer, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
-import { enlaceRecordatorio } from "@/lib/avisos";
+import { whatsappUrl } from "@/lib/campanas";
+import { mensajeRecordatorioDe } from "@/lib/plantillas-whatsapp";
+import { employeeMap } from "@/lib/mock/salon";
 import { useEquipo } from "@/lib/use-equipo";
 import { hojaDelDia, fechaLocal, vistaHoja } from "@/lib/hoja-del-dia";
 import { serviceLabelOf } from "@/lib/appointment-services";
@@ -72,13 +74,14 @@ function HojaDelDia() {
           {cita.reminderSentAt ? <span className="inline-flex h-6 items-center rounded-full bg-salvia-clara px-2.5 text-[12.5px] font-bold text-hoja-tinta">Enviado</span> : <div className="flex gap-1.5">
             <Button size="sm" disabled={!telefono} onClick={() => {
               if (!telefono) return;
-              const url = enlaceRecordatorio(telefono, {
-                clientName: cita.clientName.split(" ")[0], salonName: salon.name, startISO: cita.start,
+              // El texto de la dueña si lo escribió en Ajustes; si no, el de siempre.
+              const url = whatsappUrl(telefono, mensajeRecordatorioDe(salon.plantillas?.recordatorio, {
+                clientName: cita.clientName.split(" ")[0], salonName: salon.name, startISO: cita.start, profesional: employeeMap[cita.employeeId]?.name,
                 servicio: serviceLabelOf(cita, carta), direccion: salon.address,
                 senalPendiente: cita.depositRequestedAt && !cita.depositReceivedAt && salon.depositBizumPhone
                   ? { importeEur: cita.depositEur ?? salon.depositAmountEur ?? 10, bizumPhone: salon.depositBizumPhone, deadlineISO: cita.depositDueAt }
                   : undefined,
-              });
+              }));
               window.open(url, "_blank", "noopener,noreferrer");
             }}>Enviar recordatorio</Button>
             <Button size="sm" variant="outline" onClick={() => updateAppointment(cita.id, { reminderSentAt: new Date().toISOString() })}>Marcar como enviado</Button>
