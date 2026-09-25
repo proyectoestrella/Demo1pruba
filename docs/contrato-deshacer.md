@@ -44,17 +44,25 @@ type EstadoDeshacer =
 | **Registro automático** | `store.ts` + `registro-cambios.ts` | No hay que hacer nada: estas acciones ya dejan su cambio al llamarlas (ver la lista de abajo) |
 | `estadoDeshacer(id)` | store | `EstadoDeshacer`, para pintar el botón o el motivo |
 | `deshacerCambio(id)` | store | `{ ok: true, aviso? }` o `{ ok: false, motivo }`. Aplica el inverso por el mismo camino de sincronización y sube el deshacer |
-| `marcarAvisoEnviado(id)` | store | Llamarlo cuando se abre el WhatsApp a la clienta por ese cambio |
+| `abrirWhatsAppDeCita(citaId, url)` | store | **Abrir así todo WhatsApp por una cita.** Abre el enlace y marca como avisada la última modificación de esa cita en las últimas 24 h. Ya lo usan la ficha de la cita, el aviso de solicitudes y la hoja del día |
+| `marcarAvisoEnviado(id)` | store | Marca a mano un cambio concreto (casos raros) |
 | `listarCambios({ slug, antesDe?, tipo?, autor?, idEntidad?, limite? })` | `src/lib/api/cambios.functions.ts` | El historial de todos los aparatos (`historial.ver`). En una demo, la lista local `cambios` |
 | `listarVersiones({ slug })`, `restaurarVersion({ slug, versionId })` | `src/lib/api/salons.functions.ts` | Versiones de Mi página (`web.restaurar-version`). `restaurarVersion` devuelve `{ ok, profile }`: hay que aplicarlo con `updateSalonProfile(profile)` |
 
 **Acciones que registran solas:**
+- `updateSalonProfile`, **un cambio por campo** (tipo `perfil.campo`, `idEntidad` = la clave). Cubre la landing, los horarios, el equipo, las preguntas, la señal, las plantillas, los colores, el logo y los ajustes. El permiso para deshacerlo es el de su parte: `accionesDeCambio`. Las cargas de un perfil (salón real, demo por enlace) no registran, porque van dentro de `conRegistroEnPausa`. Si cargas un perfil desde una pantalla nueva, envuélvelo igual.
 - `updateAppointment`, `cancelAppointment` (cancelar o rechazar) y `markPaid`.
 - Los pasos de la señal: `pedirSenal`, `recibirSenal`, `deshacerSenalRecibida`, `darMasTiempoSenal`, `confirmarDevolucionSenal`, `markDepositRequested`, `extendDepositDeadline` y `markDepositReceived`.
 - `setManualBlock`, `applyPenalty`, `clearPenalty` y `setDeuda`.
 - `updateService` y `deleteService`. Un servicio borrado vuelve con el mismo id.
 
-No registran: las acciones automáticas (liberar señales vencidas, hidratar desde el servidor, demos) ni lo que ocurre durante un deshacer. Los cambios del perfil que no son servicios (horarios, preguntas, ajustes) quedan cubiertos por las versiones de Mi página. El `DecisionDeudaDialog` puede quedarse con su aviso actual o usar el de `setDeuda`, que ya registra.
+No registran: las acciones automáticas (liberar señales vencidas, hidratar desde el servidor, demos, reinicio del perfil), lo que ocurre durante un deshacer ni las marcas internas de la lista de configuración.
+
+**Versiones.**
+- **Al publicar.** Cada publicación de Mi página guarda el estado publicado.
+- **Al guardar ajustes por parche.** Se guarda una **versión ligera agrupada**: el perfil de ANTES, con la nota «Antes de cambiar ajustes», cuando empieza una tanda (la última versión tiene más de 30 minutos). Así queda un punto al que volver por tanda, sin expulsar publicaciones.
+
+**Auditoría.** El parche de un deshacer de cita viaja con `origen: "deshacer"` y el servidor anota `appointments.ultimo_deshacer_en`. La columna `origen` no se toca: es la procedencia de la cita. El `DecisionDeudaDialog` puede quedarse con su aviso actual o usar el de `setDeuda`, que ya registra.
 
 **El aviso de 10 s tras una acción** usa `useSalonStore.getState().cambios[0]` justo después de llamarla: su `resumen` y `deshacerCambio(cambios[0].id)`.
 
