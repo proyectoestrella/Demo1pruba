@@ -103,7 +103,10 @@ describe("la guarda está puesta en todas las funciones de servidor", () => {
     const cuerpo = cuerpoDe("listSalonData");
     // El parámetro se llama `vista` y es una preferencia; lo que manda es
     // `vistaEfectiva`, que la recorta con el acceso de quien llama.
-    expect(cuerpo).toContain("vistaEfectiva(data.vista, await acceso(data.slug))");
+    expect(cuerpo).toContain("const quien = await acceso(data.slug)");
+    expect(cuerpo).toContain("vistaEfectiva(data.vista, quien)");
+    // Y el panel sale recortado por rol (lote 8).
+    expect(cuerpo).toContain("recortarDatosPanel(quien, todo)");
     // Y no queda ni rastro del `scope` que elegía el cliente.
     expect(cuerpo).not.toContain("data.scope");
   });

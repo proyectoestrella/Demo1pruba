@@ -117,6 +117,12 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 
 export interface Appointment {
   id: string;
+  /**
+   * Cita de otra profesional que el servidor manda SIN datos (lote 8): solo
+   * inicio, duración y profesional, para calcular huecos y avisar de solapes.
+   * Una estilista sin `cita.ver-todas` no la pinta ni la abre.
+   */
+  bloqueOcupado?: true;
   /** Procedencia del historial; ausente equivale a siShow. */
   origen?: "sishow" | "tpv123";
   clientId: string;

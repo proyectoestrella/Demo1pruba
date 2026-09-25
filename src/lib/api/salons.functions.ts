@@ -17,6 +17,8 @@ import { z } from "zod";
 
 import { acceso, exigirAcceso } from "./autorizacion.server";
 import { accionesDeParcheCita, accionesDeParchePerfil, exigirAcciones } from "./guardas";
+import { recortarDatosPanel } from "./recorte";
+import type { Rol } from "../permisos";
 import { tieneMando, vistaEfectiva } from "./autorizacion";
 import { conSesion } from "./sesion.middleware";
 import { getSupabaseServerClient } from "../supabase.server";
@@ -222,10 +224,24 @@ export const esSalonRealPublico = createServerFn({ method: "GET" })
 export const accesoAlPanel = createServerFn({ method: "GET" })
   .middleware([conSesion])
   .inputValidator(z.object({ slug }))
-  .handler(async ({ data }): Promise<{ real: boolean; permitido: boolean }> => {
-    const quien = await acceso(data.slug);
-    return { real: quien.tipo !== "demo", permitido: tieneMando(quien) };
-  });
+  .handler(
+    async ({ data }): Promise<{ real: boolean; permitido: boolean; miembro: MiembroActual | null }> => {
+      const quien = await acceso(data.slug);
+      // El miembro que entra (lote 8): rol, profesional vinculada y nombre para
+      // el saludo. null en una demo o para quien no pertenece al salón.
+      const miembro =
+        quien.tipo === "miembro"
+          ? { rol: quien.rol, employeeId: quien.employeeId, displayName: quien.displayName }
+          : null;
+      return { real: quien.tipo !== "demo", permitido: tieneMando(quien), miembro };
+    },
+  );
+
+export interface MiembroActual {
+  rol: Rol;
+  employeeId: string | null;
+  displayName: string | null;
+}
 
 /* ---------------------------------------------------------------------- */
 /* Perfil                                                                  */
@@ -424,7 +440,8 @@ export const listSalonData = createServerFn({ method: "GET" })
       const supabase = getSupabaseServerClient();
       if (!supabase) return { appointments: [], clients: [], waitlist: [] };
 
-      const publica = vistaEfectiva(data.vista, await acceso(data.slug)) === "publica";
+      const quien = await acceso(data.slug);
+      const publica = vistaEfectiva(data.vista, quien) === "publica";
 
       /**
        * Un `select` con las columnas nuevas y, si el esquema todavía no las
@@ -467,11 +484,14 @@ export const listSalonData = createServerFn({ method: "GET" })
       if (fichas.error) throw new Error(`listSalonData (clientes): ${fichas.error.message}`);
       if (espera.error) throw new Error(`listSalonData (lista de espera): ${espera.error.message}`);
 
-      return {
+      const todo = {
         appointments: (citas.data ?? []).map((r) => rowToAppointment(r, publica)),
         clients: (fichas.data ?? []).map(rowToClient),
         waitlist: (espera.data ?? []).map(rowToWaitlist),
       };
+      // Vista de panel: cada rol recibe solo lo suyo (lote 8). La pública ya
+      // viene recortada por rowToAppointment y no lleva clientas.
+      return publica ? todo : recortarDatosPanel(quien, todo);
     },
   );
 
