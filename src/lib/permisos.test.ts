@@ -12,6 +12,8 @@ describe("matriz de permisos", () => {
     const e = permisosDe("estilista");
     expect(alcance(e, "cita.mover")).toBe("propio");
     expect(alcance(e, "dinero.ver-propio")).toBe("propio");
+    expect(alcance(e, "clienta.crear")).toBe("todo");   // da de alta a la clienta al darle cita
+    expect(alcance(e, "clienta.editar")).toBe("propio");
     for (const a of ["dinero.ver-global", "web.editar", "equipo.editar", "accesos.gestionar", "cita.ver-todas", "analitica.ver", "historial.deshacer-ajeno"] as const) expect([a, puede(e, a)]).toEqual([a, false]);
     for (const p of ["mi-pagina", "analitica", "marketing", "equipo", "ajustes", "ajustes.accesos"] as const) expect([p, vePagina(e, p)]).toEqual([p, false]);
     // Alcance propio: sobre su profesional sí, sobre otra no, sin vínculo nunca.
@@ -20,9 +22,11 @@ describe("matriz de permisos", () => {
     expect(puede(e, "cita.cancelar", { employeeId: "sara", miEmployeeId: null })).toBe(false);
   });
 
-  test("subencargado: todo salvo dinero global, plan, accesos y borrar", () => {
+  test("subencargado: todo salvo dinero global, plan, accesos, borrar y exportar", () => {
     const s = permisosDe("subencargado");
-    for (const a of ["dinero.ver-global", "plan.gestionar", "accesos.gestionar", "datos.borrar"] as const) expect([a, puede(s, a)]).toEqual([a, false]);
+    expect(puede(s, "web.publicar")).toBe(true);
+    expect(puede(s, "historial.deshacer-ajeno")).toBe(true);
+    for (const a of ["dinero.ver-global", "plan.gestionar", "accesos.gestionar", "datos.borrar", "clienta.exportar", "exportar.excel"] as const) expect([a, puede(s, a)]).toEqual([a, false]);
     expect(puede(s, "cita.ver-todas")).toBe(true);
     expect(puede(s, "servicio.editar")).toBe(true);
     expect(vePagina(s, "ajustes.accesos")).toBe(false);

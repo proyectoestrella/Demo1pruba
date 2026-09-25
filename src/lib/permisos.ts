@@ -44,45 +44,61 @@ export interface Permisos {
   notasClienta: boolean;
 }
 
-const TODAS_LAS_ACCIONES: AccionId[] = [...ACCIONES];
 
-/** Acciones de agenda que una estilista tiene sobre SUS citas. */
-const AGENDA_PROPIA: AccionId[] = [
-  "cita.crear", "cita.editar", "cita.mover", "cita.cancelar", "cita.confirmar-solicitud", "cita.rechazar-solicitud",
-  "cita.marcar-asistencia", "cita.cobrar", "cita.recordar", "senal.gestionar", "dinero.ver-propio",
-];
+/**
+ * La matriz, fila a fila, copiada de la acordada con FRONTEND
+ * (AlmacenExterno › sishow-diseno › ux-accesos-y-roles.md §2.1 y §2.2).
+ * «T» = alcance todo, «P» = propio, ausente = no.
+ */
+type Celda = "T" | "P" | "-";
+const TABLA: Record<AccionId, [Celda, Celda, Celda, Celda]> = {
+  //                            gerente subenc recepc estilista
+  "cita.ver-todas":             ["T", "T", "T", "-"],
+  "cita.crear":                 ["T", "T", "T", "P"],
+  "cita.crear-para-otra":       ["T", "T", "T", "-"],
+  "cita.editar":                ["T", "T", "T", "P"],
+  "cita.mover":                 ["T", "T", "T", "P"],
+  "cita.cancelar":              ["T", "T", "T", "P"],
+  "cita.confirmar-solicitud":   ["T", "T", "T", "P"],
+  "cita.rechazar-solicitud":    ["T", "T", "T", "P"],
+  "cita.marcar-asistencia":     ["T", "T", "T", "P"],
+  "cita.cobrar":                ["T", "T", "-", "P"],
+  "cita.recordar":              ["T", "T", "T", "P"],
+  "clienta.ver":                ["T", "T", "T", "P"],
+  "clienta.ver-todas":          ["T", "T", "T", "-"],
+  "clienta.crear":              ["T", "T", "T", "T"],
+  "clienta.editar":             ["T", "T", "T", "P"],
+  "clienta.borrar":             ["T", "-", "-", "-"],
+  "clienta.bloquear":           ["T", "T", "-", "-"],
+  "clienta.importar":           ["T", "T", "-", "-"],
+  "clienta.exportar":           ["T", "-", "-", "-"],
+  "senal.gestionar":            ["T", "T", "T", "P"],
+  "recargo.gestionar":          ["T", "T", "-", "-"],
+  "lista-espera.gestionar":     ["T", "T", "T", "-"],
+  "servicio.editar":            ["T", "T", "-", "-"],
+  "equipo.editar":              ["T", "T", "-", "-"],
+  "salon.editar":               ["T", "T", "-", "-"],
+  "web.editar":                 ["T", "T", "-", "-"],
+  "web.publicar":               ["T", "T", "-", "-"],
+  "web.restaurar-version":      ["T", "T", "-", "-"],
+  "dinero.ver-propio":          ["T", "T", "-", "P"],
+  "dinero.ver-global":          ["T", "-", "-", "-"],
+  "analitica.ver":              ["T", "T", "-", "-"],
+  "marketing.usar":             ["T", "T", "-", "-"],
+  "exportar.excel":             ["T", "-", "-", "-"],
+  "accesos.gestionar":          ["T", "-", "-", "-"],
+  "historial.ver":              ["T", "T", "-", "-"],
+  "historial.deshacer-ajeno":   ["T", "T", "-", "-"],
+  "plan.gestionar":             ["T", "-", "-", "-"],
+  "datos.borrar":               ["T", "-", "-", "-"],
+};
+const COLUMNA: Record<Rol, number> = { gerente: 0, subencargado: 1, recepcion: 2, estilista: 3 };
 
-type Definicion = { paginas: PaginaId[]; todo: AccionId[]; propio?: AccionId[]; notasClienta: boolean };
-
-const MATRIZ: Record<Rol, Definicion> = {
-  gerente: {
-    paginas: PAGINAS.filter((p) => p !== "demos"),
-    todo: [...TODAS_LAS_ACCIONES],
-    notasClienta: true,
-  },
-  subencargado: {
-    paginas: PAGINAS.filter((p) => p !== "demos" && p !== "ajustes.accesos"),
-    // Todo salvo dinero global, plan, accesos, borrar datos y deshacer lo ajeno.
-    todo: TODAS_LAS_ACCIONES.filter(
-      (a) => !["dinero.ver-global", "plan.gestionar", "accesos.gestionar", "datos.borrar", "historial.deshacer-ajeno", "web.publicar", "clienta.borrar"].includes(a),
-    ),
-    notasClienta: true,
-  },
-  recepcion: {
-    paginas: ["hoy", "calendario", "citas", "lista-espera", "clientas", "hoja", "asistente"],
-    todo: [
-      "cita.ver-todas", "cita.crear", "cita.crear-para-otra", "cita.editar", "cita.mover", "cita.cancelar",
-      "cita.confirmar-solicitud", "cita.rechazar-solicitud", "cita.marcar-asistencia", "cita.recordar",
-      "clienta.ver", "clienta.ver-todas", "clienta.crear", "clienta.editar", "lista-espera.gestionar", "senal.gestionar",
-    ],
-    notasClienta: true,
-  },
-  estilista: {
-    paginas: ["hoy", "calendario", "citas", "clientas", "hoja", "asistente"],
-    todo: ["clienta.ver", "clienta.crear", "clienta.editar"],
-    propio: AGENDA_PROPIA,
-    notasClienta: true,
-  },
+const PAGINAS_DE: Record<Rol, PaginaId[]> = {
+  gerente: PAGINAS.filter((p) => p !== "demos"),
+  subencargado: PAGINAS.filter((p) => p !== "demos" && p !== "ajustes.accesos"),
+  recepcion: ["hoy", "calendario", "citas", "lista-espera", "clientas", "hoja", "servicios", "asistente"],
+  estilista: ["hoy", "calendario", "citas", "clientas", "hoja", "asistente"],
 };
 
 const CACHE = new Map<Rol, Permisos>();
@@ -90,11 +106,13 @@ const CACHE = new Map<Rol, Permisos>();
 export function permisosDe(rol: Rol): Permisos {
   let p = CACHE.get(rol);
   if (!p) {
-    const d = MATRIZ[rol];
     const acciones = new Map<AccionId, Alcance>();
-    for (const a of d.propio ?? []) acciones.set(a, "propio");
-    for (const a of d.todo) acciones.set(a, "todo");
-    p = { rol, paginas: new Set(d.paginas), acciones, notasClienta: d.notasClienta };
+    for (const a of ACCIONES) {
+      const c = TABLA[a][COLUMNA[rol]];
+      if (c === "T") acciones.set(a, "todo");
+      else if (c === "P") acciones.set(a, "propio");
+    }
+    p = { rol, paginas: new Set(PAGINAS_DE[rol]), acciones, notasClienta: true };
     CACHE.set(rol, p);
   }
   return p;
