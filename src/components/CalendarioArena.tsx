@@ -28,7 +28,7 @@ import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { RejillaCalendario, colorProfesional, type ColumnaRejilla } from "@/components/RejillaCalendario";
 import { CamposPreferenciasCalendario } from "@/components/CamposPreferenciasCalendario";
-import { VISTAS_CALENDARIO, diasDeRejilla, horasDeRejilla, inicioDeSemana, pasoDeVista, preferenciasDe, type PrimerDia, type VistaCalendario } from "@/lib/preferencias-calendario";
+import { VISTAS_CALENDARIO, diasDeRejilla, horasDeRejilla, tramosDeCitas, citasFueraDeHoras, inicioDeSemana, pasoDeVista, preferenciasDe, type PrimerDia, type VistaCalendario } from "@/lib/preferencias-calendario";
 
 /**
  * Calendario con la identidad «Arena» (DESIGN.md), calcado del prototipo v2:
@@ -81,6 +81,8 @@ export function CalendarioArena() {
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
   /** Huecos libres y ocupación del día, plegados bajo la rejilla. */
   const [verPie, setVerPie] = useState(false);
+  /** Ensancha la rejilla para enseñar las citas fuera de las horas visibles. */
+  const [verTodoElDia, setVerTodoElDia] = useState(false);
 
   const citasDia = useMemo(() => citasDeCalendario(appointments, anchor), [appointments, anchor]);
   const esHoy = mismoDia(anchor, ahora);
@@ -181,13 +183,16 @@ export function CalendarioArena() {
             ),
           };
         });
-  const ocupados = esRejilla
-    ? columnas.flatMap((c) => [
-        ...citasDeCalendario(appointments, c.dia).map((a) => ({ ini: minutosDe(a.start), fin: minutosDe(a.start) + a.duration })),
-        ...c.equipo.flatMap((e) => franjasProfesional(e, c.dia.getDay()).map((f) => ({ ini: f.start, fin: f.end }))),
-      ])
+  // La rejilla respeta las horas elegidas. Si alguna cita cae fuera, se avisa
+  // bajo la rejilla y «Ver todo el día» la ensancha hasta enseñarla. (Antes la
+  // jornada y las citas la ensanchaban siempre, y cambiar «hasta» parecía no
+  // hacer nada: «de 7 a 18» seguía llegando a las 20.)
+  const tramosVisibles = esRejilla
+    ? columnas.flatMap((c) => tramosDeCitas(citasDeCalendario(appointments, c.dia).filter((a) => c.equipo.some((e) => e.id === a.employeeId))))
     : [];
-  const horasVisibles = horasDeRejilla(pref, ocupados);
+  const horasElegidas = { desde: pref.desde, hasta: pref.hasta };
+  const fuera = citasFueraDeHoras(tramosVisibles, horasElegidas);
+  const horasVisibles = verTodoElDia ? horasDeRejilla(pref, tramosVisibles) : horasElegidas;
 
   return (
     // Altura fija a la ventana para que las rejillas y el mes tengan scroll
@@ -313,6 +318,20 @@ export function CalendarioArena() {
             onCita={setSeleccionada}
             onHueco={abrirHueco}
           />
+        )}
+        {esRejilla && (fuera > 0 || verTodoElDia) && (
+          <div className="flex flex-none flex-wrap items-center gap-x-3 gap-y-1 border-t border-lino bg-beige px-4 py-2 text-[13px] text-cafe-medio">
+            {verTodoElDia ? (
+              <span>Enseñando todo el día.</span>
+            ) : (
+              <span>
+                {fuera === 1 ? "1 cita queda" : `${fuera} citas quedan`} fuera de las horas visibles ({pref.desde}:00 a {pref.hasta}:00).
+              </span>
+            )}
+            <button type="button" onClick={() => setVerTodoElDia((v) => !v)} className="font-bold text-cafe underline-offset-2 hover:underline">
+              {verTodoElDia ? `Volver a ${pref.desde}:00 – ${pref.hasta}:00` : "Ver todo el día"}
+            </button>
+          </div>
         )}
         {vista === "mes" && (
           <VistaMes anchor={anchor} appointments={appointments} equipo={equipo} ahora={ahora} primerDia={pref.primerDia} onDia={abrirDia} />

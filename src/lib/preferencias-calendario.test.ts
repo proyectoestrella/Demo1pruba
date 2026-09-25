@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { diasDeRejilla, horasDeRejilla, inicioDeSemana, pasoDeVista, preferenciasDe } from "./preferencias-calendario";
+import { diasDeRejilla, horasDeRejilla, inicioDeSemana, pasoDeVista, preferenciasDe, tramosDeCitas, citasFueraDeHoras } from "./preferencias-calendario";
+import type { Appointment } from "./mock/types";
 
 const d = (s: string) => new Date(s + "T00:00:00");
 const iso = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
@@ -34,5 +35,22 @@ describe("días de la rejilla", () => {
   test("las horas visibles se ensanchan para no esconder ninguna cita", () => {
     expect(horasDeRejilla({ desde: 9, hasta: 20 }, [{ ini: 8 * 60 + 30, fin: 9 * 60 + 30 }, { ini: 20 * 60, fin: 21 * 60 + 15 }])).toEqual({ desde: 8, hasta: 22 });
     expect(horasDeRejilla({ desde: 9, hasta: 20 }, [])).toEqual({ desde: 9, hasta: 20 });
+  });
+});
+
+describe("horas visibles: el fallo de «de 7 a 18»", () => {
+  const cita = (start: string, duration: number, status: Appointment["status"] = "confirmed") =>
+    ({ id: start, clientId: "c", clientName: "C", serviceIds: [], employeeId: "m", start, duration, priceEur: 0, status }) as Appointment;
+  const citas = [cita("2026-09-25T10:00:00", 60), cita("2026-09-25T16:30:00", 45), cita("2026-09-25T19:00:00", 60, "cancelled")];
+  test("las horas elegidas se respetan; lo que cae fuera se cuenta para avisar", () => {
+    const tramos = tramosDeCitas(citas);
+    expect(citasFueraDeHoras(tramos, { desde: 7, hasta: 18 })).toBe(0);
+    expect(citasFueraDeHoras(tramos, { desde: 7, hasta: 15 })).toBe(1);
+    expect(citasFueraDeHoras(tramos, { desde: 11, hasta: 18 })).toBe(1);
+    // «Ver todo el día» ensancha solo por las citas, no por la jornada.
+    expect(horasDeRejilla({ desde: 7, hasta: 15 }, tramos)).toEqual({ desde: 7, hasta: 18 });
+  });
+  test("una cita cancelada no ensancha", () => {
+    expect(tramosDeCitas(citas)).toEqual([{ ini: 600, fin: 660 }, { ini: 990, fin: 1035 }]);
   });
 });

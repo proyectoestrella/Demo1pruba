@@ -207,7 +207,7 @@ function ColumnaDia({
 
   return (
     <div
-      className={cn("relative cursor-pointer border-l border-k-linea-f", esHoy && "bg-salvia-suave/35")}
+      className={cn("relative cursor-pointer overflow-y-clip border-l border-k-linea-f", esHoy && "bg-salvia-suave/35")}
       style={fondo}
       title="Pulsa un hueco para dar una cita a esa hora"
       onMouseMove={(ev) => {

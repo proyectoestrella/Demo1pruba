@@ -55,7 +55,7 @@ export function CamposPreferenciasCalendario() {
             ))}
           </select>
         </div>
-        <p className="mt-1.5 text-[12.5px] text-cafe-suave">Si una cita o una jornada cae fuera, el calendario se ensancha para enseñarla.</p>
+        <p className="mt-1.5 text-[12.5px] text-cafe-suave">Si alguna cita cae fuera, el calendario te avisa y puedes ver el día entero.</p>
       </fieldset>
     </div>
   );

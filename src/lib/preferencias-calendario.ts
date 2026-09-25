@@ -1,4 +1,4 @@
-import type { SalonProfile } from "./mock/types";
+import type { Appointment, SalonProfile } from "./mock/types";
 
 /**
  * Preferencias del calendario del panel: vista con la que abre, primer día de
@@ -69,9 +69,21 @@ export function pasoDeVista(vista: VistaCalendario): number {
   return vista === "semana" ? 7 : vista === "tres" ? 3 : 1;
 }
 
+/** Minutos del día que ocupa cada cita (sin las canceladas). */
+export function tramosDeCitas(citas: Appointment[]): { ini: number; fin: number }[] {
+  return citas
+    .filter((a) => a.status !== "cancelled")
+    .map((a) => {
+      const d = new Date(a.start);
+      const ini = d.getHours() * 60 + d.getMinutes();
+      return { ini, fin: ini + a.duration };
+    });
+}
+
 /**
- * Horas que pinta la rejilla: las visibles de la preferencia, ensanchadas si
- * hay citas o jornada fuera de ellas (nunca se esconde una cita).
+ * Horas del día entero que hace falta pintar para no esconder ninguna cita:
+ * las visibles, ensanchadas por las CITAS que caen fuera. Es lo que enseña
+ * «Ver todo el día»; por defecto la rejilla respeta las horas elegidas.
  */
 export function horasDeRejilla(pref: Pick<PreferenciasCalendario, "desde" | "hasta">, minutosOcupados: { ini: number; fin: number }[]): { desde: number; hasta: number } {
   let desde = pref.desde;
@@ -81,4 +93,9 @@ export function horasDeRejilla(pref: Pick<PreferenciasCalendario, "desde" | "has
     hasta = Math.max(hasta, Math.ceil(t.fin / 60));
   }
   return { desde: Math.max(0, desde), hasta: Math.min(24, hasta) };
+}
+
+/** Cuántas citas quedan, entera o en parte, fuera de las horas visibles. */
+export function citasFueraDeHoras(tramos: { ini: number; fin: number }[], horas: { desde: number; hasta: number }): number {
+  return tramos.filter((t) => t.ini < horas.desde * 60 || t.fin > horas.hasta * 60).length;
 }

@@ -213,7 +213,8 @@ cabeceras de bloque de 10,5 px y «Primeros pasos» en una línea: cabe sin scro
 - Pulsar un hueco vacío abre «Nueva cita» a esa hora (al cuarto de hora).
 - Preferencias en el perfil del salón (`salonProfile.calendario`): vista predeterminada,
   primer día de la semana y horas visibles. Se cambian en el engranaje del calendario y en
-  Ajustes. Si una cita o jornada cae fuera de las horas visibles, la rejilla se ensancha.
+  Ajustes. La rejilla respeta exactamente las horas visibles; si alguna cita cae fuera, una
+  línea bajo la rejilla lo dice y «Ver todo el día» la ensancha solo mientras se mira.
 
 ## Cómo verlo en local desde un worktree
 
