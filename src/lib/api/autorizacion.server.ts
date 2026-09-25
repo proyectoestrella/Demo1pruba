@@ -122,3 +122,18 @@ export function exigirAcceso(slug: string): Promise<Acceso> {
 export function exigirPermisoEn(slug: string, accion: AccionId, sobreEmployeeId?: string | null): Promise<Acceso> {
   return exigirPermiso(slug, accion, depsReales(), sobreEmployeeId);
 }
+
+/**
+ * El usuario de la sesión que trae la petición, sin mirar ningún salón. Lo
+ * usa aceptar una invitación: quien acepta todavía no es miembro.
+ */
+export async function usuarioDeLaPeticion(): Promise<string | null> {
+  const d = depsReales();
+  const token = d.tokenDeLaPeticion();
+  if (!token) return null;
+  try {
+    return await d.usuarioDelToken(token);
+  } catch {
+    return null;
+  }
+}
