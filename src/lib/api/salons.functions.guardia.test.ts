@@ -149,3 +149,12 @@ describe("la guarda está puesta en todas las funciones de servidor", () => {
     }
   });
 });
+
+describe("sin backend en producción no hay degradación silenciosa a demo", () => {
+  it("getSalonProfile lanza «Backend sin configurar» en vez de responder demo", () => {
+    const cuerpo = cuerpoDe("getSalonProfile");
+    expect(cuerpo).toContain('process.env.NODE_ENV === "production"');
+    expect(cuerpo).toContain('throw new Error("Backend sin configurar")');
+    expect(cuerpo.indexOf("Backend sin configurar")).toBeLessThan(cuerpo.indexOf("return { profile: null }"));
+  });
+});

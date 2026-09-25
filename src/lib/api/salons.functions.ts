@@ -12,6 +12,7 @@
  * role key nunca entra en el bundle del navegador).
  */
 import { createServerFn } from "@tanstack/react-start";
+import process from "node:process";
 import { z } from "zod";
 
 import { acceso, exigirAcceso } from "./autorizacion.server";
@@ -199,7 +200,14 @@ export const getSalonProfile = createServerFn({ method: "GET" })
   .inputValidator(z.object({ slug }))
   .handler(async ({ data }): Promise<{ profile: SalonProfile | null }> => {
     const supabase = getSupabaseServerClient();
-    if (!supabase) return { profile: null };
+    if (!supabase) {
+      // En desarrollo sin variables, todo es demo. En producción, que falte
+      // Supabase es un despliegue roto: un salón de pago no puede degradar
+      // a demo en silencio y confirmar citas que no se guardan en ninguna
+      // parte. Se lanza, y la web pública y el panel lo muestran como fallo.
+      if (process.env.NODE_ENV === "production") throw new Error("Backend sin configurar");
+      return { profile: null };
+    }
 
     const { data: row, error } = await supabase
       .from("salons")
