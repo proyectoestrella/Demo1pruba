@@ -10,9 +10,12 @@ export const cobradoPeriodo: Resolutor = (c) => {
   const d = dineroDe(citasDe(c.estado, r), c.estado.ahora);
   const futuro = r.desde > c.hoy;
   if (futuro) return respuesta(`${mayus(enPeriodo(r.etiqueta))} aún no ha llegado: tienes **${euros(d.previsto)} previstos** en ${plural(d.previstas, "cita", "citas")}.`, { cifras: [{ etiqueta: "previsto", valor: d.previsto, unidad: "€" }] });
-  if (!d.cobradas && d.porCobrar) return respuesta(`${mayus(enPeriodo(r.etiqueta))} **no has marcado ningún cobro**: hay ${euros(d.porCobrar)} de citas hechas sin marcar como cobradas.`, { cifras: [{ etiqueta: `cobrado ${r.etiqueta}`, valor: 0, unidad: "€" }, { etiqueta: "sin marcar", valor: d.porCobrar, unidad: "€" }], acciones: [{ tipo: "ver-seccion", etiqueta: "Ver Caja del día", destino: "Caja" }] });
+  if (!d.cobradas && d.porCobrar) return respuesta(`${mayus(enPeriodo(r.etiqueta))} **no has marcado ningún cobro**: hay ${euros(d.porCobrar)} de citas ya hechas sin marcar como cobradas${d.previsto ? ` y ${euros(d.previsto)} de las que faltan` : ""}.`, { cifras: [{ etiqueta: `cobrado ${r.etiqueta}`, valor: 0, unidad: "€" }, { etiqueta: "sin marcar", valor: d.porCobrar, unidad: "€" }], acciones: [{ tipo: "ver-seccion", etiqueta: "Ver Caja del día", destino: "Caja" }] });
   const nv = d.noVino ? ` (${d.noVino} no ${d.noVino === 1 ? "vino" : "vinieron"})` : "";
-  const pc = d.porCobrar ? ` Quedan ${euros(d.porCobrar)} por cobrar.` : "";
+  // Mismo criterio que Analítica: «por cobrar» = lo del periodo aún sin cobrar,
+  // tanto las citas ya hechas como las que faltan.
+  const falta = d.porCobrar + d.previsto;
+  const pc = falta ? ` Quedan **${euros(falta)} por cobrar**${d.porCobrar && d.previsto ? `: ${euros(d.porCobrar)} de citas ya hechas y ${euros(d.previsto)} de las que faltan` : ""}.` : "";
   return respuesta(`${mayus(enPeriodo(r.etiqueta))} ${r.hasta >= c.hoy ? "llevas cobrados" : "cobraste"} **${euros(d.cobrado)}** en ${plural(d.cobradas, "cita", "citas")}${nv}.${pc}`, {
     cifras: [{ etiqueta: `cobrado ${r.etiqueta}`, valor: d.cobrado, unidad: "€" }, { etiqueta: "citas cobradas", valor: d.cobradas, unidad: "citas" }],
     acciones: [analitica],

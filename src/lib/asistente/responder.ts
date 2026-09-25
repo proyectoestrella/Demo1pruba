@@ -82,8 +82,36 @@ function enmascararPregunta(texto: string, e: Entidades, s: { servicios: Array<{
  * profesional o servicio pierde si la pregunta no nombra ninguno, y las que
  * los nombran ganan un poco cuando la pregunta sí los trae.
  */
+/**
+ * Intenciones vecinas: responden cosas distintas con palabras parecidas.
+ * Si quedan a menos de este margen relativo, el asistente pregunta cuál.
+ */
+const MARGEN_VECINAS = 0.12;
+const VECINAS: string[][] = [
+  ["citas-hoy", "citas-hoy-profesional", "proxima-cita", "lista-citas-hoy", "pendiente-de-ti", "solicitudes-pendientes", "por-marcar"],
+  ["pendiente-de-ti", "senales-vencidas", "senales-pendientes"],
+  ["ocupacion-hoy", "ocupacion-periodo", "resumen-mes", "ocupacion-profesional"],
+  ["citas-periodo", "comparar-periodos", "resumen-mes", "estimacion-mes", "cobrado-periodo", "previsto-periodo", "ocupacion-periodo"],
+  ["colores-hoy", "color-pendiente", "ultimo-color-clienta"],
+  ["plantones", "plantones-config", "clientas-recurrentes", "clientas-inactivas", "segunda-visita", "clientas-nuevas"],
+  ["regla-senal", "senales-vencidas", "senales-pendientes", "senales-recibidas", "senal-cita", "tec-senal"],
+  ["buscar-clienta", "datos-clienta", "notas-clienta", "ultima-visita-clienta", "frecuencia-clienta", "proxima-cita-clienta"],
+  ["huecos-flojos", "franja-floja", "primer-hueco-servicio", "hueco-profesional", "huecos-hoy", "huecos-dia"],
+  ["servicio-mas-pedido", "lo-que-mas-hace", "servicio-mas-rentable"],
+  ["cobro-por-metodo", "no-cobra-tarjeta", "senales-recibidas"],
+  ["solicitudes-pendientes", "tec-confirmar", "tec-no-llegan-reservas"],
+  ["abierto-ahora", "horario-salon", "lista-citas-hoy", "quien-trabaja"],
+];
+function sonVecinas(a: string, b: string): boolean {
+  return VECINAS.some((g) => g.includes(a) && g.includes(b));
+}
+
 /** El último orden de puntuaciones (para ver si una intención de plan quedó cerca). */
 let ultimoOrden: Array<{ id: string; puntuacion: number }> = [];
+/** Para diagnóstico y tests: el orden de la última clasificación. */
+export function ordenUltimaClasificacion() {
+  return ultimoOrden.slice(0, 4);
+}
 /** Las pistas que casaron en la última clasificación. */
 let marcasPlan: Map<string, number> = new Map();
 
@@ -114,6 +142,15 @@ function clasificarConEntidades(masc: string, e: Entidades): Clasificacion {
   const margen = 0.03;
   const [primera, segunda, tercera] = orden;
   if (!primera || primera.puntuacion < umbral) return { tipo: "ninguna", mejores: orden.slice(0, 3) };
+  // Vecinas casi empatadas: mejor preguntar que dar el dato de la otra.
+  // La pregunta trae la expresión característica de dos intenciones vecinas
+  // («cuántas le quedan a Noelia y cuál es la siguiente»): se pregunta cuál.
+  // Solo pistas específicas (≥0,45): las generales («huecos», «tarjeta») no cuentan.
+  const conPista = orden.slice(0, 4).filter((o) => (extra.get(o.id) ?? 0) >= 0.45);
+  const doble = conPista.find((o) => o.id !== primera.id && sonVecinas(primera.id, o.id));
+  if (doble && (extra.get(primera.id) ?? 0) >= 0.45) return { tipo: "dudosa", opciones: [primera, doble] };
+  const vecina = orden.slice(1, 3).find((o) => sonVecinas(primera.id, o.id) && o.puntuacion >= primera.puntuacion * (1 - MARGEN_VECINAS));
+  if (vecina) return { tipo: "dudosa", opciones: [primera, vecina] };
   if (segunda && primera.puntuacion - segunda.puntuacion < margen) {
     return { tipo: "dudosa", opciones: [primera, segunda, tercera].filter((o): o is { id: string; puntuacion: number } => !!o && primera.puntuacion - o.puntuacion < margen) };
   }

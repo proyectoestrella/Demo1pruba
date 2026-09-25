@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { CORPUS } from "./corpus";
 import { CORPUS_CIEGO } from "./corpus-ciego";
 import { CORPUS_CIEGO_2 } from "./corpus-ciego-2";
+import { CORPUS_CIEGO_3 } from "./corpus-ciego-3";
+import { CORPUS_CIEGO_4 } from "./corpus-ciego-4";
 import { normalizar } from "./normalizar";
 import { asistentePeluChicArena, datosPeluChicArena } from "./prueba-peluchic-arena";
 
@@ -25,15 +27,17 @@ const rellenar = (t: string, i: number) => t.replace("{C}", unicas[(i * 7) % uni
 
 function acierto(corpus: Array<[string, string]>) {
   let bien = 0;
+  let inofensivos = 0;
   const fallos: string[] = [];
   corpus.forEach(([p, esperada], i) => {
     asistente.reiniciar();
     const r = asistente.responder(rellenar(p, i));
     const obtenida = r.tipo === "no-se" ? "no-se" : (r.intencion ?? "elegir");
     if (obtenida === esperada) bien++;
+    else if (r.tipo === "no-se" || r.tipo === "elegir") inofensivos++;
     else fallos.push(`${rellenar(p, i)} → ${obtenida} (esperada ${esperada})`);
   });
-  return { pct: bien / corpus.length, fallos, n: corpus.length };
+  return { pct: bien / corpus.length, fallos, n: corpus.length, danino: (corpus.length - bien - inofensivos) / corpus.length };
 }
 
 describe("motor de BACKEND con las fuentes de la rama Arena", () => {
@@ -54,6 +58,11 @@ describe("motor de BACKEND con las fuentes de la rama Arena", () => {
     if (a.pct < 0.9) console.log(a.fallos.slice(0, 20).join("\n"));
     expect(a.pct).toBeGreaterThanOrEqual(0.9);
     expect(b.pct).toBeGreaterThanOrEqual(0.8);
+  }, 60_000);
+  test("corpus ciegos 3 y 4: se mide acierto y lo dañino (responder otra cosa)", () => {
+    const c = acierto([...CORPUS_CIEGO_3, ...CORPUS_CIEGO_4]);
+    console.log(`ciegos 3-4: ${c.n} preguntas, acierto ${Math.round(c.pct * 1000) / 10} %, dañino ${Math.round(c.danino * 1000) / 10} %`);
+    expect(c.pct).toBeGreaterThan(0.6);
   }, 60_000);
   test("escalado: primero pasos y guía, después el contacto", () => {
     const r = asistente.responder("no me funciona la web");

@@ -14,9 +14,9 @@ const LEXICO = new RegExp(
     [
       // agenda y citas
       "citas?", "agenda\\w*", "huecos?", "libres?", "sitio", "reserv\\w*", "solicitud\\w*", "turnos?", "visitas?",
-      "vien\\w*", "vinieron", "vino a", "venir", "vuelv\\w*", "volv\\w*", "repit\\w*", "siguiente", "quedan?", "queda",
+      "vien\\w*", "vinieron", "vino a", "no vino", "venir", "venid[oa]s?", "cabina", "curr(?:o|ar|an|a)", "tengo lio", "me viene\\w*", "chica", "chicas", "senora\\w*", "tia", "sms", "vuelv\\w*", "volv\\w*", "repit\\w*", "siguiente", "quedan?", "queda",
       "recordatorio\\w*", "recordar", "espera\\w*", "franjas?", "flo(?:j|ja|jo|jea)\\w*", "cancel\\w*", "anul\\w*",
-      "planton\\w*", "faltar\\w*", "faltaron", "presentad\\w*", "presentaron", "ocupaci\\w*", "ocupad\\w*", "porcentaje",
+      "planton\\w*", "faltar\\w*", "faltaron", "presentad\\w*", "presentaron", "ocupaci\\w*", "ocupad\\w*",
       "marcar", "marcad\\w*", "pendientes?", "abiert\\w*", "abr\\w*", "cerrad\\w*", "cierr\\w*", "sillon", "cargad\\w*",
       // personas
       "clientas?", "clientes?", "gente", "cartera", "nuevas?", "inactiv\\w*", "fiel\\w*", "recurrente\\w*",
@@ -24,11 +24,11 @@ const LEXICO = new RegExp(
       "telefono", "movil", "email", "correo", "contact\\w*", "notas?", "apunt\\w*", "anot\\w*", "observaci\\w*",
       "cumple\\w*", "deb\\w*", "deuda\\w*", "recargo\\w*", "bloque\\w*", "ficha\\w*", "gastad[oa]", "gasta", "gastan", "gastado",
       // servicios y dinero
-      "servicios?", "carta", "precios?", "tarifa\\w*", "cuesta", "dura\\w*", "tarda", "pedid\\w*", "piden", "pide",
-      "rentab\\w*", "renta", "estrella", "colou?r\\w*", "formula\\w*", "tint\\w*", "veces",
-      "dinero", "caja", "factur\\w*", "cobr\\w*", "ingres\\w*", "ganad\\w*", "ganamos", "sac\\w*", "euros", "pasta",
-      "previst\\w*", "estimaci\\w*", "tarjeta", "efectivo", "bizum\\w*", "pago", "media", "ticket", "resumen", "balance",
-      "compar\\w*", "mes", "semana",
+      "servicios?", "carta", "precios", "tarifa\\w*", "duraci\\w*", "duran?", "tarda", "pedid\\w*", "piden", "pide",
+      "rentab\\w*", "estrella", "colou?r\\w*", "formula\\w*", "tint\\w*", "veces",
+      "dinero", "caja", "factur\\w*", "cobr\\w*", "ingres\\w*", "ganad\\w*", "ganamos", "sacado", "sacamos", "sacar", "saco", "euros", "pasta",
+      "previst\\w*", "estimaci\\w*", "tarjeta", "efectivo", "bizum\\w*", "ticket", "resumen", "balance",
+      "compar\\w*",
       // señal y marketing
       "senal\\w*", "fianza\\w*", "deposito\\w*", "plazo", "vencid\\w*", "campan\\w*", "marketing", "recuper\\w*",
       "resen\\w*", "opinion\\w*",
@@ -49,6 +49,7 @@ const FRASES_ANCLA = [
   /\b(?:como|que tal) (?:va|vamos|fue|ha ido)\b.*\b(?:zzperiodo|mes|semana|anterior)\b|\b(?:mejor|peor) que\b|\bfrente a\b/,
   /\b(?:estamos|vamos|va) (?:de )?llen[oa]s?\b|\bmas llen[oa]\b|\bcomo de llen[oa]s?\b/,
   /\ba quien le toca\b|\bfalta por hacer\b|\bpor resolver\b|\bsin cerrar\b|\bpor horas\b|\bjornada\b|\bla lista\b/,
+  /\b(?:cerraremos|acabaremos|terminaremos|llegaremos)\b|\bforma de pago\b|\bdesglose\b|\bprimera vez\b|\bcomo va el dia\b|\bel dia de hoy\b|\b(?:de )?(?:la )?semana\b.*\b(?:citas?|dinero|cobr\w*|llen\w*|ocupa\w*)|\bpor horas\b/,
   /\bhora va peor\b|\ba cuenta\b|\bofrecemos\b|\bllegaremos\b|\bvoy a hacer\b|\brellen\w*|\bllenar\b|\bavisar\b|\bsin aparecer\b|\bse presenta\w*|\bmas hace\b|\bvale el dia\b/,
 ];
 
