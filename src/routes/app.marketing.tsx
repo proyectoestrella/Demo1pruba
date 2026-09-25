@@ -45,7 +45,7 @@ function Marketing() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-1 flex-col gap-5">
       <PageHeader
         title="Marketing"
         description="Campañas calculadas a partir de tus propias reservas, con la lista y el mensaje ya preparados."
@@ -53,36 +53,37 @@ function Marketing() {
 
       <CampanasPanel />
 
-      <div className="space-y-4 border-t border-border/60 pt-8">
+      <div className="space-y-4 pt-2">
         <div>
-          <h2 className="font-display text-xl">Más ideas para más adelante</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h2 className="text-xl font-extrabold tracking-[-0.02em]">Más ideas para más adelante</h2>
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground">
             Sugerencias calculadas a partir de tus reservas, todavía sin lista ni mensaje.
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           {suggestions.map((s) => (
-            <div key={s.title} className="rounded-xl border border-border/60 bg-card p-6">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <s.icon className="h-4 w-4" />
-              </div>
-              <h3 className="mt-4 font-display text-xl">{s.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{s.body}</p>
+            <div key={s.title} className="rounded-[20px] border border-border bg-card p-5">
+              <span className="grid size-10 place-items-center rounded-xl bg-nata text-primary">
+                <s.icon className="size-[18px]" strokeWidth={1.6} />
+              </span>
+              <h3 className="mt-3 text-base font-extrabold">{s.title}</h3>
+              <p className="mt-1 text-[13px] text-muted-foreground">{s.body}</p>
               <ComingSoonAction label={s.cta} />
             </div>
           ))}
-        </div>
-
-        <div className="flex items-start gap-4 rounded-xl border border-border/60 bg-card p-6">
-          <Megaphone className="h-5 w-5 shrink-0 text-primary" />
+        <div className="rounded-[20px] border border-border bg-card p-5">
+          <span className="grid size-10 place-items-center rounded-xl bg-nata text-primary">
+            <Megaphone className="size-[18px]" strokeWidth={1.6} />
+          </span>
           <div>
-            <h3 className="font-display text-lg">Recordatorios por WhatsApp</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h3 className="mt-3 text-base font-extrabold">Recordatorios por WhatsApp</h3>
+            <p className="mt-1 text-[13px] text-muted-foreground">
               Lo estamos terminando: recordatorio y confirmación de cada cita por WhatsApp desde el
               panel. Hoy las campañas de arriba te dejan lista y mensaje para mandarlos tú.
             </p>
           </div>
+        </div>
         </div>
       </div>
     </div>

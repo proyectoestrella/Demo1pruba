@@ -1,45 +1,44 @@
 import { useMemo } from "react";
-import { Calendar, Euro, TrendingUp, Users } from "lucide-react";
+import { Ban, Calendar, Euro, Scissors, TrendingUp, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
-import { employees } from "@/lib/mock/salon";
+import { useEquipo } from "@/lib/use-equipo";
 import { resumenDePeriodo, comparar, type ResumenPeriodo } from "@/lib/periodos";
-import type { KpiTrend } from "@/lib/derive";
-import { KpiCard } from "@/components/KpiCard";
+import { nuevasYRecurrentes, serviciosDelRango } from "@/lib/analitica-arena";
 import { SelectorPeriodo } from "@/components/SelectorPeriodo";
 import { cn } from "@/lib/utils";
-import { eurRedondo, pct } from "@/lib/copy";
+import { eurRedondo } from "@/lib/copy";
 
 /**
- * Las cuatro cifras del periodo elegido, con su selector encima.
- *
- * Todas miran el MISMO periodo —antes cada tarjeta comparaba contra una cosa
- * distinta escrita a mano— y todas dicen debajo contra qué comparan. El
- * cálculo entero vive en `lib/periodos.ts` y se memoriza por (citas, periodo,
- * rango): cambiar de pestaña no vuelve a recorrer el histórico.
+ * El selector de periodo y las seis cifras de Analítica «Arena»: citas,
+ * ingresos, ocupación, clientas nuevas y recurrentes, servicio más pedido y
+ * cancelaciones. Todas miran el MISMO periodo y dicen contra qué comparan;
+ * el cálculo vive en `lib/periodos.ts` y `lib/analitica-arena.ts`.
  */
 export function TarjetasPeriodo({ className }: { className?: string }) {
   const appointments = useSalonStore((s) => s.appointments);
+  const services = useSalonStore((s) => s.services);
   const periodo = useSalonStore((s) => s.periodoAnalitica);
   const rango = useSalonStore((s) => s.rangoAnalitica);
+  const equipo = useEquipo();
 
   const resumen = useMemo(
-    () => resumenDePeriodo(appointments, periodo, employees, new Date(), rango),
-    [appointments, periodo, rango],
+    () => resumenDePeriodo(appointments, periodo, equipo, new Date(), rango),
+    [appointments, periodo, rango, equipo],
   );
 
   return (
     <div className={cn("space-y-3", className)} data-tour="kpis">
       <SelectorPeriodo />
-      <FilaDeTarjetas resumen={resumen} />
+      <FilaDeTarjetas resumen={resumen} appointments={appointments} services={services} />
       {resumen.cerrado ? (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-[12.5px] text-muted-foreground">
           El salón no abre ningún día de este periodo, así que no hay cifras que comparar: el cero
           es el horario, no una caída.
         </p>
       ) : (
         !resumen.hayComparacion && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[12.5px] text-muted-foreground">
             No hay actividad en el periodo anterior equivalente, así que no se enseña ninguna
             variación: preferimos decirlo a inventarla.
           </p>
@@ -49,75 +48,82 @@ export function TarjetasPeriodo({ className }: { className?: string }) {
   );
 }
 
-function trend(
-  valor: number,
-  anterior: number | null,
-  spark: number[],
-  cerrado = false,
-): KpiTrend {
-  // Día cerrado: no se compara contra nada. Así la tarjeta no pinta en rojo
-  // un "-100 %" que solo dice que ese día el salón no abre.
-  const c = cerrado ? { variacionPct: null } : comparar(valor, anterior);
-  return {
-    current: valor,
-    previous: anterior ?? 0,
-    deltaPct: c.variacionPct,
-    spark,
-  };
+/** Minigráfica de la serie en moca, el último punto en moca fuerte. */
+function Mini({ serie }: { serie: number[] }) {
+  if (serie.length < 2) return null;
+  const max = Math.max(1, ...serie);
+  const w = 100;
+  const hgt = 24;
+  const pts = serie.map((v, i) => [(i / (serie.length - 1)) * w, hgt - 2 - (v / max) * (hgt - 4)] as const);
+  const [ux, uy] = pts[pts.length - 1];
+  return (
+    <svg viewBox={`0 0 ${w} ${hgt}`} preserveAspectRatio="none" className="mt-2 h-6 w-full" aria-hidden="true">
+      <polyline points={pts.map((p) => p.join(",")).join(" ")} fill="none" stroke="var(--moca)" strokeWidth={1.6} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      <circle cx={ux} cy={uy} r={2.2} fill="var(--moca-fuerte)" />
+    </svg>
+  );
 }
 
+function Variacion({ valor, anterior, cerrado, bueno = "sube" }: { valor: number; anterior: number | null; cerrado: boolean; bueno?: "sube" | "baja" }) {
+  if (cerrado) return <span className="text-[12px] text-muted-foreground">Cerrado</span>;
+  const { variacionPct } = comparar(valor, anterior);
+  if (variacionPct === null) return <span className="text-[12px] text-muted-foreground">Sin comparación</span>;
+  const mejora = bueno === "sube" ? variacionPct >= 0 : variacionPct <= 0;
+  return (
+    <span className={cn("inline-flex h-5 items-center rounded-full px-2 text-[11.5px] font-bold tabular-nums", mejora ? "bg-salvia-clara text-hoja-tinta" : "bg-melocoton text-melocoton-tinta")}>
+      {variacionPct > 0 ? "+" : ""}
+      {variacionPct} %
+    </span>
+  );
+}
 
+export function FilaDeTarjetas({
+  resumen,
+  appointments,
+  services,
+}: {
+  resumen: ResumenPeriodo;
+  appointments: Parameters<typeof nuevasYRecurrentes>[0];
+  services: Parameters<typeof serviciosDelRango>[2];
+}) {
+  const { actual, previo, series, textoComparacion: contexto, cerrado, rango } = resumen;
+  const clientas = nuevasYRecurrentes(appointments, rango);
+  const top = serviciosDelRango(appointments, rango, services)[0];
 
-export function FilaDeTarjetas({ resumen }: { resumen: ResumenPeriodo }) {
-  const { actual, previo, series, textoComparacion: contexto, cerrado } = resumen;
-
-  const tarjetas: {
-    label: string;
-    icon: LucideIcon;
-    trend: KpiTrend;
-    format: (n: number) => string;
-  }[] = [
+  const tarjetas: { label: string; icon: LucideIcon; valor: string; pie: React.ReactNode; serie?: number[] }[] = [
+    { label: "Citas", icon: Calendar, valor: String(actual.citas), pie: <Variacion valor={actual.citas} anterior={previo.citas} cerrado={cerrado} />, serie: series.citas },
+    { label: "Ingresos estimados", icon: Euro, valor: eurRedondo(actual.caja), pie: <Variacion valor={actual.caja} anterior={previo.caja} cerrado={cerrado} />, serie: series.caja },
+    { label: "Ocupación media", icon: TrendingUp, valor: `${Math.round(actual.ocupacion ?? 0)} %`, pie: <Variacion valor={actual.ocupacion ?? 0} anterior={previo.ocupacion} cerrado={cerrado} />, serie: series.ocupacion },
     {
-      label: "Citas",
-      icon: Calendar,
-      trend: trend(actual.citas, previo.citas, series.citas, cerrado),
-      format: (n) => Math.round(n).toString(),
-    },
-    {
-      label: "Caja",
-      icon: Euro,
-      trend: trend(actual.caja, previo.caja, series.caja, cerrado),
-      format: eurRedondo,
-    },
-    {
-      label: "Ocupación",
-      icon: TrendingUp,
-      // `null` = el equipo no abre ni un día del rango. Se enseña 0 % pero sin
-      // comparación, que es lo único honesto que se puede decir.
-      trend: trend(actual.ocupacion ?? 0, previo.ocupacion, series.ocupacion, cerrado),
-      format: pct,
-    },
-    {
-      label: "Clientes nuevos",
+      label: "Clientas",
       icon: Users,
-      trend: trend(actual.clientesNuevos, previo.clientesNuevos, series.clientesNuevos, cerrado),
-      format: (n) => Math.round(n).toString(),
+      valor: `${clientas.nuevas + clientas.recurrentes}`,
+      pie: <span className="text-[12px] text-muted-foreground tabular-nums">{clientas.nuevas} nuevas · {clientas.recurrentes} recurrentes</span>,
     },
+    {
+      label: "Más pedido",
+      icon: Scissors,
+      valor: top ? top.sv.name : "—",
+      pie: <span className="text-[12px] text-muted-foreground tabular-nums">{top ? `${top.veces} ${top.veces === 1 ? "vez" : "veces"}` : "Sin citas"}</span>,
+    },
+    { label: "Cancelaciones", icon: Ban, valor: String(actual.cancelaciones), pie: <Variacion valor={actual.cancelaciones} anterior={previo.cancelaciones} cerrado={cerrado} bueno="baja" /> },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-3 2xl:grid-cols-6">
       {tarjetas.map((t) => (
-        <KpiCard
-          key={t.label}
-          label={t.label}
-          icon={t.icon}
-          trend={t.trend}
-          format={t.format}
-          context={cerrado ? "El salón no abre" : contexto}
-          goodDirection="up"
-          sinComparacionLabel={cerrado ? "Cerrado" : "Sin comparación"}
-        />
+        <div key={t.label} className="flex min-w-0 flex-col rounded-[20px] border border-border bg-card px-4 py-3 md:px-5 md:py-4">
+          <div className="flex items-center gap-1.5 text-[12.5px] font-bold text-muted-foreground">
+            <t.icon className="size-[15px]" strokeWidth={1.6} aria-hidden="true" />
+            {t.label}
+          </div>
+          <div className={cn("mt-0.5 truncate leading-tight font-extrabold tabular-nums", t.valor.length > 8 ? "text-lg md:text-xl" : "text-[22px] md:text-[26px]")} title={t.valor}>
+            {t.valor}
+          </div>
+          <div className="flex items-center gap-1.5">{t.pie}</div>
+          {t.serie && <Mini serie={t.serie} />}
+          {!t.serie && <p className="mt-2 text-[11.5px] text-muted-foreground">{t.label === "Cancelaciones" ? contexto : " "}</p>}
+        </div>
       ))}
     </div>
   );
