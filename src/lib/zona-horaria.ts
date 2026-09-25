@@ -9,6 +9,18 @@
  */
 export const ZONA_HORARIA_SALON = "Europe/Madrid";
 
+/** La zona del perfil, o la de por defecto si no la tiene o no es válida. */
+export function zonaDelSalon(perfil: { timeZone?: string } | null | undefined): string {
+  const tz = perfil?.timeZone?.trim();
+  if (!tz) return ZONA_HORARIA_SALON;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return tz;
+  } catch {
+    return ZONA_HORARIA_SALON;
+  }
+}
+
 const DIAS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function partes(iso: string | Date, timeZone: string) {

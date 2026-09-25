@@ -10,7 +10,7 @@ import type { ClienteDeCita } from "./salon-sync";
 import { inferBusinessType } from "./business-type";
 import { trabajaEn } from "./horario-equipo";
 import { employeesForType } from "./mock/salon";
-import { ZONA_HORARIA_SALON, momentoLocal } from "./zona-horaria";
+import { ZONA_HORARIA_SALON, momentoLocal, zonaDelSalon } from "./zona-horaria";
 
 export { ZONA_HORARIA_SALON, momentoLocal } from "./zona-horaria";
 
@@ -62,11 +62,11 @@ export function haySolape(
  * Un `employeeId` desconocido no trabaja nunca.
  */
 export function profesionalTrabaja(
-  perfil: Pick<SalonProfile, "name" | "tagline" | "team" | "teamHours" | "openingHours" | "teamIds">,
+  perfil: Pick<SalonProfile, "name" | "tagline" | "team" | "teamHours" | "openingHours" | "teamIds" | "timeZone">,
   employeeId: string,
   inicioISO: string,
   duracionMin: number,
-  timeZone = ZONA_HORARIA_SALON,
+  timeZone = zonaDelSalon(perfil),
 ): boolean {
   const equipo = employeesForType(
     inferBusinessType(perfil.tagline, perfil.name),

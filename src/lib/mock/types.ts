@@ -218,6 +218,8 @@ export interface SalonProfile {
   instagram: string;
   /** Siete cadenas, lunes a domingo: "10:00–13:30, 17:00–20:00" o "Cerrado". Ver lib/opening-hours.ts */
   openingHours: string[];
+  /** Zona horaria IANA de la agenda ("Europe/Madrid" por defecto). Ver lib/zona-horaria.ts. */
+  timeZone?: string;
   /**
    * Cuántas fotos tiene el local en Google (0 = ninguna o no viene de Google).
    * La primera es la portada; el resto alimentan la galería a través de /api/foto.

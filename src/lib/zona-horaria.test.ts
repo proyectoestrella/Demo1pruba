@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { fechaEnZona, horaEnZona, isoDelSalon, momentoLocal } from "./zona-horaria";
+import { fechaEnZona, horaEnZona, isoDelSalon, momentoLocal, zonaDelSalon } from "./zona-horaria";
 
 describe("agenda del salón ↔ instantes ISO", () => {
   it("las 10:00 de Madrid en verano son las 08:00Z, y en invierno las 09:00Z", () => {
@@ -25,5 +25,14 @@ describe("agenda del salón ↔ instantes ISO", () => {
     // porque todo pasa por Intl con la zona explícita.
     expect(isoDelSalon("2026-09-28", "10:00", "UTC")).toBe("2026-09-28T10:00:00.000Z");
     expect(isoDelSalon("2026-09-28", "10:00", "America/New_York")).toBe("2026-09-28T14:00:00.000Z");
+  });
+});
+
+describe("zonaDelSalon", () => {
+  it("usa la del perfil si es válida y Madrid si falta o es inválida", () => {
+    expect(zonaDelSalon({ timeZone: "Atlantic/Canary" })).toBe("Atlantic/Canary");
+    expect(zonaDelSalon({})).toBe("Europe/Madrid");
+    expect(zonaDelSalon({ timeZone: "Marte/Olympus" })).toBe("Europe/Madrid");
+    expect(zonaDelSalon(null)).toBe("Europe/Madrid");
   });
 });

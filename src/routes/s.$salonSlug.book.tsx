@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
 import { huecosDeProfesionales, trabajaEn } from "@/lib/horario-equipo";
-import { isoDelSalon } from "@/lib/zona-horaria";
+import { isoDelSalon, zonaDelSalon } from "@/lib/zona-horaria";
 import type { Appointment, BookingAnswers, Client, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { bookingAnswersComplete, bookingQuestionsEnabled, cleanBookingAnswers, serializeBookingNote } from "@/lib/booking-answers";
 import { useSalonStore, isSlotTaken } from "@/lib/store";
@@ -112,6 +112,7 @@ function resolveEmployee(
   durationMin: number,
   appointments: Appointment[],
   employees: Employee[],
+  timeZone: string,
 ): EmployeeId {
   if (stylistChoice && stylistChoice !== "any") return stylistChoice;
   const weekday = new Date(`${date}T00:00`).getDay();
@@ -119,7 +120,7 @@ function resolveEmployee(
   const startMin = hh * 60 + mm;
   const candidate = employees.find((e) => {
     if (!trabajaEn(e, weekday, startMin, durationMin)) return false;
-    const startISO = isoDelSalon(date, time);
+    const startISO = isoDelSalon(date, time, timeZone);
     return !isSlotTaken(appointments, e.id, startISO, durationMin);
   });
   return candidate?.id ?? employees[0].id;
@@ -487,8 +488,9 @@ function BookingWizard() {
       schedulingDurationMin,
       appointments,
       employees,
+      zonaDelSalon(profile),
     );
-    const startISO = isoDelSalon(data.date, data.time);
+    const startISO = isoDelSalon(data.date, data.time, zonaDelSalon(profile));
     // Una clienta que repite y teclea su teléfono (con espacios, guiones o
     // prefijo distintos a la vez anterior) tiene que quedar enlazada a SU
     // ficha, no a una "walk-in" nueva: si no, el historial no la reconoce y
@@ -705,6 +707,7 @@ function BookingWizard() {
               smartSpread={!!profile.smartSpread}
               lastSlotBufferMin={profile.lastSlotBufferMin ?? 0}
               priorityHours={profile.priorityHours ?? []}
+              timeZone={zonaDelSalon(profile)}
               durationLabel={durationLabel}
               flexNota={flexNota}
               recargoTexto={recargoTexto}
@@ -1218,7 +1221,10 @@ function DateTimeStep({
   durationLabel,
   flexNota,
   recargoTexto,
+  timeZone,
 }: {
+  /** Zona horaria de la agenda del salón (ver lib/zona-horaria.ts). */
+  timeZone: string;
   /** Duración con la que se busca hueco libre — con duración flexible ya es el extremo alto del rango. */
   durationMin: number;
   stylistChoice: EmployeeId | "any";
@@ -1290,7 +1296,7 @@ function DateTimeStep({
           return trabajaEn(e, weekday, minuto, durationMin);
         });
         if (!open) continue;
-        const iso = isoDelSalon(dateKey, timeStr);
+        const iso = isoDelSalon(dateKey, timeStr, timeZone);
         const free = relevantEmployees.some(
           (e) => !isSlotTaken(appointments, e.id, iso, durationMin),
         );
@@ -1351,7 +1357,7 @@ function DateTimeStep({
           return trabajaEn(e, weekday, minuto, durationMin);
         });
         if (!open) continue;
-        const iso = isoDelSalon(dateKey, timeStr);
+        const iso = isoDelSalon(dateKey, timeStr, timeZone);
         const available = relevantEmployees.some(
           (e) => !isSlotTaken(appointments, e.id, iso, durationMin),
         );
