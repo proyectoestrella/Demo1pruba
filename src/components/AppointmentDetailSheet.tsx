@@ -251,7 +251,7 @@ export function AppointmentDetailSheet({
       deadlineISO: preparada.venceISO,
       plantilla: reglaSen.plantilla,
     }, requestedAt);
-    window.open(url, "_blank", "noopener,noreferrer");
+    useSalonStore.getState().abrirWhatsAppDeCita(appointment.id, url);
     // Abrir WhatsApp no es enviar: la señal pasa a «pedida» solo cuando la
     // dueña confirma que lo ha mandado (antes se marcaba al abrirlo).
     toast("¿Has enviado el WhatsApp de la señal?", {

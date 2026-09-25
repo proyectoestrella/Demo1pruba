@@ -67,7 +67,7 @@ function HojaDelDia() {
                   ? { importeEur: cita.depositEur ?? salon.depositAmountEur ?? 10, bizumPhone: salon.depositBizumPhone, deadlineISO: cita.depositDueAt }
                   : undefined,
               });
-              window.open(url, "_blank", "noopener,noreferrer");
+              useSalonStore.getState().abrirWhatsAppDeCita(cita.id, url);
             }}>Enviar recordatorio</Button>
             <Button size="sm" variant="ghost" onClick={() => updateAppointment(cita.id, { reminderSentAt: new Date().toISOString() })}>Marcar como enviado</Button>
           </div>}

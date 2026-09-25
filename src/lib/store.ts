@@ -134,6 +134,12 @@ interface SalonState {
   registrarCambio: (c: Cambio) => void;
   /** Se mandó un WhatsApp a la clienta por este cambio (para avisar al deshacerlo). */
   marcarAvisoEnviado: (cambioId: string) => void;
+  /**
+   * Abre el WhatsApp a la clienta de una cita y marca como avisada la última
+   * modificación de esa cita (24 h): deshacerla luego avisará de que ella ya
+   * lo sabe. Devuelve el cambio marcado, si había.
+   */
+  abrirWhatsAppDeCita: (citaId: string, url: string) => string | null;
   /** Deshace un cambio si sigue siendo posible; si no, dice por qué. */
   deshacerCambio: (cambioId: string) => { ok: true; aviso?: "CLIENTA_AVISADA" } | { ok: false; motivo: MotivoNoDeshacer };
   /** ¿Se puede deshacer este cambio ahora? (para pintar el botón). */
@@ -947,6 +953,17 @@ export const useSalonStore = create<SalonState>()(
       marcarAvisoEnviado: (cambioId) => {
         set((s) => ({ cambios: s.cambios.map((c) => (c.id === cambioId ? { ...c, avisoEnviado: true } : c)) }));
         pushAvisoEnviado(get().realSalonSlug, cambioId);
+      },
+
+      abrirWhatsAppDeCita: (citaId, url) => {
+        if (typeof window !== "undefined") window.open(url, "_blank", "noopener,noreferrer");
+        const limite = Date.now() - 24 * 3_600_000;
+        const c = get().cambios.find(
+          (x) => x.entidad === "cita" && x.idEntidad === citaId && !x.deshechoEn && !x.deshaceA && Date.parse(x.fecha) >= limite,
+        );
+        if (!c) return null;
+        get().marcarAvisoEnviado(c.id);
+        return c.id;
       },
 
       estadoDeshacer: (cambioId) => {

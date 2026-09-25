@@ -130,3 +130,24 @@ describe("deshacer cambios del perfil (lote 9b)", () => {
     expect(useSalonStore.getState().cambios.length).toBe(n);
   });
 });
+
+describe("WhatsApp y aviso a la clienta (lote 9b)", () => {
+  it("abrir el WhatsApp de una cita marca su última modificación como avisada", () => {
+    const a = nuevaCita({ start: "2026-10-08T08:00:00.000Z" });
+    useSalonStore.getState().updateAppointment(a.id, { start: "2026-10-08T10:00:00.000Z" });
+    const mover = ultimo();
+    const otra = nuevaCita({ start: "2026-10-09T08:00:00.000Z", clientId: "otra2" });
+    useSalonStore.getState().cancelAppointment(otra.id);
+    const marcado = useSalonStore.getState().abrirWhatsAppDeCita(a.id, "https://wa.me/34600000000?text=x");
+    expect(marcado).toBe(mover.id);
+    expect(useSalonStore.getState().cambios.find((c) => c.id === mover.id)?.avisoEnviado).toBe(true);
+    // La de la otra cita no se toca.
+    expect(useSalonStore.getState().cambios.find((c) => c.idEntidad === otra.id)?.avisoEnviado).toBe(false);
+    expect(useSalonStore.getState().estadoDeshacer(mover.id)).toEqual({ puede: true, aviso: "CLIENTA_AVISADA" });
+  });
+
+  it("sin modificaciones recientes de esa cita no marca nada", () => {
+    const a = nuevaCita({ start: "2026-10-10T08:00:00.000Z" });
+    expect(useSalonStore.getState().abrirWhatsAppDeCita(a.id, "https://wa.me/1")).toBeNull();
+  });
+});
