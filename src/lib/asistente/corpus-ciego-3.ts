@@ -2,6 +2,13 @@
  * Tercer corpus CIEGO (ronda 7b): 250 preguntas de un agente nuevo que solo vio
  * el catálogo y la guía de uso. Medido una sola vez con el motor congelado en
  * 7217b26. No se ajusta nada mirando sus fallos.
+ *
+ * Etiquetas revisadas en 7c (solo las objetivamente erróneas):
+ * - «no sé ni qué preguntarte»: no-entiendo → que-sabes-hacer, por decisión expresa.
+ * Discutibles que se dejan como están: «X comparado con el anterior» (citas-periodo),
+ * «ábreme los datos de X» (buscar-clienta), «quién repite en no presentarse» (plantones),
+ * «color sin fórmula hoy» (colores-hoy), «señas en efectivo» (no-cobra-tarjeta:
+ * la etiqueta no encaja, pero ninguna otra es claramente la correcta).
  */
 export const CORPUS_CIEGO_3: Array<[string, string]> = [
   ["cuantas citas tenemos hoy en total?", "citas-hoy"],
@@ -183,7 +190,8 @@ export const CORPUS_CIEGO_3: Array<[string, string]> = [
   ["q bien lo estas haciendo, macho", "buen-trabajo"],
   ["q tal estas hoy?", "como-estas"],
   ["¿todo bien x ahí?", "como-estas"],
-  ["eeh no se ni q preguntarte la verdad jaja", "no-entiendo"],
+  // Corregida en 7c: el orquestador fijó «no sé ni qué preguntarte» → que-sabes-hacer (antes: no-entiendo).
+  ["eeh no se ni q preguntarte la verdad jaja", "que-sabes-hacer"],
   ["pspsps oye tu", "no-entiendo"],
   ["quiero hablar con una persona d soporte", "ayuda-humana"],
   ["cuentame un chiste anda", "broma"],
