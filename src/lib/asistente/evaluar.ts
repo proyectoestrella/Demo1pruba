@@ -6,6 +6,7 @@ import { CORPUS } from "./corpus";
 import { CORPUS_CIEGO } from "./corpus-ciego";
 import { CORPUS_CIEGO_2 } from "./corpus-ciego-2";
 import { CORPUS_CIEGO_3 } from "./corpus-ciego-3";
+import { CORPUS_CIEGO_4 } from "./corpus-ciego-4";
 import { INTENCIONES, POR_ID } from "./intenciones";
 import { normalizar } from "./normalizar";
 import { asistentePeluChic, datosPeluChic } from "./prueba-peluchic";
@@ -98,7 +99,7 @@ export function matriz(casos: Caso[]) {
 }
 
 if (import.meta.main) {
-  const casos = casosDelCorpus(process.argv.includes("--ciego3") ? CORPUS_CIEGO_3 : process.argv.includes("--ciego2") ? CORPUS_CIEGO_2 : process.argv.includes("--ciego") ? CORPUS_CIEGO : CORPUS);
+  const casos = casosDelCorpus(process.argv.includes("--ciego4") ? CORPUS_CIEGO_4 : process.argv.includes("--ciego3") ? CORPUS_CIEGO_3 : process.argv.includes("--ciego2") ? CORPUS_CIEGO_2 : process.argv.includes("--ciego") ? CORPUS_CIEGO : CORPUS);
   const m = matriz(casos);
   console.log(`Acierto: ${m.ok}/${m.total} = ${(m.pct * 100).toFixed(1)} %  · intenciones del catálogo: ${INTENCIONES.length}`);
   for (const [k, v] of [...m.porCat].sort()) console.log(`  ${k.padEnd(18)} ${v.ok}/${v.total}`);
