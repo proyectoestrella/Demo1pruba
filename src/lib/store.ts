@@ -23,7 +23,7 @@ import type {
 import type { DemoProfile } from "./demo-profile";
 import { recargoActivo } from "./recargo-activo";
 import { deadlineHours, depositDueAt, extendDepositDueAt, effectiveDepositDueAt } from "./deposit-deadline";
-import { inferBusinessType, type BusinessType } from "./business-type";
+import { inferBusinessType, menuDesdeServicios, slugForId, type BusinessType } from "./business-type";
 import {
   pushAppointment,
   pushAppointmentDeletion,
@@ -333,7 +333,18 @@ function sincronizarCita(state: SalonState, id: string) {
 
 export const useSalonStore = create<SalonState>()(
   persist(
-    (set, get) => ({
+    (set, get) => {
+      /**
+       * Servicios → carta del perfil. Solo en un salón REAL (con slug): ahí
+       * la carta que manda es `salonProfile.menu` en Supabase, y sin esto los
+       * cambios de /app/services se quedaban en este navegador. En una demo
+       * la carta viaja dentro del enlace `?d=` y no se toca.
+       */
+      const sincronizarCarta = () => {
+        if (!get().realSalonSlug) return;
+        get().updateSalonProfile({ menu: menuDesdeServicios(get().services) });
+      };
+      return {
       appointments: seedAppointments,
       waitlist: seedWaitlist,
       clients: seedClients,
@@ -616,18 +627,30 @@ export const useSalonStore = create<SalonState>()(
       },
 
       addService: (svc) => {
-        const service: Service = { ...svc, id: `svc-${Date.now()}` };
+        // El id sale del nombre, igual que hace `servicesForType` al
+        // reconstruir la carta desde el perfil: así la cita que se cree hoy
+        // en este navegador apunta al mismo id que verá el otro aparato.
+        const usados = new Set(get().services.map((sv) => sv.id));
+        const base = slugForId(svc.name);
+        let id = base;
+        for (let n = 2; usados.has(id); n++) id = `${base}-${n}`;
+        const service: Service = { ...svc, id };
         set((s) => ({ services: [...s.services, service] }));
+        sincronizarCarta();
         return service;
       },
-      updateService: (id, patch) =>
+      updateService: (id, patch) => {
         set((s) => ({
           services: s.services.map((sv) => (sv.id === id ? { ...sv, ...patch } : sv)),
-        })),
-      deleteService: (id) =>
+        }));
+        sincronizarCarta();
+      },
+      deleteService: (id) => {
         set((s) => ({
           services: s.services.filter((sv) => sv.id !== id),
-        })),
+        }));
+        sincronizarCarta();
+      },
 
       updateSalonProfile: (patch) => {
         set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } }));
@@ -731,7 +754,8 @@ export const useSalonStore = create<SalonState>()(
         set({ salonProfile: salon, demoActive: false, realSalonSlug: null });
         get().applyBusinessType("barberia");
       },
-    }),
+    };
+    },
     {
       name: "trimly-salon-store",
       storage,

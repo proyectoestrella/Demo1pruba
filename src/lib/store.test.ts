@@ -171,3 +171,27 @@ describe("salón sin recargo", () => {
     expect(useSalonStore.getState().clients.find((c) => c.id === cliente.id)?.manualBlock).toBe(false);
   });
 });
+
+describe("la carta del panel viaja al perfil del salón real", () => {
+  it("añadir, apagar y borrar un servicio reescribe salonProfile.menu con ids por nombre", () => {
+    const st = useSalonStore.getState();
+    st.setRealSalonSlug("salon-de-prueba-carta");
+    const nuevo = st.addService({ name: "Mechas balayage", description: "", durationMin: 90, priceEur: 60, category: "Color" });
+    expect(nuevo.id).toBe("mechas-balayage");
+    expect(useSalonStore.getState().salonProfile.menu).toContain("Mechas balayage~90~60~Color");
+    st.updateService(nuevo.id, { active: false });
+    expect(useSalonStore.getState().salonProfile.menu).toContain("Mechas balayage~90~60~Color~off");
+    st.deleteService(nuevo.id);
+    expect(useSalonStore.getState().salonProfile.menu?.some((m) => m.startsWith("Mechas balayage"))).toBe(false);
+    st.setRealSalonSlug(null);
+  });
+
+  it("en una demo (sin slug real) la carta del perfil no se toca", () => {
+    const st = useSalonStore.getState();
+    st.setRealSalonSlug(null);
+    const antes = useSalonStore.getState().salonProfile.menu;
+    const nuevo = st.addService({ name: "Prueba demo", description: "", durationMin: 20, priceEur: 10 });
+    expect(useSalonStore.getState().salonProfile.menu).toEqual(antes);
+    st.deleteService(nuevo.id);
+  });
+});

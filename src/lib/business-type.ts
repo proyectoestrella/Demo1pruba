@@ -566,6 +566,8 @@ export interface MenuOverrideEntry {
   durationMin: number;
   priceEur: number;
   category?: string;
+  /** `false` = el salón lo tiene apagado (quinto campo "off"). Ausente = activo. */
+  active?: boolean;
 }
 
 /** "Nombre" o "Nombre~Especialidad" → entrada válida, o `null` si no hay nombre. */
@@ -603,13 +605,36 @@ export function parseMenuEntry(raw: string): MenuOverrideEntry | null {
   const priceEur = Number(String(parts[2]).trim().replace(",", "."));
   if (!Number.isFinite(priceEur) || priceEur < 0) return null;
   const category = parts[3]?.trim().slice(0, MENU_CATEGORY_MAX);
-  return { name, durationMin, priceEur, category: category || undefined };
+  const apagado = parts[4]?.trim().toLowerCase() === "off";
+  return { name, durationMin, priceEur, category: category || undefined, ...(apagado ? { active: false } : {}) };
 }
 
 /** Cadena canónica de una entrada de carta, para guardar en el perfil/enlace. */
 export function formatMenuEntry(entry: MenuOverrideEntry): string {
   const base = `${entry.name}~${entry.durationMin}~${entry.priceEur}`;
+  if (entry.active === false) return `${base}~${entry.category ?? ""}~off`;
   return entry.category ? `${base}~${entry.category}` : base;
+}
+
+/**
+ * La carta del perfil a partir de los servicios del panel. Es lo que viaja a
+ * Supabase (`salons.profile.menu`) cuando la dueña añade, edita, apaga o
+ * borra un servicio en /app/services: antes esos cambios se quedaban en el
+ * localStorage de ese navegador. La categoría de relleno "Servicios" no se
+ * escribe, para no ensuciar las entradas.
+ */
+export function menuDesdeServicios(
+  services: Array<{ name: string; durationMin: number; priceEur: number; category?: string; active?: boolean }>,
+): string[] {
+  return services.slice(0, MAX_MENU_ENTRIES).map((s) =>
+    formatMenuEntry({
+      name: s.name,
+      durationMin: s.durationMin,
+      priceEur: s.priceEur,
+      category: s.category && s.category !== "Servicios" ? s.category : undefined,
+      active: s.active === false ? false : undefined,
+    }),
+  );
 }
 
 /** Id estable a partir de un nombre de servicio: minúsculas, sin acentos ni símbolos. */

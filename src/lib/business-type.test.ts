@@ -1,24 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import {
-  BUSINESS_LABEL,
-  BUSINESS_TYPES,
-  categoryOrderFor,
-  categoryOrderOf,
-  EMPLOYEE_OVERLAY,
-  EXAMPLE_CLIENT_NOTES,
-  FEATURED_IDS_BY_TYPE,
-  FIRST_NAMES_BY_TYPE,
-  formatMenuEntry,
-  formatTeamEntry,
-  fotoDeProfesional,
-  inferBusinessType,
-  parseMenuEntry,
-  parseTeamEntry,
-  professionalWord,
-  SERVICE_CATALOG,
-  showsRealPhotos,
-  slugForId,
-} from "./business-type";
+import { BUSINESS_LABEL, BUSINESS_TYPES, categoryOrderFor, categoryOrderOf, EMPLOYEE_OVERLAY, EXAMPLE_CLIENT_NOTES, FEATURED_IDS_BY_TYPE, FIRST_NAMES_BY_TYPE, formatMenuEntry, formatTeamEntry, fotoDeProfesional, inferBusinessType, parseMenuEntry, parseTeamEntry, professionalWord, SERVICE_CATALOG, showsRealPhotos, slugForId, menuDesdeServicios } from "./business-type";
 
 describe("inferBusinessType", () => {
   it("reconoce una barbería por nombre o tagline", () => {
@@ -303,5 +284,28 @@ describe("slugForId", () => {
 
   it("nunca devuelve una cadena vacía", () => {
     expect(slugForId("!!!")).toBe("servicio");
+  });
+});
+
+describe("carta con servicios apagados y vuelta desde los servicios del panel", () => {
+  it("un quinto campo «off» marca el servicio como apagado y se conserva al formatear", () => {
+    const entrada = parseMenuEntry("Mechas~90~60~Color~off");
+    expect(entrada).toEqual({ name: "Mechas", durationMin: 90, priceEur: 60, category: "Color", active: false });
+    expect(formatMenuEntry(entrada!)).toBe("Mechas~90~60~Color~off");
+    expect(formatMenuEntry({ name: "Corte", durationMin: 30, priceEur: 15, active: false })).toBe("Corte~30~15~~off");
+    expect(parseMenuEntry("Corte~30~15~~off")).toEqual({ name: "Corte", durationMin: 30, priceEur: 15, active: false });
+  });
+
+  it("una entrada sin quinto campo sigue siendo activa y no cambia de formato", () => {
+    expect(parseMenuEntry("Corte~30~15")).toEqual({ name: "Corte", durationMin: 30, priceEur: 15 });
+    expect(formatMenuEntry({ name: "Corte", durationMin: 30, priceEur: 15, category: "Cortes" })).toBe("Corte~30~15~Cortes");
+  });
+
+  it("menuDesdeServicios escribe lo que el panel tiene, sin la categoría de relleno", () => {
+    const menu = menuDesdeServicios([
+      { name: "Corte", durationMin: 30, priceEur: 15, category: "Servicios", active: true },
+      { name: "Mechas", durationMin: 90, priceEur: 60, category: "Color", active: false },
+    ]);
+    expect(menu).toEqual(["Corte~30~15", "Mechas~90~60~Color~off"]);
   });
 });

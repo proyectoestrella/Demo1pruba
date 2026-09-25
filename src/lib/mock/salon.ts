@@ -259,7 +259,7 @@ export function servicesForType(type: BusinessType, menu?: string[]): Service[] 
       durationMin: entry.durationMin,
       priceEur: entry.priceEur,
       category: entry.category ?? "Servicios",
-      active: true,
+      active: entry.active !== false,
     };
   });
 }
