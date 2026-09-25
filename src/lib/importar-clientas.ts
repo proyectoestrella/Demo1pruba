@@ -1,9 +1,9 @@
 import type { Client } from "./mock/types";
 
-export type CampoCliente = "nombre" | "apellidos" | "telefono" | "telefono2" | "email" | "notas" | "codigo" | "fechaAlta";
+export type CampoCliente = "nombre" | "apellidos" | "telefono" | "telefono2" | "email" | "notas" | "codigo" | "fechaAlta" | "nacimiento";
 export type MapaColumnas = Partial<Record<CampoCliente, number>>;
 export interface TablaImportacion { cabeceras: string[]; filas: string[][] }
-export interface FilaClienta { fila: number; nombre: string; telefono: string; otroTelefono?: string; codigo?: string; fechaAlta?: string; email?: string; notas?: string; estado: "nueva" | "duplicada" | "error"; motivo?: string }
+export interface FilaClienta { fila: number; nombre: string; telefono: string; otroTelefono?: string; codigo?: string; fechaAlta?: string; nacimiento?: string; email?: string; notas?: string; estado: "nueva" | "duplicada" | "error"; motivo?: string }
 export interface VistaPrevia { filas: FilaClienta[]; nuevas: number; duplicadas: number; errores: number }
 export interface VisitaImportada { fila: number; fecha: string; cliente: Client; servicios: string[]; importe: number; profesional: string; notas?: string; colorFormula?: string }
 
@@ -54,6 +54,8 @@ const alias: Record<CampoCliente, string[]> = {
   notas: ["observaciones", "notas", "comentarios"],
   codigo: ["codigocliente", "codigo cliente", "codigo"],
   fechaAlta: ["ingreso", "fecha alta", "alta"],
+  // `nacimiento` es la columna real de TPV 123 (etiqueta «Cumpleaños»).
+  nacimiento: ["nacimiento", "fecha nacimiento", "fecha de nacimiento", "cumpleanos", "cumpleaños", "cumple"],
 };
 const claveCabecera = (s: string) => normal(s).replace(/[.:]/g, "").replace(/\s+/g, " ");
 export function detectarColumnas(cabeceras: string[]): MapaColumnas {
@@ -67,6 +69,12 @@ export function detectarColumnas(cabeceras: string[]): MapaColumnas {
   if (mapa.telefono === undefined && mapa.telefono2 !== undefined) mapa.telefono = mapa.telefono2;
   return mapa;
 }
+/** Cumpleaños como "YYYY-MM-DD" (sin hora ni zona): es una fecha del calendario, no un instante. */
+function cumpleImportado(raw: string): string | undefined {
+  const iso = fechaImportada(raw);
+  return iso ? iso.slice(0, 10) : undefined;
+}
+
 function fechaImportada(raw: string): string | undefined {
   if (!raw.trim()) return undefined;
   let fecha: Date;
@@ -80,6 +88,7 @@ export function vistaPreviaClientas(tabla: TablaImportacion, existentes: Client[
   const vistosTelefono = new Set(existentes.map((c) => normalizarTelefono(c.phone)).filter(Boolean));
   const vistosNombres = new Set(existentes.map((c) => claveNombre(c.name)));
   const vistosSinTelefono = new Set(existentes.filter((c) => !normalizarTelefono(c.phone)).map((c) => claveNombre(c.name)));
+  const vistosCodigos = new Set(existentes.map((c) => c.tpvCode).filter((c): c is string => !!c));
   const filas: FilaClienta[] = [];
   const celda = (r: string[], campo: CampoCliente) => mapa[campo] === undefined ? "" : (r[mapa[campo]!] ?? "").trim();
   tabla.filas.forEach((r, index) => {
@@ -92,14 +101,19 @@ export function vistaPreviaClientas(tabla: TablaImportacion, existentes: Client[
     const notasEntrada = celda(r, "notas");
     const otroTelefono = otroRaw ? normalizarTelefono(otroRaw) || otroRaw : undefined;
     const notas = [notasEntrada, otroTelefono ? `Otro teléfono: ${otroTelefono}` : ""].filter(Boolean).join(" · ");
-    const registro: FilaClienta = { fila: index + 2, nombre, telefono, otroTelefono, codigo: celda(r, "codigo") || undefined, fechaAlta: fechaImportada(celda(r, "fechaAlta")), email: celda(r, "email") || undefined, notas: notas || undefined, estado: "nueva" };
+    const registro: FilaClienta = { fila: index + 2, nombre, telefono, otroTelefono, codigo: celda(r, "codigo") || undefined, fechaAlta: fechaImportada(celda(r, "fechaAlta")), nacimiento: cumpleImportado(celda(r, "nacimiento")), email: celda(r, "email") || undefined, notas: notas || undefined, estado: "nueva" };
     if (!nombre || (moviles.length > 0 && (!telefono || telefono.length !== 9)) || (registro.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registro.email))) {
       registro.estado = "error";
       registro.motivo = !nombre ? "Falta el nombre" : moviles.length > 0 && (!telefono || telefono.length !== 9) ? "Teléfono no válido" : "Correo no válido";
     }
+    else if (registro.codigo && vistosCodigos.has(registro.codigo)) {
+      // Volver a importar el mismo export no duplica: el código de TPV 123 manda.
+      registro.estado = "duplicada"; registro.motivo = "Ya está importada con ese código de TPV 123";
+    }
     else if ((telefono && (vistosTelefono.has(telefono) || vistosSinTelefono.has(claveNombre(nombre)))) || (!telefono && vistosNombres.has(claveNombre(nombre)))) {
       registro.estado = "duplicada"; registro.motivo = "Ya existe una clienta con ese teléfono o nombre";
     } else {
+      if (registro.codigo) vistosCodigos.add(registro.codigo);
       if (telefono) vistosTelefono.add(telefono);
       else vistosSinTelefono.add(claveNombre(nombre));
       vistosNombres.add(claveNombre(nombre));

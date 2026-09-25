@@ -96,3 +96,16 @@ test("detecta el mismo nombre si alguna ficha no tiene teléfono", () => {
   const r = vistaPreviaClientas(tabla, []);
   expect([r.nuevas, r.duplicadas]).toEqual([1, 1]);
 });
+
+test("detecta la columna de cumpleaños con los nombres habituales, y es opcional", () => {
+  for (const cabecera of ["Nacimiento", "Cumpleaños", "cumpleanos", "Fecha de nacimiento", "FECHA NACIMIENTO"]) {
+    const tabla = leerCsv(`nombre;telefono;${cabecera}\r\nMarta;612345678;04/05/1990\r\n`);
+    const mapa = detectarColumnas(tabla.cabeceras);
+    expect(mapa.nacimiento).toBe(2);
+    expect(vistaPreviaClientas(tabla, [], mapa).filas[0].nacimiento).toBe("1990-05-04");
+  }
+  const sinCumple = leerCsv("nombre;telefono\r\nLucía;699888777\r\n");
+  const mapa = detectarColumnas(sinCumple.cabeceras);
+  expect(mapa.nacimiento).toBeUndefined();
+  expect(vistaPreviaClientas(sinCumple, [], mapa).filas[0]).toMatchObject({ nacimiento: undefined, estado: "nueva" });
+});

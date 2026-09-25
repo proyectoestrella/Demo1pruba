@@ -10,6 +10,8 @@ const campos: { key: CampoCliente; label: string }[] = [
   { key: "nombre", label: "Nombre" }, { key: "apellidos", label: "Apellidos" },
   { key: "telefono", label: "Teléfono móvil" }, { key: "telefono2", label: "Teléfono fijo" },
   { key: "email", label: "Correo" }, { key: "fechaAlta", label: "Fecha de alta" }, { key: "codigo", label: "Código TPV 123" }, { key: "notas", label: "Observaciones" },
+  // Opcional: TPV 123 la llama «nacimiento» y se detecta sola; si no, se elige aquí.
+  { key: "nacimiento", label: "Cumpleaños (opcional)" },
 ];
 
 export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -55,13 +57,14 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
     const nuevas: Client[] = [];
     const codigos = new Map<string, string>();
     for (const fila of previa.filas.filter((f) => f.estado === "nueva")) {
-      const client = addClient({ name: fila.nombre, phone: fila.telefono, email: fila.email, notes: fila.notas, createdAt: fila.fechaAlta });
+      const client = addClient({ name: fila.nombre, phone: fila.telefono, email: fila.email, notes: fila.notas, createdAt: fila.fechaAlta, tpvCode: fila.codigo, birthday: fila.nacimiento });
       nuevas.push(client);
       if (fila.codigo) codigos.set(fila.codigo, client.id);
     }
     const normalizar = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     for (const fila of previa.filas.filter((f) => f.codigo && !codigos.has(f.codigo))) {
-      const existente = clientes.find((c) => normalizar(c.name) === normalizar(fila.nombre));
+      // Primero por el código guardado en la ficha (importaciones anteriores); si no, por nombre.
+      const existente = clientes.find((c) => c.tpvCode === fila.codigo) ?? clientes.find((c) => normalizar(c.name) === normalizar(fila.nombre));
       if (existente) codigos.set(fila.codigo!, existente.id);
     }
     const historial = visitas ? importarVisitas(visitas, [...clientes, ...nuevas], { servicios, equipo, codigos }) : { visitas: [], errores: 0, noEnlazadas: 0, lineas: 0 };
@@ -112,10 +115,10 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
           {mapa.nombre === undefined ? <p role="alert">Elige qué columna contiene el nombre para ver la vista previa.</p> : previa && <>
             <p className="font-medium">{previa.nuevas} nuevas · {previa.duplicadas} duplicadas · {previa.errores} con errores
               {visitasPrevias && ` · ${visitasPrevias.visitas.length} visitas de ${new Set(visitasPrevias.visitas.map((v) => v.cliente.id)).size} clientas · ${visitasPrevias.noEnlazadas} líneas sin enlazar · ${visitasPrevias.errores} filas erróneas`}</p>
-            <p className="text-xs text-muted-foreground">No se importan DNI/CIF, dirección, C.P., población ni provincia. El cumpleaños sí, si el fichero trae esa columna.</p>
+            <p className="text-xs text-muted-foreground">No se importan DNI/CIF, dirección, C.P., población ni provincia. El cumpleaños sí, si eliges su columna arriba (con «nacimiento» o «cumpleaños» se detecta sola).</p>
             {previa.duplicadas > 0 && <p className="break-words text-muted-foreground">Duplicadas: {previa.filas.filter((f) => f.estado === "duplicada").map((f) => f.nombre).join(", ")}</p>}
             <div className="max-h-64 space-y-1 overflow-y-auto rounded border border-border p-2">
-              {previa.filas.slice(0, 10).map((f) => <p key={f.fila} className="break-words">{f.fila}. {f.nombre || "Sin nombre"} · {f.telefono || "sin teléfono"} · {f.estado === "nueva" ? "Nueva" : f.estado === "duplicada" ? "Duplicada" : `Error: ${f.motivo}`}</p>)}
+              {previa.filas.slice(0, 10).map((f) => <p key={f.fila} className="break-words">{f.fila}. {f.nombre || "Sin nombre"} · {f.telefono || "sin teléfono"}{f.nacimiento ? ` · cumple ${new Date(`${f.nacimiento}T12:00:00`).toLocaleDateString("es-ES", { day: "numeric", month: "long" })}` : ""} · {f.estado === "nueva" ? "Nueva" : f.estado === "duplicada" ? "Duplicada" : `Error: ${f.motivo}`}</p>)}
             </div>
             <Button onClick={importar} disabled={ocupado || (!previa.nuevas && !visitasPrevias?.visitas.length)} className="w-full sm:w-auto">Importar {previa.nuevas} clientas</Button>
           </>}
