@@ -749,7 +749,8 @@ export const useSalonStore = create<SalonState>()(
           waitlist,
         })),
 
-      vaciarDatosDeEjemplo: () => set({ appointments: [], clients: [], waitlist: [] }),
+      // Un salón real tampoco «está en una demo»: fuera la marca del enlace.
+      vaciarDatosDeEjemplo: () => set({ appointments: [], clients: [], waitlist: [], demoActive: false }),
 
       applyDemo: (id) => {
         const demo = get().savedDemos.find((d) => d.id === id);
@@ -962,3 +963,12 @@ export function selectServiceMap(services: Service[]): Record<string, Service> {
 // NOT reactive to store mutations). New/updated pages should prefer the
 // `services` state + `selectServiceMap` above.
 export { serviceMap, employeeMap };
+
+/**
+ * Las demos guardadas solo se ven fuera de un salón real: en el panel de pago
+ * no pintan nada las ~54 demos del rutero que este navegador tenga en
+ * localStorage, y una dueña no debe poder «aplicarse» una encima de su salón.
+ */
+export function selectDemosVisibles(state: Pick<SalonState, "savedDemos" | "realSalonSlug">): SavedDemo[] {
+  return state.realSalonSlug ? [] : state.savedDemos;
+}

@@ -13,7 +13,7 @@ import {
   Trash2,
   Wand2,
 } from "lucide-react";
-import { useSalonStore, type SavedDemo } from "@/lib/store";
+import { useSalonStore, type SavedDemo, selectDemosVisibles } from "@/lib/store";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -172,7 +172,7 @@ function draftFrom(demo: DemoProfile & { id?: string }): DraftDemo {
 }
 
 function Demos() {
-  const savedDemos = useSalonStore((s) => s.savedDemos);
+  const savedDemos = useSalonStore(selectDemosVisibles);
   const saveDemo = useSalonStore((s) => s.saveDemo);
   const deleteDemo = useSalonStore((s) => s.deleteDemo);
   const applyDemo = useSalonStore((s) => s.applyDemo);

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { useSalonStore } from "./store";
+import { selectDemosVisibles, useSalonStore } from "./store";
 
 /**
  * Reservas de la web pública nacen "pending" (ver s.$salonSlug.book.tsx) y el
@@ -217,5 +217,17 @@ describe("el refresco no deshace un cambio local sin guardar", () => {
     st.hydrateFromServer({ appointments: [remotaVieja], clients: [], waitlist: [] });
     expect(useSalonStore.getState().appointments.find((a) => a.id === local.id)?.status).toBe("pending");
     st.setRealSalonSlug(null);
+  });
+});
+
+describe("demos fuera del panel real", () => {
+  it("con slug real no se ven demos guardadas y vaciarDatosDeEjemplo apaga demoActive", () => {
+    const st = useSalonStore.getState();
+    st.markDemoActive();
+    const demos = [{ id: "d1", savedAt: 1, name: "Demo" }] as unknown as typeof st.savedDemos;
+    expect(selectDemosVisibles({ savedDemos: demos, realSalonSlug: "salon-real" })).toEqual([]);
+    expect(selectDemosVisibles({ savedDemos: demos, realSalonSlug: null })).toBe(demos);
+    st.vaciarDatosDeEjemplo();
+    expect(useSalonStore.getState().demoActive).toBe(false);
   });
 });
