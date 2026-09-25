@@ -138,15 +138,17 @@ function Settings() {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="flex flex-1 flex-col gap-5">
       <PageHeader title="Ajustes" description="Las políticas de tu salón: plantones, señal y reparto de agenda." />
 
+      <div className="grid flex-1 items-start gap-4 xl:grid-cols-2 xl:group-data-[panel=abierto]/panel:grid-cols-1">
+      <div className="flex min-w-0 flex-col gap-4">
       <PrimerosPasos enAjustes />
 
-      <div className="rounded-xl border border-border/60 bg-card p-6">
+      <div className="rounded-[20px] border border-border bg-card p-5">
         <div className="flex items-center justify-between gap-4">
         <div>
-          <Label htmlFor="duracion-flexible" className="text-sm font-medium">La duración de cada cita la decido yo al aceptarla</Label>
+          <Label htmlFor="duracion-flexible" className="text-base font-extrabold">La duración de cada cita la decido yo al aceptarla</Label>
           <p className="mt-1 text-sm text-muted-foreground">La web muestra una duración orientativa. Cuando llegue la solicitud, podrás fijar los minutos antes de confirmarla.</p>
         </div>
         <Switch id="duracion-flexible" checked={duracionFlexible} onCheckedChange={setDuracionFlexible} />
@@ -154,16 +156,16 @@ function Settings() {
         <div className="mt-4 flex justify-end"><Button onClick={handleSave}>Guardar cambios</Button></div>
       </div>
 
-      <div className="space-y-4 rounded-xl border border-border/60 bg-card p-6">
+      <div className="space-y-4 rounded-[20px] border border-border bg-card p-5">
         <div>
-          <h2 className="font-display text-lg">Ver tus citas en Google Calendar o en el calendario del iPhone</h2>
+          <h2 className="text-base font-extrabold">Ver tus citas en Google Calendar o en el calendario del iPhone</h2>
           <p className="mt-1 text-sm text-muted-foreground">Tu calendario la actualiza cada pocas horas; la agenda al minuto está en siShow. Solo aparecen citas confirmadas, con hora, servicio y nombre de pila.</p>
         </div>
         {!realSlug ? <p className="text-sm text-muted-foreground">La suscripción se activa cuando el salón es real. En esta demo puedes ver cómo quedará el ajuste.</p> : <>
-          {calendarError && <p className="text-sm text-destructive">No se pudo cargar el enlace. Comprueba que el calendario esté activado en el servidor y vuelve a abrir Ajustes.</p>}
+          {calendarError && <p className="text-sm text-melocoton-tinta">No se pudo cargar el enlace. Comprueba que el calendario esté activado en el servidor y vuelve a abrir Ajustes.</p>}
           {calendarToken && <>
             <label className="block space-y-1 text-sm"><span>Calendario</span>
-              <select value={profesional} onChange={(e) => setProfesional(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+              <select value={profesional} onChange={(e) => setProfesional(e.target.value)} className="flex h-10 w-full rounded-xl border border-input bg-card px-3 text-sm">
                 <option value="">Todo el salón</option>
                 {equipo.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
@@ -182,23 +184,25 @@ function Settings() {
 
       <Link
         to="/app/web"
-        className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-card p-6 transition-colors hover:border-primary/50"
+        className="flex items-center justify-between gap-4 rounded-[20px] border border-border bg-nata p-5 transition-colors hover:border-moca hover:text-foreground"
       >
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Mi web</p>
-          <p className="mt-2 text-sm">
+          <p className="text-base font-extrabold">Mi página de reservas</p>
+          <p className="mt-1 text-sm text-cafe-medio">
             El nombre, la foto, la presentación, el teléfono, la dirección, el horario, los
             servicios y precios, el equipo y las preguntas frecuentes se cambian en{" "}
-            <strong>Mi web</strong>, viendo el resultado mientras escribes.
+            <strong>Mi página de reservas</strong>, viendo el resultado mientras escribes.
           </p>
         </div>
         <ArrowUpRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
       </Link>
 
-      <div className="space-y-4 rounded-xl border border-border/60 bg-card p-6">
+      </div>
+      <div className="flex min-w-0 flex-col gap-4">
+      <div className="space-y-4 rounded-[20px] border border-border bg-card p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <Label>Preguntas al reservar</Label>
+            <Label className="text-base font-extrabold">Preguntas al reservar</Label>
             <p className="mt-1 text-sm text-muted-foreground">Pregunta por el largo de pelo, el color actual y los tratamientos químicos recientes para preparar cada cita.</p>
           </div>
           <Switch aria-label="Activar preguntas al reservar" checked={questionsEnabled} onCheckedChange={setQuestionsEnabled} />
@@ -210,12 +214,10 @@ function Settings() {
         <div className="flex justify-end"><Button onClick={handleSave}>Guardar cambios</Button></div>
       </div>
 
-      <div className="space-y-4 rounded-xl border border-border/60 bg-card p-6">
+      <div className="space-y-4 rounded-[20px] border border-border bg-card p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <Label className="text-xs uppercase tracking-widest text-muted-foreground">
-              Plantones
-            </Label>
+            <Label className="text-base font-extrabold">Plantones</Label>
             <p className="mt-1 text-sm text-muted-foreground">
               Cobra una penalización a quien cancela tarde o no viene, antes de que pueda volver a
               reservar. Tú decides en cada caso si la aplicas o la perdonas.
@@ -246,12 +248,10 @@ function Settings() {
 
       {/* Fianza por Bizum — lo pidió María (PeluChic) para clientas nuevas.
           Se configura aquí y solo aquí: nada depende de tocar la URL. */}
-      <div className="space-y-4 rounded-xl border border-border/60 bg-card p-6">
+      <div className="space-y-4 rounded-[20px] border border-border bg-card p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <Label className="text-xs uppercase tracking-widest text-muted-foreground">
-              Señal por Bizum
-            </Label>
+            <Label className="text-base font-extrabold">Señal por Bizum</Label>
             <p className="mt-1 text-sm text-muted-foreground">
               Añade un botón en cada solicitud pendiente que abre tu WhatsApp con el mensaje ya
               escrito para pedir la señal. El Bizum llega a tu banco y lo marcas tú a mano:{" "}
@@ -276,7 +276,7 @@ function Settings() {
             />
             <div className="space-y-1.5">
               <Label htmlFor="deposit-deadline">Plazo para hacer el Bizum</Label>
-              <select id="deposit-deadline" className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={depositDeadline} onChange={(e) => setDepositDeadline(Number(e.target.value) as DepositDeadlineHours)}>
+              <select id="deposit-deadline" className="flex h-10 w-full rounded-xl border border-input bg-card px-3 text-sm" value={depositDeadline} onChange={(e) => setDepositDeadline(Number(e.target.value) as DepositDeadlineHours)}>
                 {DEPOSIT_DEADLINE_OPTIONS.map((hours) => <option key={hours} value={hours}>{hours} {hours === 1 ? "hora" : "horas"}</option>)}
               </select>
               <p className="text-xs text-muted-foreground">Al vencer, tú decides si dar más tiempo o liberar el hueco. Nunca se cancela sola.</p>
@@ -288,12 +288,10 @@ function Settings() {
         </div>
       </div>
 
-      <div className="space-y-4 rounded-xl border border-border/60 bg-card p-6">
+      <div className="space-y-4 rounded-[20px] border border-border bg-card p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <Label className="text-xs uppercase tracking-widest text-muted-foreground">
-              Reparto de agenda
-            </Label>
+            <Label className="text-base font-extrabold">Reparto de agenda</Label>
             <p className="mt-1 text-sm text-muted-foreground">
               Sugiere una hora más tranquila cuando alguien elige una franja con espera (12:00–14:00
               o las últimas horas del día). Nunca le impide elegir la suya.
@@ -314,20 +312,20 @@ function Settings() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border/60 bg-card p-6">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">
-          Política de cancelación
-        </p>
+      <div className="rounded-[20px] border border-border bg-card p-5">
+        <p className="text-base font-extrabold">Política de cancelación</p>
         <p className="mt-2 text-sm">
           Cancelación gratuita hasta 24 h antes. Si no vienes o cancelas más tarde, pierdes la señal.
         </p>
       </div>
-      <div className="rounded-xl border border-border/60 bg-card p-6">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">Regla de depósito</p>
+      <div className="rounded-[20px] border border-border bg-card p-5">
+        <p className="text-base font-extrabold">Regla de la señal</p>
         <p className="mt-2 text-sm">
           Los servicios de más de <strong>90 minutos</strong> requieren un{" "}
-          <strong>20% de depósito</strong>.
+          <strong>20 % de señal</strong>.
         </p>
+      </div>
+      </div>
       </div>
     </div>
   );
@@ -346,9 +344,9 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs uppercase tracking-widest text-muted-foreground">{label}</Label>
+      <Label className="text-[12.5px] font-bold text-cafe-medio">{label}</Label>
       <Input value={value} onChange={(e) => onChange(e.target.value)} />
-      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+      {hint ? <p className="text-[12.5px] text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

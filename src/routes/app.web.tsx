@@ -2,13 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
+  Copy,
   ExternalLink,
+  Info,
   Loader2,
   Monitor,
   RefreshCw,
   Smartphone,
   TriangleAlert,
 } from "lucide-react";
+import { usePanelPublicLink } from "@/lib/panel-public-link";
 
 import { useSalonStore } from "@/lib/store";
 import { useRealSalonSlug } from "@/lib/use-real-salon";
@@ -47,6 +50,16 @@ function MiWeb() {
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
   const realSlug = useRealSalonSlug();
   const esReal = Boolean(realSlug);
+  const enlacePublico = usePanelPublicLink();
+  const copiarEnlace = async () => {
+    const url = new URL(enlacePublico, window.location.origin).toString();
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Enlace copiado");
+    } catch {
+      toast.error("No se ha podido copiar. Abre tu web y copia el enlace desde allí.");
+    }
+  };
   const slugPrevia = realSlug ?? salonProfile.slug ?? "demo";
 
   /** Lo último que se sabe publicado: el punto al que vuelve «Descartar» y la base de «Deshacer». */
@@ -272,15 +285,15 @@ function MiWeb() {
     errores.filter((e) => e.campo === clave).map((e) => e.mensaje);
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-1 flex-col gap-5">
       <PageHeader
-        title="Mi web"
-        description="Lo que ven tus clientes cuando abren tu enlace. Cámbialo aquí y míralo al momento."
+        title="Mi página de reservas"
+        description="Lo que ven tus clientas cuando abren tu enlace. Cámbialo aquí y míralo al momento."
       />
 
       {!esReal && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
-          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+        <div className="flex items-start gap-2.5 rounded-2xl bg-salvia-clara px-4 py-3 text-[12.5px] text-hoja-tinta">
+          <Info className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
           <p>
             <strong>Esto es una demo de venta.</strong> Aquí no hay ninguna web publicada que
             actualizar: los cambios se ven en la vista previa y en esta tablet, pero no salen a
@@ -292,9 +305,11 @@ function MiWeb() {
       {errores.length > 0 && (
         <div
           role="alert"
-          className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm"
+          className="flex gap-2.5 rounded-2xl border border-melocoton-borde bg-melocoton px-4 py-3 text-[12.5px] text-melocoton-tinta"
         >
-          <p className="font-medium">
+          <TriangleAlert className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
+          <div>
+          <p className="font-bold">
             {errores.length === 1
               ? "Hay algo que revisar antes de publicar:"
               : `Hay ${errores.length} cosas que revisar antes de publicar:`}
@@ -304,16 +319,17 @@ function MiWeb() {
               <li key={`${e.campo}-${i}`}>{e.mensaje}</li>
             ))}
           </ul>
+          </div>
         </div>
       )}
 
       {/* Barra de acciones. Pegajosa arriba: en un iPad, con el editor largo,
           el botón de publicar tiene que estar siempre a un dedo. */}
-      <div className="sticky top-16 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-card/95 p-3 backdrop-blur">
+      <div className="sticky top-[71px] z-10 flex flex-wrap items-center gap-2 rounded-[20px] border border-border bg-card/95 p-2.5 backdrop-blur max-md:top-[118px]">
         <Button
           onClick={publicar}
           disabled={guardando || !sucio}
-          className="min-h-11 flex-1 sm:flex-none"
+          className="h-[42px] flex-1 sm:flex-none"
         >
           {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {esReal ? "Publicar cambios" : "Aplicar en la demo"}
@@ -322,26 +338,43 @@ function MiWeb() {
           variant="outline"
           onClick={descartar}
           disabled={guardando || !sucio}
-          className="min-h-11"
+          className="h-[42px]"
         >
           Descartar
         </Button>
         {anterior && (
-          <Button variant="outline" onClick={deshacer} disabled={guardando} className="min-h-11">
+          <Button variant="outline" onClick={deshacer} disabled={guardando} className="h-[42px]">
             <RefreshCw className="h-4 w-4" />
             Deshacer
           </Button>
         )}
-        <span className="ml-auto text-xs text-muted-foreground">
+        <span
+          className={cn(
+            "inline-flex h-6 items-center rounded-full px-2.5 text-[12.5px] font-bold",
+            sucio ? "border-[1.5px] border-dashed border-moca bg-card text-primary" : "bg-salvia-clara text-hoja-tinta",
+          )}
+        >
           {sucio ? "Cambios sin publicar" : "Todo publicado"}
         </span>
+        <div className="flex w-full gap-2 sm:ml-auto sm:w-auto">
+          <Button variant="outline" className="h-[42px] flex-1 sm:flex-none" onClick={copiarEnlace}>
+            <Copy className="size-[18px]" strokeWidth={1.6} />
+            Copiar enlace
+          </Button>
+          <Button variant="outline" className="h-[42px] flex-1 sm:flex-none" asChild>
+            <a href={enlacePublico} target="_blank" rel="noreferrer">
+              <ExternalLink className="size-[18px]" strokeWidth={1.6} />
+              Ver en tu web
+            </a>
+          </Button>
+        </div>
       </div>
 
       {/* `min-w-0` en la rejilla y en sus dos columnas: sin él, la columna de
           la vista previa impone su ancho real (390 px del móvil simulado) como
           ancho mínimo de la única columna que hay en móvil, y la pantalla
           entera se iba 42 px a la derecha con los campos cortados. */}
-      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:group-data-[panel=abierto]/panel:grid-cols-1">
         {/* ---------------- Editor ---------------- */}
         <div className="min-w-0 space-y-5">
           <Bloque titulo="Lo primero que se ve">
@@ -422,7 +455,7 @@ function MiWeb() {
             <div className="grid gap-2 sm:grid-cols-2">
               {DAY_LABELS_ES.map((etiqueta, i) => (
                 <div key={etiqueta} className="flex items-center gap-2">
-                  <span className="w-20 shrink-0 text-xs text-muted-foreground">{etiqueta}</span>
+                  <span className="w-20 shrink-0 text-[12.5px] font-bold text-cafe-medio">{etiqueta}</span>
                   <Input
                     aria-label={etiqueta}
                     value={borrador.openingHours[i] ?? ""}
@@ -433,7 +466,7 @@ function MiWeb() {
                       )
                     }
                     placeholder="10:00–14:00, 17:00–20:00 · o Cerrado"
-                    className="h-11 font-mono text-xs"
+                    className="h-11 text-[13px] tabular-nums"
                   />
                 </div>
               ))}
@@ -457,9 +490,9 @@ function MiWeb() {
           </Bloque>
 
           <Bloque titulo="Equipo">
-            <p className="text-sm text-muted-foreground">Este equipo también aparece en tus reservas. Cambia nombres, especialidades y horarios desde su pantalla.</p>
+            <p className="text-[13px] text-muted-foreground">Este equipo también aparece en tus reservas. Cambia nombres, especialidades y horarios desde su pantalla.</p>
             <ul className="mt-3 space-y-1 text-sm">{equipo.map((persona) => <li key={persona.id}>{persona.name}{persona.specialty ? ` · ${persona.specialty}` : ""}</li>)}</ul>
-            <Link to="/app/employees" className="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-primary">Editar equipo y horarios</Link>
+            <Link to="/app/employees" className="mt-3 inline-flex h-[34px] items-center rounded-full border border-input bg-card px-[13px] text-[12.5px] font-bold hover:bg-nata">Editar equipo y horarios</Link>
           </Bloque>
 
           <Bloque titulo="Preguntas frecuentes">
@@ -487,34 +520,33 @@ function MiWeb() {
         </div>
 
         {/* ---------------- Vista previa ---------------- */}
-        <div className="min-w-0 lg:sticky lg:top-32 lg:h-[calc(100vh-11rem)]">
-          <div className="flex h-full min-w-0 flex-col rounded-xl border border-border/60 bg-muted/30 p-3">
-            <div className="mb-3 flex items-center gap-2">
-              <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                Tu web, de verdad
-              </p>
-              <div className="ml-auto flex items-center gap-1">
-                <Button
-                  variant={dispositivo === "movil" ? "default" : "outline"}
-                  size="icon"
-                  className="h-11 w-11"
-                  onClick={() => setDispositivo("movil")}
-                  aria-label="Ver en móvil"
-                  title="Ver en móvil"
-                >
-                  <Smartphone className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={dispositivo === "escritorio" ? "default" : "outline"}
-                  size="icon"
-                  className="h-11 w-11"
-                  onClick={() => setDispositivo("escritorio")}
-                  aria-label="Ver en ordenador"
-                  title="Ver en ordenador"
-                >
-                  <Monitor className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" className="h-11 w-11" asChild>
+        <div className="min-w-0 lg:sticky lg:top-[152px] lg:h-[calc(100dvh-180px)]">
+          <div className="flex h-full min-w-0 flex-col rounded-[20px] border border-border bg-perla p-3.5">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <div className="min-w-0">
+                <h2 className="text-base font-extrabold tracking-[-0.01em]">Así la ve tu clienta</h2>
+                <p className="text-[12.5px] text-muted-foreground">Tu web de verdad, con los cambios sin publicar.</p>
+              </div>
+              <div className="ml-auto flex items-center gap-1.5">
+                <div role="tablist" aria-label="Tamaño de la vista previa" className="inline-flex gap-0.5 rounded-full border border-border bg-nata p-1">
+                  {([["movil", "Móvil", Smartphone], ["escritorio", "Ordenador", Monitor]] as const).map(([id, texto, Icono]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      role="tab"
+                      aria-selected={dispositivo === id}
+                      onClick={() => setDispositivo(id)}
+                      className={cn(
+                        "inline-flex h-[34px] items-center gap-1.5 rounded-full px-3 text-[13px] font-bold text-cafe-medio",
+                        dispositivo === id && "bg-card text-foreground shadow-[0_1px_3px_rgba(59,47,42,0.12)]",
+                      )}
+                    >
+                      <Icono className="size-4" strokeWidth={1.6} />
+                      {texto}
+                    </button>
+                  ))}
+                </div>
+                <Button variant="outline" size="icon" className="size-[42px]" asChild>
                   <a
                     href={urlPintada}
                     target="_blank"
@@ -522,7 +554,7 @@ function MiWeb() {
                     aria-label="Abrir la vista previa en otra pestaña"
                     title="Abrir en otra pestaña"
                   >
-                    <ExternalLink className="h-4 w-4" />
+                    <ExternalLink className="size-[18px]" strokeWidth={1.6} />
                   </a>
                 </Button>
               </div>
@@ -539,7 +571,7 @@ function MiWeb() {
               />
             </Marco>
 
-            <p className="mt-2 text-center text-xs text-muted-foreground">
+            <p className="mt-2 text-center text-[12.5px] text-muted-foreground">
               {alDia
                 ? dispositivo === "movil"
                   ? "Así la ven desde el móvil, que es por donde entran casi todos."
@@ -586,7 +618,7 @@ function Marco({ ancho, children }: { ancho: number; children: React.ReactNode }
           centra. Dentro va el marco a su tamaño real, escalado desde la
           esquina — centrar un elemento más ancho que su hueco no funciona. */}
       <div
-        className="mx-auto h-full overflow-hidden rounded-xl border border-border shadow-sm"
+        className="mx-auto h-full overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--sombra-tarjeta)]"
         style={{ width: ancho * escala }}
       >
         <div
@@ -606,8 +638,8 @@ function Marco({ ancho, children }: { ancho: number; children: React.ReactNode }
 
 function Bloque({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-4 rounded-xl border border-border/60 bg-card p-5">
-      <h2 className="text-xs uppercase tracking-widest text-muted-foreground">{titulo}</h2>
+    <section className="space-y-4 rounded-[20px] border border-border bg-card p-5">
+      <h2 className="text-base font-extrabold tracking-[-0.01em]">{titulo}</h2>
       {children}
     </section>
   );
@@ -616,7 +648,7 @@ function Bloque({ titulo, children }: { titulo: string; children: React.ReactNod
 function Fallos({ mensajes }: { mensajes: string[] }) {
   if (mensajes.length === 0) return null;
   return (
-    <ul className="space-y-1 text-xs text-destructive">
+    <ul className="space-y-1 text-[12.5px] text-melocoton-tinta">
       {mensajes.map((m, i) => (
         <li key={i}>{m}</li>
       ))}
@@ -641,16 +673,16 @@ function Campo({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs uppercase tracking-widest text-muted-foreground">{etiqueta}</Label>
+      <Label className="text-[12.5px] font-bold text-cafe-medio">{etiqueta}</Label>
       <Input
         type={tipo}
         value={valor}
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={errores.length > 0}
-        className={cn("h-11", errores.length > 0 && "border-destructive")}
+        className={cn("h-11", errores.length > 0 && "border-melocoton-tinta")}
       />
       <Fallos mensajes={errores} />
-      {pista ? <p className="text-xs text-muted-foreground">{pista}</p> : null}
+      {pista ? <p className="text-[12.5px] text-muted-foreground">{pista}</p> : null}
     </div>
   );
 }
@@ -674,7 +706,7 @@ function CampoLargo({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs uppercase tracking-widest text-muted-foreground">{etiqueta}</Label>
+      <Label className="text-[12.5px] font-bold text-cafe-medio">{etiqueta}</Label>
       <Textarea
         value={valor}
         onChange={(e) => onChange(e.target.value)}
@@ -683,11 +715,11 @@ function CampoLargo({
         className={cn(
           "resize-y",
           mono && "font-mono text-xs",
-          errores.length > 0 && "border-destructive",
+          errores.length > 0 && "border-melocoton-tinta",
         )}
       />
       <Fallos mensajes={errores} />
-      {pista ? <p className="text-xs text-muted-foreground">{pista}</p> : null}
+      {pista ? <p className="text-[12.5px] text-muted-foreground">{pista}</p> : null}
     </div>
   );
 }
