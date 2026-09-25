@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { useSalonStore } from "@/lib/store";
+import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { clientsWithPendingPenalty, penaltyReasonLabel } from "@/lib/plantones";
 import { serviceLabelOf } from "@/lib/appointment-services";
@@ -32,6 +32,7 @@ export interface RecargosPendientesProps {
  * material de venta de siShow.
  */
 export function RecargosPendientes({ clientId, title, className }: RecargosPendientesProps) {
+  const carta = selectServiceMap(useSalonStore((s) => s.services));
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const clients = useSalonStore((s) => s.clients);
   const appointments = useSalonStore((s) => s.appointments);
@@ -108,7 +109,7 @@ export function RecargosPendientes({ clientId, title, className }: RecargosPendi
                           </span>
                         </>
                       )}
-                      {cita && ` · ${serviceLabelOf(cita)}`}
+                      {cita && ` · ${serviceLabelOf(cita, carta)}`}
                     </p>
                   </div>
                 </div>

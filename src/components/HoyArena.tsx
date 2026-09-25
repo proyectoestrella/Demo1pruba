@@ -136,7 +136,7 @@ export function HoyArena() {
       </div>
 
       {/* Cuatro cifras */}
-      <section data-tour="kpis" className="mb-5 grid grid-cols-2 gap-2 md:gap-3 lg:grid-cols-4">
+      <section data-tour="kpis" className="mb-5 grid grid-cols-2 gap-2 md:gap-3 lg:grid-cols-4 lg:group-data-[panel=abierto]/panel:grid-cols-2">
         <Link to="/app/calendar" className={cn(tarjeta, "block px-4 py-3 shadow-none md:px-5 md:py-4")}>
           <div className="flex items-center gap-1.5 text-[12.5px] font-bold text-muted-foreground">
             <Calendar className="size-[15px]" strokeWidth={1.6} />Citas de hoy
@@ -186,7 +186,7 @@ export function HoyArena() {
       </section>
 
       {/* Dos columnas: 1,3fr / 1fr */}
-      <div className="grid flex-1 grid-cols-1 items-stretch gap-4 lg:grid-cols-[1.3fr_1fr]">
+      <div className="grid flex-1 grid-cols-1 items-stretch gap-4 lg:grid-cols-[1.3fr_1fr] lg:group-data-[panel=abierto]/panel:grid-cols-1">
         <div className="flex min-w-0 flex-col gap-4">
           {mostrarSolicitudes && <EstoTeEspera pendientes={pendientes} onAbrirDetalle={setSeleccionada} />}
           <AvisoDeudasHoy />

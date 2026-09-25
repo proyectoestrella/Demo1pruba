@@ -846,7 +846,7 @@ function PieCronograma({
   const ordenados = [...huecos].sort((a, b) => a.ini - b.ini);
   const tarjeta = "rounded-[20px] border border-k-linea-f bg-card";
   return (
-    <div className="mt-4 grid flex-none grid-cols-1 gap-4 xl:grid-cols-[1.5fr_1fr]">
+    <div className="mt-4 grid flex-none grid-cols-1 gap-4 xl:grid-cols-[1.5fr_1fr] xl:group-data-[panel=abierto]/panel:grid-cols-1">
       <Tarjeta className={tarjeta} titulo="Huecos libres" sub="Pulsa uno para dar la cita" extra={<span className="ml-auto inline-flex h-6 items-center rounded-full bg-salvia-clara px-2.5 text-[12.5px] font-bold text-hoja-tinta tabular-nums">{ordenados.length}</span>}>
         {ordenados.length === 0 ? (
           <p className="text-[12.5px] text-muted-foreground">No queda ningún hueco de media hora o más.</p>

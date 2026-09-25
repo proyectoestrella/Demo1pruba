@@ -209,7 +209,7 @@ function Clients() {
       </div>
 
       {/* Panorama de la cartera antes de bajar al listado. */}
-      <div className="grid grid-cols-2 gap-2 md:gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 md:gap-3 lg:grid-cols-4 lg:group-data-[panel=abierto]/panel:grid-cols-2">
         <StatTile icon={Users} label="Clientas" value={kpis.total} detalle="En tu cartera" />
         <StatTile icon={UserPlus} label="Nuevas este mes" value={kpis.nuevos} detalle="Dadas de alta en 30 días" />
         <StatTile icon={Repeat} label="Recurrentes" value={kpis.habituales} detalle="Tres visitas o más" />

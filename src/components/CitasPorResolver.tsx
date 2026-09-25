@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Check, Clock3, UserX, HelpCircle } from "lucide-react";
-import { useSalonStore } from "@/lib/store";
+import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { citasSinDesenlace, ESTADO_POR_DESENLACE, type Desenlace } from "@/lib/deuda";
 import { employeeMap } from "@/lib/mock/salon";
@@ -111,6 +111,7 @@ export interface CitasPorResolverProps {
  * marcarlo a mano, y por eso Adam no usaba lo que le vendimos.
  */
 export function CitasPorResolver({ limite = 5, className }: CitasPorResolverProps) {
+  const carta = selectServiceMap(useSalonStore((s) => s.services));
   const appointments = useSalonStore((s) => s.appointments);
   const clients = useSalonStore((s) => s.clients);
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
@@ -174,7 +175,7 @@ export function CitasPorResolver({ limite = 5, className }: CitasPorResolverProp
                       minute: "2-digit",
                     })}
                     {" · "}
-                    {serviceLabelOf(a)}
+                    {serviceLabelOf(a, carta)}
                     {employeeMap[a.employeeId] ? ` · con ${employeeMap[a.employeeId].name}` : ""}
                   </p>
                 </div>

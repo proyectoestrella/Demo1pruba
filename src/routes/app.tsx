@@ -17,6 +17,8 @@ import { GuardiaDelPanel } from "@/components/GuardiaDelPanel";
 import { accesoAlPanel } from "@/lib/api/salons.functions";
 import { hasSeenTour, startTour } from "@/lib/tour";
 import { BarraInferior, CabeceraArena, MenuLateral } from "@/components/ArenaShell";
+import { useHayPanelLateral } from "@/lib/panel-lateral";
+import { cn } from "@/lib/utils";
 import {
   Sheet,
   SheetContent,
@@ -186,6 +188,9 @@ function DashboardLayoutV1() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [newApptOpen, setNewApptOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  // Con un panel lateral abierto (asistente, ficha, detalle), en PC el
+  // contenido deja 440 px a la derecha: el panel empuja, no tapa.
+  const conPanel = useHayPanelLateral();
 
   // Primera visita al panel: se ofrece el tour una sola vez. Solo en la home
   // (/app), que es donde están anclados casi todos los pasos. Se espera a que
@@ -200,7 +205,10 @@ function DashboardLayoutV1() {
     <div className="flex min-h-screen w-full bg-background">
       <MenuLateral path={path} />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        data-panel={conPanel ? "abierto" : "cerrado"}
+        className={cn("group/panel flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ease-out", conPanel && "lg:pr-[440px]")}
+      >
         <CabeceraArena
           onAsistente={() => setAssistantOpen(true)}
           onNuevaCita={() => setNewApptOpen(true)}
@@ -221,7 +229,7 @@ function DashboardLayoutV1() {
       <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
         <SheetContent
           side="right"
-          className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
+          className="flex w-full flex-col gap-0 p-0"
         >
           <SheetHeader className="border-b border-border/60 px-4 py-4 text-left">
             <SheetTitle className="text-lg font-extrabold">Asistente del salón</SheetTitle>

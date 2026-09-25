@@ -189,7 +189,7 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                   <p className="truncate font-bold">{a.clientName}</p>
                   <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                     <StylistDot employeeId={a.employeeId} className="size-2" />
-                    {serviceLabelOf(a)} ·{" "}
+                    {serviceLabelOf(a, serviceMap)} ·{" "}
                     {new Date(a.start).toLocaleString("es", {
                       day: "numeric",
                       month: "short",
@@ -256,7 +256,7 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                 <p className="truncate font-bold">{a.clientName}</p>
                 <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                   {!soloUno && <StylistDot employeeId={a.employeeId} className="size-2" />}
-                  {serviceLabelOf(a)} ·{" "}
+                  {serviceLabelOf(a, serviceMap)} ·{" "}
                   {new Date(a.start).toLocaleString("es", {
                     day: "numeric",
                     month: "short",

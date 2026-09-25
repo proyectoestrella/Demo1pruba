@@ -6,6 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { registrarPanelLateral } from "@/lib/panel-lateral";
 
 const Sheet = SheetPrimitive.Root;
 
@@ -21,7 +22,7 @@ const SheetOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
     className={cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-cafe/30 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -29,6 +30,12 @@ const SheetOverlay = React.forwardRef<
   />
 ));
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
+
+/** Se monta solo con el panel abierto: así el armazón sabe que tiene que dejarle sitio. */
+function RegistroPanelLateral() {
+  React.useEffect(() => registrarPanelLateral(), []);
+  return null;
+}
 
 const sheetVariants = cva(
   "fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
@@ -39,8 +46,10 @@ const sheetVariants = cva(
         bottom:
           "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
         left: "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
+        // Paneles laterales «Arena»: opacos, borde lino, sombra suave en café
+        // y 440 px en PC, donde empujan el contenido (sin sombra).
         right:
-          "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
+          "inset-y-0 right-0 h-full w-full border-l border-border shadow-[var(--sombra-panel)] data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-[440px] lg:shadow-none",
       },
     },
     defaultVariants: {
@@ -59,10 +68,13 @@ const SheetContent = React.forwardRef<
   SheetContentProps
 >(({ side = "right", className, children, ...props }, ref) => (
   <SheetPortal>
-    <SheetOverlay />
+    {/* Sin velo en los paneles laterales: lo de detrás se queda a la vista tal
+        cual (o se estrecha, en PC). Se cierran con la X, Esc o un clic fuera. */}
+    <SheetOverlay className={side === "right" ? "bg-transparent" : "bg-cafe/30"} />
     <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="h-4 w-4" />
+      {side === "right" && <RegistroPanelLateral />}
+      <SheetPrimitive.Close className="absolute top-3.5 right-4 grid size-[42px] place-items-center rounded-full border border-input bg-card text-cafe-medio cursor-pointer transition-colors hover:bg-nata focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none">
+        <X className="size-[18px]" strokeWidth={1.6} />
         <span className="sr-only">Cerrar</span>
       </SheetPrimitive.Close>
       {children}

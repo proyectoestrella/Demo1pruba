@@ -10,7 +10,7 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { useSalonStore } from "@/lib/store";
+import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { ultimoColor } from "@/lib/colores";
 import {
   periodLabelSuffix,
@@ -63,6 +63,7 @@ function greetingForHour(hour: number) {
  * Yeasy abren aquí, no en el calendario.
  */
 export function HoyV2() {
+  const carta = selectServiceMap(useSalonStore((s) => s.services));
   const appointments = useSalonStore((s) => s.appointments);
   const clients = useSalonStore((s) => s.clients);
   const salonName = useSalonStore((s) => s.salonProfile.name);
@@ -377,7 +378,7 @@ export function HoyV2() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{a.clientName}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {serviceLabelOf(a)}
+                      {serviceLabelOf(a, carta)}
                       {employees.length > 1 && ` · con ${emp.name}`}
                     </p>
                     {ultimoColor(appointments, a.clientId, a.start)?.colorFormula && <p className="truncate text-xs text-muted-foreground">Color: {ultimoColor(appointments, a.clientId, a.start)?.colorFormula}</p>}

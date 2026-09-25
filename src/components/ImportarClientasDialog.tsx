@@ -112,7 +112,7 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
           {mapa.nombre === undefined ? <p role="alert">Elige qué columna contiene el nombre para ver la vista previa.</p> : previa && <>
             <p className="font-medium">{previa.nuevas} nuevas · {previa.duplicadas} duplicadas · {previa.errores} con errores
               {visitasPrevias && ` · ${visitasPrevias.visitas.length} visitas de ${new Set(visitasPrevias.visitas.map((v) => v.cliente.id)).size} clientas · ${visitasPrevias.noEnlazadas} líneas sin enlazar · ${visitasPrevias.errores} filas erróneas`}</p>
-            <p className="text-xs text-muted-foreground">No se importan DNI/CIF, dirección, C.P., población, provincia ni cumpleaños.</p>
+            <p className="text-xs text-muted-foreground">No se importan DNI/CIF, dirección, C.P., población ni provincia. El cumpleaños sí, si el fichero trae esa columna.</p>
             {previa.duplicadas > 0 && <p className="break-words text-muted-foreground">Duplicadas: {previa.filas.filter((f) => f.estado === "duplicada").map((f) => f.nombre).join(", ")}</p>}
             <div className="max-h-64 space-y-1 overflow-y-auto rounded border border-border p-2">
               {previa.filas.slice(0, 10).map((f) => <p key={f.fila} className="break-words">{f.fila}. {f.nombre || "Sin nombre"} · {f.telefono || "sin teléfono"} · {f.estado === "nueva" ? "Nueva" : f.estado === "duplicada" ? "Duplicada" : `Error: ${f.motivo}`}</p>)}
