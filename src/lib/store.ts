@@ -1,5 +1,13 @@
 import { create } from "zustand";
-import type { MiembroActual } from "./permisos";
+import { PERMISOS_DEMO, permisosDe, puede, type MiembroActual } from "./permisos";
+import {
+  accionDe, aplicarDeshacerEnLista, cambioDeDeshacer, inverso, podar, puedeDeshacer,
+  registrarCambio as registrarCambioPuro,
+  type Cambio, type ContextoDeshacer, type EntidadCambio, type EstadoDeshacer, type MotivoNoDeshacer, type TipoCambio,
+} from "./cambios";
+import {
+  ACCIONES_REGISTRADAS, ACCIONES_SIN_REGISTRO, resumenCita, resumenClienta, resumenServicio, tipoCambioCita, tipoCambioClienta,
+} from "./registro-cambios";
 import type { PeriodoId, RangoPersonalizado } from "./periodos";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { seedAppointments, seedWaitlist, clients as seedClients, buildSeed } from "./mock/seed";
@@ -116,6 +124,18 @@ interface SalonState {
    */
   miembro: MiembroActual | null;
   setMiembro: (m: MiembroActual | null) => void;
+  /**
+   * Registro de cambios (lote 9): lo último primero, como mucho 200 y 90
+   * días. Se persiste: el «Deshacer» sobrevive a recargar la página.
+   */
+  cambios: Cambio[];
+  registrarCambio: (c: Cambio) => void;
+  /** Se mandó un WhatsApp a la clienta por este cambio (para avisar al deshacerlo). */
+  marcarAvisoEnviado: (cambioId: string) => void;
+  /** Deshace un cambio si sigue siendo posible; si no, dice por qué. */
+  deshacerCambio: (cambioId: string) => { ok: true; aviso?: "CLIENTA_AVISADA" } | { ok: false; motivo: MotivoNoDeshacer };
+  /** ¿Se puede deshacer este cambio ahora? (para pintar el botón). */
+  estadoDeshacer: (cambioId: string) => EstadoDeshacer;
   /** Resultado de identificar el slug; la reserva pública espera esta respuesta. */
   publicBookingResolution: {
     slug: string;
@@ -403,6 +423,68 @@ function sincronizarCita(state: SalonState, id: string, antes?: Appointment) {
   pushAppointment(state.realSalonSlug, appt, clienteDeLaCita(state, appt));
 }
 
+/* ---------------------------------------------------------------------- */
+/* Deshacer (lote 9)                                                       */
+/* ---------------------------------------------------------------------- */
+
+/** Mientras se deshace, las acciones envueltas no registran cambios nuevos. */
+let pausaRegistro = 0;
+export function registroEnPausa(): boolean {
+  return pausaRegistro > 0;
+}
+export function conRegistroEnPausa<T>(fn: () => T): T {
+  pausaRegistro++;
+  try {
+    return fn();
+  } finally {
+    pausaRegistro--;
+  }
+}
+
+export function nuevoIdCambio(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `cambio-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+/** `null` en un parche de deshacer = el campo no existía: se quita. */
+function sinNulos(p: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v === null ? undefined : v]));
+}
+function quitarVacios<T extends object>(o: T): T {
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
+}
+
+/** Estado actual de la entidad de un cambio, con los campos con que se registró. */
+function estadoActualDe(st: SalonState, c: Cambio): Record<string, unknown> | null {
+  if (c.entidad === "cita") return (st.appointments.find((a) => a.id === c.idEntidad) as unknown as Record<string, unknown>) ?? null;
+  if (c.entidad === "clienta") return (st.clients.find((x) => x.id === c.idEntidad) as unknown as Record<string, unknown>) ?? null;
+  if (c.entidad === "servicio") return { servicio: st.services.find((x) => x.id === c.idEntidad) ?? null };
+  return st.salonProfile as unknown as Record<string, unknown>;
+}
+
+function contextoDeshacer(st: SalonState, c: Cambio): ContextoDeshacer {
+  const permisos = st.miembro ? permisosDe(st.miembro.rol) : PERMISOS_DEMO;
+  const cita = c.entidad === "cita" ? st.appointments.find((a) => a.id === c.idEntidad) : undefined;
+  let huecoLibre: boolean | undefined;
+  if (c.tipo === "cita.mover" && cita) {
+    const destino = { ...cita, ...sinNulos(c.antes) } as Appointment;
+    huecoLibre = solapaConAgenda(st.appointments, { employeeId: destino.employeeId, start: destino.start, duration: destino.duration, excluirId: cita.id }).length === 0;
+  }
+  const empleadas = [cita?.employeeId, c.antes.employeeId as string | undefined].filter(Boolean) as string[];
+  const accion = accionDe(c.tipo);
+  const puedeLaAccion = empleadas.length
+    ? empleadas.every((e) => puede(permisos, accion, { employeeId: e, miEmployeeId: st.miembro?.employeeId ?? null }))
+    : puede(permisos, accion);
+  return {
+    actual: estadoActualDe(st, c),
+    cambios: st.cambios,
+    quien: st.miembro?.userId ?? null,
+    puedeLaAccion,
+    puedeAjeno: puede(permisos, "historial.deshacer-ajeno"),
+    ahora: new Date(),
+    huecoLibre,
+  };
+}
+
 export const useSalonStore = create<SalonState>()(
   persist(
     (set, get) => {
@@ -438,6 +520,7 @@ export const useSalonStore = create<SalonState>()(
       demoActive: false,
       realSalonSlug: null,
       miembro: null,
+      cambios: [],
       publicBookingResolution: null,
       lastFreedSlot: null,
       periodoAnalitica: "hoy",
@@ -852,6 +935,61 @@ export const useSalonStore = create<SalonState>()(
 
       setRealSalonSlug: (slug) => set({ realSalonSlug: slug }),
       setMiembro: (m) => set({ miembro: m }),
+
+      registrarCambio: (c) => set((s) => ({ cambios: podar([c, ...s.cambios.filter((x) => x.id !== c.id)], new Date()) })),
+      marcarAvisoEnviado: (cambioId) =>
+        set((s) => ({ cambios: s.cambios.map((c) => (c.id === cambioId ? { ...c, avisoEnviado: true } : c)) })),
+
+      estadoDeshacer: (cambioId) => {
+        const st = get();
+        const c = st.cambios.find((x) => x.id === cambioId);
+        if (!c) return { puede: false, motivo: "CADUCADO" };
+        return puedeDeshacer(c, contextoDeshacer(st, c));
+      },
+
+      deshacerCambio: (cambioId) => {
+        const st = get();
+        const c = st.cambios.find((x) => x.id === cambioId);
+        if (!c) return { ok: false, motivo: "CADUCADO" };
+        const e = puedeDeshacer(c, contextoDeshacer(st, c));
+        if (!e.puede) return { ok: false, motivo: e.motivo };
+        const parche = sinNulos(inverso(c));
+        conRegistroEnPausa(() => {
+          if (c.entidad === "cita") {
+            const antes = get().appointments.find((a) => a.id === c.idEntidad);
+            set((s) => ({ appointments: s.appointments.map((a) => (a.id === c.idEntidad ? quitarVacios({ ...a, ...parche }) : a)) }));
+            sincronizarCita(get(), c.idEntidad, antes);
+          } else if (c.entidad === "clienta") {
+            set((s) => ({ clients: s.clients.map((x) => (x.id === c.idEntidad ? quitarVacios({ ...x, ...parche }) : x)) }));
+            const cliente = get().clients.find((x) => x.id === c.idEntidad);
+            const slugReal = get().realSalonSlug;
+            if (cliente) {
+              if (Object.keys(c.antes).some((k) => k.startsWith("penalty"))) {
+                if ((cliente.penaltyEur ?? 0) > 0) pushPenalty(slugReal, cliente, cliente.penaltyEur ?? 0, cliente.penaltyNote);
+                else pushPenaltyCleared(slugReal, cliente, cliente.penaltyNote);
+              }
+              if ("manualBlock" in c.antes) pushManualBlock(slugReal, cliente, !!cliente.manualBlock);
+              if ("notes" in c.antes) pushClientNotes(slugReal, cliente);
+            }
+          } else if (c.entidad === "servicio") {
+            const previo = c.antes.servicio as Service | null | undefined;
+            set((s) => ({
+              services: previo
+                ? s.services.some((x) => x.id === c.idEntidad)
+                  ? s.services.map((x) => (x.id === c.idEntidad ? previo : x))
+                  : [...s.services, previo]
+                : s.services.filter((x) => x.id !== c.idEntidad),
+            }));
+            sincronizarCarta();
+          } else {
+            get().updateSalonProfile(parche as Partial<SalonProfile>);
+          }
+        });
+        const m = get().miembro;
+        const d = cambioDeDeshacer(c, { id: nuevoIdCambio(), autor: m?.userId ?? null, autorNombre: m?.displayName ?? null, fecha: new Date().toISOString() });
+        set((s) => ({ cambios: podar(aplicarDeshacerEnLista(s.cambios, c, d), new Date()) }));
+        return e.aviso ? { ok: true, aviso: e.aviso } : { ok: true };
+      },
       setPublicBookingResolution: (value) => set({ publicBookingResolution: value }),
 
       hydrateFromServer: ({ appointments, clients, waitlist }) =>
@@ -912,6 +1050,7 @@ export const useSalonStore = create<SalonState>()(
       // de venta — y le escribiría la demo encima al primer cambio.
       partialize: (state) =>
         ({
+          cambios: state.cambios,
           appointments: state.appointments,
           waitlist: state.waitlist,
           clients: state.clients,
@@ -1089,3 +1228,72 @@ export { serviceMap, employeeMap };
 export function selectDemosVisibles(state: Pick<SalonState, "savedDemos" | "realSalonSlug">): SavedDemo[] {
   return state.realSalonSlug ? [] : state.savedDemos;
 }
+
+/* ---------------------------------------------------------------------- */
+/* Registro de cambios: envolver las acciones de la persona (lote 9)       */
+/* ---------------------------------------------------------------------- */
+
+/**
+ * Cada acción de ACCIONES_REGISTRADAS se envuelve: foto de la entidad antes,
+ * la acción de siempre, foto después y, si algo cambió, un cambio deshacible
+ * en `cambios`. Solo cuenta la llamada exterior (una acción que llama a otra
+ * no registra dos veces) y nada se registra mientras se deshace o mientras
+ * corre una acción automática (liberar señales vencidas, hidratar, demos).
+ */
+function instalarRegistroDeCambios() {
+  let profundidad = 0;
+  const st = useSalonStore.getState() as unknown as Record<string, unknown>;
+  const envueltas: Record<string, unknown> = {};
+
+  const foto = (entidad: EntidadCambio, id: string): Record<string, unknown> | null => {
+    const s = useSalonStore.getState();
+    if (entidad === "cita") return (s.appointments.find((a) => a.id === id) as unknown as Record<string, unknown>) ?? null;
+    if (entidad === "clienta") return (s.clients.find((c) => c.id === id) as unknown as Record<string, unknown>) ?? null;
+    return { servicio: s.services.find((x) => x.id === id) ?? null };
+  };
+
+  for (const { accion, entidad } of ACCIONES_REGISTRADAS) {
+    const original = st[accion] as ((...a: unknown[]) => unknown) | undefined;
+    if (typeof original !== "function") continue;
+    envueltas[accion] = (...args: unknown[]) => {
+      if (profundidad > 0 || registroEnPausa()) return original(...args);
+      const id = String(args[0]);
+      profundidad++;
+      try {
+        const antes = foto(entidad, id);
+        const r = original(...args);
+        const despues = foto(entidad, id);
+        if (antes && despues) {
+          const s = useSalonStore.getState();
+          const tz = s.salonProfile.timeZone || "Europe/Madrid";
+          let tipo: TipoCambio;
+          let resumen: string;
+          if (entidad === "cita") {
+            tipo = tipoCambioCita(antes as Partial<Appointment>, despues as Partial<Appointment>);
+            resumen = resumenCita(tipo, antes as Partial<Appointment>, despues as Partial<Appointment>, tz);
+          } else if (entidad === "clienta") {
+            tipo = tipoCambioClienta(accion, args, antes as Partial<Client>, despues as Partial<Client>);
+            resumen = resumenClienta(tipo, despues as Partial<Client>);
+          } else {
+            tipo = accion === "deleteService" ? "servicio.borrar" : "servicio.editar";
+            resumen = resumenServicio(tipo, (antes.servicio as Service) ?? null, (despues.servicio as Service) ?? null);
+          }
+          const c = registrarCambioPuro({
+            id: nuevoIdCambio(), tipo, entidad, idEntidad: id, antes, despues, resumen,
+            autor: s.miembro?.userId ?? null, autorNombre: s.miembro?.displayName ?? null, fecha: new Date().toISOString(),
+          });
+          if (c) s.registrarCambio(c);
+        }
+        return r;
+      } finally {
+        profundidad--;
+      }
+    };
+  }
+  for (const accion of ACCIONES_SIN_REGISTRO) {
+    const original = st[accion] as ((...a: unknown[]) => unknown) | undefined;
+    if (typeof original === "function") envueltas[accion] = (...args: unknown[]) => conRegistroEnPausa(() => original(...args));
+  }
+  useSalonStore.setState(envueltas as Partial<SalonState>);
+}
+instalarRegistroDeCambios();

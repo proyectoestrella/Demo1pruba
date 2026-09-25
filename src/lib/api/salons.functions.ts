@@ -232,7 +232,7 @@ export const accesoAlPanel = createServerFn({ method: "GET" })
       // el saludo. null en una demo o para quien no pertenece al salón.
       const miembro =
         quien.tipo === "miembro"
-          ? { rol: quien.rol, employeeId: quien.employeeId, displayName: quien.displayName }
+          ? { userId: quien.userId, rol: quien.rol, employeeId: quien.employeeId, displayName: quien.displayName }
           : null;
       return { real: quien.tipo !== "demo", permitido: tieneMando(quien), miembro };
     },

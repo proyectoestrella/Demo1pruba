@@ -18,13 +18,13 @@ import type { AccionId } from "./permisos";
 export const TIPOS_CAMBIO = [
   "cita.cancelar", "cita.rechazar", "cita.confirmar", "cita.marcar-asistencia", "cita.cobrar", "cita.mover", "cita.editar",
   "senal.pedir", "senal.prorrogar", "senal.recibir", "senal.aplicar", "senal.devolver", "senal.retener",
-  "recargo.aplicar", "recargo.perdonar", "recargo.cobrar",
+  "recargo.aplicar", "recargo.perdonar", "recargo.cobrar", "clienta.bloquear",
   "servicio.editar", "servicio.borrar", "profesional.editar", "horario.editar",
   "preguntas.editar", "ajustes.editar", "perfil.publicar", "perfil.restaurar",
 ] as const;
 export type TipoCambio = (typeof TIPOS_CAMBIO)[number];
 
-export type EntidadCambio = "cita" | "clienta" | "perfil";
+export type EntidadCambio = "cita" | "clienta" | "servicio" | "perfil";
 
 export interface Cambio {
   /** uuid generado en el navegador: un reintento no duplica ni aplica dos veces. */
@@ -152,6 +152,7 @@ export function accionDe(tipo: TipoCambio): AccionId {
     "recargo.aplicar": "recargo.gestionar",
     "recargo.perdonar": "recargo.gestionar",
     "recargo.cobrar": "recargo.gestionar",
+    "clienta.bloquear": "clienta.bloquear",
     "servicio.editar": "servicio.editar",
     "servicio.borrar": "servicio.editar",
     "profesional.editar": "equipo.editar",

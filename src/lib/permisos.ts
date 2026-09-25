@@ -37,6 +37,8 @@ export type Alcance = "propio" | "todo";
 
 /** Quién ha entrado al panel de un salón real: lo devuelve `accesoAlPanel`. */
 export interface MiembroActual {
+  /** Id del usuario: autoría del historial de cambios (lote 9). */
+  userId: string;
   rol: Rol;
   employeeId: string | null;
   displayName: string | null;
