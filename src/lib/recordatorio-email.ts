@@ -7,7 +7,9 @@
  * levantar nada, y el criterio de «a quién se avisa» está en un solo sitio.
  */
 import { mensajeRecordatorio, type RecordatorioDeCita } from "./avisos";
-import { ZONA_HORARIA_SALON } from "./reserva-publica";
+import { ZONA_HORARIA_SALON, fechaEnZona, horaEnZona } from "./zona-horaria";
+
+export { fechaEnZona } from "./zona-horaria";
 
 /** Lo mínimo de una cita que hace falta para decidir si se recuerda. */
 export interface CitaRecordable {
@@ -17,18 +19,6 @@ export interface CitaRecordable {
   reminder_sent_at: string | null;
   /** Correo de la clienta, si lo dejó al reservar. */
   email: string | null;
-}
-
-/** "YYYY-MM-DD" de un instante visto desde la zona horaria del salón. */
-export function fechaEnZona(iso: string | Date, timeZone = ZONA_HORARIA_SALON): string {
-  const partes = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date(iso));
-  const v = (t: string) => partes.find((p) => p.type === t)?.value ?? "";
-  return `${v("year")}-${v("month")}-${v("day")}`;
 }
 
 /** La fecha de mañana en la zona del salón, contando desde `ahora`. */
@@ -76,12 +66,7 @@ function escaparHtml(s: string): string {
 
 /** El mismo texto que el salón manda por WhatsApp, en asunto + cuerpo de correo. */
 export function emailRecordatorio(a: RecordatorioDeCita, timeZone = ZONA_HORARIA_SALON): EmailRecordatorio {
-  const hora = new Date(a.startISO).toLocaleTimeString("es-ES", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone,
-  });
+  const hora = horaEnZona(a.startISO, timeZone);
   const texto = mensajeRecordatorio(a);
   return {
     asunto: `Recordatorio: tu cita mañana a las ${hora} en ${a.salonName}`,

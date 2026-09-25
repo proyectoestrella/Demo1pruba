@@ -11,18 +11,23 @@
  *   - el aviso al siguiente de la lista de espera cuando se libera un hueco.
  */
 import { whatsappUrl } from "./campanas";
+import { ZONA_HORARIA_SALON, fechaEnZona } from "./zona-horaria";
+
+/** Todo lo que se dice por WhatsApp o por email se dice en la hora del salón, corra donde corra. */
+const TZ = { timeZone: ZONA_HORARIA_SALON } as const;
 
 /** Fecha y hora de una cita como se dicen por WhatsApp: "el jueves a las 17:00". */
 export function cuandoEnPalabras(startISO: string): string {
   const d = new Date(startISO);
-  const dia = d.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" });
-  const hora = d.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit", hour12: false });
+  const dia = d.toLocaleDateString("es", { ...TZ, weekday: "long", day: "numeric", month: "long" });
+  const hora = d.toLocaleTimeString("es", { ...TZ, hour: "2-digit", minute: "2-digit", hour12: false });
   return `el ${dia} a las ${hora}`;
 }
 
 /** Solo la hora, para el aviso de la lista de espera ("a las 17:00"). */
 export function horaEnPalabras(startISO: string): string {
   return new Date(startISO).toLocaleTimeString("es", {
+    ...TZ,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -43,11 +48,10 @@ export interface PeticionDeFianza {
 export function plazoDeFianzaEnPalabras(deadlineISO: string, requestedAtISO: string): string {
   const due = new Date(deadlineISO);
   const requested = new Date(requestedAtISO);
-  const sameDay = due.toDateString() === requested.toDateString();
-  const nextDay = new Date(requested);
-  nextDay.setDate(nextDay.getDate() + 1);
-  const day = sameDay ? "hoy" : due.toDateString() === nextDay.toDateString()
-    ? "mañana" : due.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  const sameDay = fechaEnZona(due) === fechaEnZona(requested);
+  const nextDay = fechaEnZona(new Date(requested.getTime() + 24 * 60 * 60_000));
+  const day = sameDay ? "hoy" : fechaEnZona(due) === nextDay
+    ? "mañana" : due.toLocaleDateString("es-ES", { ...TZ, weekday: "long", day: "numeric", month: "long" });
   return `tienes hasta ${day} a las ${horaEnPalabras(deadlineISO)} para hacer el Bizum`;
 }
 
@@ -85,7 +89,7 @@ export interface AvisoDeHueco {
  */
 export function mensajeDeHueco(a: AvisoDeHueco): string {
   const d = new Date(a.startISO);
-  const dia = d.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" });
+  const dia = d.toLocaleDateString("es", { ...TZ, weekday: "long", day: "numeric", month: "long" });
   const servicio = a.servicio ? ` para ${a.servicio.toLowerCase()}` : "";
   return (
     `Hola ${a.clientName}, soy ${a.salonName}. ` +
@@ -112,7 +116,7 @@ export interface RecordatorioDeCita {
 export function mensajeRecordatorio(a: RecordatorioDeCita): string {
   const senal = a.senalPendiente;
   const plazo = senal?.deadlineISO
-    ? ` antes del ${new Date(senal.deadlineISO).toLocaleDateString("es-ES", { day: "numeric", month: "long" })} a las ${horaEnPalabras(senal.deadlineISO)}`
+    ? ` antes del ${new Date(senal.deadlineISO).toLocaleDateString("es-ES", { ...TZ, day: "numeric", month: "long" })} a las ${horaEnPalabras(senal.deadlineISO)}`
     : "";
   return `Hola ${a.clientName}, te recordamos tu cita en ${a.salonName} ${cuandoEnPalabras(a.startISO)} para ${a.servicio}. Te esperamos en ${a.direccion}.` +
     (senal ? ` Si aún no lo has hecho, puedes enviarnos la señal de ${senal.importeEur} € por Bizum al ${senal.bizumPhone}${plazo}. ¡Gracias!` : " ¡Hasta pronto!");

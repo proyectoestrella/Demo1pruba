@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
 import { huecosDeProfesionales, trabajaEn } from "@/lib/horario-equipo";
+import { isoDelSalon } from "@/lib/zona-horaria";
 import type { Appointment, BookingAnswers, Client, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { bookingAnswersComplete, bookingQuestionsEnabled, cleanBookingAnswers, serializeBookingNote } from "@/lib/booking-answers";
 import { useSalonStore, isSlotTaken } from "@/lib/store";
@@ -118,7 +119,7 @@ function resolveEmployee(
   const startMin = hh * 60 + mm;
   const candidate = employees.find((e) => {
     if (!trabajaEn(e, weekday, startMin, durationMin)) return false;
-    const startISO = new Date(`${date}T${time}:00`).toISOString();
+    const startISO = isoDelSalon(date, time);
     return !isSlotTaken(appointments, e.id, startISO, durationMin);
   });
   return candidate?.id ?? employees[0].id;
@@ -487,7 +488,7 @@ function BookingWizard() {
       appointments,
       employees,
     );
-    const startISO = new Date(`${data.date}T${data.time}:00`).toISOString();
+    const startISO = isoDelSalon(data.date, data.time);
     // Una clienta que repite y teclea su teléfono (con espacios, guiones o
     // prefijo distintos a la vez anterior) tiene que quedar enlazada a SU
     // ficha, no a una "walk-in" nueva: si no, el historial no la reconoce y
@@ -1289,7 +1290,7 @@ function DateTimeStep({
           return trabajaEn(e, weekday, minuto, durationMin);
         });
         if (!open) continue;
-        const iso = new Date(`${dateKey}T${timeStr}:00`).toISOString();
+        const iso = isoDelSalon(dateKey, timeStr);
         const free = relevantEmployees.some(
           (e) => !isSlotTaken(appointments, e.id, iso, durationMin),
         );
@@ -1350,7 +1351,7 @@ function DateTimeStep({
           return trabajaEn(e, weekday, minuto, durationMin);
         });
         if (!open) continue;
-        const iso = new Date(`${dateKey}T${timeStr}:00`).toISOString();
+        const iso = isoDelSalon(dateKey, timeStr);
         const available = relevantEmployees.some(
           (e) => !isSlotTaken(appointments, e.id, iso, durationMin),
         );

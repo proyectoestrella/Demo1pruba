@@ -45,6 +45,7 @@ import {
   DrawerDescription,
   DrawerFooter,
 } from "@/components/ui/drawer";
+import { isoDelSalon } from "@/lib/zona-horaria";
 
 // NOTE: these must use local time components (not toISOString, which is UTC)
 // so a slot clicked at "9:00" in the calendar prefills the form as 9:00, not
@@ -213,8 +214,7 @@ export function NewAppointmentDialog({
       }
     }
 
-    const start = new Date(`${date}T${time}:00`);
-    const startISO = start.toISOString();
+    const startISO = isoDelSalon(date, time);
     const appt = addAppointment(
       {
         clientId,
