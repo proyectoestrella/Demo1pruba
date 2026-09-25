@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Palette } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Palette, Settings2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
@@ -10,15 +10,11 @@ import { hora } from "@/lib/copy";
 import { indiceColorServicio, minutosAHora } from "@/lib/hoy-arena";
 import {
   carrilesSolapados,
-  celdasDelMes,
   citasDeCalendario,
-  diasDeSemana,
-  horizonteDeDias,
   horizonteDelDia,
   huecosDe,
   iniciales,
   inicioDelDia,
-  lunesDe,
   minutosDe,
   mismoDia,
   ocupacionDe,
@@ -30,6 +26,9 @@ import type { Appointment, Employee, EmployeeId, Service } from "@/lib/mock/type
 import { cn } from "@/lib/utils";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
+import { RejillaCalendario, colorProfesional, type ColumnaRejilla } from "@/components/RejillaCalendario";
+import { CamposPreferenciasCalendario } from "@/components/CamposPreferenciasCalendario";
+import { VISTAS_CALENDARIO, diasDeRejilla, horasDeRejilla, inicioDeSemana, pasoDeVista, preferenciasDe, type PrimerDia, type VistaCalendario } from "@/lib/preferencias-calendario";
 
 /**
  * Calendario con la identidad «Arena» (DESIGN.md), calcado del prototipo v2:
@@ -39,18 +38,11 @@ import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
  * detalle de cada cita en el panel lateral de siempre.
  */
 
-type Vista = "dia" | "semana" | "mes" | "cronograma";
-const VISTAS: { id: Vista; label: string }[] = [
-  { id: "dia", label: "Día" },
-  { id: "semana", label: "Semana" },
-  { id: "mes", label: "Mes" },
-  { id: "cronograma", label: "Cronograma" },
-];
+type Vista = VistaCalendario;
 
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 const DCORTO = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-const DSEM = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 const capital = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const fechaTxt = (d: Date) => `${capital(DIAS[d.getDay()])}, ${d.getDate()} de ${MESES[d.getMonth()]}`;
@@ -73,13 +65,17 @@ function useAhora() {
 export function CalendarioArena() {
   const appointments = useSalonStore((s) => s.appointments);
   const services = useSalonStore((s) => s.services);
+  const guardadas = useSalonStore((s) => s.salonProfile.calendario);
   const equipo = useEquipo();
   const soloUno = esSoloUnProfesional(equipo);
   const carta = useMemo(() => selectServiceMap(services), [services]);
   const ahora = useAhora();
+  const pref = preferenciasDe(guardadas);
 
   const [anchor, setAnchor] = useState(() => inicioDelDia(new Date()));
-  const [vista, setVista] = useState<Vista>("cronograma");
+  const [vista, setVista] = useState<Vista>(pref.vista);
+  /** En Semana y 3 días: «todas» o el id de una profesional. */
+  const [filtroPro, setFiltroPro] = useState<string>("todas");
   const [seleccionada, setSeleccionada] = useState<Appointment | null>(null);
   const [prefill, setPrefill] = useState<{ date: Date; employeeId: EmployeeId } | null>(null);
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
@@ -110,16 +106,25 @@ export function CalendarioArena() {
       d.setDate(1);
       d.setMonth(d.getMonth() + n);
     } else {
-      d.setDate(d.getDate() + n * (vista === "semana" ? 7 : 1));
+      d.setDate(d.getDate() + n * pasoDeVista(vista));
     }
     setAnchor(d);
   }
+  const abrirDia = (d: Date) => {
+    setAnchor(inicioDelDia(d));
+    setVista("dia");
+  };
 
+  const esRejilla = vista === "dia" || vista === "tres" || vista === "semana";
+  const diasRejilla = esRejilla ? diasDeRejilla(anchor, vista, pref.primerDia) : [];
   let titulo: string;
-  if (vista === "semana") {
-    const dias = diasDeSemana(anchor, equipo);
-    const ult = dias[dias.length - 1];
-    titulo = `Semana del ${dias[0].getDate()} al ${ult.getDate()} de ${MESES[ult.getMonth()]}`;
+  if (vista === "semana" || vista === "tres") {
+    const pri = diasRejilla[0];
+    const ult = diasRejilla[diasRejilla.length - 1];
+    titulo =
+      pri.getMonth() === ult.getMonth()
+        ? `${pri.getDate()} – ${ult.getDate()} de ${MESES[ult.getMonth()]}`
+        : `${pri.getDate()} de ${MESES[pri.getMonth()]} – ${ult.getDate()} de ${MESES[ult.getMonth()]}`;
   } else if (vista === "mes") {
     titulo = `${capital(MESES[anchor.getMonth()])} de ${anchor.getFullYear()}`;
   } else {
@@ -128,30 +133,87 @@ export function CalendarioArena() {
   const porConfirmar = citasDia.filter((a) => a.status === "pending").length;
   const numCitas = citasDia.filter((a) => a.status !== "blocked").length;
 
+  // Columnas de la rejilla: en Día, una por profesional; en 3 días y Semana,
+  // una por día con todo el equipo o con la profesional elegida.
+  const equipoFiltrado = filtroPro === "todas" ? equipo : equipo.filter((e) => e.id === filtroPro);
+  const columnas: ColumnaRejilla[] =
+    vista === "dia"
+      ? equipo.map((e, i) => {
+          const mias = citasDia.filter((a) => a.employeeId === e.id && a.status !== "blocked");
+          return {
+            clave: `${anchor.getTime()}-${e.id}`,
+            dia: anchor,
+            equipo: [e],
+            cabecera: (
+              <span className="flex items-center gap-2">
+                {!soloUno && <AvatarPro e={e} i={i} size={30} />}
+                <span className="min-w-0 leading-tight">
+                  <b className="block truncate text-[14px]">{e.name}</b>
+                  <small className="block text-[12px] font-semibold text-cafe-suave tabular-nums">
+                    {mias.length} {mias.length === 1 ? "cita" : "citas"}
+                  </small>
+                </span>
+              </span>
+            ),
+          };
+        })
+      : diasRejilla.map((d) => {
+          const hoy = mismoDia(d, ahora);
+          const cerrado = equipoFiltrado.every((e) => franjasProfesional(e, d.getDay()).length === 0);
+          return {
+            clave: `${d.getTime()}`,
+            dia: d,
+            equipo: equipoFiltrado,
+            onCabecera: () => abrirDia(d),
+            cabecera: (
+              <span className="flex flex-col items-start leading-none" aria-label={`Abrir el ${DIAS[d.getDay()]} ${d.getDate()}`}>
+                <span className={cn("text-[11px] font-bold tracking-[0.04em] uppercase", hoy ? "text-primary" : "text-cafe-suave")}>{DCORTO[d.getDay()]}</span>
+                <span
+                  className={cn(
+                    "mt-1 grid size-[34px] place-items-center rounded-full text-[19px] font-extrabold tabular-nums",
+                    hoy && "bg-primary text-primary-foreground",
+                  )}
+                >
+                  {d.getDate()}
+                </span>
+                {cerrado && <span className="mt-1 text-[11px] font-semibold">Cerrado</span>}
+              </span>
+            ),
+          };
+        });
+  const ocupados = esRejilla
+    ? columnas.flatMap((c) => [
+        ...citasDeCalendario(appointments, c.dia).map((a) => ({ ini: minutosDe(a.start), fin: minutosDe(a.start) + a.duration })),
+        ...c.equipo.flatMap((e) => franjasProfesional(e, c.dia.getDay()).map((f) => ({ ini: f.start, fin: f.end }))),
+      ])
+    : [];
+  const horasVisibles = horasDeRejilla(pref, ocupados);
+
   return (
-    // Altura fija a la ventana para que Día, Semana y Mes tengan scroll
+    // Altura fija a la ventana para que las rejillas y el mes tengan scroll
     // interno. El cronograma, en pantallas bajas, deja crecer la página: así
     // cada profesional conserva sus 110 px y el pie no aplasta la rejilla.
     <div
       className={cn(
-        "flex flex-col md:h-[calc(100dvh-71px-52px)] md:min-h-[620px]",
+        "flex flex-col md:h-[calc(100dvh-71px-64px)] md:min-h-[620px]",
         vista === "cronograma" && "md:[@media(max-height:879px)]:h-auto",
+        esRejilla && "h-[calc(100dvh-190px)] min-h-[520px]",
       )}
     >
-      {/* Una sola fila de controles: navegar, qué día es, colores y vista. */}
-      <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-3">
+      {/* Controles: navegar, qué periodo es, profesional, colores, vista y ajustes. */}
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
         <div className="flex items-center gap-1">
+          <button type="button" onClick={() => setAnchor(inicioDelDia(new Date()))} className="mr-1 h-10 rounded-full border border-lino bg-card px-4 text-sm font-bold hover:bg-beige">
+            Hoy
+          </button>
           <button type="button" onClick={() => mover(-1)} aria-label="Anterior" className="grid size-10 place-items-center rounded-full text-cafe-medio hover:bg-beige">
             <ChevronLeft className="size-5" strokeWidth={1.6} />
-          </button>
-          <button type="button" onClick={() => setAnchor(inicioDelDia(new Date()))} className="h-10 rounded-full bg-card px-4 text-sm font-bold hover:bg-beige">
-            Hoy
           </button>
           <button type="button" onClick={() => mover(1)} aria-label="Siguiente" className="grid size-10 place-items-center rounded-full text-cafe-medio hover:bg-beige">
             <ChevronRight className="size-5" strokeWidth={1.6} />
           </button>
         </div>
-        <div className="min-w-0 basis-full md:basis-auto">
+        <div className="min-w-0 flex-1 md:flex-none">
           <h1 className="text-xl leading-tight font-extrabold tracking-[-0.02em] md:text-[24px]">{titulo}</h1>
           {(vista === "dia" || vista === "cronograma") && (
             <p className="text-[13.5px] text-muted-foreground tabular-nums">
@@ -160,7 +222,25 @@ export function CalendarioArena() {
             </p>
           )}
         </div>
-        <div className="flex w-full items-center gap-2 md:ml-auto md:w-auto">
+        <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto">
+          {(vista === "semana" || vista === "tres") && !soloUno && (
+            <label className="relative">
+              <span className="sr-only">Profesional</span>
+              <select
+                value={filtroPro}
+                onChange={(ev) => setFiltroPro(ev.target.value)}
+                className="h-10 appearance-none rounded-full border border-lino bg-card pr-9 pl-4 text-[13px] font-bold text-cafe hover:bg-beige"
+              >
+                <option value="todas">Todas</option>
+                {equipo.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-cafe-medio" strokeWidth={1.6} />
+            </label>
+          )}
           <Popover>
             <PopoverTrigger asChild>
               <button type="button" className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-bold text-cafe-medio hover:bg-beige">
@@ -169,14 +249,14 @@ export function CalendarioArena() {
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-[min(360px,calc(100vw-2rem))] rounded-2xl p-0">
-              <Leyenda vista={vista} services={services} equipo={equipo} />
+              <Leyenda vista={vista} porPro={(vista === "semana" || vista === "tres") && filtroPro === "todas" && !soloUno} services={services} equipo={equipo} />
               <p className="px-4 py-3 text-[12.5px] text-muted-foreground">
-                Pulsa una cita para ver su detalle, o el «+» de un hueco para dar una cita a esa hora.
+                Pulsa una cita para ver su detalle, o un hueco vacío para dar una cita a esa hora.
               </p>
             </PopoverContent>
           </Popover>
-          <div role="tablist" aria-label="Vista del calendario" className="grid flex-1 grid-cols-4 gap-0.5 rounded-full bg-beige p-1 md:inline-flex md:flex-none">
-            {VISTAS.map((v) => (
+          <div role="tablist" aria-label="Vista del calendario" className="order-last grid w-full grid-cols-5 gap-0.5 rounded-full bg-beige p-1 md:order-none md:inline-flex md:w-auto">
+            {VISTAS_CALENDARIO.map((v) => (
               <button
                 key={v.id}
                 type="button"
@@ -184,51 +264,58 @@ export function CalendarioArena() {
                 aria-selected={vista === v.id}
                 onClick={() => setVista(v.id)}
                 className={cn(
-                  "h-[34px] rounded-full px-1 text-[13px] font-bold whitespace-nowrap text-cafe-medio md:px-[15px]",
-                  vista === v.id && "bg-card text-foreground shadow-[0_1px_3px_rgba(59,47,42,0.10)]",
+                  "h-[34px] rounded-full px-1 text-[12.5px] font-bold whitespace-nowrap text-cafe-medio md:px-[13px] md:text-[13px]",
+                  vista === v.id && "bg-card text-foreground shadow-[0_1px_3px_rgba(59,47,42,0.14)]",
                 )}
               >
-                {v.label}
+                {v.id === "cronograma" ? (
+                  <>
+                    <span className="sm:hidden">Crono</span>
+                    <span className="hidden sm:inline">{v.label}</span>
+                  </>
+                ) : (
+                  v.label
+                )}
               </button>
             ))}
           </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" aria-label="Ajustes del calendario" title="Ajustes del calendario" className="grid size-10 shrink-0 place-items-center rounded-full text-cafe-medio hover:bg-beige">
+                <Settings2 className="size-[18px]" strokeWidth={1.6} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-[min(320px,calc(100vw-2rem))] rounded-2xl p-4">
+              <p className="mb-3 text-[14px] font-extrabold">Ajustes del calendario</p>
+              <CamposPreferenciasCalendario />
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
-      {/* Caja del calendario: leyenda + vista con scroll interno */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[24px] border border-lino bg-card">
+      {/* Caja del calendario: la vista, con scroll interno. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[20px] border border-lino-fuerte bg-card">
         {vista === "cronograma" && (
           <Cronograma dia={anchor} citas={citasDia} equipo={equipo} ahora={ahora} carta={carta} services={services} onCita={setSeleccionada} onHueco={abrirHueco} />
         )}
-        {vista === "dia" && (
-          <VistaDia dia={anchor} citas={citasDia} equipo={equipo} ahora={ahora} carta={carta} services={services} soloUno={soloUno} onCita={setSeleccionada} onHueco={abrirHueco} />
-        )}
-        {vista === "semana" && (
-          <VistaSemana
-            anchor={anchor}
+        {esRejilla && (
+          <RejillaCalendario
+            columnas={columnas}
             appointments={appointments}
-            equipo={equipo}
+            todoElEquipo={equipo}
+            desde={horasVisibles.desde}
+            hasta={horasVisibles.hasta}
             ahora={ahora}
             carta={carta}
             services={services}
+            colorPor={vista !== "dia" && filtroPro === "todas" && !soloUno ? "profesional" : "servicio"}
+            anchoMinimo={vista === "dia" ? 150 : vista === "tres" ? 96 : 44}
             onCita={setSeleccionada}
-            onDia={(d) => {
-              setAnchor(d);
-              setVista("cronograma");
-            }}
+            onHueco={abrirHueco}
           />
         )}
         {vista === "mes" && (
-          <VistaMes
-            anchor={anchor}
-            appointments={appointments}
-            equipo={equipo}
-            ahora={ahora}
-            onDia={(d) => {
-              setAnchor(d);
-              setVista("cronograma");
-            }}
-          />
+          <VistaMes anchor={anchor} appointments={appointments} equipo={equipo} ahora={ahora} primerDia={pref.primerDia} onDia={abrirDia} />
         )}
       </div>
 
@@ -263,9 +350,9 @@ export function CalendarioArena() {
 
 /* ---------- Leyenda ---------- */
 
-function Leyenda({ vista, services, equipo }: { vista: Vista; services: Service[]; equipo: Employee[] }) {
+function Leyenda({ vista, porPro, services, equipo }: { vista: Vista; porPro: boolean; services: Service[]; equipo: Employee[] }) {
   const activos = services.filter((s) => s.active !== false).slice(0, 6);
-  const muestra = "inline-block size-3.5 rounded-[4px] border-l-[3px]";
+  const muestra = "inline-block size-3.5 rounded-[4px] border border-cafe";
   if (vista === "mes") {
     return (
       <div className="flex flex-none flex-wrap items-center gap-x-3.5 gap-y-1.5 border-b border-lino px-4 py-3 text-[12.5px] font-semibold text-k-tinta2">
@@ -280,6 +367,20 @@ function Leyenda({ vista, services, equipo }: { vista: Vista; services: Service[
       </div>
     );
   }
+  if (porPro) {
+    return (
+      <div className="flex flex-none flex-wrap items-center gap-x-3.5 gap-y-1.5 border-b border-lino px-4 py-3 text-[12.5px] font-semibold text-k-tinta2">
+        <b className="text-k-tinta">Profesional:</b>
+        {equipo.map((e, i) => (
+          <span key={e.id} className="flex items-center gap-1.5">
+            <i className="inline-block size-3.5 rounded-[4px] border border-cafe" style={{ background: colorProfesional(i) }} />
+            {e.name}
+          </span>
+        ))}
+        <span className="basis-full">Elige una profesional arriba para ver sus citas por color de servicio.</span>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-none flex-wrap items-center gap-x-3.5 gap-y-1.5 border-b border-lino px-4 py-3 text-[12.5px] font-semibold text-k-tinta2">
       <b className="text-k-tinta">Servicio:</b>
@@ -287,19 +388,14 @@ function Leyenda({ vista, services, equipo }: { vista: Vista; services: Service[
         const n = indiceColorServicio(s.id, services);
         return (
           <span key={s.id} className="flex items-center gap-1.5">
-            <i className={muestra} style={{ background: `var(--serv-${n})`, borderLeftColor: `var(--serv-${n}-borde)` }} />
+            <i className={muestra} style={{ background: `var(--serv-${n})` }} />
             {s.name.split(/ y | \/ /)[0]}
           </span>
         );
       })}
-      {vista === "semana" ? (
-        <span className="basis-full">
-          Cada día tiene {equipo.length === 1 ? "un carril" : `${equipo.length} carriles`}: {equipo.map((e) => e.name).join(" · ")}
-        </span>
-      ) : (
         <>
           <span className="flex items-center gap-1.5">
-            <i className="inline-block size-3.5 rounded-[4px] border-2 border-dashed border-k-tinta2 bg-card" />
+            <i className="inline-block size-3.5 rounded-[4px] border border-dashed border-cafe bg-superficie" />
             Por confirmar
           </span>
           <span className="flex items-center gap-1.5">
@@ -311,12 +407,11 @@ function Leyenda({ vista, services, equipo }: { vista: Vista; services: Service[
             Libre
           </span>
         </>
-      )}
     </div>
   );
 }
 
-const RAYADO = "repeating-linear-gradient(135deg,#F3F5F8 0 7px,#FAFBFC 7px 14px)";
+const RAYADO = "repeating-linear-gradient(135deg,#EDE4D8 0 7px,#F5EFE6 7px 14px)";
 
 /* ---------- Piezas: cita, pausa, hueco ---------- */
 
@@ -352,17 +447,16 @@ function BloqueCita({
       title={`${a.clientName} · ${nombreServicio} · ${hora(a.start)}–${minutosAHora(ini + a.duration)}${pendiente ? " · por confirmar" : ""}`}
       className={cn(
         "absolute flex flex-col overflow-hidden text-left leading-[1.28] text-k-tinta hover:shadow-[0_2px_8px_rgba(31,38,51,0.12)] hover:brightness-[0.97] [&>*]:shrink-0",
-        variante === "semana" ? "rounded-[9px] border-l-[3px] px-1.5 py-[5px] text-[11.5px]" : "rounded-xl border-l-4 px-2.5 py-2 text-[13px]",
+        "rounded-md border border-cafe",
+        variante === "semana" ? "px-1.5 py-[5px] text-[11.5px]" : "px-2.5 py-2 text-[13px]",
         variante !== "crono" && corta && "py-[3px]",
         variante === "crono" && corta && "px-[7px] py-[7px]",
-        pendiente && "border-2 border-dashed border-k-tinta2 border-l-4",
+        pendiente && "border-dashed",
         noVino && "opacity-55 line-through",
       )}
       style={{
         ...style,
-        background: pendiente ? "var(--color-card)" : `var(--serv-${n})`,
-        borderLeftColor: `var(--serv-${n}-borde)`,
-        borderLeftStyle: "solid",
+        background: pendiente ? "var(--superficie)" : `var(--serv-${n})`,
       }}
     >
       {vino && variante !== "semana" && (
@@ -556,243 +650,27 @@ function Cronograma({
 /* ---------- Día y semana: rejilla vertical ---------- */
 
 /** Alto de una hora para que la rejilla llene la caja (64 px como mínimo). */
-function useAltoHora(horas: number) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [px, setPx] = useState(72);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const medir = () => setPx(Math.max(64, Math.floor((el.clientHeight - 56 - 6) / Math.max(1, horas))));
-    medir();
-    const obs = new ResizeObserver(medir);
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [horas]);
-  return { ref, px };
-}
-
-function ColumnaHoras({ h, px }: { h: Tramo; px: number }) {
-  const horas = (h.fin - h.ini) / 60;
-  return (
-    <div className="relative border-r border-k-linea-f bg-card" style={{ height: horas * px }}>
-      {Array.from({ length: horas }, (_, i) => (
-        <span key={i} className="absolute right-2 text-xs font-bold text-k-tinta2 tabular-nums" style={{ top: i * px, transform: i === 0 ? "translateY(2px)" : "translateY(-50%)" }}>
-          {h.ini / 60 + i}:00
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function LineaAhora({ h, px, ahora }: { h: Tramo; px: number; ahora: Date }) {
-  const m = minutosDe(ahora);
-  if (m < h.ini || m > h.fin) return null;
-  return <div className="pointer-events-none absolute right-0 left-0 z-[5] h-0.5 bg-k-ahora" style={{ top: ((m - h.ini) / 60) * px }} aria-hidden="true" />;
-}
-
-function useScrollAAhora(ref: React.RefObject<HTMLDivElement | null>, activo: boolean, y: number, clave: unknown) {
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el || !activo) return;
-    if (el.scrollHeight > el.clientHeight + 10) el.scrollTop = Math.max(0, y - 120);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clave, activo]);
-}
-
-function VistaDia({
-  dia,
-  citas,
-  equipo,
-  ahora,
-  carta,
-  services,
-  soloUno,
-  onCita,
-  onHueco,
-}: {
-  dia: Date;
-  citas: Appointment[];
-  equipo: Employee[];
-  ahora: Date;
-  carta: Record<string, Service>;
-  services: Service[];
-  soloUno: boolean;
-  onCita: (a: Appointment) => void;
-  onHueco: AbrirHueco;
-}) {
-  const h = horizonteDelDia(equipo, dia.getDay());
-  const horas = h ? (h.fin - h.ini) / 60 : 10;
-  const { ref, px } = useAltoHora(horas);
-  const esHoy = mismoDia(dia, ahora);
-  useScrollAAhora(ref, esHoy && !!h, h ? ((minutosDe(ahora) - h.ini) / 60) * px : 0, dia.getTime());
-  if (!h) return <VacioDia dia={dia} />;
-  const y = (m: number) => ((m - h.ini) / 60) * px;
-  const pos = (ini: number, dur: number): CSSProperties => ({ top: y(ini) + 2, height: (dur / 60) * px - 4, left: 4, right: 4 });
-  const desde = esHoy ? minutosDe(ahora) : undefined;
-  return (
-    <div ref={ref} className="relative min-h-0 flex-1 overflow-auto">
-      <div className="grid" style={{ gridTemplateColumns: `60px repeat(${equipo.length}, minmax(220px, 1fr))` }}>
-        <div className="sticky top-0 z-[6] min-h-14 border-b border-k-linea-f bg-k-cab" />
-        {equipo.map((e, i) => {
-          const mias = citas.filter((a) => a.employeeId === e.id && a.status !== "blocked");
-          return (
-            <div key={e.id} className="sticky top-0 z-[6] flex min-h-14 items-center gap-2 border-b border-k-linea-f bg-k-cab px-2.5 font-bold text-k-tinta">
-              {!soloUno && <AvatarPro e={e} i={i} size={32} />}
-              <div className="leading-tight">
-                <b>{e.name}</b>
-                <small className="block font-semibold text-muted-foreground tabular-nums">
-                  {mias.length} citas · {ocupacionDe(citas, e, dia.getDay())} %
-                </small>
-              </div>
-            </div>
-          );
-        })}
-        <ColumnaHoras h={h} px={px} />
-        {equipo.map((e) => {
-          const carriles = carrilesSolapados(citas.filter((a) => a.employeeId === e.id));
-          const posCita = (a: Appointment): CSSProperties => {
-            const { carril, total } = carriles.get(a.id) ?? { carril: 0, total: 1 };
-            const base = pos(minutosDe(a.start), a.duration);
-            if (total === 1) return base;
-            return { ...base, right: "auto", left: `calc(4px + (100% - 8px) * ${carril / total})`, width: `calc((100% - 8px) / ${total} - 2px)` };
-          };
-          return (
-          <div
-            key={e.id}
-            className="relative border-r border-k-linea-f last:border-r-0"
-            style={{ height: horas * px, backgroundImage: "linear-gradient(var(--k-linea) 1px,transparent 1px)", backgroundSize: `100% ${px}px` }}
-          >
-            {pausasDe(e, dia.getDay()).map((p) => (
-              <BloquePausa key={`p${p.ini}`} style={pos(p.ini, p.fin - p.ini)} />
-            ))}
-            {huecosDe(citas, e, dia.getDay(), { desde }).map((t) => (
-              <BloqueHueco key={`h${t.ini}`} tramo={t} dosLineas={false} style={pos(t.ini, t.fin - t.ini)} onClick={() => onHueco(e.id, t.ini, dia)} />
-            ))}
-            {citas
-              .filter((a) => a.employeeId === e.id)
-              .map((a) =>
-                a.status === "blocked" ? (
-                  <BloquePausa key={a.id} texto={a.note || "Bloqueado"} style={posCita(a)} />
-                ) : (
-                  <BloqueCita key={a.id} a={a} carta={carta} services={services} variante="dia" style={posCita(a)} onClick={() => onCita(a)} />
-                ),
-              )}
-            {esHoy && <LineaAhora h={h} px={px} ahora={ahora} />}
-          </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function VistaSemana({
-  anchor,
-  appointments,
-  equipo,
-  ahora,
-  carta,
-  services,
-  onCita,
-  onDia,
-}: {
-  anchor: Date;
-  appointments: Appointment[];
-  equipo: Employee[];
-  ahora: Date;
-  carta: Record<string, Service>;
-  services: Service[];
-  onCita: (a: Appointment) => void;
-  onDia: (d: Date) => void;
-}) {
-  const dias = useMemo(() => diasDeSemana(anchor, equipo), [anchor, equipo]);
-  const h = horizonteDeDias(equipo, dias) ?? { ini: 600, fin: 1200 };
-  const horas = (h.fin - h.ini) / 60;
-  const { ref, px } = useAltoHora(horas);
-  const hoyEnSemana = dias.some((d) => mismoDia(d, ahora));
-  useScrollAAhora(ref, hoyEnSemana, ((minutosDe(ahora) - h.ini) / 60) * px, lunesDe(anchor).getTime());
-  const n = Math.max(1, equipo.length);
-  const carril = (e: EmployeeId) => Math.max(0, equipo.findIndex((x) => x.id === e));
-  // Líneas: una por hora, y separadores finos entre carriles.
-  const separadores = Array.from({ length: n - 1 }, (_, i) => {
-    const p = ((i + 1) / n) * 100;
-    return `transparent calc(${p}% - .5px), #F0F2F6 calc(${p}% - .5px), #F0F2F6 calc(${p}% + .5px), transparent calc(${p}% + .5px)`;
-  }).join(", ");
-  const fondo: CSSProperties = {
-    height: horas * px,
-    backgroundImage: `linear-gradient(var(--k-linea) 1px,transparent 1px)${n > 1 ? `, linear-gradient(90deg, ${separadores})` : ""}`,
-    backgroundSize: `100% ${px}px${n > 1 ? ", 100% 100%" : ""}`,
-  };
-  return (
-    <div ref={ref} className="relative min-h-0 flex-1 overflow-auto">
-      <div className="grid" style={{ gridTemplateColumns: `60px repeat(${dias.length}, minmax(170px, 1fr))` }}>
-        <div className="sticky top-0 z-[6] min-h-14 border-b border-k-linea-f bg-k-cab" />
-        {dias.map((d) => {
-          const cuantas = citasDeCalendario(appointments, d).filter((a) => a.status !== "blocked").length;
-          return (
-            <button
-              key={d.getTime()}
-              type="button"
-              onClick={() => onDia(d)}
-              className={cn("sticky top-0 z-[6] flex min-h-14 flex-col items-start justify-center border-b border-k-linea-f px-2.5 text-left text-k-tinta", mismoDia(d, ahora) ? "bg-k-cab-hoy" : "bg-k-cab")}
-            >
-              <span>
-                <b>
-                  {DCORTO[d.getDay()]} <span className="tabular-nums">{d.getDate()}</span>
-                </b>{" "}
-                <small className="font-semibold text-muted-foreground tabular-nums">· {cuantas} {cuantas === 1 ? "cita" : "citas"}</small>
-              </span>
-              {n > 1 && (
-                <span className="flex w-full text-[10.5px] font-bold text-k-tinta2">
-                  {equipo.map((e) => (
-                    <span key={e.id} className="flex-1 truncate">{e.name}</span>
-                  ))}
-                </span>
-              )}
-            </button>
-          );
-        })}
-        <ColumnaHoras h={h} px={px} />
-        {dias.map((d) => {
-          const citas = citasDeCalendario(appointments, d);
-          const solapes = new Map(equipo.flatMap((e) => [...carrilesSolapados(citas.filter((a) => a.employeeId === e.id))]));
-          return (
-            <div key={d.getTime()} className="relative border-r border-k-linea-f last:border-r-0" style={fondo}>
-              {citas.map((a) => {
-                const ini = minutosDe(a.start);
-                const c = carril(a.employeeId);
-                const { carril: sub, total } = solapes.get(a.id) ?? { carril: 0, total: 1 };
-                const ancho = 100 / n / total;
-                const style: CSSProperties = {
-                  top: ((ini - h.ini) / 60) * px + 2,
-                  height: (a.duration / 60) * px - 4,
-                  left: `calc(${(c / n) * 100 + sub * ancho}% + 2px)`,
-                  width: `calc(${ancho}% - 4px)`,
-                };
-                return a.status === "blocked" ? (
-                  <BloquePausa key={a.id} texto="" style={style} />
-                ) : (
-                  <BloqueCita key={a.id} a={a} carta={carta} services={services} variante="semana" style={style} onClick={() => onCita(a)} />
-                );
-              })}
-              {mismoDia(d, ahora) && <LineaAhora h={h} px={px} ahora={ahora} />}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 /* ---------- Mes ---------- */
 
-function VistaMes({ anchor, appointments, equipo, ahora, onDia }: { anchor: Date; appointments: Appointment[]; equipo: Employee[]; ahora: Date; onDia: (d: Date) => void }) {
-  const celdas = useMemo(() => celdasDelMes(anchor), [anchor]);
+function VistaMes({ anchor, appointments, equipo, ahora, primerDia, onDia }: { anchor: Date; appointments: Appointment[]; equipo: Employee[]; ahora: Date; primerDia: PrimerDia; onDia: (d: Date) => void }) {
+  // Celdas desde el primer día de semana elegido: cinco o seis filas, sin
+  // una última que sea entera del mes siguiente.
+  const celdas = useMemo(() => {
+    const inicio = inicioDeSemana(new Date(anchor.getFullYear(), anchor.getMonth(), 1), primerDia);
+    const out: Date[] = [];
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + i);
+      if (i >= 35 && d.getMonth() !== anchor.getMonth()) break;
+      out.push(d);
+    }
+    return out;
+  }, [anchor, primerDia]);
+  const cabeceras = Array.from({ length: 7 }, (_, i) => DCORTO[(primerDia + i) % 7]);
   const filas = celdas.length / 7;
   return (
     <div className="relative min-h-0 flex-1 overflow-auto">
       <div className="grid h-full min-w-[700px] grid-cols-7" style={{ gridTemplateRows: `auto repeat(${filas}, minmax(88px, 1fr))` }}>
-        {DSEM.map((d) => (
+        {cabeceras.map((d) => (
           <div key={d} className="border-b border-k-linea-f bg-k-cab p-2.5 text-[11px] font-bold tracking-[0.06em] text-k-tinta2 uppercase">
             {d}
           </div>
@@ -810,12 +688,12 @@ function VistaMes({ anchor, appointments, equipo, ahora, onDia }: { anchor: Date
               aria-label={`${d.getDate()} de ${MESES[d.getMonth()]}, ${citas.length} citas`}
               className={cn(
                 "flex flex-col gap-1.5 border-r border-b border-k-linea p-2 text-left text-k-tinta [&:nth-child(7n)]:border-r-0",
-                fuera ? "bg-[#FAFBFC] text-[#9AA2AF]" : "hover:bg-k-cab",
-                hoy && "shadow-[inset_0_0_0_2px_var(--k-ahora)]",
+                fuera ? "bg-beige/60 text-cafe-suave" : "hover:bg-k-cab",
+                hoy && "bg-salvia-suave/50",
               )}
             >
               <span className="flex items-center justify-between">
-                <span className={cn("grid size-[26px] place-items-center rounded-full text-[13px] font-extrabold tabular-nums", hoy && "bg-k-ahora text-white")}>{d.getDate()}</span>
+                <span className={cn("grid size-[26px] place-items-center rounded-full text-[13px] font-extrabold tabular-nums", hoy && "bg-primary text-primary-foreground")}>{d.getDate()}</span>
                 {citas.length > 0 && (
                   <span className="text-xs font-extrabold text-k-tinta tabular-nums">
                     {citas.length} {citas.length === 1 ? "cita" : "citas"}
@@ -830,7 +708,7 @@ function VistaMes({ anchor, appointments, equipo, ahora, onDia }: { anchor: Date
                     return (
                       <span key={e.id} className="flex items-center gap-1.5 text-[11px] font-bold text-k-tinta2" title={`${e.name}: ${mias.length} citas · ${pct} %`}>
                         <b className="w-3">{e.name[0]}</b>
-                        <i className="block h-[7px] flex-1 overflow-hidden rounded-full bg-[#EEF1F5]">
+                        <i className="block h-[7px] flex-1 overflow-hidden rounded-full bg-beige">
                           <u className="block h-full rounded-full" style={{ width: `${pct}%`, background: barraPro(i) }} />
                         </i>
                         <span className="tabular-nums">{mias.length}</span>

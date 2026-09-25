@@ -144,52 +144,76 @@ Frases cortas en segunda persona, verbos activos y sentence case. Cada botón di
 - **Nunca mayúsculas** fuera de la etiqueta de 11 px.
 - **Nunca un aviso de alarma** para lo que solo está pendiente de la dueña.
 
-## «Arena · calma» (lote 8, en propuesta: Hoy y Calendario)
+## «Arena · calma» (lote 8c, en propuesta: Hoy, Calendario y menú)
 
-Tras ver el panel, Tomás pidió menos ruido, más aire y un fondo menos blanco. Esta capa se
-aplica encima de todo lo anterior y manda cuando choca.
+Tras ver el panel, Tomás pidió menos ruido, más aire y un fondo menos blanco (lote 8a). Al
+verlo, pidió un escalón más: «demasiados tonos demasiado claros; debe verse más soft y
+pastel» (lote 8c). Esta capa se aplica encima de todo lo anterior y manda cuando choca.
+Referencias: las doce imágenes de inspiración de Tomás del 24 de septiembre.
 
 ### Fondos (nombres y roles)
 
-| Nombre | Hex | Uso |
-|---|---|---|
-| Página | `#F7F2EA` | Fondo de toda la aplicación (antes blanco puro) |
-| Superficie | `#FBF8F3` | Bloques y tarjetas (`--card`) |
-| Beige | `#F1EAE0` | Superficie hundida, hover, pestañas, segmento |
-| Nata (menú) | `#EFE7DA` | Menú lateral |
-| Taupe claro | `#E8DDCF` | Chips neutros. **Sin texto secundario encima** (4,49:1) |
-| Salvia suave | `#E8EFE6` | Fila «ahora», botón «Vino», bloques en calma |
-| Blanco | `#FFFFFF` | Solo lo que debe destacar: campo activo, opción elegida, cita seleccionada |
-| Lino / lino fuerte | `#E6DCCF` / `#D8CBBB` | Separadores / bordes de campo, un punto más cálidos |
-| Café medio / café suave | `#665650` / `#6F6058` | Texto sobre pasteles / texto secundario, un punto más oscuros |
+| Nombre | Token | Hex | Uso |
+|---|---|---|---|
+| Página | `--pagina` | `#EFE7DB` | Fondo de toda la aplicación |
+| Tarjeta | `--superficie` (`--card`) | `#F7F2EA` | Bloques y tarjetas, siempre con borde lino |
+| Beige | `--beige` | `#E9DFD1` | Cabecera, superficie hundida, hover, segmento |
+| Menú | `--nata` (`--sidebar`) | `#E4D8C8` | Menú lateral |
+| Taupe claro | `--taupe-claro` | `#DDCFBD` | Chips neutros. **Sin texto secundario ni moca encima** |
+| Lino / lino fuerte | `--lino` / `--lino-fuerte` | `#D9CBB8` / `#C9B8A2` | Bordes visibles / bordes de campo y caja del calendario |
+| Salvia suave / clara | `--salvia-suave` / `--salvia-clara` | `#DCE7DA` / `#CFDFCF` | Hoy en el calendario, contadores, «Primeros pasos» |
+| Melocotón | `--melocoton` | `#F1D9C8` | Avisos suaves |
+| Profesionales | `--pro-1…4` | `#F2D8C6` `#D5E4D2` `#E3DAEE` `#D6E4EF` | Citas en la semana «Todas» |
+| Blanco | `--blanco` | `#FFFFFF` | **Solo campos de texto** |
+| Café · medio · suave | `--cafe` · `--cafe-medio` · `--cafe-suave` | `#3B2F2A` · `#5E4F48` · `#62534C` | Texto · texto sobre pastel · secundario |
+| Moca fuerte | `--moca-fuerte` | `#7A5539` | Acción principal |
 
-Contraste medido (WCAG 2.1): café ≥ 9,6:1 en todos los fondos; café medio ≥ 5,2:1; café
-suave ≥ 4,77:1 en página, superficie, beige, menú y salvia clara (4,49 en taupe claro: no
-usar); hoja tinta ≥ 5,0:1; melocotón tinta ≥ 5,1:1. El moca fuerte como TEXTO solo va sobre
-página o superficie (4,72 y 4,97); como fondo de botón con texto blanco, 5,26:1.
+Contraste medido (WCAG 2.1, texto normal ≥ 4,5):
+
+| Texto | Página | Tarjeta | Beige | Menú | Taupe claro | Salvia suave | Melocotón |
+|---|---|---|---|---|---|---|---|
+| Café | 10,5 | 11,6 | 9,8 | 9,2 | 8,4 | 10,1 | 9,5 |
+| Café medio | 6,4 | 7,0 | 5,9 | 5,6 | 5,1 | 6,1 | 5,8 |
+| Café suave | 6,0 | 6,6 | 5,6 | 5,2 | 4,8 | 5,8 | 5,4 |
+| Moca fuerte | 5,4 | 5,9 | 5,0 | 4,7 | **4,3** | 5,2 | 4,9 |
+| Hoja tinta | 6,2 | 6,8 | 5,8 | 5,4 | 5,0 | 6,0 | 5,6 |
+
+Blanco sobre moca fuerte: 6,6. El moca como texto no va sobre taupe claro ni sobre lino.
 
 ### Densidad y jerarquía
 
-- **Una pregunta por pantalla** (Hoy: «¿qué me toca ahora?») y **una idea por bloque**.
-- Como mucho **dos o tres bloques** visibles sin scroll. Lo secundario se pliega en pestañas,
-  en «Ver más» o en un panel que se abre; **nunca se elimina**.
-- Cifras: **un solo número grande por bloque**; los resúmenes van en una línea de texto
-  («18 citas · 4 huecos libres · 675 € estimados»), no en cuatro tarjetas.
-- **Una acción primaria por fila**; el resto en un menú «…». Las opciones de detalle (por
-  ejemplo, las duraciones) se despliegan al pedirlas.
-- Agrupar por **espacio y tono**, no por cajas: bloques sin borde sobre la página, con
-  separadores lino finos dentro. 32 px entre bloques, 20-28 px dentro, filas de 12-16 px.
-- Menos tamaños de letra: 34 (saludo), 24 (título de pantalla), 17 (título de bloque), 15
-  (nombre), 13,5 (secundario). Iconos solo donde ayudan a encontrar.
-- Nada que exija leer una leyenda: la leyenda de colores del calendario va plegada en
-  «Colores», y cada cita dice su servicio al pasar el ratón o al pulsarla.
+- **Hoy, a primer golpe de vista:** saludo, una línea de cifras y «Esto te espera» (solo si
+  hay algo, tres filas como mucho y «Ver las N restantes»). Lo demás va plegado en un
+  acordeón con cabecera, contador y flecha: Ahora y siguientes, ¿Vinieron?, Mañana y
+  recordatorios, Avisos. La primera vez abre uno como mucho; luego recuerda en el navegador
+  los que abrió la dueña. **Nada se elimina.**
+- Cifras en una línea de texto, no en tarjetas. Una acción primaria por fila; el resto en «…».
+- Tarjetas nata con borde lino de 1 px: el bloque se distingue de la página por tono y borde.
+- Tamaños de letra: 34 (saludo), 24 (título de pantalla), 16-17 (título de bloque), 15
+  (nombre), 13,5 (secundario).
 
-### Calendario en calma
+### Menú
 
-Una sola fila de controles; el resumen del día en texto pequeño bajo el título; solo líneas de
-hora (sin medias horas); filas de 120 px como mínimo; las citas dicen nombre y hora (el
-servicio, en el aviso y en el detalle); los huecos libres son un «+» discreto que enseña su
-franja al pasar; huecos libres y ocupación del día, tras «Ver huecos libres y ocupación».
+Todos los apartados en primer nivel, también Citas y Lista de espera. Ítems de 38 px,
+cabeceras de bloque de 10,5 px y «Primeros pasos» en una línea: cabe sin scroll a 1280×800.
+
+### Calendario
+
+- Vistas: Día · 3 días · Semana · Mes · Cronograma. Día, 3 días y Semana comparten la rejilla
+  de Google Calendar y Apple Calendar (`RejillaCalendario`): columna de horas fija, cabecera
+  de días fija (día de la semana y número, hoy en un círculo moca), columnas iguales, línea
+  por hora y otra más suave cada media hora, 64 px por hora, solapes en subcolumnas, línea
+  de «ahora» terracota y horas sin nadie trabajando rayadas. Al abrir, se ve el principio
+  de la jornada, o la hora actual si no cabría.
+- Día: una columna por profesional, color por servicio. Semana y 3 días: selector
+  Todas / profesional. En «Todas» el color dice la profesional (`--pro-N`, con sus
+  iniciales si hay sitio); con una profesional elegida, el servicio.
+- Toda cita lleva **borde de 1 px café y radio de 6 px**, en todas las vistas; la que está
+  por confirmar, con el borde discontinuo y fondo tarjeta.
+- Pulsar un hueco vacío abre «Nueva cita» a esa hora (al cuarto de hora).
+- Preferencias en el perfil del salón (`salonProfile.calendario`): vista predeterminada,
+  primer día de la semana y horas visibles. Se cambian en el engranaje del calendario y en
+  Ajustes. Si una cita o jornada cae fuera de las horas visibles, la rejilla se ensancha.
 
 ## Cómo verlo en local desde un worktree
 

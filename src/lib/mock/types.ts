@@ -214,6 +214,15 @@ export interface SalonProfile {
   address: string;
   /** El salón fija la duración al aceptar cada solicitud. */
   duracionFlexible?: boolean;
+  /** Cómo abre el calendario del panel (ver `lib/preferencias-calendario.ts`). */
+  calendario?: {
+    vista?: "dia" | "tres" | "semana" | "mes" | "cronograma";
+    /** 0 domingo · 1 lunes · 6 sábado. */
+    primerDia?: 0 | 1 | 6;
+    /** Horas visibles de la rejilla, en horas enteras. */
+    desde?: number;
+    hasta?: number;
+  };
   phone: string;
   instagram: string;
   /** Siete cadenas, lunes a domingo: "10:00–13:30, 17:00–20:00" o "Cerrado". Ver lib/opening-hours.ts */

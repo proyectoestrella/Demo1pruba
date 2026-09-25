@@ -1,0 +1,84 @@
+import type { SalonProfile } from "./mock/types";
+
+/**
+ * Preferencias del calendario del panel: vista con la que abre, primer día de
+ * la semana y horas visibles de la rejilla. Viven en el perfil del salón
+ * (`salonProfile.calendario`), así que se guardan con el resto de ajustes.
+ * Funciones puras, sin React ni store.
+ */
+
+export type VistaCalendario = NonNullable<NonNullable<SalonProfile["calendario"]>["vista"]>;
+export type PrimerDia = 0 | 1 | 6;
+
+export interface PreferenciasCalendario {
+  vista: VistaCalendario;
+  primerDia: PrimerDia;
+  desde: number;
+  hasta: number;
+}
+
+export const VISTAS_CALENDARIO: { id: VistaCalendario; label: string }[] = [
+  { id: "dia", label: "Día" },
+  { id: "tres", label: "3 días" },
+  { id: "semana", label: "Semana" },
+  { id: "mes", label: "Mes" },
+  { id: "cronograma", label: "Cronograma" },
+];
+
+export const PRIMEROS_DIAS: { id: PrimerDia; label: string }[] = [
+  { id: 1, label: "Lunes" },
+  { id: 0, label: "Domingo" },
+  { id: 6, label: "Sábado" },
+];
+
+export const PREFERENCIAS_POR_DEFECTO: PreferenciasCalendario = { vista: "semana", primerDia: 1, desde: 8, hasta: 21 };
+
+/** Completa y sanea lo guardado: horas enteras entre 0 y 24, y al menos dos horas visibles. */
+export function preferenciasDe(guardadas: SalonProfile["calendario"] | undefined): PreferenciasCalendario {
+  const p = { ...PREFERENCIAS_POR_DEFECTO, ...(guardadas ?? {}) };
+  const vista = VISTAS_CALENDARIO.some((v) => v.id === p.vista) ? p.vista : PREFERENCIAS_POR_DEFECTO.vista;
+  const primerDia = PRIMEROS_DIAS.some((d) => d.id === p.primerDia) ? p.primerDia : 1;
+  let desde = Math.min(22, Math.max(0, Math.round(Number(p.desde))));
+  let hasta = Math.min(24, Math.max(2, Math.round(Number(p.hasta))));
+  if (!Number.isFinite(desde)) desde = PREFERENCIAS_POR_DEFECTO.desde;
+  if (!Number.isFinite(hasta)) hasta = PREFERENCIAS_POR_DEFECTO.hasta;
+  if (hasta - desde < 2) hasta = Math.min(24, desde + 2);
+  if (hasta - desde < 2) desde = hasta - 2;
+  return { vista, primerDia, desde, hasta };
+}
+
+/** Primer día de la semana que contiene `d`, según la preferencia. */
+export function inicioDeSemana(d: Date, primerDia: PrimerDia): Date {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() - ((x.getDay() - primerDia + 7) % 7));
+  return x;
+}
+
+/**
+ * Días que enseña una vista de rejilla: uno, tres seguidos desde el ancla, o
+ * los siete de la semana empezando en el primer día elegido.
+ */
+export function diasDeRejilla(anchor: Date, vista: "dia" | "tres" | "semana", primerDia: PrimerDia): Date[] {
+  const inicio = vista === "semana" ? inicioDeSemana(anchor, primerDia) : new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+  const n = vista === "dia" ? 1 : vista === "tres" ? 3 : 7;
+  return Array.from({ length: n }, (_, i) => new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + i));
+}
+
+/** Cuántos días avanza la flecha en cada vista (el mes se mueve aparte). */
+export function pasoDeVista(vista: VistaCalendario): number {
+  return vista === "semana" ? 7 : vista === "tres" ? 3 : 1;
+}
+
+/**
+ * Horas que pinta la rejilla: las visibles de la preferencia, ensanchadas si
+ * hay citas o jornada fuera de ellas (nunca se esconde una cita).
+ */
+export function horasDeRejilla(pref: Pick<PreferenciasCalendario, "desde" | "hasta">, minutosOcupados: { ini: number; fin: number }[]): { desde: number; hasta: number } {
+  let desde = pref.desde;
+  let hasta = pref.hasta;
+  for (const t of minutosOcupados) {
+    desde = Math.min(desde, Math.floor(t.ini / 60));
+    hasta = Math.max(hasta, Math.ceil(t.fin / 60));
+  }
+  return { desde: Math.max(0, desde), hasta: Math.min(24, hasta) };
+}

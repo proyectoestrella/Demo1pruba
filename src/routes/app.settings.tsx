@@ -1,3 +1,4 @@
+import { CamposPreferenciasCalendario } from "@/components/CamposPreferenciasCalendario";
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -154,6 +155,12 @@ function Settings() {
         <Switch id="duracion-flexible" checked={duracionFlexible} onCheckedChange={setDuracionFlexible} />
         </div>
         <div className="mt-4 flex justify-end"><Button onClick={handleSave}>Guardar cambios</Button></div>
+      </div>
+
+      <div className="rounded-[20px] border border-border bg-card p-5">
+        <h2 className="text-base font-extrabold">Cómo se abre tu calendario</h2>
+        <p className="mt-1 mb-4 text-sm text-muted-foreground">Se guarda al cambiarlo. También lo tienes en el engranaje del propio calendario.</p>
+        <div className="max-w-md"><CamposPreferenciasCalendario /></div>
       </div>
 
       <div className="space-y-4 rounded-[20px] border border-border bg-card p-5">
