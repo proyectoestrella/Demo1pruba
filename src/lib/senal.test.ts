@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { aplicaSenal, importeSenal, marcadoresQueFaltan, PLANTILLA_SENAL_POR_DEFECTO, reglaSenal, rellenarPlantillaSenal, respuestaFaqSenal, servicioLlevaSenal, textoSenalPublico } from "./senal";
+import { aplicaSenal, importeSenal, resumenCancelacionSenal, marcadoresQueFaltan, PLANTILLA_SENAL_POR_DEFECTO, reglaSenal, rellenarPlantillaSenal, respuestaFaqSenal, servicioLlevaSenal, textoSenalPublico } from "./senal";
 import { mensajeDeFianza } from "./avisos";
 
 const eur = (n: number) => `${n} €`;
@@ -52,7 +52,9 @@ describe("una sola regla de señal por salón", () => {
 
   it("la cancelación gratuita sale de la regla o de la política de plantón", () => {
     expect(reglaSenal({ depositCancelHours: 48 }).horasCancelacion).toBe(48);
-    expect(reglaSenal({ noShowNoticeHours: 2 }).horasCancelacion).toBe(2);
+    // Igual que la casilla de la reserva: sin recargo, 24 h; con recargo, su antelación.
+    expect(reglaSenal({ noShowNoticeHours: 2 }).horasCancelacion).toBe(24);
+    expect(reglaSenal({ noShowNoticeHours: 2, noShowFeeEur: 10 }).horasCancelacion).toBe(2);
   });
 });
 
@@ -104,5 +106,13 @@ describe("plantilla del WhatsApp de la señal", () => {
   it("mensajeDeFianza usa la plantilla del perfil", () => {
     const m = mensajeDeFianza({ clientName: "Ana", salonName: "PeluChic", startISO: "2026-09-29T15:00:00.000Z", bizumPhone: "600", importeEur: 20, deadlineISO: "2026-09-28T10:00:00.000Z", plantilla: "{salon}: {importe} al {bizum}" }, "2026-09-28T08:00:00.000Z");
     expect(m).toBe("PeluChic: 20 € al 600");
+  });
+});
+
+describe("la tarjeta de cancelación de la portada dice lo mismo", () => {
+  it("sin señal, con señal fija y con porcentaje", () => {
+    expect(resumenCancelacionSenal(reglaSenal({}), eur)).toBe("Hasta 24 horas antes, sin coste y sin dar explicaciones.");
+    expect(resumenCancelacionSenal(reglaSenal({ depositEnabled: true, depositAmountEur: 20 }), eur)).toBe("Hasta 24 horas antes, sin coste. Para confirmar la cita se pide una señal de 20 € por Bizum que se descuenta del servicio.");
+    expect(resumenCancelacionSenal(reglaSenal({ depositEnabled: true, depositMode: "porcentaje", depositPercent: 25, depositCancelHours: 48 }), eur)).toBe("Hasta 2 días antes, sin coste. Para confirmar la cita se pide una señal del 25 % por Bizum que se descuenta del servicio.");
   });
 });

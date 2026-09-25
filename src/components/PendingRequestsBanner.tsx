@@ -15,7 +15,6 @@ import { StylistDot } from "@/components/StylistAvatar";
 import { Button } from "@/components/ui/button";
 import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
 import { DepositStatusControls } from "@/components/DepositStatusControls";
-import { deadlineHours, depositDueAt } from "@/lib/deposit-deadline";
 import {
   Select,
   SelectContent,
@@ -23,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { importeSenal, reglaSenal } from "@/lib/senal";
+import { importeSenal, mensajeErrorSenal, prepararPeticionSenal, reglaSenal } from "@/lib/senal";
 
 export interface PendingRequestsBannerProps {
   /** Abre el detalle de la cita (AppointmentDetailSheet) para cambiar duración u hora. */
@@ -129,13 +128,21 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
       return;
     }
     const requestedAt = new Date().toISOString();
+    // Misma comprobación que al confirmar el envío: si no se puede pedir (cita
+    // pasada, ya recibida…), no se abre WhatsApp; y el plazo del mensaje es
+    // el que quedará, nunca después de la cita.
+    const preparada = prepararPeticionSenal(a, reglaSen, importeDeLaCita(a), new Date(requestedAt));
+    if (!preparada.ok) {
+      toast.error(mensajeErrorSenal(preparada.error));
+      return;
+    }
     const url = enlaceDeFianza(telefono, {
       clientName: a.clientName,
       startISO: a.start,
       salonName,
       bizumPhone: depositBizumPhone,
-      importeEur: importeDeLaCita(a),
-      deadlineISO: depositDueAt(requestedAt, depositDeadlineHours),
+      importeEur: preparada.importeEur,
+      deadlineISO: preparada.venceISO,
       plantilla: reglaSen.plantilla,
     }, requestedAt);
     window.open(url, "_blank", "noopener,noreferrer");
@@ -148,7 +155,7 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
         label: "Sí, enviado",
         onClick: () => {
           const error = pedirSenal(a.id);
-          if (error) toast.error("No se ha podido marcar la señal como pedida", { description: error });
+          if (error) toast.error("No se ha podido marcar la señal como pedida", { description: mensajeErrorSenal(error) });
           else toast.success("Señal pedida");
         },
       },

@@ -64,6 +64,7 @@ type PerfilSenal = Pick<
   | "depositCancelHours"
   | "depositTemplate"
   | "noShowNoticeHours"
+  | "noShowFeeEur"
 >;
 
 function ventana(h: number | undefined): VentanaSenal {
@@ -88,7 +89,12 @@ export function reglaSenal(perfil: Partial<PerfilSenal> | null | undefined): Reg
     bizumTelefono: (p.depositBizumPhone ?? "").trim(),
     automatica: p.depositAuto === true,
     liberacionAutomatica: p.depositAutoRelease === true,
-    horasCancelacion: Math.max(0, Number(p.depositCancelHours ?? p.noShowNoticeHours ?? 24) || 0),
+    // Por defecto, la misma que la casilla «Acepto la política de cancelación»
+    // de la reserva: con recargo por plantón, su antelación; sin él, 24 h.
+    horasCancelacion: Math.max(
+      0,
+      Number(p.depositCancelHours ?? ((p.noShowFeeEur ?? 0) > 0 ? (p.noShowNoticeHours ?? 2) : 24)) || 0,
+    ),
     plantilla: (p.depositTemplate ?? "").trim(),
   };
 }
@@ -533,4 +539,43 @@ export function rellenarPlantillaSenal(plantilla: string | undefined, d: DatosMe
 /** Marcadores imprescindibles que faltan en una plantilla (para avisar en Ajustes). */
 export function marcadoresQueFaltan(plantilla: string): string[] {
   return ["{importe}", "{bizum}"].filter((m) => !plantilla.includes(m));
+}
+
+/**
+ * Frase corta de cancelación y señal para la tarjeta de la portada. Dice lo
+ * mismo que la reserva y la FAQ: una sola regla, un solo mensaje.
+ */
+export function resumenCancelacionSenal(regla: ReglaSenal, eur: (n: number) => string): string {
+  const h = regla.horasCancelacion;
+  const hasta = h % 24 === 0 && h > 0 ? `Hasta ${h / 24 === 1 ? "24 horas" : `${h / 24} días`} antes` : `Hasta ${h} h antes`;
+  if (!regla.activa) return `${hasta}, sin coste y sin dar explicaciones.`;
+  const cuanto = regla.modo === "porcentaje" ? `una señal del ${regla.porcentaje} %` : `una señal de ${eur(regla.importeFijoEur)}`;
+  return `${hasta}, sin coste. Para confirmar la cita se pide ${cuanto} por Bizum que se descuenta del servicio.`;
+}
+
+/** Frase para la dueña por cada código de error (los códigos son el contrato; esto, el texto por defecto). */
+export function mensajeErrorSenal(error: CodigoErrorSenal): string {
+  switch (error) {
+    case "SENAL_SIN_IMPORTE": return "Esta cita no lleva señal con la regla del salón.";
+    case "SENAL_ESTADO_INVALIDO": return "La señal de esta cita ya no está en un estado que permita eso.";
+    case "SENAL_IMPORTE_INVALIDO": return "El importe tiene que ser mayor que cero.";
+    case "SENAL_CITA_CERRADA": return "La cita ya ha pasado o está cancelada: no se puede pedir señal.";
+  }
+}
+
+/**
+ * Prepara el WhatsApp de la señal SIN cambiar nada: comprueba que se puede
+ * pedir y calcula el plazo que dirá el mensaje (el mismo que quedará al
+ * confirmar el envío, ya topado con la hora de la cita).
+ */
+export function prepararPeticionSenal(
+  c: CitaCiclo,
+  regla: ReglaSenal,
+  importeEur: number,
+  ahora: Date = new Date(),
+): { ok: true; importeEur: number; venceISO: string } | { ok: false; error: CodigoErrorSenal } {
+  const r = pedirSenal(c, regla, importeEur, ahora);
+  if (!r.ok) return r;
+  const vence = r.patch.depositDueAt ?? vencimientoSenal(c, regla.ventanaHoras);
+  return { ok: true, importeEur: r.patch.depositEur ?? importeEur, venceISO: vence ?? ahora.toISOString() };
 }

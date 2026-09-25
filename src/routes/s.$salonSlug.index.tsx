@@ -69,7 +69,7 @@ import { TeamShowcase } from "@/components/twentyfirst/team-showcase";
 import { cn } from "@/lib/utils";
 import { eur } from "@/lib/copy";
 import { faqPublica } from "@/lib/faq";
-import { reglaSenal, respuestaFaqSenal, servicioLlevaSenal } from "@/lib/senal";
+import { reglaSenal, respuestaFaqSenal, resumenCancelacionSenal, servicioLlevaSenal, type ReglaSenal } from "@/lib/senal";
 
 export const Route = createFileRoute("/s/$salonSlug/")({
   component: SalonHome,
@@ -220,7 +220,7 @@ function bentoItemsFor(
   noShowNoticeHours: number,
   single: boolean,
   proName?: string,
-  senalEur = 0,
+  regla: ReglaSenal = reglaSenal({}),
 ) {
   const palabra = professionalWord(tipo);
   // Señal por Bizum (caso PeluChic): el salón no penaliza, pide una señal al
@@ -229,9 +229,7 @@ function bentoItemsFor(
   const cancelacion =
     recargoActivo({ noShowFeeEur })
       ? `Hasta ${noShowNoticeHours} h antes, sin coste. Después, ${eur(noShowFeeEur)} de penalización.`
-      : senalEur > 0
-        ? `Hasta 24 horas antes, sin coste. Al confirmar la cita se pide una señal de ${eur(senalEur)} por Bizum que se descuenta del servicio.`
-        : "Hasta 24 horas antes, sin coste y sin dar explicaciones.";
+      : resumenCancelacionSenal(regla, eur);
   return [
     {
       Icon: CalendarCheck,
@@ -426,25 +424,18 @@ function SalonHome() {
   // Salón con un solo profesional (caso Adam): la sección de equipo, el
   // bento "Eliges barbero" y la FAQ de elegir profesional no tienen sentido.
   const soloPro = employees[0];
-  const senalEur = profile.depositEnabled ? (profile.depositAmountEur ?? 0) : 0;
+  const regla = reglaSenal(profile);
   const bentoItems = bentoItemsFor(
     tipo,
     noShowFeeEur,
     noShowNoticeHours,
     soloUno,
     soloPro?.name,
-    senalEur,
+    regla,
   );
-  const regla = reglaSenal(profile);
   const faq = faqPublica(tipo, noShowFeeEur, noShowNoticeHours, profile.faq, soloUno, respuestaFaqSenal(regla, eur)).map(
     (entry) => {
       if (profile.faq?.length) return entry;
-      if (entry.q === "¿Hace falta pagar por adelantado?" && senalEur > 0) {
-        return {
-          ...entry,
-          a: `Solo una señal de ${eur(senalEur)} por Bizum cuando el salón confirma tu cita: se descuenta del precio del servicio y el resto lo pagas en el salón.`,
-        };
-      }
       if (soloUno && entry.q === "¿Quién me va a atender?" && soloPro) {
         return { ...entry, a: `Siempre te atiende ${soloPro.name}, sin turnos ni sustitutos.` };
       }

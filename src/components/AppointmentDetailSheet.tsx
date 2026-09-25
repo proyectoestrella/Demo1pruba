@@ -28,7 +28,6 @@ import { BotonesDesenlace, useAplicarDesenlace } from "@/components/CitasPorReso
 import { Button } from "@/components/ui/button";
 import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
 import { DepositStatusControls } from "@/components/DepositStatusControls";
-import { deadlineHours, depositDueAt } from "@/lib/deposit-deadline";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -58,7 +57,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Calendar, Clock, Euro, CheckCheck, MessageCircle, TriangleAlert } from "lucide-react";
-import { importeSenal, reglaSenal } from "@/lib/senal";
+import { importeSenal, mensajeErrorSenal, prepararPeticionSenal, reglaSenal } from "@/lib/senal";
 
 /** Duraciones que puede elegir el salón al ajustar una cita, en minutos. */
 const DURATION_OPTIONS_MIN = [15, 30, 45, 60, 90, 120, 150, 180];
@@ -235,13 +234,21 @@ export function AppointmentDetailSheet({
       return;
     }
     const requestedAt = new Date().toISOString();
+    // Misma comprobación que al confirmar el envío: si no se puede pedir (cita
+    // pasada, ya recibida…), no se abre WhatsApp; y el plazo del mensaje es
+    // el que quedará, nunca después de la cita.
+    const preparada = prepararPeticionSenal(appointment, reglaSen, importeDeEstaCita, new Date(requestedAt));
+    if (!preparada.ok) {
+      toast.error(mensajeErrorSenal(preparada.error));
+      return;
+    }
     const url = enlaceDeFianza(telefono, {
       clientName: appointment.clientName,
       startISO: appointment.start,
       salonName,
       bizumPhone: depositBizumPhone,
-      importeEur: importeDeEstaCita,
-      deadlineISO: depositDueAt(requestedAt, depositDeadlineHours),
+      importeEur: preparada.importeEur,
+      deadlineISO: preparada.venceISO,
       plantilla: reglaSen.plantilla,
     }, requestedAt);
     window.open(url, "_blank", "noopener,noreferrer");
@@ -254,7 +261,7 @@ export function AppointmentDetailSheet({
         label: "Sí, enviado",
         onClick: () => {
           const error = pedirSenal(appointment.id);
-          if (error) toast.error("No se ha podido marcar la señal como pedida", { description: error });
+          if (error) toast.error("No se ha podido marcar la señal como pedida", { description: mensajeErrorSenal(error) });
           else toast.success("Señal pedida");
         },
       },

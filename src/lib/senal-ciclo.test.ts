@@ -13,6 +13,7 @@ import {
   estadoSenal,
   moverSenal,
   pedirSenal,
+  prepararPeticionSenal,
   reabrirSenal,
   reajustarSenal,
   recibirSenal,
@@ -230,5 +231,21 @@ describe("reserva por la web y citas antiguas", () => {
     expect(estadoSenal(antigua, madrid("2026-09-28", "13:00"))).toBe("vencida");
     expect(estadoSenal({ ...antigua, depositReceivedAt: isoDelSalon("2026-09-28", "10:00") })).toBe("recibida");
     expect(estadoSenal(cita())).toBe("no_aplica");
+  });
+});
+
+describe("preparar el WhatsApp sin cambiar nada", () => {
+  it("el plazo del mensaje es el que quedará y no pasa de la cita", () => {
+    expect(prepararPeticionSenal(cita(), regla, 20, madrid("2026-09-29", "16:00"))).toEqual({ ok: true, importeEur: 20, venceISO: isoDelSalon("2026-09-29", "17:00") });
+    expect(prepararPeticionSenal(cita(), regla, 20, madrid("2026-09-28", "10:00"))).toEqual({ ok: true, importeEur: 20, venceISO: isoDelSalon("2026-09-28", "12:00") });
+  });
+
+  it("una cita que ya pasó no deja ni abrir el WhatsApp (caso real de la demo, 25/09 a las 18:54)", () => {
+    expect(prepararPeticionSenal(cita({ start: isoDelSalon("2026-09-25", "10:00"), status: "pending" }), regla, 20, madrid("2026-09-25", "18:54"))).toEqual({ ok: false, error: "SENAL_CITA_CERRADA" });
+  });
+
+  it("reenviar mientras sigue en plazo dice el mismo vencimiento", () => {
+    const pedida = cita({ depositStatus: "pedida", depositEur: 20, depositRequestedAt: isoDelSalon("2026-09-28", "09:00"), depositDueAt: isoDelSalon("2026-09-28", "11:00") });
+    expect(prepararPeticionSenal(pedida, regla, 20, madrid("2026-09-28", "10:00"))).toEqual({ ok: true, importeEur: 20, venceISO: isoDelSalon("2026-09-28", "11:00") });
   });
 });
