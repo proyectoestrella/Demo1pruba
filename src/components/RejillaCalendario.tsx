@@ -18,6 +18,18 @@ import { cn } from "@/lib/utils";
 
 /** Alto de una hora en la rejilla. Fijo, como en Google: el día se recorre con scroll. */
 export const PX_HORA = 64;
+/** Por debajo de esto, las citas de media hora no se leen: la rejilla pasa a tener scroll. */
+export const PX_HORA_MINIMO = 48;
+
+/**
+ * Altura de una hora para que el rango elegido llene el alto disponible (lo
+ * que queda bajo la cabecera de días); si no cabe ni a 48 px por hora, 48 y
+ * scroll. Función pura, con test.
+ */
+export function altoPorHora(altoDisponible: number, horas: number): number {
+  if (horas <= 0 || altoDisponible <= 0) return PX_HORA;
+  return Math.max(PX_HORA_MINIMO, Math.floor(altoDisponible / horas));
+}
 
 export type ColumnaRejilla = {
   clave: string;
@@ -61,8 +73,25 @@ export function RejillaCalendario({
   onHueco: (employeeId: EmployeeId, minuto: number, dia: Date) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const cabecera = useRef<HTMLDivElement>(null);
   const horas = hasta - desde;
-  const y = (min: number) => ((min - desde * 60) / 60) * PX_HORA;
+  // La altura de una hora se ajusta al hueco: el rango elegido llena la
+  // pantalla y solo hay scroll si no cabe a 48 px por hora. Se mide con
+  // ResizeObserver, así sigue bien al abrir un panel o cambiar la ventana.
+  const [px, setPx] = useState(PX_HORA);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const medir = () => {
+      const altoCab = cabecera.current?.offsetHeight ?? 64;
+      setPx(altoPorHora(el.clientHeight - altoCab - 1, horas));
+    };
+    medir();
+    const obs = new ResizeObserver(medir);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [horas]);
+  const y = (min: number) => ((min - desde * 60) / 60) * px;
 
   // Al abrir, el día laborable a la vista: desde la hora actual si hoy está
   // en pantalla y ya ha empezado la jornada; si no, desde la primera franja.
@@ -88,7 +117,7 @@ export function RejillaCalendario({
     <div ref={ref} className="relative min-h-0 flex-1 overflow-auto overscroll-contain">
       <div className="grid" style={{ gridTemplateColumns: `52px repeat(${columnas.length}, minmax(${anchoMinimo}px, 1fr))` }}>
         {/* Cabecera fija: esquina vacía y un encabezado por columna. */}
-        <div className="sticky top-0 left-0 z-[12] border-r border-b border-k-linea-f bg-k-cab" />
+        <div ref={cabecera} className="sticky top-0 left-0 z-[12] border-r border-b border-k-linea-f bg-k-cab" />
         {columnas.map((c) => {
           const cerrado = c.equipo.every((e) => franjasProfesional(e, c.dia.getDay()).length === 0);
           const Etiqueta = c.onCabecera ? "button" : "div";
@@ -108,13 +137,13 @@ export function RejillaCalendario({
         })}
 
         {/* Columna de horas, fija a la izquierda. */}
-        <div className="sticky left-0 z-[9] border-r border-k-linea-f bg-k-cab" style={{ height: horas * PX_HORA }}>
+        <div className="sticky left-0 z-[9] border-r border-k-linea-f bg-k-cab" style={{ height: horas * px }}>
           {Array.from({ length: horas }, (_, i) =>
             i === 0 ? null : (
               <span
                 key={i}
                 className="absolute right-2 -translate-y-1/2 text-[11px] font-bold text-cafe-medio tabular-nums"
-                style={{ top: i * PX_HORA }}
+                style={{ top: i * px }}
               >
                 {desde + i}:00
               </span>
@@ -135,6 +164,7 @@ export function RejillaCalendario({
             services={services}
             colorPor={colorPor}
             y={y}
+            px={px}
             onCita={onCita}
             onHueco={onHueco}
           />
@@ -155,6 +185,7 @@ function ColumnaDia({
   services,
   colorPor,
   y,
+  px,
   onCita,
   onHueco,
 }: {
@@ -168,6 +199,7 @@ function ColumnaDia({
   services: Service[];
   colorPor: "servicio" | "profesional";
   y: (min: number) => number;
+  px: number;
   onCita: (a: Appointment) => void;
   onHueco: (employeeId: EmployeeId, minuto: number, dia: Date) => void;
 }) {
@@ -195,14 +227,14 @@ function ColumnaDia({
   }
   if (cursor < (desde + horas) * 60) cerradas.push({ ini: cursor, fin: (desde + horas) * 60 });
 
-  const minutoDe = (evY: number) => Math.floor((desde * 60 + (evY / PX_HORA) * 60) / 15) * 15;
+  const minutoDe = (evY: number) => Math.floor((desde * 60 + (evY / px) * 60) / 15) * 15;
   const quienAtiende = (min: number): Employee | undefined =>
     equipo.find((e) => franjasProfesional(e, weekday).some((f) => min >= f.start && min < f.end)) ?? equipo[0];
 
   const fondo: CSSProperties = {
-    height: horas * PX_HORA,
+    height: horas * px,
     backgroundImage: `linear-gradient(var(--k-linea-f) 1px, transparent 1px), linear-gradient(var(--k-linea-media) 1px, transparent 1px)`,
-    backgroundSize: `100% ${PX_HORA}px, 100% ${PX_HORA / 2}px`,
+    backgroundSize: `100% ${px}px, 100% ${px / 2}px`,
   };
 
   return (
@@ -246,7 +278,7 @@ function ColumnaDia({
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-1 z-[3] rounded-md border border-dashed border-cafe-medio bg-card/80 px-1.5 text-[11px] font-bold text-cafe-medio tabular-nums"
-          style={{ top: y(fantasma) + 1, height: PX_HORA / 2 - 2 }}
+          style={{ top: y(fantasma) + 1, height: px / 2 - 2 }}
         >
           + {minutosAHora(fantasma)}
         </div>
@@ -256,7 +288,7 @@ function ColumnaDia({
         const ini = minutosDe(a.start);
         const style: CSSProperties = {
           top: y(ini) + 1,
-          height: Math.max(18, (a.duration / 60) * PX_HORA - 2),
+          height: Math.max(18, (a.duration / 60) * px - 2),
           left: `calc(${(carril / total) * 100}% + 2px)`,
           width: `calc(${100 / total}% - 4px)`,
         };
@@ -283,7 +315,7 @@ function ColumnaDia({
           />
         );
       })}
-      {esHoy && <LineaAhora y={y(minutosDe(ahora))} alto={horas * PX_HORA} />}
+      {esHoy && <LineaAhora y={y(minutosDe(ahora))} alto={horas * px} />}
     </div>
   );
 }
