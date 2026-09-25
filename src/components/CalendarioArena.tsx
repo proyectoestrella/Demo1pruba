@@ -320,6 +320,8 @@ function BloqueCita({
   const ini = minutosDe(a.start);
   const nombreServicio = serviceLabelOf(a, carta);
   const rango = `${hora(a.start)}${a.duration >= 60 ? `–${minutosAHora(ini + a.duration)}` : ""}`;
+  const [nombre, ...resto] = (a.clientName || "Sin nombre").trim().split(/\s+/);
+  const apellido = resto.join(" ");
   return (
     <button
       type="button"
@@ -343,17 +345,19 @@ function BloqueCita({
       {vino && variante !== "semana" && (
         <span className="absolute top-[7px] right-2 rounded-md bg-white/80 px-1.5 text-[10.5px] font-bold text-[color:var(--k-vino)]">✓ vino</span>
       )}
-      <b
-        className={cn(
-          "line-clamp-2 font-extrabold",
-          variante === "semana" ? "text-[11.5px] leading-[1.2]" : corta && variante === "crono" ? "line-clamp-3 text-xs" : "text-[13px]",
-          vino && variante !== "semana" && "pr-12",
-        )}
-      >
-        {a.clientName || "Sin nombre"}
-      </b>
+      {/* En bloques estrechos (citas cortas, o la semana) el nombre va en
+          dos líneas —nombre y apellido— cortadas cada una, sin servicio: el
+          color ya lo dice y el nombre entero sale al pasar el ratón. */}
+      {corta || variante === "semana" ? (
+        <b className={cn("font-extrabold", variante === "semana" || variante === "crono" ? "text-[11.5px] leading-[1.2]" : "text-[13px]", vino && variante !== "semana" && "pr-12")}>
+          <span className="block truncate">{nombre}</span>
+          {apellido && <span className="block truncate">{apellido}</span>}
+        </b>
+      ) : (
+        <b className={cn("line-clamp-2 text-[13px] font-extrabold", vino && "pr-12")}>{a.clientName || "Sin nombre"}</b>
+      )}
       <span className={cn("font-bold text-k-tinta2 tabular-nums", variante === "semana" ? "text-[10.5px]" : corta ? "text-[11px]" : "text-xs")}>{rango}</span>
-      {variante !== "semana" && (
+      {variante !== "semana" && !corta && (
         <span className={cn("line-clamp-2 text-k-tinta2", corta ? "text-[11px]" : "text-xs")}>
           {corta ? nombreServicio.split(/ y | \/ | \+ /)[0] : nombreServicio}
           {pendiente ? " · por confirmar" : ""}

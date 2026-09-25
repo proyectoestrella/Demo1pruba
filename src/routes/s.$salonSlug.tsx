@@ -232,7 +232,7 @@ function SalonLayout() {
     >
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
         {/* Barra de avance de lectura, pegada al borde inferior de la cabecera. */}
-        <ScrollProgress className="absolute inset-x-0 bottom-0 top-auto h-0.5 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
+        <ScrollProgress className="absolute inset-x-0 bottom-0 top-auto h-0.5 bg-none bg-primary" />
         <div className="mx-auto flex max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] items-center justify-between gap-4 px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
             <Link

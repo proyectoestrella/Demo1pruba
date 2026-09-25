@@ -57,7 +57,6 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
-import { AuroraText } from "@/components/magicui/aurora-text";
 import { AvatarCircles } from "@/components/magicui/avatar-circles";
 import { BentoCard, BentoGrid } from "@/components/magicui/bento-grid";
 import { BorderBeam } from "@/components/magicui/border-beam";
@@ -501,8 +500,9 @@ function SalonHome() {
           height={1280}
           fetchPriority="high"
         />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/92 via-black/60 to-black/25" />
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(75%_60%_at_15%_50%,rgba(0,0,0,0.55),transparent_70%)]" />
+        {/* Velo en tinta café sobre la foto (nunca negro puro): lo justo para
+            que el texto blanco se lea encima de cualquier portada. */}
+        <div className="absolute inset-0 -z-10 bg-cafe/60" />
 
         <div className="mx-auto w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-20 sm:py-24 md:py-32">
           <AnimatedGroup variants={HERO_IN} className="max-w-2xl space-y-6">
@@ -909,7 +909,7 @@ function SalonHome() {
 
           {/* Muro en dos filas que se cruzan. Se para al pasar el ratón para
               poder leer la que te interese. */}
-          <Reveal className="relative">
+          <Reveal className="relative [mask-image:linear-gradient(to_right,transparent,#000_7%,#000_93%,transparent)]">
             <Marquee pauseOnHover className="[--duration:38s] [--gap:1.25rem]">
               {reviews.map((r) => (
                 <ReviewCard key={r.name} {...r} />
@@ -920,9 +920,8 @@ function SalonHome() {
                 <ReviewCard key={r.name} {...r} />
               ))}
             </Marquee>
-            {/* Desvanecido lateral para que las tarjetas no se corten en seco. */}
-            <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-background sm:w-28" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background sm:w-28" />
+            {/* Sin degradados pintados (DESIGN.md): el borde del carrusel se
+                recorta con una máscara, así las tarjetas no se cortan en seco. */}
           </Reveal>
         </section>
       )}
@@ -1011,14 +1010,11 @@ function SalonHome() {
 
       {/* CTA final */}
       <section className="relative isolate overflow-hidden border-t border-border/40">
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 -z-10 bg-[radial-gradient(60%_80%_at_50%_0%,color-mix(in_oklab,var(--color-primary)_18%,transparent),transparent)]"
-        />
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-nata" />
         <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-20 text-center md:py-28">
           <Reveal className="flex flex-col items-center">
             <h2 className="font-display text-3xl md:text-5xl">
-              ¿Nos vemos <AuroraText colors={["#d6ab68", "#f0e6d2", "#b98a4d"]}>pronto</AuroraText>?
+              ¿Nos vemos pronto?
             </h2>
             <p className="mt-3 text-muted-foreground">
               {soloUno
