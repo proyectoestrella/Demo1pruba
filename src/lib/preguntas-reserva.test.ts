@@ -98,4 +98,11 @@ describe("lista propia: orden, aplicables, validación y obligatorias", () => {
     expect(id).toBe("plfls");
     expect(idPreguntaNueva([...lista, { ...lista[0], id }], 1_000_000)).toBe("plfls2");
   });
+
+  it("aviso de salud: comprobación blanda por palabras clave", async () => {
+    const { preguntaPorSalud } = await import("./preguntas-reserva");
+    expect(preguntaPorSalud("¿Tienes alguna alergia?")).toBe(true);
+    expect(preguntaPorSalud("¿Estás embarazada?")).toBe(true);
+    expect(preguntaPorSalud("¿Qué largo de pelo tienes?")).toBe(false);
+  });
 });

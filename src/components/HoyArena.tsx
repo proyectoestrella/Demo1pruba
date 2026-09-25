@@ -8,7 +8,7 @@ import { saludo, useCitasVisibles, useEquipoVisible, useMiembroActual, usePermis
 import { alcance, puede } from "@/lib/permisos";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { serviceLabelOf } from "@/lib/appointment-services";
-import { estadoSenal, reglaSenal } from "@/lib/senal-maqueta";
+import { estadoSenal } from "@/lib/senal";
 import { agendaDeHoy, dineroDelRango } from "@/lib/dinero";
 import { esCobrable } from "@/lib/caja";
 import { duracionRecordada } from "@/lib/derive";
@@ -95,7 +95,6 @@ export function HoyArena() {
   const veDinero = puede(permisos, "dinero.ver-global") || alcance(permisos, "dinero.ver-propio") === "propio";
   const dineroPropio = !puede(permisos, "dinero.ver-global");
   const veDeudas = puede(permisos, "recargo.gestionar");
-  const perfilSalon = useSalonStore((s) => s.salonProfile);
   const mostrarSolicitudes = useSalonStore((s) => s.salonProfile.mostrarSolicitudes ?? true);
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur ?? 0);
   const horasSenal = useSalonStore((s) => deadlineHours(s.salonProfile.depositDeadlineHours));
@@ -123,8 +122,7 @@ export function HoyArena() {
   const terminadas = hoy.filter((a) => terminada(a, ahora) && !(mostrarSolicitudes && a.status === "pending"));
   const sinMarcar = terminadas.filter((a) => a.status === "pending" || a.status === "confirmed").length;
   const solicitudesVisibles = mostrarSolicitudes ? pendientes.length : 0;
-  const reglaDeSenal = reglaSenal(perfilSalon);
-  const senalesVencidas = appointments.filter((a) => estadoSenal(a, reglaDeSenal, ahora) === "vencida").length;
+  const senalesVencidas = appointments.filter((a) => estadoSenal(a, ahora) === "vencida").length;
   const pendienteDeTi = solicitudesVisibles + sinMarcar + senalesVencidas;
   const manana = new Date(ahora);
   manana.setDate(manana.getDate() + 1);

@@ -2,7 +2,7 @@ import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, CalendarPlus, Download, MapPin } from "lucide-react";
 import { employeesForType, servicesForType } from "@/lib/mock/salon";
-import { reglaSenal, textoSenalPublico } from "@/lib/senal-maqueta";
+import { reglaSenal, textoSenalPublico } from "@/lib/senal";
 import { useSalonStore } from "@/lib/store";
 import { duracionFlexibleActiva } from "@/lib/duracion-flexible";
 import { recargoActivo } from "@/lib/recargo-activo";
@@ -155,7 +155,7 @@ function Confirmation() {
   // El único mensaje sobre la señal (9j): el de la regla del salón, o nada.
   const textoSenal = textoSenalPublico(
     reglaSenal(profile),
-    { duration: totalMin, serviceIds: chosen.map((s) => s.id), priceEur: total },
+    { durationMin: totalMin, serviceIds: chosen.map((s) => s.id), priceEur: total },
     profile.name,
     (n) => eur(n).replace(",00", ""),
   );

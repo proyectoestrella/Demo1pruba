@@ -2,19 +2,18 @@ import { marcarAvisoDeCita } from "@/lib/deshacer-maqueta";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useSalonStore } from "@/lib/store";
-import { whatsappUrl } from "@/lib/campanas";
+import { enlaceDeFianza } from "@/lib/avisos";
 import { eur, hora } from "@/lib/copy";
 import {
-  accionesSenal,
   estadoSenal,
+  importeSenal,
   mensajeErrorSenal,
   prepararPeticionSenal,
   reglaSenal,
-  rellenarPlantillaSenal,
+  type CodigoErrorSenal,
   type EstadoSenal,
-  type MetodoSenal,
-} from "@/lib/senal-maqueta";
-import type { Appointment } from "@/lib/mock/types";
+} from "@/lib/senal";
+import type { Appointment, MetodoSenal } from "@/lib/mock/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +22,7 @@ import { cn } from "@/lib/utils";
  * dueña puede hacer. «Pedir» abre WhatsApp con el mensaje escrito y solo marca
  * «pedida» si ella confirma que lo envió: abrir WhatsApp no es enviar.
  * «Recibida» la marca ella al ver el Bizum en su banco: siShow no toca dinero.
- * Contra el adaptador `senal-maqueta.ts` (CONECTAR al fusionar con BACKEND).
+ * Contra `src/lib/senal.ts` (BACKEND, contrato en `docs/contrato-senal.md`).
  */
 const ETIQUETA: Record<EstadoSenal, { texto: string; clase: string }> = {
   no_aplica: { texto: "Sin señal", clase: "bg-nata text-cafe-medio" },
@@ -46,47 +45,56 @@ const METODOS: { id: MetodoSenal; texto: string }[] = [
 
 export function SenalCita({ cita, compacta = false }: { cita: Appointment; compacta?: boolean }) {
   const perfil = useSalonStore((s) => s.salonProfile);
-  const appointments = useSalonStore((s) => s.appointments);
   const clients = useSalonStore((s) => s.clients);
-  const updateAppointment = useSalonStore((s) => s.updateAppointment);
+  const markDepositRequested = useSalonStore((s) => s.markDepositRequested);
+  const recibirSenal = useSalonStore((s) => s.recibirSenal);
+  const deshacerSenalRecibida = useSalonStore((s) => s.deshacerSenalRecibida);
+  const darMasTiempoSenal = useSalonStore((s) => s.darMasTiempoSenal);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const regla = reglaSenal(perfil);
-  // «Nuevas»: sin ninguna visita completada antes.
-  const esNueva = !appointments.some((b) => b.clientId === cita.clientId && b.id !== cita.id && b.status === "completed");
-  const estado = estadoSenal(cita, regla, new Date(), esNueva);
-  const acciones = accionesSenal({ appointments, updateAppointment, cancelAppointment });
-  const [preguntaEnvio, setPreguntaEnvio] = useState<{ importeEur: number; venceISO: string } | null>(null);
+  const estado = estadoSenal(cita, new Date());
+  const [preguntaEnvio, setPreguntaEnvio] = useState<{ importeEur: number; requestedAtISO: string } | null>(null);
   const [recibiendo, setRecibiendo] = useState(false);
   const [importe, setImporte] = useState(String(cita.depositEur ?? ""));
   const [metodo, setMetodo] = useState<MetodoSenal>("bizum");
 
-  if (estado === "no_aplica" && !regla.bizum) return null;
+  if (estado === "no_aplica" && !regla.bizumTelefono) return null;
 
   // Lote 12: el aviso de lo hecho (con «Deshacer») lo pone el registro de cambios; aquí solo los errores.
-  const resultado = (error: string | null, _ok: string) => (error ? toast.error(mensajeErrorSenal(error as never)) : undefined);
+  const resultado = (error: CodigoErrorSenal | null) => (error ? toast.error(mensajeErrorSenal(error)) : undefined);
 
   function pedir() {
-    const p = prepararPeticionSenal(cita, regla, estado === "no_aplica" ? regla.importeEur : undefined);
-    if (!p.ok) return toast.error(mensajeErrorSenal(p.error));
+    const importeDeEstaCita =
+      cita.depositEur && cita.depositEur > 0
+        ? cita.depositEur
+        : importeSenal(regla, { serviceIds: cita.serviceIds, durationMin: cita.duration, priceEur: cita.priceEur }) || regla.importeFijoEur;
     const telefono = clients.find((c) => c.id === cita.clientId)?.phone;
     if (!telefono) return toast.error("Esta clienta no tiene teléfono al que escribir.");
-    const texto = rellenarPlantillaSenal(regla.plantilla, {
-      nombre: (cita.clientName || "").split(" ")[0],
-      salon: perfil.name,
-      importeEur: p.importeEur,
-      bizum: regla.bizum,
-      startISO: cita.start,
-      venceISO: p.venceISO,
-    });
-    window.open(whatsappUrl(telefono, texto), "_blank", "noopener,noreferrer");
-    setPreguntaEnvio({ importeEur: p.importeEur, venceISO: p.venceISO });
+    const requestedAt = new Date().toISOString();
+    const preparada = prepararPeticionSenal(cita, regla, importeDeEstaCita, new Date(requestedAt));
+    if (!preparada.ok) return toast.error(mensajeErrorSenal(preparada.error));
+    const url = enlaceDeFianza(
+      telefono,
+      {
+        clientName: cita.clientName,
+        startISO: cita.start,
+        salonName: perfil.name,
+        bizumPhone: regla.bizumTelefono,
+        importeEur: preparada.importeEur,
+        deadlineISO: preparada.venceISO,
+        plantilla: regla.plantilla,
+      },
+      requestedAt,
+    );
+    window.open(url, "_blank", "noopener,noreferrer");
+    setPreguntaEnvio({ importeEur: preparada.importeEur, requestedAtISO: requestedAt });
   }
 
   const etiqueta = ETIQUETA[estado];
   const vence = cita.depositDueAt ? `antes de las ${hora(cita.depositDueAt)}${new Date(cita.depositDueAt).toDateString() === new Date().toDateString() ? "" : ` del ${new Date(cita.depositDueAt).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}`}` : "";
   const detalle: Partial<Record<EstadoSenal, string>> = {
     no_aplica: "Tu regla no la pide para esta cita. Puedes pedirla igualmente.",
-    por_pedir: `Tu regla pide una señal de ${eur(cita.depositEur ?? (regla.modo === "porcentaje" ? Math.max(1, Math.round((cita.priceEur * regla.porcentaje) / 100)) : regla.importeEur))}.`,
+    por_pedir: `Tu regla pide una señal de ${eur(cita.depositEur ?? importeSenal(regla, { serviceIds: cita.serviceIds, durationMin: cita.duration, priceEur: cita.priceEur }))}.`,
     pedida: `${eur(cita.depositEur ?? 0)} ${vence}. Márcala cuando la veas en tu banco.`,
     vencida: `Pasó el plazo sin recibir ${eur(cita.depositEur ?? 0)}. Tú decides: más tiempo o liberar el hueco.`,
     recibida: `${eur(cita.depositReceivedEur ?? cita.depositEur ?? 0)} por ${METODOS.find((m) => m.id === cita.depositMethod)?.texto.toLowerCase() ?? "bizum"}. Se descuenta sola al cobrar.`,
@@ -108,10 +116,9 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
             size="sm"
             className={btn}
             onClick={() => {
-              const error = acciones.pedirSenal(cita.id, preguntaEnvio.importeEur, preguntaEnvio.venceISO, regla.plazoHoras);
-              resultado(error, "Señal pedida: corre el plazo");
+              markDepositRequested(cita.id, preguntaEnvio.importeEur, preguntaEnvio.requestedAtISO);
               // Ya le ha escrito por WhatsApp: si se deshace, se le avisa de nuevo.
-              if (!error) marcarAvisoDeCita(cita.id);
+              marcarAvisoDeCita(cita.id);
               setPreguntaEnvio(null);
             }}
           >
@@ -142,7 +149,7 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
             className={btn}
             onClick={() => {
               const n = Number(importe.replace(",", "."));
-              resultado(acciones.recibirSenal(cita.id, { metodo, importeEur: Number.isFinite(n) && importe.trim() ? n : undefined }), "Señal recibida");
+              resultado(recibirSenal(cita.id, { metodo, importeEur: Number.isFinite(n) && importe.trim() ? n : undefined }));
               setRecibiendo(false);
             }}
           >
@@ -164,7 +171,7 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
               <Button size="sm" variant="secondary" className={btn} onClick={() => setRecibiendo(true)}>
                 Recibida
               </Button>
-              <Button size="sm" variant="outline" className={btn} onClick={() => resultado(acciones.darMasTiempoSenal(cita.id, regla.plazoHoras), "Plazo ampliado")}>
+              <Button size="sm" variant="outline" className={btn} onClick={() => resultado(darMasTiempoSenal(cita.id))}>
                 Dar más tiempo
               </Button>
               <Button size="sm" variant="ghost" className={btn} onClick={pedir}>
@@ -179,14 +186,14 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
               className={cn(btn, "text-melocoton-tinta hover:bg-melocoton")}
               onClick={() => {
                 if (!window.confirm(`¿Liberar el hueco de ${cita.clientName}? La cita se cancela y la señal se anula.`)) return;
-                resultado(acciones.liberarHueco(cita.id), "Hueco liberado");
+                cancelAppointment(cita.id, { porSalon: true });
               }}
             >
               Liberar el hueco
             </Button>
           )}
           {estado === "recibida" && (
-            <Button size="sm" variant="ghost" className={btn} onClick={() => resultado(acciones.deshacerSenalRecibida(cita.id), "Desmarcada")}>
+            <Button size="sm" variant="ghost" className={btn} onClick={() => resultado(deshacerSenalRecibida(cita.id))}>
               Deshacer
             </Button>
           )}

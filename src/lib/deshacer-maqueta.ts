@@ -1,6 +1,7 @@
 /**
- * Deshacer en toda la app (lote 12), CONECTADO al registro real de la store
- * de BACKEND (ensayo de fusión 2):
+ * Deshacer en toda la app (lote 12). Compatibilidad: adaptador sobre
+ * `useSalonStore`, no una maqueta — el registro, el estado y el deshacer son
+ * los de la store real:
  *   - el registro, el estado y el deshacer son los de `useSalonStore`
  *     (`cambios`, `estadoDeshacer`, `deshacerCambio`, `marcarAvisoEnviado`);
  *     las acciones ya vienen envueltas en store.ts, así que aquí NO se envuelve

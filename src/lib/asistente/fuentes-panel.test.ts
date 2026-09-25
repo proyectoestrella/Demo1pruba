@@ -29,7 +29,10 @@ describe("adaptador a FuentesAsistente de BACKEND", () => {
   test("configuración, señal y marketing responden sin inventar", () => {
     expect(f.enlaceReservas()).toBe("https://sishow.app/s/demo");
     expect(f.senal.regla()?.activa).toBe(false);
-    expect(f.preguntasReserva()?.length).toBeGreaterThan(0);
+    // «Barbería Pepe» es una barbería: las tres preguntas de siempre solo se
+    // activan por defecto en peluquería/unisex (preguntas-reserva.ts), igual
+    // que en la reserva pública real — aquí no hay ninguna que inventar.
+    expect(f.preguntasReserva()).toEqual([]);
     expect(f.marketing.campanas()?.length).toBeGreaterThan(0);
     const franja = f.marketing.franjaFloja();
     if (franja) expect(franja.pct).toBeGreaterThanOrEqual(0);

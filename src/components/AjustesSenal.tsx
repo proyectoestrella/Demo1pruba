@@ -3,14 +3,14 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useSalonStore } from "@/lib/store";
 import { eur } from "@/lib/copy";
+import { mensajeDeFianza } from "@/lib/avisos";
 import {
   MARCADORES_SENAL,
   PLANTILLA_SENAL_POR_DEFECTO,
   marcadoresQueFaltan,
   reglaSenal,
-  rellenarPlantillaSenal,
   resumenCancelacionSenal,
-} from "@/lib/senal-maqueta";
+} from "@/lib/senal";
 import type { SalonProfile } from "@/lib/mock/types";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -215,13 +215,14 @@ export function AjustesSenal() {
               </p>
             )}
             <p className="rounded-2xl bg-nata px-3 py-2 text-[13px] leading-snug text-cafe">
-              {rellenarPlantillaSenal(f.depositTemplate, {
-                nombre: "Lucía",
-                salon: perfil.name,
-                importeEur: regla.modo === "porcentaje" ? Math.max(1, Math.round((45 * regla.porcentaje) / 100)) : regla.importeEur,
-                bizum: f.depositBizumPhone || "600 111 222",
+              {mensajeDeFianza({
+                clientName: "Lucía",
+                salonName: perfil.name,
                 startISO: manana.toISOString(),
-                venceISO: vence.toISOString(),
+                bizumPhone: f.depositBizumPhone || "600 111 222",
+                importeEur: regla.modo === "porcentaje" ? Math.max(1, Math.round((45 * regla.porcentaje) / 100)) : regla.importeFijoEur,
+                deadlineISO: vence.toISOString(),
+                plantilla: f.depositTemplate,
               })}
             </p>
           </div>

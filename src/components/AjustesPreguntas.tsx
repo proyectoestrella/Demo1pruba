@@ -4,26 +4,25 @@ import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Plus, TriangleAlert } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
 import { inferBusinessType } from "@/lib/business-type";
-import { bookingQuestionsEnabled } from "@/lib/booking-answers";
 import {
   MAX_PREGUNTAS,
   idPreguntaNueva,
   preguntaPorSalud,
   preguntasAplicables,
   preguntasDelSalon,
-  type PreguntaReserva,
-  type TipoPreguntaReserva,
-} from "@/lib/preguntas-maqueta";
+} from "@/lib/preguntas-reserva";
+import type { PreguntaReserva, TipoPreguntaReserva } from "@/lib/mock/types";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 /**
- * Editor de las preguntas del formulario de reserva (lote 9k), contra el
- * contrato de BACKEND (adaptador preguntas-maqueta.ts, CONECTAR). Añadir,
- * ordenar, desactivar (mejor que borrar: las respuestas antiguas se siguen
- * leyendo con su texto), tipo, obligatoria y a qué servicios aplica, con la
- * vista previa de cómo lo ve la clienta. Se guarda la lista entera.
+ * Editor de las preguntas del formulario de reserva (lote 9k), contra
+ * `src/lib/preguntas-reserva.ts` (BACKEND, contrato en
+ * `docs/contrato-preguntas.md`). Añadir, ordenar, desactivar (mejor que
+ * borrar: las respuestas antiguas se siguen leyendo con su texto), tipo,
+ * obligatoria y a qué servicios aplica, con la vista previa de cómo lo ve la
+ * clienta. Se guarda la lista entera.
  */
 const TIPOS: { id: TipoPreguntaReserva; texto: string }[] = [
   { id: "texto", texto: "Respuesta libre" },
@@ -40,7 +39,7 @@ export function AjustesPreguntas() {
   const services = useSalonStore((s) => s.services);
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
   const tipo = inferBusinessType(perfil.tagline, perfil.name);
-  const inicial = () => preguntasDelSalon(perfil, bookingQuestionsEnabled(perfil, tipo)).map((q) => ({ ...q }));
+  const inicial = () => preguntasDelSalon(perfil, tipo).map((q) => ({ ...q }));
   const [lista, setLista] = useState<PreguntaReserva[]>(inicial);
   const [cambios, setCambios] = useState(false);
   const [vistaServicio, setVistaServicio] = useState<string>("");

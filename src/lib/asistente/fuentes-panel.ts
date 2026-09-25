@@ -6,8 +6,9 @@ import { citasDeCalendario, huecosDe, mismoDia } from "../calendario-arena";
 import { franjasProfesional } from "../horario-equipo";
 import { resumenHorario } from "../horario-resumen";
 import { parseRanges } from "../opening-hours";
-import { estadoSenal, reglaSenal, respuestaFaqSenal } from "../senal-maqueta";
-import { preguntasAplicables, preguntasDelSalon } from "../preguntas-maqueta";
+import { estadoSenal, reglaSenal, respuestaFaqSenal, vencimientoSenal } from "../senal";
+import { preguntasAplicables, preguntasDelSalon } from "../preguntas-reserva";
+import { inferBusinessType } from "../business-type";
 import { recargoActivo } from "../recargo-activo";
 import { duracionFlexibleActiva } from "../duracion-flexible";
 import { isBookingBlocked } from "../no-show";
@@ -145,9 +146,9 @@ export function crearFuentesPanel(
       regla() {
         const r = reglaSenal(perfil());
         if (!r.activa) return { activa: false, resumen: "Sin señal" };
-        const cuanto = r.modo === "porcentaje" ? `el ${r.porcentaje} % del servicio` : `${r.importeEur} €`;
-        const aQuien = { todas: "en todas las reservas", nuevas: "a las clientas nuevas", duracion: `en los servicios de ${r.minMinutos} min o más`, servicios: "en algunos servicios" }[r.aplicaA];
-        return { activa: true, resumen: `${cuanto} ${aQuien}, con ${r.plazoHoras} h de plazo` };
+        const cuanto = r.modo === "porcentaje" ? `el ${r.porcentaje} % del servicio` : `${r.importeFijoEur} €`;
+        const aQuien = { todas: "en todas las reservas", nuevas: "a las clientas nuevas", duracion: `en los servicios de ${r.minutosMinimos} min o más`, servicios: "en algunos servicios" }[r.aplicaA];
+        return { activa: true, resumen: `${cuanto} ${aQuien}, con ${r.ventanaHoras} h de plazo` };
       },
       estado(cita: CitaA) {
         const s = leer();
@@ -155,9 +156,9 @@ export function crearFuentesPanel(
         if (!real) return null;
         const r = reglaSenal(s.salonProfile);
         return {
-          estado: estadoSenal(real, r, ahora()),
+          estado: estadoSenal(real, ahora()),
           importeEur: real.depositEur ?? undefined,
-          venceISO: real.depositDueAt ?? undefined,
+          venceISO: vencimientoSenal(real, r.ventanaHoras) ?? undefined,
           recibidaEur: real.depositReceivedEur ?? undefined,
         };
       },
@@ -167,7 +168,7 @@ export function crearFuentesPanel(
     },
 
     preguntasReserva(serviceIds) {
-      const lista = preguntasDelSalon(perfil());
+      const lista = preguntasDelSalon(perfil(), inferBusinessType(perfil().tagline, perfil().name));
       return (serviceIds?.length ? preguntasAplicables(lista, serviceIds) : lista.filter((q) => q.activa)).map((q) => q.texto);
     },
     recargo() {

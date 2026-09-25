@@ -150,3 +150,11 @@ export function idPreguntaNueva(existentes: PreguntaReserva[], ahora: number = D
   for (let n = 2; usados.has(id); n++) id = `p${ahora.toString(36)}${n}`;
   return id;
 }
+
+/**
+ * Comprobación blanda: ¿el texto pregunta por datos de salud? Son categoría
+ * especial (RGPD art. 9) y siShow no los guarda. No bloquea: avisa.
+ */
+export function preguntaPorSalud(texto: string): boolean {
+  return /alergi|embaraz|medic|enferm|salud|diabet|tratamiento m[eé]dico/i.test(texto);
+}

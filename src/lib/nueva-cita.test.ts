@@ -9,7 +9,6 @@ import {
   horasDeProfesional,
   primeraLibre,
 } from "./nueva-cita";
-import { solapaConAgenda } from "./solape-maqueta";
 
 const h = (hh: number, mm = 0) => hh * 60 + mm;
 function pro(id: string, r: Array<{ start: number; end: number }>): Employee {
@@ -80,19 +79,5 @@ describe("días y clientas", () => {
   });
 });
 
-describe("solapaConAgenda (maqueta del contrato)", () => {
-  const agenda = [
-    cita({ id: "x", start: "2026-09-25T12:00:00", duration: 60 }),
-    cita({ id: "y", start: "2026-09-25T14:00:00", duration: 60, status: "blocked" }),
-    cita({ id: "z", start: "2026-09-25T16:00:00", duration: 60, status: "cancelled" }),
-  ];
-  test("devuelve las citas de esa profesional que chocan; los bloqueos cuentan", () => {
-    expect(solapaConAgenda(agenda, { employeeId: "m", start: "2026-09-25T12:30:00", duration: 30 }).map((a) => a.id)).toEqual(["x"]);
-    expect(solapaConAgenda(agenda, { employeeId: "m", start: "2026-09-25T13:30:00", duration: 60 }).map((a) => a.id)).toEqual(["y"]);
-  });
-  test("canceladas no cuentan, otra profesional tampoco, y se excluye la propia", () => {
-    expect(solapaConAgenda(agenda, { employeeId: "m", start: "2026-09-25T16:00:00", duration: 30 })).toEqual([]);
-    expect(solapaConAgenda(agenda, { employeeId: "s", start: "2026-09-25T12:00:00", duration: 30 })).toEqual([]);
-    expect(solapaConAgenda(agenda, { employeeId: "m", start: "2026-09-25T12:00:00", duration: 30, excluirId: "x" })).toEqual([]);
-  });
-});
+// solapaConAgenda ya no es una maqueta: es `src/lib/solape.ts` (BACKEND),
+// con su propia cobertura en `src/lib/solape.test.ts`.

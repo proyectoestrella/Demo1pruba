@@ -31,7 +31,8 @@ import {
   horasDeProfesional,
   primeraLibre,
 } from "@/lib/nueva-cita";
-import { solapaConAgenda, type OpcionesGuardadoCita } from "@/lib/solape-maqueta";
+import { solapaConAgenda } from "@/lib/solape";
+import type { OpcionesGuardado } from "@/lib/salon-sync";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -325,7 +326,7 @@ export function NewAppointmentDialog({
     guardar(encadenar, {});
   }
 
-  function guardar(encadenar: boolean, opciones: OpcionesGuardadoCita) {
+  function guardar(encadenar: boolean, opciones: OpcionesGuardado) {
     let clientId: string;
     let clientName: string;
     let clientPhone = "";
@@ -361,11 +362,9 @@ export function NewAppointmentDialog({
         idsDeServicio = [idServicioLibre(otro.nombre)];
       }
     }
-    // CONECTAR (contrato E1): cuando la store acepte el tercer parámetro,
-    // pasar aquí `opciones` — `{ permitirSolape: true }` si la dueña aceptó
-    // el choque. Hoy se guarda igual en local y el servidor avisaría con
-    // RESERVA_SOLAPE_PANEL.
-    void opciones;
+    // Contrato E1 (lib/solape.ts): `permitirSolape` viaja tal cual la dueña
+    // lo confirmó en `DialogoSolape`; sin él, el servidor rechazaría un
+    // choque real con RESERVA_SOLAPE_PANEL.
     const appt = addAppointment(
       {
         clientId,
@@ -382,6 +381,7 @@ export function NewAppointmentDialog({
       // cita" y la cita sube igual, solo que sin ficha. Lo lleva la store,
       // que sabe qué salón está gestionando este panel.
       clientPhone ? { name: clientName, phone: clientPhone, email: clientEmail } : undefined,
+      opciones,
     );
 
     // Lote 12: «Cita de Ana guardada · vie 10:00» con «Deshacer» (la borra).
