@@ -22,6 +22,7 @@ import { getSupabaseServerClient } from "../supabase.server";
 import { fusionarPerfil } from "../perfil-parche";
 import { isManualBlockRecord } from "../no-show";
 import { parseDepositNote } from "../deposit-deadline";
+import { columnasDeParche, filaSinLote3 } from "../cita-parche";
 import {
   ERROR_BLOQUEO_MANUAL,
   ERROR_FUERA_HORARIO,
@@ -550,6 +551,11 @@ export const syncAppointment = createServerFn({ method: "POST" })
       colorFormula: z.string().nullable().optional(),
       technicalNotes: z.string().nullable().optional(),
       reminderSentAt: z.string().nullable().optional(),
+      // Lote 3: lo que antes iba codificado dentro de `note`.
+      bookingAnswers: z.record(z.string(), z.string()).nullable().optional(),
+      depositDueAt: z.string().nullable().optional(),
+      depositPeriodHours: z.number().nullable().optional(),
+      origen: z.enum(["sishow", "tpv123"]).optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -695,43 +701,83 @@ export const syncAppointment = createServerFn({ method: "POST" })
       color_formula: manda ? (data.colorFormula ?? null) : null,
       technical_notes: manda ? (data.technicalNotes ?? null) : null,
       reminder_sent_at: manda ? (data.reminderSentAt ?? null) : null,
+      // Lote 3: columnas propias. Las respuestas al reservar las escribe la
+      // clienta; el plazo de la señal y el origen, solo el panel.
+      booking_answers: data.bookingAnswers ?? null,
+      deposit_due_at: manda ? (data.depositDueAt ?? null) : null,
+      deposit_period_hours: manda ? (data.depositPeriodHours ?? null) : null,
+      origen: manda ? (data.origen ?? "sishow") : "sishow",
     };
     // Solo se toca `client_id` cuando esta llamada sabe de qué cliente habla.
     // Un "confirmar" desde el panel no lleva teléfono, y machacar la columna
     // con null desengancharía la cita de su ficha.
     if (clientId) fila.client_id = clientId;
 
+    await escribirCita(supabase, fila);
+    return { synced: true as const };
+  });
+
+/**
+ * Upsert de una cita bajando de nivel de esquema si hace falta (ver
+ * NIVELES_CITA). Al quitar el nivel del lote 3 la nota vuelve a llevar los
+ * marcadores de antes, para no perder respuestas, origen ni plazo de la
+ * señal mientras el DDL no esté aplicado. Confirmar una cita delante de una
+ * clienta no puede depender de una migración pendiente.
+ */
+async function escribirCita(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  fila: Record<string, unknown>,
+): Promise<void> {
+  let actual = fila;
+  for (let nivel = 0; nivel <= NIVELES_CITA.length; nivel++) {
     const { error } = await supabase
       .from("appointments")
-      .upsert(fila, { onConflict: "salon_slug,local_id" });
-    if (faltaEsquema(error)) {
-      const sinRecordatorio = sinCampos(fila, CAMPOS_RECORDATORIO_CITA);
-      const { error: errorTecnicas } = await supabase
-        .from("appointments")
-        .upsert(sinRecordatorio, { onConflict: "salon_slug,local_id" });
-      if (!errorTecnicas) return { synced: true as const };
-      if (!faltaEsquema(errorTecnicas)) throw new Error(`syncAppointment: ${errorTecnicas.message}`);
-      const sinTecnicas = sinCampos(sinRecordatorio, CAMPOS_TECNICOS_CITA);
-      const { error: errorAnterior } = await supabase
-        .from("appointments")
-        .upsert(sinTecnicas, { onConflict: "salon_slug,local_id" });
-      if (!errorAnterior) return { synced: true as const };
-      if (!faltaEsquema(errorAnterior)) throw new Error(`syncAppointment: ${errorAnterior.message}`);
-      // El DDL de caja y fianzas todavía no está aplicado: se guarda la cita
-      // sin esos campos antes que perder el cambio entero. Confirmar una cita
-      // delante de un cliente no puede depender de una migración pendiente.
-      console.warn(
-        "syncAppointment: faltan las columnas de caja/fianza (aplica supabase/schema.sql); la cita se guarda sin ellas",
-      );
-      const { error: err2 } = await supabase
-        .from("appointments")
-        .upsert(sinCampos(sinTecnicas, CAMPOS_NUEVOS_CITA), { onConflict: "salon_slug,local_id" });
-      if (err2) throw new Error(`syncAppointment: ${err2.message}`);
-      return { synced: true as const };
-    }
-    if (error) throw new Error(`syncAppointment: ${error.message}`);
+      .upsert(actual, { onConflict: "salon_slug,local_id" });
+    if (!error) return;
+    if (!faltaEsquema(error) || nivel === NIVELES_CITA.length) throw new Error(`syncAppointment: ${error.message}`);
+    console.warn(`syncAppointment: faltan columnas (${NIVELES_CITA[nivel].join(", ")}); aplica supabase/pendiente.sql`);
+    actual = nivel === 0 ? filaSinLote3(actual) : sinCampos(actual, NIVELES_CITA[nivel]);
+  }
+}
 
-    return { synced: true as const };
+/**
+ * Parche por campos de UNA cita, desde el panel. Escribe SOLO las columnas
+ * que trae `patch`: así el iPad que marca «cobrada» y el móvil que cambia
+ * la hora no se pisan. Si la fila todavía no existe (la cita nació en local
+ * y su alta no ha llegado), responde `sin-fila` y el navegador manda la
+ * cita entera por syncAppointment.
+ */
+export const syncAppointmentPatch = createServerFn({ method: "POST" })
+  .middleware([conSesion])
+  .inputValidator(
+    z.object({
+      slug,
+      localId: z.string().min(1),
+      patch: z.record(z.string(), z.unknown()),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await exigirAcceso(data.slug);
+    const supabase = getSupabaseServerClient();
+    if (!supabase) return { synced: false as const, reason: "sin-backend" as const };
+    let columnas = columnasDeParche(data.patch as Partial<Appointment>);
+    if (!Object.keys(columnas).length) return { synced: true as const };
+    for (let nivel = 0; nivel <= NIVELES_CITA.length; nivel++) {
+      const { data: filas, error } = await supabase
+        .from("appointments")
+        .update(columnas)
+        .eq("salon_slug", data.slug)
+        .eq("local_id", data.localId)
+        .select("id");
+      if (!error) return filas?.length ? { synced: true as const } : { synced: false as const, reason: "sin-fila" as const };
+      if (!faltaEsquema(error) || nivel === NIVELES_CITA.length) throw new Error(`syncAppointmentPatch: ${error.message}`);
+      // Sin esa columna en producción, el campo no se puede parchear suelto:
+      // se manda la cita entera, que sí sabe volcarlo a la nota legado.
+      const perdidas = NIVELES_CITA[nivel].filter((c) => c in columnas);
+      if (perdidas.length) return { synced: false as const, reason: "sin-fila" as const };
+      columnas = sinCampos(columnas, NIVELES_CITA[nivel]);
+    }
+    return { synced: false as const, reason: "sin-fila" as const };
   });
 
 /** Borra una cita de verdad (el panel tiene "eliminar" además de "cancelar"). */

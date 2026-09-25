@@ -32,6 +32,7 @@ const DEL_DUENO = [
   "clearClientPenalty",
   "saveClientNotes",
   "saveClient",
+  "syncAppointmentPatch",
 ];
 
 /**
@@ -125,20 +126,20 @@ describe("la guarda está puesta en todas las funciones de servidor", () => {
   it("una reserva de fuera no puede pisar una cita que ya existe", () => {
     const cuerpo = cuerpoDe("syncAppointment");
     expect(cuerpo).toContain("if (yaExiste)");
-    expect(cuerpo.indexOf("if (yaExiste)")).toBeLessThan(cuerpo.indexOf(".upsert(fila"));
+    expect(cuerpo.indexOf("if (yaExiste)")).toBeLessThan(cuerpo.indexOf("escribirCita(supabase, fila)"));
     expect(cuerpo).toContain("return { synced: true as const }");
   });
 
   it("la comprobación de solape precede a la escritura pública", () => {
     const cuerpo = cuerpoDe("syncAppointment");
-    expect(cuerpo.indexOf("haySolape(data.startISO")).toBeLessThan(cuerpo.indexOf(".upsert(fila"));
+    expect(cuerpo.indexOf("haySolape(data.startISO")).toBeLessThan(cuerpo.indexOf("escribirCita(supabase, fila)"));
   });
 
   it("el horario por profesional se comprueba en el servidor antes de escribir", () => {
     const cuerpo = cuerpoDe("syncAppointment");
     const i = cuerpo.indexOf("profesionalTrabaja(perfil, data.employeeId");
     expect(i).toBeGreaterThan(-1);
-    expect(i).toBeLessThan(cuerpo.indexOf(".upsert(fila"));
+    expect(i).toBeLessThan(cuerpo.indexOf("escribirCita(supabase, fila)"));
     expect(cuerpo).toContain("reason: ERROR_FUERA_HORARIO");
   });
 

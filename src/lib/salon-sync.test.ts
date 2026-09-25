@@ -15,7 +15,7 @@ const registra =
   (nombre: string) =>
   (...args: unknown[]) => {
     llamadas.push(nombre);
-    if (nombre === "syncAppointment") argumentosCitas.push(args[0]);
+    if (nombre === "syncAppointment" || nombre === "syncAppointmentPatch") argumentosCitas.push(args[0]);
     if (fallarTodo) return Promise.reject(new Error("red caída"));
     if (rechazo) return Promise.resolve({ synced: false as const, reason: rechazo });
     if (noGuardado) return Promise.resolve({ synced: false as const });
@@ -24,6 +24,7 @@ const registra =
 
 mock.module("./api/salons.functions", () => ({
   syncAppointment: registra("syncAppointment"),
+  syncAppointmentPatch: registra("syncAppointmentPatch"),
   deleteAppointment: registra("deleteAppointment"),
   saveSalonProfile: registra("saveSalonProfile"),
   patchSalonProfile: registra("patchSalonProfile"),
@@ -40,6 +41,7 @@ mock.module("./api/salons.functions", () => ({
 
 const {
   pushAppointment,
+  pushAppointmentPatch,
   guardarReservaPublica,
   pushAppointmentDeletion,
   pushSalonProfile,
@@ -269,5 +271,25 @@ describe("el perfil sube el parche, no el perfil entero", () => {
     pushSalonProfilePatch("the-best-shave-barber", { phone: "600 999 888" });
     await esperarAvisos();
     expect(leerAvisos()[0]!.mensaje).toContain("los datos de tu salón");
+  });
+});
+
+describe("parche por campos desde el panel", () => {
+  it("un parche que solo trae status no lleva la nota ni ningún otro campo", async () => {
+    pushAppointmentPatch("the-best-shave-barber", { ...cita, note: "nota local vieja" }, { status: "confirmed" }, cliente);
+    await Promise.resolve();
+    expect(llamadas).toEqual(["syncAppointmentPatch"]);
+    const enviado = argumentosCitas[0] as { data: { patch: Record<string, unknown> } };
+    expect(enviado.data.patch).toEqual({ status: "confirmed" });
+    expect(enviado.data.patch).not.toHaveProperty("note");
+    expect(enviado.data.patch).not.toHaveProperty("technicalNotes");
+  });
+
+  it("la cita entera manda la nota limpia y las respuestas en su campo", () => {
+    pushAppointment("the-best-shave-barber", { ...cita, note: "Trae foto", bookingAnswers: { hairLength: "Largo" }, origen: "tpv123" }, cliente);
+    const enviado = argumentosCitas[0] as { data: Record<string, unknown> };
+    expect(enviado.data.note).toBe("Trae foto");
+    expect(enviado.data.bookingAnswers).toEqual({ hairLength: "Largo" });
+    expect(enviado.data.origen).toBe("tpv123");
   });
 });

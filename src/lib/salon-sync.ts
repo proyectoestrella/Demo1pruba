@@ -30,14 +30,12 @@ import {
   saveClient,
   saveSalonProfile,
   syncAppointment,
+  syncAppointmentPatch,
   syncWaitlistEntry,
 } from "./api/salons.functions";
 import { registrarAviso } from "./avisos-sync";
 import type { Appointment, Client, SalonProfile, WaitlistEntry } from "./mock/types";
 import { manualBlockNote } from "./no-show";
-import { serializeBookingNote } from "./booking-answers";
-import { serializeDepositNote } from "./deposit-deadline";
-import { serializarOrigen } from "./origen-cita";
 
 /** Datos del cliente que acompañan a una cita cuando se conocen (reserva pública, cita por teléfono). */
 export interface ClienteDeCita {
@@ -111,7 +109,14 @@ function appointmentPayload(slug: string, appt: Appointment, cliente?: ClienteDe
     priceEur: appt.priceEur,
     status: appt.status,
     clientConfirmedAt: appt.clientConfirmedAt ?? null,
-    note: serializeDepositNote(serializarOrigen(serializeBookingNote(appt.note, appt.bookingAnswers), appt.origen), appt) ?? null,
+    // Lote 3: la nota va limpia; respuestas, origen y plazo de la señal,
+    // en sus campos. Si producción aún no tiene las columnas, el servidor
+    // los vuelca a la nota con los marcadores de antes (filaSinLote3).
+    note: appt.note ?? null,
+    bookingAnswers: (appt.bookingAnswers as Record<string, string> | undefined) ?? null,
+    origen: appt.origen ?? "sishow",
+    depositDueAt: appt.depositDueAt ?? null,
+    depositPeriodHours: appt.depositPeriodHours ?? null,
     paymentMethod: appt.paymentMethod ?? null,
     paidAt: appt.paidAt ?? null,
     depositRequestedAt: appt.depositRequestedAt ?? null,
@@ -121,6 +126,28 @@ function appointmentPayload(slug: string, appt: Appointment, cliente?: ClienteDe
     technicalNotes: appt.technicalNotes ?? null,
     reminderSentAt: appt.reminderSentAt ?? null,
   };
+}
+
+/**
+ * Parche por campos desde el panel: viaja SOLO lo que se ha tocado. Si el
+ * servidor no encuentra la fila (alta aún en camino) o no tiene la columna,
+ * se manda la cita entera como hasta ahora.
+ */
+export function pushAppointmentPatch(
+  slug: string | null,
+  appt: Appointment,
+  patch: Partial<Appointment>,
+  cliente?: ClienteDeCita,
+): void {
+  if (!slug) return;
+  const quien = (cliente?.name ?? appt.clientName ?? "").trim();
+  subir(quien ? `la cita de ${quien}` : "la cita", async () => {
+    const r = await syncAppointmentPatch({ data: { slug, localId: appt.id, patch } });
+    if (!r.synced && r.reason === "sin-fila") {
+      return syncAppointment({ data: appointmentPayload(slug, appt, cliente) });
+    }
+    return r;
+  });
 }
 
 /** La reserva pública espera la confirmación; un `synced: false` no es éxito. */

@@ -26,6 +26,7 @@ import { deadlineHours, depositDueAt, extendDepositDueAt, effectiveDepositDueAt 
 import { inferBusinessType, menuDesdeServicios, slugForId, type BusinessType } from "./business-type";
 import {
   pushAppointment,
+  pushAppointmentPatch,
   pushAppointmentDeletion,
   pushClientNotes,
   pushClient,
@@ -387,7 +388,11 @@ export const useSalonStore = create<SalonState>()(
         set((s) => ({
           appointments: s.appointments.map((a) => (a.id === id ? { ...a, ...patch } : a)),
         }));
-        sincronizarCita(get(), id);
+        // Solo viaja lo tocado: así el cobro marcado en el iPad no se borra
+        // cuando el móvil, con la agenda de hace un minuto, cambia la hora.
+        const state = get();
+        const appt = state.appointments.find((a) => a.id === id);
+        if (appt) pushAppointmentPatch(state.realSalonSlug, appt, patch, clienteDeLaCita(state, appt));
       },
       cancelAppointment: (id) => {
         const hueco = get().appointments.find((a) => a.id === id)?.start ?? null;
