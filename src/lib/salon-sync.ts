@@ -70,15 +70,30 @@ function aviso(que: string, intentar: () => Promise<unknown>) {
 }
 
 /** Lanza la subida y, si falla, la convierte en un aviso reintentable. */
-function subir(que: string, intentar: () => Promise<unknown>): Promise<void> {
+function subir(que: string, intentar: () => Promise<unknown>, claveLocal?: string): Promise<void> {
   pendientes += 1;
-  return intentar().then(() => {}, aviso(que, intentar)).finally(() => { pendientes -= 1; });
+  if (claveLocal) sinGuardar.add(claveLocal);
+  const reintentar = async () => {
+    await intentar();
+    if (claveLocal) sinGuardar.delete(claveLocal);
+  };
+  return reintentar().then(() => {}, aviso(que, reintentar)).finally(() => { pendientes -= 1; });
 }
 
 let pendientes = 0;
 const altasPendientes = new Map<string, Promise<void>>();
+/**
+ * Ids locales (`cita:<id>`, `cliente:<id>`, `espera:<id>`) con un cambio que
+ * todavía no ha llegado a Supabase: en camino o fallido con aviso. El
+ * refresco del panel no debe pisarlos con la versión antigua del servidor.
+ */
+const sinGuardar = new Set<string>();
 /** Evita que una lectura antigua pise un cambio local aún en camino. */
 export function sincronizacionPendiente(): boolean { return pendientes > 0; }
+/** ¿Tiene esta cita/ficha un cambio local que aún no está guardado? */
+export function cambioSinGuardar(clave: string): boolean { return sinGuardar.has(clave); }
+/** Solo para pruebas. */
+export function olvidarCambiosSinGuardar(): void { sinGuardar.clear(); }
 
 /** Sube una cita (crear o modificar: es el mismo upsert). */
 export function pushAppointment(
@@ -92,7 +107,7 @@ export function pushAppointment(
   subir(quien ? `la cita de ${quien}` : "la cita", async () => {
     if (appt.origen === "tpv123" && !cliente?.phone) await altasPendientes.get(`${slug}|${quien}`);
     return exigirGuardado(await syncAppointment({ data: appointmentPayload(slug, appt, cliente, opciones) }));
-  });
+  }, `cita:${appt.id}`);
 }
 
 /** Opciones del panel al guardar. Ver el contrato de solapes en lib/solape.ts. */
@@ -165,7 +180,7 @@ export function pushAppointmentPatch(
       return exigirGuardado(await syncAppointment({ data: appointmentPayload(slug, appt, cliente, opciones) }));
     }
     return exigirGuardado(r);
-  });
+  }, `cita:${appt.id}`);
 }
 
 /** La reserva pública espera la confirmación; un `synced: false` no es éxito. */

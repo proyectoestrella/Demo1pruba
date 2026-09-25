@@ -195,3 +195,27 @@ describe("la carta del panel viaja al perfil del salón real", () => {
     st.deleteService(nuevo.id);
   });
 });
+
+describe("el refresco no deshace un cambio local sin guardar", () => {
+  it("hydrateFromServer conserva la versión local de la cita marcada y toma el servidor para el resto", async () => {
+    const { olvidarCambiosSinGuardar } = await import("./salon-sync");
+    const st = useSalonStore.getState();
+    st.setRealSalonSlug("salon-refresco");
+    const base = { clientId: "c", clientName: "Ana", serviceIds: ["corte"], employeeId: "mario" as const, start: "2026-09-28T08:00:00.000Z", duration: 30, priceEur: 10, status: "pending" as const };
+    // La subida falla (no hay servidor en las pruebas): la cita queda marcada como sin guardar.
+    const local = st.addAppointment(base);
+    st.updateAppointment(local.id, { status: "confirmed" });
+    await new Promise((r) => setTimeout(r, 0));
+    const remotaVieja = { ...local, status: "pending" as const };
+    const otra = { ...base, id: "a-otra", clientName: "Otra" };
+    st.hydrateFromServer({ appointments: [remotaVieja, otra], clients: [], waitlist: [] });
+    const tras = useSalonStore.getState().appointments;
+    expect(tras.find((a) => a.id === local.id)?.status).toBe("confirmed");
+    expect(tras.find((a) => a.id === "a-otra")?.clientName).toBe("Otra");
+    // Al darla por guardada, el siguiente refresco ya manda el servidor.
+    olvidarCambiosSinGuardar();
+    st.hydrateFromServer({ appointments: [remotaVieja], clients: [], waitlist: [] });
+    expect(useSalonStore.getState().appointments.find((a) => a.id === local.id)?.status).toBe("pending");
+    st.setRealSalonSlug(null);
+  });
+});

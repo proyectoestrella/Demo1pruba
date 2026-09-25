@@ -40,6 +40,8 @@ mock.module("./api/salons.functions", () => ({
 }));
 
 const {
+  cambioSinGuardar,
+  olvidarCambiosSinGuardar,
   pushAppointment,
   pushAppointmentPatch,
   guardarReservaPublica,
@@ -88,6 +90,7 @@ afterEach(() => {
   noGuardado = false;
   rechazo = null;
   limpiarAvisos();
+  olvidarCambiosSinGuardar();
 });
 
 describe("salon-sync con slug null (demo de venta)", () => {
@@ -310,5 +313,25 @@ describe("solapes desde el panel", () => {
     pushAppointment("the-best-shave-barber", cita, cliente);
     await new Promise((r) => setTimeout(r, 0));
     expect(leerAvisos().some((a) => a.mensaje.includes("la cita de"))).toBe(true);
+  });
+});
+
+describe("cambios locales sin guardar", () => {
+  it("una cita queda marcada mientras sube y se desmarca al guardarse", async () => {
+    pushAppointment("the-best-shave-barber", cita, cliente);
+    expect(cambioSinGuardar(`cita:${cita.id}`)).toBe(true);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(cambioSinGuardar(`cita:${cita.id}`)).toBe(false);
+  });
+
+  it("si la subida falla, sigue marcada hasta que el reintento la guarde", async () => {
+    fallarTodo = true;
+    pushAppointmentPatch("the-best-shave-barber", cita, { status: "confirmed" }, cliente);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(cambioSinGuardar(`cita:${cita.id}`)).toBe(true);
+    fallarTodo = false;
+    leerAvisos()[0]!.reintentar?.();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(cambioSinGuardar(`cita:${cita.id}`)).toBe(false);
   });
 });

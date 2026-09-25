@@ -27,6 +27,7 @@ import { inferBusinessType, menuDesdeServicios, slugForId, type BusinessType } f
 import { solapaConAgenda } from "./solape";
 import {
   type OpcionesGuardado,
+  cambioSinGuardar,
   pushAppointment,
   pushAppointmentPatch,
   pushAppointmentDeletion,
@@ -327,6 +328,17 @@ function clienteDeLaCita(state: SalonState, appt: Appointment): ClienteDeCita | 
  * Es el único punto por el que sincronizan confirmar, rechazar, cambiar hora,
  * cambiar profesional, marcar plantón y cancelar: todas son la misma fila.
  */
+/** Sustituye por la versión local las entradas con cambios sin guardar; añade las que solo existen en local. */
+function conservarSinGuardar<T extends { id: string }>(remotas: T[], locales: T[], tipo: string): T[] {
+  const pendientesLocales = locales.filter((l) => cambioSinGuardar(`${tipo}:${l.id}`));
+  if (!pendientesLocales.length) return remotas;
+  const porId = new Map(pendientesLocales.map((l) => [l.id, l]));
+  const fusion = remotas.map((r) => porId.get(r.id) ?? r);
+  const idsRemotos = new Set(remotas.map((r) => r.id));
+  for (const l of pendientesLocales) if (!idsRemotos.has(l.id)) fusion.push(l);
+  return fusion;
+}
+
 function sincronizarCita(state: SalonState, id: string) {
   if (!state.realSalonSlug) return;
   const appt = state.appointments.find((a) => a.id === id);
@@ -726,7 +738,16 @@ export const useSalonStore = create<SalonState>()(
       setPublicBookingResolution: (value) => set({ publicBookingResolution: value }),
 
       hydrateFromServer: ({ appointments, clients, waitlist }) =>
-        set({ appointments, clients, waitlist }),
+        set((s) => ({
+          // Una cita con un cambio local todavía sin guardar (subida en
+          // camino o fallida con aviso) conserva su versión local: el
+          // refresco no puede enseñarle a la dueña lo contrario de lo que
+          // acaba de hacer. Al reintentar y guardarse, el siguiente refresco
+          // ya trae la versión buena.
+          appointments: conservarSinGuardar(appointments, s.appointments, "cita"),
+          clients,
+          waitlist,
+        })),
 
       vaciarDatosDeEjemplo: () => set({ appointments: [], clients: [], waitlist: [] }),
 
