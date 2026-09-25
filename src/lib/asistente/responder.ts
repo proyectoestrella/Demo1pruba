@@ -27,7 +27,11 @@ import type { Accion, Cifra, Contexto } from "./resolutores/tipos";
 export const CORREO_SOPORTE = "ejemplo@sishow.com";
 
 export type RespuestaAsistente =
-  | { tipo: "respuesta"; intencion: string; texto: string; cifras: Cifra[]; acciones: Accion[]; sugerencias: string[] }
+  | {
+      tipo: "respuesta"; intencion: string; texto: string; cifras: Cifra[]; acciones: Accion[]; sugerencias: string[];
+      /** La pregunta también se parecía a una función que el plan del salón no incluye: se responde la de negocio y se avisa. */
+      tambien?: { intencion: string; texto: string };
+    }
   | { tipo: "elegir"; intencion: string | null; texto: string; opciones: Array<{ etiqueta: string; pregunta: string }> }
   | { tipo: "no-se"; texto: string; sugerencias: string[] }
   | {
@@ -80,6 +84,8 @@ function enmascararPregunta(texto: string, e: Entidades, s: { servicios: Array<{
  */
 /** El último orden de puntuaciones (para ver si una intención de plan quedó cerca). */
 let ultimoOrden: Array<{ id: string; puntuacion: number }> = [];
+/** Las pistas que casaron en la última clasificación. */
+let marcasPlan: Map<string, number> = new Map();
 
 function clasificarConEntidades(masc: string, e: Entidades): Clasificacion {
   const tieneCli = masc.includes(MARCA_CLIENTA);
@@ -88,6 +94,7 @@ function clasificarConEntidades(masc: string, e: Entidades): Clasificacion {
   // Solo el nombre de una clienta: su ficha.
   if (tieneCli && masc.split(" ").every((w) => w === MARCA_CLIENTA)) return { tipo: "acierto", id: "buscar-clienta", puntuacion: 1 };
   const extra = refuerzos(masc);
+  marcasPlan = extra;
   const ancla = tieneAncla(masc);
   // Pregunta sobre otra cosa: si buena parte de sus palabras no sale en el
   // catálogo y ninguna pista la reconoce, pierde parecido con todo.
@@ -136,6 +143,36 @@ function planEnPalabras(texto?: string): { nombre: string; nota: string | null }
 
 function salonDe(texto: string, salon: string): string {
   return texto.replace(/soy María de PeluChic/g, `te escribo desde ${salon}`).replace(/PeluChic/g, salon);
+}
+
+/** Qué hace cada función de plan, para la línea «Si te referías a…». */
+const QUE_ES_PLAN: Record<string, string> = {
+  "plan-mas-profesionales": "tener más de 3 profesionales",
+  "plan-segunda-pagina": "una segunda página de reservas",
+  "plan-dominio-propio": "reservar con tu propio dominio",
+  "plan-informe-mensual": "recibir el informe del mes por correo",
+  "plan-whatsapp-automatico": "que los WhatsApp se contesten o envíen solos",
+  "plan-recordatorio-automatico": "que los recordatorios se manden solos",
+  "plan-importar-mensual": "traer tus datos de TPV 123 cada mes, sin hacerlo tú",
+  "plan-asistente": "el asistente en tu plan",
+  "no-hace-facturas": "hacer facturas o tickets",
+  "no-cobra-tarjeta": "cobrar con tarjeta por la web",
+  "no-escribe-google": "que los cambios de Google vuelvan a siShow",
+  "no-campanas-automaticas": "enviar las campañas a todas de golpe",
+};
+
+/** ¿Lo incluye ya el plan del salón? */
+function incluido(i: Intencion, plan: PlanSishow): boolean {
+  if (!i.planMinimo) return false;
+  return RANGO_PLAN[plan] >= RANGO_PLAN[i.planMinimo] && !planEnPalabras(i.plan).nota;
+}
+
+/** La línea para una función de plan que quedó cerca de la respuesta de negocio. */
+function lineaPlan(i: Intencion): string {
+  const que = QUE_ES_PLAN[i.id] ?? "eso";
+  const { nombre, nota } = planEnPalabras(i.plan);
+  if (i.planMinimo === null) return `Si te referías a ${que}, eso siShow no lo hace; si te interesa, escríbenos a **${CORREO_SOPORTE}**.`;
+  return `Si te referías a ${que}, eso llega con el plan **${nombre}**${nota ? ` (${nota})` : ""}: escríbenos a **${CORREO_SOPORTE}**.`;
 }
 
 function escalarPlan(i: Intencion, plan: PlanSishow, salon: string): RespuestaAsistente {
@@ -257,7 +294,9 @@ export function crearAsistente(fuentes: FuentesAsistente): Asistente {
       }
     }
 
+    let clasificada = false;
     if (!id) {
+      clasificada = true;
       const r = clasificarConEntidades(enmascararPregunta(textoOriginal, e, s), e);
       if (r.tipo === "acierto") id = r.id;
       else if (r.tipo === "dudosa") {
@@ -274,6 +313,21 @@ export function crearAsistente(fuentes: FuentesAsistente): Asistente {
       } else {
         if (e.clienta?.tipo === "una") id = "buscar-clienta";
         else return noSe(r.mejores);
+      }
+    }
+
+    // Gana una función de plan que el salón no tiene, pero una de negocio queda
+    // casi igual: se responde la de negocio y se avisa de la de plan.
+    let planAvisado: string | null = null;
+    if (clasificada) {
+      const g = POR_ID.get(id);
+      const top = ultimoOrden[0];
+      if (g?.grupo === "plan" && !incluido(g, s.plan) && top?.id === id) {
+        const neg = ultimoOrden.find((o) => POR_ID.get(o.id)?.grupo === "negocio" && o.puntuacion >= top.puntuacion * 0.9);
+        if (neg) {
+          planAvisado = id;
+          id = neg.id;
+        }
       }
     }
 
@@ -337,10 +391,22 @@ export function crearAsistente(fuentes: FuentesAsistente): Asistente {
       return { tipo: "respuesta", intencion: i.id, texto: "Ahora mismo no he podido calcularlo. Prueba en un momento o míralo en su pantalla.", cifras: [], acciones: [], sugerencias: sugerenciasDe(i.id) };
     }
     memoria = { intencion: i.id, e };
+    // ¿Se parecía también a una función de plan que este salón no tiene?
+    let tambien: { intencion: string; texto: string } | undefined;
+    if (planAvisado) tambien = { intencion: planAvisado, texto: lineaPlan(POR_ID.get(planAvisado)!) };
+    else if (clasificada) {
+      const top = ultimoOrden[0]?.puntuacion ?? 0;
+      const cerca = ultimoOrden.find((o) => {
+        const p = POR_ID.get(o.id);
+        return p?.grupo === "plan" && !incluido(p, s.plan) && (o.puntuacion >= top * 0.75 || (marcasPlan.get(o.id) ?? 0) >= 0.45);
+      });
+      if (cerca) tambien = { intencion: cerca.id, texto: lineaPlan(POR_ID.get(cerca.id)!) };
+    }
     return {
+      ...(tambien ? { tambien } : {}),
       tipo: "respuesta",
       intencion: i.id,
-      texto: out.texto,
+      texto: tambien ? `${out.texto}\n\n${tambien.texto}` : out.texto,
       cifras: out.cifras,
       acciones: out.acciones.slice(0, 1),
       sugerencias: out.sugerencias.length ? out.sugerencias : sugerenciasDe(i.id),

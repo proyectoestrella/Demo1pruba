@@ -150,6 +150,13 @@ export const PISTAS: Pista[] = [
   { id: "como-estas", re: r(`\\bque tal (?:estas|vas|andas|te va)\\b|\\bcomo (?:estas|andas|te va)\\b`), peso: 0.45 },
   { id: "que-sabes-hacer", re: r(`\\bque (?:puedes|sabes) hacer\\b|\\bpara que sirves\\b|\\bque haces\\b`), peso: 0.45 },
   { id: "plan-mas-profesionales", re: r(`\\bcuant[ao]s (?:profesionales|peluqueras|empleadas|estilistas)\\b.*\\b(?:plan|deja|puedo)\\b|\\blimite de (?:profesionales|equipo)\\b`), peso: 0.5 },
+  // Marcadores léxicos de plan: suman a la función de plan aunque la pregunta se parezca a una de negocio.
+  { id: "plan-informe-mensual", re: r(`\\b(?:descarg\\w*|export\\w*)\\b.*\\b(?:resumen|informe|mes|datos)\\b|\\b(?:por|al) (?:correo|email|mail)\\b|\\bcada mes\\b.*\\b(?:resumen|informe)\\b`), peso: 0.35 },
+  { id: "plan-mas-profesionales", re: r(`\\b(?:cuarta|quinta|sexta|otra mas) (?:profesional|peluquera|estilista|chica)\\b|\\bmas de (?:3|tres) (?:profesionales|peluqueras|estilistas)\\b`), peso: 0.55 },
+  { id: "plan-recordatorio-automatico", re: r(`\\brecordatorio\\w*.*\\b(?:todos juntos|juntos|a la vez|envi\\w* solo)\\b`), peso: 0.5 },
+  { id: "plan-whatsapp-automatico", re: r(`\\b(?:envi\\w*|mand\\w*) solo\\b|\\bsale automatic\\w*`), peso: 0.45 },
+  { id: "no-escribe-google", re: r(`\\bgoogle\\b.*\\b(?:se actualiza aqui|aqui tambien|en los dos)\\b|\\bsi cambio algo en (?:el )?google\\b`), peso: 0.55 },
+  { id: "plan-importar-mensual", re: r(`\\b(?:tpv\\w*|excel)\\b.*\\b(?:cuando quiera|siempre que|automatic\\w*|cada mes|sincroniz\\w*)\\b`), peso: 0.5 },
 ];
 
 const POR_INTENCION = new Map<string, Pista[]>();

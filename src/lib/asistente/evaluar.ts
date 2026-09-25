@@ -15,6 +15,7 @@ export const AHORA_CORPUS = new Date("2026-09-25T10:00:00Z");
 
 export function intencionDe(r: RespuestaAsistente): string {
   if (r.tipo === "no-se") return "no-se";
+  if (r.tipo === "respuesta" && r.tambien) return `${r.intencion}|${r.tambien.intencion}`;
   return r.intencion ?? "dudosa";
 }
 
@@ -52,17 +53,22 @@ export function casosDelCorpus(corpus: Array<[string, string]> = CORPUS): Caso[]
   return out;
 }
 
+/** Acierta si responde la intención esperada, o si responde la de negocio y avisa de la de plan esperada. */
+export function acierta(c: Caso): boolean {
+  return c.obtenida.split("|").includes(c.esperada);
+}
+
 export function matriz(casos: Caso[]) {
   const porCat = new Map<string, { total: number; ok: number }>();
   for (const c of casos) {
     const cat = c.esperada === "no-se" ? "fuera del dominio" : (POR_ID.get(c.esperada)?.categoria ?? "?");
     const v = porCat.get(cat) ?? { total: 0, ok: 0 };
     v.total++;
-    if (c.obtenida === c.esperada) v.ok++;
+    if (acierta(c)) v.ok++;
     porCat.set(cat, v);
   }
-  const ok = casos.filter((c) => c.obtenida === c.esperada).length;
-  return { total: casos.length, ok, pct: ok / casos.length, porCat, fallos: casos.filter((c) => c.obtenida !== c.esperada) };
+  const ok = casos.filter(acierta).length;
+  return { total: casos.length, ok, pct: ok / casos.length, porCat, fallos: casos.filter((c) => !acierta(c)) };
 }
 
 if (import.meta.main) {

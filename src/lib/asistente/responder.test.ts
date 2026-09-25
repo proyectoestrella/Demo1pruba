@@ -57,6 +57,18 @@ describe("responder", () => {
     expect(r.opciones[1].pregunta).toBe("¿Qué es lo que más hace Sara?");
   });
 
+  test("plan cerca de negocio: responde la de negocio y avisa de la de plan", () => {
+    const r = nuevo().responder("puedo descargarme el resumen del mes?");
+    expect(r.tipo).toBe("respuesta");
+    if (r.tipo !== "respuesta") return;
+    expect(r.intencion).toBe("resumen-mes");
+    expect(r.tambien?.intencion).toBe("plan-informe-mensual");
+    expect(r.texto).toContain("Si te referías a recibir el informe del mes por correo, eso llega con el plan **Todo incluido**");
+    // Con Todo incluido tampoco: esa función está «por confirmar».
+    const n = nuevo().responder("cuantas citas tengo hoy");
+    expect(n.tipo === "respuesta" && n.tambien).toBeFalsy();
+  });
+
   test("fuera del dominio: sin nada del salón no adivina", () => {
     for (const q of ["¿cuánto vale el iPhone?", "dame una receta de lentejas", "cuando es la luna llena este mes"]) expect([q, nuevo().responder(q).tipo]).toEqual([q, "no-se"]);
     expect(nuevo().responder("puedo ver las citas en el iphone").tipo).toBe("respuesta");
