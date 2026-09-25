@@ -41,7 +41,7 @@ import {
 
 /**
  * Armazón «Arena» del panel (ver DESIGN.md): menú lateral en nata de 244 px,
- * cabecera blanca con el buscador de clientas, el asistente, la campana y
+ * cabecera beige con el buscador de clientas, el asistente, la campana y
  * «Nueva cita»; por debajo de 768 px, barra inferior de cinco apartados y un
  * botón «+» flotante. Solo presentación: las rutas son las de siempre.
  */
@@ -62,15 +62,9 @@ export const GRUPOS_NAV: { label: string | null; items: NavItem[] }[] = [
     label: null,
     items: [
       { to: "/app", label: "Hoy", icon: Home, exact: true },
-      {
-        to: "/app/calendar",
-        label: "Calendario",
-        icon: Calendar,
-        hijos: [
-          { to: "/app/appointments", label: "Citas", icon: ListChecks },
-          { to: "/app/waitlist", label: "Lista de espera", icon: Clock, modulo: "lista-espera" },
-        ],
-      },
+      { to: "/app/calendar", label: "Calendario", icon: Calendar },
+      { to: "/app/appointments", label: "Citas", icon: ListChecks },
+      { to: "/app/waitlist", label: "Lista de espera", icon: Clock, modulo: "lista-espera" },
       { to: "/app/clients", label: "Clientas", icon: Users },
       { to: "/app/hoja", label: "Hoja del día", icon: FileText },
     ],
@@ -171,11 +165,11 @@ function EnlaceNav({ item, active, contador, onNavigate, hijo = false }: { item:
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex h-10 items-center gap-[11px] rounded-xl border px-3 text-sm font-semibold transition-colors",
+        "flex h-[38px] shrink-0 items-center gap-[11px] rounded-xl border px-3 text-sm font-semibold transition-colors",
         hijo && "ml-7 h-9 text-[13px]",
         active
           ? "border-border bg-card text-foreground shadow-[var(--sombra-tarjeta)]"
-          : "border-transparent text-cafe-medio hover:bg-arena hover:text-cafe-medio",
+          : "border-transparent text-cafe-medio hover:bg-arena hover:text-cafe",
       )}
     >
       <item.icon className={cn("size-[18px] shrink-0", active && "text-primary")} strokeWidth={1.6} />
@@ -193,18 +187,18 @@ function ProgresoPrimerosPasos() {
   const { progreso, pendientes, oculto } = useProgresoPrimerosPasos();
   if (oculto || progreso >= TOTAL_PASOS) return null;
   const faltan = pendientes.slice(0, 2).map((p) => p.toLowerCase()).join(" y ");
-  // Por debajo de 860 px de alto se queda en una línea con su barra: sigue
-  // guiando la primera semana sin empujar el menú a un scroll.
+  // Una sola línea con su barra: guía la primera semana sin empujar el menú
+  // a un scroll. Lo que falta sale al pasar el ratón.
   return (
     <Link
       to="/app/settings"
-      className="mb-3 block rounded-2xl bg-salvia-clara p-3 text-xs hover:text-foreground [@media(max-height:859px)]:px-3 [@media(max-height:859px)]:py-2"
+      title={`Te faltan ${faltan}`}
+      className="mb-2 block rounded-2xl bg-salvia-clara px-3 py-2 text-xs hover:text-foreground"
     >
       <b className="block text-hoja-tinta">
         Primeros pasos · {progreso} de {TOTAL_PASOS}
       </b>
-      <span className="text-muted-foreground [@media(max-height:859px)]:hidden">Te faltan {faltan}</span>
-      <span className="mt-2.5 flex h-1.5 overflow-hidden rounded-full bg-card" aria-hidden="true">
+      <span className="mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-superficie" aria-hidden="true">
         <i className="block bg-hoja" style={{ width: `${Math.round((progreso / TOTAL_PASOS) * 100)}%` }} />
       </span>
     </Link>
@@ -216,7 +210,7 @@ function BloqueUsuario() {
   const publicLink = usePanelPublicLink();
   const inicial = name.trim().charAt(0).toUpperCase() || "?";
   return (
-    <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card p-3">
+    <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2.5">
       <span className="grid size-[34px] shrink-0 place-items-center rounded-full bg-stylist-mario text-xs font-extrabold" aria-hidden="true">
         {inicial}
       </span>
@@ -236,15 +230,15 @@ export function MenuLateral({ path }: { path: string }) {
   const grupos = useGruposVisibles();
   const pendientes = useSolicitudesPendientes();
   return (
-    <aside className="sticky top-0 hidden h-screen w-[244px] shrink-0 flex-col border-r border-border bg-sidebar px-3 py-5 md:flex">
-      <div className="px-2 pb-5">
+    <aside className="sticky top-0 hidden h-screen w-[244px] shrink-0 flex-col border-r border-border bg-sidebar px-3 py-4 md:flex">
+      <div className="px-2 pb-3">
         <Marca />
       </div>
       <nav data-tour="nav" className="sin-scrollbar flex min-h-0 flex-col gap-0.5 overflow-y-auto">
         {grupos.map((g, gi) => (
           <div key={g.label ?? gi} className="flex flex-col gap-0.5">
             {g.label && (
-              <p className="px-3 pt-3 pb-1.5 text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase">
+              <p className="px-3 pt-2.5 pb-1 text-[10.5px] font-bold tracking-[0.06em] text-muted-foreground uppercase">
                 {g.label}
               </p>
             )}
@@ -281,7 +275,7 @@ export interface CabeceraArenaProps {
 /** Cabecera: buscador, Asistente, campana, Nueva cita. En móvil, marca + asistente y el buscador debajo. */
 export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraArenaProps) {
   return (
-    <header className="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-border bg-background/95 px-4 py-2.5 backdrop-blur md:flex-nowrap md:gap-3 md:px-8 md:py-3.5">
+    <header className="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-border bg-beige/95 px-4 py-2.5 backdrop-blur md:flex-nowrap md:gap-3 md:px-8 md:py-3.5">
       <div className="md:hidden">
         <Marca compacta />
       </div>

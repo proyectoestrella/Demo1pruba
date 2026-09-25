@@ -112,33 +112,33 @@
   --radius: 0.75rem;
 
   /* ---- Identidad «Arena»: los tokens con nombre (DESIGN.md) ---- */
-  /* «Arena · calma» (lote 8): la página es crema, las superficies nata y
-     beige, y el blanco puro queda para lo que tiene que destacar (campo
-     activo, cita seleccionada). Contrastes medidos: ver DESIGN.md. */
-  --pagina: #F7F2EA;
-  --superficie: #FBF8F3;
-  --beige: #F1EAE0;
-  --taupe-claro: #E8DDCF;
+  /* «Arena · calma» (lote 8c): un escalón más pastel. Página crema, menú y
+     cabecera en taupe claro, tarjetas nata claras con borde lino visible, y
+     el blanco puro solo en campos de texto. Contrastes medidos: DESIGN.md. */
+  --pagina: #EFE7DB;
+  --superficie: #F7F2EA;
+  --beige: #E9DFD1;
+  --taupe-claro: #DDCFBD;
   --blanco: #FFFFFF;
-  --perla: #F4EEE5;
-  --nata: #EFE7DA;
-  --arena: #EADFD2;
-  --taupe: #D9C7B5;
-  --lino: #E6DCCF;
-  --lino-fuerte: #D8CBBB;
+  --perla: #F2EBE0;
+  --nata: #E4D8C8;
+  --arena: #E0D2C0;
+  --taupe: #CDB9A4;
+  --lino: #D9CBB8;
+  --lino-fuerte: #C9B8A2;
   --cafe: #3B2F2A;
-  --cafe-medio: #665650;
-  --cafe-suave: #6F6058;
+  --cafe-medio: #5E4F48;
+  --cafe-suave: #62534C;
   --moca: #A47B5C;
-  --moca-fuerte: #8A6446;
-  --salvia-clara: #DDE8DD;
-  --salvia-suave: #E8EFE6;
+  --moca-fuerte: #7A5539;
+  --salvia-clara: #CFDFCF;
+  --salvia-suave: #DCE7DA;
   --salvia: #9FB8A3;
   --hoja: #4F6F58;
-  --hoja-tinta: #45624E;
-  --melocoton: #F3DED1;
-  --melocoton-borde: #E6C6B2;
-  --melocoton-tinta: #7E4F33;
+  --hoja-tinta: #3F5A47;
+  --melocoton: #F1D9C8;
+  --melocoton-borde: #DDB9A2;
+  --melocoton-tinta: #74462B;
 
   /* Paleta del calendario: un pastel frío por servicio (fondo · borde). */
   --serv-1: #DDEBFB; --serv-1-borde: #5B8FD6;
@@ -152,20 +152,27 @@
   --k-tinta: #1F2633;
   --k-tinta2: #4A5363;
   --k-gris: #7B8494;
-  --k-linea: #ECE4D9;
-  --k-linea-media: #F3EDE4;
-  --k-linea-f: #DDD2C4;
-  --k-cab: #F4EEE5;
-  --k-cab-hoy: #E8EFE6;
-  --k-ahora: #3B5BDB;
+  --k-linea: #E3D8C9;
+  --k-linea-media: #EAE1D5;
+  --k-linea-f: #CDBFAC;
+  --k-cab: #E9DFD1;
+  --k-cab-hoy: #DCE7DA;
+  --k-ahora: #C0503A;
+  /* Horas en que no trabaja nadie de la columna: rayado muy suave. */
+  --k-cerrado: rgba(122, 96, 72, 0.07);
+  /* Profesionales en la rejilla «Todas»: pasteles distintos entre sí. */
+  --pro-1: #F2D8C6;
+  --pro-2: #D5E4D2;
+  --pro-3: #E3DAEE;
+  --pro-4: #D6E4EF;
   --k-libre: #F1FAF6;
   --k-libre-b: #8CCFB2;
   --k-libre-t: #23694E;
   --k-vino: #2F7A5B;
-  /* Barras de ocupación por profesional (vista Mes y pie): por orden del equipo. */
-  --k-pro-1: #6E8FD0;
-  --k-pro-2: #43A07C;
-  --k-pro-3: #9A82DA;
+  /* Barras de ocupación por profesional (vista Mes y pie): el tono fuerte de --pro-N. */
+  --k-pro-1: #C98A62;
+  --k-pro-2: #6E9A73;
+  --k-pro-3: #9784BF;
 
   /* ---- Roles de shadcn, resueltos sobre esa paleta ---- */
   --background: var(--pagina);
