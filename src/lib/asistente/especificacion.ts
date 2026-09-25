@@ -156,7 +156,7 @@ export const ESPECIFICACION: FamiliaEspecificacion[] = [
     "id": "pendiente-de-ti",
     "categoria": "hoy",
     "grupo": "negocio",
-    "responde": "lo que espera a María: solicitudes, citas por marcar y señales vencidas.",
+    "responde": "lo que te espera: solicitudes, citas por marcar y señales vencidas.",
     "dato": "`appointments` con `status: \"pending\"`, `citasSinDesenlace(appointments)` y `estadoSenal(...) === \"vencida\"` (maqueta).",
     "entidades": "ninguna.",
     "ejemplos": [
@@ -1560,7 +1560,6 @@ export const ESPECIFICACION: FamiliaEspecificacion[] = [
     "entidades": "ninguna.",
     "ejemplos": [
       "como te pregunto",
-      "no me entiendes",
       "escribo mal",
       "tengo q escribir exacto?",
       "como tengo q preguntar",
