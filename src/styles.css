@@ -66,6 +66,18 @@
   --color-melocoton-borde: var(--melocoton-borde);
   --color-melocoton-tinta: var(--melocoton-tinta);
 
+  --color-k-tinta: var(--k-tinta);
+  --color-k-tinta2: var(--k-tinta2);
+  --color-k-gris: var(--k-gris);
+  --color-k-linea: var(--k-linea);
+  --color-k-linea-f: var(--k-linea-f);
+  --color-k-cab: var(--k-cab);
+  --color-k-cab-hoy: var(--k-cab-hoy);
+  --color-k-ahora: var(--k-ahora);
+  --color-k-libre: var(--k-libre);
+  --color-k-libre-b: var(--k-libre-b);
+  --color-k-libre-t: var(--k-libre-t);
+
   --color-stylist-mario: var(--stylist-mario);
   --color-stylist-diego: var(--stylist-diego);
   --color-stylist-ruben: var(--stylist-ruben);
@@ -120,6 +132,25 @@
   --serv-4: #FCE4ED; --serv-4-borde: #D9728F;
   --serv-5: #FEE8D8; --serv-5-borde: #E08A50;
   --serv-6: #FBF2CB; --serv-6-borde: #C8A21F;
+
+  /* Estructura del calendario: tinta azulada, líneas frías, «ahora» añil. */
+  --k-tinta: #1F2633;
+  --k-tinta2: #4A5363;
+  --k-gris: #7B8494;
+  --k-linea: #E8ECF2;
+  --k-linea-media: #F2F4F8;
+  --k-linea-f: #D3DAE5;
+  --k-cab: #F7F9FC;
+  --k-cab-hoy: #E6ECFD;
+  --k-ahora: #3B5BDB;
+  --k-libre: #F1FAF6;
+  --k-libre-b: #8CCFB2;
+  --k-libre-t: #23694E;
+  --k-vino: #2F7A5B;
+  /* Barras de ocupación por profesional (vista Mes y pie): por orden del equipo. */
+  --k-pro-1: #6E8FD0;
+  --k-pro-2: #43A07C;
+  --k-pro-3: #9A82DA;
 
   /* ---- Roles de shadcn, resueltos sobre esa paleta ---- */
   --background: #FFFFFF;

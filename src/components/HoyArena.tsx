@@ -110,6 +110,7 @@ export function HoyArena() {
   const cobrados = caja.total;
   const pct = (n: number) => (hoy.length ? Math.round((n / hoy.length) * 100) : 0);
   const serviciosActivos = services.filter((s) => s.active !== false);
+  const carta = selectServiceMap(services);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -120,7 +121,7 @@ export function HoyArena() {
           <h1 className="font-display text-[26px] leading-[1.1] font-medium tracking-[-0.02em] md:text-[32px]">
             {saludoPara(ahora.getHours())}, {salonName}
           </h1>
-          <p className="mt-1 text-muted-foreground">{fraseDelDia(hoy, ahora, serviceLabelOf)}</p>
+          <p className="mt-1 text-muted-foreground">{fraseDelDia(hoy, ahora, (a) => serviceLabelOf(a, carta))}</p>
         </div>
         {serviciosActivos.length > 0 && (
           <div className="ml-auto hidden flex-wrap gap-3 text-[12.5px] font-semibold text-cafe-medio md:flex">
@@ -338,7 +339,7 @@ function EstoTeEspera({
                 <b>{a.clientName}</b>
                 {esNueva && <span className="ml-1 inline-flex h-5 items-center rounded-full bg-melocoton px-2 align-[1px] text-[11px] font-bold text-melocoton-tinta">Nueva</span>}
                 <span className="block text-[12.5px] text-muted-foreground tabular-nums">
-                  {cuando(a)} · {serviceLabelOf(a)}
+                  {cuando(a)} · {serviceLabelOf(a, serviceMap)}
                   {emp && !soloUno ? ` con ${emp.name}` : ""}
                   {a.origen !== "tpv123" ? " · pidió por tu página" : ""}
                 </span>
@@ -407,6 +408,7 @@ function AhoraYSiguientes({
 }) {
   const services = useSalonStore((s) => s.services);
   const equipo = useEquipo();
+  const carta = selectServiceMap(useSalonStore((st) => st.services));
   const siguientes = hoy.filter((a) => !terminada(a, ahora)).slice(0, 6);
   return (
     <section data-tour="today-list" className={cn(tarjeta, "flex flex-1 flex-col")}>
@@ -442,7 +444,7 @@ function AhoraYSiguientes({
                   <span className="min-w-0 flex-1">
                     <b className="block truncate">{a.clientName}</b>
                     <span className="block truncate text-[12.5px] text-muted-foreground">
-                      {serviceLabelOf(a)} · {a.duration} min
+                      {serviceLabelOf(a, carta)} · {a.duration} min
                     </span>
                   </span>
                   {emp && !soloUno && <Avatar nombre={emp.name} colorVar={emp.colorVar} className="size-[26px]" />}
@@ -479,6 +481,7 @@ function Vinieron({
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const conRecargo = recargoActivo({ noShowFeeEur });
   const equipo = useEquipo();
+  const carta = selectServiceMap(useSalonStore((st) => st.services));
   const aplicar = useAplicarDesenlace();
   const [decision, setDecision] = useState<{ client: Client | undefined; cita: Appointment; desenlace: Desenlace } | null>(null);
   const terminadas = hoy.filter((a) => terminada(a, ahora));
@@ -542,7 +545,7 @@ function Vinieron({
                   <span className="min-w-0 flex-1">
                     <b className="block truncate">{a.clientName}</b>
                     <span className="block truncate text-[12.5px] text-muted-foreground">
-                      {serviceLabelOf(a)}
+                      {serviceLabelOf(a, carta)}
                       {emp && !soloUno ? ` · ${emp.name}` : ""}
                     </span>
                   </span>
@@ -574,6 +577,7 @@ function Vinieron({
 
 function RecordatoriosDeManana({ appointments, ahora, soloUno }: { appointments: Appointment[]; ahora: Date; soloUno: boolean }) {
   const equipo = useEquipo();
+  const carta = selectServiceMap(useSalonStore((st) => st.services));
   const manana = new Date(ahora);
   manana.setDate(manana.getDate() + 1);
   const filas = hojaDelDia(appointments, fechaLocal(manana)).sort(
@@ -615,7 +619,7 @@ function RecordatoriosDeManana({ appointments, ahora, soloUno }: { appointments:
                 <span className="min-w-0 flex-1">
                   <b className="block truncate">{cita.clientName}</b>
                   <span className="block truncate text-[12.5px] text-muted-foreground">
-                    {serviceLabelOf(cita)}
+                    {serviceLabelOf(cita, carta)}
                     {emp && !soloUno ? ` · ${emp.name}` : ""}
                     {tinte && !ultimoColor?.colorFormula ? " · sin fórmula" : ""}
                   </span>
