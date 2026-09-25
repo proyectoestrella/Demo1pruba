@@ -28,7 +28,7 @@ import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { RejillaCalendario, colorProfesional, type ColumnaRejilla } from "@/components/RejillaCalendario";
 import { CamposPreferenciasCalendario } from "@/components/CamposPreferenciasCalendario";
-import { VISTAS_CALENDARIO, diasDeRejilla, horasDeRejilla, tramosDeCitas, citasFueraDeHoras, inicioDeSemana, pasoDeVista, preferenciasDe, type PrimerDia, type VistaCalendario } from "@/lib/preferencias-calendario";
+import { MAX_DIAS_ELEGIDOS, diasDesde, rangoDeDias, VISTAS_CALENDARIO, diasDeRejilla, horasDeRejilla, tramosDeCitas, citasFueraDeHoras, inicioDeSemana, pasoDeVista, preferenciasDe, type PrimerDia, type VistaCalendario } from "@/lib/preferencias-calendario";
 
 /**
  * Calendario con la identidad «Arena» (DESIGN.md), calcado del prototipo v2:
@@ -38,7 +38,37 @@ import { VISTAS_CALENDARIO, diasDeRejilla, horasDeRejilla, tramosDeCitas, citasF
  * detalle de cada cita en el panel lateral de siempre.
  */
 
-type Vista = VistaCalendario;
+/** «rango» = Elegir días: no es vista predeterminada, vive mientras dura la sesión. */
+type Vista = VistaCalendario | "rango";
+const CLAVE_RANGO = "sishow-calendario-rango";
+
+function fechaISO(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** El rango elegido, recordado en esta pestaña del navegador. */
+function useRangoDeSesion() {
+  const [rango, setRango] = useState<{ inicio: Date; n: number } | null>(() => {
+    try {
+      const g = JSON.parse(window.sessionStorage.getItem(CLAVE_RANGO) ?? "null") as { inicio: string; n: number } | null;
+      if (!g) return null;
+      const r = rangoDeDias(g.inicio, g.inicio);
+      return "error" in r || !(g.n >= 1 && g.n <= MAX_DIAS_ELEGIDOS) ? null : { inicio: r.inicio, n: g.n };
+    } catch {
+      return null;
+    }
+  });
+  const guardar = (r: { inicio: Date; n: number } | null) => {
+    setRango(r);
+    try {
+      if (r) window.sessionStorage.setItem(CLAVE_RANGO, JSON.stringify({ inicio: fechaISO(r.inicio), n: r.n }));
+      else window.sessionStorage.removeItem(CLAVE_RANGO);
+    } catch {
+      /* sin almacenamiento: dura hasta recargar */
+    }
+  };
+  return [rango, guardar] as const;
+}
 
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
@@ -76,6 +106,8 @@ export function CalendarioArena() {
   const [vista, setVista] = useState<Vista>(pref.vista);
   /** En Semana y 3 días: «todas» o el id de una profesional. */
   const [filtroPro, setFiltroPro] = useState<string>("todas");
+  const [rango, setRango] = useRangoDeSesion();
+  const [rangoAbierto, setRangoAbierto] = useState(false);
   const [seleccionada, setSeleccionada] = useState<Appointment | null>(null);
   const [prefill, setPrefill] = useState<{ date: Date; employeeId: EmployeeId } | null>(null);
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
@@ -104,11 +136,15 @@ export function CalendarioArena() {
 
   function mover(n: number) {
     const d = new Date(anchor);
+    if (vista === "rango" && rango) {
+      setRango({ inicio: new Date(rango.inicio.getFullYear(), rango.inicio.getMonth(), rango.inicio.getDate() + n * rango.n), n: rango.n });
+      return;
+    }
     if (vista === "mes") {
       d.setDate(1);
       d.setMonth(d.getMonth() + n);
     } else {
-      d.setDate(d.getDate() + n * pasoDeVista(vista));
+      d.setDate(d.getDate() + n * pasoDeVista(vista === "rango" ? "dia" : vista));
     }
     setAnchor(d);
   }
@@ -117,10 +153,12 @@ export function CalendarioArena() {
     setVista("dia");
   };
 
-  const esRejilla = vista === "dia" || vista === "tres" || vista === "semana";
-  const diasRejilla = esRejilla ? diasDeRejilla(anchor, vista, pref.primerDia) : [];
+  const esRejilla = vista === "dia" || vista === "tres" || vista === "semana" || (vista === "rango" && !!rango);
+  const diasRejilla =
+    vista === "rango" && rango ? diasDesde(rango.inicio, rango.n) : esRejilla && vista !== "rango" ? diasDeRejilla(anchor, vista, pref.primerDia) : [];
+  const variosDias = vista === "semana" || vista === "tres" || vista === "rango";
   let titulo: string;
-  if (vista === "semana" || vista === "tres") {
+  if (variosDias && diasRejilla.length > 0) {
     const pri = diasRejilla[0];
     const ult = diasRejilla[diasRejilla.length - 1];
     titulo =
@@ -228,7 +266,7 @@ export function CalendarioArena() {
           )}
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto">
-          {(vista === "semana" || vista === "tres") && !soloUno && (
+          {variosDias && !soloUno && (
             <label className="relative">
               <span className="sr-only">Profesional</span>
               <select
@@ -254,7 +292,7 @@ export function CalendarioArena() {
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-[min(360px,calc(100vw-2rem))] rounded-2xl p-0">
-              <Leyenda vista={vista} porPro={(vista === "semana" || vista === "tres") && filtroPro === "todas" && !soloUno} services={services} equipo={equipo} />
+              <Leyenda vista={vista} porPro={variosDias && filtroPro === "todas" && !soloUno} services={services} equipo={equipo} />
               <p className="px-4 py-3 text-[12.5px] text-muted-foreground">
                 Pulsa una cita para ver su detalle, o un hueco vacío para dar una cita a esa hora.
               </p>
@@ -283,6 +321,32 @@ export function CalendarioArena() {
                 )}
               </button>
             ))}
+            <Popover open={rangoAbierto} onOpenChange={setRangoAbierto}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={vista === "rango"}
+                  className={cn(
+                    "col-span-5 h-[34px] rounded-full px-1 text-[12.5px] font-bold whitespace-nowrap text-cafe-medio md:col-span-1 md:px-[13px] md:text-[13px]",
+                    vista === "rango" && "bg-card text-foreground shadow-[0_1px_3px_rgba(59,47,42,0.14)]",
+                  )}
+                >
+                  Elegir días
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-[min(320px,calc(100vw-2rem))] rounded-2xl p-4">
+                <FormRango
+                  inicial={rango}
+                  anchor={anchor}
+                  onVer={(r) => {
+                    setRango(r);
+                    setVista("rango");
+                    setRangoAbierto(false);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           <Popover>
             <PopoverTrigger asChild>
@@ -314,7 +378,7 @@ export function CalendarioArena() {
             carta={carta}
             services={services}
             colorPor={vista !== "dia" && filtroPro === "todas" && !soloUno ? "profesional" : "servicio"}
-            anchoMinimo={vista === "dia" ? 150 : vista === "tres" ? 96 : 44}
+            anchoMinimo={vista === "dia" ? 150 : diasRejilla.length <= 3 ? 96 : diasRejilla.length > 7 ? 60 : 44}
             onCita={setSeleccionada}
             onHueco={abrirHueco}
           />
@@ -812,5 +876,42 @@ function Tarjeta({ className, titulo, sub, extra, children }: { className: strin
       </div>
       <div className="px-5 pb-5">{children}</div>
     </section>
+  );
+}
+
+/* ---------- Elegir días ---------- */
+
+function FormRango({ inicial, anchor, onVer }: { inicial: { inicio: Date; n: number } | null; anchor: Date; onVer: (r: { inicio: Date; n: number }) => void }) {
+  const ini = inicial?.inicio ?? anchor;
+  const fin = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate() + (inicial?.n ?? 5) - 1);
+  const [desde, setDesde] = useState(fechaISO(ini));
+  const [hasta, setHasta] = useState(fechaISO(fin));
+  const [error, setError] = useState<string | null>(null);
+  const campo = "h-10 w-full rounded-xl border border-input bg-blanco px-3 text-[14px] text-cafe";
+  return (
+    <form
+      className="grid gap-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const r = rangoDeDias(desde, hasta);
+        if ("error" in r) return setError(r.error);
+        onVer(r);
+      }}
+    >
+      <p className="text-[14px] font-extrabold">Elegir días</p>
+      <label className="grid gap-1.5 text-[13px] font-bold">
+        Desde
+        <input type="date" className={campo} value={desde} onChange={(e) => { setDesde(e.target.value); setError(null); }} />
+      </label>
+      <label className="grid gap-1.5 text-[13px] font-bold">
+        Hasta
+        <input type="date" className={campo} value={hasta} onChange={(e) => { setHasta(e.target.value); setError(null); }} />
+      </label>
+      <p className="text-[12.5px] text-cafe-suave">Hasta {MAX_DIAS_ELEGIDOS} días. Las flechas saltan a los siguientes días del mismo tamaño.</p>
+      {error && <p role="alert" className="text-[12.5px] text-melocoton-tinta">{error}</p>}
+      <button type="submit" className="h-10 rounded-full bg-primary text-[14px] font-bold text-primary-foreground">
+        Ver estos días
+      </button>
+    </form>
   );
 }

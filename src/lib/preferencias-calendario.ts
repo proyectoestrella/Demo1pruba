@@ -99,3 +99,29 @@ export function horasDeRejilla(pref: Pick<PreferenciasCalendario, "desde" | "has
 export function citasFueraDeHoras(tramos: { ini: number; fin: number }[], horas: { desde: number; hasta: number }): number {
   return tramos.filter((t) => t.ini < horas.desde * 60 || t.fin > horas.hasta * 60).length;
 }
+
+/** Máximo de días que enseña «Elegir días». */
+export const MAX_DIAS_ELEGIDOS = 14;
+
+/**
+ * Valida el rango de «Elegir días» (fechas `aaaa-mm-dd` de los campos de
+ * fecha) y devuelve el primer día y cuántos son, o el motivo por el que no.
+ */
+export function rangoDeDias(desde: string, hasta: string): { inicio: Date; n: number } | { error: string } {
+  const leer = (s: string) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+  };
+  const a = leer(desde);
+  const b = leer(hasta);
+  if (!a || !b) return { error: "Elige las dos fechas." };
+  const n = Math.round((+b - +a) / 86_400_000) + 1;
+  if (n < 1) return { error: "La fecha final va después de la inicial." };
+  if (n > MAX_DIAS_ELEGIDOS) return { error: `Como mucho ${MAX_DIAS_ELEGIDOS} días seguidos.` };
+  return { inicio: a, n };
+}
+
+/** Los `n` días seguidos desde `inicio`. */
+export function diasDesde(inicio: Date, n: number): Date[] {
+  return Array.from({ length: n }, (_, i) => new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + i));
+}

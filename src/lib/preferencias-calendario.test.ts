@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { diasDeRejilla, horasDeRejilla, inicioDeSemana, pasoDeVista, preferenciasDe, tramosDeCitas, citasFueraDeHoras } from "./preferencias-calendario";
+import { diasDeRejilla, horasDeRejilla, inicioDeSemana, pasoDeVista, preferenciasDe, tramosDeCitas, citasFueraDeHoras, rangoDeDias, diasDesde } from "./preferencias-calendario";
 import type { Appointment } from "./mock/types";
 
 const d = (s: string) => new Date(s + "T00:00:00");
@@ -52,5 +52,21 @@ describe("horas visibles: el fallo de «de 7 a 18»", () => {
   });
   test("una cita cancelada no ensancha", () => {
     expect(tramosDeCitas(citas)).toEqual([{ ini: 600, fin: 660 }, { ini: 990, fin: 1035 }]);
+  });
+});
+
+describe("elegir días", () => {
+  test("de una fecha a otra, ambas incluidas, hasta 14 días", () => {
+    const r = rangoDeDias("2026-10-05", "2026-10-09");
+    expect("n" in r && r.n).toBe(5);
+    if ("n" in r) expect(diasDesde(r.inicio, r.n).map(iso)).toEqual(["2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09"]);
+    expect(rangoDeDias("2026-10-05", "2026-10-05")).toMatchObject({ n: 1 });
+    // Cruza el cambio de hora de octubre sin perder ni ganar un día.
+    expect(rangoDeDias("2026-10-20", "2026-11-02")).toMatchObject({ n: 14 });
+  });
+  test("rechaza fechas vacías, al revés o más de 14 días", () => {
+    expect(rangoDeDias("", "2026-10-09")).toEqual({ error: "Elige las dos fechas." });
+    expect(rangoDeDias("2026-10-09", "2026-10-05")).toEqual({ error: "La fecha final va después de la inicial." });
+    expect(rangoDeDias("2026-10-01", "2026-10-15")).toEqual({ error: "Como mucho 14 días seguidos." });
   });
 });
