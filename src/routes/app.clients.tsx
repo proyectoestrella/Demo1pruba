@@ -230,7 +230,7 @@ function Clients() {
       {conRecargo && <RecargosPendientes title="Recargos pendientes" />}
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <Tabs value={filtroEfectivo} onValueChange={(v) => setFiltro(v as Filtro)} className="sin-scrollbar min-w-0 max-w-full overflow-x-auto">
+        <Tabs value={filtroEfectivo} onValueChange={(v) => setFiltro(v as Filtro)} className="sin-scrollbar min-w-0 max-w-full overflow-x-auto [mask-image:linear-gradient(to_right,black_88%,transparent)] lg:[mask-image:none]">
           <TabsList>
             <TabsTrigger value="todos">Todas</TabsTrigger>
             <TabsTrigger value="hoy">Vienen hoy <span className="ml-1 tabular-nums text-muted-foreground">{citaDeHoy.size}</span></TabsTrigger>

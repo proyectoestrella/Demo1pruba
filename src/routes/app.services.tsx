@@ -183,7 +183,7 @@ function ServicesPage() {
               <div className="space-y-2.5 px-5 pb-5">
                 {masPedidos.map(({ sv, veces }, i) => (
                   <div key={sv.id} className="grid grid-cols-[minmax(0,11rem)_1fr_3rem] items-center gap-3 text-sm">
-                    <span className="truncate font-semibold">{sv.name}</span>
+                    <span className="font-semibold leading-tight [overflow-wrap:anywhere]">{sv.name}</span>
                     <span className="h-3 overflow-hidden rounded-full bg-nata">
                       <i className="block h-full rounded-full" style={{ width: `${(veces / maxVeces) * 100}%`, background: i === 0 ? "var(--hoja)" : "var(--salvia)" }} />
                     </span>
@@ -200,7 +200,7 @@ function ServicesPage() {
               <div className="space-y-2.5 px-5 pb-5">
                 {porDinero.map(({ sv, euros, minutos }, i) => (
                   <div key={sv.id} className="grid grid-cols-[minmax(0,11rem)_1fr_4.5rem_4.5rem] items-center gap-3 text-sm">
-                    <span className="truncate font-semibold">{sv.name}</span>
+                    <span className="font-semibold leading-tight [overflow-wrap:anywhere]">{sv.name}</span>
                     <span className="h-3 overflow-hidden rounded-full bg-nata">
                       <i className="block h-full rounded-full" style={{ width: `${(euros / maxEuros) * 100}%`, background: i === 0 ? "var(--hoja)" : "var(--salvia)" }} />
                     </span>

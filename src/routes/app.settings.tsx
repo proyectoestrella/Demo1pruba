@@ -317,7 +317,7 @@ function SeccionAjustes({ titulo, resumen, abierta = false, children }: { titulo
         <button type="button" aria-expanded={abierto} onClick={alternar} className="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-beige/50">
           <span className="min-w-0 flex-1">
             <span className="block text-[16px] font-extrabold tracking-[-0.01em]">{titulo}</span>
-            <span className="block truncate text-[13px] text-muted-foreground">{resumen}</span>
+            <span className="block text-[13px] leading-snug text-muted-foreground">{resumen}</span>
           </span>
           <ChevronDown className={cn("size-5 shrink-0 text-cafe-medio transition-transform", abierto && "rotate-180")} strokeWidth={1.6} aria-hidden="true" />
         </button>

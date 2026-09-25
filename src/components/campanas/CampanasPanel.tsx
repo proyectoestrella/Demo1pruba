@@ -185,7 +185,7 @@ function CampanaCard({ campana, onPreparar }: { campana: Campana; onPreparar: ()
         </div>
         <div className="max-w-[38%] text-right">
           <span className="block text-[22px] leading-tight font-extrabold tabular-nums">{campana.cifra}</span>
-          <span className="line-clamp-2 text-[12px] leading-tight text-muted-foreground" title={campana.cifraLabel}>{campana.cifraLabel}</span>
+          <span className="block text-[12px] leading-tight text-muted-foreground">{campana.cifraLabel}</span>
         </div>
       </div>
 

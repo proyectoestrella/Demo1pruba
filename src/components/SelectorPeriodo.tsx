@@ -74,7 +74,7 @@ export function SelectorPeriodo({ className }: { className?: string }) {
           const contenido = esFechas ? (
             <>
               <CalendarDays className="hidden h-4 w-4 shrink-0 sm:block" aria-hidden="true" />
-              <span className="truncate">Personalizado</span>
+              <span className="truncate"><span className="sm:hidden">Fechas</span><span className="hidden sm:inline">Personalizado</span></span>
             </>
           ) : (
             <>
