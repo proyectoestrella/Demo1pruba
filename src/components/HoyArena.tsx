@@ -287,7 +287,7 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
   };
 
   return (
-    <section id="espera" data-tour="pending-requests" className={bloque}>
+    <section id="espera" data-tour="pending-requests" className="rounded-[24px] border border-salvia bg-salvia-suave p-5 md:p-7">
       <div className="flex items-baseline gap-3">
         <h2 className={tituloBloque}>Esto te espera</h2>
         <span className="inline-flex h-6 items-center rounded-full border-[1.5px] border-dashed border-moca px-2.5 text-[12.5px] font-bold text-primary tabular-nums">
@@ -295,7 +295,7 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
         </span>
       </div>
       <p className="mt-1 text-[14px] text-muted-foreground">Al confirmarla queda en tu agenda. El aviso a la clienta lo mandas tú por WhatsApp desde su ficha, con un toque.</p>
-      <ul className="mt-5 divide-y divide-lino">
+      <ul className="mt-5 divide-y divide-salvia/70">
         {visibles.map((a) => {
           const catalogoMin = a.serviceIds.reduce((sum, id) => sum + (serviceMap[id]?.durationMin ?? 0), 0);
           const recordada = duracionRecordada(appointments, a.clientId, a.serviceIds, catalogoMin);

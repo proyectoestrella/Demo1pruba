@@ -160,11 +160,11 @@ function EnlaceNav({ item, active, contador, onNavigate, hijo = false }: { item:
         "flex h-[38px] shrink-0 items-center gap-[11px] rounded-xl border px-3 text-sm font-semibold transition-colors",
         hijo && "ml-7 h-9 text-[13px]",
         active
-          ? "border-border bg-card text-foreground shadow-[var(--sombra-tarjeta)]"
+          ? "border-salvia bg-salvia-clara text-foreground"
           : "border-transparent text-cafe-medio hover:bg-arena hover:text-cafe",
       )}
     >
-      <item.icon className={cn("size-[18px] shrink-0", active && "text-primary")} strokeWidth={1.6} />
+      <item.icon className={cn("size-[18px] shrink-0", active && "text-hoja-tinta")} strokeWidth={1.6} />
       {item.label}
       {!!contador && (
         <span className="ml-auto rounded-full bg-salvia-clara px-2 text-[11px] font-bold tabular-nums text-hoja-tinta">
@@ -374,7 +374,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
   const clase = (active: boolean) =>
     cn(
       "flex min-h-[54px] flex-col items-center justify-center gap-0.5 rounded-[14px] text-[11px] font-bold",
-      active ? "bg-nata text-foreground" : "text-muted-foreground",
+      active ? "bg-salvia-clara text-foreground" : "text-muted-foreground",
     );
   return (
     <>
@@ -398,7 +398,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
           const active = estaActivo(item, path);
           return (
             <Link key={item.to} to={item.to} className={clase(active)}>
-              <item.icon className={cn("size-[22px]", active && "text-primary")} strokeWidth={1.6} />
+              <item.icon className={cn("size-[22px]", active && "text-hoja-tinta")} strokeWidth={1.6} />
               {item.label}
             </Link>
           );
@@ -406,7 +406,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
         <Sheet open={masAbierto} onOpenChange={setMasAbierto}>
           <SheetTrigger asChild>
             <button type="button" className={clase(activoEnMas)}>
-              <MoreHorizontal className={cn("size-[22px]", activoEnMas && "text-primary")} strokeWidth={1.6} />
+              <MoreHorizontal className={cn("size-[22px]", activoEnMas && "text-hoja-tinta")} strokeWidth={1.6} />
               Más
             </button>
           </SheetTrigger>

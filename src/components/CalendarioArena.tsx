@@ -207,11 +207,11 @@ export function CalendarioArena() {
             onCabecera: () => abrirDia(d),
             cabecera: (
               <span className="flex flex-col items-start leading-none" aria-label={`Abrir el ${DIAS[d.getDay()]} ${d.getDate()}`}>
-                <span className={cn("text-[11px] font-bold tracking-[0.04em] uppercase", hoy ? "text-primary" : "text-cafe-suave")}>{DCORTO[d.getDay()]}</span>
+                <span className={cn("text-[11px] font-bold tracking-[0.04em] uppercase", hoy ? "text-hoja-tinta" : "text-cafe-suave")}>{DCORTO[d.getDay()]}</span>
                 <span
                   className={cn(
                     "mt-1 grid size-[34px] place-items-center rounded-full text-[19px] font-extrabold tabular-nums",
-                    hoy && "bg-primary text-primary-foreground",
+                    hoy && "bg-hoja text-white",
                   )}
                 >
                   {d.getDate()}
@@ -776,7 +776,7 @@ function VistaMes({ anchor, appointments, equipo, ahora, primerDia, onDia }: { a
               )}
             >
               <span className="flex items-center justify-between">
-                <span className={cn("grid size-[26px] place-items-center rounded-full text-[13px] font-extrabold tabular-nums", hoy && "bg-primary text-primary-foreground")}>{d.getDate()}</span>
+                <span className={cn("grid size-[26px] place-items-center rounded-full text-[13px] font-extrabold tabular-nums", hoy && "bg-hoja text-white")}>{d.getDate()}</span>
                 {citas.length > 0 && (
                   <span className="text-xs font-extrabold text-k-tinta tabular-nums">
                     {citas.length} {citas.length === 1 ? "cita" : "citas"}

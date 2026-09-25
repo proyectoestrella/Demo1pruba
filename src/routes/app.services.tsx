@@ -185,7 +185,7 @@ function ServicesPage() {
                   <div key={sv.id} className="grid grid-cols-[minmax(0,11rem)_1fr_3rem] items-center gap-3 text-sm">
                     <span className="truncate font-semibold">{sv.name}</span>
                     <span className="h-3 overflow-hidden rounded-full bg-nata">
-                      <i className="block h-full rounded-full" style={{ width: `${(veces / maxVeces) * 100}%`, background: i === 0 ? "var(--moca-fuerte)" : "var(--moca)" }} />
+                      <i className="block h-full rounded-full" style={{ width: `${(veces / maxVeces) * 100}%`, background: i === 0 ? "var(--hoja)" : "var(--salvia)" }} />
                     </span>
                     <b className="text-right tabular-nums">{veces}</b>
                   </div>
@@ -202,7 +202,7 @@ function ServicesPage() {
                   <div key={sv.id} className="grid grid-cols-[minmax(0,11rem)_1fr_4.5rem_4.5rem] items-center gap-3 text-sm">
                     <span className="truncate font-semibold">{sv.name}</span>
                     <span className="h-3 overflow-hidden rounded-full bg-nata">
-                      <i className="block h-full rounded-full" style={{ width: `${(euros / maxEuros) * 100}%`, background: i === 0 ? "var(--moca-fuerte)" : "var(--moca)" }} />
+                      <i className="block h-full rounded-full" style={{ width: `${(euros / maxEuros) * 100}%`, background: i === 0 ? "var(--hoja)" : "var(--salvia)" }} />
                     </span>
                     <b className="text-right tabular-nums">{eurRedondo(euros)}</b>
                     <span className="text-right text-[12.5px] text-muted-foreground tabular-nums">{minutos ? `${eurRedondo((euros / minutos) * 60)}/h` : "—"}</span>

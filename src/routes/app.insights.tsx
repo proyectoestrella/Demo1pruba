@@ -88,7 +88,7 @@ function Insights() {
                   </span>
                   <span className="text-muted-foreground tabular-nums"><b className="text-foreground">{pct} %</b> · {citas} citas</span>
                 </div>
-                <div className="h-3 overflow-hidden rounded-full bg-nata"><i className="block h-full rounded-full bg-moca" style={{ width: `${pct}%` }} /></div>
+                <div className="h-3 overflow-hidden rounded-full bg-nata"><i className="block h-full rounded-full bg-hoja" style={{ width: `${pct}%` }} /></div>
               </div>
             ))}
           </div>
@@ -123,7 +123,7 @@ function Insights() {
                     <span><b>{t}</b> <span className="text-[12.5px] text-muted-foreground">{d}</span></span>
                     <span className="tabular-nums"><b>{n}</b> <span className="text-muted-foreground">· {Math.round((n / totalClientas) * 100)} %</span></span>
                   </div>
-                  <div className="h-3 overflow-hidden rounded-full bg-nata"><i className="block h-full rounded-full bg-moca" style={{ width: `${(n / totalClientas) * 100}%` }} /></div>
+                  <div className="h-3 overflow-hidden rounded-full bg-nata"><i className="block h-full rounded-full bg-hoja" style={{ width: `${(n / totalClientas) * 100}%` }} /></div>
                 </div>
               ))}
               <p className="text-[12.5px] text-muted-foreground tabular-nums">{totalClientas} clientas en total.</p>

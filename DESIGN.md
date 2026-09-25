@@ -180,6 +180,15 @@ Contraste medido (WCAG 2.1, texto normal ≥ 4,5):
 
 Blanco sobre moca fuerte: 6,6. El moca como texto no va sobre taupe claro ni sobre lino.
 
+### Acento salvia (lote 9c)
+
+El verde es el acento de lo que está bien o activo, siempre en su tinta para el texto:
+ítem activo del menú (salvia clara, icono hoja tinta), «Confirmada» (salvia suave) y «Vino»
+(salvia clara), botón secundario (salvia suave, borde salvia), número de hoy en el calendario
+(blanco sobre hoja, 5,6:1), fondo de «Esto te espera» (salvia suave) y barras de progreso
+(hoja). Texto medido: hoja tinta ≥ 5,5:1 sobre los tres verdes; café suave 5,8:1 sobre
+salvia suave. El moca queda para la acción principal; el melocotón, para los avisos.
+
 ### Densidad y jerarquía
 
 - **Hoy, a primer golpe de vista:** saludo, una línea de cifras y «Esto te espera» (solo si
