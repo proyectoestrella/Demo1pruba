@@ -173,7 +173,7 @@ function Appointments() {
               services={services}
               employees={employees}
             />
-            <Button size="sm" className="gap-1.5" onClick={() => setNewApptOpen(true)}>
+            <Button size="sm" className="hidden gap-1.5 md:inline-flex" onClick={() => setNewApptOpen(true)}>
               <Plus className="h-4 w-4" /> Nueva cita
             </Button>
           </>

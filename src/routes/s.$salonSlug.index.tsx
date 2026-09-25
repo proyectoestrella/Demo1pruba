@@ -33,6 +33,7 @@ import {
   professionalWord,
   showsRealPhotos,
   type BusinessType,
+  placeholderAvatar,
 } from "@/lib/business-type";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import type { EmployeeId } from "@/lib/mock/types";
@@ -842,6 +843,28 @@ function SalonHome() {
             /* Retratos grandes en vez de avatares pequeños: en una barbería
                la cara del que te va a cortar es parte de lo que se vende. */
             <Reveal>
+              {employees.every((e) => fotoDe(e) === placeholderAvatar(e.name, e.id)) ? (
+                // Sin ninguna foto, el collage de retratos solo enseñaba letras
+                // gigantes montadas unas sobre otras: fichas sencillas y legibles.
+                <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {employees.map((e, i) => (
+                    <li key={e.id} className="flex items-center gap-4 rounded-[20px] border border-lino bg-background p-5">
+                      <span
+                        className="grid size-16 shrink-0 place-items-center rounded-full border border-cafe/30 font-display text-2xl text-cafe"
+                        style={{ background: `var(--pro-${(i % 4) + 1})` }}
+                        aria-hidden="true"
+                      >
+                        {e.name.trim().charAt(0).toUpperCase()}
+                      </span>
+                      <span className="min-w-0">
+                        <b className="block font-display text-xl font-medium">{e.name}</b>
+                        <span className="block text-sm text-muted-foreground">{e.specialty}</span>
+                        <span className="block text-[13px] text-cafe-suave tabular-nums">{e.yearsExperience} años de experiencia</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
               <TeamShowcase
                 members={employees.map((e) => ({
                   id: e.id,
@@ -850,6 +873,7 @@ function SalonHome() {
                   image: fotoDe(e),
                 }))}
               />
+              )}
             </Reveal>
           )}
         </div>
