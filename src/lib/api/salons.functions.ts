@@ -717,6 +717,27 @@ export const syncAppointment = createServerFn({ method: "POST" })
   });
 
 /**
+ * Escribe una ficha bajando de nivel de esquema si hace falta (ver
+ * NIVELES_CLIENTE): sin la columna nueva se guarda sin ese dato antes que
+ * perder el cambio entero.
+ */
+async function escribirFicha(
+  _supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  quien: string,
+  escribir: (fila: Record<string, unknown>) => PromiseLike<{ error: { code?: string; message: string } | null }>,
+  fila: Record<string, unknown>,
+): Promise<void> {
+  let actual = fila;
+  for (let nivel = 0; nivel <= NIVELES_CLIENTE.length; nivel++) {
+    const { error } = await escribir(actual);
+    if (!error) return;
+    if (!faltaEsquema(error) || nivel === NIVELES_CLIENTE.length) throw new Error(`${quien}: ${error.message}`);
+    console.warn(`${quien}: faltan columnas (${NIVELES_CLIENTE[nivel].join(", ")}); aplica supabase/pendiente.sql`);
+    actual = sinCampos(actual, NIVELES_CLIENTE[nivel]);
+  }
+}
+
+/**
  * ¿Choca este hueco con otra cita de la misma profesional ya guardada? Se
  * excluye la propia cita (`localId`) para poder moverla. Lectura acotada a
  * una ventana de siete días; la protección definitiva contra dos
@@ -922,6 +943,8 @@ export const applyClientPenalty = createServerFn({ method: "POST" })
       penaltyKeep: z.boolean().optional(),
       /** ¿La deuda le impide reservar por la web? `false` = solo anotada. */
       penaltyBlock: z.boolean().optional(),
+      /** Lote 3: bloqueo manual con columna propia. Si no viene, no se toca. */
+      manualBlock: z.boolean().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -941,22 +964,10 @@ export const applyClientPenalty = createServerFn({ method: "POST" })
       penalty_at: data.penaltyAt ?? null,
       penalty_keep: data.penaltyKeep ?? false,
       penalty_block: data.penaltyBlock ?? true,
+      ...(data.manualBlock !== undefined ? { manual_block: data.manualBlock } : {}),
     };
 
-    const { error } = await supabase
-      .from("clients")
-      .upsert(fila, { onConflict: "salon_slug,phone_key" });
-    if (faltaEsquema(error)) {
-      console.warn(
-        "applyClientPenalty: faltan `penalty_at`/`penalty_keep` (aplica supabase/schema.sql); se guarda sin caducidad",
-      );
-      const { error: err2 } = await supabase
-        .from("clients")
-        .upsert(sinCampos(fila, CAMPOS_NUEVOS_CLIENTE), { onConflict: "salon_slug,phone_key" });
-      if (err2) throw new Error(`applyClientPenalty: ${err2.message}`);
-      return { synced: true as const };
-    }
-    if (error) throw new Error(`applyClientPenalty: ${error.message}`);
+    await escribirFicha(supabase, "applyClientPenalty", (f) => supabase.from("clients").upsert(f, { onConflict: "salon_slug,phone_key" }), fila);
     return { synced: true as const };
   });
 
@@ -965,6 +976,7 @@ export const clearClientPenalty = createServerFn({ method: "POST" })
   .middleware([conSesion])
   .inputValidator(
     z.object({
+      manualBlock: z.boolean().optional(),
       slug,
       clientId: z.string().optional(),
       phone: z.string().min(1),
@@ -985,17 +997,9 @@ export const clearClientPenalty = createServerFn({ method: "POST" })
       penalty_at: null,
       penalty_keep: false,
       penalty_block: true,
+      ...(data.manualBlock !== undefined ? { manual_block: data.manualBlock } : {}),
     };
-    const { error } = await supabase.from("clients").update(parche).eq("id", id);
-    if (faltaEsquema(error)) {
-      const { error: err2 } = await supabase
-        .from("clients")
-        .update(sinCampos(parche, CAMPOS_NUEVOS_CLIENTE))
-        .eq("id", id);
-      if (err2) throw new Error(`clearClientPenalty: ${err2.message}`);
-      return { synced: true as const };
-    }
-    if (error) throw new Error(`clearClientPenalty: ${error.message}`);
+    await escribirFicha(supabase, "clearClientPenalty", (f) => supabase.from("clients").update(f).eq("id", id), parche);
     return { synced: true as const };
   });
 

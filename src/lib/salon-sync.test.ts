@@ -15,7 +15,7 @@ const registra =
   (nombre: string) =>
   (...args: unknown[]) => {
     llamadas.push(nombre);
-    if (nombre === "syncAppointment" || nombre === "syncAppointmentPatch") argumentosCitas.push(args[0]);
+    if (["syncAppointment", "syncAppointmentPatch", "applyClientPenalty", "clearClientPenalty"].includes(nombre)) argumentosCitas.push(args[0]);
     if (fallarTodo) return Promise.reject(new Error("red caída"));
     if (rechazo) return Promise.resolve({ synced: false as const, reason: rechazo });
     if (noGuardado) return Promise.resolve({ synced: false as const });
@@ -44,6 +44,7 @@ const {
   olvidarCambiosSinGuardar,
   pushAppointment,
   pushAppointmentPatch,
+  pushManualBlock,
   guardarReservaPublica,
   pushAppointmentDeletion,
   pushSalonProfile,
@@ -333,5 +334,18 @@ describe("cambios locales sin guardar", () => {
     leerAvisos()[0]!.reintentar?.();
     await new Promise((r) => setTimeout(r, 0));
     expect(cambioSinGuardar(`cita:${cita.id}`)).toBe(false);
+  });
+});
+
+describe("bloqueo manual con columna propia", () => {
+  const ficha = { id: "c-1", name: "Ana", phone: "600111222", createdAt: "2026-01-01T00:00:00.000Z" };
+
+  it("bloquear manda manualBlock:true y desbloquear manualBlock:false", () => {
+    pushManualBlock("the-best-shave-barber", ficha, true);
+    pushManualBlock("the-best-shave-barber", ficha, false);
+    const [bloqueo, desbloqueo] = argumentosCitas as Array<{ data: { manualBlock?: boolean } }>;
+    expect(llamadas).toEqual(["applyClientPenalty", "clearClientPenalty"]);
+    expect(bloqueo.data.manualBlock).toBe(true);
+    expect(desbloqueo.data.manualBlock).toBe(false);
   });
 });

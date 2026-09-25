@@ -319,6 +319,7 @@ export function pushManualBlock(
           penaltyAt: cliente.penaltyAt ?? null,
           penaltyKeep: true,
           penaltyBlock: true,
+          manualBlock: true,
         },
       }),
     );
@@ -328,6 +329,7 @@ export function pushManualBlock(
         ? applyClientPenalty({
             data: {
               slug,
+              manualBlock: false,
               clientId: cliente.id,
               phone: cliente.phone,
               name: cliente.name,
@@ -338,7 +340,7 @@ export function pushManualBlock(
               penaltyBlock: cliente.penaltyBlock !== false,
             },
           })
-        : clearClientPenalty({ data: { slug, clientId: cliente.id, phone: cliente.phone } }),
+        : clearClientPenalty({ data: { slug, clientId: cliente.id, phone: cliente.phone, manualBlock: false } }),
     );
   }
 }
