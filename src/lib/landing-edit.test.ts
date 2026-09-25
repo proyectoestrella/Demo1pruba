@@ -156,9 +156,10 @@ describe("validarBorrador", () => {
   });
 
   it("avisa cuando hay más servicios de los que caben", () => {
-    const menu = Array.from({ length: 13 }, (_, i) => `Servicio ${i} | 30 | 15`).join("\n");
+    // El perfil de un salón admite 60 (MAX_MENU_ENTRIES_SALON); el enlace de demo sigue en 12.
+    const menu = Array.from({ length: 61 }, (_, i) => `Servicio ${i} | 30 | 15`).join("\n");
     const errores = validarBorrador(borradorValido({ menu }));
-    expect(errores.some((e) => e.mensaje.includes("Ahora hay 13"))).toBe(true);
+    expect(errores.some((e) => e.mensaje.includes("Ahora hay 61"))).toBe(true);
   });
 
   it("devuelve TODOS los fallos de una vez, no solo el primero", () => {

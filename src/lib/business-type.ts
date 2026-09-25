@@ -548,7 +548,15 @@ export function placeholderAvatar(name: string, employeeId: EmployeeId): string 
 export const MAX_TEAM_ENTRIES = 3;
 /** Límite de profesionales de un salón real; los enlaces de demo conservan su límite original. */
 export const MAX_SALON_TEAM_ENTRIES = 6;
+/**
+ * Tope de la carta en un ENLACE de demo (`?d=`): el enlace viaja por WhatsApp
+ * y tiene que seguir siendo pegable. Ver MAX_MENU_ENTRIES_SALON para el
+ * perfil guardado en Supabase, que no tiene esa limitación.
+ */
 export const MAX_MENU_ENTRIES = 12;
+/** Tope de la carta en el perfil de un salón (jsonb en Supabase): holgado, pero con tope. */
+export const MAX_MENU_ENTRIES_SALON = 60;
+const MENU_ID_VALIDO = /^[a-z0-9][a-z0-9-]{0,59}$/;
 const MENU_DURATION_MIN = 5;
 const MENU_DURATION_MAX = 240;
 const TEAM_NAME_MAX = 60;
@@ -568,6 +576,12 @@ export interface MenuOverrideEntry {
   category?: string;
   /** `false` = el salón lo tiene apagado (quinto campo "off"). Ausente = activo. */
   active?: boolean;
+  /**
+   * Id estable (sexto campo). Sin él, el id sale del nombre: renombrar un
+   * servicio le cambiaba el id y dejaba huérfanas sus citas. El panel de un
+   * salón real lo escribe siempre (menuDesdeServicios).
+   */
+  id?: string;
 }
 
 /** "Nombre" o "Nombre~Especialidad" → entrada válida, o `null` si no hay nombre. */
@@ -606,12 +620,21 @@ export function parseMenuEntry(raw: string): MenuOverrideEntry | null {
   if (!Number.isFinite(priceEur) || priceEur < 0) return null;
   const category = parts[3]?.trim().slice(0, MENU_CATEGORY_MAX);
   const apagado = parts[4]?.trim().toLowerCase() === "off";
-  return { name, durationMin, priceEur, category: category || undefined, ...(apagado ? { active: false } : {}) };
+  const id = parts[5]?.trim();
+  return {
+    name,
+    durationMin,
+    priceEur,
+    category: category || undefined,
+    ...(apagado ? { active: false } : {}),
+    ...(id && MENU_ID_VALIDO.test(id) ? { id } : {}),
+  };
 }
 
 /** Cadena canónica de una entrada de carta, para guardar en el perfil/enlace. */
 export function formatMenuEntry(entry: MenuOverrideEntry): string {
   const base = `${entry.name}~${entry.durationMin}~${entry.priceEur}`;
+  if (entry.id) return `${base}~${entry.category ?? ""}~${entry.active === false ? "off" : ""}~${entry.id}`;
   if (entry.active === false) return `${base}~${entry.category ?? ""}~off`;
   return entry.category ? `${base}~${entry.category}` : base;
 }
@@ -624,10 +647,16 @@ export function formatMenuEntry(entry: MenuOverrideEntry): string {
  * escribe, para no ensuciar las entradas.
  */
 export function menuDesdeServicios(
-  services: Array<{ name: string; durationMin: number; priceEur: number; category?: string; active?: boolean }>,
+  services: Array<{ id: string; name: string; durationMin: number; priceEur: number; category?: string; active?: boolean }>,
 ): string[] {
-  return services.slice(0, MAX_MENU_ENTRIES).map((s) =>
+  // Nada de recortar en silencio: si el panel tiene más servicios de los
+  // que caben, se dice y no se guarda una carta a la que le faltan.
+  if (services.length > MAX_MENU_ENTRIES_SALON) {
+    throw new Error(`La carta admite como mucho ${MAX_MENU_ENTRIES_SALON} servicios y hay ${services.length}.`);
+  }
+  return services.map((s) =>
     formatMenuEntry({
+      id: s.id,
       name: s.name,
       durationMin: s.durationMin,
       priceEur: s.priceEur,

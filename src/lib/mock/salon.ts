@@ -5,7 +5,7 @@ import type { Employee, EmployeeId, SalonProfile, Service } from "./types";
 import { DEFAULT_OPENING_HOURS, parseRanges } from "../opening-hours";
 import {
   EMPLOYEE_OVERLAY,
-  MAX_MENU_ENTRIES,
+  MAX_MENU_ENTRIES_SALON,
   MAX_SALON_TEAM_ENTRIES,
   SERVICE_CATALOG,
   parseMenuEntry,
@@ -229,7 +229,7 @@ function resolveMenuOverrides(menu?: string[]): MenuOverrideEntry[] | null {
   const clean = menu
     .map((m) => parseMenuEntry(m))
     .filter((m): m is MenuOverrideEntry => m !== null)
-    .slice(0, MAX_MENU_ENTRIES);
+    .slice(0, MAX_MENU_ENTRIES_SALON);
   return clean.length ? clean : null;
 }
 
@@ -247,7 +247,9 @@ export function servicesForType(type: BusinessType, menu?: string[]): Service[] 
   // llaman igual — sin eso el segundo pisaría al primero en serviceMap.
   const usedIds = new Set<string>();
   return overrides.map((entry) => {
-    const base = slugForId(entry.name);
+    // El id escrito en la entrada manda (estable al renombrar); si no lo
+    // hay, sale del nombre como siempre.
+    const base = entry.id ?? slugForId(entry.name);
     let id = base;
     let n = 2;
     while (usedIds.has(id)) id = `${base}-${n++}`;

@@ -17,7 +17,7 @@
  */
 import type { SalonProfile } from "./mock/types";
 import {
-  MAX_MENU_ENTRIES,
+  MAX_MENU_ENTRIES_SALON,
   MAX_TEAM_ENTRIES,
   formatMenuEntry,
   formatTeamEntry,
@@ -203,10 +203,10 @@ export function validarBorrador(b: BorradorLanding): ErrorCampo[] {
 
   // Servicios.
   const servicios = lineas(b.menu);
-  if (servicios.length > MAX_MENU_ENTRIES) {
+  if (servicios.length > MAX_MENU_ENTRIES_SALON) {
     errores.push({
       campo: "menu",
-      mensaje: `Como mucho ${MAX_MENU_ENTRIES} servicios en la carta. Ahora hay ${servicios.length}.`,
+      mensaje: `Como mucho ${MAX_MENU_ENTRIES_SALON} servicios en la carta. Ahora hay ${servicios.length}.`,
     });
   }
   servicios.forEach((linea) => {
@@ -326,7 +326,7 @@ export function perfilDesdeBorrador(b: BorradorLanding): Partial<SalonProfile> {
     menu: lineas(b.menu)
       .map((l) => parseMenuEntry(aTilde(l)))
       .filter((e): e is NonNullable<typeof e> => e !== null)
-      .slice(0, MAX_MENU_ENTRIES)
+      .slice(0, MAX_MENU_ENTRIES_SALON)
       .map(formatMenuEntry),
     team: lineas(b.team)
       .map((l) => parseTeamEntry(aTilde(l)))

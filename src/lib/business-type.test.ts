@@ -303,9 +303,29 @@ describe("carta con servicios apagados y vuelta desde los servicios del panel", 
 
   it("menuDesdeServicios escribe lo que el panel tiene, sin la categoría de relleno", () => {
     const menu = menuDesdeServicios([
-      { name: "Corte", durationMin: 30, priceEur: 15, category: "Servicios", active: true },
-      { name: "Mechas", durationMin: 90, priceEur: 60, category: "Color", active: false },
+      { id: "corte", name: "Corte", durationMin: 30, priceEur: 15, category: "Servicios", active: true },
+      { id: "mechas", name: "Mechas", durationMin: 90, priceEur: 60, category: "Color", active: false },
     ]);
-    expect(menu).toEqual(["Corte~30~15", "Mechas~90~60~Color~off"]);
+    expect(menu).toEqual(["Corte~30~15~~~corte", "Mechas~90~60~Color~off~mechas"]);
+  });
+});
+
+describe("ids estables en la carta", () => {
+  it("el sexto campo es el id y sobrevive al formatear; sin él no cambia nada", () => {
+    expect(parseMenuEntry("Corte señora~45~25~Cortes~~corte")).toEqual({ name: "Corte señora", durationMin: 45, priceEur: 25, category: "Cortes", id: "corte" });
+    expect(formatMenuEntry({ name: "Corte señora", durationMin: 45, priceEur: 25, category: "Cortes", id: "corte" })).toBe("Corte señora~45~25~Cortes~~corte");
+    expect(formatMenuEntry({ name: "Mechas", durationMin: 90, priceEur: 60, active: false, id: "mechas" })).toBe("Mechas~90~60~~off~mechas");
+    expect(parseMenuEntry("Mechas~90~60~~off~mechas")).toEqual({ name: "Mechas", durationMin: 90, priceEur: 60, active: false, id: "mechas" });
+    expect(parseMenuEntry("Corte~30~15~Cortes~~Id Con Espacios")).toEqual({ name: "Corte", durationMin: 30, priceEur: 15, category: "Cortes" });
+  });
+
+  it("renombrar un servicio en el panel conserva su id en la carta", () => {
+    expect(menuDesdeServicios([{ id: "corte", name: "Corte y peinado", durationMin: 30, priceEur: 18 }])).toEqual(["Corte y peinado~30~18~~~corte"]);
+  });
+
+  it("más servicios de los que caben no se recortan en silencio", () => {
+    const muchos = Array.from({ length: 61 }, (_, i) => ({ id: `s${i}`, name: `S${i}`, durationMin: 10, priceEur: 1 }));
+    expect(() => menuDesdeServicios(muchos)).toThrow("como mucho 60");
+    expect(menuDesdeServicios(muchos.slice(0, 60))).toHaveLength(60);
   });
 });

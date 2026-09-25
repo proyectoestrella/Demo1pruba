@@ -88,9 +88,9 @@ describe("servicesForType con carta real", () => {
     expect(services.map((s) => s.id)).toEqual(["corte", "corte-2"]);
   });
 
-  it("se corta a 12 entradas", () => {
-    const catorce = Array.from({ length: 14 }, (_, i) => `Servicio ${i}~30~10`);
-    expect(servicesForType("barberia", catorce)).toHaveLength(12);
+  it("se corta a 60 entradas (el perfil de un salón; el enlace de demo se recorta a 12 al codificarse)", () => {
+    const muchas = Array.from({ length: 62 }, (_, i) => `Servicio ${i}~30~10`);
+    expect(servicesForType("barberia", muchas)).toHaveLength(60);
   });
 
   it("un array vacío se comporta como si no viniera menu", () => {
@@ -100,5 +100,18 @@ describe("servicesForType con carta real", () => {
   it("todos los servicios generados quedan activos", () => {
     const services = servicesForType("barberia", ["Corte~30~13"]);
     expect(services.every((s) => s.active)).toBe(true);
+  });
+});
+
+describe("servicesForType con ids escritos en la carta", () => {
+  it("usa el id de la entrada aunque el nombre haya cambiado, y sigue derivándolo del nombre si no hay", () => {
+    const servicios = servicesForType("peluqueria", ["Corte y peinado~30~18~~~corte", "Mechas~90~60~Color"]);
+    expect(servicios.map((s) => s.id)).toEqual(["corte", "mechas"]);
+    expect(servicios[0].name).toBe("Corte y peinado");
+  });
+
+  it("admite hasta 60 entradas en el perfil de un salón", () => {
+    const menu = Array.from({ length: 60 }, (_, i) => `Servicio ${i}~10~5`);
+    expect(servicesForType("peluqueria", menu)).toHaveLength(60);
   });
 });
