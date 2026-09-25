@@ -298,3 +298,42 @@ describe("señal: ciclo de vida desde el store", () => {
     useSalonStore.getState().updateSalonProfile({ depositEnabled: false, depositAutoRelease: false });
   });
 });
+
+describe("señal: reajuste al cambiar servicio u hora", () => {
+  const nueva = () => useSalonStore.getState().addAppointment({
+    clientId: "c-reaj", clientName: "Reajuste", serviceIds: ["mechas"], employeeId: "mario",
+    start: new Date(Date.now() + 3 * 24 * 3_600_000).toISOString(), duration: 120, priceEur: 80, status: "confirmed",
+  });
+  const cita = (id: string) => useSalonStore.getState().appointments.find((a) => a.id === id)!;
+
+  it("porcentaje: pasar a un servicio más barato deja la diferencia a devolver y al cobrar se descuenta solo lo debido", () => {
+    useSalonStore.getState().updateSalonProfile({ depositEnabled: true, depositMode: "porcentaje", depositPercent: 25, depositAppliesTo: "todas" });
+    const a = nueva();
+    expect(useSalonStore.getState().recibirSenal(a.id, { metodo: "bizum" })).toBeNull();
+    expect(cita(a.id)).toMatchObject({ depositReceivedEur: 20 });
+    useSalonStore.getState().updateAppointment(a.id, { serviceIds: ["corte"], priceEur: 40, duration: 45 });
+    expect(cita(a.id)).toMatchObject({ depositStatus: "recibida", depositEur: 10, depositRefundedEur: 10 });
+    useSalonStore.getState().markPaid(a.id, "efectivo");
+    expect(cita(a.id)).toMatchObject({ depositStatus: "aplicada", depositAppliedEur: 10, depositRefundedEur: 10 });
+    expect(useSalonStore.getState().confirmarDevolucionSenal(a.id)).toBeNull();
+    expect(cita(a.id).depositRefundedAt).toBeDefined();
+  });
+
+  it("a un servicio sin señal (regla por duración): se devuelve entera", () => {
+    useSalonStore.getState().updateSalonProfile({ depositEnabled: true, depositMode: "fijo", depositAmountEur: 20, depositAppliesTo: "duracion", depositMinMinutes: 60 });
+    const a = nueva();
+    useSalonStore.getState().recibirSenal(a.id, { metodo: "bizum" });
+    useSalonStore.getState().updateAppointment(a.id, { serviceIds: ["corte"], priceEur: 25, duration: 30 });
+    expect(cita(a.id)).toMatchObject({ depositStatus: "devuelta", depositEur: 0, depositRefundedEur: 20 });
+  });
+
+  it("adelantar la cita recorta el plazo de la señal pedida", () => {
+    useSalonStore.getState().updateSalonProfile({ depositEnabled: true, depositMode: "fijo", depositAmountEur: 20, depositAppliesTo: "todas", depositDeadlineHours: 4 });
+    const a = nueva();
+    useSalonStore.getState().pedirSenal(a.id);
+    const enUnaHora = new Date(Date.now() + 3_600_000).toISOString();
+    useSalonStore.getState().updateAppointment(a.id, { start: enUnaHora });
+    expect(cita(a.id).depositDueAt).toBe(enUnaHora);
+    useSalonStore.getState().updateSalonProfile({ depositEnabled: false, depositAppliesTo: "todas" });
+  });
+});

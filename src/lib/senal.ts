@@ -361,8 +361,11 @@ export function aplicarSenal(
   const precio = c.priceEur;
   if (estadoSenal(c, ahora) !== "recibida") return { ok: true, patch: {}, aCobrarEur: precio };
   const recibido = c.depositReceivedEur ?? c.depositEur ?? 0;
-  const aplicado = Math.min(recibido, precio);
-  const sobra = Math.round((recibido - aplicado) * 100) / 100;
+  // Lo que ya estaba «a devolver» por un reajuste no se descuenta: se devuelve.
+  const yaADevolver = c.depositRefundedAt ? 0 : (c.depositRefundedEur ?? 0);
+  const disponible = Math.max(0, recibido - yaADevolver);
+  const aplicado = Math.min(disponible, precio);
+  const aDevolver = Math.round((yaADevolver + disponible - aplicado) * 100) / 100;
   return {
     ok: true,
     aCobrarEur: Math.round((precio - aplicado) * 100) / 100,
@@ -370,7 +373,7 @@ export function aplicarSenal(
       depositStatus: "aplicada",
       depositAppliedAt: ahora.toISOString(),
       depositAppliedEur: aplicado,
-      ...(sobra > 0 ? { depositRefundedEur: sobra } : {}),
+      ...(aDevolver > 0 ? { depositRefundedEur: aDevolver } : {}),
     },
   };
 }
@@ -446,4 +449,47 @@ export function reabrirSenal(c: CitaCiclo): ResultadoSenal {
   if (c.depositReceivedAt) return ok({ ...base, depositStatus: "recibida" });
   if (c.depositRequestedAt) return ok({ ...base, depositStatus: "pedida" });
   return ok({ ...base, depositStatus: (c.depositEur ?? 0) > 0 ? "por_pedir" : undefined });
+}
+
+/* ------------------------------------------------------------------------ */
+/* Reajustes: cambia el servicio o la hora                                  */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Cambia lo que se debe (otro servicio, otro precio). María: «si tenéis que
+ * devolverle parte». Sin dinero recibido solo cambia el importe (o se anula
+ * si el nuevo servicio no lleva señal). Con la señal recibida:
+ *  - el nuevo servicio no lleva señal → se devuelve entera (`devuelta`);
+ *  - debe menos → la diferencia queda «a devolver» (sigue `recibida`);
+ *  - debe más → la diferencia queda pendiente (ver `diferenciaSenal`).
+ */
+export function reajustarSenal(c: CitaCiclo, nuevoDebidoEur: number, ahora: Date = new Date()): ResultadoSenal {
+  const nuevo = Math.max(0, Math.round(nuevoDebidoEur));
+  const e = estadoSenal(c, ahora);
+  if (e === "no_aplica") return nuevo > 0 ? ok({ depositStatus: "por_pedir", depositEur: nuevo }) : ok({});
+  if (e === "por_pedir" || e === "pedida" || e === "vencida") {
+    return nuevo > 0 ? ok({ depositEur: nuevo }) : ok({ depositStatus: "anulada", depositEur: 0 });
+  }
+  if (e !== "recibida") return ok({});
+  const recibido = c.depositReceivedEur ?? c.depositEur ?? 0;
+  if (nuevo === 0) return ok({ depositStatus: "devuelta", depositEur: 0, depositRefundedEur: recibido });
+  const sobra = Math.round((recibido - nuevo) * 100) / 100;
+  return ok({ depositEur: nuevo, depositRefundedEur: sobra > 0 ? sobra : undefined });
+}
+
+/** La cita cambia de hora: el plazo de la señal pedida nunca pasa de la nueva hora. */
+export function moverSenal(c: CitaCiclo, nuevoStartISO: string, ahora: Date = new Date()): ResultadoSenal {
+  const e = estadoSenal({ ...c, start: nuevoStartISO }, ahora);
+  if (e !== "pedida" && e !== "vencida") return ok({});
+  const due = vencimientoSenal({ ...c, start: nuevoStartISO });
+  return due && due !== c.depositDueAt ? ok({ depositDueAt: due }) : ok({});
+}
+
+/** Lo que falta por recibir y lo que hay que devolver, para enseñarlo a la dueña. */
+export function diferenciaSenal(c: CitaCiclo, ahora: Date = new Date()): { pendienteEur: number; aDevolverEur: number } {
+  const e = estadoSenal(c, ahora);
+  const recibido = c.depositReceivedEur ?? 0;
+  const pendienteEur = e === "recibida" ? Math.max(0, Math.round(((c.depositEur ?? 0) - recibido) * 100) / 100) : 0;
+  const aDevolverEur = c.depositRefundedAt ? 0 : Math.max(0, c.depositRefundedEur ?? 0);
+  return { pendienteEur, aDevolverEur };
 }

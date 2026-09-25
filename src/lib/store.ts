@@ -32,8 +32,10 @@ import {
   deshacerRecibida,
   desaplicarSenal,
   importeSenal,
+  moverSenal,
   pedirSenal,
   reabrirSenal,
+  reajustarSenal,
   recibirSenal,
   reglaSenal,
   resolverCancelacion,
@@ -469,6 +471,21 @@ export const useSalonStore = create<SalonState>()(
             : previa.status === "cancelled" || previa.status === "no-show" ? reabrirSenal(siguiente)
             : null;
           if (r?.ok) senalPatch = r.patch;
+        }
+        // Cambia el servicio o el precio: se recalcula lo debido (solo si la
+        // cita ya gestiona señal). Cambia la hora: el plazo no pasa de ella.
+        if (previa && previa.depositStatus && previa.depositStatus !== "anulada" &&
+            (patch.serviceIds || patch.priceEur !== undefined || patch.duration !== undefined)) {
+          const siguiente = { ...previa, ...patch, ...senalPatch };
+          const debido = importeSenal(reglaSenal(get().salonProfile), {
+            serviceIds: siguiente.serviceIds, durationMin: siguiente.duration, priceEur: siguiente.priceEur,
+          });
+          const r = reajustarSenal(siguiente, debido);
+          if (r.ok) senalPatch = { ...senalPatch, ...r.patch };
+        }
+        if (previa && patch.start && patch.start !== previa.start) {
+          const r = moverSenal({ ...previa, ...senalPatch }, patch.start);
+          if (r.ok) senalPatch = { ...senalPatch, ...r.patch };
         }
         if (Object.keys(senalPatch).length) patch = { ...patch, ...senalPatch };
         set((s) => ({
