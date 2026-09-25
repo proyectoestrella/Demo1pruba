@@ -85,18 +85,35 @@ export function pushAppointment(
   slug: string | null,
   appt: Appointment,
   cliente?: ClienteDeCita,
+  opciones: OpcionesGuardado = {},
 ): void {
   if (!slug) return;
   const quien = (cliente?.name ?? appt.clientName ?? "").trim();
   subir(quien ? `la cita de ${quien}` : "la cita", async () => {
     if (appt.origen === "tpv123" && !cliente?.phone) await altasPendientes.get(`${slug}|${quien}`);
-    return syncAppointment({ data: appointmentPayload(slug, appt, cliente) });
+    return exigirGuardado(await syncAppointment({ data: appointmentPayload(slug, appt, cliente, opciones) }));
   });
 }
 
-function appointmentPayload(slug: string, appt: Appointment, cliente?: ClienteDeCita) {
+/** Opciones del panel al guardar. Ver el contrato de solapes en lib/solape.ts. */
+export interface OpcionesGuardado {
+  permitirSolape?: boolean;
+}
+
+/**
+ * Un `synced: false` con motivo (solape, bloqueo…) desde el panel no es un
+ * guardado: se convierte en error para que `subir` enseñe el aviso con
+ * reintento en vez de dar la cita por guardada.
+ */
+function exigirGuardado<T extends { synced: boolean; reason?: string }>(r: T): T {
+  if (!r.synced && r.reason && r.reason !== "sin-fila") throw new Error(r.reason);
+  return r;
+}
+
+function appointmentPayload(slug: string, appt: Appointment, cliente?: ClienteDeCita, opciones: OpcionesGuardado = {}) {
   return {
     slug,
+    permitirSolape: opciones.permitirSolape === true,
     localId: appt.id,
     clientName: cliente?.name ?? appt.clientName ?? undefined,
     clientPhone: cliente?.phone,
@@ -138,15 +155,16 @@ export function pushAppointmentPatch(
   appt: Appointment,
   patch: Partial<Appointment>,
   cliente?: ClienteDeCita,
+  opciones: OpcionesGuardado = {},
 ): void {
   if (!slug) return;
   const quien = (cliente?.name ?? appt.clientName ?? "").trim();
   subir(quien ? `la cita de ${quien}` : "la cita", async () => {
-    const r = await syncAppointmentPatch({ data: { slug, localId: appt.id, patch } });
+    const r = await syncAppointmentPatch({ data: { slug, localId: appt.id, patch, permitirSolape: opciones.permitirSolape === true } });
     if (!r.synced && r.reason === "sin-fila") {
-      return syncAppointment({ data: appointmentPayload(slug, appt, cliente) });
+      return exigirGuardado(await syncAppointment({ data: appointmentPayload(slug, appt, cliente, opciones) }));
     }
-    return r;
+    return exigirGuardado(r);
   });
 }
 

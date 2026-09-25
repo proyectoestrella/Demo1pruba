@@ -23,6 +23,7 @@ import { fusionarPerfil } from "../perfil-parche";
 import { isManualBlockRecord } from "../no-show";
 import { parseDepositNote } from "../deposit-deadline";
 import { columnasDeParche, filaSinLote3 } from "../cita-parche";
+import { ERROR_SOLAPE_PANEL } from "../solape";
 import {
   ERROR_BLOQUEO_MANUAL,
   ERROR_FUERA_HORARIO,
@@ -556,6 +557,8 @@ export const syncAppointment = createServerFn({ method: "POST" })
       depositDueAt: z.string().nullable().optional(),
       depositPeriodHours: z.number().nullable().optional(),
       origen: z.enum(["sishow", "tpv123"]).optional(),
+      /** Solo el panel, y solo tras confirmar el aviso de solape (ver lib/solape.ts). */
+      permitirSolape: z.boolean().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -629,20 +632,16 @@ export const syncAppointment = createServerFn({ method: "POST" })
         return { synced: false as const, reason: ERROR_FUERA_HORARIO };
       }
 
-      const fin = new Date(Date.parse(data.startISO) + data.durationMin * 60_000).toISOString();
-      // Acota la lectura a citas recientes. La protección definitiva contra
-      // dos inserciones simultáneas debe ser una restricción en PostgreSQL.
-      const desde = new Date(Date.parse(data.startISO) - 7 * 24 * 60 * 60_000).toISOString();
-      const { data: cercanas, error: errorCercanas } = await supabase
-        .from("appointments")
-        .select("start_at, duration_min, status")
-        .eq("salon_slug", data.slug)
-        .eq("employee_id", data.employeeId)
-        .gte("start_at", desde)
-        .lt("start_at", fin);
-      if (errorCercanas) throw new Error(`syncAppointment (hueco): ${errorCercanas.message}`);
-      if (haySolape(data.startISO, data.durationMin, cercanas ?? [])) {
+      if (await solapaEnServidor(supabase, data.slug, data.localId, data.employeeId, data.startISO, data.durationMin)) {
         return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
+      }
+    }
+    // El panel puede solapar a propósito, pero solo diciéndolo: sin
+    // `permitirSolape` se rechaza con su propio código y la pantalla enseña
+    // el aviso. Ver el contrato en lib/solape.ts.
+    if (manda && !data.permitirSolape) {
+      if (await solapaEnServidor(supabase, data.slug, data.localId, data.employeeId, data.startISO, data.durationMin)) {
+        return { synced: false as const, reason: ERROR_SOLAPE_PANEL };
       }
     }
     if (data.clientPhone && key.length >= 6 && data.clientName) {
@@ -718,6 +717,34 @@ export const syncAppointment = createServerFn({ method: "POST" })
   });
 
 /**
+ * ¿Choca este hueco con otra cita de la misma profesional ya guardada? Se
+ * excluye la propia cita (`localId`) para poder moverla. Lectura acotada a
+ * una ventana de siete días; la protección definitiva contra dos
+ * inserciones simultáneas sería una restricción en PostgreSQL.
+ */
+async function solapaEnServidor(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  salonSlug: string,
+  localId: string,
+  employeeId: string,
+  startISO: string,
+  durationMin: number,
+): Promise<boolean> {
+  const fin = new Date(Date.parse(startISO) + durationMin * 60_000).toISOString();
+  const desde = new Date(Date.parse(startISO) - 7 * 24 * 60 * 60_000).toISOString();
+  const { data: cercanas, error } = await supabase
+    .from("appointments")
+    .select("local_id, start_at, duration_min, status")
+    .eq("salon_slug", salonSlug)
+    .eq("employee_id", employeeId)
+    .gte("start_at", desde)
+    .lt("start_at", fin);
+  if (error) throw new Error(`syncAppointment (hueco): ${error.message}`);
+  const otras = (cercanas ?? []).filter((c) => c.local_id !== localId);
+  return haySolape(startISO, durationMin, otras);
+}
+
+/**
  * Upsert de una cita bajando de nivel de esquema si hace falta (ver
  * NIVELES_CITA). Al quitar el nivel del lote 3 la nota vuelve a llevar los
  * marcadores de antes, para no perder respuestas, origen ni plazo de la
@@ -754,6 +781,7 @@ export const syncAppointmentPatch = createServerFn({ method: "POST" })
       slug,
       localId: z.string().min(1),
       patch: z.record(z.string(), z.unknown()),
+      permitirSolape: z.boolean().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -762,6 +790,22 @@ export const syncAppointmentPatch = createServerFn({ method: "POST" })
     if (!supabase) return { synced: false as const, reason: "sin-backend" as const };
     let columnas = columnasDeParche(data.patch as Partial<Appointment>);
     if (!Object.keys(columnas).length) return { synced: true as const };
+    // Mover de hora, cambiar la duración o la profesional puede crear un
+    // solape: se comprueba con la fila actual completada por el parche.
+    if (!data.permitirSolape && ("start_at" in columnas || "duration_min" in columnas || "employee_id" in columnas)) {
+      const { data: actual, error: errorActual } = await supabase
+        .from("appointments")
+        .select("employee_id, start_at, duration_min")
+        .eq("salon_slug", data.slug)
+        .eq("local_id", data.localId)
+        .maybeSingle();
+      if (errorActual) throw new Error(`syncAppointmentPatch: ${errorActual.message}`);
+      if (!actual) return { synced: false as const, reason: "sin-fila" as const };
+      const fusion = { ...actual, ...columnas } as { employee_id: string; start_at: string; duration_min: number };
+      if (await solapaEnServidor(supabase, data.slug, data.localId, fusion.employee_id, fusion.start_at, fusion.duration_min)) {
+        return { synced: false as const, reason: ERROR_SOLAPE_PANEL };
+      }
+    }
     for (let nivel = 0; nivel <= NIVELES_CITA.length; nivel++) {
       const { data: filas, error } = await supabase
         .from("appointments")

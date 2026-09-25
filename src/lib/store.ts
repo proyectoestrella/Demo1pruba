@@ -24,7 +24,9 @@ import type { DemoProfile } from "./demo-profile";
 import { recargoActivo } from "./recargo-activo";
 import { deadlineHours, depositDueAt, extendDepositDueAt, effectiveDepositDueAt } from "./deposit-deadline";
 import { inferBusinessType, menuDesdeServicios, slugForId, type BusinessType } from "./business-type";
+import { solapaConAgenda } from "./solape";
 import {
+  type OpcionesGuardado,
   pushAppointment,
   pushAppointmentPatch,
   pushAppointmentDeletion,
@@ -110,10 +112,10 @@ interface SalonState {
    * crear o enganchar su ficha en Supabase si el salón es real; en local la
    * cita se crea igual que siempre, la lleve o no.
    */
-  addAppointment: (a: Omit<Appointment, "id">, cliente?: ClienteDeCita) => Appointment;
+  addAppointment: (a: Omit<Appointment, "id">, cliente?: ClienteDeCita, opciones?: OpcionesGuardado) => Appointment;
   /** Anota en local una reserva pública que el servidor ya ha guardado. */
   addSavedPublicAppointment: (appt: Appointment) => void;
-  updateAppointment: (id: string, patch: Partial<Appointment>) => void;
+  updateAppointment: (id: string, patch: Partial<Appointment>, opciones?: OpcionesGuardado) => void;
   cancelAppointment: (id: string) => void;
   /**
    * Punto único por el que entra "el cliente confirma que viene".
@@ -370,12 +372,12 @@ export const useSalonStore = create<SalonState>()(
 
       setLastFreedSlot: (startISO) => set({ lastFreedSlot: startISO }),
 
-      addAppointment: (a, cliente) => {
+      addAppointment: (a, cliente, opciones) => {
         const appt: Appointment = { ...a, id: `a-new-${crypto.randomUUID()}` };
         set((s) => ({ appointments: [...s.appointments, appt] }));
         // Y además, si el salón es real, súbela. El `push*` no hace nada
         // cuando `realSalonSlug` es null, que es el caso de todas las demos.
-        pushAppointment(get().realSalonSlug, appt, cliente ?? clienteDeLaCita(get(), appt));
+        pushAppointment(get().realSalonSlug, appt, cliente ?? clienteDeLaCita(get(), appt), opciones);
         return appt;
       },
       addSavedPublicAppointment: (appt) =>
@@ -384,7 +386,7 @@ export const useSalonStore = create<SalonState>()(
             ? s.appointments
             : [...s.appointments, appt],
         })),
-      updateAppointment: (id, patch) => {
+      updateAppointment: (id, patch, opciones) => {
         set((s) => ({
           appointments: s.appointments.map((a) => (a.id === id ? { ...a, ...patch } : a)),
         }));
@@ -392,7 +394,7 @@ export const useSalonStore = create<SalonState>()(
         // cuando el móvil, con la agenda de hace un minuto, cambia la hora.
         const state = get();
         const appt = state.appointments.find((a) => a.id === id);
-        if (appt) pushAppointmentPatch(state.realSalonSlug, appt, patch, clienteDeLaCita(state, appt));
+        if (appt) pushAppointmentPatch(state.realSalonSlug, appt, patch, clienteDeLaCita(state, appt), opciones);
       },
       cancelAppointment: (id) => {
         const hueco = get().appointments.find((a) => a.id === id)?.start ?? null;
@@ -919,15 +921,8 @@ export function isSlotTaken(
   startISO: string,
   durationMin: number,
 ) {
-  const start = new Date(startISO).getTime();
-  const end = start + durationMin * 60_000;
-  return appointments.some((a) => {
-    if (a.employeeId !== employeeId) return false;
-    if (a.status === "cancelled" || a.status === "no-show") return false;
-    const aStart = new Date(a.start).getTime();
-    const aEnd = aStart + a.duration * 60_000;
-    return start < aEnd && end > aStart;
-  });
+  // Misma regla que el servidor y que el aviso de solape del panel.
+  return solapaConAgenda(appointments, { employeeId, start: startISO, duration: durationMin }).length > 0;
 }
 
 /**

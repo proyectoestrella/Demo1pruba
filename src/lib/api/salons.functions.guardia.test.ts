@@ -135,6 +135,17 @@ describe("la guarda está puesta en todas las funciones de servidor", () => {
     expect(cuerpo.indexOf("haySolape(data.startISO")).toBeLessThan(cuerpo.indexOf("escribirCita(supabase, fila)"));
   });
 
+  it("el panel solo solapa diciéndolo: sin permitirSolape se rechaza antes de escribir", () => {
+    const cuerpo = cuerpoDe("syncAppointment");
+    const i = cuerpo.indexOf("manda && !data.permitirSolape");
+    expect(i).toBeGreaterThan(-1);
+    expect(i).toBeLessThan(cuerpo.indexOf("escribirCita(supabase, fila)"));
+    expect(cuerpo).toContain("reason: ERROR_SOLAPE_PANEL");
+    const parche = cuerpoDe("syncAppointmentPatch");
+    expect(parche).toContain("reason: ERROR_SOLAPE_PANEL");
+    expect(parche.indexOf("ERROR_SOLAPE_PANEL")).toBeLessThan(parche.indexOf(".update(columnas)"));
+  });
+
   it("el horario por profesional se comprueba en el servidor antes de escribir", () => {
     const cuerpo = cuerpoDe("syncAppointment");
     const i = cuerpo.indexOf("profesionalTrabaja(perfil, data.employeeId");

@@ -293,3 +293,22 @@ describe("parche por campos desde el panel", () => {
     expect(enviado.data.origen).toBe("tpv123");
   });
 });
+
+describe("solapes desde el panel", () => {
+  it("permitirSolape viaja explícito en el alta y en el parche, y por defecto es false", () => {
+    pushAppointment("the-best-shave-barber", cita, cliente);
+    pushAppointment("the-best-shave-barber", cita, cliente, { permitirSolape: true });
+    pushAppointmentPatch("the-best-shave-barber", cita, { start: cita.start }, cliente, { permitirSolape: true });
+    const [sin, con, parche] = argumentosCitas as Array<{ data: { permitirSolape?: boolean } }>;
+    expect(sin.data.permitirSolape).toBe(false);
+    expect(con.data.permitirSolape).toBe(true);
+    expect(parche.data.permitirSolape).toBe(true);
+  });
+
+  it("un rechazo por solape no se da por guardado: se convierte en aviso reintentable", async () => {
+    rechazo = "RESERVA_SOLAPE_PANEL";
+    pushAppointment("the-best-shave-barber", cita, cliente);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(leerAvisos().some((a) => a.mensaje.includes("la cita de"))).toBe(true);
+  });
+});
