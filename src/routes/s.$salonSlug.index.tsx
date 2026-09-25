@@ -18,7 +18,6 @@ import {
 import {
   employeesForType,
   servicesForType,
-  requiresDeposit,
 } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
 import { recargoActivo } from "@/lib/recargo-activo";
@@ -70,6 +69,7 @@ import { TeamShowcase } from "@/components/twentyfirst/team-showcase";
 import { cn } from "@/lib/utils";
 import { eur } from "@/lib/copy";
 import { faqPublica } from "@/lib/faq";
+import { reglaSenal, respuestaFaqSenal, servicioLlevaSenal } from "@/lib/senal";
 
 export const Route = createFileRoute("/s/$salonSlug/")({
   component: SalonHome,
@@ -435,7 +435,8 @@ function SalonHome() {
     soloPro?.name,
     senalEur,
   );
-  const faq = faqPublica(tipo, noShowFeeEur, noShowNoticeHours, profile.faq, soloUno).map(
+  const regla = reglaSenal(profile);
+  const faq = faqPublica(tipo, noShowFeeEur, noShowNoticeHours, profile.faq, soloUno, respuestaFaqSenal(regla, eur)).map(
     (entry) => {
       if (profile.faq?.length) return entry;
       if (entry.q === "¿Hace falta pagar por adelantado?" && senalEur > 0) {
@@ -786,7 +787,7 @@ function SalonHome() {
                                 <p className="font-medium">{label.name}</p>
                                 <p className="text-sm text-muted-foreground">
                                   {s.durationMin} min
-                                  {requiresDeposit(s.durationMin) ? " · requiere depósito" : ""}
+                                  {servicioLlevaSenal(regla, s) ? " · con señal" : ""}
                                 </p>
                               </div>
                               <span className="flex shrink-0 items-center gap-2 font-display text-lg">

@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSalonStore } from "@/lib/store";
-import { requiresDeposit } from "@/lib/mock/salon";
+import { reglaSenal, servicioLlevaSenal } from "@/lib/senal";
 import { eur } from "@/lib/copy";
 import type { Service } from "@/lib/mock/types";
 import { PageHeader } from "@/components/PageHeader";
@@ -33,6 +33,7 @@ export const Route = createFileRoute("/app/services")({ component: ServicesPage 
 
 function ServicesPage() {
   const services = useSalonStore((s) => s.services);
+  const regla = reglaSenal(useSalonStore((s) => s.salonProfile));
   const updateService = useSalonStore((s) => s.updateService);
   const deleteService = useSalonStore((s) => s.deleteService);
 
@@ -114,8 +115,8 @@ function ServicesPage() {
                   <Clock className="h-3.5 w-3.5" />
                   {s.durationMin} min
                 </span>
-                {requiresDeposit(s.durationMin) && (
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">20% de depósito</span>
+                {servicioLlevaSenal(regla, s) && (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">Con señal</span>
                 )}
               </div>
               <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3">

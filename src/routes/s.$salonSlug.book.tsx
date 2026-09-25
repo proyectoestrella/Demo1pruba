@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
-import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
+import { employeesForType, servicesForType } from "@/lib/mock/salon";
+import { importeSenal, reglaSenal, servicioLlevaSenal, textoSenalPublico, type ReglaSenal } from "@/lib/senal";
 import { huecosDeProfesionales, trabajaEn } from "@/lib/horario-equipo";
 import { isoDelSalon, zonaDelSalon } from "@/lib/zona-horaria";
 import type { Appointment, BookingAnswers, Client, Employee, EmployeeId, Service } from "@/lib/mock/types";
@@ -371,7 +372,13 @@ function BookingWizard() {
       : stylistChoice
         ? employeeMap[stylistChoice]?.name
         : undefined;
-  const depositEur = depositFor(total, totalMin);
+  // Una sola señal: la que configure el salón (lib/senal.ts). La web pública
+  // no sabe si la clienta es nueva: con la regla «solo nuevas» avisa «si es tu
+  // primera visita».
+  const reglaSen = reglaSenal(profile);
+  const reservaSenal = { serviceIds: data.serviceIds, durationMin: totalMin, priceEur: total };
+  const depositEur = importeSenal(reglaSen, reservaSenal);
+  const textoSenal = textoSenalPublico(reglaSen, reservaSenal, profile.name, eur);
 
   // Mejora B1 (grounding externo, patrón Booksy): "Repetir mi última cita".
   // Se lee una sola vez al montar el wizard — si se aplica y el cliente sigue
@@ -684,6 +691,7 @@ function BookingWizard() {
               onToggle={toggleService}
               tipo={tipo}
               services={services}
+              reglaSenal={reglaSen}
             />
           )}
 
@@ -760,7 +768,7 @@ function BookingWizard() {
                   </div>
                   {depositEur > 0 && (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Incluye depósito de {eur(depositEur)} a pagar en el salón.
+                      Señal de {eur(depositEur)}, se descuenta del precio.
                     </p>
                   )}
                   {soloUno && employeeName && (
@@ -883,12 +891,6 @@ function BookingWizard() {
                   </div>
                 )}
 
-                {requiresDeposit(totalMin) && (
-                  <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm text-primary">
-                    Esta reserva requiere un depósito de {eur(depositEur)} que se cobrará en el
-                    salón.
-                  </div>
-                )}
 
                 <p className="text-xs leading-relaxed text-muted-foreground">
                   Tus datos los trata {profile.name} para gestionar tu cita y el historial de tus servicios.{" "}
@@ -917,11 +919,9 @@ function BookingWizard() {
                     de penalización.
                   </p>
                 )}
-                {profile.depositEnabled && (profile.depositAmountEur ?? 0) > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Para confirmar la cita, {profile.name} te pedirá por WhatsApp una señal de{" "}
-                    {eur(profile.depositAmountEur ?? 0)} por Bizum, que se descuenta del precio del
-                    servicio.
+                {textoSenal && (
+                  <p className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm text-primary">
+                    {textoSenal}
                   </p>
                 )}
               </div>
@@ -1018,6 +1018,7 @@ function ServiceStep({
   onToggle,
   tipo,
   services,
+  reglaSenal: reglaSenalSalon,
 }: {
   selected: string[];
   totalMin: number;
@@ -1028,6 +1029,8 @@ function ServiceStep({
   onToggle: (id: string) => void;
   tipo: BusinessType;
   services: Service[];
+  /** Regla de señal del salón, para la etiqueta «con señal» de cada servicio. */
+  reglaSenal: ReglaSenal;
 }) {
   const count = selected.length;
   const categoryOrder = categoryOrderOf(services);
@@ -1086,7 +1089,7 @@ function ServiceStep({
                           <p className="font-medium">{label.name}</p>
                           <p className="text-sm text-muted-foreground">
                             {s.durationMin} min
-                            {requiresDeposit(s.durationMin) ? " · requiere depósito" : ""}
+                            {servicioLlevaSenal(reglaSenalSalon, s) ? " · con señal" : ""}
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
@@ -1705,7 +1708,7 @@ function BookingSummary({
         </div>
         {depositEur > 0 && (
           <p className="mt-2 text-xs text-muted-foreground">
-            Incluye depósito de {eur(depositEur)} a pagar en el salón.
+            Señal de {eur(depositEur)}, se descuenta del precio.
           </p>
         )}
 

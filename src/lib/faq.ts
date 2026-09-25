@@ -12,7 +12,6 @@
  * Vacío o ausente = las de siempre, sin que cambie un píxel.
  */
 import { professionalWord, type BusinessType } from "./business-type";
-import { DEPOSIT_RATE, DEPOSIT_THRESHOLD_MIN } from "./mock/salon";
 import { eur } from "./copy";
 import { recargoActivo } from "./recargo-activo";
 
@@ -51,6 +50,8 @@ export function faqPorDefecto(
   noShowFeeEur: number,
   noShowNoticeHours: number,
   soloUnProfesional = false,
+  /** Respuesta sobre la señal, de `respuestaFaqSenal` (lib/senal.ts). Sin ella: se paga al terminar. */
+  respuestaSenal = "No. Se paga en el salón al terminar.",
 ): FaqEntry[] {
   const palabra = professionalWord(tipo);
   const respuestaCancelacion =
@@ -61,9 +62,7 @@ export function faqPorDefecto(
     { q: "¿Puedo cancelar o cambiar la cita?", a: respuestaCancelacion },
     {
       q: "¿Hace falta pagar por adelantado?",
-      a: `Solo en los servicios largos, de más de ${DEPOSIT_THRESHOLD_MIN} minutos: se pide un depósito del ${Math.round(
-        DEPOSIT_RATE * 100,
-      )}% que se descuenta del total y se abona en el salón.`,
+      a: respuestaSenal,
     },
     {
       q: "¿Atendéis sin cita previa?",
@@ -97,6 +96,7 @@ export function faqPublica(
   noShowNoticeHours: number,
   propias: string[] | undefined,
   soloUnProfesional = false,
+  respuestaSenal?: string,
 ): FaqEntry[] {
   const limpias = (propias ?? [])
     .map(parseFaqEntry)
@@ -110,5 +110,5 @@ export function faqPublica(
     )
     .slice(0, MAX_FAQ_ENTRIES);
   if (limpias.length > 0) return limpias;
-  return faqPorDefecto(tipo, noShowFeeEur, noShowNoticeHours, soloUnProfesional);
+  return faqPorDefecto(tipo, noShowFeeEur, noShowNoticeHours, soloUnProfesional, respuestaSenal);
 }

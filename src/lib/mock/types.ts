@@ -172,7 +172,7 @@ export interface Appointment {
   /** Vencimiento de la señal. Al llegar la hora, solo avisa; no cancela la cita. */
   depositDueAt?: string;
   /** Plazo que se acordó al pedirla, para que «Dar más tiempo» use el mismo. */
-  depositPeriodHours?: 1 | 2 | 4 | 12 | 24;
+  depositPeriodHours?: 1 | 2 | 3 | 4 | 12 | 24;
   depositReceivedAt?: string;
   /** Importe de la señal pedida, en euros — se congela al pedirla por si luego cambia en Ajustes. */
   depositEur?: number;
@@ -304,7 +304,23 @@ export interface SalonProfile {
   depositBizumPhone?: string;
   /** Importe de la señal en euros. Por defecto 10. */
   depositAmountEur?: number;
-  depositDeadlineHours?: 1 | 2 | 4 | 12 | 24;
+  /** Horas para hacer el Bizum. María pidió de 1 a 4 (ver lib/senal.ts, VENTANAS_SENAL). */
+  depositDeadlineHours?: 1 | 2 | 3 | 4 | 12 | 24;
+  /** Señal de importe fijo (`depositAmountEur`) o porcentaje del servicio (`depositPercent`). Por defecto, fijo. */
+  depositMode?: "fijo" | "porcentaje";
+  depositPercent?: number;
+  /** A qué reservas se pide: todas (por defecto), solo clientas nuevas, a partir de X min, o una lista de servicios. */
+  depositAppliesTo?: "todas" | "nuevas" | "duracion" | "servicios";
+  depositMinMinutes?: number;
+  depositServiceIds?: string[];
+  /** La reserva por la web nace con la señal pedida y enseña el Bizum. Por defecto, la pide la dueña por WhatsApp. */
+  depositAuto?: boolean;
+  /** Una señal vencida libera el hueco sola. Por defecto no: avisa y decide la dueña. */
+  depositAutoRelease?: boolean;
+  /** Horas antes de la cita hasta las que cancelar devuelve la señal. Por defecto, `noShowNoticeHours` o 24. */
+  depositCancelHours?: number;
+  /** Plantilla del WhatsApp de la señal. Ver `mensajeSenal` en lib/senal.ts. */
+  depositTemplate?: string;
   /** Ausente: se decide por el tipo de negocio. */
   bookingQuestionsEnabled?: boolean;
   bookingQuestionsRequired?: boolean;

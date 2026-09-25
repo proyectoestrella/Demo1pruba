@@ -443,7 +443,7 @@ export function decodeDemoProfile(raw: string | undefined | null): Partial<DemoP
     } else if (field === "bookingQuestionsEnabled" || field === "bookingQuestionsRequired") {
       out[field] = (value === 1 || value === true || value === "1") as never;
     } else if (field === "depositDeadlineHours") {
-      if ([1, 2, 4, 12, 24].includes(Number(value))) out.depositDeadlineHours = Number(value) as 1 | 2 | 4 | 12 | 24;
+      if ([1, 2, 3, 4, 12, 24].includes(Number(value))) out.depositDeadlineHours = Number(value) as 1 | 2 | 3 | 4 | 12 | 24;
     } else if (field === "depositAmountEur") {
       const n = Number(value);
       if (Number.isFinite(n) && n > 0 && n <= 200) out.depositAmountEur = n;

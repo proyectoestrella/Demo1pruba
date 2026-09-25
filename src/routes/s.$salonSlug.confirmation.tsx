@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, CalendarPlus, Download, MapPin } from "lucide-react";
-import { employeesForType, servicesForType, depositFor, requiresDeposit } from "@/lib/mock/salon";
+import { employeesForType, servicesForType } from "@/lib/mock/salon";
+import { importeSenal, reglaSenal } from "@/lib/senal";
 import { useSalonStore } from "@/lib/store";
 import { duracionFlexibleActiva } from "@/lib/duracion-flexible";
 import { recargoActivo } from "@/lib/recargo-activo";
@@ -151,7 +152,7 @@ function Confirmation() {
     );
   }
 
-  const deposit = depositFor(total, totalMin);
+  const deposit = importeSenal(reglaSenal(profile), { serviceIds: chosen.map((s) => s.id), durationMin: totalMin, priceEur: total });
   const dateLabel = date
     ? new Date(`${date}T${time || "00:00"}`).toLocaleDateString("es-ES", {
         weekday: "long",
@@ -241,8 +242,8 @@ function Confirmation() {
           ) : (
             <Row k="Precio del servicio" v={eur(total)} />
           )}
-          {requiresDeposit(totalMin) && (
-            <Row k="Depósito a pagar en el salón" v={eur(deposit)} accent />
+          {deposit > 0 && (
+            <Row k="Señal (se descuenta del precio)" v={eur(deposit)} accent />
           )}
         </div>
 

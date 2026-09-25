@@ -1,6 +1,6 @@
 import type { Appointment } from "./mock/types";
 
-export const DEPOSIT_DEADLINE_OPTIONS = [1, 2, 4, 12, 24] as const;
+export const DEPOSIT_DEADLINE_OPTIONS = [1, 2, 3, 4, 12, 24] as const;
 export type DepositDeadlineHours = typeof DEPOSIT_DEADLINE_OPTIONS[number];
 
 export function deadlineHours(value: number | undefined): DepositDeadlineHours {
