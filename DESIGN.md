@@ -143,3 +143,26 @@ Frases cortas en segunda persona, verbos activos y sentence case. Cada botón di
 - **Nunca color solo** para decir algo: cada color va con texto, icono o inicial.
 - **Nunca mayúsculas** fuera de la etiqueta de 11 px.
 - **Nunca un aviso de alarma** para lo que solo está pendiente de la dueña.
+
+## Cómo verlo en local desde un worktree
+
+El checkout principal sirve la demo en su puerto de siempre; cada rama de diseño se mira desde
+su propio worktree, en otro puerto (la rama «Arena» usa el 8082). Tres cosas que costaron una
+tarde y que no son evidentes:
+
+1. **`node_modules` va copiado con enlaces duros, no enlazado con symlink.** Con symlink, Vite
+   resuelve la ruta real y comparte la caché `.vite` del checkout principal: el HTML se sirve
+   pero el entry de cliente devuelve 404 y nada hidrata. Desde el worktree:
+   `rm -rf node_modules && cp -al ../../Trimly/node_modules node_modules && rm -rf node_modules/.vite`
+   (medio segundo, sin ocupar espacio).
+2. **Vite tiene que correr con Node 22 o superior.** Con Node 20, Supabase falla al arrancar con
+   «native WebSocket not found» y el panel se queda en «Comprobando tu acceso…». Comprueba
+   `node -v` antes de arrancar y, si hace falta, invoca el binario de Node 22 directamente:
+   `node node_modules/.bin/vite dev --port 8082`.
+3. **El `.env.local` no viaja con el worktree** (está en `.gitignore`): enlázalo desde el
+   checkout principal.
+
+Para ver la demo de PeluChic: abre primero `/s/peluchic?d=<perfil>` en ese puerto, espera tres
+segundos y ve a `/app`. Las capturas de verificación se hacen a 1280, 1440, 1920 y 390 px de
+ancho, midiendo la banda derecha (28 px de gutter más la barra de scroll), la zona muerta
+inferior y el desborde horizontal.
