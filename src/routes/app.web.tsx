@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePlegado } from "@/lib/use-plegado";
 import { AvatarSalon } from "@/components/AvatarSalon";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -11,6 +12,7 @@ import {
   RefreshCw,
   Smartphone,
   TriangleAlert,
+  ChevronDown,
 } from "lucide-react";
 import { usePanelPublicLink } from "@/lib/panel-public-link";
 
@@ -378,7 +380,7 @@ function MiWeb() {
       <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:group-data-[panel=abierto]/panel:grid-cols-1">
         {/* ---------------- Editor ---------------- */}
         <div className="min-w-0 space-y-5">
-          <Bloque titulo="Lo primero que se ve">
+          <Bloque titulo="Lo primero que se ve" abierto forzar={errores.length > 0}>
             <Campo
               etiqueta="Nombre del salón"
               valor={borrador.name}
@@ -428,7 +430,7 @@ function MiWeb() {
             </div>
           </Bloque>
 
-          <Bloque titulo="Cómo te encuentran">
+          <Bloque titulo="Cómo te encuentran" forzar={errores.length > 0}>
             <Campo
               etiqueta="Dirección"
               valor={borrador.address}
@@ -449,7 +451,7 @@ function MiWeb() {
             />
           </Bloque>
 
-          <Bloque titulo="Tus reseñas de Google">
+          <Bloque titulo="Tus reseñas de Google" forzar={errores.length > 0}>
             <div className="grid gap-4 sm:grid-cols-2">
               <Campo
                 etiqueta="Nota"
@@ -467,7 +469,7 @@ function MiWeb() {
             </div>
           </Bloque>
 
-          <Bloque titulo="Horario">
+          <Bloque titulo="Horario" forzar={errores.length > 0}>
             <div className="grid gap-2 sm:grid-cols-2">
               {DAY_LABELS_ES.map((etiqueta, i) => (
                 <div key={etiqueta} className="flex items-center gap-2">
@@ -493,7 +495,7 @@ function MiWeb() {
             </p>
           </Bloque>
 
-          <Bloque titulo="Servicios y precios">
+          <Bloque titulo="Servicios y precios" forzar={errores.length > 0}>
             <CampoLargo
               etiqueta="Tu carta"
               valor={borrador.menu}
@@ -505,13 +507,13 @@ function MiWeb() {
             />
           </Bloque>
 
-          <Bloque titulo="Equipo">
+          <Bloque titulo="Equipo" forzar={errores.length > 0}>
             <p className="text-[13px] text-muted-foreground">Este equipo también aparece en tus reservas. Cambia nombres, especialidades y horarios desde su pantalla.</p>
             <ul className="mt-3 space-y-1 text-sm">{equipo.map((persona) => <li key={persona.id}>{persona.name}{persona.specialty ? ` · ${persona.specialty}` : ""}</li>)}</ul>
             <Link to="/app/employees" className="mt-3 inline-flex h-[34px] items-center rounded-full border border-input bg-card px-[13px] text-[12.5px] font-bold hover:bg-nata">Editar equipo y horarios</Link>
           </Bloque>
 
-          <Bloque titulo="Preguntas frecuentes">
+          <Bloque titulo="Preguntas frecuentes" forzar={errores.length > 0}>
             <CampoLargo
               etiqueta="Lo que te preguntan siempre"
               valor={borrador.faq}
@@ -522,7 +524,7 @@ function MiWeb() {
             />
           </Bloque>
 
-          <Bloque titulo="Franjas prioritarias">
+          <Bloque titulo="Franjas prioritarias" forzar={errores.length > 0}>
             <CampoLargo
               etiqueta="Las horas que quieres llenar primero"
               valor={borrador.priorityHours}
@@ -652,11 +654,22 @@ function Marco({ ancho, children }: { ancho: number; children: React.ReactNode }
   );
 }
 
-function Bloque({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+/**
+ * Bloque del editor, plegable desde su título (recordado en el navegador).
+ * Si hay errores al publicar se abren todos, para que ninguno quede escondido.
+ */
+function Bloque({ titulo, children, abierto: porDefecto = false, forzar = false }: { titulo: string; children: React.ReactNode; abierto?: boolean; forzar?: boolean }) {
+  const [abierto, alternar] = usePlegado(`mi-pagina:${titulo}`, porDefecto);
+  const visible = abierto || forzar;
   return (
-    <section className="space-y-4 rounded-[20px] border border-border bg-card p-5">
-      <h2 className="text-base font-extrabold tracking-[-0.01em]">{titulo}</h2>
-      {children}
+    <section className="rounded-[20px] border border-border bg-card">
+      <h2>
+        <button type="button" aria-expanded={visible} onClick={alternar} className="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-beige/50">
+          <span className="flex-1 text-base font-extrabold tracking-[-0.01em]">{titulo}</span>
+          <ChevronDown className={cn("size-5 shrink-0 text-cafe-medio transition-transform", visible && "rotate-180")} strokeWidth={1.6} aria-hidden="true" />
+        </button>
+      </h2>
+      {visible && <div className="space-y-4 px-5 pb-5">{children}</div>}
     </section>
   );
 }

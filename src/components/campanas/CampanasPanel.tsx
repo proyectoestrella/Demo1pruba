@@ -12,6 +12,7 @@ import {
   Sparkles,
   Star,
   Users,
+  ChevronDown,
 } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
@@ -145,6 +146,8 @@ function CampanaCard({ campana, onPreparar }: { campana: Campana; onPreparar: ()
   // renderiza el servidor antes de que el navegador recupere el perfil real.
   const [editado, setEditado] = useState<string | null>(null);
   const [preparada, setPreparada] = useState(false);
+  /** El mensaje y su vista previa, al pedirlos: la tarjeta enseña qué es, a cuántas y los botones. */
+  const [verMensaje, setVerMensaje] = useState(false);
   const mensaje = editado ?? campana.mensaje;
   const Icon = ICONOS[campana.id] ?? Sparkles;
   const primera = campana.personas[0];
@@ -186,7 +189,17 @@ function CampanaCard({ campana, onPreparar }: { campana: Campana; onPreparar: ()
         </div>
       </div>
 
-      <div className="grid gap-3 px-5 pt-4 sm:grid-cols-2">
+      <button
+        type="button"
+        aria-expanded={verMensaje}
+        onClick={() => setVerMensaje((v) => !v)}
+        className="mx-5 mt-3 flex items-center gap-1 self-start rounded-full py-1 text-[13px] font-bold text-cafe-medio hover:text-foreground"
+      >
+        {verMensaje ? "Ocultar el mensaje" : "Ver y editar el mensaje"}
+        <ChevronDown className={cn("size-4 transition-transform", verMensaje && "rotate-180")} strokeWidth={1.6} aria-hidden="true" />
+      </button>
+      {verMensaje && (
+      <div className="grid gap-3 px-5 pt-3 sm:grid-cols-2">
         <div className="flex min-w-0 flex-col">
           <label className="mb-1.5 flex items-center justify-between text-[12.5px] font-bold text-cafe-medio" htmlFor={`msg-${campana.id}`}>
             Mensaje
@@ -215,6 +228,7 @@ function CampanaCard({ campana, onPreparar }: { campana: Campana; onPreparar: ()
           </div>
         </div>
       </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 px-5 pt-4">
         <Button className="gap-1.5" onClick={preparar}>
