@@ -35,16 +35,28 @@ type EstadoDeshacer =
   | { puede: false; motivo: "CAMBIADO" | "POSTERIORES" | "SOLAPE" | "PERMISO" | "CADUCADO" | "DESHECHO" };
 ```
 
-## 2. Lo que expone BACKEND
+## 2. Lo que expone BACKEND (implementado en el lote 9)
 
 | Pieza | Fichero | Uso |
 |---|---|---|
-| `registrarCambio(tipo, entidad, antes, despues, …)` | `src/lib/cambios.ts` | Puro. Calcula solo los campos que cambian y el `resumen` |
-| `puedeDeshacer(cambio, estadoActual, permisos, cambiosPosteriores)` | idem | Puro. Devuelve `EstadoDeshacer` |
-| `useSalonStore().cambios` / `deshacer(id)` | store | Lista local (200) y acción. En un salón real llama al servidor |
-| `listarCambios({ slug, desde?, tipo?, autor?, clienta?, cursor? })` | `src/lib/api/cambios.functions.ts` | Historial paginado, ya filtrado por permiso |
-| `deshacerCambio({ slug, cambioId })` | idem | `{ ok: true, cambio }` o `{ ok: false, motivo }` |
-| `listarVersiones({ slug })` / `restaurarVersion({ slug, versionId })` | `src/lib/api/salons.functions.ts` | Versiones de Mi página |
+| Tipos `Cambio`, `TipoCambio`, `EstadoDeshacer`, `MotivoNoDeshacer`; `textoMotivo(m)`, `textoClientaAvisada(nombre)`, `SEGUNDOS_AVISO` (10) | `src/lib/cambios.ts` | Puros. La entidad puede ser también `"servicio"`. Hay además el tipo `clienta.bloquear` |
+| `useSalonStore().cambios` | `src/lib/store.ts` | Lo último primero, como mucho 200 y 90 días. **Se persiste** |
+| **Registro automático** | `store.ts` + `registro-cambios.ts` | No hay que hacer nada: estas acciones ya dejan su cambio al llamarlas (ver la lista de abajo) |
+| `estadoDeshacer(id)` | store | `EstadoDeshacer`, para pintar el botón o el motivo |
+| `deshacerCambio(id)` | store | `{ ok: true, aviso? }` o `{ ok: false, motivo }`. Aplica el inverso por el mismo camino de sincronización y sube el deshacer |
+| `marcarAvisoEnviado(id)` | store | Llamarlo cuando se abre el WhatsApp a la clienta por ese cambio |
+| `listarCambios({ slug, antesDe?, tipo?, autor?, idEntidad?, limite? })` | `src/lib/api/cambios.functions.ts` | El historial de todos los aparatos (`historial.ver`). En una demo, la lista local `cambios` |
+| `listarVersiones({ slug })`, `restaurarVersion({ slug, versionId })` | `src/lib/api/salons.functions.ts` | Versiones de Mi página (`web.restaurar-version`). `restaurarVersion` devuelve `{ ok, profile }`: hay que aplicarlo con `updateSalonProfile(profile)` |
+
+**Acciones que registran solas:**
+- `updateAppointment`, `cancelAppointment` (cancelar o rechazar) y `markPaid`.
+- Los pasos de la señal: `pedirSenal`, `recibirSenal`, `deshacerSenalRecibida`, `darMasTiempoSenal`, `confirmarDevolucionSenal`, `markDepositRequested`, `extendDepositDeadline` y `markDepositReceived`.
+- `setManualBlock`, `applyPenalty`, `clearPenalty` y `setDeuda`.
+- `updateService` y `deleteService`. Un servicio borrado vuelve con el mismo id.
+
+No registran: las acciones automáticas (liberar señales vencidas, hidratar desde el servidor, demos) ni lo que ocurre durante un deshacer. Los cambios del perfil que no son servicios (horarios, preguntas, ajustes) quedan cubiertos por las versiones de Mi página. El `DecisionDeudaDialog` puede quedarse con su aviso actual o usar el de `setDeuda`, que ya registra.
+
+**El aviso de 10 s tras una acción** usa `useSalonStore.getState().cambios[0]` justo después de llamarla: su `resumen` y `deshacerCambio(cambios[0].id)`.
 
 ## 3. Reglas para la pantalla
 
