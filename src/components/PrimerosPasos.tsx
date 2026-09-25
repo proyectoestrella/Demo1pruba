@@ -14,19 +14,34 @@ const PASOS = [
   { titulo: "Traer tus clientas de TPV 123", detalle: "Importa tu cartera desde Clientes", to: "/app/clients" as const },
 ] as const;
 
-export function PrimerosPasos({ enAjustes = false }: { enAjustes?: boolean }) {
+/** Seis pasos en total: los cinco de arriba más «compartir el enlace». */
+export const TOTAL_PASOS = 6;
+
+/**
+ * Qué pasos están hechos (a mano o detectados solos) y cuáles faltan. Lo
+ * usan la lista completa de aquí y el resumen del menú lateral, para que los
+ * dos cuenten exactamente lo mismo.
+ */
+export function useProgresoPrimerosPasos() {
   const profile = useSalonStore((s) => s.salonProfile);
-  const update = useSalonStore((s) => s.updateSalonProfile);
-  const demoActive = useSalonStore((s) => s.demoActive);
   const appointments = useSalonStore((s) => s.appointments);
-  const [abierto, setAbierto] = useState(enAjustes || !demoActive);
   const automáticos = new Set<number>();
   if (profile.menu?.length) automáticos.add(0);
   if (profile.team?.length && profile.teamHours?.length && profile.teamHours.length >= profile.team.length) automáticos.add(1);
   if (appointments.some((a) => a.origen === "tpv123")) automáticos.add(4);
   const marcados = new Set([...(profile.setupChecklistDone ?? []), ...automáticos]);
-  const progreso = marcados.size;
-  const oculto = !!profile.setupChecklistHidden;
+  const pendientes = [...PASOS.map((p) => p.titulo), "Compartir tu enlace de reservas"].filter(
+    (_, i) => !marcados.has(i),
+  );
+  return { automáticos, marcados, progreso: marcados.size, pendientes, oculto: !!profile.setupChecklistHidden };
+}
+
+export function PrimerosPasos({ enAjustes = false }: { enAjustes?: boolean }) {
+  const profile = useSalonStore((s) => s.salonProfile);
+  const update = useSalonStore((s) => s.updateSalonProfile);
+  const demoActive = useSalonStore((s) => s.demoActive);
+  const [abierto, setAbierto] = useState(enAjustes || !demoActive);
+  const { automáticos, marcados, progreso, oculto } = useProgresoPrimerosPasos();
 
   if (enAjustes && oculto) return <Button variant="outline" className="gap-2" onClick={() => update({ setupChecklistHidden: false })}><Eye className="size-4" />Volver a ver los primeros pasos</Button>;
   if (oculto && !enAjustes) return null;

@@ -10,7 +10,10 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 
-export function BuscadorGlobal() {
+export function BuscadorGlobal({ variante = "icono" }: {
+  /** "icono": botón redondo. "campo": la píldora ancha de la cabecera «Arena», con el atajo `/` a la vista. */
+  variante?: "icono" | "campo";
+}) {
   const [open, setOpen] = useState(false);
   const [texto, setTexto] = useState("");
   const [clienta, setClienta] = useState<Client | null>(null);
@@ -37,9 +40,23 @@ export function BuscadorGlobal() {
 
   const resultados = buscarClientas(texto, { clientes, citas }).slice(0, 12);
   return <>
-    <Button type="button" variant="outline" size="icon" onClick={() => setOpen(true)} aria-label="Buscar clientas" title="Buscar clientas · / o Ctrl+K">
-      <Search className="size-4" />
-    </Button>
+    {variante === "campo" ? (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Buscar clientas"
+        title="Buscar clientas · / o Ctrl+K"
+        className="flex h-[42px] w-full min-w-0 items-center gap-2 rounded-full border border-input bg-card px-3.5 text-left text-sm text-muted-foreground hover:bg-nata"
+      >
+        <Search className="size-[18px] shrink-0" strokeWidth={1.6} />
+        <span className="min-w-0 flex-1 truncate">Buscar clienta por nombre o teléfono</span>
+        <kbd className="hidden rounded-md border border-border px-1.5 text-[11px] font-medium md:inline">/</kbd>
+      </button>
+    ) : (
+      <Button type="button" variant="outline" size="icon" onClick={() => setOpen(true)} aria-label="Buscar clientas" title="Buscar clientas · / o Ctrl+K">
+        <Search className="size-4" />
+      </Button>
+    )}
     <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (!value) setTexto(""); }}>
       <DialogContent className="top-[12%] max-h-[80dvh] w-[calc(100vw-1.5rem)] max-w-xl translate-y-0 overflow-hidden p-0 sm:top-[15%]">
         <DialogHeader className="border-b border-border px-4 pt-4 pb-3 text-left">
