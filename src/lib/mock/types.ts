@@ -200,12 +200,33 @@ export type EstadoSenalGuardado = "por_pedir" | "pedida" | "recibida" | "aplicad
 /** Cómo llegó la señal. siShow no la cobra: lo apunta la dueña. */
 export type MetodoSenal = "bizum" | "efectivo" | "tarjeta" | "transferencia";
 
-export interface BookingAnswers {
-  hairLength?: "Corto" | "Medio" | "Largo" | "Muy largo";
-  hasColor?: "No" | "Sí";
-  colorDetail?: string;
-  recentChemical?: "No" | "Sí";
-  chemicalDetail?: string;
+/**
+ * Respuestas de la clienta al reservar: `{ idDePregunta: valor }`. Las
+ * preguntas las define cada salón (`SalonProfile.preguntasReserva`, ver
+ * lib/preguntas-reserva.ts). Las de siempre conservan sus ids: `hairLength`,
+ * `hasColor` + `colorDetail`, `recentChemical` + `chemicalDetail`.
+ */
+export type BookingAnswers = Record<string, string | undefined>;
+
+/** Tipos de pregunta del formulario de reserva. */
+export type TipoPreguntaReserva = "texto" | "si_no" | "opcion" | "numero";
+
+export interface PreguntaReserva {
+  /** Estable: es la clave de la respuesta guardada. No cambiar al editar el texto. */
+  id: string;
+  texto: string;
+  tipo: TipoPreguntaReserva;
+  /** Con `opcion`: las opciones, en orden. */
+  opciones?: string[];
+  obligatoria: boolean;
+  activa: boolean;
+  /** Ids de servicio a los que aplica. Vacío o ausente = a todos. */
+  servicios?: string[];
+  /**
+   * Con `si_no`: si la respuesta es «Sí», se pide un detalle que se guarda
+   * con esta clave (p. ej. «¿Cuál es tu color?» en `colorDetail`).
+   */
+  detalle?: { id: string; texto: string; obligatorio: boolean };
 }
 
 export interface WaitlistEntry {
@@ -344,4 +365,10 @@ export interface SalonProfile {
   /** Ausente: se decide por el tipo de negocio. */
   bookingQuestionsEnabled?: boolean;
   bookingQuestionsRequired?: boolean;
+  /**
+   * Preguntas propias del formulario de reserva, en orden. Ausente = las de
+   * siempre según el tipo de negocio y los dos interruptores de arriba (nada
+   * cambia en salones existentes). Ver lib/preguntas-reserva.ts.
+   */
+  preguntasReserva?: PreguntaReserva[];
 }

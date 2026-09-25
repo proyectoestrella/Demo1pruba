@@ -574,7 +574,13 @@ export const syncAppointment = createServerFn({ method: "POST" })
       technicalNotes: z.string().nullable().optional(),
       reminderSentAt: z.string().nullable().optional(),
       // Lote 3: lo que antes iba codificado dentro de `note`.
-      bookingAnswers: z.record(z.string(), z.string()).nullable().optional(),
+      // Respuestas del formulario de reserva `{ idDePregunta: valor }`. Llegan de
+      // la web pública: claves cortas, valores acotados y como mucho 40.
+      bookingAnswers: z
+        .record(z.string().regex(/^[A-Za-z0-9_-]{1,60}$/), z.string().max(300))
+        .refine((r) => Object.keys(r).length <= 40)
+        .nullable()
+        .optional(),
       depositDueAt: z.string().nullable().optional(),
       depositPeriodHours: z.number().nullable().optional(),
       origen: z.enum(["sishow", "tpv123"]).optional(),
