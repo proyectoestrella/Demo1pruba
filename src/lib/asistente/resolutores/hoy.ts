@@ -114,20 +114,30 @@ export const ingresosHoy: Resolutor = (c) => {
 export function sinMarcar(c: Contexto) {
   const t = c.estado.ahora.getTime();
   return citasDe(c.estado, { desde: sumarDias(c.hoy, -30), hasta: c.hoy, etiqueta: "" })
-    .filter((x) => activa(x) && (x.status === "confirmed" || x.status === "pending" || x.status === "late") && !x.paidAt && fin(x) <= t);
+    // Las «pending» no se marcan: son solicitudes y se cuentan en solicitudes().
+    .filter((x) => activa(x) && (x.status === "confirmed" || x.status === "late") && !x.paidAt && fin(x) <= t);
 }
 
-function solicitudes(c: Contexto) {
+/**
+ * Todas las solicitudes por confirmar, como la tarjeta de Hoy. Una cuya hora
+ * ya pasó sigue pidiendo una decisión (cambiarle la fecha o rechazarla).
+ */
+export function solicitudes(c: Pick<Contexto, "estado">) {
+  return c.estado.citas.filter((x) => x.status === "pending").sort((a, b) => a.start.localeCompare(b.start));
+}
+function yaPasadas(c: Pick<Contexto, "estado">, l: { start: string }[]) {
   const t = c.estado.ahora.getTime();
-  return c.estado.citas.filter((x) => x.status === "pending" && fin(x) > t).sort((a, b) => a.start.localeCompare(b.start));
+  return l.filter((x) => Date.parse(x.start) <= t).length;
 }
 
 export const pendienteDeTi: Resolutor = (c) => {
-  const sol = solicitudes(c).length;
+  const lsol = solicitudes(c);
+  const sol = lsol.length;
+  const solPasadas = yaPasadas(c, lsol);
   const marcar = sinMarcar(c).length;
   const vencidas = c.estado.citas.filter((x) => Date.parse(x.start) > c.estado.ahora.getTime() && activa(x) && c.fuentes.senal.estado(x)?.estado === "vencida").length;
   const partes = [
-    sol && plural(sol, "solicitud por confirmar", "solicitudes por confirmar"),
+    sol && `${plural(sol, "solicitud por confirmar", "solicitudes por confirmar")}${solPasadas ? ` (${solPasadas === sol ? (sol === 1 ? "con la hora ya pasada" : "todas con la hora ya pasada") : `${solPasadas} con la hora ya pasada`})` : ""}`,
     marcar && plural(marcar, "cita por marcar", "citas por marcar"),
     vencidas && plural(vencidas, "señal vencida", "señales vencidas"),
   ].filter(Boolean) as string[];
@@ -143,12 +153,17 @@ export const pendienteDeTi: Resolutor = (c) => {
 export const solicitudesPendientes: Resolutor = (c) => {
   const s = solicitudes(c);
   if (!s.length) return respuesta("No tienes **ninguna solicitud** por confirmar.");
-  const conDia = s.slice(0, 4).map((x) => `${pila(x.clientName)} (${cuando(x.start, c).replace(" a las", "")})`);
-  const resto = s.length > 4 ? ` y ${s.length - 4} más` : "";
-  return respuesta(`Tienes **${plural(s.length, "solicitud", "solicitudes")}**: ${lista(conDia)}${resto}.`, {
-    cifras: [{ etiqueta: "solicitudes", valor: s.length }],
-    acciones: [{ tipo: "abrir-cita", etiqueta: "Confirmar la primera", citaId: s[0].id }],
-  });
+  const pasadas = yaPasadas(c, s);
+  const ver = { tipo: "ver-seccion" as const, etiqueta: "Ver solicitudes", destino: "Hoy › Solicitudes" };
+  const cifras = [{ etiqueta: "solicitudes", valor: s.length }, { etiqueta: "con la hora ya pasada", valor: pasadas }];
+  if (pasadas === s.length) {
+    const todas = s.length === 1 ? "ya ha pasado su hora: cámbiale la fecha o recházala" : `${s.length === 2 ? "las 2" : `las ${s.length}`} ya han pasado su hora: cámbiales la fecha o recházalas`;
+    return respuesta(`Tienes **${plural(s.length, "solicitud", "solicitudes")} por confirmar**; ${todas}.`, { cifras, acciones: [ver] });
+  }
+  const futuras = s.filter((x) => Date.parse(x.start) > c.estado.ahora.getTime());
+  const detalle = futuras.slice(0, 4).map((x) => `${pila(x.clientName)} (${cuando(x.start, c).replace(" a las", "")})`);
+  if (!pasadas) return respuesta(`Tienes **${plural(s.length, "solicitud", "solicitudes")}** por confirmar: ${listaConResto(detalle, futuras.length)}.`, { cifras, acciones: [ver] });
+  return respuesta(`Tienes **${s.length} por confirmar**, ${pasadas} con la hora ya pasada. Las próximas: ${listaConResto(detalle, futuras.length)}.`, { cifras, acciones: [ver] });
 };
 
 export const porMarcar: Resolutor = (c) => {
