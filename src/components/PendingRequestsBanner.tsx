@@ -156,12 +156,12 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
   return (
     <div
       data-tour="pending-requests"
-      className="overflow-hidden rounded-xl border-2 border-[var(--warning)]/50 bg-[var(--warning)]/10 shadow-sm"
+      className="overflow-hidden rounded-[20px] border-[1.5px] border-dashed border-moca bg-card"
     >
-      <div className="flex items-center gap-2 border-b border-[var(--warning)]/30 px-5 py-3">
-        <Clock className="size-4 shrink-0 text-[var(--warning)]" />
+      <div className="flex items-center gap-2.5 border-b border-border px-5 py-4">
+        <Clock className="size-[18px] shrink-0 text-primary" strokeWidth={1.6} />
         <div className="min-w-0">
-          <h2 className="font-display text-base text-foreground">
+          <h2 className="text-base font-extrabold tracking-[-0.01em] text-foreground">
             {duracionFlexible
               ? `${pending.length} ${pending.length === 1 ? "solicitud" : "solicitudes"} por confirmar`
               : `${pending.length} ${
@@ -169,13 +169,13 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                 } de confirmar`}
           </h2>
           {duracionFlexible && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[12.5px] text-muted-foreground">
               Ajusta la duración de cada una antes de aceptarla: la decides tú, no la clienta.
             </p>
           )}
         </div>
       </div>
-      <div className="divide-y divide-[var(--warning)]/20">
+      <div className="divide-y divide-border">
         {pending.map((a) => {
           const emp = employeeMap[a.employeeId];
 
@@ -186,7 +186,7 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                 className="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-medium">{a.clientName}</p>
+                  <p className="truncate font-bold">{a.clientName}</p>
                   <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                     <StylistDot employeeId={a.employeeId} className="size-2" />
                     {serviceLabelOf(a)} ·{" "}
@@ -226,7 +226,7 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-destructive hover:text-destructive"
+                    className="text-melocoton-tinta hover:bg-melocoton hover:text-melocoton-tinta"
                     onClick={() => handleReject(a)}
                   >
                     Rechazar
@@ -253,7 +253,7 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
           return (
             <div key={a.id} className="flex flex-col gap-3 px-5 py-4">
               <div className="min-w-0">
-                <p className="truncate font-medium">{a.clientName}</p>
+                <p className="truncate font-bold">{a.clientName}</p>
                 <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                   {!soloUno && <StylistDot employeeId={a.employeeId} className="size-2" />}
                   {serviceLabelOf(a)} ·{" "}
@@ -269,7 +269,7 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                 <DepositStatusControls appointment={a} hours={depositDeadlineHours} />
               </div>
 
-              <div className="flex flex-col gap-1.5 rounded-lg bg-background/60 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-1.5 rounded-2xl bg-nata px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 space-y-1">
                   <p className="text-xs font-medium text-foreground">Duración propuesta</p>
                   {recordada && (
@@ -309,7 +309,7 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
               </div>
 
               {solape && (
-                <p className="flex items-start gap-1.5 text-xs text-[var(--warning)]">
+                <p className="flex items-start gap-1.5 text-[12.5px] text-melocoton-tinta">
                   <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
                   Se solapa con la cita de las{" "}
                   {new Date(solape.start).toLocaleTimeString("es", {
@@ -344,7 +344,7 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-destructive hover:text-destructive"
+                  className="text-melocoton-tinta hover:bg-melocoton hover:text-melocoton-tinta"
                   onClick={() => handleReject(a)}
                 >
                   Rechazar

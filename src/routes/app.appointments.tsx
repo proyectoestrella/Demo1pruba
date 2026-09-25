@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
-import { useSalonStore } from "@/lib/store";
+import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { employeeMap } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
@@ -121,6 +121,7 @@ function Appointments() {
   const conRecargo = recargoActivo({ noShowFeeEur });
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
+  const carta = selectServiceMap(services);
   const clientById = new Map(clients.map((c) => [c.id, c] as const));
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
@@ -158,7 +159,7 @@ function Appointments() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-1 flex-col gap-5">
       <PageHeader
         title="Citas"
         description={soloUno ? "Todas tus reservas." : "Todas las reservas de tu equipo."}
@@ -179,19 +180,19 @@ function Appointments() {
       <CitasPorResolver />
       {mostrarSolicitudes && <PendingRequestsBanner onOpenDetail={setSelected} />}
 
-      <div className="flex flex-wrap gap-2">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-
-          <Input
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex h-[42px] w-full items-center gap-2 rounded-full border border-input bg-card px-3.5 text-muted-foreground sm:w-[320px]">
+          <Search className="size-[18px] shrink-0" strokeWidth={1.6} />
+          <input
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por cliente…"
-            className="pl-9"
+            placeholder="Buscar por clienta"
+            aria-label="Buscar por clienta"
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
-        </div>
+        </label>
         <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="h-[42px] w-[190px] rounded-full">
             <SelectValue placeholder="Estado" />
           </SelectTrigger>
           <SelectContent>
@@ -207,7 +208,7 @@ function Appointments() {
         {/* Filtrar "por profesional" con un solo profesional no filtra nada. */}
         {!soloUno && (
           <Select value={emp} onValueChange={setEmp}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="h-[42px] w-[170px] rounded-full">
               <SelectValue placeholder="Profesional" />
             </SelectTrigger>
             <SelectContent>
@@ -223,7 +224,7 @@ function Appointments() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-xl border border-border/60 bg-card">
+        <div className="flex-1 rounded-[20px] border border-border bg-card">
           <EmptyState
             icon={CalendarX}
             title="Sin citas con estos filtros"
@@ -237,29 +238,29 @@ function Appointments() {
       ) : (
         <>
           {/* Desktop: clean table, no vertical borders */}
-          <div className="hidden min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card md:block">
+          <div className="hidden min-w-0 flex-1 overflow-hidden rounded-[20px] border border-border bg-card md:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead>Cuándo</TableHead>
-                  <TableHead>Cliente</TableHead>
+                  <TableHead>Clienta</TableHead>
                   <TableHead>Servicio</TableHead>
-                  {!soloUno && <TableHead>Estilista</TableHead>}
+                  {!soloUno && <TableHead>Profesional</TableHead>}
                   <TableHead className="text-right">Precio</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-border/50">
+              <TableBody>
                 {filtered.map((a) => {
                   const e = employeeMap[a.employeeId];
                   return (
                     <TableRow
                       key={a.id}
-                      className="cursor-pointer hover:bg-muted/40"
+                      className="cursor-pointer"
                       onClick={() => setSelected(a)}
                     >
-                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                      <TableCell className="whitespace-nowrap tabular-nums">
                         {new Date(a.start).toLocaleString("es", {
                           month: "short",
                           day: "numeric",
@@ -267,13 +268,13 @@ function Appointments() {
                           minute: "2-digit",
                         })}
                       </TableCell>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-bold">
                         <span className="inline-flex flex-wrap items-center gap-2">
                           {a.clientName}
                           {conRecargo && <DeudaBadge clientId={a.clientId} clients={clients} />}
                         </span>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{serviceLabelOf(a)}</TableCell>
+                      <TableCell className="text-muted-foreground">{serviceLabelOf(a, carta)}</TableCell>
                       {!soloUno && (
                         <TableCell>
                           <span className="inline-flex items-center gap-1.5">
@@ -282,7 +283,7 @@ function Appointments() {
                           </span>
                         </TableCell>
                       )}
-                      <TableCell className="text-right font-medium">{eur(a.priceEur)}</TableCell>
+                      <TableCell className="text-right font-bold tabular-nums">{eur(a.priceEur)}</TableCell>
                       <TableCell>
                         <StatusBadge status={a.status} />
                         {conRecargo && <RecargoChip appointment={a} client={clientById.get(a.clientId)} />}
@@ -330,24 +331,24 @@ function Appointments() {
           </div>
 
           {/* Mobile: stacked cards, never a horizontal-scroll table */}
-          <div className="space-y-3 md:hidden">
+          <div className="overflow-hidden rounded-[20px] border border-border bg-card md:hidden">
             {filtered.map((a) => {
               const e = employeeMap[a.employeeId];
               return (
                 <div
                   key={a.id}
-                  className="rounded-xl border border-border/60 bg-card p-4"
+                  className="border-t border-border px-4 py-3 first:border-t-0"
                   onClick={() => setSelected(a)}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-display text-lg leading-none">
+                      <p className="leading-none font-extrabold tabular-nums">
                         {new Date(a.start).toLocaleTimeString("es", {
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
                       </p>
-                      <p className="mt-1 truncate font-medium">{a.clientName}</p>
+                      <p className="mt-1 truncate font-bold">{a.clientName}</p>
                       {conRecargo && <DeudaBadge clientId={a.clientId} clients={clients} className="mt-1" />}
                     </div>
                     <div onClick={(evt) => evt.stopPropagation()}>
@@ -393,11 +394,11 @@ function Appointments() {
                     <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-muted-foreground">
                       <StylistDot employeeId={a.employeeId} />
                       <span className="truncate">
-                        {serviceLabelOf(a)}
+                        {serviceLabelOf(a, carta)}
                         {soloUno ? "" : ` · ${e.name}`}
                       </span>
                     </span>
-                    <span className="shrink-0 font-medium">{eur(a.priceEur)}</span>
+                    <span className="shrink-0 font-bold tabular-nums">{eur(a.priceEur)}</span>
                   </div>
                   <div className="mt-3">
                     <StatusBadge status={a.status} />

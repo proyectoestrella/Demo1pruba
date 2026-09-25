@@ -9,23 +9,23 @@ const buttonVariants = cva(
   // con el dedo (el iPad de Adam, el móvil de sus clientes) sin engordar el
   // botón en escritorio. Solo afecta al componente Button, no a los huecos
   // del calendario ni a otros <button> sueltos.
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium cursor-pointer [@media(pointer:coarse)]:min-h-11 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-bold cursor-pointer [@media(pointer:coarse)]:min-h-11 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+        default: "bg-primary text-primary-foreground hover:bg-[#7A5840]",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+          "border border-input bg-card hover:bg-nata",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-arena",
+        ghost: "hover:bg-nata",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-9 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-8",
-        icon: "h-9 w-9 [@media(pointer:coarse)]:min-w-11",
+        default: "h-10 px-[18px] py-2",
+        sm: "h-[34px] px-[13px] text-[12.5px]",
+        lg: "h-[42px] px-8",
+        icon: "h-10 w-10 [@media(pointer:coarse)]:min-w-11",
       },
     },
     defaultVariants: {

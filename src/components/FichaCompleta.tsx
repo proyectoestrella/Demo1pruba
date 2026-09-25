@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { Droplet, TriangleAlert } from "lucide-react";
 import { BookingAnswersSummary } from "./BookingAnswersSummary";
 import { eur } from "@/lib/copy";
 import type { fichaDeClienta } from "@/lib/ficha-clienta";
@@ -8,10 +9,23 @@ import { Textarea } from "@/components/ui/textarea";
 
 type Ficha = ReturnType<typeof fichaDeClienta>;
 const fecha = (iso?: string) => iso ? new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }) : "—";
+const fechaCorta = (iso?: string) => iso ? new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "") : "—";
+
+/** Etiqueta de sección de la ficha: 11 px, mayúsculas, la única permitida. */
+export function EtiquetaFicha({ children }: { children: ReactNode }) {
+  return <p className="mt-5 mb-2 text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase">{children}</p>;
+}
 
 /** Cuaderno técnico de la clienta, con la fórmula a la vista en cada visita. */
 export interface DatosColorTPV { fecha: string; producto: string; cantidad: string; raiz: string; medios: string; puntas: string; tiempo: string; notas: string }
-export function FichaCompleta({ ficha, onAddColor }: { ficha: Ficha; onAddColor?: (datos: DatosColorTPV) => void }) {
+
+/**
+ * Ficha «Arena» (DESIGN.md), como el panel del prototipo: cuatro cifras,
+ * avisos, último color con «Añadir color de TPV 123» e historial en línea de
+ * tiempo. `antesDelHistorial` es el hueco para lo que el panel pone entre
+ * medias (próximas citas, observaciones, deuda).
+ */
+export function FichaCompleta({ ficha, onAddColor, antesDelHistorial }: { ficha: Ficha; onAddColor?: (datos: DatosColorTPV) => void; antesDelHistorial?: ReactNode }) {
   const { resumen, avisos, visitas } = ficha;
   const [formularioColor, setFormularioColor] = useState(false);
   const [mensajeColor, setMensajeColor] = useState("");
@@ -22,67 +36,87 @@ export function FichaCompleta({ ficha, onAddColor }: { ficha: Ficha; onAddColor?
     setMensajeColor("Color añadido a la ficha.");
     setColor((actual) => ({ ...actual, producto: "", cantidad: "", raiz: "", medios: "", puntas: "", tiempo: "", notas: "" }));
   }
-  return <section className="space-y-4" aria-label="Ficha completa">
-    {onAddColor && <div className="rounded-xl border border-primary/30 bg-primary/5 p-4" data-vaul-no-drag>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h3 className="font-semibold">Ficha técnica del color</h3><p className="text-sm text-muted-foreground">Anota aquí el color que consultas en TPV 123.</p></div>
-        <Button type="button" variant={formularioColor ? "outline" : "default"} onClick={() => { setFormularioColor((v) => !v); setMensajeColor(""); }} className="min-h-11">{formularioColor ? "Cerrar" : "Añadir color de TPV 123"}</Button>
-      </div>
-      {formularioColor && <div className="mt-4 space-y-3">
-        <label className="block space-y-1 text-sm">Fecha<Input type="date" max={new Date().toLocaleDateString("sv-SE")} value={color.fecha} onChange={(e) => setColor({ ...color, fecha: e.target.value })} className="min-h-11" /></label>
-        <label className="block space-y-1 text-sm">Producto / tinte<Input value={color.producto} onChange={(e) => setColor({ ...color, producto: e.target.value })} placeholder="7.1 + 8.0" className="min-h-11" /></label>
+  const frecuencia = resumen.frecuenciaMediaDias === undefined
+    ? "—"
+    : resumen.frecuenciaMediaDias < 14 ? `${resumen.frecuenciaMediaDias} días` : `${Math.round(resumen.frecuenciaMediaDias / 7)} sem.`;
+
+  return <section aria-label="Ficha completa">
+    {/* Cuatro cifras */}
+    <div className="grid grid-cols-4 gap-2">
+      <Cifra valor={String(resumen.numeroVisitas)} etiqueta="Visitas" />
+      <Cifra valor={frecuencia} etiqueta="Frecuencia" />
+      <Cifra valor={eur(resumen.gastoTotal).replace(",00", "")} etiqueta="Gasto orient." />
+      <Cifra valor={fechaCorta(resumen.ultimaVisita)} etiqueta="Última visita" />
+    </div>
+    <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12.5px]">
+      <Dato etiqueta="Servicio habitual" valor={resumen.servicioHabitual ?? "—"} />
+      <Dato etiqueta="Profesional habitual" valor={resumen.profesionalHabitual ?? "—"} />
+      <Dato etiqueta="Primera visita" valor={fecha(resumen.primeraVisita)} />
+      <Dato etiqueta="Últimos 12 meses" valor={eur(resumen.gastoUltimos12Meses)} />
+    </dl>
+
+    {avisos.length > 0 && <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-melocoton-borde bg-melocoton px-3.5 py-3 text-[12.5px] text-melocoton-tinta">
+      <TriangleAlert className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
+      <ul className="space-y-0.5">{avisos.map((aviso) => <li key={aviso}>{aviso}</li>)}</ul>
+    </div>}
+
+    <EtiquetaFicha>Último color</EtiquetaFicha>
+    {resumen.ultimoColor ? <div className="flex gap-2 rounded-xl bg-salvia-clara px-3 py-2.5 text-[12.5px] text-hoja-tinta">
+      <Droplet className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
+      <span><b className="block text-sm">{resumen.ultimoColor.formula}</b>{fecha(resumen.ultimoColor.fecha)}</span>
+    </div> : <div className="rounded-2xl border-[1.5px] border-dashed border-lino-fuerte px-4 py-3 text-center text-[12.5px] text-muted-foreground">
+      <b className="block text-sm text-foreground">Aún no hay fórmula</b>
+      Añádela desde el TPV y la tendrás a mano la próxima vez.
+    </div>}
+    {onAddColor && <div className="mt-2" data-vaul-no-drag>
+      <Button type="button" variant="outline" onClick={() => { setFormularioColor((v) => !v); setMensajeColor(""); }} className="h-[42px] w-full gap-2">
+        <Droplet className="size-[18px]" strokeWidth={1.6} />
+        {formularioColor ? "Cerrar" : "Añadir color de TPV 123"}
+      </Button>
+      {formularioColor && <div className="mt-3 space-y-3 rounded-2xl border border-border bg-perla p-4">
+        <p className="text-[12.5px] text-muted-foreground">Copia aquí el color que consultas en TPV 123.</p>
+        <label className="block space-y-1 text-[12.5px] font-bold text-cafe-medio">Fecha<Input type="date" max={new Date().toLocaleDateString("sv-SE")} value={color.fecha} onChange={(e) => setColor({ ...color, fecha: e.target.value })} className="min-h-11 font-normal" /></label>
+        <label className="block space-y-1 text-[12.5px] font-bold text-cafe-medio">Producto o tinte<Input value={color.producto} onChange={(e) => setColor({ ...color, producto: e.target.value })} placeholder="7.1 + 8.0" className="min-h-11 font-normal" /></label>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {([ ["cantidad", "Cantidad"], ["raiz", "Raíz"], ["medios", "Medios"], ["puntas", "Puntas"], ["tiempo", "Tiempo"] ] as const).map(([key, label]) => <label key={key} className="space-y-1 text-sm">{label}<Input value={color[key]} onChange={(e) => setColor({ ...color, [key]: e.target.value })} placeholder={key === "tiempo" ? "35 min" : ""} className="min-h-11" /></label>)}
+          {([ ["cantidad", "Cantidad"], ["raiz", "Raíz"], ["medios", "Medios"], ["puntas", "Puntas"], ["tiempo", "Tiempo"] ] as const).map(([key, label]) => <label key={key} className="space-y-1 text-[12.5px] font-bold text-cafe-medio">{label}<Input value={color[key]} onChange={(e) => setColor({ ...color, [key]: e.target.value })} placeholder={key === "tiempo" ? "35 min" : ""} className="min-h-11 font-normal" /></label>)}
         </div>
-        <label className="block space-y-1 text-sm">Notas<Textarea rows={2} value={color.notas} onChange={(e) => setColor({ ...color, notas: e.target.value })} className="resize-y" /></label>
-        <Button type="button" onClick={guardarColor} disabled={!color.producto.trim() || !color.fecha || color.fecha > new Date().toLocaleDateString("sv-SE")} className="min-h-11 w-full sm:w-auto">Guardar color y anotar otro</Button>
-        {mensajeColor && <p role="status" className="text-sm text-primary">{mensajeColor}</p>}
+        <label className="block space-y-1 text-[12.5px] font-bold text-cafe-medio">Notas<Textarea rows={2} value={color.notas} onChange={(e) => setColor({ ...color, notas: e.target.value })} className="resize-y font-normal" /></label>
+        <Button type="button" onClick={guardarColor} disabled={!color.producto.trim() || !color.fecha || color.fecha > new Date().toLocaleDateString("sv-SE")} className="min-h-11 w-full">Guardar color y anotar otro</Button>
+        {mensajeColor && <p role="status" className="text-[12.5px] font-bold text-hoja-tinta">{mensajeColor}</p>}
       </div>}
     </div>}
-    <div className="rounded-xl border border-border/70 bg-card p-4">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Resumen de la ficha</p>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
-        <Dato etiqueta="Visitas" valor={String(resumen.numeroVisitas)} />
-        <Dato etiqueta="Última visita" valor={fecha(resumen.ultimaVisita)} />
-        <Dato etiqueta="Primera visita" valor={fecha(resumen.primeraVisita)} />
-        <Dato etiqueta="Frecuencia media" valor={resumen.frecuenciaMediaDias === undefined ? "—" : `${resumen.frecuenciaMediaDias} días`} />
-        <Dato etiqueta="Gasto orientativo" valor={eur(resumen.gastoTotal)} />
-        <Dato etiqueta="Últimos 12 meses" valor={eur(resumen.gastoUltimos12Meses)} />
-        <Dato etiqueta="Servicio habitual" valor={resumen.servicioHabitual ?? "—"} />
-        <Dato etiqueta="Profesional habitual" valor={resumen.profesionalHabitual ?? "—"} />
-        <Dato etiqueta="Próxima cita" valor={fecha(resumen.proximaCita)} />
-      </div>
-      {resumen.ultimoColor && <div className="mt-4 rounded-lg bg-primary/10 px-3 py-2 text-sm">
-        <span className="text-xs text-muted-foreground">Último color · {fecha(resumen.ultimoColor.fecha)}</span>
-        <p className="font-semibold text-foreground">{resumen.ultimoColor.formula}</p>
-      </div>}
-    </div>
-    {avisos.length > 0 && <div className="rounded-xl border border-[var(--warning)]/40 bg-[var(--warning)]/10 p-4">
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide">Antes de que llegue</p>
-      <ul className="space-y-1 text-sm">{avisos.map((aviso) => <li key={aviso}>• {aviso}</li>)}</ul>
-    </div>}
-    <div>
-      <h3 className="mb-2 font-display text-lg">Visitas</h3>
-      {visitas.length === 0 ? <p className="text-sm text-muted-foreground">Aún no hay visitas completadas.</p> :
-        <ol className="space-y-2 border-l-2 border-primary/30 pl-4">
-          {visitas.map((v) => <li key={v.id} className="relative rounded-lg border border-border/70 bg-card p-3 text-sm before:absolute before:-left-[23px] before:top-4 before:size-2.5 before:rounded-full before:bg-primary">
-            <div className="flex flex-wrap items-start justify-between gap-1">
-              <div><time className="text-xs font-medium text-muted-foreground">{fecha(v.fecha)}</time>
-                {v.origen === "tpv123" && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">Traído de TPV 123</span>}
-                <p className="font-semibold">{v.servicios.join(" · ")}</p>
-              </div>
-              <span className="font-medium">{eur(v.importe)}</span>
+
+    {antesDelHistorial}
+
+    <EtiquetaFicha>Historial</EtiquetaFicha>
+    {visitas.length === 0 ? <p className="text-[12.5px] text-muted-foreground">Aún no hay visitas completadas.</p> :
+      <ol className="relative ml-1.5 space-y-3 border-l-2 border-lino pl-5">
+        {visitas.map((v) => <li key={v.id} className="relative before:absolute before:top-1 before:-left-[27px] before:size-3 before:rounded-full before:border-2 before:border-salvia before:bg-card">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[12.5px] font-bold text-muted-foreground tabular-nums">
+                {fecha(v.fecha)} · {v.profesional}
+                {v.origen === "tpv123" && <span className="ml-1.5 rounded-full bg-nata px-1.5 py-px text-[11px] font-bold text-cafe-medio">TPV 123</span>}
+              </p>
+              <p className="font-bold">{v.servicios.length ? v.servicios.join(" + ") : "Color anotado"}</p>
             </div>
-            <p className="text-xs text-muted-foreground">{v.profesional} · {v.duracion} min</p>
-            {v.colorFormula && <p className="mt-2 rounded-md bg-primary/10 px-2 py-1 font-medium">Color: {v.colorFormula}</p>}
-            {v.technicalNotes && <p className="mt-1 rounded-md bg-muted px-2 py-1">Notas técnicas: {v.technicalNotes}</p>}
-            <BookingAnswersSummary answers={v.bookingAnswers} />
-          </li>)}
-        </ol>}
-    </div>
+            {v.importe > 0 && <span className="shrink-0 font-bold tabular-nums">{eur(v.importe).replace(",00", "")}</span>}
+          </div>
+          {v.colorFormula && <p className="mt-1.5 flex gap-1.5 rounded-xl bg-salvia-clara px-2.5 py-1.5 text-[12.5px] text-hoja-tinta"><Droplet className="mt-px size-3.5 shrink-0" strokeWidth={1.6} />{v.colorFormula}</p>}
+          {v.technicalNotes && <p className="mt-1 rounded-xl bg-nata px-2.5 py-1.5 text-[12.5px] text-cafe-medio">{v.technicalNotes}</p>}
+          <BookingAnswersSummary answers={v.bookingAnswers} />
+        </li>)}
+      </ol>}
   </section>;
 }
 
+function Cifra({ valor, etiqueta }: { valor: string; etiqueta: string }) {
+  return <div className="min-w-0 rounded-2xl bg-nata px-2.5 py-2.5">
+    <p className="truncate text-base font-extrabold tabular-nums">{valor}</p>
+    <p className="text-[11px] font-bold tracking-[0.04em] text-muted-foreground uppercase">{etiqueta}</p>
+  </div>;
+}
+
 function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
-  return <div className="min-w-0"><p className="text-xs text-muted-foreground">{etiqueta}</p><p className="break-words font-medium">{valor}</p></div>;
+  return <div className="min-w-0"><dt className="text-muted-foreground">{etiqueta}</dt><dd className="truncate font-bold">{valor}</dd></div>;
 }

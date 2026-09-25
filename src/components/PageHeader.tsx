@@ -9,15 +9,15 @@ export interface PageHeaderProps {
   className?: string;
 }
 
-/** Standard dashboard page title + actions row. Responsive: stacks on mobile, row on sm+. */
+/** Título de página «Arena» (Manrope 800, 32 px) con sus acciones a la derecha; en móvil se apilan. */
 export function PageHeader({ title, description, actions, className }: PageHeaderProps) {
   return (
-    <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", className)}>
-      <div className="space-y-1 min-w-0">
-        <h1 className="font-display text-2xl md:text-3xl tracking-tight text-foreground truncate">
+    <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between", className)}>
+      <div className="min-w-0">
+        <h1 className="truncate text-[26px] leading-[1.1] font-extrabold tracking-[-0.02em] text-foreground md:text-[32px]">
           {title}
         </h1>
-        {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+        {description ? <p className="mt-1 text-muted-foreground">{description}</p> : null}
       </div>
       {actions ? (
         <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>

@@ -114,10 +114,10 @@ function Waitlist() {
   if (!visible) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-1 flex-col gap-5">
       <PageHeader
         title="Lista de espera"
-        description="Clientes esperando un hueco."
+        description="Clientas esperando un hueco."
         actions={
           <Button className="gap-1.5" onClick={() => setAltaOpen(true)}>
             <Plus className="h-4 w-4" /> Apuntar a alguien
@@ -125,15 +125,15 @@ function Waitlist() {
         }
       />
 
-      <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 text-sm">
-        <p className="font-medium text-primary">Para cuando se libere un hueco</p>
-        <p className="mt-1 text-muted-foreground">
+      <div className="rounded-2xl bg-salvia-clara px-4 py-3 text-[12.5px] text-hoja-tinta">
+        <p className="font-bold">Para cuando se libere un hueco</p>
+        <p className="mt-0.5">
           Si alguien cancela, aquí tienes a quién llamar primero. <strong>Avisar</strong> abre tu
           WhatsApp con la hora concreta ya escrita y <strong>Convertir a cita</strong> lo mete en la
           agenda. El mensaje lo envías tú desde tu móvil: siShow no manda nada solo.
         </p>
         {lastFreedSlot && siguiente && (
-          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-background px-3 py-2">
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-card px-3 py-2 text-foreground">
             <span className="text-sm">
               Se acaba de liberar el hueco de las{" "}
               <strong>
@@ -154,7 +154,7 @@ function Waitlist() {
       </div>
 
       {waitlist.length === 0 ? (
-        <div className="rounded-xl border border-border/60 bg-card">
+        <div className="flex-1 rounded-[20px] border border-border bg-card">
           <EmptyState
             icon={ListChecks}
             title="Lista de espera vacía"
@@ -162,19 +162,19 @@ function Waitlist() {
           />
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
+        <div className="flex-1 overflow-hidden rounded-[20px] border border-border bg-card">
           {waitlist.map((w) => {
             const s = serviceMap[w.serviceId];
             const e = w.preferredEmployeeId === "any" ? null : employeeMap[w.preferredEmployeeId];
             return (
               <div
                 key={w.id}
-                className="flex flex-col gap-3 border-b border-border/60 px-5 py-4 last:border-0 sm:flex-row sm:items-center sm:gap-4"
+                className="flex flex-col gap-3 border-b border-border px-5 py-3.5 sm:flex-row sm:items-center sm:gap-4"
               >
-                <Clock className="hidden h-4 w-4 shrink-0 text-muted-foreground sm:block" />
+                <Clock className="hidden size-[18px] shrink-0 text-muted-foreground sm:block" strokeWidth={1.6} />
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium">{w.clientName}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="font-bold">{w.clientName}</p>
+                  <p className="text-[12.5px] text-muted-foreground">
                     {s?.name ?? "Sin servicio concreto"}
                     {soloUno
                       ? ""
@@ -182,7 +182,7 @@ function Waitlist() {
                     {w.preferredRange ? ` · ${w.preferredRange}` : ""}
                   </p>
                 </div>
-                <span className="text-xs text-muted-foreground">{w.phone}</span>
+                <span className="text-[12.5px] text-muted-foreground tabular-nums">{w.phone}</span>
                 <div className="flex shrink-0 flex-wrap gap-2">
                   <Button
                     size="sm"
@@ -200,7 +200,7 @@ function Waitlist() {
                   <Button
                     size="icon"
                     variant="outline"
-                    className="size-8 text-destructive hover:text-destructive"
+                    className="size-[34px] text-melocoton-tinta hover:bg-melocoton hover:text-melocoton-tinta"
                     onClick={() => setDeleteTarget(w)}
                     aria-label={`Quitar a ${w.clientName} de la lista de espera`}
                   >

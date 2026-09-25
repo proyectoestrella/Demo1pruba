@@ -1,38 +1,31 @@
 import { useEffect, useState } from "react";
-import { useSalonStore } from "@/lib/store";
+import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { fichaDeClienta } from "@/lib/ficha-clienta";
-import { FichaCompleta, type DatosColorTPV } from "@/components/FichaCompleta";
+import { EtiquetaFicha, FichaCompleta, type DatosColorTPV } from "@/components/FichaCompleta";
 import { recargoActivo } from "@/lib/recargo-activo";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { historialDeFallos, penaltyReasonLabel } from "@/lib/plantones";
 import { BandaDeuda } from "@/components/DeudaCliente";
-import { employeeMap } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
+import { whatsappUrl } from "@/lib/campanas";
+import { toDateKey } from "@/lib/reparto";
 import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
-import { eur } from "@/lib/copy";
+import { eur, hora } from "@/lib/copy";
 import type { Client } from "@/lib/mock/types";
-import { StylistDot } from "@/components/StylistAvatar";
 import { ClientAvatar } from "@/components/ClientAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
+import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-} from "@/components/ui/drawer";
-import { Mail, Phone, CalendarClock, TriangleAlert, Ban, Unlock } from "lucide-react";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Calendar, MessageCircle, Phone, Plus, TriangleAlert, Ban, Unlock, Mail } from "lucide-react";
 
 export interface ClientHistorySheetProps {
   client: Client | null;
@@ -41,18 +34,17 @@ export interface ClientHistorySheetProps {
 }
 
 /**
- * Ficha completa del cliente: contacto, KPIs, próximas citas, observaciones
- * editables e historial. Antes era un `Sheet` estrecho lateral; ahora es un
- * `Dialog` centrado y ancho en escritorio y un `Drawer` inferior en móvil —
- * mismo patrón responsive que `NewAppointmentDialog`. Mantiene exactamente
- * el store y los datos existentes: solo cambia la presentación.
+ * Ficha de la clienta en el panel lateral derecho, como el prototipo «Arena»:
+ * identidad, WhatsApp / Llamar / Nueva cita, si viene hoy, sus cifras, último
+ * color con «Añadir color de TPV 123», próximas citas, observaciones e
+ * historial. En móvil ocupa toda la pantalla. Mismo store y mismas acciones
+ * de siempre: solo cambia la presentación.
  */
 export function ClientHistorySheet({
   client: clientProp,
   open,
   onOpenChange,
 }: ClientHistorySheetProps) {
-  const isMobile = useIsMobile();
   const appointments = useSalonStore((s) => s.appointments);
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
@@ -74,6 +66,8 @@ export function ClientHistorySheet({
     clientProp ? s.clients.find((c) => c.id === clientProp.id) : undefined,
   );
   const client = stored ?? clientProp;
+  const carta = selectServiceMap(services);
+  const [nuevaAbierta, setNuevaAbierta] = useState(false);
   const ficha = client ? fichaDeClienta(client.id, { citas: appointments, clientes: clients, servicios: services, equipo, ahora: new Date() }) : null;
   // Plantones y retrasos sin avisar de los últimos 3 meses — ver lib/plantones.ts.
   const plantones = client ? historialDeFallos(appointments, client.id) : null;
@@ -103,39 +97,75 @@ export function ClientHistorySheet({
   if (!client || !ficha) {
     // Se mantiene montado el contenedor vacío para que el cierre no dé un
     // salto visual; sin cliente no hay nada que pintar dentro.
-    return isMobile ? (
-      <Drawer open={false} onOpenChange={onOpenChange} />
-    ) : (
-      <Dialog open={false} onOpenChange={onOpenChange} />
-    );
+    return <Sheet open={false} onOpenChange={onOpenChange} />;
   }
 
+  // ¿Viene hoy? Es lo primero que se quiere saber al abrir la ficha.
+  const hoyClave = toDateKey(new Date());
+  const deHoy = ownAppointments
+    .filter((a) => a.status !== "cancelled" && toDateKey(new Date(a.start)) === hoyClave)
+    .sort((a, b) => +new Date(a.start) - +new Date(b.start))[0];
+  let textoHoy: string | null = null;
+  if (deHoy) {
+    const ini = +new Date(deHoy.start);
+    const fin = ini + deHoy.duration * 60_000;
+    const con = soloUno ? "" : ` con ${equipo.find((e) => e.id === deHoy.employeeId)?.name ?? ""}`;
+    const que = `${serviceLabelOf(deHoy, carta)}${con}`;
+    textoHoy =
+      fin <= now
+        ? `Ha venido hoy a las ${hora(deHoy.start)} · ${que}`
+        : ini <= now
+          ? `Está en el salón desde las ${hora(deHoy.start)} · ${que}`
+          : `Viene hoy a las ${hora(deHoy.start)} · ${que}`;
+  }
+  const accion = "inline-flex h-[34px] items-center gap-1.5 rounded-full border border-input bg-card px-[13px] text-[12.5px] font-bold hover:bg-nata";
+
   const body = (
-    <div className="space-y-6">
-      {/* Cabecera: identidad y contacto */}
-      <div className="flex flex-wrap items-center gap-4">
+    <div>
+      {/* Identidad y acciones */}
+      <div className="flex items-center gap-3">
         <ClientAvatar name={client.name} size="xl" />
         <div className="min-w-0">
-          <h2 className="font-display text-2xl">{client.name}</h2>
-          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <Phone className="size-3.5" aria-hidden="true" />
-              {client.phone}
-            </span>
-            {client.email && (
-              <span className="flex items-center gap-1.5">
-                <Mail className="size-3.5" aria-hidden="true" />
-                {client.email}
-              </span>
-            )}
-          </div>
+          <p className="font-display text-[26px] leading-tight font-medium">{client.name}</p>
+          <p className="text-muted-foreground tabular-nums">{client.phone}</p>
+          {client.email && (
+            <p className="flex items-center gap-1.5 truncate text-[12.5px] text-muted-foreground">
+              <Mail className="size-3.5" aria-hidden="true" />
+              {client.email}
+            </p>
+          )}
         </div>
       </div>
+      <div className="mt-3.5 flex flex-wrap gap-1.5">
+        {client.phone && (
+          <>
+            <a className={accion} href={whatsappUrl(client.phone, "")} target="_blank" rel="noopener noreferrer">
+              <MessageCircle className="size-[15px]" strokeWidth={1.6} />
+              WhatsApp
+            </a>
+            <a className={accion} href={`tel:${client.phone.replace(/\s+/g, "")}`}>
+              <Phone className="size-[15px]" strokeWidth={1.6} />
+              Llamar
+            </a>
+          </>
+        )}
+        <button type="button" className={accion} onClick={() => setNuevaAbierta(true)}>
+          <Plus className="size-[15px]" strokeWidth={1.6} />
+          Nueva cita
+        </button>
+      </div>
+      {textoHoy && (
+        <div className="mt-3.5 flex items-start gap-2.5 rounded-2xl bg-salvia-clara px-3.5 py-3 text-[12.5px] text-hoja-tinta">
+          <Calendar className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
+          <span className="tabular-nums">{textoHoy}</span>
+        </div>
+      )}
 
+      <div className="mt-3.5 space-y-3">
       {(!conRecargo || client.manualBlock) && (
         // Vaul no debe interpretar el toque del botón como arrastre del cajón.
-        <div data-vaul-no-drag className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 p-4">
-          <p className="text-sm">
+        <div data-vaul-no-drag className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border px-4 py-3">
+          <p className="text-[12.5px] font-bold">
             {client.manualBlock ? "Reserva por internet bloqueada a mano" : "Puede reservar por internet"}
           </p>
           <Button
@@ -153,9 +183,9 @@ export function ClientHistorySheet({
           alguien ha fallado dos veces en tres meses cambia la decisión aunque
           ya te haya pagado la penalización. */}
       {plantones && (
-        <div className="flex items-center gap-2 rounded-xl border border-[var(--warning)]/40 bg-[var(--warning)]/10 px-4 py-3">
-          <TriangleAlert className="size-4 shrink-0 text-[var(--warning)]" aria-hidden="true" />
-          <p className="text-sm">{plantones}</p>
+        <div className="flex items-center gap-2.5 rounded-2xl border border-melocoton-borde bg-melocoton px-3.5 py-3 text-melocoton-tinta">
+          <TriangleAlert className="size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
+          <p className="text-[12.5px]">{plantones}</p>
         </div>
       )}
 
@@ -178,32 +208,31 @@ export function ClientHistorySheet({
         </div>
       )}
 
+      </div>
+
       <FichaCompleta ficha={ficha} onAddColor={(datos: DatosColorTPV) => {
         const formula = [datos.producto.trim(), datos.cantidad.trim(), datos.raiz.trim() && `${datos.raiz.trim()} raíz`, datos.medios.trim() && `medios ${datos.medios.trim()}`, datos.puntas.trim() && `puntas ${datos.puntas.trim()}`, datos.tiempo.trim()].filter(Boolean).join(", ");
         const fecha = new Date(`${datos.fecha}T12:00:00`).toISOString();
         addAppointment({ clientId: client.id, clientName: client.name, serviceIds: [], employeeId: equipo[0]?.id ?? "mario", start: fecha, duration: 0, priceEur: 0, status: "completed", origen: "tpv123", colorFormula: formula, technicalNotes: datos.notas.trim() || undefined }, { name: client.name, phone: client.phone, email: client.email });
-      }} />
+      }} antesDelHistorial={<>
 
       {/* Próximas citas */}
       <div>
-        <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          <CalendarClock className="size-3.5" aria-hidden="true" />
-          Próximas citas
-        </p>
+        <EtiquetaFicha>Próximas citas</EtiquetaFicha>
         {upcoming.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border/60 px-4 py-3 text-sm text-muted-foreground">
+          <p className="rounded-2xl border-[1.5px] border-dashed border-lino-fuerte px-4 py-3 text-[12.5px] text-muted-foreground">
             Sin citas futuras programadas.
           </p>
         ) : (
           <div className="space-y-2">
             {upcoming.map((a) => {
-              const emp = employeeMap[a.employeeId];
+              const emp = equipo.find((e) => e.id === a.employeeId);
               return (
                 <div
                   key={a.id}
-                  className="flex items-center gap-3 rounded-lg border border-border/60 bg-card px-3 py-2 text-sm"
+                  className="flex items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-2.5 text-sm"
                 >
-                  <div className="w-20 shrink-0 text-xs text-muted-foreground">
+                  <div className="w-20 shrink-0 text-[12.5px] font-bold tabular-nums">
                     {new Date(a.start).toLocaleDateString("es", { day: "2-digit", month: "short" })}
                     {" · "}
                     {new Date(a.start).toLocaleTimeString("es", {
@@ -211,11 +240,10 @@ export function ClientHistorySheet({
                       minute: "2-digit",
                     })}
                   </div>
-                  {!soloUno && <StylistDot employeeId={a.employeeId} />}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{serviceLabelOf(a) || "—"}</p>
+                    <p className="truncate font-bold">{serviceLabelOf(a, carta) || "—"}</p>
                     <BookingAnswersSummary answers={a.bookingAnswers} />
-                    {!soloUno && <p className="text-xs text-muted-foreground">con {emp?.name}</p>}
+                    {!soloUno && <p className="text-[12.5px] text-muted-foreground">con {emp?.name}</p>}
                   </div>
                   <StatusBadge status={a.status} />
                 </div>
@@ -226,10 +254,8 @@ export function ClientHistorySheet({
       </div>
 
       {/* Observaciones */}
-      <div className="space-y-1.5">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Observaciones
-        </p>
+      <div>
+        <EtiquetaFicha>Observaciones</EtiquetaFicha>
         <Textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -242,60 +268,51 @@ export function ClientHistorySheet({
 
       {/* Historial de citas */}
       {history.length > 0 && <div>
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Otras citas
-        </p>
+        <EtiquetaFicha>Anuladas y plantones</EtiquetaFicha>
           <div className="divide-y divide-border/60">
             {history.map((a) => {
-              const emp = employeeMap[a.employeeId];
+              const emp = equipo.find((e) => e.id === a.employeeId);
               return (
                 <div key={a.id} className="flex items-center gap-3 py-3 text-sm">
-                  <div className="w-16 shrink-0 text-xs text-muted-foreground">
+                  <div className="w-16 shrink-0 text-[12.5px] text-muted-foreground tabular-nums">
                     {new Date(a.start).toLocaleDateString("es", {
                       day: "2-digit",
                       month: "short",
                     })}
                   </div>
-                  {!soloUno && <StylistDot employeeId={a.employeeId} />}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{serviceLabelOf(a) || "—"}</p>
+                    <p className="truncate font-bold">{serviceLabelOf(a, carta) || "—"}</p>
                     {!soloUno && (
                       <p className="text-xs text-muted-foreground">con {emp?.name}</p>
                     )}
                   </div>
-                  <span className="text-sm font-medium">{eur(a.priceEur)}</span>
+                  <span className="text-sm font-bold tabular-nums">{eur(a.priceEur)}</span>
                   <StatusBadge status={a.status} />
                 </div>
               );
             })}
           </div>
       </div>}
-    </div>
+</>} />    </div>
   );
 
-  if (isMobile) {
-    return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent>
-          <DrawerHeader className="text-left">
-            <DrawerTitle>Ficha de {client.name}</DrawerTitle>
-            <DrawerDescription>Contacto, historial y observaciones.</DrawerDescription>
-          </DrawerHeader>
-          <div className="max-h-[75vh] overflow-y-auto px-4 pb-6">{body}</div>
-        </DrawerContent>
-      </Drawer>
-    );
-  }
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader className="sr-only">
-          <DialogTitle>Ficha de {client.name}</DialogTitle>
-          <DialogDescription>Contacto, visitas y observaciones de la clienta.</DialogDescription>
-        </DialogHeader>
-        {body}
-      </DialogContent>
-    </Dialog>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-[460px]">
+          <SheetHeader className="border-b border-border px-5 py-4 text-left">
+            <SheetTitle className="text-base font-extrabold">Ficha de clienta</SheetTitle>
+            <SheetDescription className="sr-only">Contacto, visitas, color y observaciones de {client.name}.</SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-8">{body}</div>
+        </SheetContent>
+      </Sheet>
+      <NewAppointmentDialog
+        open={nuevaAbierta}
+        onOpenChange={setNuevaAbierta}
+        defaultClientName={client.name}
+        defaultPhone={client.phone}
+      />
+    </>
   );
 }

@@ -41,7 +41,7 @@ export function BotonesDesenlace({
           <Button
             key={d}
             size={size}
-            variant={elegido ? "default" : "outline"}
+            variant="outline"
             aria-pressed={elegido}
             onClick={(e) => {
               e.stopPropagation();
@@ -49,7 +49,11 @@ export function BotonesDesenlace({
             }}
             className={cn(
               "gap-1.5",
-              !elegido && d === "no-vino" && "text-destructive hover:text-destructive",
+              d === "vino"
+                ? "hover:border-salvia hover:bg-salvia-clara hover:text-hoja-tinta"
+                : "hover:border-melocoton-borde hover:bg-melocoton hover:text-melocoton-tinta",
+              elegido && d === "vino" && "border-salvia bg-salvia-clara text-hoja-tinta",
+              elegido && d !== "vino" && "border-melocoton-borde bg-melocoton text-melocoton-tinta",
             )}
           >
             <Icon className="size-3.5" aria-hidden="true" />
@@ -139,29 +143,29 @@ export function CitasPorResolver({ limite = 5, className }: CitasPorResolverProp
       {pendientes.length > 0 && (
         <div
           className={cn(
-            "overflow-hidden rounded-xl border border-[var(--warning)]/50 bg-[var(--warning)]/10",
+            "overflow-hidden rounded-[20px] border-[1.5px] border-dashed border-moca bg-card",
             className,
           )}
         >
-          <div className="flex flex-wrap items-center gap-2 border-b border-[var(--warning)]/25 px-4 py-3">
-            <HelpCircle className="size-4 shrink-0 text-[var(--warning)]" aria-hidden="true" />
+          <div className="flex flex-wrap items-center gap-2.5 px-5 py-4">
+            <HelpCircle className="size-[18px] shrink-0 text-primary" strokeWidth={1.6} aria-hidden="true" />
             <div className="min-w-0">
-              <p className="font-display text-base leading-tight">
+              <p className="text-base leading-tight font-extrabold tracking-[-0.01em]">
                 ¿Qué pasó con{" "}
                 {pendientes.length === 1 ? "esta cita" : `estas ${pendientes.length} citas`}?
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[12.5px] text-muted-foreground">
                 Ya pasaron y no has dicho si vinieron. Márcalo
                 {conRecargo ? " y te aviso si alguien te queda a deber" : ""}.
               </p>
             </div>
           </div>
-          <div className="divide-y divide-[var(--warning)]/20">
+          <div className="divide-y divide-border border-t border-border">
             {visibles.map((a) => (
-              <div key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+              <div key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{a.clientName || "Sin nombre"}</p>
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="truncate font-bold">{a.clientName || "Sin nombre"}</p>
+                  <p className="truncate text-[12.5px] text-muted-foreground tabular-nums">
                     {new Date(a.start).toLocaleString("es", {
                       weekday: "short",
                       day: "numeric",
@@ -179,7 +183,7 @@ export function CitasPorResolver({ limite = 5, className }: CitasPorResolverProp
             ))}
           </div>
           {pendientes.length > visibles.length && (
-            <p className="px-4 py-2 text-xs text-muted-foreground">
+            <p className="border-t border-border px-5 py-2.5 text-[12.5px] text-muted-foreground">
               Y {pendientes.length - visibles.length} más. Ve marcando: desaparecen solas de aquí.
             </p>
           )}
