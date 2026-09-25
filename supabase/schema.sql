@@ -301,3 +301,30 @@ create index if not exists appointments_salon_employee_start_idx
   on appointments (salon_slug, employee_id, start_at);
 create index if not exists appointments_start_status_idx
   on appointments (start_at, status);
+
+-- ---------------------------------------------------------------------------
+-- 25/09/2026 (tarde) — leads de las demos de venta, en su propia tabla
+--
+-- Hasta hoy una reserva hecha en la web de una DEMO se guardaba en `clients`
+-- y `appointments` mezclada con los datos de los salones reales, y por el
+-- mismo camino cualquiera podía meter una cita confirmada en un salón de
+-- pago. Ahora los leads viven aquí; ninguna pantalla del panel ni el cron
+-- de recordatorios leen esta tabla. RLS activada y sin políticas, como el
+-- resto: solo el servidor escribe.
+-- ---------------------------------------------------------------------------
+create table if not exists leads_demo (
+  id uuid primary key default gen_random_uuid(),
+  salon_slug text not null,
+  name text not null,
+  phone text not null,
+  email text,
+  service_id text not null default '',
+  employee_id text not null default '',
+  start_at timestamptz not null,
+  duration_min integer not null default 0,
+  price_eur numeric not null default 0,
+  note text,
+  created_at timestamptz not null default now()
+);
+create index if not exists leads_demo_salon_slug_idx on leads_demo (salon_slug);
+alter table leads_demo enable row level security;

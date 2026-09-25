@@ -550,10 +550,10 @@ function BookingWizard() {
     // este mismo navegador — nunca nombre ni teléfono, que ya viven donde corresponde.
     writeLastBooking(salonSlug, { serviceIds, employeeId, savedAt: Date.now() });
     if (!realSlug) {
-      // Demo de venta: se conserva tal cual estaba — la reserva queda
-      // registrada en Supabase como lead, con el status "confirmed" de
-      // siempre. En un salón real no se llama, porque la MISMA cita ya se ha
-      // guardado con su estado "pending" y se duplicaría.
+      // Demo de venta: la reserva queda apuntada como lead en `leads_demo`,
+      // fuera de las tablas reales. En un salón real no se llama (y el
+      // servidor la rechazaría): la MISMA cita ya se ha guardado con su
+      // estado "pending" por syncAppointment.
       registerBookingClient({
         data: {
           salonSlug,
