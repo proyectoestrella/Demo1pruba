@@ -57,10 +57,21 @@ export const SEGUNDOS_AVISO = 10;
 export type MotivoNoDeshacer = "CAMBIADO" | "POSTERIORES" | "SOLAPE" | "PERMISO" | "CADUCADO" | "DESHECHO";
 export type EstadoDeshacer = { puede: true; aviso?: "CLIENTA_AVISADA" } | { puede: false; motivo: MotivoNoDeshacer };
 
-/** Igualdad de valores guardables (JSON), sin depender del orden de las claves. */
+/**
+ * Igualdad de valores guardables (JSON), sin depender del orden de las claves.
+ *
+ * `undefined`, `null` y `""` cuentan como el mismo «nada»: son justo las tres
+ * formas en que un campo del perfil llega a valer «vacío» según por dónde
+ * pase (el campo nunca se ha tocado, se ha borrado a mano, o el editor de
+ * «Mi página» siempre manda una cadena y nunca ausencia) — el propio tipo
+ * `SalonProfile` lo dice campo a campo: «Vacío o ausente = …». Si NO se
+ * igualaran aquí, publicar sin tocar un campo que nunca se rellenó registraría
+ * un cambio espurio (p.ej. `logoUrl`: de `undefined` a `""`).
+ */
 export function mismoValor(a: unknown, b: unknown): boolean {
   if (a === b) return true;
-  if (a === undefined || b === undefined) return (a ?? null) === (b ?? null);
+  const vacio = (v: unknown) => v === undefined || v === null || v === "";
+  if (vacio(a) || vacio(b)) return vacio(a) && vacio(b);
   return JSON.stringify(ordenar(a)) === JSON.stringify(ordenar(b));
 }
 function ordenar(v: unknown): unknown {
@@ -186,8 +197,9 @@ const NOMBRE_CAMPO: Record<string, string> = {
   bookingQuestionsRequired: "las preguntas de reserva", duracionFlexible: "la duración flexible",
   noShowFeeEur: "el recargo por plantón", noShowNoticeHours: "el aviso del plantón", timeZone: "la zona horaria",
   lastSlotBufferMin: "el margen de la última hora", priorityHours: "las horas prioritarias", smartSpread: "el reparto de agenda",
-  depositTemplate: "el mensaje de la señal", plantillas: "los mensajes de WhatsApp", colores: "los colores",
-  logo: "el logo", plan: "el plan",
+  depositTemplate: "el mensaje de la señal", plantillas: "los mensajes de WhatsApp",
+  coloresServicio: "los colores del calendario", coloresProfesional: "los colores del calendario",
+  logoUrl: "el logo", plan: "el plan", calendario: "las preferencias del calendario",
 };
 export function resumenCampoPerfil(clave: string): string {
   const n = NOMBRE_CAMPO[clave] ?? (clave.startsWith("deposit") ? "la regla de la señal" : `«${clave}»`);

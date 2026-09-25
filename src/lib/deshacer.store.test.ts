@@ -129,6 +129,21 @@ describe("deshacer cambios del perfil (lote 9b)", () => {
     useSalonStore.getState().updateSalonProfile({ setupChecklistHidden: true } as never);
     expect(useSalonStore.getState().cambios.length).toBe(n);
   });
+
+  it("publicar «Mi página» sin tocar el logo no deja un cambio espurio (undefined → \"\")", () => {
+    expect(useSalonStore.getState().salonProfile.logoUrl).toBeUndefined();
+    const n = useSalonStore.getState().cambios.length;
+    // `perfilDesdeBorrador` manda SIEMPRE `logoUrl: ""` cuando la caja está
+    // vacía, nunca lo omite: así es como se reproducía en Mi página.
+    useSalonStore.getState().updateSalonProfile({ logoUrl: "" });
+    expect(useSalonStore.getState().cambios.length).toBe(n);
+    expect(useSalonStore.getState().salonProfile.logoUrl).toBe("");
+    // Pero borrar un logo que sí estaba puesto SÍ es un cambio real.
+    useSalonStore.getState().updateSalonProfile({ logoUrl: "https://x.test/logo.png" });
+    expect(useSalonStore.getState().cambios.length).toBe(n + 1);
+    useSalonStore.getState().updateSalonProfile({ logoUrl: "" });
+    expect(useSalonStore.getState().cambios.length).toBe(n + 2);
+  });
 });
 
 describe("WhatsApp y aviso a la clienta (lote 9b)", () => {

@@ -37,7 +37,7 @@ import {
 import { StylistAvatar } from "@/components/StylistAvatar";
 import type { EmployeeId } from "@/lib/mock/types";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
 import { useClientNow } from "@/lib/use-client-now";
 import { galleryPhotosFor } from "@/lib/demo-photos";
@@ -384,6 +384,12 @@ function SalonHome() {
   const conEnlaceDemo = useRouterState({ select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string" });
   const logoPortada = logoDelSalon(profile, sinSalonReal || conEnlaceDemo);
   const tipo = useBusinessType();
+  // Una portada propia puede dejar de cargar sin que nadie lo sepa: el enlace
+  // de demo la trae fija (caso PeluChic, foto de Google Places servida por
+  // `/api/foto`), y esa foto concreta puede desaparecer de la ficha con el
+  // tiempo aunque el enlace no haya cambiado. Sin este fallback, un 404 deja
+  // un icono de imagen rota a pantalla completa en vez de la de ejemplo.
+  const [falloHero, setFalloHero] = useState<string | null>(null);
   // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
   // en la cadena "2" — de ahí el `String(...)` antes de comparar.
   const isV2 = useRouterState({
@@ -495,13 +501,15 @@ function SalonHome() {
       <section className="relative isolate flex min-h-[85vh] items-end overflow-hidden text-white sm:items-center">
         <img
           src={
-            profile.heroImage ||
+            (profile.heroImage && profile.heroImage !== falloHero && profile.heroImage) ||
             // Sin foto propia (hay dos locales del rutero cuya ficha de Google
-            // está vacía) se usa una de ejemplo, pero no la misma para todos:
+            // está vacía), o si la propia dejó de cargar (404 de Google, ficha
+            // cambiada…), se usa una de ejemplo, pero no la misma para todos:
             // un sillón de barbero de portada en una peluquería de señoras
             // canta tanto como una foto mala.
             (tipo === "barberia" ? heroImg : heroSalonImg)
           }
+          onError={() => profile.heroImage && setFalloHero(profile.heroImage)}
           alt={`Interior de ${profile.name}`}
           className="absolute inset-0 -z-20 h-full w-full object-cover"
           width={1920}

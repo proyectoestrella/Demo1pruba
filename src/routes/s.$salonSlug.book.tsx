@@ -1621,6 +1621,10 @@ function BookingSummary({
   const tipo = useBusinessType();
   const profile = useDisplayProfile();
   const salonName = profile.name;
+  // Misma razón que en la portada del hero (`s.$salonSlug.index.tsx`): una
+  // foto propia puede dejar de cargar con el tiempo (404 de Google, ficha
+  // cambiada…) aunque el enlace de la demo no haya cambiado.
+  const [falloFoto, setFalloFoto] = useState<string | null>(null);
   if (variant === "bar") {
     return (
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 px-5 py-3 backdrop-blur lg:hidden">
@@ -1661,7 +1665,12 @@ function BookingSummary({
       <div className="sticky top-24 rounded-2xl border border-border/60 bg-card p-6">
         <div className="mb-4 flex items-center gap-3">
           <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg">
-            <img src={profile.heroImage || heroImg} alt="" className="h-full w-full object-cover" />
+            <img
+              src={(profile.heroImage && profile.heroImage !== falloFoto && profile.heroImage) || heroImg}
+              onError={() => profile.heroImage && setFalloFoto(profile.heroImage)}
+              alt=""
+              className="h-full w-full object-cover"
+            />
           </div>
           <div className="min-w-0">
             <p className="truncate font-display text-base">{salonName}</p>

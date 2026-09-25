@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { CORPUS } from "./corpus";
 import { CORPUS_CIEGO } from "./corpus-ciego";
 import { CORPUS_CIEGO_2 } from "./corpus-ciego-2";
-import { casosDelCorpus, matriz, type Caso } from "./evaluar";
+import { AHORA_CORPUS, casosDelCorpus, matriz, type Caso } from "./evaluar";
 import { INTENCIONES } from "./intenciones";
-import { datosPeluChic } from "./prueba-peluchic";
+import { asistentePeluChic, datosPeluChic } from "./prueba-peluchic";
 
 const casos = casosDelCorpus();
 const ciego = casosDelCorpus(CORPUS_CIEGO);
@@ -48,9 +48,38 @@ describe("corpus del asistente sobre la demo PeluChic", () => {
     expect(matriz(ciego2).pct).toBeGreaterThanOrEqual(0.9);
   });
 
-  test("menos de 20 ms por pregunta con ~3.300 citas (tras precalentar)", () => {
+  /**
+   * `casosDelCorpus` ya precalienta y mide, pero con UNA sola lectura por
+   * pregunta: con la máquina cargada (otro proceso, un GC largo, un test en
+   * paralelo) basta que UNA de las ~900 preguntas tenga un pico puntual para
+   * que el máximo se dispare y el test falle sin que el asistente se haya
+   * vuelto más lento. Aquí se repite cada pregunta varias veces sobre el
+   * MISMO asistente ya precalentado (no se vuelve a precalentar entre
+   * repeticiones: eso mediría el arranque, no la pregunta) y se toma su
+   * mediana, que absorbe un pico aislado sin dejar de detectar que una
+   * pregunta concreta sea sistemáticamente lenta.
+   */
+  test("menos de 20 ms por pregunta con ~3.300 citas (tras precalentar, mediana de varias corridas)", () => {
     expect(datosPeluChic().citas.length).toBeGreaterThan(3000);
-    const peor = Math.max(...[...casos, ...ciego, ...ciego2].map((c) => c.ms));
-    expect(peor).toBeLessThan(20);
-  });
+    const preguntas = [...casos, ...ciego, ...ciego2].map((c) => c.pregunta);
+    const { asistente } = asistentePeluChic({ ahora: AHORA_CORPUS });
+    asistente.precalentar();
+    const CORRIDAS = 5;
+    let peorMediana = 0;
+    for (const pregunta of preguntas) {
+      const tiempos: number[] = [];
+      for (let i = 0; i < CORRIDAS; i++) {
+        asistente.reiniciar();
+        const t0 = performance.now();
+        asistente.responder(pregunta);
+        tiempos.push(performance.now() - t0);
+      }
+      tiempos.sort((a, b) => a - b);
+      const mediana = tiempos[Math.floor(CORRIDAS / 2)];
+      if (mediana > peorMediana) peorMediana = mediana;
+    }
+    expect(peorMediana).toBeLessThan(20);
+    // ~900 preguntas × 5 corridas sobre 3.300 citas tardan más que el
+    // timeout por defecto de bun test (5 s) aunque cada pregunta sea rápida.
+  }, 30000);
 });

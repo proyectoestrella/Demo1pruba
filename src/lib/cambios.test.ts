@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
-  accionDe, aplicarDeshacerEnLista, cambioDeDeshacer, diferencia, inverso, podar, puedeDeshacer, registrarCambio, sigueIgual,
+  accionDe, aplicarDeshacerEnLista, cambioDeDeshacer, diferencia, inverso, mismoValor, podar, puedeDeshacer, registrarCambio, sigueIgual,
   type Cambio, type ContextoDeshacer,
 } from "./cambios";
 
@@ -30,6 +30,22 @@ describe("registro de cambios", () => {
     expect(accionDe("cita.rechazar")).toBe("cita.rechazar-solicitud");
     expect(accionDe("servicio.borrar")).toBe("servicio.editar");
     expect(accionDe("perfil.restaurar")).toBe("web.restaurar-version");
+  });
+  test("undefined, null y \"\" son el mismo «vacío» (logoUrl: undefined → \"\" al publicar no es un cambio)", () => {
+    expect(mismoValor(undefined, "")).toBe(true);
+    expect(mismoValor(null, "")).toBe(true);
+    expect(mismoValor(undefined, null)).toBe(true);
+    expect(mismoValor("", "")).toBe(true);
+    // Pero vacío sigue siendo distinto de algo con contenido, en cualquier sentido.
+    expect(mismoValor("", "https://x.test/logo.png")).toBe(false);
+    expect(mismoValor("https://x.test/logo.png", "")).toBe(false);
+    expect(mismoValor(undefined, 0)).toBe(false);
+    expect(
+      registrarCambio({
+        id: "logo", tipo: "perfil.campo", entidad: "perfil", idEntidad: "logoUrl",
+        antes: { logoUrl: null }, despues: { logoUrl: "" }, resumen: "", fecha: "",
+      }),
+    ).toBeNull();
   });
 });
 

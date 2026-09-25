@@ -106,7 +106,8 @@ test("guarda el código de TPV 123 y el cumpleaños, y no duplica al reimportar 
   expect(previa.filas[0]).toMatchObject({ codigo: "0042", estado: "duplicada", motivo: "Ya está importada con ese código de TPV 123" });
   expect(previa.filas[1]).toMatchObject({ codigo: "0043", nacimiento: undefined, estado: "nueva" });
   const sinPrevias = vistaPreviaClientas(tabla, [], mapa);
-  expect(sinPrevias.filas[0]).toMatchObject({ codigo: "0042", nacimiento: "1990-05-04", fechaAlta: "2020-02-01T11:00:00.000Z", estado: "nueva" });
+  // Mediodía UTC, no local (ver `fechaImportada`): el mismo valor en cualquier huso.
+  expect(sinPrevias.filas[0]).toMatchObject({ codigo: "0042", nacimiento: "1990-05-04", fechaAlta: "2020-02-01T12:00:00.000Z", estado: "nueva" });
 });
 
 test("detecta la columna de cumpleaños con los nombres habituales, y es opcional", () => {

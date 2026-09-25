@@ -80,7 +80,12 @@ function fechaImportada(raw: string): string | undefined {
   let fecha: Date;
   if (/^\d+(?:\.\d+)?$/.test(raw.trim())) fecha = new Date(Date.UTC(1899, 11, 30) + Number(raw) * 86400000);
   else if (/^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/.test(raw.trim())) {
-    const [d, m, y] = raw.split(/[/-]/).map(Number); fecha = new Date(y, m - 1, d, 12);
+    // Mediodía UTC (no local): en un import de verdad no se sabe la hora, solo
+    // el día, y `new Date(y, m-1, d, 12)` leía esas cifras como hora LOCAL de
+    // quien ejecuta la importación — la misma fecha de alta se guardaba (y se
+    // comparaba en los tests) con hasta un día de diferencia según el huso del
+    // servidor. Con `Date.UTC` el resultado es el mismo en cualquier zona.
+    const [d, m, y] = raw.split(/[/-]/).map(Number); fecha = new Date(Date.UTC(y, m - 1, d, 12));
   } else fecha = new Date(raw);
   return Number.isFinite(+fecha) && +fecha <= Date.now() ? fecha.toISOString() : undefined;
 }
@@ -214,7 +219,9 @@ export interface OpcionesImportarVisitas {
 function parseFecha(raw: string): Date {
   if (/^\d+(?:\.\d+)?$/.test(raw)) return new Date(Date.UTC(1899, 11, 30) + Number(raw) * 86400000);
   const europea = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
-  if (europea) return new Date(Number(europea[3]), Number(europea[2]) - 1, Number(europea[1]), 12);
+  // Mismo motivo que en `fechaImportada`: mediodía UTC, no local, para que la
+  // fecha de la visita no dependa de la zona horaria del servidor.
+  if (europea) return new Date(Date.UTC(Number(europea[3]), Number(europea[2]) - 1, Number(europea[1]), 12));
   return new Date(raw);
 }
 function importeNumero(raw: string): number | undefined {
