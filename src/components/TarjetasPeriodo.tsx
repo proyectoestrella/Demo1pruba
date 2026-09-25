@@ -5,6 +5,7 @@ import { useSalonStore } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
 import { resumenDePeriodo, comparar, type ResumenPeriodo } from "@/lib/periodos";
 import { nuevasYRecurrentes, serviciosDelRango } from "@/lib/analitica-arena";
+import { dineroDelRango } from "@/lib/dinero";
 import { SelectorPeriodo } from "@/components/SelectorPeriodo";
 import { cn } from "@/lib/utils";
 import { eurRedondo } from "@/lib/copy";
@@ -87,12 +88,36 @@ export function FilaDeTarjetas({
   services: Parameters<typeof serviciosDelRango>[2];
 }) {
   const { actual, previo, series, textoComparacion: contexto, cerrado, rango } = resumen;
+  const esDemo = useSalonStore((s) => !s.realSalonSlug);
+  // Dinero con etiquetas honestas (9d): un periodo pasado enseña lo COBRADO;
+  // uno futuro, lo PREVISTO (confirmadas sin cobrar); el que contiene hoy, lo
+  // cobrado y lo que queda por cobrar, igual que la tarjeta de Hoy.
+  const dinero = dineroDelRango(appointments, rango, new Date());
+  const sinCobros = dinero.cobrado === 0 && dinero.sinCobroMarcado > 0 && !esDemo;
+  const tarjetaDinero =
+    dinero.tiempo === "futuro"
+      ? {
+          label: "Previsto",
+          valor: eurRedondo(dinero.previsto),
+          pie: <span className="text-[12px] text-muted-foreground tabular-nums">{dinero.previstas} {dinero.previstas === 1 ? "cita confirmada" : "citas confirmadas"}</span>,
+        }
+      : dinero.tiempo === "pasado"
+        ? {
+            label: "Cobrado",
+            valor: eurRedondo(dinero.cobrado),
+            pie: <span className="text-[12px] text-muted-foreground tabular-nums">{sinCobros ? "Marca los cobros en el detalle de cada cita" : `${dinero.realizadas - dinero.noVino} realizadas · ${dinero.noVino} no vino`}</span>,
+          }
+        : {
+            label: "Cobrado",
+            valor: eurRedondo(dinero.cobrado),
+            pie: <span className="text-[12px] text-muted-foreground tabular-nums">{sinCobros ? "Marca los cobros en el detalle de cada cita" : `Quedan ${eurRedondo(dinero.porCobrar)} por cobrar`}</span>,
+          };
   const clientas = nuevasYRecurrentes(appointments, rango);
   const top = serviciosDelRango(appointments, rango, services)[0];
 
   const tarjetas: { label: string; icon: LucideIcon; valor: string; pie: React.ReactNode; serie?: number[] }[] = [
     { label: "Citas", icon: Calendar, valor: String(actual.citas), pie: <Variacion valor={actual.citas} anterior={previo.citas} cerrado={cerrado} />, serie: series.citas },
-    { label: "Ingresos estimados", icon: Euro, valor: eurRedondo(actual.caja), pie: <Variacion valor={actual.caja} anterior={previo.caja} cerrado={cerrado} />, serie: series.caja },
+    { label: tarjetaDinero.label, icon: Euro, valor: tarjetaDinero.valor, pie: tarjetaDinero.pie },
     { label: "Ocupación media", icon: TrendingUp, valor: `${Math.round(actual.ocupacion ?? 0)} %`, pie: <Variacion valor={actual.ocupacion ?? 0} anterior={previo.ocupacion} cerrado={cerrado} />, serie: series.ocupacion },
     {
       label: "Clientas",

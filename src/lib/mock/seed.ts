@@ -1,6 +1,6 @@
 import { employees as defaultEmployees, services as defaultServices } from "./salon";
 import { recargoActivo } from "../recargo-activo";
-import type { Appointment, Client, Employee, EmployeeId, Service, WaitlistEntry } from "./types";
+import type { Appointment, Client, Employee, EmployeeId, PaymentMethod, Service, WaitlistEntry } from "./types";
 import {
   FIRST_NAMES_BY_TYPE,
   LAST_NAMES,
@@ -680,9 +680,26 @@ export function buildSeed(
 
   return {
     clients: finalClients,
-    appointments,
+    appointments: sembrarCobros(appointments),
     waitlist: buildWaitlist(type, employees, services),
   };
+}
+
+/**
+ * Solo DEMO (lote 9d). Las citas completadas que ya terminaron salen
+ * cobradas, con la hora de fin como fecha de cobro y un reparto fijo de
+ * métodos (6 de cada 10 tarjeta, 3 efectivo, 1 Bizum). Sin esto, «Cobrado»
+ * saldría a 0 € en toda la demo. Las de hoy que aún no han terminado quedan
+ * sin cobrar. Un salón real no pasa por aquí: sus cobros son los que marca.
+ */
+export function sembrarCobros(appointments: Appointment[], ahora = Date.now()): Appointment[] {
+  const METODOS: PaymentMethod[] = ["tarjeta", "tarjeta", "efectivo", "tarjeta", "bizum", "tarjeta", "efectivo", "tarjeta", "efectivo", "tarjeta"];
+  return appointments.map((a, i) => {
+    if (a.status !== "completed" || a.paidAt) return a;
+    const fin = +new Date(a.start) + a.duration * 60_000;
+    if (fin > ahora) return a;
+    return { ...a, paidAt: new Date(fin).toISOString(), paymentMethod: METODOS[i % METODOS.length] };
+  });
 }
 
 /**

@@ -69,6 +69,8 @@
   --color-hoja: var(--hoja);
   --color-hoja-tinta: var(--hoja-tinta);
   --color-melocoton: var(--melocoton);
+  --color-miel: var(--miel);
+  --color-miel-borde: var(--miel-borde);
   --color-melocoton-borde: var(--melocoton-borde);
   --color-melocoton-tinta: var(--melocoton-tinta);
 
@@ -137,6 +139,9 @@
   --hoja: #4F6F58;
   --hoja-tinta: #3F5A47;
   --melocoton: #F1D9C8;
+  /* Pastel miel: lo que está pendiente de la dueña en Hoy (café 10,4:1). */
+  --miel: #F3E6C4;
+  --miel-borde: #DCC68F;
   --melocoton-borde: #DDB9A2;
   --melocoton-tinta: #74462B;
 

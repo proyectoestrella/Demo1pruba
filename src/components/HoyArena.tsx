@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Check, ChevronDown, Clock3, FileText, MoreHorizontal } from "lucide-react";
+import { Bell, CalendarDays, Check, ChevronDown, Clock3, Euro, FileText, MoreHorizontal } from "lucide-react";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { serviceLabelOf } from "@/lib/appointment-services";
-import { cierreDelDia } from "@/lib/caja";
+import { agendaDeHoy, dineroDelRango } from "@/lib/dinero";
+import { esCobrable } from "@/lib/caja";
 import { duracionRecordada } from "@/lib/derive";
 import { enlaceDeFianza } from "@/lib/avisos";
 import { deadlineHours, depositDueAt, depositState } from "@/lib/deposit-deadline";
@@ -20,8 +21,6 @@ import {
   duracionCorta,
   enCurso,
   faltaPara,
-  huecosLibresDesde,
-  minutosAHora,
   opcionesDeDuracion,
   saludoPara,
   terminada,
@@ -98,13 +97,19 @@ export function HoyArena() {
   const pendientes = appointments
     .filter((a) => a.status === "pending")
     .sort((a, b) => +new Date(a.start) - +new Date(b.start));
-  const caja = useMemo(() => cierreDelDia(appointments, equipo, ahora), [appointments, equipo]); // eslint-disable-line react-hooks/exhaustive-deps
-  const huecos = useMemo(() => huecosLibresDesde(hoy, equipo, ahora), [hoy, equipo]); // eslint-disable-line react-hooks/exhaustive-deps
-  const ingresos = hoy.filter((a) => a.status !== "no-show").reduce((s, a) => s + a.priceEur, 0);
+  const agenda = useMemo(() => agendaDeHoy(hoy, equipo, ahora), [hoy, equipo]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dinero = useMemo(() => dineroDelRango(appointments, rangoDelDia(ahora), ahora), [appointments]); // eslint-disable-line react-hooks/exhaustive-deps
+  const esDemo = useSalonStore((s) => !s.realSalonSlug);
+  // Lo que vale el día (ni canceladas ni «no vino»): cobrado + lo que queda por
+  // cobrar, sea futuro o ya pasado sin marcar. Así ninguna cita se pierde.
+  const valorDelDia = hoy.filter(esCobrable).reduce((s, a) => s + a.priceEur, 0);
+  const porCobrar = Math.max(0, valorDelDia - dinero.cobrado);
 
   // Lo de las pestañas, contado para que la pestaña diga cuánto hay dentro.
   const terminadas = hoy.filter((a) => terminada(a, ahora));
   const sinMarcar = terminadas.filter((a) => a.status === "pending" || a.status === "confirmed").length;
+  const solicitudesVisibles = mostrarSolicitudes ? pendientes.length : 0;
+  const pendienteDeTi = solicitudesVisibles + sinMarcar;
   const manana = new Date(ahora);
   manana.setDate(manana.getDate() + 1);
   const filasManana = hojaDelDia(appointments, fechaLocal(manana)).sort((x, y) => +new Date(x.cita.start) - +new Date(y.cita.start));
@@ -121,35 +126,13 @@ export function HoyArena() {
 
   return (
     <div className="flex flex-1 flex-col gap-8">
-      {/* Saludo y una sola línea con las cifras del día. */}
-      <header data-tour="kpis" className="flex flex-wrap items-end gap-x-6 gap-y-3">
+      {/* Saludo y, debajo, las cuatro cifras del día en tarjetas. */}
+      <header className="flex flex-wrap items-end gap-x-6 gap-y-3">
         <div className="min-w-0">
           <p className="text-[13px] font-semibold text-muted-foreground tabular-nums">{fechaDeHoy(ahora)}</p>
           <h1 className="mt-1 font-display text-[28px] leading-[1.1] font-medium tracking-[-0.02em] md:text-[34px]">
             {saludoPara(ahora.getHours())}, {salonName}
           </h1>
-          <p className="mt-2.5 flex flex-wrap items-baseline gap-x-2 text-[15px] leading-relaxed text-cafe-medio">
-            <Link to="/app/calendar" className="whitespace-nowrap hover:text-foreground">
-              <b className="text-foreground tabular-nums">{hoy.length}</b> citas
-            </Link>
-            <span className="text-taupe" aria-hidden="true">·</span>
-            <Link to="/app/calendar" className="whitespace-nowrap hover:text-foreground">
-              <b className="text-foreground tabular-nums">{huecos.total}</b> huecos libres
-              {huecos.cierre !== null ? ` hasta las ${minutosAHora(huecos.cierre)}` : ""}
-            </Link>
-            <span className="text-taupe" aria-hidden="true">·</span>
-            <span className="whitespace-nowrap" title={`${eurRedondo(caja.total)} cobrados`}>
-              <b className="text-foreground tabular-nums">{eurRedondo(ingresos)}</b> estimados
-            </span>
-            {pendientes.length > 0 && mostrarSolicitudes && (
-              <>
-                <span className="text-taupe" aria-hidden="true">·</span>
-                <a href="#espera" className="whitespace-nowrap hover:text-foreground">
-                  <b className="text-primary tabular-nums">{pendientes.length}</b> te esperan
-                </a>
-              </>
-            )}
-          </p>
         </div>
         <Button variant="ghost" asChild className="text-cafe-medio md:ml-auto">
           <Link to="/app/hoja" search={{ dia: "hoy" }}>
@@ -158,6 +141,35 @@ export function HoyArena() {
           </Link>
         </Button>
       </header>
+
+      <div data-tour="kpis" className="-mt-2 grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4 xl:group-data-[panel=abierto]/panel:grid-cols-2">
+        <TarjetaCifra icono={CalendarDays} titulo="Citas de hoy" to="/app/calendar">
+          <Cifra>{agenda.total}</Cifra>
+          <Detalle>{soloUno ? `${agenda.ocupacionPct} % de tu jornada` : agenda.porPro.map((x) => `${x.citas} ${x.e.name}`).join(" · ")}</Detalle>
+          <Barra pct={agenda.ocupacionPct} texto={`Agenda al ${agenda.ocupacionPct} %`} />
+        </TarjetaCifra>
+        <TarjetaCifra icono={Clock3} titulo="Huecos libres" to="/app/calendar">
+          <Cifra extra={agenda.minutosLibres > 0 ? `· ${duracionCorta(agenda.minutosLibres)}` : undefined}>{agenda.huecos.length}</Cifra>
+          <Detalle>{agenda.huecos.length ? agenda.detalleHuecos : "Hoy ya no queda ningún hueco de media hora."}</Detalle>
+        </TarjetaCifra>
+        <TarjetaCifra icono={Euro} titulo="Ingresos de hoy">
+          <Cifra>{eurRedondo(valorDelDia)}</Cifra>
+          <Detalle>
+            {dinero.cobrado === 0 && dinero.sinCobroMarcado > 0 && !esDemo
+              ? "0 € cobrados · marca los cobros en el detalle de cada cita"
+              : `Llevas ${eurRedondo(dinero.cobrado)} cobrados · quedan ${eurRedondo(porCobrar)} por cobrar`}
+          </Detalle>
+          <Barra pct={valorDelDia ? Math.round((dinero.cobrado / valorDelDia) * 100) : 0} texto="Cobrado del total del día" oculto />
+        </TarjetaCifra>
+        <TarjetaCifra icono={Bell} titulo="Pendiente de ti" destacada={pendienteDeTi > 0} href={solicitudesVisibles > 0 ? "#espera" : undefined} to={solicitudesVisibles > 0 ? undefined : "/app/appointments"}>
+          <Cifra>{pendienteDeTi}</Cifra>
+          <Detalle>
+            {pendienteDeTi === 0
+              ? "Nada pendiente: todo al día."
+              : [solicitudesVisibles > 0 && `${solicitudesVisibles} ${solicitudesVisibles === 1 ? "solicitud" : "solicitudes"}`, sinMarcar > 0 && `${sinMarcar} por marcar`].filter(Boolean).join(" · ")}
+          </Detalle>
+        </TarjetaCifra>
+      </div>
 
       {/* Lo único que pide respuesta, y solo si lo hay. */}
       {mostrarSolicitudes && pendientes.length > 0 && <EstoTeEspera pendientes={pendientes} onAbrirDetalle={setSeleccionada} />}
@@ -210,6 +222,75 @@ export function HoyArena() {
         open={!!seleccionada}
         onOpenChange={(o) => !o && setSeleccionada(null)}
       />
+    </div>
+  );
+}
+
+/* ---------- Tarjetas de cifras ---------- */
+
+function rangoDelDia(d: Date) {
+  const inicio = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return { inicio, fin: new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1) };
+}
+
+/**
+ * Una de las cuatro cifras de Hoy: icono y título, la cifra, una línea de
+ * detalle y, si procede, su barra en salvia. La de «Pendiente de ti» va en
+ * pastel miel cuando hay algo. Toda la tarjeta lleva a donde se resuelve.
+ */
+function TarjetaCifra({
+  icono: Icono,
+  titulo,
+  destacada = false,
+  to,
+  href,
+  children,
+}: {
+  icono: typeof Bell;
+  titulo: string;
+  destacada?: boolean;
+  to?: "/app/calendar" | "/app/appointments";
+  href?: string;
+  children: ReactNode;
+}) {
+  const clase = cn(
+    "flex min-w-0 flex-col rounded-[20px] border px-3.5 py-3 transition-colors sm:px-5 sm:py-4",
+    destacada ? "border-miel-borde bg-miel hover:bg-[#EFDFB5]" : "border-lino bg-card hover:bg-superficie",
+  );
+  const dentro = (
+    <>
+      <span className="flex items-center gap-1.5 text-[12.5px] font-bold text-cafe-medio sm:text-[13px]">
+        <Icono className="size-[15px]" strokeWidth={1.7} aria-hidden="true" />
+        {titulo}
+      </span>
+      {children}
+    </>
+  );
+  if (href) return <a href={href} className={clase}>{dentro}</a>;
+  if (to) return <Link to={to} className={clase}>{dentro}</Link>;
+  return <div className={clase}>{dentro}</div>;
+}
+
+function Cifra({ children, extra }: { children: ReactNode; extra?: string }) {
+  return (
+    <p className="mt-1.5 flex items-baseline gap-1.5 leading-none">
+      <span className="text-[24px] font-extrabold tracking-[-0.02em] tabular-nums sm:text-[30px]">{children}</span>
+      {extra && <span className="text-[15px] font-bold text-cafe-medio tabular-nums">{extra}</span>}
+    </p>
+  );
+}
+
+function Detalle({ children }: { children: ReactNode }) {
+  return <p className="mt-1.5 text-[12.5px] leading-snug text-cafe-medio sm:mt-2 sm:text-[13.5px]">{children}</p>;
+}
+
+function Barra({ pct, texto, oculto = false }: { pct: number; texto: string; oculto?: boolean }) {
+  return (
+    <div className="mt-auto pt-3">
+      <span className="block h-1.5 overflow-hidden rounded-full bg-beige" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={texto}>
+        <i className="block h-full rounded-full bg-hoja" style={{ width: `${Math.min(100, pct)}%` }} />
+      </span>
+      {!oculto && <span className="mt-1.5 block text-[12.5px] text-cafe-medio tabular-nums">{texto}</span>}
     </div>
   );
 }
