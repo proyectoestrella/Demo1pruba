@@ -181,16 +181,41 @@ export function reintentarSalonPublico(slug: string): Promise<ResultadoSalonReal
   });
 }
 
+/**
+ * «Un slug se resuelve una vez por montaje», con una salvedad que costó un
+ * panel entero: la limpieza del efecto LIBERA el slug.
+ *
+ * Antes la referencia se quedaba con el slug aunque el efecto se limpiara.
+ * En desarrollo React monta, limpia y vuelve a montar cada efecto en la
+ * MISMA instancia (modo estricto): la primera consulta quedaba cancelada y
+ * la segunda se saltaba porque «ya estaba resuelto», así que el panel de un
+ * salón real se quedaba para siempre en «resolviendo» con los datos de la
+ * web pública (visto el 25/09/2026 en la prueba real). Ahora, si la
+ * resolución se cancela, el siguiente montaje la vuelve a lanzar.
+ */
+export function guardaDeResolucion() {
+  let actual: string | null = null;
+  return {
+    /** ¿Hay que lanzar la resolución de este slug? */
+    entrar(slug: string): boolean {
+      if (actual === slug) return false;
+      actual = slug;
+      return true;
+    },
+    /** La resolución de este slug se ha cancelado: el próximo montaje la repite. */
+    salir(slug: string): void {
+      if (actual === slug) actual = null;
+    },
+  };
+}
+
 /** Resuelve el salón real de este slug durante la vida del componente. */
 export function useRealSalon(slug: string | undefined, scope: "panel" | "publica") {
-  const resuelto = useRef<string | null>(null);
+  const guarda = useRef(guardaDeResolucion());
 
   useEffect(() => {
     if (!slug) return;
-    // Un slug se resuelve una vez por montaje: sin esto, cada render que
-    // cambiara alguna dependencia relanzaría la consulta y la hidratación.
-    if (resuelto.current === slug) return;
-    resuelto.current = slug;
+    if (!guarda.current.entrar(slug)) return;
 
     let cancelado = false;
 
@@ -204,6 +229,7 @@ export function useRealSalon(slug: string | undefined, scope: "panel" | "publica
 
     return () => {
       cancelado = true;
+      guarda.current.salir(slug);
     };
   }, [slug, scope]);
 }

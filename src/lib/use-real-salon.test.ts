@@ -6,6 +6,7 @@ import {
   type DatosDelSalon,
   type DepsSalonReal,
   type StoreSalonReal,
+  guardaDeResolucion,
 } from "./use-real-salon";
 import type { SalonProfile } from "./mock/types";
 import { salon } from "./mock/salon";
@@ -267,5 +268,27 @@ describe("resolverSalonReal — un salón de pago no se conecta hasta tener sus 
     expect(res).toBe("cancelado");
     expect(s.realSalonSlug).toBeNull();
     expect(s.diario).not.toContain("hydrateFromServer");
+  });
+});
+
+describe("guardaDeResolucion — el doble montaje de React no deja el panel colgado", () => {
+  it("montar, limpiar y volver a montar (modo estricto) vuelve a lanzar la resolución", () => {
+    const g = guardaDeResolucion();
+    expect(g.entrar("salon-a")).toBe(true);
+    g.salir("salon-a");
+    expect(g.entrar("salon-a")).toBe(true);
+  });
+
+  it("sin limpieza de por medio, el mismo slug no se resuelve dos veces", () => {
+    const g = guardaDeResolucion();
+    expect(g.entrar("salon-a")).toBe(true);
+    expect(g.entrar("salon-a")).toBe(false);
+  });
+
+  it("salir de otro slug no libera el actual", () => {
+    const g = guardaDeResolucion();
+    g.entrar("salon-a");
+    g.salir("salon-b");
+    expect(g.entrar("salon-a")).toBe(false);
   });
 });
