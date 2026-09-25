@@ -227,11 +227,17 @@ export const getSalonProfile = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<{ profile: SalonProfile | null }> => {
     const supabase = getSupabaseServerClient();
     if (!supabase) {
-      // En desarrollo sin variables, todo es demo. En producción, que falte
-      // Supabase es un despliegue roto: un salón de pago no puede degradar
-      // a demo en silencio y confirmar citas que no se guardan en ninguna
-      // parte. Se lanza, y la web pública y el panel lo muestran como fallo.
-      if (process.env.NODE_ENV === "production") throw new Error("Backend sin configurar");
+      // Solo en el despliegue de PRODUCCIÓN de Vercel que falte Supabase es
+      // un despliegue roto: un salón de pago no puede degradar a demo en
+      // silencio y confirmar citas que no se guardan en ninguna parte. Se
+      // lanza, y la web pública y el panel lo muestran como fallo.
+      //
+      // No vale mirar NODE_ENV: los previews de Vercel también corren con
+      // NODE_ENV=production y NO tienen las variables de Supabase (están solo
+      // en Production), así que todas las demos de un preview quedaban en
+      // «fallo» (25/09/2026). En previews y en local sin variables, todo es
+      // demo, como siempre.
+      if (process.env.VERCEL_ENV === "production") throw new Error("Backend sin configurar");
       return { profile: null };
     }
 
