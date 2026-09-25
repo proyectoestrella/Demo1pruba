@@ -239,7 +239,10 @@ describe("buildSeed — reparto de agenda (opts.smartSpread)", () => {
 
   it("con reparto activo, hoy no hay ninguna cita que empiece a las 10 o las 11", () => {
     const seed = buildSeed("barberia", employees, services, { smartSpread: true });
-    const hoyKey = new Date().toISOString().slice(0, 10);
+    // Día LOCAL, igual que `key` de abajo: con toISOString (UTC) la prueba
+    // fallaba entre las 00:00 y las 02:00 de Madrid.
+    const ahora = new Date();
+    const hoyKey = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-${String(ahora.getDate()).padStart(2, "0")}`;
     const citasDeHoyEnHoraFloja = seed.appointments.filter((a) => {
       if (a.status === "cancelled" || a.status === "no-show") return false;
       const d = new Date(a.start);
