@@ -9,6 +9,7 @@ import { AjustesMensajes } from "@/components/AjustesMensajes";
 import { AjustesColores } from "@/components/AjustesColores";
 import { AjustesSenal } from "@/components/AjustesSenal";
 import { AjustesPreguntas } from "@/components/AjustesPreguntas";
+import { GuiaAsistente } from "@/components/GuiaAsistente";
 import { useSalonStore } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
 import { getCalendarSubscription, regenerateCalendarSubscription } from "@/lib/api/calendar.functions";
@@ -269,6 +270,10 @@ function Settings() {
             {guardar}
           </div>
           <AjustesSenal />
+        </SeccionAjustes>
+
+        <SeccionAjustes titulo="Cómo usar el asistente" resumen="Todo lo que le puedes preguntar, con ejemplos, y lo que no hace">
+          <GuiaAsistente />
         </SeccionAjustes>
 
         <SeccionAjustes titulo="Colores" resumen="El color de cada servicio y de cada profesional en el calendario">
