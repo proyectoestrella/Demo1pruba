@@ -59,6 +59,30 @@ export function acierta(c: Caso): boolean {
   return c.obtenida.split("|").includes(c.esperada);
 }
 
+/**
+ * Qué pasó con cada pregunta, pensando en «sin inventarse nada»:
+ * - acierto: respondió (o avisó de) la intención esperada.
+ * - inofensivo: no acertó, pero no dio un dato: preguntó (`elegir`) o dijo «no lo sé».
+ * - dañino: respondió con otra intención (un dato que no era el pedido), o
+ *   respondió algo a una pregunta que no era del salón.
+ */
+export type Resultado = "acierto" | "inofensivo" | "danino";
+export function resultado(c: Caso): Resultado {
+  if (acierta(c)) return "acierto";
+  const r = c.respuesta;
+  if (r.tipo === "elegir" || r.tipo === "no-se") return "inofensivo";
+  // Charla ante una pregunta ajena no da ningún dato del salón.
+  if (c.esperada === "no-se" && r.tipo === "respuesta" && POR_ID.get(r.intencion)?.grupo === "charla") return "inofensivo";
+  return "danino";
+}
+
+export function tresMetricas(casos: Caso[]) {
+  const n = { acierto: 0, inofensivo: 0, danino: 0 };
+  for (const c of casos) n[resultado(c)]++;
+  const neg = casos.filter((c) => POR_ID.get(c.esperada)?.grupo === "negocio");
+  return { ...n, total: casos.length, negocio: neg.filter(acierta).length, totalNegocio: neg.length, danos: casos.filter((c) => resultado(c) === "danino") };
+}
+
 export function matriz(casos: Caso[]) {
   const porCat = new Map<string, { total: number; ok: number }>();
   for (const c of casos) {
@@ -79,5 +103,8 @@ if (import.meta.main) {
   for (const [k, v] of [...m.porCat].sort()) console.log(`  ${k.padEnd(18)} ${v.ok}/${v.total}`);
   const ms = casos.map((c) => c.ms).sort((a, b) => a - b);
   console.log(`Tiempo: mediana ${ms[Math.floor(ms.length / 2)].toFixed(1)} ms · p95 ${ms[Math.floor(ms.length * 0.95)].toFixed(1)} ms · máx ${ms[ms.length - 1].toFixed(1)} ms`);
-  for (const f of m.fallos) console.log(`  ✗ «${f.pregunta}» esperada ${f.esperada} → ${f.obtenida}${f.respuesta.tipo === "elegir" ? ` [${f.respuesta.opciones.map((o) => o.etiqueta).join(" | ")}]` : ""}`);
+  const t = tresMetricas(casos);
+  const pc = (x: number, d: number) => `${((x / d) * 100).toFixed(1)} %`;
+  console.log(`Acierto ${t.acierto} (${pc(t.acierto, t.total)}) · inofensivo ${t.inofensivo} (${pc(t.inofensivo, t.total)}) · DAÑINO ${t.danino} (${pc(t.danino, t.total)}) · negocio ${t.negocio}/${t.totalNegocio} (${pc(t.negocio, t.totalNegocio)})`);
+  for (const f of m.fallos) console.log(`${resultado(f) === "danino" ? "  ☠" : "  ·"}`, `  ✗ «${f.pregunta}» esperada ${f.esperada} → ${f.obtenida}${f.respuesta.tipo === "elegir" ? ` [${f.respuesta.opciones.map((o) => o.etiqueta).join(" | ")}]` : ""}`);
 }
