@@ -57,6 +57,11 @@ describe("responder", () => {
     expect(r.opciones[1].pregunta).toBe("¿Qué es lo que más hace Sara?");
   });
 
+  test("fuera del dominio: sin nada del salón no adivina", () => {
+    for (const q of ["¿cuánto vale el iPhone?", "dame una receta de lentejas", "cuando es la luna llena este mes"]) expect([q, nuevo().responder(q).tipo]).toEqual([q, "no-se"]);
+    expect(nuevo().responder("puedo ver las citas en el iphone").tipo).toBe("respuesta");
+  });
+
   test("no entiende: «No lo sé seguro» y tres sugerencias", () => {
     const r = nuevo().responder("receta de tortilla de patatas");
     expect(r.tipo).toBe("no-se");

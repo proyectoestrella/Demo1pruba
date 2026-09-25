@@ -17,6 +17,7 @@ import { apartadoGuia } from "./guia";
 import { candidatos, POR_ID, preguntaCon, reencaminar, VOCABULARIO, type Intencion } from "./intenciones";
 import { enmascarar, MARCA_CLIENTA, MARCA_PRO, MARCA_SERVICIO } from "./mascara";
 import { refuerzos } from "./pistas";
+import { tieneAncla } from "./anclas";
 import { normalizar } from "./normalizar";
 import { desconocidos, puntuar, type Clasificacion } from "./parecido";
 import { RESOLUTORES } from "./resolutores";
@@ -77,6 +78,9 @@ function enmascararPregunta(texto: string, e: Entidades, s: { servicios: Array<{
  * profesional o servicio pierde si la pregunta no nombra ninguno, y las que
  * los nombran ganan un poco cuando la pregunta sí los trae.
  */
+/** El último orden de puntuaciones (para ver si una intención de plan quedó cerca). */
+let ultimoOrden: Array<{ id: string; puntuacion: number }> = [];
+
 function clasificarConEntidades(masc: string, e: Entidades): Clasificacion {
   const tieneCli = masc.includes(MARCA_CLIENTA);
   const tienePro = masc.includes(MARCA_PRO);
@@ -84,6 +88,7 @@ function clasificarConEntidades(masc: string, e: Entidades): Clasificacion {
   // Solo el nombre de una clienta: su ficha.
   if (tieneCli && masc.split(" ").every((w) => w === MARCA_CLIENTA)) return { tipo: "acierto", id: "buscar-clienta", puntuacion: 1 };
   const extra = refuerzos(masc);
+  const ancla = tieneAncla(masc);
   // Pregunta sobre otra cosa: si buena parte de sus palabras no sale en el
   // catálogo y ninguna pista la reconoce, pierde parecido con todo.
   const ajeno = Math.max(0, ...extra.values()) >= 0.45 ? 0 : desconocidos(masc, candidatos());
@@ -94,7 +99,10 @@ function clasificarConEntidades(masc: string, e: Entidades): Clasificacion {
     if (i?.requiere.includes("profesional") && !tienePro && !e.profesionales.length) f *= 0.8;
     if (i?.requiere.includes("servicio") && !tieneSer && !e.servicios.length) f *= 0.8;
     return { id: o.id, puntuacion: (o.puntuacion + (extra.get(o.id) ?? 0)) * f * (1 - 0.5 * ajeno) };
-  }).sort((a, b) => b.puntuacion - a.puntuacion);
+  }).sort((a, b) => b.puntuacion - a.puntuacion)
+    // Sin nada del salón, solo pueden ganar la charla y la ayuda.
+    .filter((o) => ancla || POR_ID.get(o.id)?.grupo === "charla" || POR_ID.get(o.id)?.categoria === "ayuda");
+  ultimoOrden = orden;
   const umbral = 0.27;
   const margen = 0.03;
   const [primera, segunda, tercera] = orden;
