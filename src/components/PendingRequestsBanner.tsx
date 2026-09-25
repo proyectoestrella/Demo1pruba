@@ -2,6 +2,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 import { usePlegado } from "@/lib/use-plegado";
+import { VentanaConfirmar } from "@/components/VentanaConfirmar";
 import { DuracionOtra } from "@/components/DuracionOtra";
 import { toast } from "sonner";
 import { AlertTriangle, Clock, Clock3, MessageCircle } from "lucide-react";
@@ -74,6 +75,7 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
   const [duracionPorTarjeta, setDuracionPorTarjeta] = useState<Record<string, number>>({});
   /** Tarjeta con el campo «Otra…» abierto. */
   const [otraEn, setOtraEn] = useState<string | null>(null);
+  const [aConfirmar, setAConfirmar] = useState<{ cita: Appointment; duracion: number } | null>(null);
 
   const pending = appointments
     .filter((a) => a.status === "pending")
@@ -81,16 +83,13 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
 
   if (pending.length === 0) return null;
 
+  // Confirmar abre la ventana con la ficha y la propuesta (9f), no confirma a ciegas.
   function handleConfirm(a: Appointment) {
-    updateAppointment(a.id, { status: "confirmed" });
-    toast.success("Cita confirmada", { description: a.clientName });
+    setAConfirmar({ cita: a, duracion: a.duration });
   }
 
   function handleConfirmConDuracion(a: Appointment, duracion: number) {
-    updateAppointment(a.id, { status: "confirmed", duration: duracion });
-    toast.success("Cita confirmada", {
-      description: `${a.clientName} · ${duracion} min`,
-    });
+    setAConfirmar({ cita: a, duracion });
   }
 
   /**
@@ -388,6 +387,15 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
         })}
       </div>
       )}
+      <VentanaConfirmar
+        cita={aConfirmar?.cita ?? null}
+        duracionInicial={aConfirmar?.duracion}
+        onCerrar={() => setAConfirmar(null)}
+        onCambiar={(c) => {
+          setAConfirmar(null);
+          onOpenDetail(c);
+        }}
+      />
     </div>
   );
 }

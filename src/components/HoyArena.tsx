@@ -26,6 +26,7 @@ import {
   terminada,
 } from "@/lib/hoy-arena";
 import type { Appointment, Client } from "@/lib/mock/types";
+import { VentanaConfirmar } from "@/components/VentanaConfirmar";
 import { DuracionOtra } from "@/components/DuracionOtra";
 import { cn } from "@/lib/utils";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
@@ -318,9 +319,10 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
   const [todas, setTodas] = useState(false);
   const visibles = todas ? pendientes : pendientes.slice(0, 3);
 
+  // Confirmar ya no es a ciegas (9f): abre la ventana con la ficha y la propuesta.
+  const [aConfirmar, setAConfirmar] = useState<{ cita: Appointment; duracion: number } | null>(null);
   function confirmar(a: Appointment, duracion: number) {
-    updateAppointment(a.id, { status: "confirmed", duration: duracion });
-    toast.success("Cita confirmada", { description: `${a.clientName} · ${duracionCorta(duracion)}` });
+    setAConfirmar({ cita: a, duracion });
   }
   function rechazar(a: Appointment) {
     const estadoPrevio = a.status;
@@ -453,6 +455,15 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
           <ChevronDown className={cn("size-4 transition-transform", todas && "rotate-180")} strokeWidth={1.6} />
         </button>
       )}
+      <VentanaConfirmar
+        cita={aConfirmar?.cita ?? null}
+        duracionInicial={aConfirmar?.duracion}
+        onCerrar={() => setAConfirmar(null)}
+        onCambiar={(c) => {
+          setAConfirmar(null);
+          onAbrirDetalle(c);
+        }}
+      />
     </section>
   );
 }

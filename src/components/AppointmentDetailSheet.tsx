@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { VentanaConfirmar } from "@/components/VentanaConfirmar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
@@ -126,6 +127,17 @@ export function AppointmentDetailSheet({
     appointmentProp ? s.clients.find((c) => c.id === appointmentProp.clientId) : undefined,
   );
   const [confirmOpen, setConfirmOpen] = useState(false);
+  /**
+   * Ventana de confirmar con previsualización (9f). Guarda su propia copia de
+   * la cita porque el panel se cierra al abrirla: un panel modal no dejaría
+   * usar una ventana que vive fuera de él.
+   */
+  const [aConfirmar, setAConfirmar] = useState<Appointment | null>(null);
+  const abrirVentana = () => {
+    if (!appointment) return;
+    setAConfirmar(appointment);
+    onOpenChange(false);
+  };
   /** Qué desenlace ha elegido el dueño, mientras decide qué hace con el dinero. */
   const [decision, setDecision] = useState<Desenlace | null>(null);
   const aplicarDesenlace = useAplicarDesenlace();
@@ -260,6 +272,8 @@ export function AppointmentDetailSheet({
   }
 
   return (
+    <>
+    <VentanaConfirmar cita={aConfirmar} onCerrar={() => setAConfirmar(null)} />
     <Sheet open={open && !!appointment} onOpenChange={onOpenChange}>
       {appointment && start && (
         <SheetContent panel="detalle-cita" className="flex flex-col gap-6 overflow-y-auto">
@@ -387,6 +401,12 @@ export function AppointmentDetailSheet({
             </div>
           )}
 
+          {appointment.status === "pending" && (
+            <Button onClick={abrirVentana} className="self-start">
+              Confirmar cita…
+            </Button>
+          )}
+
           <div className="space-y-1.5">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Fecha, duración y hora
@@ -494,6 +514,8 @@ export function AppointmentDetailSheet({
             <Select
               value={appointment.status}
               onValueChange={(v) => {
+                // Confirmar una solicitud pasa por la ventana con la ficha (9f).
+                if (appointment.status === "pending" && v === "confirmed") return abrirVentana();
                 updateAppointment(appointment.id, { status: v as AppointmentStatus });
                 toast.success("Estado actualizado");
                 if (conRecargo && v === "no-show") preguntarPorLaDeuda("no-vino");
@@ -601,5 +623,6 @@ export function AppointmentDetailSheet({
         </SheetContent>
       )}
     </Sheet>
+    </>
   );
 }
