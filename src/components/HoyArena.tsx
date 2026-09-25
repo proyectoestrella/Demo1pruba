@@ -27,6 +27,7 @@ import {
   terminada,
 } from "@/lib/hoy-arena";
 import type { Appointment, Client } from "@/lib/mock/types";
+import { DuracionOtra } from "@/components/DuracionOtra";
 import { cn } from "@/lib/utils";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { useAplicarDesenlace } from "@/components/CitasPorResolver";
@@ -348,6 +349,10 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
                       {duracionCorta(min)}
                     </button>
                   ))}
+                  <DuracionOtra
+                    onElegir={(min) => setDuracionPorTarjeta((prev) => ({ ...prev, [a.id]: min }))}
+                    claseChip="h-9 rounded-full px-3.5 text-[13px] font-bold text-cafe-medio hover:bg-superficie"
+                  />
                   {recordada && (
                     <span className="ml-1 inline-flex items-center gap-1 text-[12.5px] text-cafe-medio">
                       <Clock3 className="size-3.5" strokeWidth={1.6} />

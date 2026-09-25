@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DuracionOtra } from "@/components/DuracionOtra";
 import { toast } from "sonner";
 import { AlertTriangle, Clock, Clock3, MessageCircle } from "lucide-react";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
@@ -65,6 +66,8 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
 
   // Duración elegida por el salón para cada tarjeta, mientras no se confirma.
   const [duracionPorTarjeta, setDuracionPorTarjeta] = useState<Record<string, number>>({});
+  /** Tarjeta con el campo «Otra…» abierto. */
+  const [otraEn, setOtraEn] = useState<string | null>(null);
 
   const pending = appointments
     .filter((a) => a.status === "pending")
@@ -288,9 +291,11 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                 </div>
                 <Select
                   value={String(duracionElegida)}
-                  onValueChange={(v) =>
-                    setDuracionPorTarjeta((prev) => ({ ...prev, [a.id]: Number(v) }))
-                  }
+                  onValueChange={(v) => {
+                    if (v === "otra") return setOtraEn(a.id);
+                    setOtraEn(null);
+                    setDuracionPorTarjeta((prev) => ({ ...prev, [a.id]: Number(v) }));
+                  }}
                 >
                   <SelectTrigger
                     className="w-full sm:w-32"
@@ -304,9 +309,23 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
                         {min} min
                       </SelectItem>
                     ))}
+                    <SelectItem value="otra">Otra…</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              {otraEn === a.id && (
+                <div className="flex justify-end">
+                  <DuracionOtra
+                    abiertoAlInicio
+                    onCancelar={() => setOtraEn(null)}
+                    claseChip="h-9 rounded-full px-3.5 text-[13px] font-bold text-cafe-medio"
+                    onElegir={(min) => {
+                      setDuracionPorTarjeta((prev) => ({ ...prev, [a.id]: min }));
+                      setOtraEn(null);
+                    }}
+                  />
+                </div>
+              )}
 
               {solape && (
                 <p className="flex items-start gap-1.5 text-[12.5px] text-melocoton-tinta">

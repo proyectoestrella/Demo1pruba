@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Appointment, Employee, Service } from "./mock/types";
 import {
+  minutosPersonalizados,
   citasDelDia,
   colorServicio,
   duracionCorta,
@@ -125,5 +126,21 @@ describe("colorServicio", () => {
   });
   test("un servicio desconocido recibe el último color", () => {
     expect(colorServicio("nada", carta)).toBe("var(--serv-6-borde)");
+  });
+});
+
+describe("duración escrita a mano («Otra…»)", () => {
+  test("acepta minutos en pasos de 5 entre 5 y 480, con o sin «min»", () => {
+    expect(minutosPersonalizados("35")).toEqual({ minutos: 35 });
+    expect(minutosPersonalizados(" 480 min ")).toEqual({ minutos: 480 });
+    expect(minutosPersonalizados("5")).toEqual({ minutos: 5 });
+  });
+  test("rechaza lo vacío, lo que no es número, lo que se sale y lo que no va de 5 en 5", () => {
+    expect(minutosPersonalizados("")).toEqual({ error: "Escribe los minutos." });
+    expect(minutosPersonalizados("1h")).toEqual({ error: "Solo un número de minutos, por ejemplo 35." });
+    expect(minutosPersonalizados("-10")).toEqual({ error: "Solo un número de minutos, por ejemplo 35." });
+    expect(minutosPersonalizados("0")).toEqual({ error: "Como mínimo, 5 minutos." });
+    expect(minutosPersonalizados("485")).toEqual({ error: "Como máximo, 8 horas (480 minutos)." });
+    expect(minutosPersonalizados("37")).toEqual({ error: "En pasos de 5 minutos: por ejemplo 35 o 40." });
   });
 });

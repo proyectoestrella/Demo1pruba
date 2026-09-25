@@ -10,6 +10,7 @@ import type { Appointment, EmployeeId } from "@/lib/mock/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { DuracionOtra } from "@/components/DuracionOtra";
 import { cn } from "@/lib/utils";
 import { serviceLabelOf, sumServices } from "@/lib/appointment-services";
 import { eur, hora } from "@/lib/copy";
@@ -643,6 +644,7 @@ export function NewAppointmentDialog({
                         {duracionLegible(min)}
                       </button>
                     ))}
+                    <DuracionOtra onElegir={setDuracionManual} claseChip={opcion(false)} />
                   </div>
                   {recordada && duracionManual === null && (
                     <p className="mt-2 flex items-start gap-1.5 text-[12.5px] text-primary">

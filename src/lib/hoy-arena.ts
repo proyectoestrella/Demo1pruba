@@ -107,6 +107,25 @@ export function opcionesDeDuracion(propuesta: number, todas = DURACIONES_MIN): n
   return lista.slice(desde, hasta);
 }
 
+/** Límites de la duración escrita a mano («Otra…»): de 5 min a 8 h, en pasos de 5. */
+export const DURACION_MINIMA = 5;
+export const DURACION_MAXIMA = 480;
+
+/**
+ * Valida los minutos que escribe la dueña en «Otra…». Devuelve los minutos o
+ * el motivo, dicho para ella, por el que no valen.
+ */
+export function minutosPersonalizados(texto: string): { minutos: number } | { error: string } {
+  const limpio = texto.trim().replace(/\s*min(utos)?\.?$/i, "");
+  if (!limpio) return { error: "Escribe los minutos." };
+  if (!/^\d+$/.test(limpio)) return { error: "Solo un número de minutos, por ejemplo 35." };
+  const minutos = Number(limpio);
+  if (minutos < DURACION_MINIMA) return { error: "Como mínimo, 5 minutos." };
+  if (minutos > DURACION_MAXIMA) return { error: "Como máximo, 8 horas (480 minutos)." };
+  if (minutos % 5 !== 0) return { error: "En pasos de 5 minutos: por ejemplo 35 o 40." };
+  return { minutos };
+}
+
 /** Seis pasteles fríos del calendario, uno por servicio, por orden de la carta. */
 export const COLORES_SERVICIO = 6;
 
