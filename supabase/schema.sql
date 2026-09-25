@@ -416,3 +416,47 @@ update appointments set deposit_status = case
     else 'pedida' end,
   deposit_received_eur = case when deposit_received_at is not null then deposit_eur else null end
   where deposit_status is null and deposit_requested_at is not null;
+
+-- 11. Accesos y roles (lote 8, 26/09) ----------------------------------------
+-- Rol, profesional vinculada, nombre para el saludo y estado de cada miembro.
+-- Mientras esto no se aplique, el servidor lee la fila con select(*) y trata
+-- a todo miembro como gerente: nadie se queda fuera.
+alter table salon_members add column if not exists employee_id text;
+alter table salon_members add column if not exists display_name text;
+alter table salon_members add column if not exists email text;
+alter table salon_members add column if not exists invited_by uuid references auth.users (id);
+alter table salon_members add column if not exists estado text not null default 'activa';
+alter table salon_members add column if not exists actualizado timestamptz not null default now();
+update salon_members set rol = 'gerente' where rol in ('dueno', 'encargado');
+alter table salon_members alter column rol set default 'gerente';
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'salon_members_rol_chk') then
+    alter table salon_members add constraint salon_members_rol_chk
+      check (rol in ('gerente','subencargado','recepcion','estilista'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'salon_members_estado_chk') then
+    alter table salon_members add constraint salon_members_estado_chk
+      check (estado in ('activa','baja'));
+  end if;
+end $$;
+-- Una profesional, como mucho un acceso activo vinculado.
+create unique index if not exists salon_members_empleada_idx on salon_members (salon_slug, employee_id)
+  where employee_id is not null and estado = 'activa';
+
+-- Invitaciones pendientes: la invitada aún no existe en auth.users.
+create table if not exists salon_invitaciones (
+  id uuid primary key,
+  salon_slug text not null,
+  email text not null,
+  rol text not null check (rol in ('gerente','subencargado','recepcion','estilista')),
+  employee_id text,
+  display_name text,
+  invited_by uuid references auth.users (id),
+  creada timestamptz not null default now(),
+  caduca timestamptz not null,
+  aceptada_en timestamptz,
+  revocada boolean not null default false
+);
+create index if not exists salon_invitaciones_salon_idx on salon_invitaciones (salon_slug);
+-- Mismo criterio que el resto: RLS activado y sin políticas; solo el servidor.
+alter table salon_invitaciones enable row level security;
