@@ -13,7 +13,8 @@ import { AjustesPreguntas } from "@/components/AjustesPreguntas";
 import { GuiaAsistente } from "@/components/GuiaAsistente";
 import { AjustesAccesos } from "@/components/AjustesAccesos";
 import { HistorialCambios } from "@/components/HistorialCambios";
-import { usePermisos } from "@/lib/accesos-panel";
+import { usePermisos, useTienePlan } from "@/lib/accesos-panel";
+import { LlegaConPlan } from "@/components/LlegaConPlan";
 import { puede } from "@/lib/permisos";
 import { useSalonStore } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
@@ -44,6 +45,7 @@ export const Route = createFileRoute("/app/settings")({ component: Settings });
  */
 function Settings() {
   const permisos = usePermisos();
+  const tieneAsistente = useTienePlan("asistente");
   const salonProfile = useSalonStore((s) => s.salonProfile);
   const realSlug = useSalonStore((s) => s.realSalonSlug);
   const equipo = useEquipo();
@@ -290,7 +292,7 @@ function Settings() {
         )}
 
         <SeccionAjustes titulo="Cómo usar el asistente" resumen="Todo lo que le puedes preguntar, con ejemplos, y lo que no hace">
-          <GuiaAsistente />
+          {tieneAsistente ? <GuiaAsistente /> : <LlegaConPlan funcion="asistente" compacta />}
         </SeccionAjustes>
 
         <SeccionAjustes titulo="Colores" resumen="El color de cada servicio y de cada profesional en el calendario">

@@ -314,7 +314,7 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
         <BuscadorGlobal variante="campo" />
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
-        <VerComo className="hidden md:flex" />
+        <VerComo className="hidden md:flex md:group-data-[panel=abierto]/panel:hidden" />
         <Button
           data-tour="assistant"
           variant="outline"

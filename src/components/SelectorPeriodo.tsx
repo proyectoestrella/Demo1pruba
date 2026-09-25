@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useTienePlan } from "@/lib/accesos-panel";
 import type { DateRange } from "react-day-picker";
 import { es } from "react-day-picker/locale";
 import { CalendarDays, Check } from "lucide-react";
@@ -42,6 +43,12 @@ export function SelectorPeriodo({ className }: { className?: string }) {
   const rangoGuardado = useSalonStore((s) => s.rangoAnalitica);
   const setPeriodo = useSalonStore((s) => s.setPeriodoAnalitica);
   const [abierto, setAbierto] = useState(false);
+  // Lote 13: «Personalizado» es analítica avanzada (Todo incluido). Sin ella, vuelve a «Este mes».
+  const avanzada = useTienePlan("analitica-avanzada");
+  const botones = avanzada ? BOTONES : BOTONES.filter((b) => b !== "personalizado");
+  useEffect(() => {
+    if (!avanzada && periodo === "personalizado") setPeriodo("mes");
+  }, [avanzada, periodo, setPeriodo]);
   const [borrador, setBorrador] = useState<DateRange | undefined>(() =>
     rangoGuardado
       ? { from: deClaveDeDia(rangoGuardado.desde), to: deClaveDeDia(rangoGuardado.hasta) }
@@ -62,9 +69,9 @@ export function SelectorPeriodo({ className }: { className?: string }) {
       <div
         role="group"
         aria-label="Periodo de las estadísticas"
-        className="grid w-full grid-cols-4 gap-0.5 rounded-full border border-border bg-nata p-1 sm:inline-flex sm:w-auto"
+        className={cn("grid w-full gap-0.5 rounded-full border border-border bg-nata p-1 sm:inline-flex sm:w-auto", avanzada ? "grid-cols-4" : "grid-cols-3")}
       >
-        {BOTONES.map((id) => {
+        {botones.map((id) => {
           const activo = periodo === id;
           const esFechas = id === "personalizado";
           // En un móvil de 390 px "Esta semana" parte la palabra en dos líneas;

@@ -1,3 +1,6 @@
+import { useTienePlan } from "@/lib/accesos-panel";
+import { LlegaConPlan } from "@/components/LlegaConPlan";
+import { BotonConPlan } from "@/components/BotonConPlan";
 import { useMemo, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
@@ -28,6 +31,8 @@ const ICONS = {
 } as const;
 
 function Insights() {
+  // Lote 13: patrones y exportar, con Todo incluido.
+  const avanzada = useTienePlan("analitica-avanzada");
   const appointments = useSalonStore((s) => s.appointments);
   const services = useSalonStore((s) => s.services);
   const periodo = useSalonStore((s) => s.periodoAnalitica);
@@ -66,7 +71,9 @@ function Insights() {
           <p className="mt-1 text-muted-foreground">Calculada con tus propias reservas: no son predicciones.</p>
         </div>
         <div className="md:ml-auto">
-          <ExportCsvButtons appointments={appointments} services={services} employees={employees} rango={datos.rango} />
+          <BotonConPlan funcion="exportar" etiqueta="Exportar a Excel (CSV)">
+            <ExportCsvButtons appointments={appointments} services={services} employees={employees} rango={datos.rango} />
+          </BotonConPlan>
         </div>
       </div>
 
@@ -131,6 +138,7 @@ function Insights() {
           )}
         </Tarjeta>
 
+        {avanzada ? (
         <Tarjeta titulo="Lo que llama la atención" sub="Patrones de todo tu histórico">
           <ul className="-mx-5 -mb-5">
             {cards.map((c) => {
@@ -150,6 +158,9 @@ function Insights() {
             })}
           </ul>
         </Tarjeta>
+        ) : (
+          <LlegaConPlan funcion="analitica-avanzada" compacta />
+        )}
       </div>
 
       {/* Consulta libre sobre los mismos datos, sin salir de la pantalla. */}

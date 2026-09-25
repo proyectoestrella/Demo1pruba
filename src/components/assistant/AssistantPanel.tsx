@@ -10,6 +10,9 @@
  * los datos del salón en este navegador. Las acciones son semánticas; aquí
  * se traducen a rutas del panel.
  */
+import { LlegaConPlan } from "@/components/LlegaConPlan";
+import { useTienePlan } from "@/lib/accesos-panel";
+import { planDe } from "@/lib/plan";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowUp, BookOpen, Copy, Mail, RotateCcw, Sparkles } from "lucide-react";
@@ -59,7 +62,20 @@ const RUTA_DE_SECCION: Array<[RegExp, string]> = [
 
 const hoyISO = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
+/** Lote 13: sin el plan del asistente, la tarjeta «llega con el plan…» en su lugar. */
 export function AssistantPanel({ className }: { className?: string }) {
+  const incluido = useTienePlan("asistente");
+  if (!incluido) {
+    return (
+      <div className={cn("overflow-y-auto p-4", className)}>
+        <LlegaConPlan funcion="asistente" compacta />
+      </div>
+    );
+  }
+  return <PanelDelAsistente className={className} />;
+}
+
+function PanelDelAsistente({ className }: { className?: string }) {
   const equipo = useEquipo();
   const navigate = useNavigate();
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
@@ -100,7 +116,7 @@ export function AssistantPanel({ className }: { className?: string }) {
             return { ...st, appointments: citas, clients: st.clients.filter((c) => suyas.has(c.id)) };
           },
           () => (puede(accesoRef.current.permisos, "cita.ver-todas") ? equipoRef.current : equipoRef.current.filter((e) => e.id === accesoRef.current.mio)),
-          { enlace: () => (typeof window === "undefined" ? enlaceRef.current : new URL(enlaceRef.current, window.location.origin).href) },
+          { plan: () => planDe(useSalonStore.getState().salonProfile, !useSalonStore.getState().realSalonSlug), enlace: () => (typeof window === "undefined" ? enlaceRef.current : new URL(enlaceRef.current, window.location.origin).href) },
         ),
       ),
     [],

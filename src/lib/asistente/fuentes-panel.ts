@@ -46,7 +46,7 @@ const COLOR_PROFESIONAL = ["", "melocotón", "salvia", "lavanda", "cielo"];
 export function crearFuentesPanel(
   leer: () => EstadoPanel,
   equipo: () => Employee[],
-  opciones: { plan?: PlanSishow; enlace?: () => string | null; ahora?: () => Date } = {},
+  opciones: { plan?: PlanSishow | (() => PlanSishow); enlace?: () => string | null; ahora?: () => Date } = {},
 ): FuentesAsistente {
   const ahora = () => opciones.ahora?.() ?? new Date();
   const perfil = () => leer().salonProfile;
@@ -55,7 +55,7 @@ export function crearFuentesPanel(
       const s = leer();
       return {
         salonNombre: s.salonProfile.name,
-        plan: opciones.plan ?? "reservas-asistente",
+        plan: (typeof opciones.plan === "function" ? opciones.plan() : opciones.plan) ?? "reservas-asistente",
         ahora: ahora(),
         timeZone: "Europe/Madrid",
         citas: s.appointments,
