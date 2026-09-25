@@ -1,7 +1,7 @@
 /** Resolutores de «dinero». Cobrado = con paidAt; previsto = confirmadas que aún no empezaron. */
 import { sumarDias } from "../entidades";
 import { activa, citasDe, dineroDe, esteMes, mesPasado, ocupacion, rangoDe, soloHoy } from "./calculos";
-import { enPeriodo, euros, lista, mayus, nombreMes, plural, respuesta, type Resolutor } from "./tipos";
+import { enPeriodo, euros, lista, mayus, nombreMes, plural, respuesta, type Contexto, type Resolutor } from "./tipos";
 
 const analitica = { tipo: "ver-seccion" as const, etiqueta: "Ver Analítica", destino: "Analítica" };
 
@@ -49,7 +49,36 @@ export const cobroPorMetodo: Resolutor = (c) => {
   return respuesta(`${mayus(enPeriodo(r.etiqueta))}: ${lista(items)}.`, { cifras: [...m].map(([k, v]) => ({ etiqueta: NOMBRE[k] ?? k, valor: v, unidad: "€" as const })) });
 };
 
+/** El tipo de periodo de Analítica que corresponde a la pregunta. */
+export function periodoAnalitica(c: Contexto, porDefecto: "semana" | "mes" = "mes") {
+  const f = c.e.fecha;
+  if (!f) return { tipo: porDefecto, etiqueta: porDefecto === "mes" ? "este mes" : "esta semana" } as const;
+  if (f.tipo === "dia") return f.dia === c.hoy ? ({ tipo: "hoy", etiqueta: "hoy" } as const) : ({ tipo: "personalizado", desde: f.dia, hasta: f.dia, etiqueta: f.etiqueta } as const);
+  if (f.etiqueta === "esta semana") return { tipo: "semana", etiqueta: "esta semana" } as const;
+  if (f.etiqueta === "este mes") return { tipo: "mes", etiqueta: "este mes" } as const;
+  return { tipo: "personalizado", desde: f.desde, hasta: f.hasta, etiqueta: f.etiqueta } as const;
+}
+
+function nombreAnterior(tipo: string, parcial: boolean): string {
+  const base = tipo === "semana" ? "la semana pasada" : tipo === "mes" ? "el mes pasado" : tipo === "hoy" ? "ayer" : "el periodo anterior";
+  return parcial && tipo !== "personalizado" ? `${base} a estas alturas` : base;
+}
+
 export const compararPeriodos: Resolutor = (c) => {
+  const pa = periodoAnalitica(c);
+  const r = c.fuentes.resumenPeriodo?.(pa);
+  if (r) {
+    // Mismas cifras que Analítica: periodo completo frente al anterior recortado al mismo tramo.
+    if (r.variacionCitas === null) return respuesta(`${mayus(enPeriodo(pa.etiqueta))} llevas **${plural(r.citas, "cita", "citas")}**; del periodo anterior no tengo datos para comparar.`);
+    const v = r.variacionCitas;
+    const ant = nombreAnterior(pa.tipo, r.parcial);
+    const occ = r.ocupacion !== null && r.ocupacionPrevia !== null ? ` La ocupación está al ${r.ocupacion} % (${ant}, ${r.ocupacionPrevia} %).` : "";
+    const animo = v >= 5 ? (pa.tipo === "mes" ? " ¡Buen mes!" : " ¡Bien!") : "";
+    return respuesta(`${mayus(enPeriodo(pa.etiqueta))} tienes **${plural(r.citas, "cita", "citas")}**, ${v === 0 ? "las mismas" : `un **${Math.abs(v)} % ${v > 0 ? "más" : "menos"}**`} que ${ant} (${r.citasPrevias}).${occ}${animo}`, {
+      cifras: [{ etiqueta: "citas", valor: r.citas, unidad: "citas" }, { etiqueta: "citas antes", valor: r.citasPrevias ?? 0, unidad: "citas" }, { etiqueta: "variación", valor: v, unidad: "%" }],
+      acciones: [{ tipo: "ver-seccion", etiqueta: "Ver Analítica", destino: "Analítica" }],
+    });
+  }
   const f = c.e.fecha;
   const actual = f?.tipo === "periodo" ? { desde: f.desde, hasta: f.hasta, etiqueta: f.etiqueta } : esteMes(c.hoy);
   const esMes = actual.etiqueta === "este mes";

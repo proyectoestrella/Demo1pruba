@@ -12,6 +12,7 @@ import { franjasProfesional } from "../horario-equipo";
 import type { Appointment, Client, Employee, SalonProfile, Service, WaitlistEntry } from "../mock/types";
 import { isBookingBlocked } from "../no-show";
 import { parseRanges } from "../opening-hours";
+import { comparar, resumenDePeriodo } from "../periodos";
 import { isPenaltyActive } from "../plantones";
 import { preguntasAplicables, preguntasDelSalon } from "../preguntas-reserva";
 import { recargoActivo } from "../recargo-activo";
@@ -176,6 +177,20 @@ export function crearFuentesBackend(d: DatosBackend): FuentesAsistente {
       };
     },
 
+    resumenPeriodo: ({ tipo, desde, hasta }) => {
+      const r = resumenDePeriodo(d.citas, tipo, d.equipo, ahora(), tipo === "personalizado" && desde && hasta ? { desde, hasta } : null);
+      const ok = r.hayComparacion && !r.cerrado;
+      const oc = comparar(r.actual.ocupacion ?? 0, ok ? r.previo.ocupacion : null);
+      return {
+        citas: r.actual.citas,
+        citasPrevias: ok ? r.previo.citas : null,
+        variacionCitas: ok ? comparar(r.actual.citas, r.previo.citas).variacionPct : null,
+        ocupacion: r.actual.ocupacion,
+        ocupacionPrevia: ok ? r.previo.ocupacion : null,
+        variacionOcupacion: r.actual.ocupacion === null ? null : oc.variacionPct,
+        parcial: r.parcial,
+      };
+    },
     huecos,
     jornada,
     horarioResumen: (profesionalId) => {
