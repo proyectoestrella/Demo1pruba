@@ -190,3 +190,43 @@ describe("findPenaltyRow", () => {
     expect(findPenaltyRow(filas, "6001")).toBeUndefined();
   });
 });
+
+describe("lote 3 — columna propia primero, marcador de la nota si viene a null", () => {
+  const base = {
+    id: "u1", local_id: "a-1", client_id: null, client_name: "Ana", service_id: "corte",
+    employee_id: "mario", start_at: "2026-09-28T08:00:00.000Z", duration_min: 30, price_eur: 15,
+    status: "pending", client_confirmed_at: null,
+    note: "Trae foto\n[siShow:reserva:v1:%7B%22hairLength%22%3A%22Largo%22%7D]",
+  };
+
+  it("las respuestas salen de booking_answers cuando la columna tiene valor", () => {
+    const a = rowToAppointment({ ...base, booking_answers: { hairLength: "Corto" } });
+    expect(a.bookingAnswers).toEqual({ hairLength: "Corto" });
+    expect(a.note).toBe("Trae foto");
+  });
+
+  it("y del marcador de la nota cuando la columna falta o viene a null", () => {
+    expect(rowToAppointment(base).bookingAnswers).toEqual({ hairLength: "Largo" });
+    expect(rowToAppointment({ ...base, booking_answers: null }).bookingAnswers).toEqual({ hairLength: "Largo" });
+  });
+
+  it("origen: la columna manda; sin columna se lee el marcador", () => {
+    expect(rowToAppointment({ ...base, origen: "tpv123" }).origen).toBe("tpv123");
+    expect(rowToAppointment({ ...base, origen: "sishow", note: "x\n[siShow:origen:v1:tpv123]" }).origen).toBeUndefined();
+    expect(rowToAppointment({ ...base, note: "x\n[siShow:origen:v1:tpv123]" }).origen).toBe("tpv123");
+  });
+
+  it("plazo de la señal: deposit_due_at y deposit_period_hours antes que la nota", () => {
+    const conNota = { ...base, deposit_requested_at: "2026-09-25T10:00:00.000Z", note: "[siShow:senal:v1:%7B%22dueAt%22%3A%222026-09-25T12%3A00%3A00.000Z%22%2C%22hours%22%3A2%2C%22requestedAt%22%3A%222026-09-25T10%3A00%3A00.000Z%22%7D]" };
+    expect(rowToAppointment(conNota).depositDueAt).toBe("2026-09-25T12:00:00.000Z");
+    expect(rowToAppointment({ ...conNota, deposit_due_at: "2026-09-25T14:00:00.000Z", deposit_period_hours: 4 })).toMatchObject({ depositDueAt: "2026-09-25T14:00:00.000Z", depositPeriodHours: 4 });
+  });
+
+  it("ficha: manual_block propio o JSON en penalty_note; tpv_code y birthday", () => {
+    const fila = { id: "c1", name: "Ana", phone: "600111222", email: null, notes: null, penalty_eur: null, penalty_note: null, created_at: "2026-01-01T00:00:00.000Z" };
+    expect(rowToClient(fila).manualBlock).toBe(false);
+    expect(rowToClient({ ...fila, manual_block: true }).manualBlock).toBe(true);
+    expect(rowToClient({ ...fila, penalty_eur: 0, penalty_note: `${MANUAL_BLOCK_NOTE}|{"note":null}` }).manualBlock).toBe(true);
+    expect(rowToClient({ ...fila, tpv_code: "0042", birthday: "1990-05-04" })).toMatchObject({ tpvCode: "0042", birthday: "1990-05-04" });
+  });
+});

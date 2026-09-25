@@ -11,6 +11,7 @@
 import type {
   Appointment,
   AppointmentStatus,
+  BookingAnswers,
   Client,
   EmployeeId,
   PaymentMethod,
@@ -51,6 +52,16 @@ export interface AppointmentRow {
   color_formula?: string | null;
   technical_notes?: string | null;
   reminder_sent_at?: string | null;
+  /**
+   * Lote 3 (26/09/2026): lo que antes iba codificado en `note` tiene columna
+   * propia. Mientras la fila venga sin ellas (o a null, en filas anteriores al
+   * relleno), se sigue leyendo el marcador de la nota.
+   */
+  booking_answers?: BookingAnswers | null;
+  deposit_due_at?: string | null;
+  deposit_period_hours?: number | null;
+  origen?: string | null;
+  updated_at?: string | null;
 }
 
 /** Fila de `clients` tal y como la devuelve PostgREST. */
@@ -67,6 +78,11 @@ export interface ClientRow {
   penalty_at?: string | null;
   penalty_keep?: boolean | null;
   penalty_block?: boolean | null;
+  /** Lote 3: bloqueo manual con columna propia; antes iba en `penalty_note`. */
+  manual_block?: boolean | null;
+  tpv_code?: string | null;
+  birthday?: string | null;
+  updated_at?: string | null;
 }
 
 /** Fila de `waitlist` tal y como la devuelve PostgREST. */
@@ -122,8 +138,9 @@ export function rowToAppointment(row: AppointmentRow, anonimo = false): Appointm
     status: row.status as AppointmentStatus,
     clientConfirmedAt: row.client_confirmed_at ?? undefined,
     note: booking.note,
-    bookingAnswers: booking.answers,
-    origen: origen.origen,
+    // Columna nueva primero; el marcador de la nota solo si viene a null.
+    bookingAnswers: anonimo ? undefined : (row.booking_answers ?? booking.answers),
+    origen: row.origen === "tpv123" ? "tpv123" : (row.origen ? undefined : origen.origen),
     colorFormula: anonimo ? undefined : (row.color_formula ?? undefined),
     technicalNotes: anonimo ? undefined : (row.technical_notes ?? undefined),
     reminderSentAt: anonimo ? undefined : (row.reminder_sent_at ?? undefined),
@@ -132,8 +149,8 @@ export function rowToAppointment(row: AppointmentRow, anonimo = false): Appointm
     paymentMethod: anonimo ? undefined : ((row.payment_method as PaymentMethod) ?? undefined),
     paidAt: anonimo ? undefined : (row.paid_at ?? undefined),
     depositRequestedAt: anonimo ? undefined : (row.deposit_requested_at ?? deposit.requestedAt),
-    depositDueAt: deposit.dueAt,
-    depositPeriodHours: deposit.hours,
+    depositDueAt: row.deposit_due_at ?? deposit.dueAt,
+    depositPeriodHours: (row.deposit_period_hours as Appointment["depositPeriodHours"]) ?? deposit.hours,
     depositReceivedAt: anonimo ? undefined : (row.deposit_received_at ?? deposit.receivedAt),
     depositEur: anonimo ? undefined : (row.deposit_eur == null ? deposit.eur : num(row.deposit_eur)),
   };
@@ -158,7 +175,10 @@ export function rowToWaitlist(row: WaitlistRow): WaitlistEntry {
 /** Fila → `Client`. El id local pasa a ser el uuid de Supabase: es opaco, da igual. */
 export function rowToClient(row: ClientRow): Client {
   const penalty = num(row.penalty_eur, 0);
-  const previo = isManualBlockRecord(row) ? previousPenaltyState(row.penalty_note) : null;
+  // Bloqueo manual: columna propia (lote 3) o, en filas sin rellenar, el
+  // JSON dentro de penalty_note.
+  const bloqueoEnNota = isManualBlockRecord(row);
+  const previo = bloqueoEnNota ? previousPenaltyState(row.penalty_note) : null;
   return {
     id: row.id,
     name: row.name,
@@ -166,7 +186,9 @@ export function rowToClient(row: ClientRow): Client {
     email: row.email ?? undefined,
     createdAt: row.created_at,
     notes: row.notes ?? undefined,
-    manualBlock: isManualBlockRecord(row),
+    manualBlock: row.manual_block === true || bloqueoEnNota,
+    tpvCode: row.tpv_code ?? undefined,
+    birthday: row.birthday ?? undefined,
     penaltyEur: penalty > 0 ? penalty : undefined,
     penaltyNote: previo ? previo.note : row.penalty_note ?? undefined,
     penaltyAt: row.penalty_at ?? undefined,

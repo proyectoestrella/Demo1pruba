@@ -53,25 +53,49 @@ const APPOINTMENT_COLS_BASE =
   "id, local_id, client_id, client_name, service_id, employee_id, start_at, duration_min, price_eur, status, client_confirmed_at, note";
 const APPOINTMENT_COLS_NUEVAS =
   "payment_method, paid_at, deposit_requested_at, deposit_received_at, deposit_eur";
-// TODO: aplicar las columnas técnicas de supabase/schema.sql en producción.
 const APPOINTMENT_COLS_TECNICAS = "color_formula, technical_notes";
 const APPOINTMENT_COLS_RECORDATORIO = "reminder_sent_at";
+/** Lote 3 (26/09/2026): lo que iba codificado en `note`, con columna propia. */
+const APPOINTMENT_COLS_LOTE3 = "booking_answers, deposit_due_at, deposit_period_hours, origen, updated_at";
 const CLIENT_COLS_BASE = "id, name, phone, email, notes, penalty_eur, penalty_note, created_at";
 const CLIENT_COLS_NUEVAS = "penalty_at, penalty_keep, penalty_block";
+const CLIENT_COLS_LOTE3 = "manual_block, tpv_code, birthday, updated_at";
 const WAITLIST_COLS =
   "id, local_id, client_name, phone, service_id, preferred_employee_id, preferred_range, created_at";
 
-/** Campos de una cita o una ficha que solo existen tras el DDL de caja, fianzas y caducidad. */
-const CAMPOS_NUEVOS_CITA = [
-  "payment_method",
-  "paid_at",
-  "deposit_requested_at",
-  "deposit_received_at",
-  "deposit_eur",
+/**
+ * Niveles de esquema, del más reciente al básico. Cada `select` y cada
+ * `upsert` se intenta con el nivel completo y, si el esquema de producción
+ * todavía no tiene esas columnas (`faltaEsquema`), con el anterior. Así un
+ * despliegue nunca depende de que el DDL se haya aplicado antes.
+ */
+const NIVELES_CITA: string[][] = [
+  ["booking_answers", "deposit_due_at", "deposit_period_hours", "origen", "updated_at"],
+  ["reminder_sent_at"],
+  ["color_formula", "technical_notes"],
+  ["payment_method", "paid_at", "deposit_requested_at", "deposit_received_at", "deposit_eur"],
 ];
-const CAMPOS_TECNICOS_CITA = ["color_formula", "technical_notes"];
-const CAMPOS_RECORDATORIO_CITA = ["reminder_sent_at"];
-const CAMPOS_NUEVOS_CLIENTE = ["penalty_at", "penalty_keep", "penalty_block"];
+const NIVELES_CLIENTE: string[][] = [
+  ["manual_block", "tpv_code", "birthday", "updated_at"],
+  ["penalty_at", "penalty_keep", "penalty_block"],
+];
+/** Las listas de columnas que corresponden a cada nivel, de la más completa a la básica. */
+function selectsPorNivel(base: string, niveles: string[][]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i <= niveles.length; i++) {
+    const extra = niveles.slice(i).map((n) => n.join(", "));
+    out.push([base, ...extra].join(", "));
+  }
+  return out;
+}
+
+/** Campos de una cita o una ficha que solo existen tras el DDL de caja, fianzas y caducidad. */
+const CAMPOS_NUEVOS_CITA = NIVELES_CITA[3];
+const CAMPOS_TECNICOS_CITA = NIVELES_CITA[2];
+const CAMPOS_RECORDATORIO_CITA = NIVELES_CITA[1];
+const CAMPOS_LOTE3_CITA = NIVELES_CITA[0];
+const CAMPOS_NUEVOS_CLIENTE = NIVELES_CLIENTE[1];
+const CAMPOS_LOTE3_CLIENTE = NIVELES_CLIENTE[0];
 
 /**
  * ¿Ha fallado esto porque una columna o una tabla todavía no existen?
@@ -375,43 +399,23 @@ export const listSalonData = createServerFn({ method: "GET" })
        * tiene, el mismo `select` solo con las de siempre. Sin esto, aplicar
        * este código antes que el DDL dejaría la agenda en blanco.
        */
-      async function traer<T>(tabla: string, base: string, nuevas: string) {
-        if (tabla === "appointments") {
-          const conRecordatorio = await supabase!
-            .from(tabla)
-            .select(`${base}, ${nuevas}, ${APPOINTMENT_COLS_TECNICAS}, ${APPOINTMENT_COLS_RECORDATORIO}`)
-            .eq("salon_slug", data.slug);
-          if (!conRecordatorio.error) return { data: (conRecordatorio.data ?? []) as unknown as T[], error: null };
-          if (!faltaEsquema(conRecordatorio.error)) return { data: [] as T[], error: conRecordatorio.error };
-          const tecnicas = await supabase!
-            .from(tabla)
-            .select(`${base}, ${nuevas}, ${APPOINTMENT_COLS_TECNICAS}`)
-            .eq("salon_slug", data.slug);
-          if (!tecnicas.error) return { data: (tecnicas.data ?? []) as unknown as T[], error: null };
-          if (!faltaEsquema(tecnicas.error)) return { data: [] as T[], error: tecnicas.error };
+      async function traer<T>(tabla: string, selects: string[]) {
+        let ultimo: { data: T[]; error: { message: string } | null } = { data: [], error: null };
+        for (const columnas of selects) {
+          const r = await supabase!.from(tabla).select(columnas).eq("salon_slug", data.slug);
+          if (!r.error) return { data: (r.data ?? []) as unknown as T[], error: null };
+          if (!faltaEsquema(r.error)) return { data: [] as T[], error: r.error };
+          console.warn(`listSalonData: ${tabla} sin alguna columna de «${columnas}»; falta aplicar supabase/pendiente.sql`);
+          ultimo = { data: [] as T[], error: r.error };
         }
-        const conNuevas = await supabase!
-          .from(tabla)
-          .select(`${base}, ${nuevas}`)
-          .eq("salon_slug", data.slug);
-        if (!conNuevas.error)
-          return { data: (conNuevas.data ?? []) as unknown as T[], error: null };
-        if (!faltaEsquema(conNuevas.error)) return { data: [] as T[], error: conNuevas.error };
-        console.warn(
-          `listSalonData: ${tabla} todavía sin las columnas nuevas (${nuevas}); falta aplicar supabase/schema.sql`,
-        );
-        const soloBase = await supabase!.from(tabla).select(base).eq("salon_slug", data.slug);
-        return {
-          data: (soloBase.data ?? []) as unknown as T[],
-          error: soloBase.error,
-        };
+        return ultimo;
       }
 
       const [citas, fichas, espera] = await Promise.all([
-        traer<AppointmentRow>("appointments", APPOINTMENT_COLS_BASE, APPOINTMENT_COLS_NUEVAS),
+        traer<AppointmentRow>("appointments", selectsPorNivel(APPOINTMENT_COLS_BASE, NIVELES_CITA)),
         publica
           ? Promise.resolve({ data: [] as ClientRow[], error: null })
-          : traer<ClientRow>("clients", CLIENT_COLS_BASE, CLIENT_COLS_NUEVAS),
+          : traer<ClientRow>("clients", selectsPorNivel(CLIENT_COLS_BASE, NIVELES_CLIENTE)),
         // La lista de espera es del dueño: la web pública ni la pide. Y si la
         // tabla todavía no existe, se responde vacía — que es justo lo que
         // debe ver un salón real, en vez de las 4 entradas de ejemplo del seed.

@@ -52,6 +52,10 @@ export interface Client {
   notes?: string;
   /** Bloqueo explícito de reserva online, independiente de cualquier deuda. */
   manualBlock?: boolean;
+  /** Código de la clienta en TPV 123, si vino de una importación. */
+  tpvCode?: string;
+  /** Cumpleaños "YYYY-MM-DD", si el salón lo conoce. */
+  birthday?: string;
   /**
    * Política de plantón (ver `SalonProfile.noShowFeeEur`): importe pendiente
    * de cobrar, en euros. `undefined` o 0 = no debe nada. El dueño decide si
