@@ -2,9 +2,11 @@ import { useTienePlan } from "@/lib/accesos-panel";
 import { HORAS_HISTORIAL_ESTANDAR } from "@/lib/plan";
 import { LlegaConPlan } from "@/components/LlegaConPlan";
 import { useMemo, useState } from "react";
-import { MessageCircle, Search } from "lucide-react";
+import { Loader2, MessageCircle, Search } from "lucide-react";
 import { textoMotivo, type Cambio, type TipoCambio } from "@/lib/cambios";
 import { deshacerConAviso, estadoDeshacer, useCambios } from "@/lib/deshacer-maqueta";
+import { agruparPorDia, useHistorialServidor } from "@/lib/historial-panel";
+import { useRealSalonSlug } from "@/lib/use-real-salon";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
 import { usePermisos } from "@/lib/accesos-panel";
 import { puede } from "@/lib/permisos";
@@ -12,11 +14,16 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /**
- * Ajustes › Historial de cambios (lote 12): lo cambiado en los últimos 90
- * días, por día, con quién, qué, antes → después y «Deshacer» cuando se
- * puede (o el motivo cuando no). Nunca borra filas: deshacer añade otra.
- * CONECTAR: en un salón real, `listarCambios` (paginado y filtrado por
- * permiso en el servidor); aquí, los cambios de este navegador.
+ * Ajustes › Historial de cambios (lote 12, conectado a salón real en el 14):
+ * lo cambiado, por día, con quién, qué, antes → después y «Deshacer» cuando
+ * se puede (o el motivo cuando no). Nunca borra filas: deshacer añade otra.
+ *
+ * En la demo son los cambios de este navegador (`useCambios`). En un salón
+ * real es `listarCambios` del servidor, paginado por día con «Cargar más».
+ * «Deshacer» solo se ofrece para un cambio que la store de ESTE navegador
+ * conoce (el que se acaba de hacer aquí, o el que ya trajo esta sesión): es
+ * la única forma fiable de saber si sigue pudiéndose deshacer. Un cambio de
+ * otro dispositivo que el servidor sí enseña se ve igualmente, sin botón.
  */
 
 type Grupo = "citas" | "clientas" | "dinero" | "carta" | "equipo" | "web" | "ajustes";
@@ -78,7 +85,16 @@ export function antesDespues(c: Cambio): string | null {
 }
 
 export function HistorialCambios() {
-  const todos = useCambios((s) => s.cambios);
+  const realSlug = useRealSalonSlug();
+  const esReal = Boolean(realSlug);
+  const locales = useCambios((s) => s.cambios);
+  const servidor = useHistorialServidor(realSlug ?? "", esReal);
+  const todos = esReal ? servidor.cambios : locales;
+  // «Deshacer» solo puede ofrecerse para un cambio que esta store conoce
+  // (ver la nota de arriba): en la demo son siempre los mismos, en un salón
+  // real puede que el historial del servidor traiga más de los que esta
+  // pestaña ha visto hacer.
+  const idsConocidos = useMemo(() => new Set(locales.map((c) => c.id)), [locales]);
   // Lote 13: fuera de Todo incluido, las últimas 24 h (el aviso de 10 s sigue en todos los planes).
   const completo = useTienePlan("historial-completo");
   const cambios = useMemo(() => (completo ? todos : todos.filter((c) => Date.now() - Date.parse(c.fecha) <= HORAS_HISTORIAL_ESTANDAR * 3_600_000)), [todos, completo]);
@@ -96,11 +112,7 @@ export function HistorialCambios() {
       (veDinero || grupoDe(c.tipo) !== "dinero") &&
       (!busca.trim() || c.resumen.toLowerCase().includes(busca.trim().toLowerCase())),
   );
-  const porDia = new Map<string, Cambio[]>();
-  for (const c of filtrados) {
-    const k = diaLargo(c.fecha);
-    porDia.set(k, [...(porDia.get(k) ?? []), c]);
-  }
+  const porDia = agruparPorDia(filtrados, diaLargo);
 
   return (
     <div className="space-y-4">
@@ -131,29 +143,50 @@ export function HistorialCambios() {
         )}
       </div>
 
-      {filtrados.length === 0 ? (
+      {esReal && servidor.cargando ? (
+        <p className="flex items-center gap-2 rounded-2xl border border-dashed border-lino px-4 py-6 text-center text-[14px] text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          Cargando el historial…
+        </p>
+      ) : esReal && servidor.error ? (
+        <div className="space-y-2 rounded-2xl border border-dashed border-lino px-4 py-6 text-center text-[14px] text-muted-foreground">
+          <p>{servidor.error}</p>
+          <Button variant="outline" size="sm" onClick={servidor.recargar}>
+            Reintentar
+          </Button>
+        </div>
+      ) : filtrados.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-lino px-4 py-6 text-center text-[14px] text-muted-foreground">
           {cambios.length === 0 ? "Todavía no hay cambios. Lo que confirmes, muevas, cobres o guardes aparecerá aquí." : "Nada con ese filtro."}
         </p>
       ) : (
-        [...porDia.entries()].map(([dia, lista]) => (
+        porDia.map(([dia, lista]) => (
           <section key={dia}>
             <h4 className="px-1 pb-1.5 text-[13px] font-bold text-cafe-medio">{dia}</h4>
             <ul className="divide-y divide-lino overflow-hidden rounded-2xl border border-lino bg-card">
               {lista.map((c) => (
-                <FilaCambio key={c.id} c={c} />
+                <FilaCambio key={c.id} c={c} conocido={!esReal || idsConocidos.has(c.id)} />
               ))}
             </ul>
           </section>
         ))
+      )}
+      {esReal && completo && servidor.hayMas && !servidor.cargando && !servidor.error && (
+        <div className="flex justify-center">
+          <Button variant="outline" size="sm" onClick={servidor.cargarMas} disabled={servidor.cargandoMas}>
+            {servidor.cargandoMas ? <Loader2 className="size-4 animate-spin" /> : null}
+            Cargar más
+          </Button>
+        </div>
       )}
       {!completo && <LlegaConPlan funcion="historial-completo" compacta />}
     </div>
   );
 }
 
-function FilaCambio({ c }: { c: Cambio }) {
-  const e = estadoDeshacer(c.id);
+/** `conocido`: si esta store sabe de este cambio, para poder ofrecer deshacerlo (ver la nota de arriba). */
+function FilaCambio({ c, conocido }: { c: Cambio; conocido: boolean }) {
+  const e = conocido ? estadoDeshacer(c.id) : null;
   const detalle = antesDespues(c);
   return (
     <li className="flex flex-wrap items-start gap-x-3 gap-y-1 px-4 py-2.5 sm:flex-nowrap">
@@ -164,12 +197,12 @@ function FilaCambio({ c }: { c: Cambio }) {
           {c.avisoEnviado && <MessageCircle className="ml-1.5 inline size-3.5 text-hoja-tinta" strokeWidth={1.8} aria-label="Se le escribió por WhatsApp" />}
         </p>
         {detalle && <p className="text-[12.5px] text-muted-foreground tabular-nums">{detalle}</p>}
-        {!e.puede && e.motivo !== "PERMISO" && e.motivo !== "DESHECHO" && !c.deshaceA && <p className="text-[12.5px] text-muted-foreground">{textoMotivo(e.motivo)}</p>}
+        {e && !e.puede && e.motivo !== "PERMISO" && e.motivo !== "DESHECHO" && !c.deshaceA && <p className="text-[12.5px] text-muted-foreground">{textoMotivo(e.motivo)}</p>}
       </div>
       <div className="shrink-0">
         {c.deshechoEn ? (
           <span className="rounded-full bg-arena px-2.5 py-0.5 text-[12px] font-bold text-cafe-medio">Deshecho</span>
-        ) : e.puede && !c.deshaceA ? (
+        ) : e?.puede && !c.deshaceA ? (
           <Button size="sm" variant="outline" className="h-8 rounded-full px-3 font-bold" onClick={() => deshacerConAviso(c.id)}>
             Deshacer
           </Button>

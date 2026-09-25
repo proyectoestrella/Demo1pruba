@@ -2,42 +2,48 @@ import { useTienePlan } from "@/lib/accesos-panel";
 import { HORAS_HISTORIAL_ESTANDAR } from "@/lib/plan";
 import { LlegaConPlan } from "@/components/LlegaConPlan";
 import { useState } from "react";
-import { ArrowRight, ChevronDown, History } from "lucide-react";
-import { diferenciasWeb, useVersiones, type VersionWeb, type WebPublicada } from "@/lib/versiones-maqueta";
+import { ArrowRight, ChevronDown, History, Loader2 } from "lucide-react";
+import { diferenciasWeb, useVersionesPanel, type VersionPanel, type WebPublicada } from "@/lib/versiones-panel";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-const SIN_VERSIONES: VersionWeb[] = [];
 const cuando = (iso: string) => new Date(iso).toLocaleString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).replace(".", "").replace(",", ",");
 
 /**
- * Mi página › versiones publicadas (lote 12): cuál está publicada, las
- * anteriores con fecha y quién, y al elegir una, lo que cambia frente a la
- * actual antes de hacer nada. «Ver cómo queda» la carga en la vista previa
- * (sin publicar); «Restaurar esta versión» la publica como una versión nueva.
+ * Mi página › versiones publicadas (lote 12, conectado a salón real en el
+ * 14): cuál está publicada, las anteriores con fecha y quién.
+ *
+ * En la demo se conoce el contenido de cada versión (vive en este
+ * navegador), así que al elegir una se ve lo que cambia frente a la actual y
+ * hay «Ver cómo queda» (carga la vista previa sin publicar). En un salón
+ * real el contenido no se conoce hasta restaurar —el servidor no baja el
+ * perfil entero solo para listar—, así que ahí solo hay fecha, autora y
+ * «Restaurar esta versión», con una confirmación en vez de la comparación.
  */
 export function VersionesWeb({
   slug,
+  esReal,
   actual,
   puedeRestaurar,
   onVer,
   onRestaurar,
 }: {
   slug: string;
+  esReal: boolean;
   actual: WebPublicada;
   puedeRestaurar: boolean;
   onVer: (web: WebPublicada) => void;
-  onRestaurar: (web: WebPublicada) => void;
+  onRestaurar: (version: VersionPanel) => void;
 }) {
-  const guardadas = useVersiones((s) => s.porSalon[slug]) ?? SIN_VERSIONES;
+  const { versiones: todas, cargando, error, recargar } = useVersionesPanel(slug, esReal);
   // Lote 13: fuera de Todo incluido, las de las últimas 24 h.
   const completo = useTienePlan("historial-completo");
-  const versiones = completo ? guardadas : guardadas.filter((v, i) => i === 0 || Date.now() - Date.parse(v.fecha) <= HORAS_HISTORIAL_ESTANDAR * 3_600_000);
+  const versiones = completo ? todas : todas.filter((v, i) => i === 0 || Date.now() - Date.parse(v.fecha) <= HORAS_HISTORIAL_ESTANDAR * 3_600_000);
   const [abierto, setAbierto] = useState(false);
-  const [elegida, setElegida] = useState<VersionWeb | null>(null);
+  const [elegida, setElegida] = useState<VersionPanel | null>(null);
   const publicada = versiones[0];
-  const cambios = elegida ? diferenciasWeb(actual, elegida.web) : [];
+  const cambios = elegida?.web ? diferenciasWeb(actual, elegida.web) : [];
 
   return (
     <>
@@ -55,16 +61,42 @@ export function VersionesWeb({
         onOpenChange={(o) => {
           setAbierto(o);
           if (!o) setElegida(null);
+          // Salón real: recarga la lista al abrir, por si se acaba de
+          // restaurar una versión (o publicado otra persona del equipo)
+          // desde que se cargó esta pantalla.
+          else if (esReal) recargar();
         }}
       >
         <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
           <SheetHeader className="border-b border-border px-5 py-4 text-left">
-            <SheetTitle className="text-base font-extrabold">{elegida ? `Comparar con la del ${cuando(elegida.fecha)}` : "Versiones publicadas"}</SheetTitle>
-            <SheetDescription>{elegida ? "Así cambiaría tu web si vuelves a esta versión." : `Las ${versiones.length} últimas publicaciones (se guardan 20).`}</SheetDescription>
+            <SheetTitle className="text-base font-extrabold">
+              {elegida ? (elegida.web ? `Comparar con la del ${cuando(elegida.fecha)}` : `Restaurar la versión del ${cuando(elegida.fecha)}`) : "Versiones publicadas"}
+            </SheetTitle>
+            <SheetDescription>
+              {elegida
+                ? elegida.web
+                  ? "Así cambiaría tu web si vuelves a esta versión."
+                  : "Tu web volverá a estar exactamente como en esa fecha. Esto publica el cambio."
+                : esReal
+                  ? `Las ${versiones.length} últimas publicaciones.`
+                  : `Las ${versiones.length} últimas publicaciones (se guardan 20).`}
+            </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
             {!elegida ? (
-              versiones.length === 0 ? (
+              cargando ? (
+                <p className="flex items-center gap-2 text-[14px] text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  Cargando versiones anteriores…
+                </p>
+              ) : error ? (
+                <div className="space-y-2 text-[14px] text-muted-foreground">
+                  <p>{error}</p>
+                  <Button variant="outline" size="sm" onClick={recargar}>
+                    Reintentar
+                  </Button>
+                </div>
+              ) : versiones.length === 0 ? (
                 <p className="text-[14px] text-muted-foreground">Todavía no has publicado ningún cambio. Cada vez que publiques quedará aquí una versión.</p>
               ) : (
                 <ul className="space-y-1.5">
@@ -90,6 +122,10 @@ export function VersionesWeb({
                   ))}
                 </ul>
               )
+            ) : !elegida.web ? (
+              <p className="text-[14px] text-muted-foreground">
+                No se puede comparar sin restaurarla primero. Si sigues, tu web pasa a estar como estaba el {cuando(elegida.fecha)}.
+              </p>
             ) : cambios.length === 0 ? (
               <p className="text-[14px] text-muted-foreground">Es igual que la que tienes publicada.</p>
             ) : (
@@ -113,21 +149,24 @@ export function VersionesWeb({
               <Button variant="ghost" onClick={() => setElegida(null)}>
                 Volver
               </Button>
-              <Button
-                variant="outline"
-                className="ml-auto"
-                onClick={() => {
-                  onVer(elegida.web);
-                  setAbierto(false);
-                  setElegida(null);
-                }}
-              >
-                Ver cómo queda
-              </Button>
+              {elegida.web && (
+                <Button
+                  variant="outline"
+                  className="ml-auto"
+                  onClick={() => {
+                    onVer(elegida.web!);
+                    setAbierto(false);
+                    setElegida(null);
+                  }}
+                >
+                  Ver cómo queda
+                </Button>
+              )}
               {puedeRestaurar && (
                 <Button
+                  className={cn(!elegida.web && "ml-auto")}
                   onClick={() => {
-                    onRestaurar(elegida.web);
+                    onRestaurar(elegida);
                     setAbierto(false);
                     setElegida(null);
                   }}

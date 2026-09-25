@@ -1,5 +1,6 @@
 import { VersionesWeb } from "@/components/VersionesWeb";
 import { useVersiones, webDe } from "@/lib/versiones-maqueta";
+import { restaurarVersionReal, type VersionPanel } from "@/lib/versiones-panel";
 import { conCambio, guardarPerfil } from "@/lib/deshacer-maqueta";
 import { miembroAhora, usePermisos } from "@/lib/accesos-panel";
 import { puede } from "@/lib/permisos";
@@ -298,6 +299,38 @@ function MiWeb() {
     toast.success("Deshecho: tu web ha vuelto a como estaba");
   }
 
+  /**
+   * Restaura una versión anterior en un salón real (lote 14): pide al
+   * servidor `restaurarVersion` en vez de publicar el borrador — así queda
+   * UNA fila en el historial (`perfil.restaurar`), no una por campo. No pasa
+   * por `publicar()`: esa vía es para lo que se ha editado a mano.
+   */
+  async function restaurarReal(version: VersionPanel) {
+    if (!realSlug) return;
+    const previo = { ...publicado, team: salonProfile.team, teamHours: salonProfile.teamHours, teamIds: salonProfile.teamIds };
+    setGuardando(true);
+    try {
+      const res = await restaurarVersionReal(realSlug, version.id);
+      if (!res.ok) {
+        toast.error("No se ha podido restaurar", { description: "Tu web sigue como estaba. Inténtalo otra vez." });
+        return;
+      }
+      const nuevo: SalonProfile = { ...salonProfile, ...res.profile };
+      setPublicado(nuevo);
+      setBorrador(borradorDesdePerfil(nuevo));
+      setErrores([]);
+      setAnterior(previo);
+      toast.success("Restaurada: tu web vuelve a esa versión", { description: "Cualquiera que abra tu enlace lo ve ya." });
+    } catch (err) {
+      console.error("No se pudo restaurar la versión:", err);
+      toast.error("No se ha podido restaurar", {
+        description: "No se ha cambiado nada de tu web. Comprueba la conexión e inténtalo otra vez.",
+      });
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   function descartar() {
     setBorrador(borradorDesdePerfil(publicado));
     setErrores([]);
@@ -372,6 +405,7 @@ function MiWeb() {
         )}
         <VersionesWeb
           slug={slugPrevia}
+          esReal={esReal}
           actual={webDe(publicado)}
           puedeRestaurar={puede(permisosWeb, "web.restaurar-version")}
           onVer={(web) => {
@@ -379,8 +413,15 @@ function MiWeb() {
             setBorrador(borradorDesdePerfil({ ...publicado, ...web } as SalonProfile));
             setErrores([]);
           }}
-          onRestaurar={(web) => {
-            const b = borradorDesdePerfil({ ...publicado, ...web } as SalonProfile);
+          onRestaurar={(version) => {
+            if (esReal) {
+              void restaurarReal(version);
+              return;
+            }
+            // Demo: no hay servidor que restaurar, se aplica como cualquier
+            // otro cambio de Mi página (deja su fila local y su versión).
+            if (!version.web) return;
+            const b = borradorDesdePerfil({ ...publicado, ...version.web } as SalonProfile);
             setBorrador(b);
             void publicar(b, "perfil.restaurar");
           }}
