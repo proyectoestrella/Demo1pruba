@@ -13,8 +13,10 @@ import { StylistAvatar } from "@/components/StylistAvatar";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { DAY_LABELS_ES, parseRanges } from "@/lib/opening-hours";
+import { resumenHorario } from "@/lib/horario-resumen";
 
 export const Route = createFileRoute("/app/employees")({
   beforeLoad: beforeLoadSiModuloVisible("equipo"),
@@ -36,6 +38,8 @@ function topServicesFor(appointments: ReturnType<typeof useSalonStore.getState>[
 }
 
 function Team() {
+  /** Profesionales con las siete filas del horario abiertas. */
+  const [horarioAbierto, setHorarioAbierto] = useState<number[]>([]);
   const visible = useRedirigirSiModuloOculto("equipo");
   const appointments = useSalonStore((s) => s.appointments);
   const profile = useSalonStore((s) => s.salonProfile);
@@ -114,10 +118,32 @@ function Team() {
                 </div>
                 {employees.length > 1 && <Button type="button" variant="ghost" size="icon" className="shrink-0 hover:bg-card/60" aria-label={`Quitar a ${e.name}`} onClick={() => quitar(i)}><Trash2 className="size-[18px]" strokeWidth={1.6} /></Button>}
               </div>
-              <div className="px-5 pt-3.5 pb-1">
-                <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 className={etiqueta}>Horario</h3><span className="text-[12px] text-muted-foreground">Tramos de 30 min, dentro del horario del salón</span></div>
-              </div>
+              {/* El horario en una línea; las siete filas, al pedirlas. */}
+              <button
+                type="button"
+                aria-expanded={horarioAbierto.includes(i)}
+                onClick={() => setHorarioAbierto((v) => (v.includes(i) ? v.filter((x) => x !== i) : [...v, i]))}
+                className="flex w-full items-center gap-3 px-5 py-3.5 text-left hover:bg-beige/50"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className={cn(etiqueta, "block")}>Horario</span>
+                  <span className="flex flex-wrap text-[14px] font-semibold text-cafe tabular-nums">
+                    {resumenHorario(DAY_LABELS_ES.map((_, d) => profile.teamHours?.[i]?.[d] ?? profile.openingHours[d] ?? "Cerrado"))
+                      .split(" · ")
+                      .map((t, k) => (
+                        <span key={t} className="whitespace-nowrap">
+                          {k > 0 && <span className="px-1.5 text-taupe">·</span>}
+                          {t}
+                        </span>
+                      ))}
+                  </span>
+                </span>
+                <span className="shrink-0 text-[13px] font-bold text-cafe-medio">{horarioAbierto.includes(i) ? "Cerrar" : "Editar"}</span>
+                <ChevronDown className={cn("size-5 shrink-0 text-cafe-medio transition-transform", horarioAbierto.includes(i) && "rotate-180")} strokeWidth={1.6} aria-hidden="true" />
+              </button>
+              {horarioAbierto.includes(i) && (
               <div className="flex-1">
+                <p className="px-5 pb-2 text-[12px] text-muted-foreground">Tramos de 30 min, dentro del horario del salón.</p>
                 {DAY_LABELS_ES.map((label, d) => {
                   const jsDay = WEEK_JS[d];
                   const texto = profile.teamHours?.[i]?.[d] ?? profile.openingHours[d] ?? "Cerrado";
@@ -138,6 +164,7 @@ function Team() {
                   </div>;
                 })}
               </div>
+              )}
               {services.length > 0 && <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-5 py-3.5"><span className="mr-1 text-[12.5px] text-muted-foreground">Lo que más hace</span>{services.slice(0, 3).map((name) => <span key={name} className="inline-flex h-6 items-center rounded-full bg-nata px-2.5 text-[12.5px] font-bold text-cafe-medio">{name}</span>)}</div>}
             </section>
           );

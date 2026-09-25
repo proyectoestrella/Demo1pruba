@@ -20,7 +20,7 @@ import {
   type ChatModelAdapter,
   type TextMessagePartProps,
 } from "@assistant-ui/react";
-import { ArrowUp, Bot, Square, User } from "lucide-react";
+import { ArrowUp, Bot, ChevronDown, Square, User } from "lucide-react";
 import { useEquipo } from "@/lib/use-equipo";
 import { useSalonStore } from "@/lib/store";
 import { answerFor, clientasDePregunta, SUGGESTION_GROUPS } from "@/lib/assistant-answers";
@@ -129,7 +129,10 @@ function AssistantText({ text }: TextMessagePartProps) {
 
 function Welcome() {
   const isEmpty = useAuiState((s) => s.thread.isEmpty);
+  // Un tema a la vista; el resto, al pedirlo.
+  const [todas, setTodas] = useState(false);
   if (!isEmpty) return null;
+  const grupos = todas ? SUGGESTION_GROUPS : SUGGESTION_GROUPS.slice(0, 1);
   return (
     <div className="flex flex-col items-start gap-5 py-4">
       <div className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-sm text-muted-foreground">
@@ -140,9 +143,9 @@ function Welcome() {
       {/* Sugerencias agrupadas por tema: más preguntas que antes, organizadas
           para que se lean de un vistazo en vez de una fila plana de chips. */}
       <div className="w-full space-y-3.5">
-        {SUGGESTION_GROUPS.map((group) => (
+        {grupos.map((group) => (
           <div key={group.topic}>
-            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/80">
+            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
               {group.topic}
             </p>
             <div className="flex flex-wrap gap-2">
@@ -151,7 +154,7 @@ function Welcome() {
                   key={s}
                   prompt={s}
                   send
-                  className="rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+                  className="rounded-full border border-lino bg-card px-3 py-1.5 text-xs text-cafe-medio transition-colors hover:border-primary/40 hover:bg-beige hover:text-foreground"
                 >
                   {s}
                 </ThreadPrimitive.Suggestion>
@@ -159,6 +162,17 @@ function Welcome() {
             </div>
           </div>
         ))}
+        {SUGGESTION_GROUPS.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setTodas((v) => !v)}
+            aria-expanded={todas}
+            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[13px] font-bold text-cafe-medio hover:bg-beige"
+          >
+            {todas ? "Menos preguntas" : `Más preguntas · ${SUGGESTION_GROUPS.slice(1).reduce((n, g) => n + g.items.length, 0)}`}
+            <ChevronDown className={cn("size-4 transition-transform", todas && "rotate-180")} strokeWidth={1.6} aria-hidden="true" />
+          </button>
+        )}
       </div>
     </div>
   );

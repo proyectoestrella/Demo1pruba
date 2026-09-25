@@ -146,7 +146,7 @@ function ServicesPage() {
                       <Clock className="size-3.5" strokeWidth={1.6} />
                       {s.durationMin} min
                     </span>
-                    <span className="inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] font-bold text-[color:var(--k-tinta)]" style={{ background: `var(--serv-${n})` }}>
+                    <span className="inline-flex h-6 items-center gap-1.5 rounded-md border border-cafe px-2.5 text-[12.5px] font-bold text-cafe" style={{ background: `var(--serv-${n})` }}>
                       <i className="size-2.5 rounded-[3px]" style={{ background: `var(--serv-${n}-borde)` }} />
                       Color en la agenda
                     </span>
