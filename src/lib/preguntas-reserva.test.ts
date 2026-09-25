@@ -56,3 +56,46 @@ describe("respuestas legibles en el panel y en el CSV", () => {
     expect(csv).toContain("¿Alguna alergia? Al amoníaco");
   });
 });
+
+describe("lista propia: orden, aplicables, validación y obligatorias", () => {
+  const lista = [
+    { id: "alergias", texto: "¿Alguna alergia?", tipo: "texto" as const, obligatoria: false, activa: true },
+    { id: "ocasion", texto: "¿Para qué ocasión?", tipo: "opcion" as const, opciones: ["Boda", "Graduación", "Otra"], obligatoria: true, activa: true, servicios: ["peinado-de-novia", "recogido-de-evento"] },
+    { id: "invitadas", texto: "¿Cuántas personas?", tipo: "numero" as const, obligatoria: false, activa: true, servicios: ["recogido-de-evento"] },
+    { id: "retirada", texto: "Antigua", tipo: "texto" as const, obligatoria: true, activa: false },
+    { id: "tinte", texto: "¿Llevas tinte?", tipo: "si_no" as const, obligatoria: false, activa: true, detalle: { id: "tinteCual", texto: "¿Cuál?", obligatorio: true } },
+  ];
+
+  it("respeta el orden del salón y solo las activas que aplican a los servicios", async () => {
+    const { preguntasAplicables } = await import("./preguntas-reserva");
+    expect(preguntasAplicables(lista, ["corte"]).map((p) => p.id)).toEqual(["alergias", "tinte"]);
+    expect(preguntasAplicables(lista, ["peinado-de-novia"]).map((p) => p.id)).toEqual(["alergias", "ocasion", "tinte"]);
+    expect(preguntasAplicables(lista, ["corte", "recogido-de-evento"]).map((p) => p.id)).toEqual(["alergias", "ocasion", "invitadas", "tinte"]);
+  });
+
+  it("valida por tipo y descarta lo que no es de estas preguntas", async () => {
+    const { limpiarRespuestas } = await import("./preguntas-reserva");
+    expect(limpiarRespuestas(lista, {
+      alergias: "  Al amoníaco  ", ocasion: "Cumpleaños", invitadas: "3,5", tinte: "No", tinteCual: "Castaño", intrusa: "x",
+    })).toEqual({ alergias: "Al amoníaco", invitadas: "3.5", tinte: "No" });
+    expect(limpiarRespuestas(lista, { ocasion: "Boda", tinte: "Sí", tinteCual: "Rubio" })).toEqual({ ocasion: "Boda", tinte: "Sí", tinteCual: "Rubio" });
+    expect(limpiarRespuestas(lista, { invitadas: "muchas" })).toBeUndefined();
+  });
+
+  it("obligatorias: la propia y el detalle obligatorio de un «Sí»", async () => {
+    const { obligatoriasSinResponder, preguntasAplicables } = await import("./preguntas-reserva");
+    const novia = preguntasAplicables(lista, ["peinado-de-novia"]);
+    expect(obligatoriasSinResponder(novia, {})).toEqual(["ocasion"]);
+    expect(obligatoriasSinResponder(novia, { ocasion: "Boda", tinte: "Sí" })).toEqual(["tinteCual"]);
+    expect(obligatoriasSinResponder(novia, { ocasion: "Boda", tinte: "Sí", tinteCual: "Rubio" })).toEqual([]);
+    // Una obligatoria inactiva o que no aplica no bloquea.
+    expect(obligatoriasSinResponder(preguntasAplicables(lista, ["corte"]), {})).toEqual([]);
+  });
+
+  it("ids nuevos estables y sin chocar con los existentes ni con sus detalles", async () => {
+    const { idPreguntaNueva } = await import("./preguntas-reserva");
+    const id = idPreguntaNueva(lista, 1_000_000);
+    expect(id).toBe("plfls");
+    expect(idPreguntaNueva([...lista, { ...lista[0], id }], 1_000_000)).toBe("plfls2");
+  });
+});
