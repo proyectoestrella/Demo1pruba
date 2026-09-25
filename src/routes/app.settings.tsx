@@ -10,6 +10,9 @@ import { AjustesColores } from "@/components/AjustesColores";
 import { AjustesSenal } from "@/components/AjustesSenal";
 import { AjustesPreguntas } from "@/components/AjustesPreguntas";
 import { GuiaAsistente } from "@/components/GuiaAsistente";
+import { AjustesAccesos } from "@/components/AjustesAccesos";
+import { usePermisos } from "@/lib/accesos-panel";
+import { puede } from "@/lib/permisos";
 import { useSalonStore } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
 import { getCalendarSubscription, regenerateCalendarSubscription } from "@/lib/api/calendar.functions";
@@ -38,6 +41,7 @@ export const Route = createFileRoute("/app/settings")({ component: Settings });
  * discrepando, y el que gana es el último que guardó.
  */
 function Settings() {
+  const permisos = usePermisos();
   const salonProfile = useSalonStore((s) => s.salonProfile);
   const realSlug = useSalonStore((s) => s.realSalonSlug);
   const equipo = useEquipo();
@@ -271,6 +275,12 @@ function Settings() {
           </div>
           <AjustesSenal />
         </SeccionAjustes>
+
+        {puede(permisos, "accesos.gestionar") && (
+          <SeccionAjustes titulo="Accesos" resumen="Quién entra en el panel, con qué rol y a qué profesional corresponde">
+            <AjustesAccesos />
+          </SeccionAjustes>
+        )}
 
         <SeccionAjustes titulo="Cómo usar el asistente" resumen="Todo lo que le puedes preguntar, con ejemplos, y lo que no hace">
           <GuiaAsistente />
