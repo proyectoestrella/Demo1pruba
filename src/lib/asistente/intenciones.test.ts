@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { INTENCIONES, POR_ID, candidatos, enmascararEjemplo, reencaminar } from "./intenciones";
 import { clasificar } from "./parecido";
 import { extraerEntidades } from "./entidades";
+import { FUNCIONES_POR_PLAN } from "../plan";
 
 describe("catálogo", () => {
   test("al menos 80 intenciones de negocio y ids únicos", () => {
@@ -11,10 +12,15 @@ describe("catálogo", () => {
   test("toda familia tiene al menos 3 ejemplos", () => {
     for (const i of INTENCIONES) expect([i.id, i.ejemplos.length >= 3]).toEqual([i.id, true]);
   });
-  test("plan mínimo leído del documento", () => {
-    expect(POR_ID.get("plan-mas-profesionales")?.planMinimo).toBe("todo-incluido");
-    expect(POR_ID.get("plan-asistente")?.planMinimo).toBe("reservas-asistente");
+  test("plan mínimo leído del documento y de la tabla compartida de planes", () => {
+    expect(POR_ID.get("plan-asistente")?.planMinimo).toBe(FUNCIONES_POR_PLAN.asistente);
+    expect(POR_ID.get("plan-importar-mensual")?.planMinimo).toBe(FUNCIONES_POR_PLAN["importacion-mensual"]);
     expect(POR_ID.get("no-hace-facturas")?.planMinimo).toBeNull();
+  });
+  test("más profesionales no depende del plan: entra en todos y no promete «Todo incluido»", () => {
+    const i = POR_ID.get("plan-mas-profesionales");
+    expect(i?.planMinimo).toBe("reservas");
+    expect(`${i?.plan} ${i?.alternativa} ${i?.mensaje}`).not.toContain("Todo incluido");
   });
   test("los nombres de los ejemplos se enmascaran", () => {
     expect(enmascararEjemplo("cuando vino Lucía con Sara")).toBe("cuando vino zzclienta con zzpro");

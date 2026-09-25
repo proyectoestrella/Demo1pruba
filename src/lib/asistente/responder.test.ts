@@ -169,13 +169,24 @@ describe("responder", () => {
   });
 
   test("fuera de plan: alternativa de hoy, guía y mensaje tipo", () => {
-    const r = nuevo().responder("quiero meter a otra peluquera en el equipo");
+    const r = nuevo("reservas").responder("quiero recibir el informe del mes por correo");
     expect(r.tipo).toBe("escalar");
     if (r.tipo !== "escalar") return;
     expect(r.texto).toContain("Todo incluido");
-    expect(r.pasos[0]).toContain("3 profesionales");
-    expect(r.guia).toBe("§6 Equipo");
     expect(r.contacto.cierre).toContain("activarlo");
+  });
+
+  test("más profesionales entra en cualquier plan: nunca promete «Todo incluido»", () => {
+    for (const plan of ["reservas", "reservas-asistente", "todo-incluido"] as const) {
+      const r = nuevo(plan).responder("quiero meter a otra peluquera en el equipo");
+      expect(r.tipo).toBe("escalar");
+      if (r.tipo !== "escalar") return;
+      expect(r.texto).toContain("ya entra en tu plan");
+      const todo = `${r.texto} ${r.pasos.join(" ")} ${r.contacto.mensaje}`;
+      expect(todo).not.toContain("llega con el plan");
+      if (plan !== "todo-incluido") expect(todo).not.toContain("Todo incluido");
+      expect(r.guia).toBe("§6 Equipo");
+    }
   });
 
   test("algo que no hace ningún plan: lo dice sin prometerlo", () => {

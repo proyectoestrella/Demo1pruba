@@ -14,6 +14,7 @@ import { diaEnZona } from "./reloj";
 import { extraerEntidades, NOMBRES_COMUNES, type Entidades } from "./entidades";
 import type { ClientaA, FuentesAsistente, PlanSishow } from "./fuentes";
 import { apartadoGuia } from "./guia";
+import { NOMBRE_PLAN } from "../plan";
 import { candidatos, POR_ID, preguntaCon, reencaminar, VOCABULARIO, type Intencion } from "./intenciones";
 import { enmascarar, MARCA_CLIENTA, MARCA_PRO, MARCA_SERVICIO } from "./mascara";
 import { refuerzos } from "./pistas";
@@ -223,7 +224,7 @@ function escalarPlan(i: Intencion, plan: PlanSishow, salon: string): RespuestaAs
     texto = "Eso siShow no lo hace, pero hoy puedes hacer esto:";
     cierre = "Si te interesa que lo tengamos, escríbenos a";
   } else if (i.planMinimo && RANGO_PLAN[plan] >= RANGO_PLAN[i.planMinimo] && !nota) {
-    texto = `Eso ya entra en tu plan (**${nombre}**). Hoy puedes hacer esto:`;
+    texto = `Eso ya entra en tu plan (**${NOMBRE_PLAN[plan]}**). Hoy puedes hacer esto:`;
     cierre = "Si no te aparece, escríbenos a";
   } else {
     texto = `Eso llega${nota ? `, ${nota.replace(/^hasta /, "hasta ")},` : ""} con el plan **${nombre}**. Mientras tanto, puedes hacer esto:`;

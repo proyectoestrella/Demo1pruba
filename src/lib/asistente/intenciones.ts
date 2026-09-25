@@ -8,7 +8,7 @@
 import { EJEMPLOS_EXTRA } from "./ejemplos-extra";
 import { ESPECIFICACION, type FamiliaEspecificacion } from "./especificacion";
 import { sumarDias, type Entidades } from "./entidades";
-import type { PlanSishow } from "./fuentes";
+import { FUNCIONES_POR_PLAN, type FuncionPlan, type PlanSishow } from "../plan";
 import { normalizar } from "./normalizar";
 import { prepararCandidatos, type CandidatoPreparado } from "./parecido";
 
@@ -228,7 +228,28 @@ export function preguntaCon(id: string, v: { clienta?: string; pro?: string; ser
   return t.replace("{clienta}", v.clienta ?? "").replace("{pro}", v.pro ?? "").replace("{servicio}", v.servicio ?? "");
 }
 
-function planMinimoDe(texto?: string): PlanSishow | null | undefined {
+/** Intenciones de plan que son una función de la tabla compartida (`src/lib/plan.ts`): su plan mínimo sale de allí. */
+const FUNCION_DE: Record<string, FuncionPlan> = {
+  "plan-asistente": "asistente",
+  "plan-importar-mensual": "importacion-mensual",
+};
+
+/**
+ * Lo que la tabla de planes contradice del documento. «Más profesionales» NO
+ * depende del plan (decisión de Tomás, 26-sep): entra en todos y no se promete
+ * «Todo incluido».
+ */
+const CORRIGE_PLAN: Record<string, Partial<FamiliaEspecificacion>> = {
+  "plan-mas-profesionales": {
+    plan: "Reservas",
+    alternativa: "Añádela desde Equipo con «Añadir profesional» (guía §6 Equipo)",
+    mensaje: "Hola, soy María de PeluChic. Quiero añadir otra profesional al equipo y no me aparece la opción. ¿Qué hago?",
+  },
+};
+
+function planMinimoDe(id: string, texto?: string): PlanSishow | null | undefined {
+  const f = FUNCION_DE[id];
+  if (f) return FUNCIONES_POR_PLAN[f];
   if (!texto) return undefined;
   const t = normalizar(texto);
   if (t.startsWith("ningun")) return null;
@@ -251,11 +272,11 @@ function preguntaDe(f: FamiliaEspecificacion): string {
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
-export const INTENCIONES: Intencion[] = ESPECIFICACION.map((f) => ({
+export const INTENCIONES: Intencion[] = ESPECIFICACION.map((doc) => ({ ...doc, ...CORRIGE_PLAN[doc.id] })).map((f) => ({
   ...f,
   ejemplos: [...f.ejemplos, ...(EXTRA[f.id] ?? []), ...(EJEMPLOS_EXTRA[f.id] ?? [])],
   requiere: REQUIERE[f.id] ?? [],
-  planMinimo: f.grupo === "plan" ? planMinimoDe(f.plan) : undefined,
+  planMinimo: f.grupo === "plan" ? planMinimoDe(f.id, f.plan) : undefined,
   pregunta: PREGUNTA[f.id] ?? preguntaDe(f),
 }));
 
