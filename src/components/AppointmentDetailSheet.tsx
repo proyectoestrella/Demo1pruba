@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
-import { useSalonStore } from "@/lib/store";
+import { selectServiceMap, useSalonStore } from "@/lib/store";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
@@ -146,7 +146,8 @@ export function AppointmentDetailSheet({
     if (conRecargo && d !== "vino") preguntarPorLaDeuda(d);
   }
 
-  const serviceNames = appointment ? serviceNamesOf(appointment) : [];
+  const carta = selectServiceMap(useSalonStore((s) => s.services));
+  const serviceNames = appointment ? serviceNamesOf(appointment, carta) : [];
   // Cuántas veces ha plantado este cliente en los últimos 3 meses, con las
   // mismas palabras que su ficha — ver lib/plantones.ts.
   const plantones = appointment ? historialDeFallos(appointments, appointment.clientId) : null;
