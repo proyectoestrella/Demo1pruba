@@ -150,7 +150,7 @@ export const FAMILIAS: FamiliaAsistente[] = [
   {
     "id": "pendiente-de-ti",
     "categoria": "hoy",
-    "responde": "lo que espera a María: solicitudes, citas por marcar y señales vencidas.",
+    "responde": "lo que te espera: solicitudes, citas por marcar y señales vencidas.",
     "ejemplos": [
       "q tengo pendiente",
       "que me falta por hacer",

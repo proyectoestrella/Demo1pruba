@@ -37,7 +37,7 @@ import { estadoSenal, reglaSenal, respuestaFaqSenal } from "../senal-maqueta";
  * inyectado, porque varias funciones solo existen en esta rama.
  */
 
-export interface EstadoAsistente {
+export interface EstadoArena {
   appointments: Appointment[];
   clients: Client[];
   services: Service[];
@@ -56,7 +56,7 @@ const minutos = (iso: string) => {
   return d.getHours() * 60 + d.getMinutes();
 };
 
-export function crearFuentesArena(e: EstadoAsistente, ahora: Date = new Date()) {
+export function crearFuentesArena(e: EstadoArena, ahora: Date = new Date()) {
   const { appointments: citas, clients, services, waitlist, salonProfile: perfil, equipo } = e;
   const carta = Object.fromEntries(services.map((s) => [s.id, s]));
   const hoy = citasDelDia(citas, ahora);

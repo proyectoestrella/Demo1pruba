@@ -164,7 +164,7 @@ interface HuecoFlojo {
  * incompletas). `null` si no hay ningún cruce con capacidad — agenda vacía o
  * cerrado siempre.
  */
-function calcularHuecoFlojo(
+export function calcularHuecoFlojo(
   appointments: Appointment[],
   employees: Employee[],
   now: Date,
