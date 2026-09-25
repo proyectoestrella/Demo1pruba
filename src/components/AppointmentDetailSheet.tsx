@@ -242,6 +242,7 @@ export function AppointmentDetailSheet({
       bizumPhone: depositBizumPhone,
       importeEur: importeDeEstaCita,
       deadlineISO: depositDueAt(requestedAt, depositDeadlineHours),
+      plantilla: reglaSen.plantilla,
     }, requestedAt);
     window.open(url, "_blank", "noopener,noreferrer");
     // Abrir WhatsApp no es enviar: la señal pasa a «pedida» solo cuando la

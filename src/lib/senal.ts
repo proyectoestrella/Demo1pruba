@@ -493,3 +493,44 @@ export function diferenciaSenal(c: CitaCiclo, ahora: Date = new Date()): { pendi
   const aDevolverEur = c.depositRefundedAt ? 0 : Math.max(0, c.depositRefundedEur ?? 0);
   return { pendienteEur, aDevolverEur };
 }
+
+/* ------------------------------------------------------------------------ */
+/* Texto del WhatsApp                                                       */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Marcadores de la plantilla. El salón escribe su texto con ellos y siShow
+ * los rellena; un marcador desconocido se deja tal cual para que se vea.
+ */
+export const MARCADORES_SENAL = ["{nombre}", "{salon}", "{importe}", "{bizum}", "{cuando}", "{plazo}"] as const;
+
+/** La de siempre: exactamente el texto que se enviaba antes de la plantilla. */
+export const PLANTILLA_SENAL_POR_DEFECTO =
+  "Hola {nombre}, soy {salon}. Para confirmar tu cita {cuando}, déjanos {importe} de señal por Bizum al {bizum}; {plazo}. En cuanto lo recibamos te la confirmamos. ¡Gracias!";
+
+export interface DatosMensajeSenal {
+  nombre: string;
+  salon: string;
+  /** Ya formateado: «20 €». */
+  importe: string;
+  bizum: string;
+  /** «el martes, 29 de septiembre a las 17:00». */
+  cuando: string;
+  /** «tienes hasta hoy a las 12:00 para hacer el Bizum». */
+  plazo: string;
+}
+
+/** Rellena la plantilla del salón (o la de siempre si está vacía). */
+export function rellenarPlantillaSenal(plantilla: string | undefined, d: DatosMensajeSenal): string {
+  const texto = plantilla?.trim() ? plantilla.trim() : PLANTILLA_SENAL_POR_DEFECTO;
+  const valores: Record<string, string> = {
+    "{nombre}": d.nombre, "{salon}": d.salon, "{importe}": d.importe,
+    "{bizum}": d.bizum, "{cuando}": d.cuando, "{plazo}": d.plazo,
+  };
+  return texto.replace(/\{(nombre|salon|importe|bizum|cuando|plazo)\}/g, (m) => valores[m] ?? m);
+}
+
+/** Marcadores imprescindibles que faltan en una plantilla (para avisar en Ajustes). */
+export function marcadoresQueFaltan(plantilla: string): string[] {
+  return ["{importe}", "{bizum}"].filter((m) => !plantilla.includes(m));
+}

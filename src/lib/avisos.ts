@@ -12,6 +12,7 @@
  */
 import { whatsappUrl } from "./campanas";
 import { ZONA_HORARIA_SALON, fechaEnZona } from "./zona-horaria";
+import { rellenarPlantillaSenal } from "./senal";
 
 /** Todo lo que se dice por WhatsApp o por email se dice en la hora del salón, corra donde corra. */
 const TZ = { timeZone: ZONA_HORARIA_SALON } as const;
@@ -43,6 +44,8 @@ export interface PeticionDeFianza {
   importeEur: number;
   /** Hora límite que el salón acaba de fijar al pedir el Bizum. */
   deadlineISO: string;
+  /** Plantilla del salón (perfil `depositTemplate`). Vacía = la de siempre. */
+  plantilla?: string;
 }
 
 export function plazoDeFianzaEnPalabras(deadlineISO: string, requestedAtISO: string): string {
@@ -61,11 +64,14 @@ export function plazoDeFianzaEnPalabras(deadlineISO: string, requestedAtISO: str
  * chat, y el salón tiene que poder leerlo antes de enviarlo.
  */
 export function mensajeDeFianza(p: PeticionDeFianza, requestedAtISO = new Date().toISOString()): string {
-  return (
-    `Hola ${p.clientName}, soy ${p.salonName}. ` +
-    `Para confirmar tu cita ${cuandoEnPalabras(p.startISO)}, déjanos ${p.importeEur} € de señal por Bizum al ${p.bizumPhone}; ${plazoDeFianzaEnPalabras(p.deadlineISO, requestedAtISO)}. ` +
-    `En cuanto lo recibamos te la confirmamos. ¡Gracias!`
-  );
+  return rellenarPlantillaSenal(p.plantilla, {
+    nombre: p.clientName,
+    salon: p.salonName,
+    importe: `${p.importeEur} €`,
+    bizum: p.bizumPhone,
+    cuando: cuandoEnPalabras(p.startISO),
+    plazo: plazoDeFianzaEnPalabras(p.deadlineISO, requestedAtISO),
+  });
 }
 
 /** Enlace de WhatsApp listo para abrir con la petición de fianza dentro. */

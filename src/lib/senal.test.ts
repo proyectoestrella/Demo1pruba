@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { aplicaSenal, importeSenal, reglaSenal, respuestaFaqSenal, servicioLlevaSenal, textoSenalPublico } from "./senal";
+import { aplicaSenal, importeSenal, marcadoresQueFaltan, PLANTILLA_SENAL_POR_DEFECTO, reglaSenal, rellenarPlantillaSenal, respuestaFaqSenal, servicioLlevaSenal, textoSenalPublico } from "./senal";
+import { mensajeDeFianza } from "./avisos";
 
 const eur = (n: number) => `${n} €`;
 const mechas = { serviceIds: ["mechas"], durationMin: 120, priceEur: 80 };
@@ -80,5 +81,28 @@ describe("un solo mensaje para la clienta", () => {
     expect(respuestaFaqSenal(reglaSenal({}), eur)).toBe("No. Se paga en el salón al terminar.");
     const r = reglaSenal({ depositEnabled: true, depositAppliesTo: "duracion", depositMinMinutes: 60, depositMode: "porcentaje", depositPercent: 20 });
     expect(respuestaFaqSenal(r, eur)).toBe("Solo en los servicios de 60 minutos o más: pedimos una señal del 20 % del servicio por Bizum, con 4 horas para hacerlo. Se descuenta del precio; si cancelas con más de 24 h de antelación, te la devolvemos.");
+  });
+});
+
+describe("plantilla del WhatsApp de la señal", () => {
+  const datos = { nombre: "Ana", salon: "PeluChic", importe: "20 €", bizum: "666 77 67 31", cuando: "el martes a las 17:00", plazo: "tienes hasta hoy a las 12:00 para hacer el Bizum" };
+
+  it("sin plantilla sale exactamente el texto de siempre", () => {
+    expect(rellenarPlantillaSenal(undefined, datos)).toBe("Hola Ana, soy PeluChic. Para confirmar tu cita el martes a las 17:00, déjanos 20 € de señal por Bizum al 666 77 67 31; tienes hasta hoy a las 12:00 para hacer el Bizum. En cuanto lo recibamos te la confirmamos. ¡Gracias!");
+    expect(rellenarPlantillaSenal("   ", datos)).toBe(rellenarPlantillaSenal(PLANTILLA_SENAL_POR_DEFECTO, datos));
+  });
+
+  it("la del salón rellena sus marcadores y deja a la vista los desconocidos", () => {
+    expect(rellenarPlantillaSenal("¡Hola {nombre}! {importe} al {bizum}, {plazo}. {firma}", datos)).toBe("¡Hola Ana! 20 € al 666 77 67 31, tienes hasta hoy a las 12:00 para hacer el Bizum. {firma}");
+  });
+
+  it("avisa si faltan el importe o el Bizum", () => {
+    expect(marcadoresQueFaltan("Hola {nombre}")).toEqual(["{importe}", "{bizum}"]);
+    expect(marcadoresQueFaltan(PLANTILLA_SENAL_POR_DEFECTO)).toEqual([]);
+  });
+
+  it("mensajeDeFianza usa la plantilla del perfil", () => {
+    const m = mensajeDeFianza({ clientName: "Ana", salonName: "PeluChic", startISO: "2026-09-29T15:00:00.000Z", bizumPhone: "600", importeEur: 20, deadlineISO: "2026-09-28T10:00:00.000Z", plantilla: "{salon}: {importe} al {bizum}" }, "2026-09-28T08:00:00.000Z");
+    expect(m).toBe("PeluChic: 20 € al 600");
   });
 });
