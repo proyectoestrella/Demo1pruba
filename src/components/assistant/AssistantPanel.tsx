@@ -1,28 +1,34 @@
 /**
  * Panel del asistente (lote 10). Entrada libre con el historial de la
- * sesión, chips de sugerencias por categoría y respuestas estructuradas:
- * cifra destacada con su botón de acción, desambiguación con opciones
- * pulsables, «no lo tengo claro, pero…» con tres chips y el escalado al
- * equipo de siShow con el correo y el mensaje copiables.
+ * sesión, chips de sugerencias por tema y respuestas estructuradas del motor
+ * de BACKEND (`lib/asistente/responder.ts`): la cifra en negrita con su botón
+ * de acción, desambiguación con opciones pulsables, «no lo sé seguro, pero…»
+ * con tres chips y el escalado (pasos, guía y, al final, el contacto).
  *
- * Las respuestas salen de `responder()` de `lib/asistente/motor-maqueta.ts`
- * (CONECTAR: el motor de BACKEND). Nada sale de siShow ni hay IA: todo se
- * calcula con los datos del salón en este navegador.
+ * El motor recibe las fuentes de esta rama (`crearFuentesPanel`) y lee la
+ * store en cada pregunta. Nada sale de siShow ni hay IA: todo se calcula con
+ * los datos del salón en este navegador. Las acciones son semánticas; aquí
+ * se traducen a rutas del panel.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowUp, BookOpen, Copy, Mail, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useSalonStore } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
-import { CATEGORIAS, FAMILIAS, type CategoriaAsistente } from "@/lib/asistente/catalogo-arena";
-import { responder, type Accion, type RespuestaAsistente } from "@/lib/asistente/motor-maqueta";
+import { guiaAsistente } from "@/lib/asistente/guia";
+import { crearAsistente, type RespuestaAsistente } from "@/lib/asistente/responder";
+import type { Accion } from "@/lib/asistente/resolutores/tipos";
+import { crearFuentesPanel } from "@/lib/asistente/fuentes-panel";
+import { whatsappUrl } from "@/lib/campanas";
+import { usePanelPublicLink } from "@/lib/panel-public-link";
 import { ClientHistorySheet } from "@/components/ClientHistorySheet";
 import { cn } from "@/lib/utils";
 
 type Mensaje = { id: number; de: "yo"; texto: string } | { id: number; de: "asistente"; r: RespuestaAsistente };
 
-const CLAVE_HISTORIAL = "sishow-asistente-historial";
+// «-2»: la forma del motor real (cifras[] y acciones[]); el historial de la maqueta no se lee.
+const CLAVE_HISTORIAL = "sishow-asistente-historial-2";
 
 function leerHistorial(): Mensaje[] {
   try {
@@ -32,15 +38,55 @@ function leerHistorial(): Mensaje[] {
   }
 }
 
+/** Pantalla del panel por el nombre que le da la guía de uso («Ajustes › Señal» → Ajustes). */
+const RUTA_DE_SECCION: Array<[RegExp, string]> = [
+  [/^hoy|^caja/i, "/app"],
+  [/^calendario/i, "/app/calendar"],
+  [/^citas/i, "/app/appointments"],
+  [/^lista de espera/i, "/app/waitlist"],
+  [/^clientas/i, "/app/clients"],
+  [/^equipo/i, "/app/employees"],
+  [/^servicios/i, "/app/services"],
+  [/^anal[ií]tica/i, "/app/insights"],
+  [/^marketing/i, "/app/marketing"],
+  [/^mi p[aá]gina/i, "/app/web"],
+  [/^ajustes/i, "/app/settings"],
+];
+
+const hoyISO = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
 export function AssistantPanel({ className }: { className?: string }) {
   const equipo = useEquipo();
   const navigate = useNavigate();
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [texto, setTexto] = useState("");
-  const [categoria, setCategoria] = useState<CategoriaAsistente>("hoy");
+  const temas = useMemo(() => guiaAsistente(4), []);
+  const [tema, setTema] = useState(temas[0]?.id ?? "hoy");
   const [fichaId, setFichaId] = useState<string | null>(null);
   const clienta = useSalonStore((s) => s.clients.find((c) => c.id === fichaId) ?? null);
   const final = useRef<HTMLDivElement>(null);
+
+  // El equipo cambia poco; la store se lee en cada pregunta y así ve la cita creada hace un segundo.
+  const equipoRef = useRef(equipo);
+  equipoRef.current = equipo;
+  // El mismo enlace que «Ver tu web» del menú (en una demo lleva su ?d=).
+  const enlace = usePanelPublicLink();
+  const enlaceRef = useRef(enlace);
+  enlaceRef.current = enlace;
+  const asistente = useMemo(
+    () =>
+      crearAsistente(
+        crearFuentesPanel(
+          () => useSalonStore.getState(),
+          () => equipoRef.current,
+          { enlace: () => (typeof window === "undefined" ? enlaceRef.current : new URL(enlaceRef.current, window.location.origin).href) },
+        ),
+      ),
+    [],
+  );
+
+  // Índices y catálogo listos al abrir, para que la primera pregunta no espere.
+  useEffect(() => asistente.precalentar(), [asistente]);
 
   // El historial dura lo que la sesión del navegador: se recupera al volver a abrir el panel.
   useEffect(() => setMensajes(leerHistorial()), []);
@@ -56,28 +102,65 @@ export function AssistantPanel({ className }: { className?: string }) {
   function preguntar(pregunta: string) {
     const limpia = pregunta.trim();
     if (!limpia) return;
-    // Lectura directa de la store: ve la cita creada hace un segundo.
-    const s = useSalonStore.getState();
-    const r = responder(limpia, {
-      appointments: s.appointments,
-      services: s.services,
-      employees: equipo,
-      waitlist: s.waitlist,
-      clients: s.clients,
-      salonName: s.salonProfile.name,
-    });
+    const r = asistente.responder(limpia);
     const id = Date.now();
     setMensajes((m) => [...m, { id, de: "yo", texto: limpia }, { id: id + 1, de: "asistente", r }]);
     setTexto("");
   }
 
-  function ejecutar(a: Accion) {
-    if (a.destino.tipo === "ficha") return setFichaId(a.destino.clientId);
-    if (a.destino.tipo === "preguntar") return preguntar(a.destino.texto);
-    void navigate({ to: a.destino.to, search: a.destino.search as never });
+  function reiniciar() {
+    asistente.reiniciar();
+    setMensajes([]);
   }
 
-  const ejemplosCategoria = FAMILIAS.filter((f) => f.categoria === categoria).slice(0, 4).map((f) => f.ejemplos[0]);
+  function copiar(t: string, que: string) {
+    void navigator.clipboard.writeText(t).then(
+      () => toast.success(`${que} copiado`),
+      () => toast.error("No se pudo copiar"),
+    );
+  }
+
+  function ejecutar(a: Accion) {
+    const s = useSalonStore.getState();
+    switch (a.tipo) {
+      case "abrir-ficha":
+        if (a.clientaId) setFichaId(a.clientaId);
+        return;
+      case "ver-hoja": {
+        const manana = new Date();
+        manana.setDate(manana.getDate() + 1);
+        if (!a.dia || a.dia === hoyISO()) return void navigate({ to: "/app/hoja", search: { dia: "hoy" } });
+        if (a.dia === hoyISO(manana)) return void navigate({ to: "/app/hoja", search: { dia: "manana" } });
+        // La hoja solo tiene hoy y mañana: otro día se ve en el calendario.
+        return void navigate({ to: "/app/calendar", search: { dia: a.dia } });
+      }
+      case "ver-calendario":
+        return void navigate({ to: "/app/calendar", search: { dia: a.dia } });
+      case "abrir-cita":
+        return void navigate({ to: "/app/calendar", search: { cita: a.citaId } });
+      case "nueva-cita":
+        return void navigate({ to: "/app/calendar", search: { dia: a.dia, nueva: true } });
+      case "ver-seccion": {
+        const ruta = RUTA_DE_SECCION.find(([re]) => re.test(a.destino ?? ""))?.[1] ?? "/app";
+        return void navigate({ to: ruta });
+      }
+      case "copiar":
+        return copiar(a.destino ?? "", a.etiqueta.toLowerCase().includes("enlace") ? "Enlace" : "Texto");
+      case "whatsapp": {
+        const c = s.clients.find((x) => x.id === a.clientaId);
+        if (c?.phone) window.open(whatsappUrl(c.phone, ""), "_blank", "noopener");
+        else toast.error("Esta clienta no tiene teléfono en su ficha");
+        return;
+      }
+      case "descargar":
+        return void navigate({ to: "/app/insights" });
+      case "escribir-soporte":
+        window.location.href = `mailto:${a.destino ?? ""}`;
+        return;
+    }
+  }
+
+  const ejemplosTema = temas.find((t) => t.id === tema)?.ejemplos ?? [];
 
   return (
     <div className={cn("flex min-h-0 flex-col", className)}>
@@ -105,22 +188,22 @@ export function AssistantPanel({ className }: { className?: string }) {
 
       {/* Sugerencias por categoría, siempre a mano. */}
       <div className="space-y-2 border-t border-lino bg-beige/60 px-3 pt-2.5 pb-2">
-        <div className="sin-scrollbar flex gap-1 overflow-x-auto" role="tablist" aria-label="Categorías de preguntas">
-          {CATEGORIAS.map((c) => (
+        <div className="sin-scrollbar flex gap-1 overflow-x-auto" role="tablist" aria-label="Temas de preguntas">
+          {temas.map((c) => (
             <button
               key={c.id}
               type="button"
               role="tab"
-              aria-selected={categoria === c.id}
-              onClick={() => setCategoria(c.id)}
-              className={cn("h-7 shrink-0 rounded-full px-2.5 text-[12.5px] font-bold", categoria === c.id ? "bg-card text-foreground shadow-[0_1px_2px_rgba(59,47,42,0.14)]" : "text-cafe-medio hover:text-foreground")}
+              aria-selected={tema === c.id}
+              onClick={() => setTema(c.id)}
+              className={cn("h-7 shrink-0 rounded-full px-2.5 text-[12.5px] font-bold", tema === c.id ? "bg-card text-foreground shadow-[0_1px_2px_rgba(59,47,42,0.14)]" : "text-cafe-medio hover:text-foreground")}
             >
               {c.titulo}
             </button>
           ))}
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {ejemplosCategoria.map((ej) => (
+          {ejemplosTema.map((ej) => (
             <button key={ej} type="button" onClick={() => preguntar(ej)} className="rounded-full border border-lino bg-card px-2.5 py-1 text-[12.5px] text-cafe-medio hover:border-salvia hover:bg-salvia-suave">
               {ej}
             </button>
@@ -139,7 +222,7 @@ export function AssistantPanel({ className }: { className?: string }) {
         }}
       >
         {mensajes.length > 0 && (
-          <button type="button" onClick={() => setMensajes([])} title="Empezar de nuevo" aria-label="Borrar la conversación" className="grid size-9 shrink-0 place-items-center rounded-xl text-cafe-medio hover:bg-beige">
+          <button type="button" onClick={reiniciar} title="Empezar de nuevo" aria-label="Borrar la conversación" className="grid size-9 shrink-0 place-items-center rounded-xl text-cafe-medio hover:bg-beige">
             <RotateCcw className="size-4" strokeWidth={1.7} />
           </button>
         )}
@@ -173,12 +256,24 @@ function Respuesta({ r, onAccion, onPreguntar }: { r: RespuestaAsistente; onAcci
   if (r.tipo === "respuesta") {
     return (
       <div className={caja}>
-        {r.cifra && <p className="text-[24px] leading-tight font-extrabold tracking-[-0.01em] tabular-nums">{r.cifra}</p>}
-        <p className={cn("whitespace-pre-line", r.cifra && "mt-0.5")}>{r.texto}</p>
-        {r.accion && (
-          <button type="button" onClick={() => onAccion(r.accion!)} className="mt-2.5 rounded-full bg-primary px-3.5 py-1.5 text-[13px] font-bold text-primary-foreground">
-            {r.accion.etiqueta}
-          </button>
+        <p className="whitespace-pre-line">{conNegrita(r.texto)}</p>
+        {r.acciones.length > 0 && (
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {r.acciones.map((a) => (
+              <button key={`${a.tipo}-${a.etiqueta}`} type="button" onClick={() => onAccion(a)} className="rounded-full bg-primary px-3.5 py-1.5 text-[13px] font-bold text-primary-foreground">
+                {a.etiqueta}
+              </button>
+            ))}
+          </div>
+        )}
+        {r.sugerencias.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {r.sugerencias.map((t) => (
+              <button key={t} type="button" onClick={() => onPreguntar(t)} className="rounded-full border border-lino bg-superficie px-2.5 py-1 text-[12.5px] text-cafe-medio hover:border-salvia hover:bg-salvia-suave">
+                {t}
+              </button>
+            ))}
+          </div>
         )}
       </div>
     );
@@ -186,14 +281,16 @@ function Respuesta({ r, onAccion, onPreguntar }: { r: RespuestaAsistente; onAcci
   if (r.tipo === "elegir") {
     return (
       <div className={caja}>
-        <p>{r.texto}</p>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {r.opciones.map((o) => (
-            <button key={o.pregunta} type="button" onClick={() => onPreguntar(o.pregunta)} className={chip}>
-              {o.etiqueta}
-            </button>
-          ))}
-        </div>
+        <p>{conNegrita(r.texto)}</p>
+        {r.opciones.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {r.opciones.map((o) => (
+              <button key={o.pregunta} type="button" onClick={() => onPreguntar(o.pregunta)} className={chip}>
+                {o.etiqueta}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -220,7 +317,7 @@ function Respuesta({ r, onAccion, onPreguntar }: { r: RespuestaAsistente; onAcci
   // solo al final, el contacto «si sigue igual».
   return (
     <div className={caja}>
-      <p className="font-bold">{r.texto}</p>
+      <p className="font-bold">{conNegrita(r.texto)}</p>
       <ol className="mt-1.5 list-decimal space-y-1 pl-5 text-[13.5px]">
         {r.pasos.map((p) => (
           <li key={p}>{p}</li>
@@ -252,5 +349,18 @@ function Respuesta({ r, onAccion, onPreguntar }: { r: RespuestaAsistente; onAcci
         </div>
       </div>
     </div>
+  );
+}
+
+/** El motor marca la cifra con **negrita** de Markdown; aquí se pinta destacada. */
+function conNegrita(texto: string): ReactNode[] {
+  return texto.split(/(\*\*[^*]+\*\*)/g).map((trozo, i) =>
+    trozo.startsWith("**") && trozo.endsWith("**") ? (
+      <b key={i} className="font-extrabold text-foreground">
+        {trozo.slice(2, -2)}
+      </b>
+    ) : (
+      trozo
+    ),
   );
 }

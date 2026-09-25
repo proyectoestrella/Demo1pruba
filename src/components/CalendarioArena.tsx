@@ -92,7 +92,11 @@ function useAhora() {
   return ahora;
 }
 
-export function CalendarioArena() {
+/**
+ * `inicio` (desde el asistente): abre en ese día, con esa cita a la vista o con
+ * «Nueva cita» abierta. Sin él, hoy y la vista preferida.
+ */
+export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: string; nueva?: boolean } } = {}) {
   const appointments = useSalonStore((s) => s.appointments);
   const services = useSalonStore((s) => s.services);
   const guardadas = useSalonStore((s) => s.salonProfile.calendario);
@@ -102,15 +106,20 @@ export function CalendarioArena() {
   const ahora = useAhora();
   const pref = preferenciasDe(guardadas);
 
-  const [anchor, setAnchor] = useState(() => inicioDelDia(new Date()));
-  const [vista, setVista] = useState<Vista>(pref.vista);
+  const citaInicial = inicio?.cita ? (appointments.find((a) => a.id === inicio.cita) ?? null) : null;
+  const [anchor, setAnchor] = useState(() => {
+    if (citaInicial) return inicioDelDia(new Date(citaInicial.start));
+    const m = inicio?.dia?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : inicioDelDia(new Date());
+  });
+  const [vista, setVista] = useState<Vista>(inicio?.dia || citaInicial ? "dia" : pref.vista);
   /** En Semana y 3 días: «todas» o el id de una profesional. */
   const [filtroPro, setFiltroPro] = useState<string>("todas");
   const [rango, setRango] = useRangoDeSesion();
   const [rangoAbierto, setRangoAbierto] = useState(false);
-  const [seleccionada, setSeleccionada] = useState<Appointment | null>(null);
+  const [seleccionada, setSeleccionada] = useState<Appointment | null>(citaInicial);
   const [prefill, setPrefill] = useState<{ date: Date; employeeId: EmployeeId } | null>(null);
-  const [nuevaAbierta, setNuevaAbierta] = useState(false);
+  const [nuevaAbierta, setNuevaAbierta] = useState(!!inicio?.nueva);
   /** Huecos libres y ocupación del día, plegados bajo la rejilla. */
   const [verPie, setVerPie] = useState(false);
   /** Ensancha la rejilla para enseñar las citas fuera de las horas visibles. */
