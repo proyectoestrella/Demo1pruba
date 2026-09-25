@@ -120,7 +120,7 @@ export const PALABRAS_VACIAS = new Set([
   "el", "la", "los", "las", "un", "una", "unos", "unas", "de", "del", "al", "a", "en", "y", "o", "u",
   "me", "te", "se", "nos", "le", "les", "lo", "mi", "mis", "tu", "tus", "su", "sus", "es", "son", "esta", "este",
   "estan", "hay", "ha", "han", "he", "hemos", "por", "para", "con", "sin", "sobre", "que", "si", "ya", "pues",
-  "vale", "bueno", "oye", "dime", "dame", "puedes", "podrias", "quiero", "saber", "favor", "gracias", "hola",
+  "vale", "bueno", "oye", "dime", "dame", "puedes", "podrias", "quiero", "saber", "favor",
   "tengo", "tenemos", "tiene", "tienen", "ver", "mira", "porfa", "algo", "algun", "alguna", "alguno",
 ]);
 

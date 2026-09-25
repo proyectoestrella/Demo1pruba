@@ -10,7 +10,7 @@
  * nota ni teléfono) y, si hay más de una posible, se pregunta. Nunca se
  * responde con los datos de otra clienta.
  */
-import type { Client, Employee, Service } from "../mock/types";
+import type { ClientaA as Client, ProfesionalA as Employee, ServicioA as Service } from "./fuentes";
 import { ZONA_HORARIA_SALON, fechaEnZona } from "../zona-horaria";
 import { normalizar, PALABRAS_VACIAS } from "./normalizar";
 import { damerau, SINONIMOS } from "./parecido";
