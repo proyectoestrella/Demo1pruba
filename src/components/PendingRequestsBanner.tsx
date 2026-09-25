@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { importeSenal, reglaSenal } from "@/lib/senal";
 
 export interface PendingRequestsBannerProps {
   /** Abre el detalle de la cita (AppointmentDetailSheet) para cambiar duración u hora. */
@@ -51,14 +52,15 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
   const services = useSalonStore((s) => s.services);
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
-  const markDepositRequested = useSalonStore((s) => s.markDepositRequested);
+  const pedirSenal = useSalonStore((s) => s.pedirSenal);
+  const reglaSen = reglaSenal(useSalonStore((s) => s.salonProfile));
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const depositEnabled = useSalonStore((s) => !!s.salonProfile.depositEnabled);
   const depositBizumPhone = useSalonStore((s) => s.salonProfile.depositBizumPhone ?? "");
   // Con un solo profesional, "con Adam" en cada solicitud es ruido.
   const soloUno = esSoloUnProfesional(useEquipo());
   const depositAmountEur = useSalonStore((s) => s.salonProfile.depositAmountEur ?? 10);
-  const depositDeadlineHours = useSalonStore((s) => deadlineHours(s.salonProfile.depositDeadlineHours));
+  const depositDeadlineHours = reglaSen.ventanaHoras;
   const duracionFlexible = useSalonStore((s) => !!s.salonProfile.duracionFlexible);
   const pideFianza = depositEnabled && !!depositBizumPhone.trim();
   const serviceMap = selectServiceMap(services);
@@ -92,7 +94,8 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
    */
   function handleReject(a: Appointment) {
     const estadoPrevio = a.status;
-    cancelAppointment(a.id);
+    // Rechazar es cancelar por parte del salón: si ya había señal, se devuelve.
+    cancelAppointment(a.id, { porSalon: true });
     toast.success("Solicitud rechazada", {
       description: a.clientName,
       duration: 8000,
@@ -111,6 +114,13 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
    * toda clienta nueva, así que tiene que estar en la misma fila donde ve la
    * solicitud. Abre WhatsApp con el mensaje escrito — lo envía ella.
    */
+  /** Lo que debe esta cita: lo ya fijado o, si no, lo que dice la regla del salón. */
+  function importeDeLaCita(a: Appointment): number {
+    return a.depositEur && a.depositEur > 0
+      ? a.depositEur
+      : importeSenal(reglaSen, { serviceIds: a.serviceIds, durationMin: a.duration, priceEur: a.priceEur }) || depositAmountEur;
+  }
+
   function handleFianza(a: Appointment) {
     if (a.depositReceivedAt) return;
     const telefono = clients.find((c) => c.id === a.clientId)?.phone ?? "";
@@ -124,11 +134,24 @@ export function PendingRequestsBanner({ onOpenDetail }: PendingRequestsBannerPro
       startISO: a.start,
       salonName,
       bizumPhone: depositBizumPhone,
-      importeEur: depositAmountEur,
+      importeEur: importeDeLaCita(a),
       deadlineISO: depositDueAt(requestedAt, depositDeadlineHours),
     }, requestedAt);
-    markDepositRequested(a.id, depositAmountEur, requestedAt);
     window.open(url, "_blank", "noopener,noreferrer");
+    // Abrir WhatsApp no es enviar: la señal pasa a «pedida» solo cuando la
+    // dueña confirma que lo ha mandado (antes se marcaba al abrirlo).
+    toast("¿Has enviado el WhatsApp de la señal?", {
+      description: "Márcalo para que empiece a contar el plazo.",
+      duration: 20_000,
+      action: {
+        label: "Sí, enviado",
+        onClick: () => {
+          const error = pedirSenal(a.id);
+          if (error) toast.error("No se ha podido marcar la señal como pedida", { description: error });
+          else toast.success("Señal pedida");
+        },
+      },
+    });
   }
 
   /**

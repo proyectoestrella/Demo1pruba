@@ -231,3 +231,70 @@ describe("demos fuera del panel real", () => {
     expect(useSalonStore.getState().demoActive).toBe(false);
   });
 });
+
+describe("señal: ciclo de vida desde el store", () => {
+  const nueva = (extra: Partial<Parameters<ReturnType<typeof useSalonStore.getState>["addAppointment"]>[0]> = {}) =>
+    useSalonStore.getState().addAppointment({
+      clientId: "c-senal", clientName: "Ana Señal", serviceIds: ["corte"], employeeId: "mario",
+      start: new Date(Date.now() + 3 * 24 * 3_600_000).toISOString(), duration: 45, priceEur: 25, status: "pending", ...extra,
+    });
+  const cita = (id: string) => useSalonStore.getState().appointments.find((a) => a.id === id)!;
+
+  it("pedir, recibir y cobrar: al cobrar se descuenta y la caja lo resta", async () => {
+    const { cierreDelDia } = await import("./caja");
+    useSalonStore.getState().updateSalonProfile({ depositEnabled: true, depositAmountEur: 10, depositBizumPhone: "600000000" });
+    const a = nueva({ start: new Date().toISOString(), status: "confirmed" });
+    // Hoy ya empezó: no se puede pedir; se apunta directamente la recibida (la dejó en mano).
+    expect(useSalonStore.getState().pedirSenal(a.id)).toBe("SENAL_CITA_CERRADA");
+    expect(useSalonStore.getState().recibirSenal(a.id, { metodo: "efectivo", importeEur: 10 })).toBeNull();
+    expect(cita(a.id)).toMatchObject({ depositStatus: "recibida", depositReceivedEur: 10, depositMethod: "efectivo" });
+    useSalonStore.getState().markPaid(a.id, "tarjeta");
+    expect(cita(a.id)).toMatchObject({ depositStatus: "aplicada", depositAppliedEur: 10 });
+    const cierre = cierreDelDia([cita(a.id)], [], new Date());
+    expect(cierre.total).toBe(15);
+    expect(cierre.porMetodo.tarjeta).toBe(15);
+    expect(cierre.senalesDescontadas).toBe(10);
+    useSalonStore.getState().markPaid(a.id, null);
+    expect(cita(a.id).depositStatus).toBe("recibida");
+  });
+
+  it("pedirSenal solo cuando se confirma el envío; reenviar no alarga el plazo", () => {
+    useSalonStore.getState().updateSalonProfile({ depositEnabled: true, depositAmountEur: 10, depositDeadlineHours: 2 });
+    const a = nueva();
+    expect(cita(a.id).depositStatus).toBeUndefined();
+    expect(useSalonStore.getState().pedirSenal(a.id)).toBeNull();
+    const primera = cita(a.id).depositDueAt;
+    expect(cita(a.id)).toMatchObject({ depositStatus: "pedida", depositEur: 10, depositPeriodHours: 2 });
+    expect(useSalonStore.getState().pedirSenal(a.id)).toBeNull();
+    expect(cita(a.id).depositDueAt).toBe(primera);
+  });
+
+  it("rechazar (salón) devuelve la recibida; plantón la retiene; deshacer la recupera", () => {
+    useSalonStore.getState().updateSalonProfile({ depositEnabled: true, depositAmountEur: 10 });
+    const r = nueva();
+    useSalonStore.getState().recibirSenal(r.id, { metodo: "bizum" });
+    useSalonStore.getState().cancelAppointment(r.id, { porSalon: true });
+    expect(cita(r.id)).toMatchObject({ status: "cancelled", depositStatus: "devuelta", depositRefundedEur: 10 });
+    useSalonStore.getState().updateAppointment(r.id, { status: "pending" });
+    expect(cita(r.id).depositStatus).toBe("recibida");
+
+    const p = nueva();
+    useSalonStore.getState().recibirSenal(p.id, { metodo: "bizum" });
+    useSalonStore.getState().updateAppointment(p.id, { status: "no-show" });
+    expect(cita(p.id).depositStatus).toBe("retenida");
+  });
+
+  it("liberación automática: solo con la opción activa y solo las vencidas", () => {
+    useSalonStore.getState().updateSalonProfile({ depositEnabled: true, depositAmountEur: 10, depositDeadlineHours: 1, depositAutoRelease: false });
+    const a = nueva();
+    useSalonStore.getState().pedirSenal(a.id);
+    const dentroDeDosHoras = new Date(Date.now() + 2 * 3_600_000);
+    expect(useSalonStore.getState().liberarSenalesVencidas(dentroDeDosHoras)).toBe(0);
+    expect(cita(a.id).status).toBe("pending");
+    useSalonStore.getState().updateSalonProfile({ depositAutoRelease: true });
+    expect(useSalonStore.getState().liberarSenalesVencidas(new Date())).toBe(0);
+    expect(useSalonStore.getState().liberarSenalesVencidas(dentroDeDosHoras)).toBeGreaterThanOrEqual(1);
+    expect(cita(a.id)).toMatchObject({ status: "cancelled", depositStatus: "anulada" });
+    useSalonStore.getState().updateSalonProfile({ depositEnabled: false, depositAutoRelease: false });
+  });
+});

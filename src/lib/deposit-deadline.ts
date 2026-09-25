@@ -1,4 +1,5 @@
 import type { Appointment } from "./mock/types";
+import { estadoSenal } from "./senal";
 
 export const DEPOSIT_DEADLINE_OPTIONS = [1, 2, 3, 4, 12, 24] as const;
 export type DepositDeadlineHours = typeof DEPOSIT_DEADLINE_OPTIONS[number];
@@ -17,12 +18,29 @@ export function extendDepositDueAt(dueAt: string, hours: number, now = new Date(
 
 export type DepositState = "none" | "requested" | "expired" | "received";
 
-export function depositState(a: Pick<Appointment, "status" | "depositRequestedAt" | "depositReceivedAt" | "depositDueAt">, now = new Date(), hours = 4): DepositState {
-  if (!a.depositRequestedAt) return "none";
-  if (a.depositReceivedAt) return "received";
+/**
+ * Estado resumido para los controles de siempre (pedida / vencida / recibida).
+ * Delega en el ciclo de vida completo (lib/senal.ts, `estadoSenal`): una señal
+ * ya aplicada, devuelta, retenida o anulada no ofrece esos botones.
+ */
+export function depositState(
+  a: Pick<Appointment, "status" | "depositRequestedAt" | "depositReceivedAt" | "depositDueAt"> &
+    Partial<Pick<Appointment, "start" | "priceEur" | "depositStatus" | "depositEur" | "depositPeriodHours">>,
+  now = new Date(),
+  hours = 4,
+): DepositState {
   if (a.status !== "pending" && a.status !== "confirmed") return "none";
-  const due = a.depositDueAt ?? depositDueAt(a.depositRequestedAt, hours);
-  return now.getTime() >= new Date(due).getTime() ? "expired" : "requested";
+  const e = estadoSenal(
+    {
+      ...a,
+      // Sin la hora de la cita no se puede topar el plazo con ella.
+      start: a.start ?? "9999-12-31T00:00:00.000Z",
+      priceEur: a.priceEur ?? 0,
+      depositPeriodHours: a.depositPeriodHours ?? (hours as Appointment["depositPeriodHours"]),
+    },
+    now,
+  );
+  return e === "pedida" ? "requested" : e === "vencida" ? "expired" : e === "recibida" ? "received" : "none";
 }
 
 export function effectiveDepositDueAt(a: Pick<Appointment, "depositRequestedAt" | "depositDueAt">, hours = 4): string | undefined {

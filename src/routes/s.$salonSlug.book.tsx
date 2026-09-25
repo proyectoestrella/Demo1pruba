@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/re
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType } from "@/lib/mock/salon";
-import { importeSenal, reglaSenal, servicioLlevaSenal, textoSenalPublico, type ReglaSenal } from "@/lib/senal";
+import { importeSenal, reglaSenal, senalDeReservaNueva, servicioLlevaSenal, textoSenalPublico, type ReglaSenal } from "@/lib/senal";
 import { huecosDeProfesionales, trabajaEn } from "@/lib/horario-equipo";
 import { isoDelSalon, zonaDelSalon } from "@/lib/zona-horaria";
 import type { Appointment, BookingAnswers, Client, Employee, EmployeeId, Service } from "@/lib/mock/types";
@@ -529,6 +529,9 @@ function BookingWizard() {
       status: "pending",
       note: data.note,
       bookingAnswers: showBookingQuestions ? cleanBookingAnswers(data.bookingAnswers) : undefined,
+      // La señal con la que nace (en un salón real el servidor la recalcula
+      // con su propia copia de la regla y manda la suya).
+      ...senalDeReservaNueva(reglaSen, reservaSenal, startISO),
     };
     // En un salón real esto es lo que crea (o reconoce) la ficha del cliente
     // en Supabase y engancha la cita. En una demo de venta `realSalonSlug` es

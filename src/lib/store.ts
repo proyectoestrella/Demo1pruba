@@ -19,12 +19,29 @@ import type {
   PaymentMethod,
   Service,
   SalonProfile,
+  MetodoSenal,
 } from "./mock/types";
 import type { DemoProfile } from "./demo-profile";
 import { recargoActivo } from "./recargo-activo";
-import { deadlineHours, depositDueAt, extendDepositDueAt, effectiveDepositDueAt } from "./deposit-deadline";
 import { inferBusinessType, menuDesdeServicios, slugForId, type BusinessType } from "./business-type";
 import { solapaConAgenda } from "./solape";
+import {
+  aplicarSenal,
+  confirmarDevolucion,
+  darMasTiempo,
+  deshacerRecibida,
+  desaplicarSenal,
+  importeSenal,
+  pedirSenal,
+  reabrirSenal,
+  recibirSenal,
+  reglaSenal,
+  resolverCancelacion,
+  resolverPlanton,
+  revisarVencimiento,
+  type CodigoErrorSenal,
+  type ResultadoSenal,
+} from "./senal";
 import { camposCambiados } from "./cita-parche";
 import {
   type OpcionesGuardado,
@@ -118,7 +135,12 @@ interface SalonState {
   /** Anota en local una reserva pública que el servidor ya ha guardado. */
   addSavedPublicAppointment: (appt: Appointment) => void;
   updateAppointment: (id: string, patch: Partial<Appointment>, opciones?: OpcionesGuardado) => void;
-  cancelAppointment: (id: string) => void;
+  /**
+   * `porSalon`: la cancela el salón (rechaza la solicitud, libera el hueco),
+   * no la clienta. Importa para la señal: si la cancela el salón, se devuelve
+   * siempre; si la clienta, depende de la antelación (lib/senal.ts).
+   */
+  cancelAppointment: (id: string, opciones?: { porSalon?: boolean }) => void;
   /**
    * Punto único por el que entra "el cliente confirma que viene".
    * Hoy se dispara a mano desde el panel; cuando exista canal (WhatsApp, SMS o
@@ -139,7 +161,20 @@ interface SalonState {
    */
   markPaid: (id: string, method: PaymentMethod | null) => void;
   /** Deja constancia de que se ha pedido la señal por Bizum de esta cita. */
+  /** @deprecated usar `pedirSenal`. Se conserva para las pantallas que aún lo llaman. */
   markDepositRequested: (id: string, eur: number, requestedAt: string) => void;
+  /**
+   * Señal (lib/senal.ts, contrato-senal.md). Cada acción devuelve `null` si se
+   * aplicó o el código de error si no se podía (y entonces no cambia nada).
+   * `pedirSenal` se llama SOLO cuando la dueña confirma que envió el WhatsApp.
+   */
+  pedirSenal: (id: string) => CodigoErrorSenal | null;
+  recibirSenal: (id: string, datos: { metodo: MetodoSenal; importeEur?: number }) => CodigoErrorSenal | null;
+  deshacerSenalRecibida: (id: string) => CodigoErrorSenal | null;
+  darMasTiempoSenal: (id: string) => CodigoErrorSenal | null;
+  confirmarDevolucionSenal: (id: string) => CodigoErrorSenal | null;
+  /** Libera las citas con la señal vencida si el salón activó la liberación automática. Devuelve cuántas. */
+  liberarSenalesVencidas: (ahora?: Date) => number;
   extendDepositDeadline: (id: string) => void;
   /** El dueño confirma a mano que el Bizum llegó (o se desdice). */
   markDepositReceived: (id: string, recibido: boolean) => void;
@@ -367,6 +402,17 @@ export const useSalonStore = create<SalonState>()(
        * cambios de /app/services se quedaban en este navegador. En una demo
        * la carta viaja dentro del enlace `?d=` y no se toca.
        */
+      /** Aplica una transición de la señal a una cita y la sube como parche. */
+      const aplicarSenalA = (id: string, transicion: (c: Appointment) => ResultadoSenal): CodigoErrorSenal | null => {
+        const antes = get().appointments.find((a) => a.id === id);
+        if (!antes) return "SENAL_ESTADO_INVALIDO";
+        const r = transicion(antes);
+        if (!r.ok) return r.error;
+        if (!Object.keys(r.patch).length) return null;
+        set((s) => ({ appointments: s.appointments.map((a) => (a.id === id ? { ...a, ...r.patch } : a)) }));
+        sincronizarCita(get(), id, antes);
+        return null;
+      };
       const sincronizarCarta = () => {
         if (!get().realSalonSlug) return;
         get().updateSalonProfile({ menu: menuDesdeServicios(get().services) });
@@ -411,6 +457,20 @@ export const useSalonStore = create<SalonState>()(
             : [...s.appointments, appt],
         })),
       updateAppointment: (id, patch, opciones) => {
+        const previa = get().appointments.find((a) => a.id === id);
+        // La señal sigue a la cita: un plantón la retiene (si llegó) o la
+        // anula; reabrir una cancelada la devuelve a donde estaba.
+        let senalPatch: Partial<Appointment> = {};
+        if (previa && patch.status && patch.status !== previa.status) {
+          const siguiente = { ...previa, ...patch };
+          const r =
+            patch.status === "no-show" ? resolverPlanton(siguiente)
+            : patch.status === "cancelled" ? resolverCancelacion(siguiente, reglaSenal(get().salonProfile), "clienta")
+            : previa.status === "cancelled" || previa.status === "no-show" ? reabrirSenal(siguiente)
+            : null;
+          if (r?.ok) senalPatch = r.patch;
+        }
+        if (Object.keys(senalPatch).length) patch = { ...patch, ...senalPatch };
         set((s) => ({
           appointments: s.appointments.map((a) => (a.id === id ? { ...a, ...patch } : a)),
         }));
@@ -420,12 +480,15 @@ export const useSalonStore = create<SalonState>()(
         const appt = state.appointments.find((a) => a.id === id);
         if (appt) pushAppointmentPatch(state.realSalonSlug, appt, patch, clienteDeLaCita(state, appt), opciones);
       },
-      cancelAppointment: (id) => {
+      cancelAppointment: (id, opciones) => {
         const antes = get().appointments.find((a) => a.id === id);
         const hueco = get().appointments.find((a) => a.id === id)?.start ?? null;
+        const senal = antes
+          ? resolverCancelacion(antes, reglaSenal(get().salonProfile), opciones?.porSalon ? "salon" : "clienta")
+          : null;
         set((s) => ({
           appointments: s.appointments.map((a) =>
-            a.id === id ? { ...a, status: "cancelled" } : a,
+            a.id === id ? { ...a, status: "cancelled", ...(senal?.ok ? senal.patch : {}) } : a,
           ),
           // Se queda apuntado el hueco que acaba de quedar libre, para poder
           // avisar al siguiente de la lista de espera con la hora concreta.
@@ -480,12 +543,15 @@ export const useSalonStore = create<SalonState>()(
 
       markPaid: (id, method) => {
         const antes = get().appointments.find((a) => a.id === id);
+        // Al cobrar, la señal recibida se descuenta (queda «aplicada»); al
+        // desmarcar el cobro, vuelve a «recibida».
+        const senal = antes ? (method ? aplicarSenal(antes) : desaplicarSenal(antes)) : null;
         set((s) => ({
           appointments: s.appointments.map((a) =>
             a.id === id
               ? method
-                ? { ...a, paymentMethod: method, paidAt: new Date().toISOString() }
-                : { ...a, paymentMethod: undefined, paidAt: undefined }
+                ? { ...a, paymentMethod: method, paidAt: new Date().toISOString(), ...(senal?.ok ? senal.patch : {}) }
+                : { ...a, paymentMethod: undefined, paidAt: undefined, ...(senal?.ok ? senal.patch : {}) }
               : a,
           ),
         }));
@@ -493,41 +559,47 @@ export const useSalonStore = create<SalonState>()(
       },
 
       markDepositRequested: (id, eur, requestedAt) => {
-        const antes = get().appointments.find((a) => a.id === id);
-        const hours = deadlineHours(get().salonProfile.depositDeadlineHours);
-        set((s) => ({
-          appointments: s.appointments.map((a) =>
-            a.id === id
-              ? { ...a, depositRequestedAt: requestedAt, depositDueAt: depositDueAt(requestedAt, hours), depositPeriodHours: hours, depositEur: eur }
-              : a,
-          ),
-        }));
-        sincronizarCita(get(), id, antes);
+        aplicarSenalA(id, (c) => pedirSenal(c, reglaSenal(get().salonProfile), eur, new Date(requestedAt)));
+      },
+
+      pedirSenal: (id) => {
+        const regla = reglaSenal(get().salonProfile);
+        return aplicarSenalA(id, (c) =>
+          pedirSenal(c, regla, importeSenal(regla, { serviceIds: c.serviceIds, durationMin: c.duration, priceEur: c.priceEur, esNueva: undefined })),
+        );
+      },
+      recibirSenal: (id, datos) => {
+        // Sin importe dicho ni debido (cita creada en el panel), vale el de la regla del salón.
+        const regla = reglaSenal(get().salonProfile);
+        return aplicarSenalA(id, (c) =>
+          recibirSenal(c, {
+            ...datos,
+            importeEur:
+              datos.importeEur ??
+              (c.depositEur && c.depositEur > 0
+                ? c.depositEur
+                : importeSenal(regla, { serviceIds: c.serviceIds, durationMin: c.duration, priceEur: c.priceEur }) || regla.importeFijoEur),
+          }),
+        );
+      },
+      deshacerSenalRecibida: (id) => aplicarSenalA(id, (c) => deshacerRecibida(c)),
+      darMasTiempoSenal: (id) => aplicarSenalA(id, (c) => darMasTiempo(c, reglaSenal(get().salonProfile))),
+      confirmarDevolucionSenal: (id) => aplicarSenalA(id, (c) => confirmarDevolucion(c)),
+      liberarSenalesVencidas: (ahora = new Date()) => {
+        const regla = reglaSenal(get().salonProfile);
+        const aLiberar = get().appointments.filter((a) => revisarVencimiento(a, regla, ahora).liberar);
+        for (const a of aLiberar) get().cancelAppointment(a.id, { porSalon: true });
+        return aLiberar.length;
       },
 
       extendDepositDeadline: (id) => {
-        const antes = get().appointments.find((a) => a.id === id);
-        const defaultHours = deadlineHours(get().salonProfile.depositDeadlineHours);
-        set((s) => ({ appointments: s.appointments.map((a) => {
-          const hours = a.depositPeriodHours ?? defaultHours;
-          const due = effectiveDepositDueAt(a, hours);
-          return a.id === id && due && a.depositRequestedAt && !a.depositReceivedAt
-            ? { ...a, depositDueAt: extendDepositDueAt(due, hours) }
-            : a;
-        }) }));
-        sincronizarCita(get(), id, antes);
+        get().darMasTiempoSenal(id);
       },
 
       markDepositReceived: (id, recibido) => {
-        const antes = get().appointments.find((a) => a.id === id);
-        set((s) => ({
-          appointments: s.appointments.map((a) =>
-            a.id === id
-              ? { ...a, depositReceivedAt: recibido ? new Date().toISOString() : undefined }
-              : a,
-          ),
-        }));
-        sincronizarCita(get(), id, antes);
+        // Compatibilidad: el botón «Ha llegado» de siempre apunta Bizum por el importe debido.
+        if (recibido) get().recibirSenal(id, { metodo: "bizum" });
+        else get().deshacerSenalRecibida(id);
       },
 
       addClient: (c) => {

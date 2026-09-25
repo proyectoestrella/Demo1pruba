@@ -13,7 +13,7 @@
  *
  * Funciones puras: sin store, sin red, sin React. Ver `contrato-senal.md`.
  */
-import type { Appointment, SalonProfile } from "./mock/types";
+import type { Appointment, EstadoSenalGuardado, MetodoSenal, SalonProfile } from "./mock/types";
 
 /** Horas que tiene la clienta para hacer el Bizum. María pidió de 1 a 4. */
 export const VENTANAS_SENAL = [1, 2, 3, 4] as const;
@@ -171,4 +171,279 @@ export function respuestaFaqSenal(regla: ReglaSenal, eur: (n: number) => string)
     regla.aplicaA === "servicios" ? "Solo en algunos servicios (lo verás al reservar): " : "";
   const pedimos = aQuien ? "pedimos" : "Pedimos";
   return `${aQuien}${pedimos} ${cuanto} por Bizum, con ${regla.ventanaHoras} ${regla.ventanaHoras === 1 ? "hora" : "horas"} para hacerlo. Se descuenta del precio; si cancelas con más de ${regla.horasCancelacion} h de antelación, te la devolvemos.`;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Ciclo de vida                                                            */
+/* ------------------------------------------------------------------------ */
+
+
+/**
+ * Estado efectivo de la señal de una cita. `vencida` no se guarda: es
+ * `pedida` con el plazo pasado. `no_aplica` = la cita no lleva señal.
+ *
+ *   por_pedir ─pedir─▶ pedida ─(pasa el plazo)─▶ vencida
+ *                        │  ▲                      │
+ *                        │  └───── dar más tiempo ─┘
+ *                        ▼
+ *                     recibida ─cobrar─▶ aplicada
+ *                        │
+ *        cancela a tiempo / salón cancela ─▶ devuelta
+ *        cancela tarde / no viene          ─▶ retenida
+ *   (sin recibir) cancela, no viene o se libera ─▶ anulada
+ */
+export type EstadoSenal = "no_aplica" | EstadoSenalGuardado | "vencida";
+
+export type CodigoErrorSenal =
+  /** La cita no lleva señal (importe 0 con la regla actual). */
+  | "SENAL_SIN_IMPORTE"
+  /** Esa transición no se puede hacer desde el estado actual. */
+  | "SENAL_ESTADO_INVALIDO"
+  /** Importe recibido o devuelto no válido (≤ 0 o no numérico). */
+  | "SENAL_IMPORTE_INVALIDO"
+  /** La cita ya está cancelada, fue un plantón o ya pasó. */
+  | "SENAL_CITA_CERRADA";
+
+export type ResultadoSenal =
+  | { ok: true; patch: Partial<Appointment> }
+  | { ok: false; error: CodigoErrorSenal };
+
+type CitaCiclo = Pick<
+  Appointment,
+  | "start"
+  | "status"
+  | "priceEur"
+  | "depositStatus"
+  | "depositEur"
+  | "depositRequestedAt"
+  | "depositDueAt"
+  | "depositPeriodHours"
+  | "depositReceivedAt"
+  | "depositReceivedEur"
+  | "depositMethod"
+  | "depositAppliedAt"
+  | "depositAppliedEur"
+  | "depositRefundedAt"
+  | "depositRefundedEur"
+  | "depositRetainedAt"
+>;
+
+const HORA = 3_600_000;
+const ok = (patch: Partial<Appointment>): ResultadoSenal => ({ ok: true, patch });
+const fallo = (error: CodigoErrorSenal): ResultadoSenal => ({ ok: false, error });
+const iso = (ms: number) => new Date(ms).toISOString();
+
+/** Estado guardado, o el que se deduce de las fechas en citas anteriores al 25/09/2026. */
+function estadoGuardado(c: CitaCiclo): EstadoSenalGuardado | "no_aplica" {
+  if (c.depositStatus) return c.depositStatus;
+  if (c.depositReceivedAt) return "recibida";
+  if (c.depositRequestedAt) return "pedida";
+  return (c.depositEur ?? 0) > 0 ? "por_pedir" : "no_aplica";
+}
+
+/** Vencimiento efectivo: el guardado o, en citas antiguas, pedida + plazo. Nunca después de la propia cita. */
+export function vencimientoSenal(c: CitaCiclo, ventanaPorDefecto: number = 4): string | undefined {
+  if (!c.depositRequestedAt) return c.depositDueAt;
+  const due = c.depositDueAt ?? iso(Date.parse(c.depositRequestedAt) + (c.depositPeriodHours ?? ventanaPorDefecto) * HORA);
+  return iso(Math.min(Date.parse(due), Date.parse(c.start)));
+}
+
+export function estadoSenal(c: CitaCiclo, ahora: Date = new Date()): EstadoSenal {
+  const e = estadoGuardado(c);
+  if (e === "pedida") {
+    const due = vencimientoSenal(c);
+    if (due && ahora.getTime() >= Date.parse(due)) return "vencida";
+  }
+  return e;
+}
+
+const CITA_ABIERTA = new Set(["pending", "confirmed"]);
+
+/**
+ * Lo que debe una reserva nueva hecha por la web. Con la señal automática
+ * nace `pedida` (la web ya enseñó el Bizum y el plazo); si no, `por_pedir`
+ * y la pide la dueña. El plazo nunca pasa de la hora de la cita.
+ */
+export function senalDeReservaNueva(
+  regla: ReglaSenal,
+  r: ReservaParaSenal,
+  startISO: string,
+  ahora: Date = new Date(),
+): Partial<Appointment> {
+  const importe = importeSenal(regla, r);
+  if (importe <= 0) return {};
+  if (!regla.automatica) return { depositStatus: "por_pedir", depositEur: importe };
+  return {
+    depositStatus: "pedida",
+    depositEur: importe,
+    depositRequestedAt: ahora.toISOString(),
+    depositPeriodHours: regla.ventanaHoras,
+    depositDueAt: iso(Math.min(ahora.getTime() + regla.ventanaHoras * HORA, Date.parse(startISO))),
+  };
+}
+
+/**
+ * La dueña CONFIRMA que ha enviado el WhatsApp de la señal. Solo entonces
+ * la señal pasa a `pedida`: abrir WhatsApp no basta (se podía cerrar sin
+ * enviar y quedaba «pedida» igual). Vale para pedirla por primera vez o para
+ * volver a pedirla tras vencer (plazo nuevo).
+ */
+export function pedirSenal(c: CitaCiclo, regla: ReglaSenal, importeEur: number, ahora: Date = new Date()): ResultadoSenal {
+  if (!CITA_ABIERTA.has(c.status) || Date.parse(c.start) <= ahora.getTime()) return fallo("SENAL_CITA_CERRADA");
+  const e = estadoSenal(c, ahora);
+  if (!["no_aplica", "por_pedir", "pedida", "vencida"].includes(e)) return fallo("SENAL_ESTADO_INVALIDO");
+  const importe = c.depositEur && c.depositEur > 0 ? c.depositEur : Math.round(importeEur);
+  if (!(importe > 0)) return fallo("SENAL_SIN_IMPORTE");
+  // Reenviar mientras sigue en plazo no lo alarga: «dar más tiempo» es otra acción.
+  if (e === "pedida") return ok({ depositStatus: "pedida", depositEur: importe });
+  return ok({
+    depositStatus: "pedida",
+    depositEur: importe,
+    depositRequestedAt: ahora.toISOString(),
+    depositPeriodHours: regla.ventanaHoras,
+    depositDueAt: iso(Math.min(ahora.getTime() + regla.ventanaHoras * HORA, Date.parse(c.start))),
+  });
+}
+
+/** Otro plazo igual desde ahora (o desde el vencimiento, si aún no ha llegado), sin pasar de la cita. */
+export function darMasTiempo(c: CitaCiclo, regla: ReglaSenal, ahora: Date = new Date()): ResultadoSenal {
+  if (!CITA_ABIERTA.has(c.status) || Date.parse(c.start) <= ahora.getTime()) return fallo("SENAL_CITA_CERRADA");
+  const e = estadoSenal(c, ahora);
+  if (e !== "pedida" && e !== "vencida") return fallo("SENAL_ESTADO_INVALIDO");
+  const horas = c.depositPeriodHours ?? regla.ventanaHoras;
+  const desde = Math.max(Date.parse(vencimientoSenal(c, regla.ventanaHoras)!), ahora.getTime());
+  return ok({ depositStatus: "pedida", depositDueAt: iso(Math.min(desde + horas * HORA, Date.parse(c.start))) });
+}
+
+/**
+ * La dueña ha visto el dinero. Vale aunque el plazo haya vencido (llegó
+ * tarde, pero llegó) y aunque no se hubiera pedido (la dejó en mano). El
+ * importe por defecto es el debido; puede ser otro si trajo más o menos.
+ */
+export function recibirSenal(
+  c: CitaCiclo,
+  datos: { metodo: MetodoSenal; importeEur?: number },
+  ahora: Date = new Date(),
+): ResultadoSenal {
+  const e = estadoSenal(c, ahora);
+  if (!["no_aplica", "por_pedir", "pedida", "vencida"].includes(e)) return fallo("SENAL_ESTADO_INVALIDO");
+  const importe = datos.importeEur ?? c.depositEur ?? 0;
+  if (!Number.isFinite(importe) || importe <= 0) return fallo("SENAL_IMPORTE_INVALIDO");
+  return ok({
+    depositStatus: "recibida",
+    depositReceivedAt: ahora.toISOString(),
+    depositReceivedEur: Math.round(importe * 100) / 100,
+    depositMethod: datos.metodo,
+    ...(c.depositEur ? {} : { depositEur: Math.round(importe * 100) / 100 }),
+  });
+}
+
+/** «Desmarcar»: se equivocó al marcarla recibida. Vuelve a `pedida` (o `por_pedir` si nunca se pidió). */
+export function deshacerRecibida(c: CitaCiclo, ahora: Date = new Date()): ResultadoSenal {
+  if (estadoSenal(c, ahora) !== "recibida") return fallo("SENAL_ESTADO_INVALIDO");
+  return ok({
+    depositStatus: c.depositRequestedAt ? "pedida" : "por_pedir",
+    depositReceivedAt: undefined,
+    depositReceivedEur: undefined,
+    depositMethod: undefined,
+  });
+}
+
+/**
+ * Al cobrar la cita, la señal recibida se descuenta. Devuelve además cuánto
+ * queda por cobrar. Si la señal fue mayor que el servicio (cambió a otro más
+ * barato), lo que sobra queda «a devolver».
+ */
+export function aplicarSenal(
+  c: CitaCiclo,
+  ahora: Date = new Date(),
+): ResultadoSenal & { aCobrarEur?: number } {
+  const precio = c.priceEur;
+  if (estadoSenal(c, ahora) !== "recibida") return { ok: true, patch: {}, aCobrarEur: precio };
+  const recibido = c.depositReceivedEur ?? c.depositEur ?? 0;
+  const aplicado = Math.min(recibido, precio);
+  const sobra = Math.round((recibido - aplicado) * 100) / 100;
+  return {
+    ok: true,
+    aCobrarEur: Math.round((precio - aplicado) * 100) / 100,
+    patch: {
+      depositStatus: "aplicada",
+      depositAppliedAt: ahora.toISOString(),
+      depositAppliedEur: aplicado,
+      ...(sobra > 0 ? { depositRefundedEur: sobra } : {}),
+    },
+  };
+}
+
+/** Se desmarca el cobro: la señal vuelve a estar recibida, sin aplicar. */
+export function desaplicarSenal(c: CitaCiclo): ResultadoSenal {
+  if (c.depositStatus !== "aplicada") return ok({});
+  return ok({ depositStatus: "recibida", depositAppliedAt: undefined, depositAppliedEur: undefined });
+}
+
+/**
+ * La cita se cancela. Quién cancela importa:
+ *  - la clienta, con más de `horasCancelacion` de antelación → se le devuelve;
+ *  - la clienta, más tarde → el salón se la queda (retenida);
+ *  - el salón (rechaza la solicitud, libera el hueco) → se devuelve siempre.
+ * Sin dinero recibido no hay nada que devolver ni retener: `anulada`.
+ */
+export function resolverCancelacion(
+  c: CitaCiclo,
+  regla: ReglaSenal,
+  porQuien: "clienta" | "salon",
+  ahora: Date = new Date(),
+): ResultadoSenal {
+  const e = estadoSenal(c, ahora);
+  if (e === "por_pedir" || e === "pedida" || e === "vencida") return ok({ depositStatus: "anulada" });
+  if (e !== "recibida") return ok({});
+  const recibido = c.depositReceivedEur ?? c.depositEur ?? 0;
+  const aTiempo = Date.parse(c.start) - ahora.getTime() >= regla.horasCancelacion * HORA;
+  if (porQuien === "salon" || aTiempo) {
+    return ok({ depositStatus: "devuelta", depositRefundedEur: recibido });
+  }
+  return ok({ depositStatus: "retenida", depositRetainedAt: ahora.toISOString() });
+}
+
+/** No vino: con la señal recibida, el salón se la queda; sin ella, no hay nada. Llegar tarde NO es esto. */
+export function resolverPlanton(c: CitaCiclo, ahora: Date = new Date()): ResultadoSenal {
+  const e = estadoSenal(c, ahora);
+  if (e === "recibida") return ok({ depositStatus: "retenida", depositRetainedAt: ahora.toISOString() });
+  if (e === "por_pedir" || e === "pedida" || e === "vencida") return ok({ depositStatus: "anulada" });
+  return ok({});
+}
+
+/** La dueña confirma que ya ha hecho la devolución (Bizum de vuelta o en mano). */
+export function confirmarDevolucion(c: CitaCiclo, ahora: Date = new Date()): ResultadoSenal {
+  const aDevolver = c.depositRefundedEur ?? 0;
+  if (aDevolver <= 0 || c.depositRefundedAt) return fallo("SENAL_ESTADO_INVALIDO");
+  return ok({ depositRefundedAt: ahora.toISOString() });
+}
+
+/**
+ * ¿Hay que liberar el hueco? Solo si la señal ha vencido, la cita sigue
+ * abierta y el salón activó la liberación automática. Sin ella, `vencida`
+ * es un aviso y decide la dueña (como hasta ahora).
+ */
+export function revisarVencimiento(
+  c: CitaCiclo,
+  regla: ReglaSenal,
+  ahora: Date = new Date(),
+): { vencida: boolean; liberar: boolean } {
+  const vencida = CITA_ABIERTA.has(c.status) && estadoSenal(c, ahora) === "vencida";
+  return { vencida, liberar: vencida && regla.liberacionAutomatica };
+}
+
+/**
+ * La cita se reabre (el «Deshacer» de rechazar o cancelar): la señal vuelve a
+ * donde estaba según lo que de verdad pasó con el dinero. Una devolución ya
+ * hecha (`depositRefundedAt`) no se deshace sola.
+ */
+export function reabrirSenal(c: CitaCiclo): ResultadoSenal {
+  if (c.depositStatus !== "anulada" && c.depositStatus !== "devuelta" && c.depositStatus !== "retenida") return ok({});
+  if (c.depositRefundedAt) return ok({});
+  const base = { depositRetainedAt: undefined, depositRefundedEur: undefined };
+  if (c.depositReceivedAt) return ok({ ...base, depositStatus: "recibida" });
+  if (c.depositRequestedAt) return ok({ ...base, depositStatus: "pedida" });
+  return ok({ ...base, depositStatus: (c.depositEur ?? 0) > 0 ? "por_pedir" : undefined });
 }

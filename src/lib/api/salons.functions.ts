@@ -24,6 +24,7 @@ import { isManualBlockRecord } from "../no-show";
 import { parseDepositNote } from "../deposit-deadline";
 import { columnasDeParche, filaSinLote3 } from "../cita-parche";
 import { ERROR_SOLAPE_PANEL } from "../solape";
+import { reglaSenal, senalDeReservaNueva } from "../senal";
 import {
   ERROR_BLOQUEO_MANUAL,
   ERROR_FUERA_HORARIO,
@@ -637,6 +638,8 @@ export const syncAppointment = createServerFn({ method: "POST" })
         return { synced: false as const, reason: ERROR_BLOQUEO_MANUAL };
       }
     }
+    /** Perfil del salón, leído solo para las reservas de fuera (horario y señal). */
+    let perfilPublico: SalonProfile | undefined;
     if (!manda) {
       // Horario por profesional (`teamHours`) y del local, leídos del perfil
       // guardado: la web pública ya no ofrece esas horas, pero el servidor no
@@ -648,6 +651,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
         .maybeSingle();
       if (errorSalon) throw new Error(`syncAppointment (horario): ${errorSalon.message}`);
       const perfil = salonRow?.profile as SalonProfile | undefined;
+      perfilPublico = perfil;
       if (perfil && !profesionalTrabaja(perfil, data.employeeId, data.startISO, data.durationMin)) {
         return { synced: false as const, reason: ERROR_FUERA_HORARIO };
       }
@@ -738,6 +742,21 @@ export const syncAppointment = createServerFn({ method: "POST" })
       deposit_retained_at: manda ? (data.depositRetainedAt ?? null) : null,
       deposit_note: manda ? (data.depositNote ?? null) : null,
     };
+    // Reserva de fuera: la señal la calcula el servidor con la regla del
+    // salón (importe, y si es automática, pedida con su plazo). Lo que mande
+    // el navegador sobre la señal se ignora siempre.
+    if (!manda && perfilPublico) {
+      const senal = senalDeReservaNueva(
+        reglaSenal(perfilPublico),
+        { serviceIds: data.serviceIds, durationMin: data.durationMin, priceEur: data.priceEur },
+        data.startISO,
+      );
+      if (senal.depositStatus) fila.deposit_status = senal.depositStatus;
+      if (senal.depositEur != null) fila.deposit_eur = senal.depositEur;
+      if (senal.depositRequestedAt) fila.deposit_requested_at = senal.depositRequestedAt;
+      if (senal.depositDueAt) fila.deposit_due_at = senal.depositDueAt;
+      if (senal.depositPeriodHours) fila.deposit_period_hours = senal.depositPeriodHours;
+    }
     // Solo se toca `client_id` cuando esta llamada sabe de qué cliente habla.
     // Un "confirmar" desde el panel no lleva teléfono, y machacar la columna
     // con null desengancharía la cita de su ficha.

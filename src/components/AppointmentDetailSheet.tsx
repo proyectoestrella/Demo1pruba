@@ -58,6 +58,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Calendar, Clock, Euro, CheckCheck, MessageCircle, TriangleAlert } from "lucide-react";
+import { importeSenal, reglaSenal } from "@/lib/senal";
 
 /** Duraciones que puede elegir el salón al ajustar una cita, en minutos. */
 const DURATION_OPTIONS_MIN = [15, 30, 45, 60, 90, 120, 150, 180];
@@ -109,7 +110,8 @@ export function AppointmentDetailSheet({
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const markClientConfirmed = useSalonStore((s) => s.markClientConfirmed);
   const markPaid = useSalonStore((s) => s.markPaid);
-  const markDepositRequested = useSalonStore((s) => s.markDepositRequested);
+  const pedirSenal = useSalonStore((s) => s.pedirSenal);
+  const reglaSen = reglaSenal(useSalonStore((s) => s.salonProfile));
   const appointments = useSalonStore((s) => s.appointments);
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const noShowNoticeHours = useSalonStore((s) => s.salonProfile.noShowNoticeHours ?? 2);
@@ -118,7 +120,7 @@ export function AppointmentDetailSheet({
   const depositEnabled = useSalonStore((s) => !!s.salonProfile.depositEnabled);
   const depositBizumPhone = useSalonStore((s) => s.salonProfile.depositBizumPhone ?? "");
   const depositAmountEur = useSalonStore((s) => s.salonProfile.depositAmountEur ?? 10);
-  const depositDeadlineHours = useSalonStore((s) => deadlineHours(s.salonProfile.depositDeadlineHours));
+  const depositDeadlineHours = reglaSen.ventanaHoras;
   // El cliente puede no existir en la store (una cita creada desde la web
   // pública nace con un `clientId` de walk-in que no tiene ficha propia): sin
   // ficha no hay a quién marcar, así que la política de plantón se calla.
@@ -224,6 +226,9 @@ export function AppointmentDetailSheet({
    */
   function handlePedirFianza() {
     if (!appointment) return;
+    const importeDeEstaCita = appointment.depositEur && appointment.depositEur > 0
+      ? appointment.depositEur
+      : importeSenal(reglaSen, { serviceIds: appointment.serviceIds, durationMin: appointment.duration, priceEur: appointment.priceEur }) || depositAmountEur;
     const telefono = client?.phone ?? "";
     if (!telefono) {
       toast.error("Esta cita no tiene teléfono al que escribir");
@@ -235,11 +240,24 @@ export function AppointmentDetailSheet({
       startISO: appointment.start,
       salonName,
       bizumPhone: depositBizumPhone,
-      importeEur: depositAmountEur,
+      importeEur: importeDeEstaCita,
       deadlineISO: depositDueAt(requestedAt, depositDeadlineHours),
     }, requestedAt);
-    markDepositRequested(appointment.id, depositAmountEur, requestedAt);
     window.open(url, "_blank", "noopener,noreferrer");
+    // Abrir WhatsApp no es enviar: la señal pasa a «pedida» solo cuando la
+    // dueña confirma que lo ha mandado (antes se marcaba al abrirlo).
+    toast("¿Has enviado el WhatsApp de la señal?", {
+      description: "Márcalo para que empiece a contar el plazo.",
+      duration: 20_000,
+      action: {
+        label: "Sí, enviado",
+        onClick: () => {
+          const error = pedirSenal(appointment.id);
+          if (error) toast.error("No se ha podido marcar la señal como pedida", { description: error });
+          else toast.success("Señal pedida");
+        },
+      },
+    });
   }
 
   function handleCancel() {

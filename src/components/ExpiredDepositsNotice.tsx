@@ -3,10 +3,11 @@ import { depositState, deadlineHours } from "@/lib/deposit-deadline";
 import { useClientNow } from "@/lib/use-client-now";
 import { useSalonStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
+import { reglaSenal } from "@/lib/senal";
 
 export function ExpiredDepositsNotice({ onOpenDetail }: { onOpenDetail: (appointment: Appointment) => void }) {
   const appointments = useSalonStore((s) => s.appointments);
-  const hours = useSalonStore((s) => deadlineHours(s.salonProfile.depositDeadlineHours));
+  const hours = reglaSenal(useSalonStore((s) => s.salonProfile)).ventanaHoras;
   const now = useClientNow();
   if (!now) return null;
   const expired = appointments.filter((a) => depositState(a, now, hours) === "expired");

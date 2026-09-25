@@ -35,7 +35,7 @@ export function DepositStatusControls({ appointment, hours, onReleased }: {
     {confirmRelease && <div className="space-y-2 border-t border-destructive/30 pt-2 text-sm">
       <p>¿Cancelar la cita de {appointment.clientName} y liberar el hueco? No se cobrará ningún recargo.</p>
       <div className="flex gap-2">
-        <Button size="sm" variant="destructive" onClick={() => { cancel(appointment.id); setConfirmRelease(false); onReleased?.(); toast.success("Hueco liberado"); }}>Sí, liberar</Button>
+        <Button size="sm" variant="destructive" onClick={() => { cancel(appointment.id, { porSalon: true }); setConfirmRelease(false); onReleased?.(); toast.success("Hueco liberado"); }}>Sí, liberar</Button>
         <Button size="sm" variant="ghost" onClick={() => setConfirmRelease(false)}>Mantener cita</Button>
       </div>
     </div>}

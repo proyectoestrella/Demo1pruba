@@ -27,6 +27,12 @@ export interface CierreDeCaja {
   total: number;
   /** Cuánto por cada forma de cobro. Las tres salen siempre, aunque sea a 0. */
   porMetodo: Record<PaymentMethod, number>;
+  /**
+   * Señales ya recibidas antes y descontadas hoy al cobrar. No son dinero de
+   * hoy: `total` y `porMetodo` ya las restan, para cuadrar con TPV 123, donde
+   * la señal también se descuenta del ticket.
+   */
+  senalesDescontadas: number;
   /** Cuánto ha hecho cada profesional, ordenado de más a menos. Incluye los "Sin cita". */
   porProfesional: { employeeId: string; nombre: string; total: number; citas: number }[];
 }
@@ -47,6 +53,11 @@ function esMismoDia(a: Date, b: Date) {
  * cualquiera — por eso cuenta igual en el total y en el reparto por
  * profesional.
  */
+/** Lo que se cobra hoy de una cita: su precio menos la señal que se le descontó. */
+export function cobradoHoy(a: Appointment): number {
+  return Math.max(0, a.priceEur - (a.depositAppliedEur ?? 0));
+}
+
 export function esCobrable(a: Appointment): boolean {
   return a.status !== "cancelled" && a.status !== "no-show" && a.status !== "blocked";
 }
@@ -63,8 +74,9 @@ export function cierreDelDia(
   const porMetodo: Record<PaymentMethod, number> = { efectivo: 0, bizum: 0, tarjeta: 0 };
   for (const a of cobradas) {
     const metodo = a.paymentMethod ?? "efectivo";
-    porMetodo[metodo] += a.priceEur;
+    porMetodo[metodo] += cobradoHoy(a);
   }
+  const senalesDescontadas = cobradas.reduce((s, a) => s + (a.depositAppliedEur ?? 0), 0);
 
   // Con un solo profesional, "por profesional" es el total otra vez: una
   // fila con el nombre de Adam y la misma cifra que ya está arriba. No se
@@ -73,8 +85,9 @@ export function cierreDelDia(
     return {
       cobradas,
       pendientes,
-      total: cobradas.reduce((s, a) => s + a.priceEur, 0),
+      total: cobradas.reduce((s, a) => s + cobradoHoy(a), 0),
       porMetodo,
+      senalesDescontadas,
       porProfesional: [],
     };
   }
@@ -82,7 +95,7 @@ export function cierreDelDia(
   const acumulado = new Map<string, { total: number; citas: number }>();
   for (const a of cobradas) {
     const actual = acumulado.get(a.employeeId) ?? { total: 0, citas: 0 };
-    acumulado.set(a.employeeId, { total: actual.total + a.priceEur, citas: actual.citas + 1 });
+    acumulado.set(a.employeeId, { total: actual.total + cobradoHoy(a), citas: actual.citas + 1 });
   }
 
   const porProfesional = [...acumulado.entries()]
@@ -99,8 +112,9 @@ export function cierreDelDia(
   return {
     cobradas,
     pendientes,
-    total: cobradas.reduce((s, a) => s + a.priceEur, 0),
+    total: cobradas.reduce((s, a) => s + cobradoHoy(a), 0),
     porMetodo,
+    senalesDescontadas,
     porProfesional,
   };
 }

@@ -173,3 +173,20 @@ describe("sin backend en producción no hay degradación silenciosa a demo", () 
     expect(cuerpo.indexOf("Backend sin configurar")).toBeLessThan(cuerpo.indexOf("return { profile: null }"));
   });
 });
+
+describe("señal: la reserva pública no la decide el navegador", () => {
+  it("todos los campos de la señal se escriben solo con mando", () => {
+    const cuerpo = cuerpoDe("syncAppointment");
+    for (const c of ["deposit_status", "deposit_method", "deposit_received_eur", "deposit_applied_at", "deposit_applied_eur", "deposit_refunded_at", "deposit_refunded_eur", "deposit_retained_at", "deposit_note", "deposit_eur", "deposit_requested_at", "deposit_received_at", "deposit_due_at"]) {
+      expect(cuerpo, c).toContain(`${c}: manda ?`);
+    }
+  });
+
+  it("en una reserva de fuera la señal sale de la regla del salón, antes de escribir", () => {
+    const cuerpo = cuerpoDe("syncAppointment");
+    const i = cuerpo.indexOf("senalDeReservaNueva(");
+    expect(i).toBeGreaterThan(-1);
+    expect(cuerpo.slice(i - 200, i)).toContain("!manda && perfilPublico");
+    expect(i).toBeLessThan(cuerpo.indexOf("escribirCita(supabase, fila)"));
+  });
+});

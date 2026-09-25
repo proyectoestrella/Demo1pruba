@@ -27,6 +27,9 @@ export function usePanelRefresh(slug: string | null) {
         if (activo && useSalonStore.getState().realSalonSlug === slug &&
           !debeAplazarRefresco(document.visibilityState === "visible", editando(), sincronizacionPendiente())) {
           useSalonStore.getState().hydrateFromServer(datos);
+          // Señales vencidas: solo se liberan solas si el salón lo activó
+          // (lib/senal.ts, `revisarVencimiento`). Sin eso, se avisa y decide ella.
+          useSalonStore.getState().liberarSenalesVencidas();
           const instante = Date.now();
           setActualizado(instante);
           setAhora(instante);
