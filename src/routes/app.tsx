@@ -17,7 +17,10 @@ import { PanelV2Shell } from "@/components/PanelV2Shell";
 import { GuardiaDelPanel } from "@/components/GuardiaDelPanel";
 import { accesoAlPanel } from "@/lib/api/salons.functions";
 import { hasSeenTour, startTour } from "@/lib/tour";
-import { BarraInferior, CabeceraArena, MenuLateral } from "@/components/ArenaShell";
+import { BarraInferior, CabeceraArena, MenuLateral, TODOS_LOS_ITEMS, estaActivo } from "@/components/ArenaShell";
+import { FranjaVerComo } from "@/components/VerComo";
+import { SinPermiso } from "@/components/SinPermiso";
+import { usePermisos, veRuta } from "@/lib/use-permisos";
 import { useHayPanelLateral } from "@/lib/panel-lateral";
 import { cn } from "@/lib/utils";
 import {
@@ -193,6 +196,10 @@ function DashboardLayoutV1() {
   // contenido deja el ancho del panel a la derecha (--ancho-panel, que la
   // dueña puede cambiar arrastrando su borde): el panel empuja, no tapa.
   const conPanel = useHayPanelLateral();
+  // Lote 11: una sección que el rol no ve se sustituye por «Esta parte la lleva…».
+  const permisos = usePermisos();
+  const permitida = veRuta(permisos, path);
+  const seccion = TODOS_LOS_ITEMS.find((i) => estaActivo(i, path))?.label ?? "esta sección";
   // Colores elegidos por la dueña en Ajustes (9h): se sincronizan antes de pintar.
   const coloresServicio = useSalonStore((s) => s.salonProfile.coloresServicio);
   const coloresProfesional = useSalonStore((s) => s.salonProfile.coloresProfesional);
@@ -223,8 +230,9 @@ function DashboardLayoutV1() {
         {/* Contenido a todo el ancho con gutter de 28 px; en móvil, 16 px y
             hueco para la barra inferior. El último bloque de cada pantalla
             puede crecer hasta el borde (flex-1). */}
+        <FranjaVerComo />
         <main className="flex min-w-0 flex-1 flex-col px-4 pt-5 pb-[100px] md:px-8 md:pt-8 md:pb-8">
-          <Outlet />
+          {permitida ? <Outlet /> : <SinPermiso seccion={seccion} />}
         </main>
       </div>
 

@@ -31,6 +31,9 @@ import { BotonCerrarSesion } from "@/components/BotonCerrarSesion";
 import { TOTAL_PASOS, useProgresoPrimerosPasos } from "@/components/PrimerosPasos";
 import { Button } from "@/components/ui/button";
 import { AvatarSalon } from "@/components/AvatarSalon";
+import { VerComo } from "@/components/VerComo";
+import { useCitasVisibles, useEsDemo, useMiembroActual, usePermisos, veRuta } from "@/lib/use-permisos";
+import { NOMBRE_ROL } from "@/lib/accesos-maqueta";
 import {
   Sheet,
   SheetContent,
@@ -110,18 +113,41 @@ export function estaActivoConHijos(item: NavItem, path: string) {
   return estaActivo(item, path) || (item.hijos ?? []).some((h) => estaActivo(h, path));
 }
 
+/** Lo que el menú enseña: lo que la demo no oculta y lo que el rol puede ver (lote 11). */
 function useGruposVisibles() {
   const modulosOcultos = useSalonStore((s) => s.salonProfile.modulosOcultos);
-  const visible = (i: NavItem) => !i.modulo || moduloVisible({ modulosOcultos }, i.modulo);
+  const permisos = usePermisos();
+  const visible = (i: NavItem) => (!i.modulo || moduloVisible({ modulosOcultos }, i.modulo)) && veRuta(permisos, i.to);
   return GRUPOS_NAV.map((g) => ({
     ...g,
     items: g.items.filter(visible).map((i) => (i.hijos ? { ...i, hijos: i.hijos.filter(visible) } : i)),
   })).filter((g) => g.items.length > 0);
 }
 
-/** Solicitudes por confirmar: el contador verde junto a «Hoy». */
+/** Solicitudes por confirmar: el contador verde junto a «Hoy» (las que le tocan a quien mira). */
 function useSolicitudesPendientes() {
-  return useSalonStore((s) => s.appointments.filter((a) => a.status === "pending").length);
+  return useCitasVisibles().filter((a) => a.status === "pending").length;
+}
+
+/** Los cuatro de la barra inferior: los de siempre que pueda ver, completados con los primeros que vea. */
+function useBarraMovil(grupos: { items: NavItem[] }[]): NavItem[] {
+  const permisos = usePermisos();
+  const fijos = BARRA_MOVIL.filter((i) => veRuta(permisos, i.to));
+  const resto = grupos.flatMap((g) => g.items).filter((i) => !fijos.some((f) => f.to === i.to));
+  return [...fijos, ...resto].slice(0, 4);
+}
+
+function iniciales(nombre: string) {
+  return nombre.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+}
+
+/** Avatar con iniciales de una persona (el del salón es `AvatarSalon`). */
+export function AvatarPersona({ nombre, size = 34 }: { nombre: string; size?: number }) {
+  return (
+    <span className="grid shrink-0 place-items-center rounded-full bg-salvia-clara text-[12px] font-extrabold text-hoja-tinta" style={{ width: size, height: size }} aria-hidden="true">
+      {iniciales(nombre)}
+    </span>
+  );
 }
 
 /** «siShow · Madrid»: la ciudad sale de la dirección del salón, si la hay. */
@@ -177,7 +203,8 @@ function EnlaceNav({ item, active, contador, onNavigate, hijo = false }: { item:
 
 function ProgresoPrimerosPasos() {
   const { progreso, pendientes, oculto } = useProgresoPrimerosPasos();
-  if (oculto || progreso >= TOTAL_PASOS) return null;
+  const permisos = usePermisos();
+  if (oculto || progreso >= TOTAL_PASOS || permisos.rol !== "gerente") return null;
   const faltan = pendientes.slice(0, 2).map((p) => p.toLowerCase()).join(" y ");
   // Una sola línea con su barra: guía la primera semana sin empujar el menú
   // a un scroll. Lo que falta sale al pasar el ratón.
@@ -197,17 +224,32 @@ function ProgresoPrimerosPasos() {
   );
 }
 
+/**
+ * Quién está dentro: su nombre, su rol y el salón (lote 11). Sin miembro
+ * conocido (salón real hasta conectar), el salón como hasta ahora.
+ */
 function BloqueUsuario() {
   const name = useSalonStore((s) => s.salonProfile.name);
   const publicLink = usePanelPublicLink();
+  const miembro = useMiembroActual();
+  const permisos = usePermisos();
+  const nombre = miembro?.displayName ?? null;
+  const verWeb = veRuta(permisos, "/app/web");
   return (
     <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2.5">
-      <AvatarSalon size={34} />
+      {nombre ? <AvatarPersona nombre={nombre} /> : <AvatarSalon size={34} />}
       <div className="min-w-0 flex-1 leading-tight">
-        <b className="block truncate text-[13px]">{name}</b>
-        <a href={publicLink} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary">
-          Ver tu web <ArrowUpRight className="size-3" />
-        </a>
+        <b className="block truncate text-[13px]">{nombre ?? name}</b>
+        {miembro && (
+          <span className="block truncate text-xs text-muted-foreground">
+            {NOMBRE_ROL[miembro.rol]} · {name}
+          </span>
+        )}
+        {verWeb && (
+          <a href={publicLink} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary">
+            Ver tu web <ArrowUpRight className="size-3" />
+          </a>
+        )}
       </div>
       <BotonCerrarSesion variante="icono" />
     </div>
@@ -272,6 +314,7 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
         <BuscadorGlobal variante="campo" />
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
+        <VerComo className="hidden md:flex" />
         <Button
           data-tour="assistant"
           variant="outline"
@@ -364,10 +407,13 @@ function useFabApartado() {
 /** Barra inferior del móvil (< 768 px) con «Más», y el botón «+» flotante. */
 export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita: () => void }) {
   const grupos = useGruposVisibles();
+  const barra = useBarraMovil(grupos);
   const publicLink = usePanelPublicLink();
+  const permisos = usePermisos();
+  const esDemo = useEsDemo();
   const [masAbierto, setMasAbierto] = useState(false);
   const apartado = useFabApartado();
-  const enBarra = new Set(BARRA_MOVIL.map((i) => i.to));
+  const enBarra = new Set(barra.map((i) => i.to));
   const restantes = grupos
     .flatMap((g) => g.items.flatMap((i) => [i, ...(i.hijos ?? [])]))
     .filter((i) => !enBarra.has(i.to));
@@ -395,7 +441,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
         className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-card px-1.5 pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom,0px))] md:hidden"
         aria-label="Apartados"
       >
-        {BARRA_MOVIL.map((item) => {
+        {barra.map((item) => {
           const active = estaActivo(item, path);
           return (
             <Link key={item.to} to={item.to} className={clase(active)}>
@@ -416,6 +462,10 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
               <SheetTitle>Más</SheetTitle>
               <SheetDescription className="sr-only">Resto de apartados del panel</SheetDescription>
             </SheetHeader>
+            <div className="space-y-3 px-4 pb-3">
+              <BloqueUsuario />
+              {esDemo && <VerComo className="flex w-full" />}
+            </div>
             <div className="grid grid-cols-3 gap-2 px-4 pb-6">
               {restantes.map((item) => {
                 const active = estaActivo(item, path);
@@ -434,14 +484,14 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
                   </Link>
                 );
               })}
-              <a
+              {veRuta(permisos, "/app/web") && <a
                 href={publicLink}
                 onClick={() => setMasAbierto(false)}
                 className="flex flex-col items-center gap-2 rounded-2xl border border-border px-3 py-4 text-center text-xs font-semibold text-cafe-medio hover:bg-nata"
               >
                 <ArrowUpRight className="size-5" strokeWidth={1.6} />
                 Ver tu web
-              </a>
+              </a>}
               <div className="flex flex-col items-center gap-2 rounded-2xl border border-border px-3 py-4 text-center text-xs font-semibold text-cafe-medio">
                 <BotonCerrarSesion variante="icono" />
                 Cerrar sesión
