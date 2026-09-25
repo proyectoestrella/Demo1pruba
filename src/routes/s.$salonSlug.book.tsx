@@ -394,6 +394,7 @@ function BookingWizard() {
     if (!repeatValid || !lastBooking) return undefined;
     return findNextAvailableSlot(employees, appointments, repeatDuration, lastBooking.employeeId, {
       lastSlotBufferMin: profile.lastSlotBufferMin ?? 0,
+      timeZone: zonaDelSalon(profile),
     });
   }, [
     repeatValid,
@@ -402,6 +403,7 @@ function BookingWizard() {
     appointments,
     repeatDuration,
     profile.lastSlotBufferMin,
+    profile.timeZone,
   ]);
   const showRepeatBanner =
     step === 1 && data.serviceIds.length === 0 && repeatValid && !!repeatNextSlot && !!lastBooking;

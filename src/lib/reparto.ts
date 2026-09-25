@@ -1,5 +1,6 @@
 import type { Appointment, Employee } from "./mock/types";
 import { franjasProfesional, huecosDeProfesionales, trabajaEn } from "./horario-equipo";
+import { ZONA_HORARIA_SALON, isoDelSalon } from "./zona-horaria";
 
 /**
  * Reparto de agenda ("smartSpread", clave "k" del enlace de demo — ver
@@ -217,8 +218,19 @@ export function findNextAvailableSlot(
     lastSlotBufferMin?: number;
     fromDate?: Date;
     maxDays?: number;
+    /**
+     * Instante a partir del cual una hora puede ofrecerse. Por defecto,
+     * `fromDate` si viene (las pruebas fijan el día) y si no, ahora mismo:
+     * hasta el 25/09/2026 la búsqueda empezaba a medianoche y a las 15:26
+     * sugería «hoy a las 10:00».
+     */
+    now?: Date;
+    /** Zona de la agenda del salón (ver lib/zona-horaria.ts). */
+    timeZone?: string;
   } = {},
 ): NextSlot | undefined {
+  const ahora = +(opts.now ?? opts.fromDate ?? new Date());
+  const timeZone = opts.timeZone ?? ZONA_HORARIA_SALON;
   const relevantEmployees =
     employeeChoice === "any" ? employees : employees.filter((e) => e.id === employeeChoice);
   if (relevantEmployees.length === 0) return undefined;
@@ -250,7 +262,9 @@ export function findNextAvailableSlot(
         const h = Math.floor(minutesOfDay / 60);
         const m = minutesOfDay % 60;
         const timeStr = `${pad2(h)}:${pad2(m)}`;
-        const iso = new Date(`${dateKey}T${timeStr}:00`).toISOString();
+        const iso = isoDelSalon(dateKey, timeStr, timeZone);
+        // Una hora que ya ha pasado no es un hueco.
+        if (Date.parse(iso) <= ahora) continue;
         const free = relevantEmployees.some(
           (e) => !isSlotTakenLocal(appointments, e.id, iso, durationMin),
         );

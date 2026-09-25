@@ -225,6 +225,16 @@ describe("isPriorityTime", () => {
 describe("findNextAvailableSlot", () => {
   const fromDate = new Date(2026, 8, 21); // lunes 21-sep-2026
 
+  it("no sugiere una hora de hoy que ya ha pasado (a las 15:26 no vale «hoy a las 10:00»)", () => {
+    const employees = [employee("a", 10, 20)];
+    const now = new Date(2026, 8, 21, 15, 26); // lunes 21-sep a las 15:26 (Madrid, por el preload)
+    expect(findNextAvailableSlot(employees, [], 30, "a", { fromDate, now })).toEqual({ dateKey: MONDAY, time: "15:30" });
+    const tarde = new Date(2026, 8, 21, 19, 45);
+    const siguiente = findNextAvailableSlot(employees, [], 30, "a", { fromDate, now: tarde });
+    expect(siguiente?.dateKey).not.toBe(MONDAY);
+    expect(siguiente?.time).toBe("10:00");
+  });
+
   it("da la primera media hora libre del día si nadie tiene cita", () => {
     const employees = [employee("a", 10, 14)];
     const next = findNextAvailableSlot(employees, [], 30, "a", { fromDate });
