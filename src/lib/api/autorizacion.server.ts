@@ -12,11 +12,13 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 
 import {
   exigirMando,
+  exigirPermiso,
   extraerBearer,
   resolverAcceso,
   type Acceso,
   type DepsAutorizacion,
 } from "./autorizacion";
+import type { AccionId } from "../permisos";
 import { getSupabaseServerClient } from "../supabase.server";
 
 /**
@@ -86,6 +88,23 @@ function depsReales(): DepsAutorizacion {
       }
       return Boolean(data);
     },
+
+    ficha: async (userId, slug) => {
+      if (!supabase) return null;
+      // `select("*")` a propósito: mientras las columnas del lote 8 no estén
+      // aplicadas (supabase/pendiente.sql), la fila solo trae `rol` y el
+      // miembro sigue siendo gerente, como antes. Nadie se queda fuera.
+      const { data, error } = await supabase
+        .from("salon_members")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("salon_slug", slug)
+        .maybeSingle();
+      if (error || !data) return null;
+      const f = data as Record<string, unknown>;
+      const texto = (k: string) => (typeof f[k] === "string" && f[k] ? (f[k] as string) : null);
+      return { rol: texto("rol"), employeeId: texto("employee_id"), displayName: texto("display_name"), estado: texto("estado") };
+    },
   };
 }
 
@@ -97,4 +116,9 @@ export function acceso(slug: string): Promise<Acceso> {
 /** Lo mismo, pero cortando si no manda sobre el salón. Para todo lo del dueño. */
 export function exigirAcceso(slug: string): Promise<Acceso> {
   return exigirMando(slug, depsReales());
+}
+
+/** Exige además el permiso de la acción (lote 8). `sobreEmployeeId`: la profesional afectada. */
+export function exigirPermisoEn(slug: string, accion: AccionId, sobreEmployeeId?: string | null): Promise<Acceso> {
+  return exigirPermiso(slug, accion, depsReales(), sobreEmployeeId);
 }

@@ -16,6 +16,7 @@ import process from "node:process";
 import { z } from "zod";
 
 import { acceso, exigirAcceso } from "./autorizacion.server";
+import { accionesDeParcheCita, accionesDeParchePerfil, exigirAcciones } from "./guardas";
 import { tieneMando, vistaEfectiva } from "./autorizacion";
 import { conSesion } from "./sesion.middleware";
 import { getSupabaseServerClient } from "../supabase.server";
@@ -175,6 +176,20 @@ const slug = z.string().min(1).max(120);
  * demos o si tiene que pedir el correo. Ojo: es una comodidad de la interfaz,
  * no una barrera. La barrera la vuelve a poner el servidor en cada llamada.
  */
+/**
+ * La profesional que tiene AHORA una cita en la base de datos. Hace falta
+ * para el alcance «propio» (lote 8): una estilista solo toca citas suyas, y
+ * lo que diga el navegador sobre de quién es la cita no cuenta.
+ */
+async function profesionalActual(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  slug: string,
+  localId: string,
+): Promise<string | null> {
+  const { data } = await supabase.from("appointments").select("employee_id").eq("salon_slug", slug).eq("local_id", localId).maybeSingle();
+  return (data as { employee_id?: string } | null)?.employee_id ?? null;
+}
+
 export const esSalonRealPublico = createServerFn({ method: "GET" })
   .middleware([conSesion])
   .inputValidator(z.object({ slug }))
@@ -288,7 +303,9 @@ export const saveSalonProfile = createServerFn({ method: "POST" })
     async ({ data }): Promise<{ synced: true } | { synced: false; motivo: MotivoNoPublicado }> => {
       // Sobrescribir el perfil entero de un salón es cosa de su dueño. Sin
       // esto, cualquiera podía cambiarle el teléfono, la dirección o la carta.
-      await exigirAcceso(data.slug);
+      const quien = await exigirAcceso(data.slug);
+      // Publicar el perfil entero (Mi página) es de quien puede publicar la web.
+      exigirAcciones(quien, ["web.publicar"]);
       const supabase = getSupabaseServerClient();
       if (!supabase) return { synced: false as const, motivo: "sin-backend" as const };
 
@@ -345,7 +362,8 @@ export const patchSalonProfile = createServerFn({ method: "POST" })
   .inputValidator(z.object({ slug, patch: z.record(z.string(), z.unknown()) }))
   .handler(
     async ({ data }): Promise<{ synced: true } | { synced: false; motivo: MotivoNoAplicado }> => {
-      await exigirAcceso(data.slug);
+      const quien = await exigirAcceso(data.slug);
+      exigirAcciones(quien, accionesDeParchePerfil(Object.keys(data.patch)));
       const supabase = getSupabaseServerClient();
       if (!supabase) return { synced: false as const, motivo: "sin-backend" as const };
 
@@ -483,7 +501,7 @@ export const syncWaitlistEntry = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     // La lista de espera la lleva el dueño desde el panel; la web de reservas
     // no escribe aquí. Nadie de fuera tiene por qué meter gente en ella.
-    await exigirAcceso(data.slug);
+    exigirAcciones(await exigirAcceso(data.slug), ["lista-espera.gestionar"]);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
     const { error } = await supabase.from("waitlist").upsert(
@@ -511,7 +529,7 @@ export const deleteWaitlistEntry = createServerFn({ method: "POST" })
   .middleware([conSesion])
   .inputValidator(z.object({ slug, localId: z.string().min(1) }))
   .handler(async ({ data }) => {
-    await exigirAcceso(data.slug);
+    exigirAcciones(await exigirAcceso(data.slug), ["lista-espera.gestionar"]);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
     const { error } = await supabase
@@ -613,6 +631,14 @@ export const syncAppointment = createServerFn({ method: "POST" })
 
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
+
+    // Permisos por rol (lote 8): crear sobre la profesional elegida; editar una
+    // cita que ya existe, sobre la que la tiene ahora y sobre la nueva.
+    if (quien.tipo === "miembro") {
+      const antes = await profesionalActual(supabase, data.slug, data.localId);
+      if (antes === null) exigirAcciones(quien, ["cita.crear"], [data.employeeId]);
+      else exigirAcciones(quien, antes === data.employeeId ? ["cita.editar"] : ["cita.editar", "cita.mover"], [antes, data.employeeId]);
+    }
 
     if (!manda) {
       const { data: yaExiste, error: errorExiste } = await supabase
@@ -862,9 +888,16 @@ export const syncAppointmentPatch = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    await exigirAcceso(data.slug);
+    const quien = await exigirAcceso(data.slug);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const, reason: "sin-backend" as const };
+    // Permisos por rol: las acciones que implica el parche, sobre la profesional
+    // actual de la cita y, si la mueve, también sobre la nueva.
+    if (quien.tipo === "miembro") {
+      const antes = await profesionalActual(supabase, data.slug, data.localId);
+      const nueva = typeof data.patch.employeeId === "string" ? data.patch.employeeId : null;
+      exigirAcciones(quien, accionesDeParcheCita(data.patch), [antes, nueva]);
+    }
     let columnas = columnasDeParche(data.patch as Partial<Appointment>);
     if (!Object.keys(columnas).length) return { synced: true as const };
     // Mover de hora, cambiar la duración o la profesional puede crear un
@@ -907,9 +940,10 @@ export const deleteAppointment = createServerFn({ method: "POST" })
   .inputValidator(z.object({ slug, localId: z.string().min(1) }))
   .handler(async ({ data }) => {
     // Borrar la agenda de otro era, literalmente, una llamada con su slug.
-    await exigirAcceso(data.slug);
+    const quien = await exigirAcceso(data.slug);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
+    if (quien.tipo === "miembro") exigirAcciones(quien, ["cita.cancelar"], [await profesionalActual(supabase, data.slug, data.localId)]);
     const { error } = await supabase
       .from("appointments")
       .delete()
@@ -929,7 +963,7 @@ export const saveClient = createServerFn({ method: "POST" })
   .inputValidator(z.object({ slug, name: z.string().min(1), phone: z.string(), email: z.string().email().optional(), notes: z.string().optional(), createdAt: z.string().datetime().optional(),
     tpvCode: z.string().max(40).optional(), birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }))
   .handler(async ({ data }) => {
-    await exigirAcceso(data.slug);
+    exigirAcciones(await exigirAcceso(data.slug), ["clienta.crear"]);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
     const key = phoneKey(data.phone);
@@ -1006,7 +1040,7 @@ export const applyClientPenalty = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     // Marcar a una persona como morosa y bloquearle la reserva es una decisión
     // del dueño y de nadie más.
-    await exigirAcceso(data.slug);
+    exigirAcciones(await exigirAcceso(data.slug), ["recargo.gestionar"]);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
 
@@ -1040,7 +1074,7 @@ export const clearClientPenalty = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    await exigirAcceso(data.slug);
+    exigirAcciones(await exigirAcceso(data.slug), ["recargo.gestionar"]);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
 
@@ -1066,7 +1100,7 @@ export const saveClientNotes = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     // Las notas son texto libre del salón sobre una persona con nombre y
     // teléfono. Escribirlas —y leerlas— es del dueño.
-    await exigirAcceso(data.slug);
+    exigirAcciones(await exigirAcceso(data.slug), ["clienta.editar"]);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
     const id = await localizarCliente(supabase, data.slug, data.phone);

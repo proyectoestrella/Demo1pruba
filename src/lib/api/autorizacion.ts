@@ -27,12 +27,22 @@
  * demuestra que esto funciona. El cableado real está en `autorizacion.server.ts`.
  */
 
+import { permisosDe, PERMISOS_DEMO, puede, rolVigente, type AccionId, type Permisos, type Rol } from "../permisos";
+
+/** Lo que dice la fila de `salon_members` de esta persona (lote 8). */
+export interface FichaMiembro {
+  rol: string | null;
+  employeeId: string | null;
+  displayName: string | null;
+  estado: string | null;
+}
+
 /** Qué es quien está llamando, respecto al salón que ha pedido. */
 export type Acceso =
   /** El slug no existe en `salons`: es una demo. Barra libre, como siempre. */
   | { tipo: "demo" }
-  /** Salón de pago y quien llama pertenece a él. */
-  | { tipo: "miembro"; userId: string }
+  /** Salón de pago y quien llama pertenece a él, con su rol. */
+  | { tipo: "miembro"; userId: string; rol: Rol; employeeId: string | null; displayName: string | null }
   /** Salón de pago y quien llama NO ha demostrado pertenecer a él. */
   | { tipo: "ajeno" };
 
@@ -45,6 +55,12 @@ export interface DepsAutorizacion {
   usuarioDelToken: (token: string) => Promise<string | null>;
   /** ¿Existe fila en `salon_members` para esta pareja? */
   esMiembro: (userId: string, slug: string) => Promise<boolean>;
+  /**
+   * Rol, profesional vinculada, nombre y estado de esa fila. Opcional: sin él
+   * (o con las columnas del lote 8 aún sin aplicar) el miembro es gerente,
+   * que es exactamente lo que era antes.
+   */
+  ficha?: (userId: string, slug: string) => Promise<FichaMiembro | null>;
 }
 
 /**
@@ -98,7 +114,58 @@ export async function resolverAcceso(slug: string, deps: DepsAutorizacion): Prom
   // perfectamente válida y aquí es exactamente igual de ajeno al salón B.
   if (!(await deps.esMiembro(userId, slug))) return { tipo: "ajeno" };
 
-  return { tipo: "miembro", userId };
+  let f: FichaMiembro | null = null;
+  try {
+    f = deps.ficha ? await deps.ficha(userId, slug) : null;
+  } catch (err) {
+    console.error("No se pudo leer el rol del miembro:", err);
+    return { tipo: "ajeno" };
+  }
+  // Dada de baja o aún invitada: la fila existe, pero no da acceso.
+  if (f?.estado === "baja" || f?.estado === "invitada") return { tipo: "ajeno" };
+  const rol = rolVigente(f?.rol);
+  // Una estilista sin profesional vinculada no puede ver «lo suyo»: se le deja
+  // entrar, pero su alcance propio no casa con ninguna cita.
+  return { tipo: "miembro", userId, rol, employeeId: f?.employeeId ?? null, displayName: f?.displayName ?? null };
+}
+
+/** Los permisos de quien llama. Una demo tiene los de la gerente; un ajeno, ninguno. */
+export function permisosDeAcceso(acceso: Acceso): Permisos | null {
+  if (acceso.tipo === "demo") return PERMISOS_DEMO;
+  if (acceso.tipo === "miembro") return permisosDe(acceso.rol);
+  return null;
+}
+
+/** El error de quien pertenece al salón pero no tiene permiso para esto. */
+export class PermisoDenegado extends Error {
+  readonly code = "PERMISO_DENEGADO";
+  constructor(accion: AccionId) {
+    super(`Tu acceso no permite hacer esto (${accion}). Pídeselo a quien gestione el salón.`);
+    this.name = "PermisoDenegado";
+  }
+}
+
+/**
+ * ¿Puede quien llama hacer esta acción? `sobreEmployeeId`: la profesional de
+ * la cita afectada, para las acciones con alcance «propio».
+ */
+export function tienePermiso(acceso: Acceso, accion: AccionId, sobreEmployeeId?: string | null): boolean {
+  const p = permisosDeAcceso(acceso);
+  if (!p) return false;
+  if (sobreEmployeeId === undefined) return puede(p, accion);
+  return puede(p, accion, { employeeId: sobreEmployeeId, miEmployeeId: acceso.tipo === "miembro" ? acceso.employeeId : null });
+}
+
+/** Como `exigirMando`, pero además exige el permiso de la acción. */
+export async function exigirPermiso(
+  slug: string,
+  accion: AccionId,
+  deps: DepsAutorizacion,
+  sobreEmployeeId?: string | null,
+): Promise<Acceso> {
+  const acceso = await exigirMando(slug, deps);
+  if (!tienePermiso(acceso, accion, sobreEmployeeId)) throw new PermisoDenegado(accion);
+  return acceso;
 }
 
 /** ¿Manda este llamante sobre el salón? Cierto para un miembro y para una demo. */
