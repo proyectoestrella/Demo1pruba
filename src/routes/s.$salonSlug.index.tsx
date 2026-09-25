@@ -929,7 +929,7 @@ function SalonHome() {
             <div>
               <p className="text-xs uppercase tracking-[0.25em] text-primary">Reseñas</p>
               <h2 className="mt-2 font-display text-3xl md:text-4xl">
-                Lo que dicen nuestros clientes
+                Lo que dicen de nosotros
               </h2>
             </div>
             <div className="flex items-center gap-1.5 text-sm">
