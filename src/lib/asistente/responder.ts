@@ -22,6 +22,7 @@ import { normalizar } from "./normalizar";
 import { desconocidos, puntuar, type Clasificacion } from "./parecido";
 import { RESOLUTORES } from "./resolutores";
 import { citasDelDia, visitasPorClienta } from "./resolutores/calculos";
+import { solicitudes } from "./resolutores/hoy";
 import type { Accion, Cifra, Contexto } from "./resolutores/tipos";
 
 export const CORREO_SOPORTE = "ejemplo@sishow.com";
@@ -260,7 +261,7 @@ function charla(id: string, c: Contexto): RespuestaAsistente {
   switch (id) {
     case "saludo": {
       const n = citasDelDia(s, c.hoy).length;
-      const sol = s.citas.filter((x) => x.status === "pending" && Date.parse(x.start) > s.ahora.getTime()).length;
+      const sol = solicitudes({ estado: s }).length;
       const extra = sol ? ` y ${sol === 1 ? "1 solicitud esperando" : `${sol} solicitudes esperando`}` : "";
       return r(`¡Hola! 👋 Hoy tienes ${n === 1 ? "1 cita" : `${n} citas`}${extra}. ¿Por dónde empezamos?`, [pregunta("citas-hoy"), pregunta("pendiente-de-ti")]);
     }
