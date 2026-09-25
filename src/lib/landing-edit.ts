@@ -146,7 +146,10 @@ export function validarBorrador(b: BorradorLanding): ErrorCampo[] {
 
   const foto = b.heroImage.trim();
   if (foto) {
-    if (!/^https?:\/\//i.test(foto)) {
+    // La foto de las demos llega por el proxy propio (/api/foto?…): vale tal cual.
+    if (/^\/api\/foto\?/.test(foto)) {
+      /* foto propia de siShow */
+    } else if (!/^https?:\/\//i.test(foto)) {
       errores.push({
         campo: "heroImage",
         mensaje: "La dirección de la foto de portada tiene que empezar por http:// o https://.",

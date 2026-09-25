@@ -134,6 +134,10 @@ describe("validarBorrador", () => {
     expect(errores[0].mensaje).toContain(".jpg");
   });
 
+  it("acepta la foto del proxy propio de siShow (/api/foto?…), la de las demos", () => {
+    expect(validarBorrador(borradorValido({ heroImage: "/api/foto?place=ChIJc&i=0" }))).toEqual([]);
+  });
+
   it("rechaza una foto sin http", () => {
     const errores = validarBorrador(borradorValido({ heroImage: "local.jpg" }));
     expect(errores[0].mensaje).toContain("https://");

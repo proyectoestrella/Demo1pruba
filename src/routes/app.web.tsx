@@ -1,3 +1,8 @@
+import { VersionesWeb } from "@/components/VersionesWeb";
+import { useVersiones, webDe } from "@/lib/versiones-maqueta";
+import { conCambio, guardarPerfil } from "@/lib/deshacer-maqueta";
+import { miembroAhora, usePermisos } from "@/lib/accesos-panel";
+import { puede } from "@/lib/permisos";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePlegado } from "@/lib/use-plegado";
 import { AvatarSalon } from "@/components/AvatarSalon";
@@ -51,6 +56,7 @@ function MiWeb() {
   const salonProfile = useSalonStore((s) => s.salonProfile);
   const equipo = useEquipo();
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
+  const permisosWeb = usePermisos();
   const realSlug = useRealSalonSlug();
   const esReal = Boolean(realSlug);
   const enlacePublico = usePanelPublicLink();
@@ -178,10 +184,23 @@ function MiWeb() {
     setErrores((e) => e.filter((err) => err.campo !== clave));
   }
 
-  async function publicar() {
+  /**
+   * Lote 12: aplica en el panel lo publicado dejando su fila en el historial
+   * (sin otro aviso: el de publicar ya lleva «Deshacer») y guarda la versión.
+   * La primera vez guarda también cómo estaba antes, para poder volver.
+   */
+  function publicarEnPanel(parcheWeb: Partial<SalonProfile>, previo: SalonProfile, tipo: "perfil.publicar" | "perfil.restaurar") {
+    const { versiones, guardar } = { versiones: useVersiones.getState().porSalon[slugPrevia] ?? [], guardar: useVersiones.getState().guardar };
+    const autor = miembroAhora()?.displayName ?? null;
+    if (versiones.length === 0) guardar(slugPrevia, webDe(previo), null, new Date(Date.now() - 1000).toISOString());
+    conCambio(() => guardarPerfil(parcheWeb as never, tipo));
+    guardar(slugPrevia, webDe({ ...previo, ...parcheWeb }), autor);
+  }
+
+  async function publicar(desde: BorradorLanding = borrador, tipo: "perfil.publicar" | "perfil.restaurar" = "perfil.publicar") {
     // El borrador conserva el equipo para compatibilidad con el perfil, pero
     // aquí ya no se edita: lo gestiona Equipo y admite hasta seis personas.
-    const fallos = validarBorrador({ ...borrador, team: "" });
+    const fallos = validarBorrador({ ...desde, team: "" });
     setErrores(fallos);
     if (fallos.length > 0) {
       toast.error(
@@ -193,7 +212,7 @@ function MiWeb() {
     }
 
     const previo = { ...publicado, team: salonProfile.team, teamHours: salonProfile.teamHours, teamIds: salonProfile.teamIds };
-    const parche = perfilDesdeBorrador(borrador);
+    const parche = perfilDesdeBorrador(desde);
     // El equipo se edita en una sola pantalla. No guardar una copia antigua
     // de nombres ni horarios cuando se publica otro cambio de la web.
     const { team: _equipoSinEditar, ...parcheWeb } = parche;
@@ -203,10 +222,10 @@ function MiWeb() {
       // Demo de venta: el perfil vive dentro del enlace, no en ninguna tabla.
       // Se aplica en este navegador para que el resto del panel lo vea, pero
       // NO se promete nada que no sea cierto.
-      updateSalonProfile(parcheWeb);
+      publicarEnPanel(parcheWeb, previo, tipo);
       setPublicado(nuevo);
       setAnterior(previo);
-      toast.success("Cambios aplicados en esta demo", {
+      toast.success(tipo === "perfil.restaurar" ? "Versión restaurada en esta demo" : "Cambios aplicados en esta demo", {
         description: "No se ha publicado nada: una demo no tiene web propia que actualizar.",
       });
       return;
@@ -231,10 +250,10 @@ function MiWeb() {
       // Ya está arriba: ahora sí se aplica en el panel. Esto vuelve a subirlo
       // por la vía de siempre (`pushSalonProfile`), que es el mismo upsert —
       // repetirlo no cambia nada y mantiene una sola forma de escribir.
-      updateSalonProfile(parcheWeb);
+      publicarEnPanel(parcheWeb, previo, tipo);
       setPublicado(nuevo);
       setAnterior(previo);
-      toast.success("Publicado: tu web ya muestra estos cambios", {
+      toast.success(tipo === "perfil.restaurar" ? "Restaurada: tu web vuelve a esa versión" : "Publicado: tu web ya muestra estos cambios", {
         description: "Cualquiera que abra tu enlace lo ve ya.",
       });
     } catch (err) {
@@ -330,7 +349,7 @@ function MiWeb() {
           el botón de publicar tiene que estar siempre a un dedo. */}
       <div className="sticky top-[71px] z-10 flex flex-wrap items-center gap-2 rounded-[20px] border border-border bg-card/95 p-2.5 backdrop-blur max-md:top-[118px]">
         <Button
-          onClick={publicar}
+          onClick={() => publicar()}
           disabled={guardando || !sucio}
           className="h-[42px] flex-1 sm:flex-none"
         >
@@ -351,6 +370,21 @@ function MiWeb() {
             Deshacer
           </Button>
         )}
+        <VersionesWeb
+          slug={slugPrevia}
+          actual={webDe(publicado)}
+          puedeRestaurar={puede(permisosWeb, "web.restaurar-version")}
+          onVer={(web) => {
+            // Solo en la vista previa: no se publica hasta darle a Publicar.
+            setBorrador(borradorDesdePerfil({ ...publicado, ...web } as SalonProfile));
+            setErrores([]);
+          }}
+          onRestaurar={(web) => {
+            const b = borradorDesdePerfil({ ...publicado, ...web } as SalonProfile);
+            setBorrador(b);
+            void publicar(b, "perfil.restaurar");
+          }}
+        />
         <span
           className={cn(
             "inline-flex h-6 items-center rounded-full px-2.5 text-[12.5px] font-bold",
