@@ -480,9 +480,27 @@ export const patchSalonProfile = createServerFn({ method: "POST" })
         return { synced: false as const, motivo: "falta-esquema" as const };
       }
       if (error) throw new Error(`patchSalonProfile: ${error.message}`);
+      // Versión ligera agrupada (lote 9b): al empezar una tanda de ajustes
+      // (la última versión tiene más de 30 min) se guarda el perfil ANTERIOR,
+      // como punto al que volver. Una tanda = una versión, no una por
+      // interruptor; el deshacer fino lo da cada cambio por campo.
+      const { data: ultima } = await supabase
+        .from("perfil_versiones").select("fecha").eq("salon_slug", data.slug).order("fecha", { ascending: false }).limit(1).maybeSingle();
+      if (tocaVersionLigera((ultima as { fecha?: string } | null)?.fecha ?? null, new Date())) {
+        await guardarVersion(supabase, data.slug, (fila.profile ?? {}) as Record<string, unknown>, quien.tipo === "miembro" ? quien : null, "Antes de cambiar ajustes");
+      }
       return { synced: true as const };
     },
   );
+
+/** Minutos que agrupa una tanda de ajustes en una sola versión ligera. */
+export const MINUTOS_TANDA_AJUSTES = 30;
+
+/** ¿Empieza una tanda nueva de ajustes (y toca guardar el punto de vuelta)? */
+export function tocaVersionLigera(ultimaISO: string | null, ahora: Date): boolean {
+  if (!ultimaISO) return true;
+  return ahora.getTime() - Date.parse(ultimaISO) > MINUTOS_TANDA_AJUSTES * 60_000;
+}
 
 /* ---------------------------------------------------------------------- */
 /* Agenda                                                                  */

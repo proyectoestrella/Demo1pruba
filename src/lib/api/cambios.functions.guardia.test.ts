@@ -26,3 +26,16 @@ describe("guardia del historial y las versiones", () => {
     expect(cuerpo(salons, "restaurarVersion")).toContain('tipo: "perfil.restaurar"');
   });
 });
+
+describe("versión ligera de los ajustes (lote 9b)", () => {
+  it("parche de ajustes: guarda el perfil ANTERIOR solo al empezar una tanda", async () => {
+    const { tocaVersionLigera } = await import("./salons.functions");
+    const ahora = new Date("2026-09-26T10:00:00Z");
+    expect(tocaVersionLigera(null, ahora)).toBe(true);
+    expect(tocaVersionLigera("2026-09-26T09:45:00Z", ahora)).toBe(false);
+    expect(tocaVersionLigera("2026-09-26T09:15:00Z", ahora)).toBe(true);
+    const c = cuerpo(salons, "patchSalonProfile");
+    expect(c).toContain("tocaVersionLigera(");
+    expect(c).toContain('"Antes de cambiar ajustes"');
+  });
+});
