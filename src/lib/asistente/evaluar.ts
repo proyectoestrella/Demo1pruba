@@ -72,7 +72,8 @@ export function resultado(c: Caso): Resultado {
   const r = c.respuesta;
   if (r.tipo === "elegir" || r.tipo === "no-se") return "inofensivo";
   // Charla ante una pregunta ajena no da ningún dato del salón.
-  if (c.esperada === "no-se" && r.tipo === "respuesta" && POR_ID.get(r.intencion)?.grupo === "charla") return "inofensivo";
+  // Charla o ayuda ante una pregunta ajena no dan ningún dato del salón.
+  if (c.esperada === "no-se" && r.tipo === "respuesta" && (POR_ID.get(r.intencion)?.grupo === "charla" || POR_ID.get(r.intencion)?.categoria === "ayuda")) return "inofensivo";
   return "danino";
 }
 
