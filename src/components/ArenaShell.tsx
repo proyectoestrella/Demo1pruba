@@ -492,10 +492,6 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
                 <ArrowUpRight className="size-5" strokeWidth={1.6} />
                 Ver tu web
               </a>}
-              <div className="flex flex-col items-center gap-2 rounded-2xl border border-border px-3 py-4 text-center text-xs font-semibold text-cafe-medio">
-                <BotonCerrarSesion variante="icono" />
-                Cerrar sesión
-              </div>
             </div>
           </SheetContent>
         </Sheet>
