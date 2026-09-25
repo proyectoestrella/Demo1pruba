@@ -37,7 +37,7 @@
 --     '<correo de Adam>'   →   'loquesea@sudominio.com'
 
 insert into salon_members (user_id, salon_slug, rol)
-select u.id, 'the-best-shave-barber', 'dueno'
+select u.id, 'the-best-shave-barber', 'gerente'
 from auth.users u
 where lower(u.email) = lower('<correo de Adam>')
 on conflict (user_id, salon_slug) do nothing;
