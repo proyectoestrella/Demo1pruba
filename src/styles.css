@@ -515,3 +515,27 @@
   user-select: none !important;
   cursor: col-resize !important;
 }
+
+/* Lote 12e: la barra de tiempo del aviso con «Deshacer». Sonner pausa el
+   aviso al pasar el ratón o el dedo; la barra se para con él. */
+.barra-deshacer {
+  display: block;
+  height: 3px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--hoja, currentColor);
+  opacity: 0.55;
+  transform-origin: left center;
+  animation: barra-deshacer linear forwards;
+}
+[data-sonner-toast]:hover .barra-deshacer,
+[data-sonner-toaster]:hover .barra-deshacer {
+  animation-play-state: paused;
+}
+@keyframes barra-deshacer {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .barra-deshacer { animation: none; opacity: 0.35; }
+}
