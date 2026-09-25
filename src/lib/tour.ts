@@ -19,24 +19,24 @@ const STEPS: Step[] = [
     selector: '[data-tour="nav"]',
     title: "Tu panel, por bloques",
     description:
-      "Agenda, negocio y crecimiento. Cada bloque agrupa las pantallas que sueles usar juntas.",
+      "Lo de cada día arriba; el salón (equipo, servicios, tu página) y el crecimiento debajo.",
   },
   {
     selector: '[data-tour="kpis"]',
     title: "Los números de hoy",
     description:
-      "Citas, ingresos, ocupación, clientes nuevos y cancelaciones. El porcentaje compara con el periodo anterior y la minigráfica muestra la tendencia.",
+      "Citas, huecos libres, ingresos estimados y cuántas solicitudes te esperan. Pulsa una cifra para ir a su pantalla.",
   },
   {
-    selector: '[data-tour="revenue-chart"]',
-    title: "Ingresos de los últimos 30 días",
-    description: "Pasa el ratón por la curva para ver la facturación de cada día.",
+    selector: '[data-tour="pending-requests"]',
+    title: "Esto te espera",
+    description: "Pon la duración con un toque y confirma: la clienta recibe el aviso al momento.",
   },
   {
     selector: '[data-tour="today-list"]',
-    title: "Las citas de hoy",
+    title: "Ahora y siguientes",
     description:
-      "Pulsa cualquier cita para ver el detalle del cliente, cambiar su estado o consultar su historial.",
+      "Pulsa cualquier cita para ver el detalle de la clienta, cambiar su estado o consultar su historial.",
   },
   {
     selector: '[data-tour="assistant"]',

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -178,7 +178,7 @@ function ProgresoPrimerosPasos() {
   return (
     <Link
       to="/app/settings"
-      className="mt-4 mb-3 block rounded-2xl bg-salvia-clara p-3 text-xs hover:text-foreground"
+      className="mb-3 block rounded-2xl bg-salvia-clara p-3 text-xs hover:text-foreground"
     >
       <b className="block text-hoja-tinta">
         Primeros pasos · {progreso} de {TOTAL_PASOS}
@@ -220,11 +220,11 @@ export function MenuLateral({ path }: { path: string }) {
       <div className="px-2 pb-5">
         <Marca />
       </div>
-      <nav data-tour="nav" className="flex flex-col gap-0.5 overflow-y-auto">
+      <nav data-tour="nav" className="sin-scrollbar flex min-h-0 flex-col gap-0.5 overflow-y-auto">
         {grupos.map((g, gi) => (
           <div key={g.label ?? gi} className="flex flex-col gap-0.5">
             {g.label && (
-              <p className="px-3 pt-5 pb-1.5 text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase">
+              <p className="px-3 pt-4 pb-1.5 text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase">
                 {g.label}
               </p>
             )}
@@ -239,7 +239,7 @@ export function MenuLateral({ path }: { path: string }) {
           </div>
         ))}
       </nav>
-      <div className="mt-auto">
+      <div className="mt-auto shrink-0 pt-3">
         <ProgresoPrimerosPasos />
         <BloqueUsuario />
       </div>
@@ -306,11 +306,58 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
   );
 }
 
+/**
+ * El «+» flotante se aparta (se desvanece) cuando taparía un botón o un
+ * enlace del contenido: mira qué hay debajo de su centro en cada scroll.
+ */
+function useFabApartado() {
+  const [apartado, setApartado] = useState(false);
+  useEffect(() => {
+    let marco = 0;
+    const mirar = () => {
+      marco = 0;
+      const fab = document.querySelector<HTMLElement>("[data-fab]");
+      if (!fab || getComputedStyle(fab).display === "none") return;
+      const r = fab.getBoundingClientRect();
+      const puntos: [number, number][] = [
+        [r.left + r.width / 2, r.top + r.height / 2],
+        [r.left + 6, r.top + 6],
+        [r.right - 6, r.top + 6],
+        [r.left + 6, r.bottom - 6],
+        [r.right - 6, r.bottom - 6],
+      ];
+      const tapa = puntos.some(([x, y]) =>
+        document
+          .elementsFromPoint(x, y)
+          .filter((el) => el !== fab && !fab.contains(el))
+          .some((el) => el.closest("button, a, input, select, textarea, [role=button]")),
+      );
+      setApartado(tapa);
+    };
+    const pedir = () => {
+      if (!marco) marco = requestAnimationFrame(mirar);
+    };
+    pedir();
+    window.addEventListener("scroll", pedir, { passive: true });
+    window.addEventListener("resize", pedir);
+    const obs = new MutationObserver(pedir);
+    obs.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      window.removeEventListener("scroll", pedir);
+      window.removeEventListener("resize", pedir);
+      obs.disconnect();
+      if (marco) cancelAnimationFrame(marco);
+    };
+  }, []);
+  return apartado;
+}
+
 /** Barra inferior del móvil (< 768 px) con «Más», y el botón «+» flotante. */
 export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita: () => void }) {
   const grupos = useGruposVisibles();
   const publicLink = usePanelPublicLink();
   const [masAbierto, setMasAbierto] = useState(false);
+  const apartado = useFabApartado();
   const enBarra = new Set(BARRA_MOVIL.map((i) => i.to));
   const restantes = grupos.flatMap((g) => g.items).filter((i) => !enBarra.has(i.to));
   const activoEnMas = restantes.some((i) => estaActivo(i, path));
@@ -325,7 +372,11 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
         type="button"
         onClick={onNuevaCita}
         aria-label="Nueva cita"
-        className="fixed right-4 bottom-[88px] z-40 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_6px_20px_rgba(138,100,70,0.35)] md:hidden"
+        className={cn(
+          "fixed right-4 bottom-[88px] z-40 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_6px_20px_rgba(138,100,70,0.35)] transition-[opacity,transform] duration-150 md:hidden",
+          apartado && "pointer-events-none scale-[.6] opacity-0",
+        )}
+        data-fab
       >
         <Plus className="size-6" strokeWidth={1.6} />
       </button>
