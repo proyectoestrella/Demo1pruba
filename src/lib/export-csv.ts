@@ -1,6 +1,8 @@
 import type { Appointment, Employee, Service } from "./mock/types";
 import { STATUS_OPTIONS } from "./appointment-status";
 import { nombreServicioLibre } from "./appointment-services";
+import { respuestasLegibles } from "./preguntas-reserva";
+import type { BusinessType } from "./business-type";
 
 /**
  * Exportación de citas y resumen mensual a CSV, generados en cliente con
@@ -54,8 +56,10 @@ export function citasToCsv(
   appointments: Appointment[],
   services: Record<string, Service>,
   employees: Record<string, Employee>,
+  /** Formulario del salón, para exportar las respuestas con el texto de su pregunta. */
+  formulario?: { perfil: Parameters<typeof respuestasLegibles>[0]; tipo: BusinessType },
 ): string {
-  const header = fila(["Fecha", "Hora", "Cliente", "Servicio", "Profesional", "Precio (€)", "Estado"]);
+  const header = fila(["Fecha", "Hora", "Cliente", "Servicio", "Profesional", "Precio (€)", "Estado", "Respuestas al reservar"]);
   const filas = appointments
     .slice()
     .sort((a, b) => +new Date(a.start) - +new Date(b.start))
@@ -68,6 +72,9 @@ export function citasToCsv(
         employees[a.employeeId]?.name ?? a.employeeId,
         a.priceEur,
         ESTADO_LABEL[a.status] ?? a.status,
+        respuestasLegibles(formulario?.perfil ?? {}, formulario?.tipo ?? "peluqueria", a.bookingAnswers)
+          .map((r) => `${r.pregunta} ${r.respuesta}`)
+          .join(" | "),
       ]),
     );
   return BOM + [header, ...filas].join("\r\n");

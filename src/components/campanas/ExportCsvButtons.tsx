@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { Download, FileSpreadsheet } from "lucide-react";
 import type { Appointment, Employee, Service } from "@/lib/mock/types";
 import { claveDeDia, textoRango, type Rango } from "@/lib/periodos";
-import { selectServiceMap } from "@/lib/store";
+import { selectServiceMap, useSalonStore } from "@/lib/store";
+import { inferBusinessType } from "@/lib/business-type";
 import { citasToCsv, resumenMensualToCsv, downloadCsv } from "@/lib/export-csv";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,6 +69,8 @@ export function ExportCsvButtons({
     [employees],
   );
 
+  const salonProfile = useSalonStore((s) => s.salonProfile);
+
   function exportarCitas() {
     const now = new Date();
     const desde = rango ? +rango.inicio : +inicioDePeriodo(periodo, now);
@@ -77,7 +80,7 @@ export function ExportCsvButtons({
     const enPeriodo = appointments.filter(
       (a) => +new Date(a.start) >= desde && +new Date(a.start) < hasta,
     );
-    const csv = citasToCsv(enPeriodo, serviceMap, employeeMap);
+    const csv = citasToCsv(enPeriodo, serviceMap, employeeMap, { perfil: salonProfile, tipo: inferBusinessType(salonProfile.tagline, salonProfile.name) });
     const etiqueta = rango
       ? `${claveDeDia(rango.inicio)}_${claveDeDia(new Date(+rango.fin - 86_400_000))}`
       : (PERIODOS.find((p) => p.value === periodo)?.archivo ?? periodo);

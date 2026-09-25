@@ -37,3 +37,22 @@ describe("compatibilidad: un salón sin lista propia no nota nada", () => {
     expect(preguntasPorDefecto({}, "unisex").map((p) => p.id)).toEqual(preguntasPorDefecto({}, "peluqueria").map((p) => p.id));
   });
 });
+
+describe("respuestas legibles en el panel y en el CSV", () => {
+  it("con el texto de la pregunta, en el orden del formulario, detalle incluido", async () => {
+    const { respuestasLegibles } = await import("./preguntas-reserva");
+    const r = respuestasLegibles({}, "peluqueria", { recentChemical: "No", hasColor: "Sí", colorDetail: "Castaño 5.3", hairLength: "Largo" });
+    expect(r.map((x) => `${x.pregunta} ${x.respuesta}`)).toEqual([
+      "¿Qué largo de pelo tienes? Largo",
+      "¿Llevas color o tinte ahora? Sí · Castaño 5.3",
+      "¿Te has hecho algún tratamiento químico en el último mes (tinte, mechas, alisado, permanente)? No",
+    ]);
+  });
+
+  it("el CSV de citas lleva una columna con las respuestas", async () => {
+    const { citasToCsv } = await import("./export-csv");
+    const perfil = { preguntasReserva: [{ id: "alergias", texto: "¿Alguna alergia?", tipo: "texto" as const, obligatoria: false, activa: true }] };
+    const csv = citasToCsv([{ id: "a", clientId: "c", clientName: "Ana", serviceIds: [], employeeId: "mario", start: "2026-09-29T15:00:00.000Z", duration: 30, priceEur: 20, status: "confirmed", bookingAnswers: { alergias: "Al amoníaco" } }], {}, {}, { perfil, tipo: "peluqueria" });
+    expect(csv).toContain("¿Alguna alergia? Al amoníaco");
+  });
+});
