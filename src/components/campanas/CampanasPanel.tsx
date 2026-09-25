@@ -1,3 +1,5 @@
+import { useTienePlan } from "@/lib/accesos-panel";
+import { LlegaConPlan } from "@/components/LlegaConPlan";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -44,7 +46,11 @@ const ICONOS: Record<string, LucideIcon> = {
  * aquí: cada tarjeta prepara el texto y la lista, y el dueño lo manda desde
  * su propio WhatsApp con un toque.
  */
+/** Lote 13: las campañas de todos los planes (cumpleaños, cuando exista, irá aquí). */
+const CAMPANAS_ESTANDAR = new Set(["resena"]);
+
 export function CampanasPanel() {
+  const ampliadas = useTienePlan("campanas-ampliadas");
   const appointments = useSalonStore((s) => s.appointments);
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
@@ -76,7 +82,7 @@ export function CampanasPanel() {
 
   return (
     <div className="space-y-5">
-      <ResumenBanner recuperables={resumen.recuperables} huecos={resumen.huecos} />
+      {ampliadas && <ResumenBanner recuperables={resumen.recuperables} huecos={resumen.huecos} />}
 
       {campanas.length === 0 ? (
         <div className="rounded-[20px] border border-border bg-card">
@@ -88,7 +94,7 @@ export function CampanasPanel() {
         </div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-2 xl:group-data-[panel=abierto]/panel:grid-cols-1">
-          {campanas.map((campana) => (
+          {campanas.filter((c) => ampliadas || CAMPANAS_ESTANDAR.has(c.id)).map((campana) => (
             <CampanaCard
               key={campana.id}
               campana={campana}
@@ -100,6 +106,7 @@ export function CampanasPanel() {
               }
             />
           ))}
+          {!ampliadas && <LlegaConPlan funcion="campanas-ampliadas" compacta />}
         </div>
       )}
 

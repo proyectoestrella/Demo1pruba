@@ -1,3 +1,6 @@
+import { useTienePlan } from "@/lib/accesos-panel";
+import { HORAS_HISTORIAL_ESTANDAR } from "@/lib/plan";
+import { LlegaConPlan } from "@/components/LlegaConPlan";
 import { useMemo, useState } from "react";
 import { MessageCircle, Search } from "lucide-react";
 import { textoMotivo, type Cambio, type TipoCambio } from "@/lib/cambios";
@@ -75,7 +78,10 @@ export function antesDespues(c: Cambio): string | null {
 }
 
 export function HistorialCambios() {
-  const cambios = useCambios((s) => s.cambios);
+  const todos = useCambios((s) => s.cambios);
+  // Lote 13: fuera de Todo incluido, las últimas 24 h (el aviso de 10 s sigue en todos los planes).
+  const completo = useTienePlan("historial-completo");
+  const cambios = useMemo(() => (completo ? todos : todos.filter((c) => Date.now() - Date.parse(c.fecha) <= HORAS_HISTORIAL_ESTANDAR * 3_600_000)), [todos, completo]);
   const permisos = usePermisos();
   const [grupo, setGrupo] = useState<Grupo | "todo">("todo");
   const [persona, setPersona] = useState<string>("todas");
@@ -98,7 +104,9 @@ export function HistorialCambios() {
 
   return (
     <div className="space-y-4">
-      <p className="text-[14px] text-cafe-medio">Lo que se ha cambiado en el panel en los últimos 90 días. Deshacer no borra nada: añade una fila más.</p>
+      <p className="text-[14px] text-cafe-medio">
+        {completo ? "Lo que se ha cambiado en el panel en los últimos 90 días." : `Lo que se ha cambiado en las últimas ${HORAS_HISTORIAL_ESTANDAR} horas.`} Deshacer no borra nada: añade una fila más.
+      </p>
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border border-input bg-blanco px-3 text-muted-foreground">
           <Search className="size-4 shrink-0" strokeWidth={1.6} />
@@ -139,6 +147,7 @@ export function HistorialCambios() {
           </section>
         ))
       )}
+      {!completo && <LlegaConPlan funcion="historial-completo" compacta />}
     </div>
   );
 }
@@ -151,7 +160,7 @@ function FilaCambio({ c }: { c: Cambio }) {
       <span className="w-12 shrink-0 pt-0.5 text-[13px] font-bold tabular-nums text-cafe-medio">{hora(c.fecha)}</span>
       <div className="min-w-0 flex-1">
         <p className={cn("text-[14px]", (c.deshechoEn || c.deshaceA) && "text-cafe-medio")}>
-          <b className="font-bold">{c.autorNombre ?? "Demo"}</b> · {c.resumen}
+          <b className="font-bold">{c.autorNombre ?? "Demo"}</b> · {c.deshaceA ? `Deshizo: ${c.resumen.replace(/^Deshecho:\s*/i, "")}` : c.resumen}
           {c.avisoEnviado && <MessageCircle className="ml-1.5 inline size-3.5 text-hoja-tinta" strokeWidth={1.8} aria-label="Se le escribió por WhatsApp" />}
         </p>
         {detalle && <p className="text-[12.5px] text-muted-foreground tabular-nums">{detalle}</p>}

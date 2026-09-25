@@ -1,3 +1,4 @@
+import { BotonConPlan } from "@/components/BotonConPlan";
 import { usePermisos } from "@/lib/accesos-panel";
 import { alcance, puede } from "@/lib/permisos";
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
@@ -168,11 +169,11 @@ function Appointments() {
         description={soloUno ? "Todas tus reservas." : "Todas las reservas de tu equipo."}
         actions={
           <>
-            {puedeExportar && <ExportCsvButtons
+            {puedeExportar && <BotonConPlan funcion="exportar" etiqueta="Exportar a Excel (CSV)"><ExportCsvButtons
               appointments={appointments}
               services={services}
               employees={employees}
-            />}
+            /></BotonConPlan>}
             <Button size="sm" className="hidden gap-1.5 md:inline-flex" onClick={() => setNewApptOpen(true)}>
               <Plus className="h-4 w-4" /> Nueva cita
             </Button>

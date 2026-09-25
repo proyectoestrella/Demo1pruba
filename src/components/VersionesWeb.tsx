@@ -1,3 +1,6 @@
+import { useTienePlan } from "@/lib/accesos-panel";
+import { HORAS_HISTORIAL_ESTANDAR } from "@/lib/plan";
+import { LlegaConPlan } from "@/components/LlegaConPlan";
 import { useState } from "react";
 import { ArrowRight, ChevronDown, History } from "lucide-react";
 import { diferenciasWeb, useVersiones, type VersionWeb, type WebPublicada } from "@/lib/versiones-maqueta";
@@ -27,7 +30,10 @@ export function VersionesWeb({
   onVer: (web: WebPublicada) => void;
   onRestaurar: (web: WebPublicada) => void;
 }) {
-  const versiones = useVersiones((s) => s.porSalon[slug]) ?? SIN_VERSIONES;
+  const guardadas = useVersiones((s) => s.porSalon[slug]) ?? SIN_VERSIONES;
+  // Lote 13: fuera de Todo incluido, las de las últimas 24 h.
+  const completo = useTienePlan("historial-completo");
+  const versiones = completo ? guardadas : guardadas.filter((v, i) => i === 0 || Date.now() - Date.parse(v.fecha) <= HORAS_HISTORIAL_ESTANDAR * 3_600_000);
   const [abierto, setAbierto] = useState(false);
   const [elegida, setElegida] = useState<VersionWeb | null>(null);
   const publicada = versiones[0];
@@ -100,6 +106,7 @@ export function VersionesWeb({
                 ))}
               </ul>
             )}
+            {!elegida && !completo && <LlegaConPlan funcion="historial-completo" compacta className="mt-4" />}
           </div>
           {elegida && (
             <div className="flex flex-wrap gap-2 border-t border-border px-5 py-4">

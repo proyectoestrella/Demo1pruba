@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Mail, MoreHorizontal, Plus, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { accesos, EXPLICA_ROL, NOMBRE_ROL, useAccesosDemo, type Miembro, type ResultadoAccesos } from "@/lib/accesos-maqueta";
-import { useEsDemo, useMiembroActual, usePlanSalon } from "@/lib/accesos-panel";
+import { useEsDemo, useMiembroActual, usePlanSalon, useTienePlan } from "@/lib/accesos-panel";
 import { ROLES, type Rol } from "@/lib/permisos";
 import { useEquipo } from "@/lib/use-equipo";
 import { AvatarPersona } from "@/components/ArenaShell";
@@ -196,6 +196,7 @@ function HojaInvitar({
   onInvitar: (d: { email: string; rol: Rol; employeeId: string | null; displayName: string | null }) => void;
 }) {
   const equipo = useEquipo();
+  const rolesAmpliados = useTienePlan("roles-ampliados");
   const [email, setEmail] = useState("");
   const [rol, setRol] = useState<Rol>("estilista");
   const [employeeId, setEmployeeId] = useState<string | null>(null);
@@ -238,7 +239,10 @@ function HojaInvitar({
                 <label key={r} className={cn("flex cursor-pointer gap-3 rounded-2xl border px-3.5 py-2.5", rol === r ? "border-salvia bg-salvia-suave" : "border-lino hover:bg-beige/50")}>
                   <input type="radio" name="rol" value={r} checked={rol === r} onChange={() => setRol(r)} className="mt-1 accent-[var(--hoja)]" />
                   <span>
-                    <b className="block text-[14px]">{NOMBRE_ROL[r]}</b>
+                    <b className="block text-[14px]">
+                      {NOMBRE_ROL[r]}
+                      {!rolesAmpliados && (r === "subencargado" || r === "recepcion") && <span className="ml-1.5 rounded-full bg-salvia-clara px-2 py-0.5 text-[11.5px] text-hoja-tinta">Todo incluido</span>}
+                    </b>
                     <span className="block text-[13px] text-cafe-medio">{EXPLICA_ROL[r]}</span>
                   </span>
                 </label>

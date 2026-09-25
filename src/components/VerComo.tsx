@@ -1,6 +1,8 @@
 import { Eye } from "lucide-react";
 import { useAccesosDemo, NOMBRE_ROL } from "@/lib/accesos-maqueta";
-import { useEsDemo, useMiembroActual } from "@/lib/accesos-panel";
+import { useEsDemo, useMiembroActual, usePlanSalon } from "@/lib/accesos-panel";
+import { NOMBRE_PLAN, PLANES, type PlanSishow } from "@/lib/plan";
+import { useSalonStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 /**
@@ -13,8 +15,11 @@ export function VerComo({ className }: { className?: string }) {
   const miembros = useAccesosDemo((s) => s.miembros);
   const setVerComo = useAccesosDemo((s) => s.setVerComo);
   const actual = useMiembroActual();
+  const plan = usePlanSalon();
   if (!esDemo || !miembros || !actual) return null;
   const activos = miembros.filter((m) => m.estado === "activa");
+  // Lote 13: en la demo también se elige el plan, para enseñar lo que abre cada uno.
+  const cambiarPlan = (p: PlanSishow) => useSalonStore.getState().updateSalonProfile({ plan: p });
   return (
     <label
       className={cn(
@@ -34,6 +39,19 @@ export function VerComo({ className }: { className?: string }) {
         {activos.map((m) => (
           <option key={m.userId} value={m.userId}>
             {m.displayName} · {NOMBRE_ROL[m.rol]}
+          </option>
+        ))}
+      </select>
+      <span className="h-5 w-px shrink-0 bg-salvia" aria-hidden="true" />
+      <select
+        value={plan}
+        onChange={(e) => cambiarPlan(e.target.value as PlanSishow)}
+        aria-label="Plan de la demo"
+        className="min-w-0 max-w-[9.5rem] cursor-pointer rounded-full bg-transparent py-1 pr-1 text-[13px] font-bold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      >
+        {PLANES.map((p) => (
+          <option key={p} value={p}>
+            {NOMBRE_PLAN[p]}
           </option>
         ))}
       </select>

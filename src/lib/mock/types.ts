@@ -253,6 +253,8 @@ export interface SalonHours {
 
 /** Editable salon profile shown/edited in Settings. Mirrors the shape of `salon` in mock/salon.ts. */
 export interface SalonProfile {
+  /** Plan contratado (lote 13). Sin valor: «reservas-asistente» en un salón real; la demo va en «todo-incluido». */
+  plan?: "reservas" | "reservas-asistente" | "todo-incluido";
   id: string;
   slug: string;
   name: string;

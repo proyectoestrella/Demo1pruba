@@ -13,6 +13,7 @@ import { useEffect, useMemo } from "react";
 import { useSalonStore } from "./store";
 import { useEquipo } from "./use-equipo";
 import { useAccesosDemo, type Miembro } from "./accesos-maqueta";
+import { planDe, tienePlan, type FuncionPlan, type PlanSishow } from "./plan";
 import { permisosDe, puede, vePagina, type AccionId, type PaginaId, type Permisos } from "./permisos";
 import type { Appointment, Employee } from "./mock/types";
 
@@ -21,9 +22,14 @@ export function useEsDemo(): boolean {
   return useSalonStore((s) => !s.realSalonSlug);
 }
 
-/** El plan del salón. CONECTAR (lote 13): `salonProfile.plan`. */
-export function usePlanSalon(): string {
-  return useSalonStore((s) => (s.salonProfile as { plan?: string }).plan ?? "todo-incluido");
+/** El plan del salón (lote 13): el guardado; sin él, «reservas-asistente» en un salón real y «todo-incluido» en la demo. */
+export function usePlanSalon(): PlanSishow {
+  return useSalonStore((s) => planDe(s.salonProfile, !s.realSalonSlug));
+}
+
+/** ¿Incluye el plan del salón esta función? */
+export function useTienePlan(funcion: FuncionPlan): boolean {
+  return tienePlan(usePlanSalon(), funcion);
 }
 
 /** El miembro que mira el panel; `null` en un salón real hasta conectar con el servidor. */
