@@ -10,7 +10,25 @@ export function serviceNamesOf(
   a: Pick<Appointment, "serviceIds">,
   map: Record<string, Service> = catalogo,
 ): string[] {
-  return a.serviceIds.map((id) => map[id]?.name ?? id);
+  return a.serviceIds.map((id) => map[id]?.name ?? nombreServicioLibre(id) ?? id);
+}
+
+/**
+ * Servicio libre de una sola cita (lote 9g): «Otro…» en Nueva cita sin
+ * guardarlo en la carta. Va en `serviceIds` como `libre:<nombre>`; la
+ * duración y el precio, en los campos de siempre de la cita. El backend
+ * guarda los servicios como texto separado por comas, sin clave foránea, así
+ * que no hace falta ningún campo nuevo: por eso el nombre pierde las comas.
+ */
+export const PREFIJO_LIBRE = "libre:";
+
+export function idServicioLibre(nombre: string): string {
+  const limpio = nombre.replace(/[,;]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+  return `${PREFIJO_LIBRE}${limpio}`;
+}
+
+export function nombreServicioLibre(id: string): string | null {
+  return id.startsWith(PREFIJO_LIBRE) ? id.slice(PREFIJO_LIBRE.length) || "Servicio sin nombre" : null;
 }
 
 /** "Corte de caballero + Arreglo de barba": una sola línea para tablas y tarjetas. */

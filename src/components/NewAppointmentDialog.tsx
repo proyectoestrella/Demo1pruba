@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DuracionOtra } from "@/components/DuracionOtra";
 import { cn } from "@/lib/utils";
-import { serviceLabelOf, sumServices } from "@/lib/appointment-services";
+import { idServicioLibre, serviceLabelOf, sumServices } from "@/lib/appointment-services";
 import { eur, hora } from "@/lib/copy";
 import { duracionRecordada } from "@/lib/derive";
 import { fichaDeClienta } from "@/lib/ficha-clienta";
@@ -109,6 +109,7 @@ export function NewAppointmentDialog({
   const appointments = useSalonStore((s) => s.appointments);
   const addAppointment = useSalonStore((s) => s.addAppointment);
   const addClient = useSalonStore((s) => s.addClient);
+  const addService = useSalonStore((s) => s.addService);
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const activeServices = services.filter((s) => s.active !== false);
   const serviceMap = selectServiceMap(services);
@@ -158,6 +159,7 @@ export function NewAppointmentDialog({
     setNewName(existente ? "" : (defaultClientName ?? ""));
     setPhone(existente ? "" : (defaultPhone ?? ""));
     setServiceIds([defaultServiceId ?? activeServices[0]?.id].filter((id): id is string => !!id));
+    setOtro(null);
     setEmployeeId(defaultEmployeeId ?? employees[0].id);
     setDate(toDateInput(defaultDate ?? new Date()));
     setTime(toTimeInput(defaultDate ?? new Date()));
@@ -171,12 +173,22 @@ export function NewAppointmentDialog({
   }, [open]);
 
   function toggleService(id: string) {
+    setOtro(null);
     setServiceIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
   }
 
+  // «Otro…» (9g): un servicio que no está en la carta, con nombre, duración y
+  // precio libres. Excluye a los de la carta. Con la casilla, se añade a la
+  // carta al guardar; sin ella, vive solo en esta cita (`libre:<nombre>`).
+  const [otro, setOtro] = useState<{ nombre: string; precio: string; enCarta: boolean } | null>(null);
+  const precioOtro = otro ? Number(otro.precio.replace(",", ".").trim()) : NaN;
+  const precioOtroValido = !!otro && otro.precio.trim() !== "" && Number.isFinite(precioOtro) && precioOtro >= 0;
+
   const chosen = serviceIds.map((id) => serviceMap[id]).filter(Boolean);
   // La cita bloquea y cobra la suma de todos los servicios elegidos.
-  const { durationMin: catalogoMin, priceEur: total } = sumServices(chosen);
+  const suma = sumServices(chosen);
+  const catalogoMin = otro ? 60 : suma.durationMin;
+  const total = otro ? (precioOtroValido ? Math.round(precioOtro * 100) / 100 : 0) : suma.priceEur;
 
   // Si a esta persona estos mismos servicios le llevaron otra cosa la última
   // vez, se propone ESO y se dice por qué. El catálogo sabe cuánto dura un
@@ -194,7 +206,7 @@ export function NewAppointmentDialog({
   ].sort((a, b) => a - b);
 
   // ¿Hay algo tocado? Se compara con cómo estaba al abrir: si no, se cierra sin preguntar.
-  const huella = JSON.stringify([clientChoice, newName, phone, serviceIds, employeeId, date, time, note, duracionManual]);
+  const huella = JSON.stringify([clientChoice, newName, phone, serviceIds, employeeId, date, time, note, duracionManual, otro]);
   // La foto se toma en el render que ya lleva el relleno (profesional y hora
   // de un hueco, clienta de la ficha…); si no, abrir desde el calendario
   // contaba como «tocada» y Escape preguntaba sin motivo.
@@ -264,7 +276,16 @@ export function NewAppointmentDialog({
 
   // ---- Guardar ----
   function validar(): boolean {
-    if (!chosen.length) {
+    if (otro) {
+      if (!otro.nombre.trim()) {
+        toast.error("Escribe el nombre del servicio");
+        return false;
+      }
+      if (!precioOtroValido) {
+        toast.error("Escribe el precio del servicio, por ejemplo 35");
+        return false;
+      }
+    } else if (!chosen.length) {
       toast.error("Elige al menos un servicio");
       return false;
     }
@@ -322,6 +343,18 @@ export function NewAppointmentDialog({
 
     const start = new Date(`${date}T${time}:00`);
     const startISO = start.toISOString();
+    let idsDeServicio = chosen.map((s) => s.id);
+    if (otro) {
+      if (otro.enCarta) {
+        // Entra en la carta con la duración y el precio de esta cita; el color
+        // se lo da su posición en la carta, como a los demás.
+        const nuevo = addService({ name: otro.nombre.trim(), description: "", durationMin: totalMin, priceEur: total, active: true });
+        idsDeServicio = [nuevo.id];
+        toast.success("Servicio añadido a la carta", { description: otro.nombre.trim() });
+      } else {
+        idsDeServicio = [idServicioLibre(otro.nombre)];
+      }
+    }
     // CONECTAR (contrato E1): cuando la store acepte el tercer parámetro,
     // pasar aquí `opciones` — `{ permitirSolape: true }` si la dueña aceptó
     // el choque. Hoy se guarda igual en local y el servidor avisaría con
@@ -331,7 +364,7 @@ export function NewAppointmentDialog({
       {
         clientId,
         clientName,
-        serviceIds: chosen.map((s) => s.id),
+        serviceIds: idsDeServicio,
         employeeId,
         start: startISO,
         duration: totalMin,
@@ -362,6 +395,7 @@ export function NewAppointmentDialog({
       setNote("");
       setDuracionManual(null);
       setServiceIds([activeServices[0]?.id].filter((id): id is string => !!id));
+      setOtro(null);
       setSemilla((n) => n + 1);
       return;
     }
@@ -543,7 +577,52 @@ export function NewAppointmentDialog({
                         </button>
                       );
                     })}
+                    <button
+                      type="button"
+                      aria-pressed={!!otro}
+                      onClick={() => {
+                        if (otro) return setOtro(null);
+                        setServiceIds([]);
+                        setOtro({ nombre: "", precio: "", enCarta: false });
+                      }}
+                      className={opcion(!!otro)}
+                    >
+                      Otro…
+                    </button>
                   </div>
+                  {otro && (
+                    <div className="mt-3 grid gap-3 rounded-2xl border border-lino bg-card p-3.5">
+                      <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
+                        <label className="grid gap-1 text-[13px] font-bold text-cafe">
+                          Nombre del servicio
+                          <input
+                            autoFocus
+                            value={otro.nombre}
+                            maxLength={60}
+                            onChange={(e) => setOtro({ ...otro, nombre: e.target.value })}
+                            placeholder="Por ejemplo, Recogido con trenza"
+                            className="h-10 rounded-xl border border-input bg-blanco px-3 text-[14px] font-normal"
+                          />
+                        </label>
+                        <label className="grid gap-1 text-[13px] font-bold text-cafe">
+                          Precio (€)
+                          <input
+                            value={otro.precio}
+                            inputMode="decimal"
+                            onChange={(e) => setOtro({ ...otro, precio: e.target.value })}
+                            placeholder="35"
+                            aria-invalid={otro.precio.trim() !== "" && !precioOtroValido}
+                            className="h-10 rounded-xl border border-input bg-blanco px-3 text-[14px] font-normal tabular-nums"
+                          />
+                        </label>
+                      </div>
+                      <p className="text-[12.5px] text-cafe-suave">La duración se elige abajo, en «Duración».</p>
+                      <label className="flex items-center gap-2 text-[13.5px] text-cafe">
+                        <input type="checkbox" className="size-4 accent-[var(--hoja)]" checked={otro.enCarta} onChange={(e) => setOtro({ ...otro, enCarta: e.target.checked })} />
+                        Guardar como nuevo servicio en la carta
+                      </label>
+                    </div>
+                  )}
 
                   {!soloUno && (
                     <>
@@ -671,7 +750,7 @@ export function NewAppointmentDialog({
                   <dl className="flex flex-col text-sm">
                     {[
                       ["Clienta", elegida?.name ?? (newName.trim() || "Sin elegir")],
-                      ["Servicio", chosen.length ? serviceLabelOf({ serviceIds }, serviceMap) : "Sin elegir"],
+                      ["Servicio", otro ? otro.nombre.trim() || "Otro, sin nombre" : chosen.length ? serviceLabelOf({ serviceIds }, serviceMap) : "Sin elegir"],
                       ...(soloUno ? [] : [["Con", empleado?.name ?? "—"]]),
                       ["Día", fechaLarga],
                       ["Hora", `${time}–${horaDeMinutos(minutoElegido + totalMin)}`],
