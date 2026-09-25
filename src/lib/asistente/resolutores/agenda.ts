@@ -3,6 +3,7 @@ import { sumarDias } from "../entidades";
 import {
   activa, citasDe, citasDelDia, cuando, estaSemana, esteMes, etiquetaRelativa, hora, nombrePro, ocupacion, porDia, rangoDe,
 } from "./calculos";
+import { periodoAnalitica } from "./dinero";
 import { reparto, textoHuecos } from "./hoy";
 import { duracion, enPeriodo, lista, listaConResto, mayus, NO_LO_TENGO, pct, pila, plural, respuesta, type Contexto, type Rango, type Resolutor } from "./tipos";
 
@@ -107,6 +108,17 @@ function nombreAnterior(r: Rango): string {
 }
 
 export const citasPeriodo: Resolutor = (c) => {
+  // Con la fuente de Analítica, las mismas cifras que su tarjeta de citas.
+  const pa = periodoAnalitica(c, "semana");
+  const ra = pa.tipo !== "personalizado" || pa.hasta <= c.hoy ? c.fuentes.resumenPeriodo?.(pa) : null;
+  if (ra) {
+    const ant = pa.tipo === "semana" ? "la semana pasada" : pa.tipo === "mes" ? "el mes pasado" : pa.tipo === "hoy" ? "ayer" : "el periodo anterior";
+    const cmp = ra.variacionCitas === null ? "" : ra.variacionCitas === 0 ? `, las mismas que ${ant}${ra.parcial ? " a estas alturas" : ""}` : `, un ${Math.abs(ra.variacionCitas)} % ${ra.variacionCitas > 0 ? "más" : "menos"} que ${ant}${ra.parcial ? " a estas alturas" : ""}`;
+    return respuesta(`${mayus(enPeriodo(pa.etiqueta))} tienes **${plural(ra.citas, "cita", "citas")}**${cmp}.`, {
+      cifras: [{ etiqueta: `citas ${pa.etiqueta}`, valor: ra.citas, unidad: "citas" }],
+      acciones: [{ tipo: "ver-seccion", etiqueta: "Ver Analítica", destino: "Analítica" }],
+    });
+  }
   const r = rangoDe(c, estaSemana);
   const n = citasDe(c.estado, r).filter(activa).length;
   const antes = citasDe(c.estado, anterior(r)).filter(activa).length;

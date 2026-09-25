@@ -15,6 +15,7 @@ import { indiceColorServicio } from "../hoy-arena";
 import { colorElegidoProfesional } from "../colores-elegidos";
 import { buildCampanas, calcularHuecoFlojo, resumenDelMes } from "../campanas";
 import { DIAS_SEGUNDA_VISITA, DIAS_RESENA } from "../campanas";
+import { comparar, resumenDePeriodo } from "../periodos";
 
 /**
  * Adaptador de esta rama a la interfaz `FuentesAsistente` de BACKEND
@@ -88,6 +89,22 @@ export function crearFuentesPanel(
         },
       };
       return ficha;
+    },
+
+    // El mismo cálculo que Analítica: compara solo si hay periodo previo y el salón no está cerrado.
+    resumenPeriodo({ tipo, desde, hasta }) {
+      const r = resumenDePeriodo(leer().appointments, tipo, equipo(), ahora(), tipo === "personalizado" && desde && hasta ? { desde, hasta } : null);
+      const ok = r.hayComparacion && !r.cerrado;
+      const oc = comparar(r.actual.ocupacion ?? 0, ok ? r.previo.ocupacion : null);
+      return {
+        citas: r.actual.citas,
+        citasPrevias: ok ? r.previo.citas : null,
+        variacionCitas: ok ? comparar(r.actual.citas, r.previo.citas).variacionPct : null,
+        ocupacion: r.actual.ocupacion,
+        ocupacionPrevia: ok ? r.previo.ocupacion : null,
+        variacionOcupacion: r.actual.ocupacion === null ? null : oc.variacionPct,
+        parcial: r.parcial,
+      };
     },
 
     huecos(dia, o = {}) {

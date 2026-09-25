@@ -145,12 +145,32 @@ export interface CampanaA {
   motivo?: string;
 }
 
+/** Resumen de un periodo con el MISMO cálculo que Analítica (resumenDePeriodo). */
+export interface ResumenPeriodoA {
+  citas: number;
+  citasPrevias: number | null;
+  /** % redondeado; null si no hay con qué comparar. */
+  variacionCitas: number | null;
+  ocupacion: number | null;
+  ocupacionPrevia: number | null;
+  variacionOcupacion: number | null;
+  /** El periodo va a medias: el anterior se recortó al mismo tramo. */
+  parcial: boolean;
+}
+
 export interface FuentesAsistente {
   /** Instantánea del salón. Se llama una vez por pregunta. */
   estado(): EstadoAsistente;
 
   /** Ficha calculada de una clienta, o `null` si no existe. */
   fichaClienta(clientaId: string): FichaA | null;
+
+  /**
+   * Opcional: resumen del periodo tal como lo calcula Analítica, para que el
+   * asistente y la pantalla den las mismas cifras. Sin él, el motor calcula
+   * por su cuenta. «desde»/«hasta» solo con tipo «personalizado».
+   */
+  resumenPeriodo?(p: { tipo: "hoy" | "semana" | "mes" | "personalizado"; desde?: string; hasta?: string }): ResumenPeriodoA | null;
 
   /** Huecos libres de un día («AAAA-MM-DD»), de 30 min o más por defecto. */
   huecos(dia: string, opciones?: { profesionalId?: string; minMinutos?: number }): HuecoA[] | null;
