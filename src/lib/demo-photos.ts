@@ -25,6 +25,25 @@ export function placePhotoUrl(placeId: string, spec: PhotoSpec): string {
   return `/api/foto?place=${encodeURIComponent(placeId)}&i=${index}`;
 }
 
+/**
+ * URL de una foto con ancho pedido (lote 16): 800 en móvil, 1600 en
+ * escritorio. El proxy acota a [320, 1600]; 1600 equivale a no pasarlo.
+ */
+export function urlFoto(placeId: string, spec: PhotoSpec, w: number): string {
+  return `${placePhotoUrl(placeId, spec)}&w=${Math.round(w)}`;
+}
+
+/**
+ * Añade (o cambia) el ancho a una URL ya hecha del proxy, p. ej. la
+ * `heroImage` guardada en la demo. Una URL que no es del proxy se devuelve
+ * tal cual (una foto subida por el salón no entiende `w`).
+ */
+export function conAncho(url: string | undefined, w: number): string | undefined {
+  if (!url || !url.startsWith("/api/foto?")) return url;
+  const sinW = url.replace(/&w=[^&]*/g, "");
+  return `${sinW}&w=${Math.round(w)}`;
+}
+
 /** Saca el id del local de una URL de portada generada por nosotros, o null. */
 export function placeIdFromHero(heroImage: string | undefined): string | null {
   if (!heroImage) return null;
