@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { galleryPhotosFor, placeIdFromHero, placePhotoUrl } from "./demo-photos";
+import { conAncho, galleryPhotosFor, placeIdFromHero, placePhotoUrl, urlFoto } from "./demo-photos";
 
 const PLACE = "ChIJLQw358ErQg0R5c4UaPTk7_M";
 
@@ -59,5 +59,14 @@ describe("galleryPhotosFor", () => {
 
   it("sin portada de Google no se inventa nada", () => {
     expect(galleryPhotosFor({ heroImage: "", photoCount: 8, galleryPhotos: ["1"] })).toEqual([]);
+  });
+});
+
+describe("urlFoto / conAncho (lote 16)", () => {
+  it("añade el ancho a la URL del proxy", () => {
+    expect(urlFoto("ChIJx", 2, 800)).toBe("/api/foto?place=ChIJx&i=2&w=800");
+    expect(conAncho("/api/foto?place=ChIJx&i=0&w=1600", 800)).toBe("/api/foto?place=ChIJx&i=0&w=800");
+    expect(conAncho("https://otra/foto.jpg", 800)).toBe("https://otra/foto.jpg");
+    expect(conAncho(undefined, 800)).toBeUndefined();
   });
 });

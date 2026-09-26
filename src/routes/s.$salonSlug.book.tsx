@@ -6,6 +6,7 @@ import { employeesForType, servicesForType } from "@/lib/mock/salon";
 import { importeSenal, reglaSenal, senalDeReservaNueva, servicioLlevaSenal, textoSenalPublico, type ReglaSenal } from "@/lib/senal";
 import { huecosDeProfesionales, trabajaEn } from "@/lib/horario-equipo";
 import { isoDelSalon, zonaDelSalon } from "@/lib/zona-horaria";
+import { antelacionMinima, huecoAunReservable } from "@/lib/primer-hueco";
 import type { Appointment, BookingAnswers, Client, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { serializeBookingNote } from "@/lib/booking-answers";
 import { limpiarRespuestas, obligatoriasSinResponder, preguntasAplicables, preguntasDelSalon } from "@/lib/preguntas-reserva";
@@ -730,6 +731,7 @@ function BookingWizard() {
               lastSlotBufferMin={profile.lastSlotBufferMin ?? 0}
               priorityHours={profile.priorityHours ?? []}
               timeZone={zonaDelSalon(profile)}
+              antelacionMin={antelacionMinima(profile.antelacionMinimaMin)}
               durationLabel={durationLabel}
               flexNota={flexNota}
               recargoTexto={recargoTexto}
@@ -1248,9 +1250,12 @@ function DateTimeStep({
   flexNota,
   recargoTexto,
   timeZone,
+  antelacionMin,
 }: {
   /** Zona horaria de la agenda del salón (ver lib/zona-horaria.ts). */
   timeZone: string;
+  /** Minutos entre «ahora» y el primer hueco ofrecido (lib/primer-hueco.ts). */
+  antelacionMin: number;
   /** Duración con la que se busca hueco libre — con duración flexible ya es el extremo alto del rango. */
   durationMin: number;
   stylistChoice: EmployeeId | "any";
@@ -1322,6 +1327,10 @@ function DateTimeStep({
           return trabajaEn(e, weekday, minuto, durationMin);
         });
         if (!open) continue;
+        // Lote 16: un hueco de hoy que ya pasó (o está a menos de la
+        // antelación) no se ofrece; sin esto, un sábado a las 19:05 salía
+        // «Lo antes posible: hoy a las 12:30».
+        if (!huecoAunReservable(dateKey, timeStr, timeZone, new Date(), antelacionMin)) continue;
         const iso = isoDelSalon(dateKey, timeStr, timeZone);
         const free = relevantEmployees.some(
           (e) => !isSlotTaken(appointments, e.id, iso, durationMin),
@@ -1383,6 +1392,10 @@ function DateTimeStep({
           return trabajaEn(e, weekday, minuto, durationMin);
         });
         if (!open) continue;
+        // Lote 16: un hueco de hoy que ya pasó (o está a menos de la
+        // antelación) no se ofrece; sin esto, un sábado a las 19:05 salía
+        // «Lo antes posible: hoy a las 12:30».
+        if (!huecoAunReservable(dateKey, timeStr, timeZone, new Date(), antelacionMin)) continue;
         const iso = isoDelSalon(dateKey, timeStr, timeZone);
         const available = relevantEmployees.some(
           (e) => !isSlotTaken(appointments, e.id, iso, durationMin),
@@ -1405,6 +1418,8 @@ function DateTimeStep({
     smartSpread,
     lastSlotBufferMin,
     priorityHours,
+    timeZone,
+    antelacionMin,
   ]);
 
   const groups = useMemo(() => {

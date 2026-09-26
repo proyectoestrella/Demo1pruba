@@ -7,6 +7,20 @@
 /** Los IDs de Places son alfanuméricos con guiones; nada más entra aquí. */
 const ID_VALIDO = /^[A-Za-z0-9_-]{5,300}$/;
 
+/** Anchos que se piden a Google: móvil (800) y escritorio (1600) caben dentro. */
+export const ANCHO_MIN = 320;
+export const ANCHO_MAX = 1600;
+
+/**
+ * Ancho pedido en `&w=`, acotado a [320, 1600]. Sin parámetro (o basura) es
+ * 1600, lo que se servía antes del lote 16: los enlaces viejos no cambian.
+ */
+export function anchoPedido(w: string | null): number {
+  const n = Math.round(Number(w));
+  if (w === null || w === "" || !Number.isFinite(n)) return ANCHO_MAX;
+  return Math.min(Math.max(n, ANCHO_MIN), ANCHO_MAX);
+}
+
 /** Respuesta de error que no se cachea, para poder reintentar al arreglarlo. */
 function error(mensaje: string, status: number) {
   return new Response(mensaje, {
@@ -37,6 +51,7 @@ async function servirFotoSinRed(
   const placeId = params.get("place");
   // Qué foto de las que tiene el local: 0 es la portada, el resto la galería.
   const index = Math.min(Math.max(Number(params.get("i") ?? 0) || 0, 0), 9);
+  const ancho = anchoPedido(params.get("w"));
 
   // Se valida la forma antes de reenviar nada: sin esta comprobación el
   // parámetro sería una vía para lanzar peticiones arbitrarias firmadas
@@ -76,7 +91,7 @@ async function servirFotoSinRed(
 
   // Paso 2: traer la imagen y devolverla tal cual.
   const imagen = await fetch(
-    `https://places.googleapis.com/v1/${referencia}/media?maxWidthPx=1600&key=${key}`,
+    `https://places.googleapis.com/v1/${referencia}/media?maxWidthPx=${ancho}&key=${key}`,
     { redirect: "follow" },
   );
 
@@ -90,6 +105,8 @@ async function servirFotoSinRed(
   return new Response(imagen.body, {
     headers: {
       "Content-Type": imagen.headers.get("content-type") ?? "image/jpeg",
+      // Cada combinación place+i+w es una URL distinta y su imagen no cambia:
+      // un año, inmutable, para que el CDN no vuelva a llamar a Google.
       "Cache-Control": "public, max-age=31536000, immutable",
     },
   });

@@ -40,3 +40,23 @@ describe("api/foto con entradas malas: 4xx con mensaje, nunca 500", () => {
     expect((await servirFoto(req("?place=ChIJ_valido"), undefined, pedir(() => new Response("")))).status).toBe(503);
   });
 });
+
+describe("api/foto con &w= (lote 16)", () => {
+  const conFoto = (urls: string[]) =>
+    (async (u: string | URL | Request) => {
+      urls.push(String(u));
+      return String(u).includes("/media")
+        ? new Response("img", { headers: { "content-type": "image/jpeg" } })
+        : Response.json({ photos: [{ name: "places/X/photos/F" }] });
+    }) as unknown as typeof fetch;
+
+  it("pide a Google el ancho indicado, acotado a 320-1600, y 1600 por defecto", async () => {
+    for (const [q, esperado] of [["", 1600], ["&w=800", 800], ["&w=100", 320], ["&w=9999", 1600], ["&w=abc", 1600]] as const) {
+      const urls: string[] = [];
+      const r = await servirFoto(req(`?place=ChIJ_valido${q}`), "k", conFoto(urls));
+      expect(r.status).toBe(200);
+      expect(urls[1]).toContain(`maxWidthPx=${esperado}&`);
+      expect(r.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
+    }
+  });
+});
