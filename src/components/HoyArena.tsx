@@ -1,3 +1,4 @@
+import { citasDelDiaMemo } from "@/lib/selectores-rutas";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -19,7 +20,6 @@ import { ESTADO_POR_DESENLACE, resumenDeDeuda, type Desenlace } from "@/lib/deud
 import { fechaLocal, hojaDelDia } from "@/lib/hoja-del-dia";
 import { eur, eurRedondo, hora } from "@/lib/copy";
 import {
-  citasDelDia,
   colorServicio,
   duracionCorta,
   enCurso,
@@ -109,7 +109,7 @@ export function HoyArena() {
   const [seleccionada, setSeleccionada] = useState<Appointment | null>(null);
 
   const ahora = new Date();
-  const hoy = useMemo(() => citasDelDia(appointments, ahora), [appointments]); // eslint-disable-line react-hooks/exhaustive-deps
+  const hoy = useMemo(() => citasDelDiaMemo(appointments, ahora), [appointments]); // eslint-disable-line react-hooks/exhaustive-deps
   const pendientes = appointments
     .filter((a) => a.status === "pending")
     .sort((a, b) => +new Date(a.start) - +new Date(b.start));

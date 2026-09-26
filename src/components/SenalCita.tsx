@@ -9,6 +9,9 @@ import {
   importeSenal,
   mensajeErrorSenal,
   prepararPeticionSenal,
+  puedePedirSenal,
+  motivoCitaCerrada,
+  mensajeCitaCerrada,
   reglaSenal,
   type CodigoErrorSenal,
   type EstadoSenal,
@@ -43,14 +46,6 @@ const METODOS: { id: MetodoSenal; texto: string }[] = [
   { id: "transferencia", texto: "Transferencia" },
 ];
 
-const ESTADOS_ABIERTOS = new Set(["pending", "confirmed"]);
-const MENSAJE_CITA_CERRADA = "La cita ya ha pasado o está cancelada: la señal ya no se pide.";
-
-/** ¿Está la cita cerrada para pedir señal? (misma regla que `pedirSenal` del dominio: abierta y futura). */
-export function citaCerradaParaSenal(cita: Pick<Appointment, "status" | "start">, ahora: Date): boolean {
-  return !ESTADOS_ABIERTOS.has(cita.status) || Date.parse(cita.start) <= ahora.getTime();
-}
-
 export function SenalCita({ cita, compacta = false }: { cita: Appointment; compacta?: boolean }) {
   const perfil = useSalonStore((s) => s.salonProfile);
   const clients = useSalonStore((s) => s.clients);
@@ -72,7 +67,8 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
   // no cancelada ni cerrada). Antes el botón miraba solo el estado de la
   // señal y salía también en citas pasadas, donde el dominio (bien) decía
   // «La cita ya ha pasado o está cancelada».
-  const cerrada = citaCerradaParaSenal(cita, new Date());
+  const motivoCerrada = motivoCitaCerrada(cita, new Date());
+  const cerrada = !puedePedirSenal(cita, new Date());
 
   // Lote 12: el aviso de lo hecho (con «Deshacer») lo pone el registro de cambios; aquí solo los errores.
   const resultado = (error: CodigoErrorSenal | null) => (error ? toast.error(mensajeErrorSenal(error)) : undefined);
@@ -86,7 +82,7 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
     if (!telefono) return toast.error("Esta clienta no tiene teléfono al que escribir.");
     const requestedAt = new Date().toISOString();
     const preparada = prepararPeticionSenal(cita, regla, importeDeEstaCita, new Date(requestedAt));
-    if (!preparada.ok) return toast.error(mensajeErrorSenal(preparada.error));
+    if (!preparada.ok) return toast.error(preparada.mensaje);
     const url = enlaceDeFianza(
       telefono,
       {
@@ -177,7 +173,7 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {cerrada && (estado === "no_aplica" || estado === "por_pedir") && (
-            <p className="text-[12.5px] text-muted-foreground">{MENSAJE_CITA_CERRADA}</p>
+            <p className="text-[12.5px] text-muted-foreground">{motivoCerrada ? mensajeCitaCerrada(motivoCerrada) : null}</p>
           )}
           {!cerrada && (estado === "no_aplica" || estado === "por_pedir") && (
             <Button size="sm" variant={estado === "por_pedir" ? "default" : "outline"} className={btn} onClick={pedir}>

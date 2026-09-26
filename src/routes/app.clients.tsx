@@ -1,3 +1,4 @@
+import { fichaDeClientaMemo } from "@/lib/selectores-rutas";
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
@@ -6,7 +7,6 @@ import { puede } from "@/lib/permisos";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { clientFrequency } from "@/lib/derive";
 import { buscarClientas } from "@/lib/buscar-clientas";
-import { fichaDeClienta } from "@/lib/ficha-clienta";
 import { useEquipo } from "@/lib/use-equipo";
 import { toDateKey } from "@/lib/reparto";
 import type { Appointment, Client } from "@/lib/mock/types";
@@ -205,7 +205,7 @@ function Clients() {
   const fichas = new Map(
     rows.map((c) => [
       c.id,
-      fichaDeClienta(c.id, { citas: citasPorClienta.get(c.id) ?? SIN_CITAS, clientes: clients, servicios: services, equipo, ahora: new Date(now) }).resumen,
+      fichaDeClientaMemo(c.id, { citas: citasPorClienta.get(c.id) ?? SIN_CITAS, clientes: clients, servicios: services, equipo, ahora: new Date(now) }).resumen,
     ]),
   );
   const frecuencia = (id: string) => {

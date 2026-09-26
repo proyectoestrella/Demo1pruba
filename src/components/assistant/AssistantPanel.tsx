@@ -123,7 +123,16 @@ function PanelDelAsistente({ className }: { className?: string }) {
   );
 
   // Índices y catálogo listos al abrir, para que la primera pregunta no espere.
-  useEffect(() => asistente.precalentar(), [asistente]);
+  // Lote 16: precalentar en un momento libre, no al montar (16-94 ms).
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number; cancelIdleCallback?: (id: number) => void };
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(() => asistente.precalentar());
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const t = setTimeout(() => asistente.precalentar(), 200);
+    return () => clearTimeout(t);
+  }, [asistente]);
 
   // El historial dura lo que la sesión del navegador: se recupera al volver a abrir el panel.
   useEffect(() => setMensajes(leerHistorial()), []);

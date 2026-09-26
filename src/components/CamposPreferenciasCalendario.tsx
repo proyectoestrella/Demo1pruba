@@ -1,5 +1,5 @@
 import { useSalonStore } from "@/lib/store";
-import { PRIMEROS_DIAS, VISTAS_CALENDARIO, preferenciasDe, type PrimerDia, type VistaCalendario } from "@/lib/preferencias-calendario";
+import { parcheCalendario, PRIMEROS_DIAS, VISTAS_CALENDARIO, preferenciasDe, type PrimerDia, type VistaCalendario } from "@/lib/preferencias-calendario";
 
 /**
  * Vista predeterminada, primer día de la semana y horas visibles del
@@ -10,7 +10,7 @@ export function CamposPreferenciasCalendario() {
   const guardadas = useSalonStore((s) => s.salonProfile.calendario);
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
   const pref = preferenciasDe(guardadas);
-  const guardar = (cambio: Partial<typeof pref>) => updateSalonProfile({ calendario: preferenciasDe({ ...pref, ...cambio }) });
+  const guardar = (cambio: Partial<typeof pref>) => updateSalonProfile(parcheCalendario(guardadas, cambio));
   const campo = "h-10 w-full rounded-xl border border-input bg-blanco px-3 text-[14px] text-cafe";
   const etiqueta = "mb-1.5 block text-[13px] font-bold text-cafe";
   const horas = Array.from({ length: 25 }, (_, h) => h);

@@ -1,3 +1,4 @@
+import { buildCampanasMemo } from "@/lib/selectores-rutas";
 import { useTrasPintar } from "@/lib/tras-pintar-panel";
 import { useTienePlan } from "@/lib/accesos-panel";
 import { LlegaConPlan } from "@/components/LlegaConPlan";
@@ -22,7 +23,6 @@ import { zonaDelSalon } from "@/lib/zona-horaria";
 import { useEquipo } from "@/lib/use-equipo";
 import { cn } from "@/lib/utils";
 import {
-  buildCampanas,
   resumenDelMes,
   whatsappUrl,
   COMPARATIVA_OTRAS_PLATAFORMAS,
@@ -70,7 +70,7 @@ export function CampanasPanel() {
   const listo = useTrasPintar();
   const campanas = useMemo(
     () =>
-      !listo ? [] : buildCampanas({
+      !listo ? [] : buildCampanasMemo({
         appointments,
         clients,
         services,
