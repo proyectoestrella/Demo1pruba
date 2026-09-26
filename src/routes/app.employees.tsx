@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { DAY_LABELS_ES, parseRanges } from "@/lib/opening-hours";
 import { resumenHorario } from "@/lib/horario-resumen";
 
@@ -82,14 +82,19 @@ function Team() {
   };
 
   // «Esta semana»: citas, horas en agenda y ocupación de cada profesional.
+  // Lote 16: memoizado y con las citas de cada día calculadas UNA vez (antes,
+  // 7 días x cada profesional recorrían la agenda entera en cada pintado).
   const semana = diasDeSemana(new Date(), employees);
-  const resumenSemana = employees.map((e) => {
+  const servicios = useSalonStore((s) => s.services);
+  const resumenSemana = useMemo(() => {
+  const porDia = semana.map((d) => citasDeCalendario(appointments, d).filter((a) => a.status !== "blocked"));
+  return employees.map((e) => {
     let citas = 0;
     let minutos = 0;
     let jornada = 0;
     let ocupacionPonderada = 0;
-    for (const d of semana) {
-      const delDia = citasDeCalendario(appointments, d).filter((a) => a.status !== "blocked");
+    for (const [k, d] of semana.entries()) {
+      const delDia = porDia[k];
       const mias = delDia.filter((a) => a.employeeId === e.id);
       citas += mias.length;
       minutos += mias.reduce((t, a) => t + a.duration, 0);
@@ -99,6 +104,8 @@ function Team() {
     }
     return { e, citas, horas: Math.round(minutos / 6) / 10, ocupacion: jornada ? Math.round((ocupacionPonderada / jornada) * 100) : 0, top: topServicesFor(appointments, e.id, carta)[0] };
   });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employees, appointments, servicios, semana[0]?.toDateString()]);
   const etiqueta = "text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase";
   const selectHora = "h-9 rounded-xl border border-input bg-card px-2 text-[13px] tabular-nums";
 

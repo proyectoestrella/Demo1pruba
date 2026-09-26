@@ -1,5 +1,6 @@
 import { avisar } from "@/lib/deshacer-maqueta";
 import { useEffect, useMemo, useState } from "react";
+import { useTrasPintar } from "@/lib/tras-pintar-panel";
 import { esperandoDesde, filtrarEspera, proximoHuecoPara, type HuecoPropuesto } from "@/lib/lista-espera-panel";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -90,15 +91,18 @@ function Waitlist() {
   const tipo = useBusinessType();
   const serviceMap = selectServiceMap(services);
   const filtradas = filtrarEspera(waitlist, { servicio: fServicio, profesional: fPro });
+  // El hueco propuesto se calcula un fotograma después de pintar la lista.
+  const listo = useTrasPintar();
   const huecos = useMemo(() => {
     const m = new Map<string, HuecoPropuesto>();
+    if (!listo) return m;
     for (const w of waitlist) {
       const h = proximoHuecoPara(w, citas, equipo, serviceMap[w.serviceId]?.durationMin ?? 45, ahora);
       if (h) m.set(w.id, h);
     }
     return m;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [waitlist, citas, equipo, ahora, services]);
+  }, [listo, waitlist, citas, equipo, ahora, services]);
 
   const [convertTarget, setConvertTarget] = useState<WaitlistEntry | null>(null);
   const [convertOpen, setConvertOpen] = useState(false);
@@ -237,7 +241,7 @@ function Waitlist() {
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="mr-auto text-[12.5px] text-muted-foreground tabular-nums">
-                    {h ? `${h.fecha.toLocaleDateString("es-ES", { weekday: "short", day: "numeric" })} ${toTimeInput(h.fecha)}${soloUno ? "" : ` · ${equipo.find((x) => x.id === h.employeeId)?.name ?? ""}`}` : "Sin hueco en 14 días"}
+                    {h ? `${h.fecha.toLocaleDateString("es-ES", { weekday: "short", day: "numeric" })} ${toTimeInput(h.fecha)}${soloUno ? "" : ` · ${equipo.find((x) => x.id === h.employeeId)?.name ?? ""}`}` : listo ? "Sin hueco en 14 días" : "Buscando hueco…"}
                   </span>
                   <Button
                     size="sm"

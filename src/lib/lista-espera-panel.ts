@@ -24,9 +24,14 @@ export function proximoHuecoPara(
 ): HuecoPropuesto | null {
   const candidatas = entry.preferredEmployeeId === "any" ? equipo : equipo.filter((e) => e.id === entry.preferredEmployeeId);
   if (!candidatas.length) return null;
+  // Solo las citas de la ventana (texto ISO, ±1 día por la zona): antes se
+  // recorría la agenda entera una vez por día y por clienta en espera.
+  const lo = new Date(ahora.getTime() - 86_400_000).toISOString();
+  const hi = new Date(ahora.getTime() + (dias + 1) * 86_400_000).toISOString();
+  const ventana = citas.filter((a) => a.start >= lo && a.start < hi);
   for (let i = 0; i < dias; i++) {
     const dia = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + i);
-    const delDia = citasDeCalendario(citas, dia);
+    const delDia = citasDeCalendario(ventana, dia);
     let mejor: HuecoPropuesto | null = null;
     for (const e of candidatas) {
       const t = huecosDe(delDia, e, dia.getDay(), { desde: i === 0 ? minutosDe(ahora) : undefined, minMin: Math.max(15, duracionMin) })[0];
