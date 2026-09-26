@@ -560,3 +560,71 @@
 @media (prefers-reduced-motion: reduce) {
   .esqueleto::after { animation: none; display: none; }
 }
+
+/* Lote 16: sistema de movimiento «calma». Solo opacidad y desplazamientos
+   cortos, curvas de salida sin rebote, 160-600 ms. Todo se apaga con
+   prefers-reduced-motion. */
+:root {
+  --curva-salida: cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes entrar-suave {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes rellenar-x {
+  from { transform: scaleX(0); }
+}
+@keyframes rellenar-y {
+  from { transform: scaleY(0); }
+}
+/* Entrada escalonada: cada hijo de una lista entra 30 ms después del anterior (máx. 10). */
+.entrada-lista {
+  animation: entrar-suave 260ms var(--curva-salida) both;
+}
+.entrada-lista:nth-child(2) { animation-delay: 30ms; }
+.entrada-lista:nth-child(3) { animation-delay: 60ms; }
+.entrada-lista:nth-child(4) { animation-delay: 90ms; }
+.entrada-lista:nth-child(5) { animation-delay: 120ms; }
+.entrada-lista:nth-child(6) { animation-delay: 150ms; }
+.entrada-lista:nth-child(7) { animation-delay: 180ms; }
+.entrada-lista:nth-child(8) { animation-delay: 210ms; }
+.entrada-lista:nth-child(9) { animation-delay: 240ms; }
+.entrada-lista:nth-child(n + 10) { animation-delay: 270ms; }
+.barra-rellena {
+  transform-origin: left center;
+  animation: rellenar-x 600ms var(--curva-salida) both;
+  transition: width 400ms var(--curva-salida);
+}
+.barra-sube {
+  transform-origin: bottom center;
+  animation: rellenar-y 500ms var(--curva-salida) both;
+  transition: height 400ms var(--curva-salida);
+}
+@media (prefers-reduced-motion: reduce) {
+  .entrada-lista, .barra-rellena, .barra-sube { animation: none; transition: none; }
+}
+
+/* Plegable que se despliega (alto animado con grid-rows, sin medir en JS). */
+.plegable {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 220ms var(--curva-salida);
+}
+.plegable.abierto { grid-template-rows: 1fr; }
+
+/* Micro-check de «Guardado»: el trazo se dibuja y el texto entra. */
+.micro-check {
+  animation: entrar-suave 200ms var(--curva-salida) both;
+}
+.micro-check path {
+  stroke-dasharray: 16;
+  stroke-dashoffset: 16;
+  animation: dibujar-check 320ms 60ms var(--curva-salida) forwards;
+}
+@keyframes dibujar-check {
+  to { stroke-dashoffset: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .plegable { transition: none; }
+  .micro-check, .micro-check path { animation: none; stroke-dashoffset: 0; }
+}
