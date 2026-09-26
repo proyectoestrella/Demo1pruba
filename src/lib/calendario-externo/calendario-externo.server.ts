@@ -160,6 +160,21 @@ export async function obtenerConexion(salonSlug: string, conexionId: string): Pr
   return data ? filaAConexion(data as FilaConexion) : null;
 }
 
+/**
+ * Flag por salón, desactivado por defecto: `profile.calendariosExternosActivo`
+ * (jsonb de `salons`). Defensa en profundidad — FRONTEND ya no enseña la
+ * pantalla si está apagado, pero conectar/desconectar lo comprueba aquí
+ * también, por si alguna llamada llega igual.
+ */
+export async function flagCalendariosActivo(salonSlug: string): Promise<boolean> {
+  const db = getSupabaseServerClient();
+  if (!db) return false;
+  const { data, error } = await db.from("salons").select("profile").eq("slug", salonSlug).maybeSingle();
+  if (error || !data) return false;
+  const profile = (data as { profile: Record<string, unknown> }).profile;
+  return profile?.calendariosExternosActivo === true;
+}
+
 export async function listarConexiones(salonSlug: string): Promise<ConexionCalendario[]> {
   const db = getSupabaseServerClient();
   if (!db) return [];

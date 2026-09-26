@@ -64,3 +64,25 @@ describe("listarOcupadoExterno recorta por rol como las citas", () => {
     expect(cuerpo).not.toContain("exigirAcciones");
   });
 });
+
+describe("el flag por salón se comprueba al crear una conexión nueva", () => {
+  it("iniciarConexionGoogle exige el flag DESPUÉS del permiso, antes de tocar Google", () => {
+    const cuerpo = cuerpoDe("iniciarConexionGoogle");
+    const iPermiso = cuerpo.indexOf("exigirAcciones(");
+    const iFlag = cuerpo.indexOf("exigirFlagActivo(data.slug)");
+    const iServer = cuerpo.indexOf("iniciarConexionGoogleServer(");
+    expect(iPermiso).toBeGreaterThan(-1);
+    expect(iFlag).toBeGreaterThan(iPermiso);
+    expect(iServer).toBeGreaterThan(iFlag);
+  });
+
+  it("conectarApple hace lo mismo", () => {
+    const cuerpo = cuerpoDe("conectarApple");
+    expect(cuerpo.indexOf("exigirFlagActivo(data.slug)")).toBeGreaterThan(cuerpo.indexOf("exigirAcciones("));
+  });
+
+  it("desconectar y ajustar NO exigen el flag (si ya estaba conectado y se apaga el flag, se debe poder seguir desconectando)", () => {
+    expect(cuerpoDe("desconectarCalendario")).not.toContain("exigirFlagActivo");
+    expect(cuerpoDe("ajustarConexionCalendario")).not.toContain("exigirFlagActivo");
+  });
+});

@@ -19,6 +19,7 @@ import {
   ajustarConexionCalendario as ajustarConexionCalendarioServer,
   conectarApple as conectarAppleServer,
   desconectarCalendario as desconectarCalendarioServer,
+  flagCalendariosActivo,
   iniciarConexionGoogle as iniciarConexionGoogleServer,
   listarConexiones,
   listarOcupadoExterno as listarOcupadoExternoServer,
@@ -34,6 +35,17 @@ async function accesoRealMiembro(salonSlug: string): Promise<Extract<Acceso, { t
     throw new Error("En una demo no hay calendarios externos que conectar: se activan con un salón real.");
   }
   return acceso;
+}
+
+/**
+ * Defensa en profundidad del flag por salón (desactivado por defecto):
+ * FRONTEND ya no enseña la pantalla si está apagado, pero conectar uno
+ * nuevo lo comprueba también aquí, por si una llamada llega igual.
+ */
+async function exigirFlagActivo(salonSlug: string): Promise<void> {
+  if (!(await flagCalendariosActivo(salonSlug))) {
+    throw new Error("Los calendarios externos no están activados para este salón todavía.");
+  }
 }
 
 /** El `employeeId` de la conexión de verdad (nunca el que mande el navegador) para exigir el permiso sobre ella. */
@@ -61,6 +73,7 @@ export const iniciarConexionGoogle = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const acceso = await accesoRealMiembro(data.slug);
     exigirAcciones(acceso, ["calendario-externo.gestionar"], [data.employeeId ?? null]);
+    await exigirFlagActivo(data.slug);
     return iniciarConexionGoogleServer({ salonSlug: data.slug, employeeId: data.employeeId ?? null, userId: acceso.userId });
   });
 
@@ -81,6 +94,7 @@ export const conectarApple = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const acceso = await accesoRealMiembro(data.slug);
     exigirAcciones(acceso, ["calendario-externo.gestionar"], [data.employeeId ?? null]);
+    await exigirFlagActivo(data.slug);
     return conectarAppleServer({
       salonSlug: data.slug,
       employeeId: data.employeeId ?? null,
