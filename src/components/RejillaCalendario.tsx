@@ -472,15 +472,19 @@ export function CitaRejilla({
       aria-pressed={seleccionada}
       title={`${a.clientName} · ${nombreServicio} · ${hora(a.start)}–${minutosAHora(ini + a.duration)}${pro ? ` · ${pro}` : ""}${pendiente ? " · por confirmar" : ""}${vino ? " · vino" : ""}${noVino ? " · no vino" : ""}`}
       className={cn(
-        "absolute z-[4] flex flex-col overflow-hidden rounded-[5px] border border-cafe text-left text-[12px] leading-[1.25] text-cafe transition-shadow duration-150 hover:z-[7] hover:shadow-[0_3px_10px_rgba(59,47,42,0.16)] focus-visible:z-[7] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
+        "@container absolute z-[4] flex flex-col overflow-hidden rounded-[5px] border border-cafe text-left text-[12px] leading-[1.25] text-cafe transition-shadow duration-150 hover:z-[7] hover:shadow-[0_3px_10px_rgba(59,47,42,0.16)] focus-visible:z-[7] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
         compacta ? "px-[3px] py-0.5 text-[10.5px]" : estrecha ? "px-1 py-0.5 text-[11px]" : dosLineas ? "px-1.5 py-1" : "flex-row items-center gap-1.5 px-1.5 py-0",
         pendiente && "border-dashed",
         noVino && "opacity-60",
         seleccionada && "z-[8] ring-2 ring-primary ring-offset-1 ring-offset-card",
+        // Sitio para el icono de estado, que no tape la hora.
+        conIcono && !compacta && a.status !== "confirmed" && a.status !== "blocked" && "pr-5",
       )}
       style={{ ...style, background: pendiente ? "var(--superficie)" : (fondo ?? `var(--serv-${n})`) }}
     >
-      <span className="flex min-w-0 items-center gap-1">
+      {/* En carriles de menos de 20 px de texto (la semana en el móvil) no cabe ni una
+          letra: solo el bloque de color; al pulsarlo sale el detalle. */}
+      <span className="flex min-w-0 items-center gap-1 @max-[20px]:hidden">
         {pro && !estrecha && !compacta && (
           <span className="grid size-[18px] shrink-0 place-items-center rounded-full border border-cafe/40 bg-superficie text-[9px] font-extrabold" aria-hidden="true">
             {iniciales(pro)}
@@ -489,13 +493,13 @@ export function CitaRejilla({
         <b className={cn("truncate font-extrabold", noVino && "line-through")}>{estrecha || compacta ? pila : nombre}</b>
       </span>
       {cabeHora && (
-        <span className="shrink-0 truncate text-[11px] font-semibold text-cafe-medio tabular-nums">
+        <span className="shrink-0 truncate text-[11px] font-semibold text-cafe-medio tabular-nums @max-[20px]:hidden">
           {hora(a.start)}
           {dosLineas && alto >= 50 && ` – ${minutosAHora(ini + a.duration)}`}
         </span>
       )}
-      {cabeServicio && <span className="truncate text-[11px] text-cafe-medio">{nombreServicio}</span>}
-      {conIcono && !compacta && <IconoEstado status={a.status} className={dosLineas ? "top-1 right-1" : "top-1/2 right-1 -translate-y-1/2"} />}
+      {cabeServicio && <span className="truncate text-[11px] text-cafe-medio @max-[20px]:hidden">{nombreServicio}</span>}
+      {conIcono && !compacta && <IconoEstado status={a.status} className={cn("@max-[60px]:hidden", dosLineas ? "top-1 right-1" : "top-1/2 right-1 -translate-y-1/2")} />}
     </button>
   );
 }

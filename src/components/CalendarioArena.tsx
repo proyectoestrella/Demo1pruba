@@ -235,7 +235,7 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
                 >
                   {d.getDate()}
                 </span>
-                {cerrado && <span className="mt-1 text-[11px] font-semibold">Cerrado</span>}
+                {cerrado && <span className="mt-1 max-w-full truncate text-[11px] font-semibold">Cerrado</span>}
               </span>
             ),
           };

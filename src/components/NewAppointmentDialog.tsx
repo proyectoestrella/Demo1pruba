@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { useFocoDeVuelta } from "@/lib/foco-de-vuelta";
 import { Check, Clock3, MessageCircle, Search, TriangleAlert, UserPlus, X } from "lucide-react";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
@@ -107,6 +108,8 @@ export function NewAppointmentDialog({
   onCreated,
   allowChaining = false,
 }: NewAppointmentDialogProps) {
+  // Al cerrar, el foco vuelve al botón que la abrió (no modal y sin Trigger: Radix no lo hace).
+  const focoDeVuelta = useFocoDeVuelta(open);
   const navigate = useNavigate();
   const services = useSalonStore((s) => s.services);
   const clients = useSalonStore((s) => s.clients);
@@ -436,6 +439,7 @@ export function NewAppointmentDialog({
           <DialogPrimitive.Content
             ref={capa}
             aria-describedby={undefined}
+            {...focoDeVuelta}
             onEscapeKeyDown={(e) => {
               e.preventDefault();
               intentarSalir();

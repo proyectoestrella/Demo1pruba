@@ -1,4 +1,6 @@
 import * as React from "react";
+import { devolverFocoA } from "@/lib/foco-de-vuelta";
+import { ApuntarFoco } from "@/components/ui/apuntar-foco";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 
 import { cn } from "@/lib/utils";
@@ -28,7 +30,9 @@ AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(({ className, ...props }, ref) => (
+>(({ className, children, onCloseAutoFocus, ...props }, ref) => {
+  const antes = React.useRef<HTMLElement | null>(null);
+  return (
   <AlertDialogPortal>
     <AlertDialogOverlay />
     <AlertDialogPrimitive.Content
@@ -38,9 +42,14 @@ const AlertDialogContent = React.forwardRef<
         className,
       )}
       {...props}
-    />
+      onCloseAutoFocus={devolverFocoA(antes, onCloseAutoFocus)}
+    >
+      <ApuntarFoco destino={antes} />
+      {children}
+    </AlertDialogPrimitive.Content>
   </AlertDialogPortal>
-));
+  );
+});
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;
 
 const AlertDialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
