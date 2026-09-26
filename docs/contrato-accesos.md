@@ -47,7 +47,8 @@ type AccionId =
   // Caja (lote 11): crear un pago, cerrar el día, exportar el CSV de gestoría
   // e importar de TPV 123. Solo gerente y subencargado; ver docs/contrato-caja.md.
   | "dinero.crear" | "dinero.cerrar" | "dinero.exportar" | "dinero.importar"
-  | "accesos.gestionar" | "historial.ver" | "historial.deshacer-ajeno" | "plan.gestionar" | "datos.borrar";
+  | "accesos.gestionar" | "historial.ver" | "historial.deshacer-ajeno" | "plan.gestionar" | "datos.borrar"
+  | "calendario-externo.gestionar"; // lote 13, alcance "propio" para la estilista — ver docs/contrato-calendarios.md §3
 
 /**
  * Alcance por permiso, no ids duplicados: una estilista tiene cita.* y

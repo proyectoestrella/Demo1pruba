@@ -34,6 +34,8 @@ export const ACCIONES = [
   // (que ya existía), no por estas cuatro.
   "dinero.crear", "dinero.cerrar", "dinero.exportar", "dinero.importar",
   "accesos.gestionar", "historial.ver", "historial.deshacer-ajeno", "plan.gestionar", "datos.borrar",
+  // Lote 13 (26/09): conectar/desconectar un calendario externo (Google/Apple).
+  "calendario-externo.gestionar",
 ] as const;
 export type AccionId = (typeof ACCIONES)[number];
 
@@ -108,6 +110,10 @@ const TABLA: Record<AccionId, [Celda, Celda, Celda, Celda]> = {
   "historial.deshacer-ajeno":   ["T", "T", "-", "-"],
   "plan.gestionar":             ["T", "-", "-", "-"],
   "datos.borrar":               ["T", "-", "-", "-"],
+  // Alcance «propio»: la estilista solo conecta/desconecta SU PROPIA
+  // conexión (employeeId igual al suyo); la del salón entero
+  // (employeeId null) es cosa de gerente/subencargado.
+  "calendario-externo.gestionar": ["T", "T", "-", "P"],
 };
 const COLUMNA: Record<Rol, number> = { gerente: 0, subencargado: 1, recepcion: 2, estilista: 3 };
 

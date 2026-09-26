@@ -573,3 +573,70 @@ alter table cash_closings enable row level security;
 alter table cambios drop constraint if exists cambios_entidad_check;
 alter table cambios add constraint cambios_entidad_check
   check (entidad in ('cita', 'clienta', 'servicio', 'perfil', 'pago'));
+
+-- 14-16. Calendarios externos (lote 13, 26/09) -------------------------------
+-- PENDIENTE DE APLICAR EN PRODUCCIÓN: ver supabase/pendiente-calendarios.sql
+-- (fichero propio, independiente de pendiente.sql). Detrás de un flag por
+-- salón, desactivado por defecto: ver docs/contrato-calendarios.md.
+create table if not exists calendario_conexiones (
+  id uuid primary key default gen_random_uuid(),
+  salon_slug text not null references salons (slug) on delete cascade,
+  employee_id text,
+  proveedor text not null check (proveedor in ('google', 'apple')),
+  estado text not null default 'activa' check (estado in ('activa', 'error', 'desconectada')),
+  credencial_cifrada text not null,
+  cuenta text,
+  calendario_externo_id text,
+  calendario_nombre text,
+  sync_token text,
+  ctag text,
+  canal_watch_id text,
+  canal_recurso_id text,
+  canal_caduca timestamptz,
+  ultimo_error text,
+  ultimo_error_en timestamptz,
+  ultima_sincronizacion timestamptz,
+  bloquear_huecos boolean not null default true,
+  escribir_citas boolean not null default true,
+  creado_por uuid references auth.users (id) on delete set null,
+  creada timestamptz not null default now(),
+  actualizada timestamptz not null default now()
+);
+-- Sin WHERE a propósito: desconectar BORRA la fila (no la marca como
+-- 'desconectada'), así que nunca hay una fila vieja con la que competir y
+-- un índice parcial solo complicaría el upsert desde el cliente de Supabase.
+create unique index if not exists calendario_conexiones_unica_idx
+  on calendario_conexiones (salon_slug, coalesce(employee_id, ''), proveedor);
+create index if not exists calendario_conexiones_salon_idx on calendario_conexiones (salon_slug);
+alter table calendario_conexiones enable row level security;
+
+create table if not exists calendario_mapeo_eventos (
+  id uuid primary key default gen_random_uuid(),
+  conexion_id uuid not null references calendario_conexiones (id) on delete cascade,
+  cita_id uuid not null references appointments (id) on delete cascade,
+  evento_externo_id text not null,
+  etag text,
+  ical_uid text not null,
+  creado timestamptz not null default now(),
+  actualizado timestamptz not null default now(),
+  unique (conexion_id, cita_id),
+  unique (conexion_id, evento_externo_id)
+);
+create index if not exists calendario_mapeo_eventos_cita_idx on calendario_mapeo_eventos (cita_id);
+alter table calendario_mapeo_eventos enable row level security;
+
+create table if not exists calendario_bloqueos_externos (
+  id uuid primary key default gen_random_uuid(),
+  conexion_id uuid not null references calendario_conexiones (id) on delete cascade,
+  salon_slug text not null,
+  employee_id text,
+  evento_externo_id text not null,
+  start_at timestamptz not null,
+  end_at timestamptz not null,
+  resumen text,
+  actualizado timestamptz not null default now(),
+  unique (conexion_id, evento_externo_id)
+);
+create index if not exists calendario_bloqueos_externos_hueco_idx
+  on calendario_bloqueos_externos (salon_slug, employee_id, start_at, end_at);
+alter table calendario_bloqueos_externos enable row level security;
