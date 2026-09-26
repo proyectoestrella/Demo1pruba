@@ -530,9 +530,11 @@ create table if not exists calendario_conexiones (
   creada timestamptz not null default now(),
   actualizada timestamptz not null default now()
 );
+-- Sin WHERE a propósito: desconectar BORRA la fila (no la marca como
+-- 'desconectada'), así que nunca hay una fila vieja con la que competir y
+-- un índice parcial solo complicaría el upsert desde el cliente de Supabase.
 create unique index if not exists calendario_conexiones_unica_idx
-  on calendario_conexiones (salon_slug, coalesce(employee_id, ''), proveedor)
-  where estado <> 'desconectada';
+  on calendario_conexiones (salon_slug, coalesce(employee_id, ''), proveedor);
 create index if not exists calendario_conexiones_salon_idx on calendario_conexiones (salon_slug);
 alter table calendario_conexiones enable row level security;
 
