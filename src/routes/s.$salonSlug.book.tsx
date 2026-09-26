@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useImagenConRespaldo } from "@/lib/imagen-rota";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
+import { ArrowLeft, Check, Info, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType } from "@/lib/mock/salon";
 import { importeSenal, reglaSenal, senalDeReservaNueva, servicioLlevaSenal, textoSenalPublico, type ReglaSenal } from "@/lib/senal";
 import { huecosDeProfesionales, trabajaEn } from "@/lib/horario-equipo";
@@ -34,7 +34,6 @@ import {
 } from "@/lib/reparto";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 import {
   Accordion,
   AccordionContent,
@@ -48,6 +47,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Calendar } from "@/components/ui/calendar";
+import { CONTENEDOR_WEB } from "@/lib/web-publica";
 import { es } from "date-fns/locale";
 import heroImg from "@/assets/hero-salon.jpg";
 import { registerBookingClient } from "@/lib/api/clients.functions";
@@ -594,9 +594,8 @@ function BookingWizard() {
         console.error("Supabase sync failed (booking still confirmed locally):", err),
       );
     }
-    toast.success("Solicitud enviada", {
-      description: `${serviceNames.join(" + ")} · ${data.date} a las ${data.time}`,
-    });
+    // Sin aviso emergente (lote 17): la pantalla de confirmación ya lo dice
+    // todo, y el aviso tapaba la tarjeta con la fecha en formato máquina.
     navigate({
       to: "/s/$salonSlug/confirmation",
       params: { salonSlug },
@@ -627,6 +626,8 @@ function BookingWizard() {
             sending || resolutionStatus === "resolviendo";
 
   const ctaLabel = step < 4 ? "Continuar" : `Confirmar reserva — ${eur(total)}`;
+  // En la barra fija de móvil no cabe el importe dos veces: ya se ve a la izquierda.
+  const ctaLabelCorto = step < 4 ? "Continuar" : "Confirmar";
 
   function onCta() {
     if (step < 4) next();
@@ -663,7 +664,7 @@ function BookingWizard() {
     : undefined;
 
   return (
-    <section className="mx-auto max-w-6xl px-5 pb-28 pt-10 md:py-16 lg:pb-16">
+    <section className={cn(CONTENEDOR_WEB, "pb-10 pt-8 md:pb-16 md:pt-12")}>
       <StepIndicator step={step} soloUno={soloUno} />
 
       {/* Mejora B1: atajo de un toque para quien ya reservó antes en este
@@ -743,8 +744,10 @@ function BookingWizard() {
                     el resumen de la barra lateral ni siquiera se ve (está
                     "hidden lg:block"), así que se confirmaba "a ciegas". Este
                     resumen sale en TODOS los tamaños, completo y sin cortes. */}
-                <div className="rounded-2xl border border-border/60 bg-card p-5">
-                  <p className="mb-3 text-xs uppercase tracking-widest text-muted-foreground">
+                {/* Desde 1024 px el resumen fijo de la derecha ya lo enseña: aquí
+                    solo en móvil y tableta, sin repetirlo dos veces (lote 17). */}
+                <div className="rounded-[20px] border border-lino bg-card p-5 lg:hidden">
+                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">
                     Resumen de tu reserva
                   </p>
                   <div className="space-y-2 text-sm">
@@ -775,13 +778,8 @@ function BookingWizard() {
                   <div className="my-3 border-t border-dashed border-border" />
                   <div className="flex items-baseline justify-between">
                     <span className="text-sm text-muted-foreground">Total</span>
-                    <span className="font-display text-xl">{eur(total)}</span>
+                    <span className="text-xl font-extrabold tabular-nums">{eur(total)}</span>
                   </div>
-                  {depositEur > 0 && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Señal de {eur(depositEur)}, se descuenta del precio.
-                    </p>
-                  )}
                   {soloUno && employeeName && (
                     <p className="mt-1 text-xs text-muted-foreground">Te atiende {employeeName}.</p>
                   )}
@@ -799,6 +797,7 @@ function BookingWizard() {
                   <Label htmlFor="name">Nombre completo</Label>
                   <Input
                     id="name"
+                    className="h-11 text-[15px]"
                     value={data.name ?? ""}
                     onChange={(e) => setData((d) => ({ ...d, name: e.target.value }))}
                     placeholder="Nombre y apellidos"
@@ -808,6 +807,7 @@ function BookingWizard() {
                   <Label htmlFor="phone">Teléfono</Label>
                   <Input
                     id="phone"
+                    className="h-11 text-[15px]"
                     value={data.phone ?? ""}
                     onChange={(e) => setData((d) => ({ ...d, phone: e.target.value }))}
                     placeholder="600 000 000"
@@ -853,6 +853,7 @@ function BookingWizard() {
                   <Label htmlFor="email">Correo (opcional)</Label>
                   <Input
                     id="email"
+                    className="h-11 text-[15px]"
                     type="email"
                     value={data.email ?? ""}
                     onChange={(e) => setData((d) => ({ ...d, email: e.target.value }))}
@@ -918,8 +919,11 @@ function BookingWizard() {
                   </p>
                 )}
                 {textoSenal && (
-                  <p className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm text-primary">
-                    {textoSenal}
+                  // El ÚNICO sitio del flujo donde se explica la señal (lote 17):
+                  // antes salía también en el resumen y en el lateral.
+                  <p className="flex items-start gap-3 rounded-2xl border border-lino-fuerte bg-perla px-4 py-3.5 text-sm leading-relaxed text-foreground">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                    <span>{textoSenal}</span>
                   </p>
                 )}
               </div>
@@ -929,8 +933,9 @@ function BookingWizard() {
           <div className="mt-10 flex items-center justify-between">
             {step > 1 ? (
               <button
+                type="button"
                 onClick={prev}
-                className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                className="-ml-3 inline-flex h-11 items-center gap-2 rounded-full px-3 text-sm font-medium text-cafe-medio hover:bg-beige hover:text-foreground"
               >
                 <ArrowLeft className="h-4 w-4" /> Atrás
               </button>
@@ -967,12 +972,30 @@ function BookingWizard() {
         total={total}
         depositEur={depositEur}
         ctaLabel={ctaLabel}
+        ctaLabelCorto={ctaLabelCorto}
         ctaDisabled={ctaDisabled}
         onCta={onCta}
       />
     </section>
   );
 }
+
+/**
+ * Botón principal desactivado legible (lote 17): antes era blanco sobre moca
+ * al 50 % (≈ 2,1:1). Ahora café medio sobre beige, 5:1, y se sigue viendo que
+ * aún no se puede pulsar.
+ */
+const BOTON_DESACTIVADO = "disabled:opacity-100 disabled:bg-beige disabled:text-cafe-medio";
+
+/** Rótulos del calendario en español para el lector de pantalla. */
+const ETIQUETAS_CALENDARIO = {
+  labelPrevious: () => "Mes anterior",
+  labelNext: () => "Mes siguiente",
+  labelNav: () => "Cambiar de mes",
+  labelGrid: (d: Date) => d.toLocaleDateString("es-ES", { month: "long", year: "numeric" }),
+  labelDayButton: (d: Date, m: { today?: boolean; selected?: boolean; disabled?: boolean }) =>
+    `${m.today ? "Hoy, " : ""}${d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}${m.selected ? ", elegido" : ""}${m.disabled ? ", sin huecos" : ""}`,
+};
 
 function cap(w: string) {
   return w.charAt(0).toUpperCase() + w.slice(1);
@@ -989,7 +1012,7 @@ function StepIndicator({ step, soloUno }: { step: PasoReserva; soloUno: boolean 
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="flex items-center gap-4">
-        <FluidSteps step={visible} total={total} />
+        <FluidSteps step={visible} total={total} className="ml-1.5" />
         <span className="text-xs text-muted-foreground">
           Paso {visible} de {total}
         </span>
@@ -1002,7 +1025,7 @@ function StepIndicator({ step, soloUno }: { step: PasoReserva; soloUno: boolean 
 function Step({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h1 className="mb-8 font-display text-3xl md:text-4xl">{title}</h1>
+      <h1 className="mb-6 text-[26px] font-extrabold leading-tight tracking-tight md:mb-8 md:text-[32px]">{title}</h1>
       {children}
     </div>
   );
@@ -1062,7 +1085,7 @@ function ServiceStep({
           if (!items.length) return null;
           return (
             <AccordionItem key={cat} value={cat} className="border-b-0">
-              <AccordionTrigger className="py-4 text-base font-display font-medium hover:no-underline">
+              <AccordionTrigger className="min-h-12 py-3 text-base font-bold hover:no-underline">
                 {cat}
               </AccordionTrigger>
               <AccordionContent>
@@ -1077,7 +1100,7 @@ function ServiceStep({
                         aria-pressed={isSelected}
                         onClick={() => onToggle(s.id)}
                         className={cn(
-                          "flex w-full items-center justify-between gap-4 rounded-lg border px-4 py-3.5 text-left transition-colors",
+                          "flex min-h-16 w-full items-center justify-between gap-4 rounded-2xl border bg-card px-4 py-3.5 text-left transition-colors",
                           isSelected
                             ? "border-primary bg-primary/10"
                             : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
@@ -1091,7 +1114,7 @@ function ServiceStep({
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
-                          <span className="font-display text-lg">{eur(s.priceEur)}</span>
+                          <span className="text-base font-extrabold tabular-nums">{eur(s.priceEur)}</span>
                           {isSelected && <Check className="h-4 w-4 text-primary" />}
                         </div>
                       </button>
@@ -1188,12 +1211,12 @@ function TimeSlotButton({
       onClick={onClick}
       title={slot.busy ? "Suele haber espera" : undefined}
       className={cn(
-        "relative rounded-full border px-4 py-2 text-sm transition-colors",
+        "relative h-11 min-w-[4.5rem] rounded-full border px-4 text-sm font-semibold tabular-nums transition-colors",
         !slot.available &&
           "cursor-not-allowed border-border/40 text-muted-foreground/50 line-through",
         slot.available && selected && "border-primary bg-primary text-primary-foreground",
-        slot.available && !selected && "border-border hover:border-primary/50 hover:bg-primary/5",
-        slot.available && slot.busy && !selected && "border-amber-500/50",
+        slot.available && !selected && "border-lino-fuerte bg-card hover:border-primary/50 hover:bg-perla",
+        slot.available && slot.busy && !selected && "border-dashed border-moca",
       )}
     >
       {slot.time}
@@ -1202,7 +1225,7 @@ function TimeSlotButton({
           aria-hidden="true"
           className={cn(
             "absolute -right-0.5 -top-0.5 size-2 rounded-full",
-            selected ? "bg-primary-foreground" : "bg-amber-500",
+            selected ? "bg-primary-foreground" : "bg-moca",
           )}
         />
       )}
@@ -1447,10 +1470,16 @@ function DateTimeStep({
         {recargoTexto && <p className="text-[11px] leading-snug text-muted-foreground">{recargoTexto}</p>}
       </div>
       <div className="grid gap-8 md:grid-cols-[auto_1fr]">
-        <div className="self-start rounded-2xl border border-border/60 bg-card p-1">
+        {/* Lote 17: celdas de 44 px (objetivo táctil) que llenan la tarjeta
+            en móvil, sin la banda vacía a la derecha, y rótulos en español
+            para el lector de pantalla («Go to the Previous Month»). */}
+        <div className="flex justify-center self-start rounded-[20px] border border-lino bg-card p-2">
           <Calendar
             mode="single"
             locale={es}
+            className="bg-transparent p-1 [--cell-size:2.6rem] sm:[--cell-size:2.75rem]"
+            labels={ETIQUETAS_CALENDARIO}
+            classNames={{ today: "rounded-full bg-transparent font-bold text-foreground" }}
             selected={activeDate}
             onSelect={(d) => d && setActiveDate(d)}
             disabled={isDayDisabled}
@@ -1459,7 +1488,7 @@ function DateTimeStep({
         <div>
           {activeDate ? (
             <>
-              <p className="mb-4 font-display text-lg">{capitalizar(fechaLarga(activeDate))}</p>
+              <p className="mb-4 text-lg font-bold">{capitalizar(fechaLarga(activeDate))}</p>
               {groups.length === 0 && (
                 <p className="text-sm text-muted-foreground">
                   No hay horas disponibles este día. Prueba con otra fecha.
@@ -1565,7 +1594,7 @@ function DateTimeStep({
               )}
               {smartSpread && slots.some((s) => s.busy && s.available) && (
                 <p className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span aria-hidden="true" className="size-2 rounded-full bg-amber-500" />
+                  <span aria-hidden="true" className="size-2 rounded-full bg-moca" />
                   Suele haber espera a esa hora
                 </p>
               )}
@@ -1601,6 +1630,7 @@ function BookingSummary({
   total,
   depositEur,
   ctaLabel,
+  ctaLabelCorto,
   ctaDisabled,
   onCta,
 }: {
@@ -1616,6 +1646,8 @@ function BookingSummary({
   total: number;
   depositEur: number;
   ctaLabel: string;
+  /** Rótulo corto para la barra fija de móvil. */
+  ctaLabelCorto?: string;
   ctaDisabled: boolean;
   onCta: () => void;
 }) {
@@ -1627,34 +1659,33 @@ function BookingSummary({
   // cambiada…) aunque el enlace de la demo no haya cambiado.
   const foto = useImagenConRespaldo(profile.heroImage, heroImg);
   if (variant === "bar") {
+    // Lote 17: una línea para el importe y la duración, otra para los
+    // servicios, y un botón corto («Confirmar»): antes el botón con el
+    // importe se comía el ancho y cortaba «Corte y pein… 25,00 € a…».
     return (
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 px-5 py-3 backdrop-blur lg:hidden">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium">
-              {serviceNames.length ? serviceNames.join(" + ") : "Elige un servicio"}
-            </p>
-            {/* `truncate` (auditoría de UX, hallazgo C8): con la etiqueta larga
-                del paso 4 ("Confirmar reserva — 23,00 €") no quedaba sitio y
-                "45 min" partía "45" y "min" en dos líneas. Con una sola línea
-                que recorta con "…" si hace falta, nunca más partido a medias. */}
-            <p className="truncate font-display text-lg">
-              {eur(total)}
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-lino bg-background/95 pt-3 backdrop-blur lg:hidden"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
+      >
+        <div className={cn(CONTENEDOR_WEB, "flex items-center justify-between gap-3")}>
+          <div className="min-w-0 flex-1">
+            <p className="flex items-baseline gap-2">
+              <span className="text-lg font-extrabold tabular-nums">{eur(total)}</span>
               {serviceNames.length > 0 && (
-                <span className="ml-2 whitespace-nowrap text-xs font-normal text-muted-foreground">
-                  {durationLabel}
-                </span>
+                <span className="whitespace-nowrap text-xs text-cafe-suave">{durationLabel}</span>
               )}
             </p>
+            <p className="truncate text-[13px] text-cafe-medio">
+              {serviceNames.length ? serviceNames.join(" + ") : "Elige un servicio"}
+              {timeLabel && dateLabel ? ` · ${dateLabel}, ${timeLabel}` : ""}
+            </p>
           </div>
-          {/* 44px de alto (auditoría de UX, hallazgo C9): el tamaño por
-              defecto del botón son 36px, por debajo del mínimo táctil. */}
           <Button
             onClick={onCta}
             disabled={ctaDisabled}
-            className="h-11 shrink-0 rounded-full px-6"
+            className={cn("h-12 shrink-0 rounded-full px-6 text-[15px] font-semibold", BOTON_DESACTIVADO)}
           >
-            {ctaLabel}
+            {ctaLabelCorto ?? ctaLabel}
           </Button>
         </div>
       </div>
@@ -1663,7 +1694,7 @@ function BookingSummary({
 
   return (
     <aside className="hidden lg:block">
-      <div className="sticky top-24 rounded-2xl border border-border/60 bg-card p-6">
+      <div className="sticky top-24 rounded-[20px] border border-lino bg-card p-6">
         <div className="mb-4 flex items-center gap-3">
           <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg">
             <img
@@ -1712,18 +1743,13 @@ function BookingSummary({
 
         <div className="flex items-baseline justify-between">
           <span className="text-sm text-muted-foreground">Total</span>
-          <span className="font-display text-2xl">{eur(total)}</span>
+          <span className="text-2xl font-extrabold tabular-nums">{eur(total)}</span>
         </div>
-        {depositEur > 0 && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Señal de {eur(depositEur)}, se descuenta del precio.
-          </p>
-        )}
 
         <Button
           onClick={onCta}
           disabled={ctaDisabled}
-          className="mt-6 w-full rounded-full py-6 text-sm"
+          className={cn("mt-6 h-12 w-full rounded-full text-[15px] font-semibold", BOTON_DESACTIVADO)}
         >
           {ctaLabel}
         </Button>
@@ -1748,7 +1774,7 @@ function PreguntaDelFormulario({
 }) {
   const id = `pregunta-${p.id}`;
   const valor = respuestas?.[p.id] ?? "";
-  const claseSelect = "flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm";
+  const claseSelect = "flex h-11 w-full rounded-xl border border-input bg-card px-3 text-[15px]";
   const etiqueta = `${p.texto}${p.obligatoria ? " *" : ""}`;
   return (
     <div className="space-y-1.5">
@@ -1770,6 +1796,7 @@ function PreguntaDelFormulario({
       ) : (
         <Input
           id={id}
+          className="h-11 text-[15px]"
           type={p.tipo === "numero" ? "number" : "text"}
           inputMode={p.tipo === "numero" ? "decimal" : undefined}
           maxLength={200}

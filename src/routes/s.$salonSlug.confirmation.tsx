@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, CalendarPlus, Download, MapPin } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, CalendarPlus, Info, Download, MapPin } from "lucide-react";
 import { employeesForType, servicesForType } from "@/lib/mock/salon";
 import { reglaSenal, textoSenalPublico } from "@/lib/senal";
 import { useSalonStore } from "@/lib/store";
@@ -11,7 +11,6 @@ import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import { DEMO_PARAM, decodeDemoProfile } from "@/lib/demo-profile";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { Button } from "@/components/ui/button";
-import { Confetti, type ConfettiRef } from "@/components/magicui/confetti";
 import { eur } from "@/lib/copy";
 import { sumServices } from "@/lib/appointment-services";
 import {
@@ -82,7 +81,6 @@ function Confirmation() {
   const serviceNames = chosen.map((s) => s.name);
   const { durationMin: totalMin, priceEur: total } = sumServices(chosen);
   const employee = employeeMap[employeeId];
-  const confettiRef = useRef<ConfettiRef>(null);
   // Solo para ordenar los dos botones de calendario: en iPhone/iPad, Apple
   // primero; en el resto (Android incluido), Google primero. Los dos se ven
   // siempre. Se calcula en el cliente porque depende de navigator.userAgent.
@@ -120,21 +118,6 @@ function Confirmation() {
     : undefined;
   const recargoTexto = recargoActivo(profile) && recargoRetraso ? recargoRetrasoTexto(recargoRetraso) : undefined;
 
-  // Un disparo al aterrizar en la confirmación. Se respeta
-  // `prefers-reduced-motion`: para quien lo pida, no cae nada.
-  useEffect(() => {
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const t = setTimeout(() => {
-      confettiRef.current?.fire({
-        particleCount: 90,
-        spread: 80,
-        origin: { y: 0.35 },
-        // Latón y crema, para no meter colores ajenos a la marca.
-        colors: ["#d6ab68", "#f0e6d2", "#8a6a3b"],
-      });
-    }, 250);
-    return () => clearTimeout(t);
-  }, []);
 
   if (!chosen.length || !employee) {
     return (
@@ -195,32 +178,27 @@ function Confirmation() {
   }
 
   return (
-    <section className="relative mx-auto max-w-2xl px-5 py-16 md:py-24">
-      {/* El confeti solo cae aquí: es el único momento del flujo que lo merece.
-          `pointer-events-none` para que no se coma los clics del contenido. */}
-      <Confetti
-        ref={confettiRef}
-        className="pointer-events-none absolute inset-0 z-10 h-full w-full"
-        manualstart
-      />
+    // Lote 17: sin confeti (latón y dorado, fuera de la paleta) ni aviso
+    // emergente encima; el check se dibuja una vez (.micro-check).
+    <section className="mx-auto w-full max-w-2xl px-4 py-12 sm:px-6 md:py-20">
 
       <div className="flex flex-col items-center text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
-          <Check className="h-7 w-7" />
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-hoja text-white">
+          <Check className="micro-check h-7 w-7" aria-hidden="true" />
         </div>
-        <h1 className="mt-6 font-display text-4xl">
+        <h1 className="mt-6 text-[26px] font-extrabold leading-tight tracking-tight md:text-[32px]">
           Solicitud recibida{name ? `, ${name.split(" ")[0]}` : ""}.
         </h1>
-        <p className="mt-2 text-muted-foreground">
+        <p className="mt-2 max-w-md text-[15px] text-muted-foreground">
           {profile.name} te confirmará la cita en breve. Guarda la fecha en tu calendario con el
           botón de abajo para no olvidarla.
         </p>
       </div>
 
-      <div className="mt-10 rounded-3xl border border-border bg-card p-8">
+      <div className="mt-8 rounded-[20px] border border-lino bg-card p-5 sm:p-8">
         <div className="flex items-center justify-between">
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Tu cita</p>
-          <span className="rounded-full bg-[var(--warning)]/15 px-2.5 py-0.5 text-xs font-medium text-[var(--warning)]">
+          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Tu cita</p>
+          <span className="rounded-full border border-dashed border-moca px-2.5 py-0.5 text-xs font-semibold text-cafe-medio">
             Pendiente de confirmar
           </span>
         </div>
@@ -228,7 +206,7 @@ function Confirmation() {
         <div className="mt-4 flex items-center gap-3">
           <StylistAvatar name={employee.name} employeeId={employee.id} size="md" />
           <div className="min-w-0">
-            <h2 className="font-display text-2xl">{serviceNames.join(" + ")}</h2>
+            <h2 className="text-xl font-extrabold leading-snug">{serviceNames.join(" + ")}</h2>
             <p className="text-sm text-muted-foreground">
               {/* Con un único profesional no se enseña como si se hubiera
                   elegido: se informa de quién atiende. */}
@@ -249,7 +227,12 @@ function Confirmation() {
             <Row k="Precio del servicio" v={eur(total)} />
           )}
         </div>
-        {textoSenal && <p className="mt-4 rounded-xl bg-miel px-3.5 py-2.5 text-sm text-cafe">{textoSenal}</p>}
+        {textoSenal && (
+          <p className="mt-5 flex items-start gap-3 rounded-2xl border border-lino-fuerte bg-perla px-4 py-3.5 text-sm leading-relaxed text-foreground">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+            <span>{textoSenal}</span>
+          </p>
+        )}
 
         {flexNota && (
           <p className="mt-4 text-sm font-medium text-foreground">{flexNota}</p>
@@ -262,7 +245,7 @@ function Confirmation() {
 
         <div className="flex items-baseline justify-between">
           <span className="text-sm text-muted-foreground">Total</span>
-          <span className="font-display text-2xl">{eur(total)}</span>
+          <span className="text-2xl font-extrabold tabular-nums">{eur(total)}</span>
         </div>
 
         <div className="my-6 border-t border-dashed border-border" />
@@ -278,7 +261,7 @@ function Confirmation() {
 
       {datosCita && (
         <div className="mt-6 flex flex-col gap-3">
-          <p className="text-center text-xs uppercase tracking-widest text-muted-foreground">
+          <p className="text-center text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">
             Añadir a mi calendario
           </p>
           <div className="flex gap-3">
@@ -291,7 +274,7 @@ function Confirmation() {
                   key="google"
                   asChild
                   variant="outline"
-                  className="flex-1 rounded-full px-2 text-xs sm:text-sm"
+                  className="h-12 flex-1 rounded-full px-2 text-sm font-semibold"
                 >
                   <a href={enlaceGoogle!} target="_blank" rel="noopener noreferrer">
                     <CalendarPlus className="h-4 w-4 shrink-0" /> Google
@@ -302,7 +285,7 @@ function Confirmation() {
                   key="apple"
                   asChild
                   variant="outline"
-                  className="flex-1 rounded-full px-2 text-xs sm:text-sm"
+                  className="h-12 flex-1 rounded-full px-2 text-sm font-semibold"
                 >
                   <a href={enlaceAppleDataUri!}>
                     <CalendarPlus className="h-4 w-4 shrink-0" /> Apple / iPhone
@@ -314,15 +297,15 @@ function Confirmation() {
           <button
             type="button"
             onClick={downloadIcs}
-            className="text-center text-xs text-muted-foreground underline underline-offset-2"
+            className="mx-auto inline-flex h-11 items-center gap-1.5 rounded-full px-4 text-sm font-medium text-cafe-medio underline underline-offset-2 hover:bg-beige"
           >
-            <Download className="mr-1 inline h-3 w-3" /> Otro calendario (.ics)
+            <Download className="h-4 w-4" aria-hidden="true" /> Otro calendario (.ics)
           </button>
         </div>
       )}
 
       <div className="mt-6 flex gap-3">
-        <Button asChild className="flex-1 rounded-full">
+        <Button asChild className="h-12 flex-1 rounded-full text-[15px] font-semibold">
           <Link to="/s/$salonSlug" params={{ salonSlug }} search={(prev) => prev}>
             Hecho
           </Link>

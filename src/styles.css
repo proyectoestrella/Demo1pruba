@@ -617,8 +617,10 @@
   animation: entrar-suave 200ms var(--curva-salida) both;
 }
 .micro-check path {
-  stroke-dasharray: 16;
-  stroke-dashoffset: 16;
+  /* 24: el trazo del check de lucide mide ≈ 22,6 unidades; con 16 quedaba
+     a medias («/») al terminar la animación (lote 17). */
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
   animation: dibujar-check 320ms 60ms var(--curva-salida) forwards;
 }
 @keyframes dibujar-check {

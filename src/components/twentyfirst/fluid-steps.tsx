@@ -54,7 +54,7 @@ export function FluidSteps({ step, total, className }: FluidStepsProps) {
         initial={false}
         animate={{ width: pillWidth(clamped) }}
         transition={
-          reduced ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 20, mass: 0.8 }
+          reduced ? { duration: 0 } : { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
         }
       />
       {Array.from({ length: total }).map((_, i) => (
