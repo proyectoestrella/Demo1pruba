@@ -395,4 +395,10 @@ export interface SalonProfile {
    * cambia en salones existentes). Ver lib/preguntas-reserva.ts.
    */
   preguntasReserva?: PreguntaReserva[];
+  /**
+   * Calendarios externos (lote 13, Google/Apple). `false` o ausente =
+   * desactivado: ninguna función de `calendario-externo.functions.ts` deja
+   * conectar nada, aunque el salón sea real. Ver docs/contrato-calendarios.md.
+   */
+  calendariosExternosActivo?: boolean;
 }

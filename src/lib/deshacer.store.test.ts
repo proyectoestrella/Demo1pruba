@@ -71,6 +71,18 @@ describe("deshacer en la store", () => {
     expect(useSalonStore.getState().services.find((x) => x.id === s.id)?.name).toBe("Servicio deshacer");
   });
 
+  it("caja: registrar un pago NO se registra (como un alta de cita); borrarlo sí, y se puede deshacer", () => {
+    const p = useSalonStore.getState().registrarPago({ importeEur: 15, metodo: "bizum", concepto: "propina", fecha: "2026-09-28T10:00:00.000Z" });
+    const n = useSalonStore.getState().cambios.length;
+    useSalonStore.getState().borrarPago(p.id);
+    expect(useSalonStore.getState().payments.some((x) => x.id === p.id)).toBe(false);
+    expect(useSalonStore.getState().cambios.length).toBe(n + 1);
+    expect(ultimo().tipo).toBe("pago.borrar");
+    expect(ultimo().resumen).toContain("15");
+    expect(useSalonStore.getState().deshacerCambio(ultimo().id).ok).toBe(true);
+    expect(useSalonStore.getState().payments.find((x) => x.id === p.id)).toMatchObject({ importeEur: 15, metodo: "bizum" });
+  });
+
   it("permisos: una estilista no deshace lo de otra persona ni citas de otra profesional", () => {
     const a = nuevaCita({ employeeId: "mario" });
     useSalonStore.setState({ miembro: { userId: "maria", rol: "gerente", employeeId: null, displayName: "María" } });

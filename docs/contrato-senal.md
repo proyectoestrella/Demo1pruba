@@ -131,6 +131,28 @@ else → abrir WhatsApp con mensajeDeFianza({ …, importeEur: preparada.importe
 
 ## 8. Limitaciones conocidas
 
-- La liberación automática corre cuando el panel está abierto y se refresca (cada minuto). Con el panel cerrado, una cita vencida sigue ocupando el hueco hasta que alguien lo abra. El cron de Vercel está inactivo.
+- Con el panel abierto, la liberación automática corre en cada refresco (cada minuto) — eso no ha cambiado. Con el panel cerrado, ya existe el cron de Vercel `/api/senales-vencidas` (lote 12, ver §9), pero **sin cron cada 15 minutos** (Vercel Hobby no lo permite, ver §9): entre una ejecución diaria y la siguiente, una cita vencida sigue ocupando el hueco hasta que alguien abre el panel o pasa el cron del día siguiente.
 - Con `depositAppliesTo = "nuevas"`, la web pública no sabe si la clienta es nueva y avisa «si es tu primera visita». La dueña decide al pedirla.
 - Bizum entre particulares no tiene API: nadie puede saber solo si ha llegado. «Recibida» siempre la marca la dueña.
+
+## 9. Cron de liberación (lote 12)
+
+`/api/senales-vencidas` (`src/routes/api.senales-vencidas.ts`, lógica en
+`src/lib/api/senales-vencidas.server.ts`) recorre **todos** los salones
+reales con señales `pedida` y aplica la misma lógica pura que el panel
+(`revisarVencimiento` + `resolverCancelacion` de `senal.ts`): si
+`liberacionAutomatica` está activa y la señal venció, cancela la cita y anula
+la señal. Nada de correo ni de WhatsApp. Idempotente: una cita que ya no está
+abierta, o cuya señal ya no está `pedida`, no se vuelve a tocar.
+
+Protegido igual que `/api/recordatorios`: `Authorization: Bearer
+<CRON_SECRET>` (o `?token=` para lanzarlo a mano); sin `CRON_SECRET` en el
+entorno, no hace nada.
+
+**Cadencia real: diaria, no cada 15 minutos.** Vercel **Hobby** no permite
+cron jobs más frecuentes que una vez al día (el cron ya existente de
+`/api/recordatorios` corre una vez al día, lo que sugiere que el proyecto
+está en ese plan); `vercel.json` pide `0 7 * * *` (7:00, distinta hora que
+los recordatorios de las 17:00) porque es lo máximo que el plan admite hoy.
+Si el proyecto pasa a un plan de pago, esta cadencia se puede acortar sin
+tocar el código, solo `vercel.json`.

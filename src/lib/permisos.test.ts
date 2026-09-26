@@ -14,8 +14,8 @@ describe("matriz de permisos", () => {
     expect(alcance(e, "dinero.ver-propio")).toBe("propio");
     expect(alcance(e, "clienta.crear")).toBe("todo");   // da de alta a la clienta al darle cita
     expect(alcance(e, "clienta.editar")).toBe("propio");
-    for (const a of ["dinero.ver-global", "web.editar", "equipo.editar", "accesos.gestionar", "cita.ver-todas", "analitica.ver", "historial.deshacer-ajeno"] as const) expect([a, puede(e, a)]).toEqual([a, false]);
-    for (const p of ["mi-pagina", "analitica", "marketing", "equipo", "ajustes", "ajustes.accesos"] as const) expect([p, vePagina(e, p)]).toEqual([p, false]);
+    for (const a of ["dinero.ver-global", "dinero.crear", "dinero.cerrar", "dinero.exportar", "dinero.importar", "web.editar", "equipo.editar", "accesos.gestionar", "cita.ver-todas", "analitica.ver", "historial.deshacer-ajeno"] as const) expect([a, puede(e, a)]).toEqual([a, false]);
+    for (const p of ["mi-pagina", "analitica", "marketing", "equipo", "ajustes", "ajustes.accesos", "caja"] as const) expect([p, vePagina(e, p)]).toEqual([p, false]);
     // Alcance propio: sobre su profesional sí, sobre otra no, sin vínculo nunca.
     expect(puede(e, "cita.cancelar", { employeeId: "noelia", miEmployeeId: "noelia" })).toBe(true);
     expect(puede(e, "cita.cancelar", { employeeId: "sara", miEmployeeId: "noelia" })).toBe(false);
@@ -27,15 +27,19 @@ describe("matriz de permisos", () => {
     expect(puede(s, "web.publicar")).toBe(true);
     expect(puede(s, "historial.deshacer-ajeno")).toBe(true);
     for (const a of ["dinero.ver-global", "plan.gestionar", "accesos.gestionar", "datos.borrar", "clienta.exportar", "exportar.excel"] as const) expect([a, puede(s, a)]).toEqual([a, false]);
+    // Caja: crear, cerrar, exportar e importar SÍ, aunque no vea el dinero global de otras.
+    for (const a of ["dinero.crear", "dinero.cerrar", "dinero.exportar", "dinero.importar"] as const) expect([a, puede(s, a)]).toEqual([a, true]);
+    expect(vePagina(s, "caja")).toBe(true);
     expect(puede(s, "cita.ver-todas")).toBe(true);
     expect(puede(s, "servicio.editar")).toBe(true);
     expect(vePagina(s, "ajustes.accesos")).toBe(false);
   });
 
-  test("recepción: agenda de todas y clientas, sin dinero", () => {
+  test("recepción: agenda de todas y clientas, sin dinero ni caja", () => {
     const r = permisosDe("recepcion");
     expect(puede(r, "cita.crear-para-otra")).toBe(true);
-    for (const a of ["dinero.ver-propio", "dinero.ver-global", "cita.cobrar", "analitica.ver"] as const) expect([a, puede(r, a)]).toEqual([a, false]);
+    for (const a of ["dinero.ver-propio", "dinero.ver-global", "dinero.crear", "dinero.cerrar", "dinero.exportar", "dinero.importar", "cita.cobrar", "analitica.ver"] as const) expect([a, puede(r, a)]).toEqual([a, false]);
+    expect(vePagina(r, "caja")).toBe(false);
   });
 
   test("roles antiguos y demo", () => {

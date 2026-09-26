@@ -218,6 +218,18 @@ describe("capacidad y métricas", () => {
     expect(m.ocupacion).toBe(50);
   });
 
+  it("con pagosPorCita, la caja usa el cobrado real; sin pagos de una cita, priceEur de siempre", () => {
+    const appts = [
+      cita("2026-09-14T10:00:00", { id: "a-1", priceEur: 20 }),
+      cita("2026-09-14T11:00:00", { id: "a-2", priceEur: 30 }),
+    ];
+    const rango = rangoDePeriodo("personalizado", new Date(2026, 8, 20), { desde: "2026-09-14", hasta: "2026-09-14" });
+    const pagosPorCita = new Map([["a-1", 12]]); // solo a-1 tiene pagos apuntados
+    const m = metricasDePeriodo(appts, rango, EQUIPO, undefined, pagosPorCita);
+    expect(m.caja).toBe(42); // 12 (real de a-1) + 30 (fallback de a-2)
+    expect(metricasDePeriodo(appts, rango, EQUIPO).caja).toBe(50); // sin el mapa, como siempre
+  });
+
   it("un cliente es nuevo solo en el periodo de su PRIMERA cita", () => {
     const appts = [
       cita("2026-09-14T10:00:00", { clientId: "ana" }),

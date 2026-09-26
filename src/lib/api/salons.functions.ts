@@ -31,6 +31,7 @@ import { parseDepositNote } from "../deposit-deadline";
 import { columnasDeParche, filaSinLote3 } from "../cita-parche";
 import { ERROR_SOLAPE_PANEL } from "../solape";
 import { reglaSenal, senalDeReservaNueva } from "../senal";
+import { refSenalAplicada, type MetodoPago } from "../pagos";
 import {
   ERROR_BLOQUEO_MANUAL,
   ERROR_FUERA_HORARIO,
@@ -49,6 +50,8 @@ import {
   type WaitlistRow,
 } from "../salon-rows";
 import type { Appointment, Client, SalonProfile, WaitlistEntry } from "../mock/types";
+import { hayOcupadoExternoEnHueco, procesarCitaParaConexiones } from "../calendario-externo/calendario-externo.server";
+import type { CitaParaCalendario } from "../calendario-externo/tipos";
 
 /**
  * Columnas de siempre, y columnas que solo existen si se ha aplicado el DDL
@@ -133,6 +136,58 @@ function sinCampos<T extends Record<string, unknown>>(fila: T, campos: string[])
   const copia = { ...fila };
   for (const c of campos) delete copia[c];
   return copia;
+}
+
+/**
+ * Lote 11: la señal APLICADA al cobrar crea su pago (concepto "senal"), sin
+ * duplicar si se aplica/desaplica/reaplica — `ref_externa` es siempre
+ * `senal:<localId>`, así que un upsert por esa clave es idempotente.
+ * Desaplicar (la señal vuelve a "recibida") borra ese pago: ya no es dinero
+ * cobrado. Es un best-effort: si `payments` aún no existe (sección 14 de
+ * supabase/pendiente.sql sin aplicar) o algo falla, solo se avisa por
+ * consola — la cita ya se guardó, y esto no debe tumbarla.
+ */
+async function sincronizarPagoDeSenal(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  slug: string,
+  localId: string,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  if (!("depositStatus" in patch) && !("depositAppliedEur" in patch)) return;
+  const refExterna = refSenalAplicada(localId);
+  try {
+    if (patch.depositStatus === "aplicada" && typeof patch.depositAppliedEur === "number" && patch.depositAppliedEur > 0) {
+      const { data: fila } = await supabase
+        .from("appointments")
+        .select("client_id, client_name, deposit_method")
+        .eq("salon_slug", slug)
+        .eq("local_id", localId)
+        .maybeSingle();
+      const metodoGuardado = (patch.depositMethod as string | undefined) ?? (fila?.deposit_method as string | undefined);
+      const metodo: MetodoPago = metodoGuardado === "efectivo" || metodoGuardado === "tarjeta" ? metodoGuardado : "bizum";
+      const { error } = await supabase.from("payments").upsert(
+        {
+          salon_slug: slug,
+          appointment_id: localId,
+          client_id: (fila?.client_id as string | null) ?? null,
+          client_name: (fila?.client_name as string | null) ?? null,
+          importe_eur: patch.depositAppliedEur,
+          metodo,
+          concepto: "senal",
+          origen: "sishow",
+          ref_externa: refExterna,
+          fecha: new Date().toISOString(),
+        },
+        { onConflict: "salon_slug,origen,ref_externa" },
+      );
+      if (error && !faltaEsquema(error)) console.warn(`sincronizarPagoDeSenal: ${error.message}`);
+    } else if (typeof patch.depositStatus === "string" && patch.depositStatus !== "aplicada") {
+      const { error } = await supabase.from("payments").delete().eq("salon_slug", slug).eq("origen", "sishow").eq("ref_externa", refExterna);
+      if (error && !faltaEsquema(error)) console.warn(`sincronizarPagoDeSenal (borrado): ${error.message}`);
+    }
+  } catch (err) {
+    console.warn(`sincronizarPagoDeSenal (¿falta aplicar supabase/pendiente.sql sección 14?): ${err}`);
+  }
 }
 
 const slug = z.string().min(1).max(120);
@@ -805,6 +860,18 @@ export const syncAppointment = createServerFn({ method: "POST" })
       if (await solapaEnServidor(supabase, data.slug, data.localId, data.employeeId, data.startISO, data.durationMin)) {
         return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
       }
+
+      // Lote 13: un hueco ocupado por un calendario externo conectado (con
+      // `bloquearHuecos` activo) se trata igual que uno ocupado por otra
+      // cita de siShow — mismo motivo de siempre, no hay uno nuevo. Ver
+      // docs/contrato-calendarios.md §5. Si la tabla aún no existe (SQL sin
+      // aplicar) o falla, se abre paso: es exactamente el comportamiento de
+      // antes de este lote.
+      const finExterno = new Date(Date.parse(data.startISO) + data.durationMin * 60_000).toISOString();
+      const ocupadoExterno = await hayOcupadoExternoEnHueco(data.slug, data.employeeId, data.startISO, finExterno).catch(() => false);
+      if (ocupadoExterno) {
+        return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
+      }
     }
     // El panel puede solapar a propósito, pero solo diciéndolo: sin
     // `permitirSolape` se rechaza con su propio código y la pantalla enseña
@@ -909,6 +976,36 @@ export const syncAppointment = createServerFn({ method: "POST" })
     if (clientId) fila.client_id = clientId;
 
     await escribirCita(supabase, fila);
+
+    // Lote 13: llevar la cita a los calendarios externos conectados de esta
+    // profesional (y al del salón entero, si lo hay). Nunca lanza (lo
+    // garantiza `procesarCitaParaConexiones`); un fallo del calendario
+    // externo no puede tirar la reserva. El estado final (confirmada/
+    // cancelada) es el que decide crear/actualizar vs. borrar en el externo.
+    const citaParaCalendario: CitaParaCalendario = {
+      id: data.localId,
+      clientName: (fila.client_name as string | null) ?? "Cliente",
+      // Simplificación de v1: los ids de servicio, no su nombre visible (eso
+      // exigiría cargar el perfil y el catálogo también en el panel; el feed
+      // ICS público sí lo resuelve — ver calendario-ics.ts). Es solo lo que
+      // ve la profesional en SU calendario externo.
+      service: data.serviceIds.join(" + ") || "Cita",
+      employeeId: data.employeeId,
+      start: data.startISO,
+      duration: data.durationMin,
+      status: fila.status as string,
+      note: (fila.note as string | null) ?? null,
+    };
+    // Se espera (no "fire and forget"): en un entorno serverless una
+    // promesa sin esperar puede no llegar a terminar una vez la respuesta ya
+    // ha salido. El coste es la latencia de esta llamada — la función
+    // interna nunca lanza, así que el `try/catch` es solo por si acaso.
+    try {
+      await procesarCitaParaConexiones(data.slug, citaParaCalendario, fila.status === "cancelled" ? "borrar" : "upsert");
+    } catch (err) {
+      console.error("calendario-externo (tras guardar cita):", err);
+    }
+
     return { synced: true as const };
   });
 
@@ -1048,6 +1145,9 @@ export const syncAppointmentPatch = createServerFn({ method: "POST" })
             .from("appointments").update({ ultimo_deshacer_en: new Date().toISOString() }).eq("salon_slug", data.slug).eq("local_id", data.localId);
           if (e2 && !faltaEsquema(e2)) console.warn(`syncAppointmentPatch (origen deshacer): ${e2.message}`);
         }
+        // Lote 11: la señal aplicada al cobrar crea (o borra) su pago. No
+        // bloquea la respuesta: la cita ya está guardada pase lo que pase aquí.
+        await sincronizarPagoDeSenal(supabase, data.slug, data.localId, data.patch);
         return { synced: true as const };
       }
       if (!faltaEsquema(error) || nivel === NIVELES_CITA.length) throw new Error(`syncAppointmentPatch: ${error.message}`);

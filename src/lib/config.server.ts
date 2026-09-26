@@ -23,3 +23,19 @@ export function getServerConfig() {
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
   };
 }
+
+/** Lote 13: calendarios externos. Ver docs/contrato-calendarios.md §8. */
+export function getConfigCalendarios() {
+  return {
+    googleClientId: process.env.GOOGLE_CALENDAR_CLIENT_ID,
+    googleClientSecret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
+    googleRedirectUri: process.env.GOOGLE_CALENDAR_REDIRECT_URI,
+    claveCifrado: process.env.CALENDARIO_CLAVE_CIFRADO,
+    cronSecret: process.env.CRON_SECRET,
+    appleBaseUrl: process.env.APPLE_CALDAV_BASE_URL,
+    // La propia URL pública del sitio, para construir la `address` del canal
+    // watch de Google y la redirect_uri si algún día se deriva sola. Hoy
+    // solo se usa para el watch.
+    siteUrl: process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.SITE_URL,
+  };
+}

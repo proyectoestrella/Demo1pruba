@@ -29,6 +29,7 @@ import { Route as AppDemosRouteImport } from './routes/app.demos'
 import { Route as AppClientsRouteImport } from './routes/app.clients'
 import { Route as AppCalendarRouteImport } from './routes/app.calendar'
 import { Route as AppAppointmentsRouteImport } from './routes/app.appointments'
+import { Route as ApiSenalesVencidasRouteImport } from './routes/api.senales-vencidas'
 import { Route as ApiRecordatoriosRouteImport } from './routes/api.recordatorios'
 import { Route as ApiFotoRouteImport } from './routes/api.foto'
 import { Route as ApiCalendarioRouteImport } from './routes/api.calendario'
@@ -37,6 +38,9 @@ import { Route as SSalonSlugPrivacidadRouteImport } from './routes/s.$salonSlug.
 import { Route as SSalonSlugDosierRouteImport } from './routes/s.$salonSlug.dosier'
 import { Route as SSalonSlugConfirmationRouteImport } from './routes/s.$salonSlug.confirmation'
 import { Route as SSalonSlugBookRouteImport } from './routes/s.$salonSlug.book'
+import { Route as ApiCalendarioExternoCronRouteImport } from './routes/api.calendario-externo.cron'
+import { Route as ApiCalendarioExternoGoogleWebhookRouteImport } from './routes/api.calendario-externo.google.webhook'
+import { Route as ApiCalendarioExternoGoogleCallbackRouteImport } from './routes/api.calendario-externo.google.callback'
 
 const RuteroRoute = RuteroRouteImport.update({
   id: '/rutero',
@@ -138,6 +142,11 @@ const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
   path: '/appointments',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiSenalesVencidasRoute = ApiSenalesVencidasRouteImport.update({
+  id: '/api/senales-vencidas',
+  path: '/api/senales-vencidas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiRecordatoriosRoute = ApiRecordatoriosRouteImport.update({
   id: '/api/recordatorios',
   path: '/api/recordatorios',
@@ -178,6 +187,24 @@ const SSalonSlugBookRoute = SSalonSlugBookRouteImport.update({
   path: '/book',
   getParentRoute: () => SSalonSlugRoute,
 } as any)
+const ApiCalendarioExternoCronRoute =
+  ApiCalendarioExternoCronRouteImport.update({
+    id: '/api/calendario-externo/cron',
+    path: '/api/calendario-externo/cron',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiCalendarioExternoGoogleWebhookRoute =
+  ApiCalendarioExternoGoogleWebhookRouteImport.update({
+    id: '/api/calendario-externo/google/webhook',
+    path: '/api/calendario-externo/google/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiCalendarioExternoGoogleCallbackRoute =
+  ApiCalendarioExternoGoogleCallbackRouteImport.update({
+    id: '/api/calendario-externo/google/callback',
+    path: '/api/calendario-externo/google/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -189,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
   '/api/recordatorios': typeof ApiRecordatoriosRoute
+  '/api/senales-vencidas': typeof ApiSenalesVencidasRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/clients': typeof AppClientsRoute
@@ -203,11 +231,14 @@ export interface FileRoutesByFullPath {
   '/app/web': typeof AppWebRoute
   '/s/$salonSlug': typeof SSalonSlugRouteWithChildren
   '/app/': typeof AppIndexRoute
+  '/api/calendario-externo/cron': typeof ApiCalendarioExternoCronRoute
   '/s/$salonSlug/book': typeof SSalonSlugBookRoute
   '/s/$salonSlug/confirmation': typeof SSalonSlugConfirmationRoute
   '/s/$salonSlug/dosier': typeof SSalonSlugDosierRoute
   '/s/$salonSlug/privacidad': typeof SSalonSlugPrivacidadRoute
   '/s/$salonSlug/': typeof SSalonSlugIndexRoute
+  '/api/calendario-externo/google/callback': typeof ApiCalendarioExternoGoogleCallbackRoute
+  '/api/calendario-externo/google/webhook': typeof ApiCalendarioExternoGoogleWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -218,6 +249,7 @@ export interface FileRoutesByTo {
   '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
   '/api/recordatorios': typeof ApiRecordatoriosRoute
+  '/api/senales-vencidas': typeof ApiSenalesVencidasRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/clients': typeof AppClientsRoute
@@ -231,11 +263,14 @@ export interface FileRoutesByTo {
   '/app/waitlist': typeof AppWaitlistRoute
   '/app/web': typeof AppWebRoute
   '/app': typeof AppIndexRoute
+  '/api/calendario-externo/cron': typeof ApiCalendarioExternoCronRoute
   '/s/$salonSlug/book': typeof SSalonSlugBookRoute
   '/s/$salonSlug/confirmation': typeof SSalonSlugConfirmationRoute
   '/s/$salonSlug/dosier': typeof SSalonSlugDosierRoute
   '/s/$salonSlug/privacidad': typeof SSalonSlugPrivacidadRoute
   '/s/$salonSlug': typeof SSalonSlugIndexRoute
+  '/api/calendario-externo/google/callback': typeof ApiCalendarioExternoGoogleCallbackRoute
+  '/api/calendario-externo/google/webhook': typeof ApiCalendarioExternoGoogleWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -248,6 +283,7 @@ export interface FileRoutesById {
   '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
   '/api/recordatorios': typeof ApiRecordatoriosRoute
+  '/api/senales-vencidas': typeof ApiSenalesVencidasRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/clients': typeof AppClientsRoute
@@ -262,11 +298,14 @@ export interface FileRoutesById {
   '/app/web': typeof AppWebRoute
   '/s/$salonSlug': typeof SSalonSlugRouteWithChildren
   '/app/': typeof AppIndexRoute
+  '/api/calendario-externo/cron': typeof ApiCalendarioExternoCronRoute
   '/s/$salonSlug/book': typeof SSalonSlugBookRoute
   '/s/$salonSlug/confirmation': typeof SSalonSlugConfirmationRoute
   '/s/$salonSlug/dosier': typeof SSalonSlugDosierRoute
   '/s/$salonSlug/privacidad': typeof SSalonSlugPrivacidadRoute
   '/s/$salonSlug/': typeof SSalonSlugIndexRoute
+  '/api/calendario-externo/google/callback': typeof ApiCalendarioExternoGoogleCallbackRoute
+  '/api/calendario-externo/google/webhook': typeof ApiCalendarioExternoGoogleWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -280,6 +319,7 @@ export interface FileRouteTypes {
     | '/api/calendario'
     | '/api/foto'
     | '/api/recordatorios'
+    | '/api/senales-vencidas'
     | '/app/appointments'
     | '/app/calendar'
     | '/app/clients'
@@ -294,11 +334,14 @@ export interface FileRouteTypes {
     | '/app/web'
     | '/s/$salonSlug'
     | '/app/'
+    | '/api/calendario-externo/cron'
     | '/s/$salonSlug/book'
     | '/s/$salonSlug/confirmation'
     | '/s/$salonSlug/dosier'
     | '/s/$salonSlug/privacidad'
     | '/s/$salonSlug/'
+    | '/api/calendario-externo/google/callback'
+    | '/api/calendario-externo/google/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -309,6 +352,7 @@ export interface FileRouteTypes {
     | '/api/calendario'
     | '/api/foto'
     | '/api/recordatorios'
+    | '/api/senales-vencidas'
     | '/app/appointments'
     | '/app/calendar'
     | '/app/clients'
@@ -322,11 +366,14 @@ export interface FileRouteTypes {
     | '/app/waitlist'
     | '/app/web'
     | '/app'
+    | '/api/calendario-externo/cron'
     | '/s/$salonSlug/book'
     | '/s/$salonSlug/confirmation'
     | '/s/$salonSlug/dosier'
     | '/s/$salonSlug/privacidad'
     | '/s/$salonSlug'
+    | '/api/calendario-externo/google/callback'
+    | '/api/calendario-externo/google/webhook'
   id:
     | '__root__'
     | '/'
@@ -338,6 +385,7 @@ export interface FileRouteTypes {
     | '/api/calendario'
     | '/api/foto'
     | '/api/recordatorios'
+    | '/api/senales-vencidas'
     | '/app/appointments'
     | '/app/calendar'
     | '/app/clients'
@@ -352,11 +400,14 @@ export interface FileRouteTypes {
     | '/app/web'
     | '/s/$salonSlug'
     | '/app/'
+    | '/api/calendario-externo/cron'
     | '/s/$salonSlug/book'
     | '/s/$salonSlug/confirmation'
     | '/s/$salonSlug/dosier'
     | '/s/$salonSlug/privacidad'
     | '/s/$salonSlug/'
+    | '/api/calendario-externo/google/callback'
+    | '/api/calendario-externo/google/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -369,7 +420,11 @@ export interface RootRouteChildren {
   ApiCalendarioRoute: typeof ApiCalendarioRoute
   ApiFotoRoute: typeof ApiFotoRoute
   ApiRecordatoriosRoute: typeof ApiRecordatoriosRoute
+  ApiSenalesVencidasRoute: typeof ApiSenalesVencidasRoute
   SSalonSlugRoute: typeof SSalonSlugRouteWithChildren
+  ApiCalendarioExternoCronRoute: typeof ApiCalendarioExternoCronRoute
+  ApiCalendarioExternoGoogleCallbackRoute: typeof ApiCalendarioExternoGoogleCallbackRoute
+  ApiCalendarioExternoGoogleWebhookRoute: typeof ApiCalendarioExternoGoogleWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -514,6 +569,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppointmentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/senales-vencidas': {
+      id: '/api/senales-vencidas'
+      path: '/api/senales-vencidas'
+      fullPath: '/api/senales-vencidas'
+      preLoaderRoute: typeof ApiSenalesVencidasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/recordatorios': {
       id: '/api/recordatorios'
       path: '/api/recordatorios'
@@ -569,6 +631,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/s/$salonSlug/book'
       preLoaderRoute: typeof SSalonSlugBookRouteImport
       parentRoute: typeof SSalonSlugRoute
+    }
+    '/api/calendario-externo/cron': {
+      id: '/api/calendario-externo/cron'
+      path: '/api/calendario-externo/cron'
+      fullPath: '/api/calendario-externo/cron'
+      preLoaderRoute: typeof ApiCalendarioExternoCronRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/calendario-externo/google/webhook': {
+      id: '/api/calendario-externo/google/webhook'
+      path: '/api/calendario-externo/google/webhook'
+      fullPath: '/api/calendario-externo/google/webhook'
+      preLoaderRoute: typeof ApiCalendarioExternoGoogleWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/calendario-externo/google/callback': {
+      id: '/api/calendario-externo/google/callback'
+      path: '/api/calendario-externo/google/callback'
+      fullPath: '/api/calendario-externo/google/callback'
+      preLoaderRoute: typeof ApiCalendarioExternoGoogleCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -637,7 +720,13 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCalendarioRoute: ApiCalendarioRoute,
   ApiFotoRoute: ApiFotoRoute,
   ApiRecordatoriosRoute: ApiRecordatoriosRoute,
+  ApiSenalesVencidasRoute: ApiSenalesVencidasRoute,
   SSalonSlugRoute: SSalonSlugRouteWithChildren,
+  ApiCalendarioExternoCronRoute: ApiCalendarioExternoCronRoute,
+  ApiCalendarioExternoGoogleCallbackRoute:
+    ApiCalendarioExternoGoogleCallbackRoute,
+  ApiCalendarioExternoGoogleWebhookRoute:
+    ApiCalendarioExternoGoogleWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

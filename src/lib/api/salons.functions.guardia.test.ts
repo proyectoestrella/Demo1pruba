@@ -195,3 +195,34 @@ describe("señal: la reserva pública no la decide el navegador", () => {
     expect(i).toBeLessThan(cuerpo.indexOf("escribirCita(supabase, fila)"));
   });
 });
+
+describe("lote 13: calendarios externos en syncAppointment", () => {
+  it("un hueco ocupado por lo externo solo se comprueba en la reserva PÚBLICA (dentro de !manda)", () => {
+    const cuerpo = cuerpoDe("syncAppointment");
+    const i = cuerpo.indexOf("hayOcupadoExternoEnHueco(");
+    expect(i).toBeGreaterThan(-1);
+    const bloquePanel = cuerpo.indexOf("if (manda && !data.permitirSolape)");
+    expect(i).toBeLessThan(bloquePanel);
+    expect(cuerpo.slice(0, i)).toContain("if (!manda) {");
+  });
+
+  it("un fallo (o tabla sin aplicar) al comprobar lo externo abre paso, no rompe la reserva", () => {
+    const cuerpo = cuerpoDe("syncAppointment");
+    const i = cuerpo.indexOf("hayOcupadoExternoEnHueco(");
+    expect(cuerpo.slice(i, i + 200)).toContain(".catch(() => false)");
+  });
+
+  it("procesarCitaParaConexiones se espera DESPUÉS de escribir la cita, nunca antes", () => {
+    const cuerpo = cuerpoDe("syncAppointment");
+    const iEscribir = cuerpo.indexOf("await escribirCita(supabase, fila)");
+    const iSync = cuerpo.indexOf("procesarCitaParaConexiones(");
+    expect(iEscribir).toBeGreaterThan(-1);
+    expect(iSync).toBeGreaterThan(iEscribir);
+    expect(cuerpo.slice(iSync - 30, iSync)).toContain("await ");
+  });
+
+  it("una cita cancelada se BORRA del externo, no se actualiza", () => {
+    const cuerpo = cuerpoDe("syncAppointment");
+    expect(cuerpo).toContain('fila.status === "cancelled" ? "borrar" : "upsert"');
+  });
+});

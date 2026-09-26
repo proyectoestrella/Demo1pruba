@@ -501,3 +501,142 @@ alter table perfil_versiones enable row level security;
 -- Cuándo se deshizo algo en esta cita por última vez. No se reutiliza `origen`:
 -- esa columna es la procedencia (sishow/tpv123) y la usa la importación.
 alter table appointments add column if not exists ultimo_deshacer_en timestamptz;
+
+-- 14. Caja: pagos reales (lote 11, 26/09) ------------------------------------
+-- El cuaderno del mostrador en digital: lo que la dueña o su encargada han
+-- anotado que ha entrado. siShow NUNCA cobra ni mueve dinero (mismo principio
+-- que la fianza, contrato v4.1): esto no es un ticket ni una factura, es un
+-- registro interno para cuadrar la caja (ver docs/contrato-caja.md).
+--
+-- `ref_externa` evita duplicar en dos casos: la señal aplicada al cobrar
+-- (`senal:<local_id de la cita>`, la crea `syncAppointmentPatch`) y el
+-- importador de TPV 123 (el número de Factura, o `Factura#2` si se repite).
+-- El índice único es PARCIAL (solo cuando `ref_externa` no es null): un alta
+-- manual sin referencia no tiene con qué comparar y no debe topar con nada.
+create table if not exists payments (
+  id uuid primary key default gen_random_uuid(),
+  salon_slug text not null,
+  -- local_id de la cita (no FK: un pago puede no venir de ninguna, y una
+  -- cita puede no existir ya en `appointments` sin que el pago deje de valer).
+  appointment_id text,
+  client_id uuid references clients (id) on delete set null,
+  -- Para pintar sin cruzar con `clients` (útil justo tras importar de TPV 123,
+  -- donde no siempre hay clientId).
+  client_name text,
+  importe_eur numeric not null,
+  metodo text not null check (metodo in ('efectivo', 'tarjeta', 'bizum')),
+  concepto text not null default 'servicio' check (concepto in ('servicio', 'producto', 'propina', 'senal', 'ajuste')),
+  -- employeeId de quien lo cobró.
+  cobrado_por text,
+  nota text,
+  origen text not null default 'sishow' check (origen in ('sishow', 'tpv123')),
+  ref_externa text,
+  -- Cuándo se cobró (no cuándo se tecleó).
+  fecha timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+create index if not exists payments_salon_fecha_idx on payments (salon_slug, fecha);
+create unique index if not exists payments_salon_origen_ref_idx
+  on payments (salon_slug, origen, ref_externa) where ref_externa is not null;
+alter table payments enable row level security;
+
+-- 15. Caja: cierre del día (lote 11, 26/09) ----------------------------------
+-- El "esperado" sale de `payments` (calculado en el servidor, `cerrarCaja`),
+-- no de `appointments.paid_at`: eso sigue siendo el viejo `cierreDelDia` de
+-- `lib/caja.ts`, que no se toca. Único por salón+fecha: re-cerrar actualiza
+-- la misma fila y dice lo que había antes en `anterior` (auditoría mínima,
+-- sin depender de la tabla `cambios`).
+create table if not exists cash_closings (
+  id uuid primary key default gen_random_uuid(),
+  salon_slug text not null,
+  fecha date not null,
+  efectivo_contado numeric not null,
+  esperado numeric not null,
+  descuadre numeric not null,
+  cerrado_por uuid references auth.users (id) on delete set null,
+  nota text,
+  -- El cierre que había antes de este, si este es un re-cierre. null la
+  -- primera vez.
+  anterior jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (salon_slug, fecha)
+);
+alter table cash_closings enable row level security;
+
+-- 16. `cambios.entidad` admite también 'pago' (lote 11, 26/09) ---------------
+-- Solo se registra pago.borrar (ver src/lib/cambios.ts): un alta de pago no
+-- es deshacible por historial —igual que crear una cita o un servicio
+-- tampoco lo es—, pero borrarlo sí, y eso sí hay que poder deshacerlo.
+-- Dos sentencias sueltas (sin `do $$`): ninguna de las dos necesita una
+-- comprobación condicional, `drop ... if exists` ya es idempotente por sí sola.
+alter table cambios drop constraint if exists cambios_entidad_check;
+alter table cambios add constraint cambios_entidad_check
+  check (entidad in ('cita', 'clienta', 'servicio', 'perfil', 'pago'));
+
+-- 14-16. Calendarios externos (lote 13, 26/09) -------------------------------
+-- PENDIENTE DE APLICAR EN PRODUCCIÓN: ver supabase/pendiente-calendarios.sql
+-- (fichero propio, independiente de pendiente.sql). Detrás de un flag por
+-- salón, desactivado por defecto: ver docs/contrato-calendarios.md.
+create table if not exists calendario_conexiones (
+  id uuid primary key default gen_random_uuid(),
+  salon_slug text not null references salons (slug) on delete cascade,
+  employee_id text,
+  proveedor text not null check (proveedor in ('google', 'apple')),
+  estado text not null default 'activa' check (estado in ('activa', 'error', 'desconectada')),
+  credencial_cifrada text not null,
+  cuenta text,
+  calendario_externo_id text,
+  calendario_nombre text,
+  sync_token text,
+  ctag text,
+  canal_watch_id text,
+  canal_recurso_id text,
+  canal_caduca timestamptz,
+  ultimo_error text,
+  ultimo_error_en timestamptz,
+  ultima_sincronizacion timestamptz,
+  bloquear_huecos boolean not null default true,
+  escribir_citas boolean not null default true,
+  creado_por uuid references auth.users (id) on delete set null,
+  creada timestamptz not null default now(),
+  actualizada timestamptz not null default now()
+);
+-- Sin WHERE a propósito: desconectar BORRA la fila (no la marca como
+-- 'desconectada'), así que nunca hay una fila vieja con la que competir y
+-- un índice parcial solo complicaría el upsert desde el cliente de Supabase.
+create unique index if not exists calendario_conexiones_unica_idx
+  on calendario_conexiones (salon_slug, coalesce(employee_id, ''), proveedor);
+create index if not exists calendario_conexiones_salon_idx on calendario_conexiones (salon_slug);
+alter table calendario_conexiones enable row level security;
+
+create table if not exists calendario_mapeo_eventos (
+  id uuid primary key default gen_random_uuid(),
+  conexion_id uuid not null references calendario_conexiones (id) on delete cascade,
+  cita_id uuid not null references appointments (id) on delete cascade,
+  evento_externo_id text not null,
+  etag text,
+  ical_uid text not null,
+  creado timestamptz not null default now(),
+  actualizado timestamptz not null default now(),
+  unique (conexion_id, cita_id),
+  unique (conexion_id, evento_externo_id)
+);
+create index if not exists calendario_mapeo_eventos_cita_idx on calendario_mapeo_eventos (cita_id);
+alter table calendario_mapeo_eventos enable row level security;
+
+create table if not exists calendario_bloqueos_externos (
+  id uuid primary key default gen_random_uuid(),
+  conexion_id uuid not null references calendario_conexiones (id) on delete cascade,
+  salon_slug text not null,
+  employee_id text,
+  evento_externo_id text not null,
+  start_at timestamptz not null,
+  end_at timestamptz not null,
+  resumen text,
+  actualizado timestamptz not null default now(),
+  unique (conexion_id, evento_externo_id)
+);
+create index if not exists calendario_bloqueos_externos_hueco_idx
+  on calendario_bloqueos_externos (salon_slug, employee_id, start_at, end_at);
+alter table calendario_bloqueos_externos enable row level security;

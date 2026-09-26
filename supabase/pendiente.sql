@@ -19,6 +19,9 @@
 --  11. Accesos y roles (lote 8): columnas de salon_members e invitaciones.
 --  12. Historial de cambios y versiones del perfil (lote 9).
 --  13. Auditoría del deshacer en la cita (lote 9b).
+--  14. Caja: pagos reales, tabla `payments` (lote 11).
+--  15. Caja: cierre del día, tabla `cash_closings` (lote 11).
+--  16. `cambios.entidad` admite también 'pago' (lote 11).
 --
 -- `supabase/schema.sql` sigue siendo la fuente completa: este fichero es el
 -- subconjunto que producción todavía no tiene. Después de aplicarlo, los dos
@@ -261,3 +264,65 @@ alter table perfil_versiones enable row level security;
 -- Cuándo se deshizo algo en esta cita por última vez. No se reutiliza `origen`:
 -- esa columna es la procedencia (sishow/tpv123) y la usa la importación.
 alter table appointments add column if not exists ultimo_deshacer_en timestamptz;
+
+-- 14. Caja: pagos reales (lote 11, 26/09) ------------------------------------
+-- El cuaderno del mostrador en digital: lo que la dueña o su encargada han
+-- anotado que ha entrado. siShow NUNCA cobra ni mueve dinero (mismo principio
+-- que la fianza, contrato v4.1): esto no es un ticket ni una factura, es un
+-- registro interno para cuadrar la caja (ver docs/contrato-caja.md).
+--
+-- `ref_externa` evita duplicar en dos casos: la señal aplicada al cobrar
+-- (`senal:<local_id de la cita>`, la crea `syncAppointmentPatch`) y el
+-- importador de TPV 123 (el número de Factura, o `Factura#2` si se repite).
+-- El índice único es PARCIAL (solo cuando `ref_externa` no es null): un alta
+-- manual sin referencia no tiene con qué comparar y no debe topar con nada.
+create table if not exists payments (
+  id uuid primary key default gen_random_uuid(),
+  salon_slug text not null,
+  appointment_id text,
+  client_id uuid references clients (id) on delete set null,
+  client_name text,
+  importe_eur numeric not null,
+  metodo text not null check (metodo in ('efectivo', 'tarjeta', 'bizum')),
+  concepto text not null default 'servicio' check (concepto in ('servicio', 'producto', 'propina', 'senal', 'ajuste')),
+  cobrado_por text,
+  nota text,
+  origen text not null default 'sishow' check (origen in ('sishow', 'tpv123')),
+  ref_externa text,
+  fecha timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+create index if not exists payments_salon_fecha_idx on payments (salon_slug, fecha);
+create unique index if not exists payments_salon_origen_ref_idx
+  on payments (salon_slug, origen, ref_externa) where ref_externa is not null;
+alter table payments enable row level security;
+
+-- 15. Caja: cierre del día (lote 11, 26/09) ----------------------------------
+-- El "esperado" sale de `payments` (calculado en el servidor, `cerrarCaja`),
+-- no de `appointments.paid_at`: eso sigue siendo el viejo `cierreDelDia` de
+-- `lib/caja.ts`, que no se toca. Único por salón+fecha: re-cerrar actualiza
+-- la misma fila y dice lo que había antes en `anterior` (auditoría mínima,
+-- sin depender de la tabla `cambios`).
+create table if not exists cash_closings (
+  id uuid primary key default gen_random_uuid(),
+  salon_slug text not null,
+  fecha date not null,
+  efectivo_contado numeric not null,
+  esperado numeric not null,
+  descuadre numeric not null,
+  cerrado_por uuid references auth.users (id) on delete set null,
+  nota text,
+  anterior jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (salon_slug, fecha)
+);
+alter table cash_closings enable row level security;
+
+-- 16. `cambios.entidad` admite también 'pago' (lote 11, 26/09) ---------------
+-- Solo se registra pago.borrar (ver src/lib/cambios.ts): un alta de pago no
+-- es deshacible por historial —igual que crear una cita o un servicio
+-- tampoco lo es—, pero borrarlo sí, y eso sí hay que poder deshacerlo.
+alter table cambios drop constraint if exists cambios_entidad_check;
+alter table cambios add constraint cambios_entidad_check
+  check (entidad in ('cita', 'clienta', 'servicio', 'perfil', 'pago'));

@@ -22,10 +22,14 @@ export const TIPOS_CAMBIO = [
   "recargo.aplicar", "recargo.perdonar", "recargo.cobrar", "clienta.bloquear",
   "servicio.editar", "servicio.borrar", "profesional.editar", "horario.editar",
   "preguntas.editar", "ajustes.editar", "perfil.publicar", "perfil.restaurar", "perfil.campo",
+  // Caja (lote 11). Solo el borrado se registra: un alta no es deshacible por
+  // historial (igual que crear una cita o un servicio tampoco lo es), solo
+  // borrarla — y eso sí se puede deshacer (recupera el pago).
+  "pago.borrar",
 ] as const;
 export type TipoCambio = (typeof TIPOS_CAMBIO)[number];
 
-export type EntidadCambio = "cita" | "clienta" | "servicio" | "perfil";
+export type EntidadCambio = "cita" | "clienta" | "servicio" | "perfil" | "pago";
 
 export interface Cambio {
   /** uuid generado en el navegador: un reintento no duplica ni aplica dos veces. */
@@ -175,6 +179,8 @@ export function accionDe(tipo: TipoCambio): AccionId {
     "perfil.restaurar": "web.restaurar-version",
     // Por defecto; el permiso real depende del campo (ver accionesDeCambio).
     "perfil.campo": "salon.editar",
+    // Crear y borrar un pago manual son el mismo nivel de confianza.
+    "pago.borrar": "dinero.crear",
   };
   return m[tipo];
 }

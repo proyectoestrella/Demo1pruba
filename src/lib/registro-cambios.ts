@@ -5,6 +5,7 @@
  */
 import type { Appointment, Client, Service } from "./mock/types";
 import type { EntidadCambio, TipoCambio } from "./cambios";
+import type { Pago } from "./pagos";
 
 /** Tipo de un cambio de cita, por lo que cambió. */
 export function tipoCambioCita(antes: Partial<Appointment>, despues: Partial<Appointment>): TipoCambio {
@@ -90,6 +91,14 @@ export function resumenServicio(tipo: TipoCambio, antes: Service | null, despues
   return tipo === "servicio.borrar" ? `Borrado el servicio «${n}»` : `Cambiado el servicio «${n}»`;
 }
 
+const METODO_PAGO_LABEL: Record<Pago["metodo"], string> = { efectivo: "efectivo", tarjeta: "tarjeta", bizum: "Bizum" };
+
+/** «Borrado un pago de 20 € (efectivo)». Solo hay un tipo posible: pago.borrar (ver ACCIONES_REGISTRADAS). */
+export function resumenPago(pago: Pago | null): string {
+  if (!pago) return "Borrado un pago";
+  return `Borrado un pago de ${pago.importeEur} € (${METODO_PAGO_LABEL[pago.metodo] ?? pago.metodo})`;
+}
+
 /** Acciones de la store que se envuelven y sobre qué entidad actúan (su primer argumento es el id). */
 export const ACCIONES_REGISTRADAS: Array<{ accion: string; entidad: EntidadCambio }> = [
   { accion: "updateAppointment", entidad: "cita" },
@@ -109,6 +118,7 @@ export const ACCIONES_REGISTRADAS: Array<{ accion: string; entidad: EntidadCambi
   { accion: "setDeuda", entidad: "clienta" },
   { accion: "updateService", entidad: "servicio" },
   { accion: "deleteService", entidad: "servicio" },
+  { accion: "borrarPago", entidad: "pago" },
 ];
 
 /** Acciones automáticas: lo que hagan por dentro NO se registra como hecho por una persona. */

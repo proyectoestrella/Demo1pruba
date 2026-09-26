@@ -27,6 +27,7 @@ type PaginaId =
   | "equipo"         // /app/employees
   | "servicios"      // /app/services
   | "mi-pagina"      // /app/web
+  | "caja"           // /app/caja (lote 11; solo gerente y subencargado la ven)
   | "ajustes"        // /app/settings
   | "ajustes.accesos"
   | "ajustes.historial"
@@ -43,7 +44,11 @@ type AccionId =
   | "senal.gestionar" | "recargo.gestionar" | "lista-espera.gestionar"
   | "servicio.editar" | "equipo.editar" | "salon.editar" | "web.editar" | "web.publicar" | "web.restaurar-version"
   | "dinero.ver-propio" | "dinero.ver-global" | "analitica.ver" | "marketing.usar" | "exportar.excel"
-  | "accesos.gestionar" | "historial.ver" | "historial.deshacer-ajeno" | "plan.gestionar" | "datos.borrar";
+  // Caja (lote 11): crear un pago, cerrar el día, exportar el CSV de gestoría
+  // e importar de TPV 123. Solo gerente y subencargado; ver docs/contrato-caja.md.
+  | "dinero.crear" | "dinero.cerrar" | "dinero.exportar" | "dinero.importar"
+  | "accesos.gestionar" | "historial.ver" | "historial.deshacer-ajeno" | "plan.gestionar" | "datos.borrar"
+  | "calendario-externo.gestionar"; // lote 13, alcance "propio" para la estilista — ver docs/contrato-calendarios.md §3
 
 /**
  * Alcance por permiso, no ids duplicados: una estilista tiene cita.* y

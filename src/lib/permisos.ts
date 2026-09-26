@@ -17,7 +17,7 @@ export const ROLES: readonly Rol[] = ["gerente", "subencargado", "recepcion", "e
 
 export const PAGINAS = [
   "hoy", "calendario", "citas", "lista-espera", "clientas", "hoja", "equipo", "servicios", "mi-pagina",
-  "ajustes", "ajustes.accesos", "ajustes.historial", "analitica", "marketing", "asistente", "demos",
+  "caja", "ajustes", "ajustes.accesos", "ajustes.historial", "analitica", "marketing", "asistente", "demos",
 ] as const;
 export type PaginaId = (typeof PAGINAS)[number];
 
@@ -29,7 +29,13 @@ export const ACCIONES = [
   "senal.gestionar", "recargo.gestionar", "lista-espera.gestionar",
   "servicio.editar", "equipo.editar", "salon.editar", "web.editar", "web.publicar", "web.restaurar-version",
   "dinero.ver-propio", "dinero.ver-global", "analitica.ver", "marketing.usar", "exportar.excel",
+  // Caja (lote 11): crear/cerrar/exportar/importar es solo gerente y
+  // subencargado. La estilista sigue viendo lo suyo por `dinero.ver-propio`
+  // (que ya existía), no por estas cuatro.
+  "dinero.crear", "dinero.cerrar", "dinero.exportar", "dinero.importar",
   "accesos.gestionar", "historial.ver", "historial.deshacer-ajeno", "plan.gestionar", "datos.borrar",
+  // Lote 13 (26/09): conectar/desconectar un calendario externo (Google/Apple).
+  "calendario-externo.gestionar",
 ] as const;
 export type AccionId = (typeof ACCIONES)[number];
 
@@ -92,6 +98,10 @@ const TABLA: Record<AccionId, [Celda, Celda, Celda, Celda]> = {
   "web.restaurar-version":      ["T", "T", "-", "-"],
   "dinero.ver-propio":          ["T", "T", "-", "P"],
   "dinero.ver-global":          ["T", "-", "-", "-"],
+  "dinero.crear":               ["T", "T", "-", "-"],
+  "dinero.cerrar":              ["T", "T", "-", "-"],
+  "dinero.exportar":            ["T", "T", "-", "-"],
+  "dinero.importar":            ["T", "T", "-", "-"],
   "analitica.ver":              ["T", "T", "-", "-"],
   "marketing.usar":             ["T", "T", "-", "-"],
   "exportar.excel":             ["T", "-", "-", "-"],
@@ -100,6 +110,10 @@ const TABLA: Record<AccionId, [Celda, Celda, Celda, Celda]> = {
   "historial.deshacer-ajeno":   ["T", "T", "-", "-"],
   "plan.gestionar":             ["T", "-", "-", "-"],
   "datos.borrar":               ["T", "-", "-", "-"],
+  // Alcance «propio»: la estilista solo conecta/desconecta SU PROPIA
+  // conexión (employeeId igual al suyo); la del salón entero
+  // (employeeId null) es cosa de gerente/subencargado.
+  "calendario-externo.gestionar": ["T", "T", "-", "P"],
 };
 const COLUMNA: Record<Rol, number> = { gerente: 0, subencargado: 1, recepcion: 2, estilista: 3 };
 
