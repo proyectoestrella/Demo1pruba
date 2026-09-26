@@ -49,6 +49,8 @@ import {
   type WaitlistRow,
 } from "../salon-rows";
 import type { Appointment, Client, SalonProfile, WaitlistEntry } from "../mock/types";
+import { hayOcupadoExternoEnHueco, procesarCitaParaConexiones } from "../calendario-externo/calendario-externo.server";
+import type { CitaParaCalendario } from "../calendario-externo/tipos";
 
 /**
  * Columnas de siempre, y columnas que solo existen si se ha aplicado el DDL
@@ -805,6 +807,18 @@ export const syncAppointment = createServerFn({ method: "POST" })
       if (await solapaEnServidor(supabase, data.slug, data.localId, data.employeeId, data.startISO, data.durationMin)) {
         return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
       }
+
+      // Lote 13: un hueco ocupado por un calendario externo conectado (con
+      // `bloquearHuecos` activo) se trata igual que uno ocupado por otra
+      // cita de siShow — mismo motivo de siempre, no hay uno nuevo. Ver
+      // docs/contrato-calendarios.md §5. Si la tabla aún no existe (SQL sin
+      // aplicar) o falla, se abre paso: es exactamente el comportamiento de
+      // antes de este lote.
+      const finExterno = new Date(Date.parse(data.startISO) + data.durationMin * 60_000).toISOString();
+      const ocupadoExterno = await hayOcupadoExternoEnHueco(data.slug, data.employeeId, data.startISO, finExterno).catch(() => false);
+      if (ocupadoExterno) {
+        return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
+      }
     }
     // El panel puede solapar a propósito, pero solo diciéndolo: sin
     // `permitirSolape` se rechaza con su propio código y la pantalla enseña
@@ -909,6 +923,36 @@ export const syncAppointment = createServerFn({ method: "POST" })
     if (clientId) fila.client_id = clientId;
 
     await escribirCita(supabase, fila);
+
+    // Lote 13: llevar la cita a los calendarios externos conectados de esta
+    // profesional (y al del salón entero, si lo hay). Nunca lanza (lo
+    // garantiza `procesarCitaParaConexiones`); un fallo del calendario
+    // externo no puede tirar la reserva. El estado final (confirmada/
+    // cancelada) es el que decide crear/actualizar vs. borrar en el externo.
+    const citaParaCalendario: CitaParaCalendario = {
+      id: data.localId,
+      clientName: (fila.client_name as string | null) ?? "Cliente",
+      // Simplificación de v1: los ids de servicio, no su nombre visible (eso
+      // exigiría cargar el perfil y el catálogo también en el panel; el feed
+      // ICS público sí lo resuelve — ver calendario-ics.ts). Es solo lo que
+      // ve la profesional en SU calendario externo.
+      service: data.serviceIds.join(" + ") || "Cita",
+      employeeId: data.employeeId,
+      start: data.startISO,
+      duration: data.durationMin,
+      status: fila.status as string,
+      note: (fila.note as string | null) ?? null,
+    };
+    // Se espera (no "fire and forget"): en un entorno serverless una
+    // promesa sin esperar puede no llegar a terminar una vez la respuesta ya
+    // ha salido. El coste es la latencia de esta llamada — la función
+    // interna nunca lanza, así que el `try/catch` es solo por si acaso.
+    try {
+      await procesarCitaParaConexiones(data.slug, citaParaCalendario, fila.status === "cancelled" ? "borrar" : "upsert");
+    } catch (err) {
+      console.error("calendario-externo (tras guardar cita):", err);
+    }
+
     return { synced: true as const };
   });
 
