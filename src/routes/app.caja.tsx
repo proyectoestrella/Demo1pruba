@@ -6,12 +6,13 @@ import { useSalonStore } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
 import { usePermisos, useTienePlan } from "@/lib/accesos-panel";
 import { puede } from "@/lib/permisos";
-import { calcularDescuadre, METODOS_PAGO, pagosPorMetodo, TEXTO_CAJA_NO_FACTURA, totalPagos, type Pago } from "@/lib/pagos";
+import { calcularDescuadre, METODOS_PAGO, pagosDelDia, pagosEntreDias, pagosPorMetodo, TEXTO_CAJA_NO_FACTURA, totalPagos, type Pago } from "@/lib/pagos";
 import { PAYMENT_METHOD_LABELS } from "@/lib/mock/types";
 import { downloadCsv, pagosToCsvGestoria } from "@/lib/export-csv";
 import { generarCsvGestoria } from "@/lib/api/pagos.functions";
 import { leerEuros } from "@/lib/cobro-panel";
 import { fechaLocal } from "@/lib/hoja-del-dia";
+import { zonaDelSalon } from "@/lib/zona-horaria";
 import { PageHeader } from "@/components/PageHeader";
 import { LlegaConPlan } from "@/components/LlegaConPlan";
 import { BotonConPlan } from "@/components/BotonConPlan";
@@ -58,8 +59,9 @@ function CajaDelDia() {
     void cargarPagos(dia, dia);
   }, [dia, cargarPagos]);
 
-  // El día del salón (local), no el de UTC: un cobro a las 00:30 es de ese día.
-  const delDia = useMemo(() => pagos.filter((p) => fechaLocal(new Date(p.fecha)) === dia).sort((a, b) => a.fecha.localeCompare(b.fecha)), [pagos, dia]);
+  // El día en la zona del salón (como el servidor), no el del navegador ni el de UTC.
+  const zona = useSalonStore((s) => zonaDelSalon(s.salonProfile));
+  const delDia = useMemo(() => [...pagosDelDia(pagos, dia, zona)].sort((a, b) => a.fecha.localeCompare(b.fecha)), [pagos, dia, zona]);
   const porMetodo = pagosPorMetodo(delDia);
   const total = totalPagos(delDia);
   const nombre = (id?: string) => equipo.find((e) => e.id === id)?.name ?? "—";
@@ -86,7 +88,7 @@ function CajaDelDia() {
       const r = await generarCsvGestoria({ data: { slug: realSlug, desde, hasta } });
       csv = r.csv;
     } else {
-      csv = pagosToCsvGestoria(pagos.filter((p) => fechaLocal(new Date(p.fecha)) >= desde && fechaLocal(new Date(p.fecha)) <= hasta));
+      csv = pagosToCsvGestoria(pagosEntreDias(pagos, desde, hasta, zona));
     }
     if (!csv) return void toast.error("No se ha podido generar el fichero. Inténtalo en un momento.");
     downloadCsv(`caja-${desde}-a-${hasta}.csv`, csv);
