@@ -148,3 +148,86 @@ sin datos y con tipos cruzados): todas responden sin traza. El detalle está en 
 8. **FRONTEND** (no tocado): `NewAppointmentDialog.tsx` llama a `solapaConAgenda` una vez por
    guardado, lo cual está bien. Si algún día se pinta una rejilla de huecos con ella, son unos 0,3 ms
    por hueco, unos 50 ms para 200 huecos, y convendría un índice por profesional.
+
+## Segunda pasada — los puntos flojos 1 a 6
+
+Una vez aceptada la primera pasada, se cerraron los puntos flojos 1 a 6 en la misma rama,
+con un commit por punto y pruebas en cada uno. Tras cada commit se pasaron `tsc` limpio,
+`TZ=UTC bun test` y `bun run build`. Al final: **1.350 pruebas pasan, 1 omitida, 0 fallan**.
+
+| Commit | Punto | Qué |
+|---|---|---|
+| `0ff1b0b` | 2 | «Reintentar» pasa por la cola de la cita y no pisa cambios posteriores |
+| `ddbdbd3` | 6 | Historial: cursor por fecha e id para «Cargar más», con un tope de 200 por página |
+| `ca05a33` | 5 | Las señales vencidas se liberan todas en un solo cambio de estado |
+| `90cf687` | 3 | El refresco no sustituye las listas iguales ni avisa a la store si nada cambió |
+| `c752f8f` | 4 | Periodos y campañas usan la zona del salón cuando se pasa `timeZone` |
+| `4dd0e13` | 4 | La capacidad de cada rango queda memorizada por equipo y rango |
+| `3ff5c8b` | 1 | Server functions: un payload ilegible o unos datos no válidos dan 400 en español |
+
+**1. Entradas malformadas en las server functions.** Hay un middleware global en `start.ts`
+(`lib/api/errores-serverfn.ts`):
+
+| Caso | Antes | Ahora |
+|---|---|---|
+| `payload` que no es JSON | 500, con el mensaje del parser en inglés | 400 «La petición no es válida…» |
+| Datos que no pasan zod | 200 con el JSON de zod en inglés dentro | 400 «Datos no válidos: «slug» no puede ir vacío.» |
+| Página pedida con `Accept: application/json` | 500 «Only HTML requests…» | 406 con mensaje |
+
+Las respuestas conservan el formato serializado de TanStack. El cliente deserializa el error
+sin mirar el código de estado, así que sigue recibiendo un `Error`, ahora con un mensaje
+legible. Ningún cliente del panel interpretaba el texto de zod.
+
+Se comprobó sobre el **build real**, llamando a la función de Vercel que genera `bun run build`,
+y pasando la respuesta por el deserializador real del cliente (seroval con el plugin de errores de
+TanStack): sale un `Error` con el mensaje en español. Un slug inexistente sigue devolviendo 200 con
+listas vacías.
+
+Hubo una trampa por el camino. seroval guarda cada cadena escapada como un literal de JS, y ese
+texto va además dentro del JSON. La primera versión no quitaba esa capa, así que sus pruebas
+unitarias pasaban con un ejemplo mal construido mientras el build real seguía dando 200. Ahora
+el ejemplo de la prueba es idéntico a la respuesta de producción.
+
+**2. «Reintentar» respeta el orden.** El botón del aviso encola la subida en la cita en lugar de
+lanzarla en paralelo. Además, cada escritura lleva una generación por cita y por campo:
+
+- un parche viejo solo manda los campos que nadie ha tocado después;
+- una cita entera vieja no se reenvía si hubo otro cambio de esa cita.
+
+Con esto también cambia el reintento automático: si ya existe un cambio posterior del mismo
+campo, el anterior no se vuelve a mandar.
+
+**3. El refresco no repinta si nada cambió.** `conservarIguales` reutiliza cada objeto igual al
+anterior. Si las tres listas (citas, clientas y lista de espera) son iguales, `hydrateFromServer`
+devuelve el mismo estado: la store no avisa a nadie, React no repinta y los índices memorizados
+por lista siguen valiendo. Comparar las 3.344 citas cuesta **1,9 ms**.
+Antes, cada 60 s se recalculaba todo en frío, unos 25 ms, más un render completo.
+
+**4. La zona del salón.** `periodos.ts` tiene ahora un calendario enchufable. Sin zona funciona
+con la hora local, como hasta ahora, así que el panel y la Analítica de FRONTEND no cambian. Con
+`timeZone`, días, semanas, meses, capacidad por día de la semana y el texto del rango se calculan
+en la hora del salón, incluidos los cambios de hora (el 25 de octubre dura 25 h).
+
+El asistente del servidor, que corre en Vercel en UTC, pasa siempre la zona. Hasta ahora, para él
+«hoy» empezaba a las 02:00 de Madrid. Los huecos flojos de las campañas funcionan igual.
+
+Las pruebas pasan también con la máquina en `Pacific/Auckland`. Con zona, los tres resúmenes en
+frío cuestan 10,3 ms (8 ms sin zona), gracias a la caché de capacidad. Sin ella eran 19,6 ms.
+
+**5. Señales vencidas en un solo lote.** Se cancelan todas con un único `set` y el mismo parche
+que al cancelar «por el salón». La prueba cuenta una sola notificación de la store para tres
+citas. Sin el arreglo, la prueba falla.
+
+**6. Historial.** El tope de 200 por página ya estaba en el validador, por debajo de las 1000 filas
+que corta PostgREST. El fallo real era el cursor: con solo «fecha < la última», los cambios
+guardados en el mismo instante que caían entre dos páginas no aparecían nunca. Ahora el orden es
+por fecha e id, descendente, y el cursor es la pareja (filtro `or` de PostgREST, con comillas).
+El panel manda `antesDeId` y descarta ids repetidos.
+
+**Punto 7 (FRONTEND), sin cambios.** Si algún día se pinta una rejilla de huecos con
+`solapaConAgenda`, conviene un índice por profesional: son unos 0,3 ms por hueco. Queda anotado
+también para FRONTEND que `TarjetasPeriodo`, `SelectorPeriodo` y `CampanasPanel` pueden pasar
+`timeZone: zonaDelSalon(perfil)` cuando quieran la hora del salón en lugar de la del dispositivo.
+
+**Sigue sin comprobar en producción**, igual que en la primera pasada: el número de citas del salón
+más grande y los errores 500 históricos de Vercel.
