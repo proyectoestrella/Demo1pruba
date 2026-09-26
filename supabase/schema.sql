@@ -575,7 +575,7 @@ alter table cambios add constraint cambios_entidad_check
   check (entidad in ('cita', 'clienta', 'servicio', 'perfil', 'pago'));
 
 -- 14-16. Calendarios externos (lote 13, 26/09) -------------------------------
--- PENDIENTE DE APLICAR EN PRODUCCIÓN: ver supabase/pendiente-calendarios.sql
+-- PENDIENTE DE APLICAR EN PRODUCCIÓN: ver supabase/pendiente.sql, secciones 17-19
 -- (fichero propio, independiente de pendiente.sql). Detrás de un flag por
 -- salón, desactivado por defecto: ver docs/contrato-calendarios.md.
 create table if not exists calendario_conexiones (

@@ -4,6 +4,9 @@ import {
   calcularDescuadre,
   cobradoDeCita,
   esperadoDelDia,
+  pagosDelDia,
+  pagosEntreDias,
+  ventanaUtcDelDia,
   pagoDeSenalAplicada,
   pagosPorMetodo,
   refSenalAplicada,
@@ -85,4 +88,41 @@ describe("esperado del día y descuadre", () => {
 it("el texto obligatorio dice que no hay tickets ni facturas y menciona Verifactu", () => {
   expect(TEXTO_CAJA_NO_FACTURA).toContain("no emite tickets ni facturas");
   expect(TEXTO_CAJA_NO_FACTURA).toContain("Verifactu");
+});
+
+describe("el día de un pago es el de la zona del salón, no el día UTC", () => {
+  const madrid = "Europe/Madrid";
+  // Noche del cambio de hora de 2026: el domingo 25 de octubre, a las 03:00 (CEST, +2) vuelven a ser las 02:00 (CET, +1).
+  const antesDeMedianoche24 = pago({ id: "a", fecha: "2026-10-24T21:30:00.000Z", importeEur: 1 }); // 23:30 del sábado 24
+  const primeraHora25 = pago({ id: "b", fecha: "2026-10-24T22:30:00.000Z", importeEur: 2 }); // 00:30 del domingo 25 (+2)
+  const horaRepetida25 = pago({ id: "c", fecha: "2026-10-25T01:30:00.000Z", importeEur: 4 }); // 02:30 del 25, ya en +1
+  const ultimaHora25 = pago({ id: "d", fecha: "2026-10-25T22:30:00.000Z", importeEur: 8 }); // 23:30 del 25 (+1)
+  const primeraHora26 = pago({ id: "e", fecha: "2026-10-25T23:30:00.000Z", importeEur: 16 }); // 00:30 del lunes 26 (+1)
+  const todos = [antesDeMedianoche24, primeraHora25, horaRepetida25, ultimaHora25, primeraHora26];
+
+  it("un cobro a las 00:30 de Madrid es del día nuevo", () => {
+    expect(pagosDelDia(todos, "2026-10-25", madrid).map((p) => p.id)).toEqual(["b", "c", "d"]);
+    expect(pagosDelDia(todos, "2026-10-24", madrid).map((p) => p.id)).toEqual(["a"]);
+    expect(pagosDelDia(todos, "2026-10-26", madrid).map((p) => p.id)).toEqual(["e"]);
+  });
+
+  it("esperadoDelDia del domingo del cambio de hora (25 h) suma solo lo suyo", () => {
+    const r = esperadoDelDia(todos, "2026-10-25", madrid);
+    expect(r.fecha).toBe("2026-10-25");
+    expect(r.total).toBe(14);
+    expect(r.porMetodo.efectivo).toBe(14);
+    // Con un instante, el día se toma en la zona: 22:30Z del 24 es el 25 en Madrid.
+    expect(esperadoDelDia(todos, new Date("2026-10-24T22:30:00.000Z"), madrid).fecha).toBe("2026-10-25");
+  });
+
+  it("pagosEntreDias incluye los dos extremos por día local", () => {
+    expect(pagosEntreDias(todos, "2026-10-25", "2026-10-26", madrid).map((p) => p.id)).toEqual(["b", "c", "d", "e"]);
+  });
+
+  it("la ventana UTC para pedir a la base de datos cubre el día local de cualquier zona", () => {
+    const v = ventanaUtcDelDia("2026-10-25");
+    for (const p of [primeraHora25, horaRepetida25, ultimaHora25]) {
+      expect(p.fecha >= v.desde && p.fecha < v.hasta).toBe(true);
+    }
+  });
 });

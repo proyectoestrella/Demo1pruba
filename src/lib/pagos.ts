@@ -12,6 +12,7 @@
  * `docs/contrato-caja.md`.
  */
 import type { Appointment, PaymentMethod } from "./mock/types";
+import { fechaEnZona, ZONA_HORARIA_SALON } from "./zona-horaria";
 
 /** Mismos tres valores que `PaymentMethod` (cierre de caja de cita): un solo vocabulario para el dinero. */
 export type MetodoPago = PaymentMethod;
@@ -121,24 +122,59 @@ export function pagoDeSenalAplicada(
 /* Cierre del día (a partir de payments, distinto del cierreDelDia de caja.ts) */
 /* ------------------------------------------------------------------------ */
 
-function fechaISODia(d: Date): string {
-  return d.toISOString().slice(0, 10);
+/**
+ * El día de un pago es el día EN LA ZONA DEL SALÓN, no el día UTC: un cobro a
+ * las 00:30 de Madrid (22:30Z del día anterior) es del día nuevo, que es el que
+ * cierra la dueña.
+ */
+export function diaDelPago(p: Pick<Pago, "fecha">, timeZone: string = ZONA_HORARIA_SALON): string {
+  return fechaEnZona(p.fecha, timeZone);
 }
 
-function esMismoDiaISO(fechaISO: string, dia: Date): boolean {
-  return fechaISO.slice(0, 10) === fechaISODia(dia);
+/** Los pagos de un día (YYYY-MM-DD, o un instante dentro de él) en la zona del salón. */
+export function pagosDelDia(pagos: Pago[], dia: string | Date, timeZone: string = ZONA_HORARIA_SALON): Pago[] {
+  const fecha = typeof dia === "string" ? dia : fechaEnZona(dia, timeZone);
+  return pagos.filter((p) => diaDelPago(p, timeZone) === fecha);
+}
+
+/**
+ * Ventana UTC que cubre SEGURO un día local de cualquier zona (±14 h): para
+ * pedir a la base de datos y filtrar después con `pagosDelDia`.
+ */
+export function ventanaUtcDelDia(fecha: string): { desde: string; hasta: string } {
+  const t = Date.parse(`${fecha}T00:00:00.000Z`);
+  return { desde: new Date(t - 14 * 3_600_000).toISOString(), hasta: new Date(t + 38 * 3_600_000).toISOString() };
+}
+
+/**
+ * Los pagos cuyo día (en la zona del salón) cae entre `desde` y `hasta`, ambos
+ * incluidos. Acepta YYYY-MM-DD o un ISO completo: de un ISO se toma su día local.
+ */
+export function pagosEntreDias(pagos: Pago[], desde: string, hasta: string, timeZone: string = ZONA_HORARIA_SALON): Pago[] {
+  const d = desde.length > 10 ? fechaEnZona(desde, timeZone) : desde;
+  const h = hasta.length > 10 ? fechaEnZona(hasta, timeZone) : hasta;
+  return pagos.filter((p) => {
+    const dia = diaDelPago(p, timeZone);
+    return dia >= d && dia <= h;
+  });
+}
+
+/** Ventana UTC holgada para pedir a la base de datos los pagos de un rango de días locales. */
+export function ventanaUtcEntreDias(desde: string, hasta: string): { desde: string; hasta: string } {
+  return { desde: ventanaUtcDelDia(desde.slice(0, 10)).desde, hasta: ventanaUtcDelDia(hasta.slice(0, 10)).hasta };
 }
 
 export interface EsperadoDelDia {
-  fecha: string; // YYYY-MM-DD
+  fecha: string; // YYYY-MM-DD, en la zona del salón
   porMetodo: Record<MetodoPago, number>;
   total: number;
 }
 
-/** Lo que "debería haber" según lo apuntado en `payments`, para un día. Cálculo puro. */
-export function esperadoDelDia(pagos: Pago[], dia: Date = new Date()): EsperadoDelDia {
-  const delDia = pagos.filter((p) => esMismoDiaISO(p.fecha, dia));
-  return { fecha: fechaISODia(dia), porMetodo: pagosPorMetodo(delDia), total: totalPagos(delDia) };
+/** Lo que "debería haber" según lo apuntado en `payments`, para un día de la zona del salón. Cálculo puro. */
+export function esperadoDelDia(pagos: Pago[], dia: string | Date = new Date(), timeZone: string = ZONA_HORARIA_SALON): EsperadoDelDia {
+  const fecha = typeof dia === "string" ? dia : fechaEnZona(dia, timeZone);
+  const delDia = pagosDelDia(pagos, fecha, timeZone);
+  return { fecha, porMetodo: pagosPorMetodo(delDia), total: totalPagos(delDia) };
 }
 
 export interface Descuadre {

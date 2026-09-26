@@ -1,5 +1,7 @@
 # Informe de integración: qué falta para producción
 
+> **Actualizado el 27/09.** Rama `codex/peluchic-backend`, `e1041be`: `main` (150d5fc), más la caja (lote 11), la señal (lote 12) y los calendarios (lote 13). `main` ya está fusionado y desplegado en producción; lo pendiente de este informe empieza en el paso 2.
+
 Rama `codex/integracion`, que parte del ensayo de fusión 2 (`ae664ec`) y añade el lote 10. Aquí están los pasos para dejar siShow operativo en producción, **en orden**. Los secretos no se escriben en ningún sitio: se cargan del fichero protegido con `source` o se pegan a mano en el panel de Supabase o de Vercel.
 
 ## 0. Estado de la rama
@@ -47,7 +49,7 @@ El DDL solo se puede aplicar desde el **SQL Editor** del panel, porque la conexi
 1. **Validar sin aplicar**, justo antes. El volcado de esquema tiene que salir idéntico antes y después:
    ```sh
    set -a; source <fichero-de-credenciales>; set +a
-   python3 scripts/validar-sql/validar-pendiente.py supabase/pendiente.sql scripts/validar-sql/comprobar-13.sql
+   python3 scripts/validar-sql/validar-pendiente.py supabase/pendiente.sql scripts/validar-sql/comprobar-17.sql
    ```
 2. **Aplicar en el SQL Editor, una sección cada vez y en este orden.** Tras cada una, mirar que no haya errores antes de pasar a la siguiente.
 
@@ -62,10 +64,14 @@ El DDL solo se puede aplicar desde el **SQL Editor** del panel, porque la conexi
 | 2.7 | 11 | Accesos y roles: columnas de `salon_members` y `salon_invitaciones` |
 | 2.8 | 12 | `cambios` y `perfil_versiones`, con RLS y sin políticas |
 | 2.9 | 13 | `appointments.ultimo_deshacer_en` |
+| 2.10 | 14 a 16 | Caja: `payments`, `cash_closings` y `cambios.entidad` con `'pago'` |
+| 2.11 | 17 a 19 | Calendarios: `calendario_conexiones`, `calendario_mapeo_eventos` y `calendario_bloqueos_externos` |
+
+Validación del 27/09: las secciones 1 a 19 pasan en una sola transacción con rollback, con volcado idéntico (`60f6c04ca5691827`), y las comprobaciones 14, 15, 16 y 17 dan todo `SI`/`true` dentro de la transacción.
 
 3. **Comprobar después.** Con el primer argumento `/dev/null` no se aplica nada: solo se ejecuta la comprobación, que termina en `COMPROBACION …` a propósito. Antes de aplicar dice, por ejemplo, `ultimo_deshacer_en=NO`; después tiene que decir `SI` en cada lote. En un salón real, Ajustes › Accesos, Historial y Versiones deben cargar sin el error «Reintentar»:
    ```sh
-   for n in 11 12 13; do python3 scripts/validar-sql/validar-pendiente.py /dev/null scripts/validar-sql/comprobar-$n.sql; done
+   for n in 11 12 13 14 15 16 17; do python3 scripts/validar-sql/validar-pendiente.py /dev/null scripts/validar-sql/comprobar-$n.sql; done
    ```
 4. **Primera gerente.** Ejecutar `supabase/alta-primer-usuario.sql` en el SQL Editor con su correo, que inserta el rol `'gerente'`. El resto de accesos se invitan desde Ajustes › Accesos.
 5. **Auth.** En Authentication › URL Configuration › Redirect URLs, añadir `https://<dominio>/aceptar`, porque la invitación (`auth.admin.inviteUserByEmail`) vuelve ahí. Revisar que la plantilla «Invite user» esté en español.
@@ -85,7 +91,25 @@ Qué hacer:
    ```
 2. **`VITE_*` se leen en el build.** Tras cambiarlas hay que **redesplegar**; no basta con guardar.
 3. **Node.** Settings › General › Node.js Version = 22.x.
-4. **Fuera de este ciclo:** `CRON_SECRET`, `RESEND_API_KEY` y `REMINDER_FROM_EMAIL`, que son del recordatorio por email. Sin ellas, `/api/recordatorios` responde 401 o «sin-proveedor» y no se envía nada. Las invitaciones de Accesos no dependen de Resend: salen por el correo de Supabase Auth.
+4. **`CRON_SECRET`.** Ya hace falta: protege los tres crons. Sin ella, los tres responden 401 y no hacen nada. Es un valor al azar que se pone solo en Vercel (Production).
+5. **Calendarios**, solo cuando se haga la prueba real (`docs/pruebas-calendario-para-tomas.md`). Sin estas variables el módulo no se activa, y además va detrás del flag por salón `calendariosExternosActivo`, apagado por defecto:
+   - `GOOGLE_CALENDAR_CLIENT_ID` y `GOOGLE_CALENDAR_CLIENT_SECRET`, del proyecto de Google Cloud.
+   - `GOOGLE_CALENDAR_REDIRECT_URI`: `https://<dominio>/api/calendario-externo/google/callback`.
+   - `CALENDARIO_CLAVE_CIFRADO`: 32 bytes en base64, que cifra los tokens guardados. Si se pierde, hay que volver a conectar los calendarios.
+   - `APPLE_CALDAV_BASE_URL`: opcional; por defecto, iCloud.
+6. **Fuera de este ciclo:** `RESEND_API_KEY` y `REMINDER_FROM_EMAIL`, que son del recordatorio por email. Sin ellas, `/api/recordatorios` responde «sin-proveedor». Las invitaciones de Accesos no dependen de Resend: salen por el correo de Supabase Auth.
+
+### Crons (`vercel.json`)
+
+El proyecto está en el plan **Hobby**, comprobado por API el 27/09, y solo admite crons diarios. Un cron más frecuente hace fallar el despliegue.
+
+| Ruta | Hora (UTC) | Qué hace |
+|---|---|---|
+| `/api/recordatorios` | 17:00 | Recordatorio por email del día siguiente (necesita Resend) |
+| `/api/senales-vencidas` | 07:00 | Libera las señales vencidas de todos los salones. Con el panel abierto, se liberan además al refrescar |
+| `/api/calendario-externo/cron` | 05:30 | Respaldo de la sincronización de calendarios. Google va por webhook y Apple, además, al abrir el panel (`sincronizarCalendarios`) |
+
+Con el plan Pro se podrían bajar a `*/15` (señales) y `*/5` (calendarios) tocando solo `vercel.json`.
 
 ## 4. Redesplegar
 

@@ -119,4 +119,10 @@ describe("pagosToCsvGestoria", () => {
     expect(filas[2]).toContain("Mario");
     expect(filas[2]).toContain("Señal");
   });
+
+  it("fecha y hora en la zona del salón aunque el proceso esté en UTC (el servidor)", () => {
+    const deMadrugada: Pago[] = [{ id: "p3", importeEur: 10, metodo: "efectivo", concepto: "servicio", origen: "sishow", fecha: "2026-10-24T22:30:00.000Z", createdAt: "2026-10-24T22:30:00.000Z" }];
+    const fila = pagosToCsvGestoria(deMadrugada, {}, {}, "Europe/Madrid").slice(BOM.length).split("\r\n")[1];
+    expect(fila.startsWith("25/10/2026;00:30;")).toBe(true);
+  });
 });
