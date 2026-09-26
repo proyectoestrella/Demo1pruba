@@ -8,7 +8,7 @@ export interface VistaPrevia { filas: FilaClienta[]; nuevas: number; duplicadas:
 export interface VisitaImportada { fila: number; fecha: string; cliente: Client; servicios: string[]; importe: number; profesional: string; notas?: string; colorFormula?: string }
 
 const normal = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES").trim();
-const claveNombre = (s: string) => normal(s).replace(/\s+/g, " ");
+export const claveNombre = (s: string) => normal(s).replace(/\s+/g, " ");
 export function normalizarTelefono(s: string): string {
   let d = s.replace(/\D/g, "");
   if (d.startsWith("0034") && d.length === 13) d = d.slice(4);
@@ -57,7 +57,7 @@ const alias: Record<CampoCliente, string[]> = {
   // `nacimiento` es la columna real de TPV 123 (etiqueta «Cumpleaños»).
   nacimiento: ["nacimiento", "fecha nacimiento", "fecha de nacimiento", "cumpleanos", "cumpleaños", "cumple"],
 };
-const claveCabecera = (s: string) => normal(s).replace(/[.:]/g, "").replace(/\s+/g, " ");
+export const claveCabecera = (s: string) => normal(s).replace(/[.:]/g, "").replace(/\s+/g, " ");
 export function detectarColumnas(cabeceras: string[]): MapaColumnas {
   const mapa: MapaColumnas = {};
   for (const campo of Object.keys(alias) as CampoCliente[]) {
@@ -203,7 +203,7 @@ export async function leerTabla(file: File): Promise<TablaImportacion> {
   throw new Error("Elige un archivo .csv o .xlsx.");
 }
 
-const aliasVisita = {
+export const aliasVisita = {
   fecha: ["fecha", "fecha visita", "dia"], codigo: ["codigocliente", "codigo cliente", "codigo", "cod cliente"],
   cliente: ["cliente", "nombre", "nombre cliente", "clienta", "nombre y apellidos"],
   venta: ["venta"],
@@ -216,7 +216,7 @@ export interface OpcionesImportarVisitas {
   equipo?: { id: string; name: string }[];
   codigos?: Map<string, string>;
 }
-function parseFecha(raw: string): Date {
+export function parseFecha(raw: string): Date {
   if (/^\d+(?:\.\d+)?$/.test(raw)) return new Date(Date.UTC(1899, 11, 30) + Number(raw) * 86400000);
   const europea = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
   // Mismo motivo que en `fechaImportada`: mediodía UTC, no local, para que la
@@ -224,13 +224,13 @@ function parseFecha(raw: string): Date {
   if (europea) return new Date(Date.UTC(Number(europea[3]), Number(europea[2]) - 1, Number(europea[1]), 12));
   return new Date(raw);
 }
-function importeNumero(raw: string): number | undefined {
+export function importeNumero(raw: string): number | undefined {
   const limpio = raw.replace(/[\s€]/g, "");
   if (!limpio) return 0;
   const n = Number(limpio.includes(",") ? limpio.replace(/\./g, "").replace(",", ".") : limpio);
   return Number.isFinite(n) && n >= 0 ? n : undefined;
 }
-function encontrarNombre<T extends { name: string }>(texto: string, lista: T[]): T | undefined {
+export function encontrarNombre<T extends { name: string }>(texto: string, lista: T[]): T | undefined {
   const objetivo = claveNombre(texto);
   if (!objetivo) return undefined;
   const exacto = lista.find((x) => claveNombre(x.name) === objetivo);
