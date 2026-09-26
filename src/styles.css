@@ -642,16 +642,3 @@
 @media (prefers-reduced-motion: reduce) {
   .elevar, .elevar:hover { transition: none; transform: none; }
 }
-
-/* Transición de pantalla: fundido corto y 8 px hacia arriba. Empieza ya
-   visible (opacidad 0,4) para no retrasar el primer pintado útil. */
-@keyframes entrar-ruta {
-  from { opacity: 0.4; transform: translateY(8px); }
-  to { opacity: 1; transform: none; }
-}
-.entrada-ruta {
-  animation: entrar-ruta 180ms var(--curva-salida) both;
-}
-@media (prefers-reduced-motion: reduce) {
-  .entrada-ruta { animation: none; }
-}

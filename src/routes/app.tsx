@@ -1,5 +1,6 @@
 import { conRegistroEnPausa } from "@/lib/store";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { menosMovimiento } from "@/lib/movimiento-panel";
 import { sincronizarColores } from "@/lib/colores-elegidos";
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
@@ -209,6 +210,14 @@ function PanelAutorizado({ slug }: { slug?: string }) {
  */
 function DashboardLayoutV1() {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const contenedorRuta = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (menosMovimiento()) return;
+    contenedorRuta.current?.animate?.(
+      [{ opacity: 0.4, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }],
+      { duration: 180, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+    );
+  }, [path]);
   const [newApptOpen, setNewApptOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   // Con un panel lateral abierto (asistente, ficha, detalle), en PC el
@@ -251,8 +260,10 @@ function DashboardLayoutV1() {
             puede crecer hasta el borde (flex-1). */}
         <FranjaVerComo />
         <main className="flex min-w-0 flex-1 flex-col px-4 pt-5 pb-[100px] md:px-8 md:pt-8 md:pb-8">
-          {/* Lote 16: cada pantalla entra con un fundido y 8 px de desplazamiento (180 ms). */}
-          <div key={path} className="entrada-ruta flex min-w-0 flex-1 flex-col">
+          {/* Lote 16: cada pantalla entra con un fundido y 8 px de desplazamiento
+              (180 ms). Con la Web Animations API y sin `key`: remontar el
+              contenedor en cada ruta costaba el doble de tiempo al navegar. */}
+          <div ref={contenedorRuta} className="flex min-w-0 flex-1 flex-col">
             {permitida ? <Outlet /> : <SinPermiso seccion={seccion} />}
           </div>
         </main>
