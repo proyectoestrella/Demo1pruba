@@ -114,9 +114,20 @@ Fraunces en 400–500 desde Google Fonts; sin conexión, sans del sistema y Geor
 
 ## Movimiento
 
-Solo en respuesta a una acción: el panel lateral entra en 220 ms, el toast sube desde abajo, el
-interruptor se desliza en 150 ms, el botón «+» de móvil se aparta cuando taparía un botón. Nada
-se anima al cargar la página ni al hacer scroll.
+Calma, nunca espectáculo (lote 16, sustituye a la regla anterior de «nada al cargar»):
+
+- **Cambio de pantalla:** fundido desde opacidad 0,4 y 8 px hacia arriba, 180 ms, curva de
+  salida `cubic-bezier(0.22, 1, 0.36, 1)`. Empieza visible: no retrasa el primer pintado.
+- **Listas y tarjetas:** entrada escalonada (`.entrada-lista`), 260 ms, 30 ms entre elementos,
+  como mucho 270 ms de retraso total.
+- **Cifras** de Hoy, Analítica y Caja suben hasta su valor en 600 ms (`CifraAnimada`);
+  **barras** que se rellenan (`.barra-rellena`, `.barra-sube`).
+- **Hover** de tarjetas pulsables: 1 px hacia arriba y la sombra de sugerencias (`.elevar`).
+- **Confirmación:** micro-check que se dibuja (`.micro-check`); plegables que se despliegan
+  (`.plegable`); esqueleto con brillo (`.esqueleto`) solo si de verdad no hay datos.
+- Sigue lo de antes: panel lateral 220 ms, toast desde abajo, interruptor 150 ms.
+- **Prohibido:** rebotes, parallax, animar al hacer scroll, más de 600 ms. Todo se apaga con
+  `prefers-reduced-motion`. Solo CSS y Web Animations API, sin librerías.
 
 ## Voz
 
