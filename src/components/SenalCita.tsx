@@ -43,6 +43,14 @@ const METODOS: { id: MetodoSenal; texto: string }[] = [
   { id: "transferencia", texto: "Transferencia" },
 ];
 
+const ESTADOS_ABIERTOS = new Set(["pending", "confirmed"]);
+const MENSAJE_CITA_CERRADA = "La cita ya ha pasado o está cancelada: la señal ya no se pide.";
+
+/** ¿Está la cita cerrada para pedir señal? (misma regla que `pedirSenal` del dominio: abierta y futura). */
+export function citaCerradaParaSenal(cita: Pick<Appointment, "status" | "start">, ahora: Date): boolean {
+  return !ESTADOS_ABIERTOS.has(cita.status) || Date.parse(cita.start) <= ahora.getTime();
+}
+
 export function SenalCita({ cita, compacta = false }: { cita: Appointment; compacta?: boolean }) {
   const perfil = useSalonStore((s) => s.salonProfile);
   const clients = useSalonStore((s) => s.clients);
@@ -59,6 +67,12 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
   const [metodo, setMetodo] = useState<MetodoSenal>("bizum");
 
   if (estado === "no_aplica" && !regla.bizumTelefono) return null;
+
+  // Lote 16: «Pedir señal» solo en una cita que aún puede pedirla (futura y
+  // no cancelada ni cerrada). Antes el botón miraba solo el estado de la
+  // señal y salía también en citas pasadas, donde el dominio (bien) decía
+  // «La cita ya ha pasado o está cancelada».
+  const cerrada = citaCerradaParaSenal(cita, new Date());
 
   // Lote 12: el aviso de lo hecho (con «Deshacer») lo pone el registro de cambios; aquí solo los errores.
   const resultado = (error: CodigoErrorSenal | null) => (error ? toast.error(mensajeErrorSenal(error)) : undefined);
@@ -162,7 +176,10 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
         </div>
       ) : (
         <div className="flex flex-wrap gap-1.5">
-          {(estado === "no_aplica" || estado === "por_pedir") && (
+          {cerrada && (estado === "no_aplica" || estado === "por_pedir") && (
+            <p className="text-[12.5px] text-muted-foreground">{MENSAJE_CITA_CERRADA}</p>
+          )}
+          {!cerrada && (estado === "no_aplica" || estado === "por_pedir") && (
             <Button size="sm" variant={estado === "por_pedir" ? "default" : "outline"} className={btn} onClick={pedir}>
               {estado === "no_aplica" ? "Pedir señal igualmente" : "Pedir señal por WhatsApp"}
             </Button>
@@ -175,9 +192,11 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
               <Button size="sm" variant="outline" className={btn} onClick={() => resultado(darMasTiempoSenal(cita.id))}>
                 Dar más tiempo
               </Button>
-              <Button size="sm" variant="ghost" className={btn} onClick={pedir}>
-                Volver a pedir
-              </Button>
+              {!cerrada && (
+                <Button size="sm" variant="ghost" className={btn} onClick={pedir}>
+                  Volver a pedir
+                </Button>
+              )}
             </>
           )}
           {estado === "vencida" && (

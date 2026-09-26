@@ -4,7 +4,6 @@ import { avisar, marcarAvisoDeCita } from "@/lib/deshacer-maqueta";
 import { useEffect, useState } from "react";
 import { SenalCita } from "@/components/SenalCita";
 import { VentanaConfirmar } from "@/components/VentanaConfirmar";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
 import { selectServiceMap, useSalonStore } from "@/lib/store";
@@ -16,7 +15,6 @@ import { serviceNamesOf } from "@/lib/appointment-services";
 import { isWithinNoticeWindow } from "@/lib/no-show";
 import { historialDeFallos } from "@/lib/plantones";
 import { necesitaDesenlace, type Desenlace } from "@/lib/deuda";
-import { enlaceDeFianza } from "@/lib/avisos";
 import { PAYMENT_METHODS } from "@/lib/caja";
 import { eur } from "@/lib/copy";
 import {
@@ -65,7 +63,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Calendar, Clock, Euro, CheckCheck, MessageCircle, TriangleAlert } from "lucide-react";
-import { importeSenal, mensajeErrorSenal, prepararPeticionSenal, reglaSenal } from "@/lib/senal";
 
 /** Duraciones que puede elegir el salón al ajustar una cita, en minutos. */
 const DURATION_OPTIONS_MIN = [15, 30, 45, 60, 90, 120, 150, 180];
@@ -124,17 +121,12 @@ export function AppointmentDetailSheet({
   const permisos = usePermisos();
   const mio = useMiEmployeeId();
   const puedeEn = (accion: AccionId) => !!appointment && puede(permisos, accion, { employeeId: appointment.employeeId, miEmployeeId: mio });
-  const markDepositRequested = useSalonStore((s) => s.markDepositRequested);
   const appointments = useSalonStore((s) => s.appointments);
-  const salonName = useSalonStore((s) => s.salonProfile.name);
   const noShowNoticeHours = useSalonStore((s) => s.salonProfile.noShowNoticeHours ?? 2);
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const conRecargo = recargoActivo({ noShowFeeEur });
   const depositEnabled = useSalonStore((s) => !!s.salonProfile.depositEnabled);
   const depositBizumPhone = useSalonStore((s) => s.salonProfile.depositBizumPhone ?? "");
-  const depositAmountEur = useSalonStore((s) => s.salonProfile.depositAmountEur ?? 10);
-  const reglaSen = reglaSenal(useSalonStore((s) => s.salonProfile));
-  const depositDeadlineHours = reglaSen.ventanaHoras;
   // El cliente puede no existir en la store (una cita creada desde la web
   // pública nace con un `clientId` de walk-in que no tiene ficha propia): sin
   // ficha no hay a quién marcar, así que la política de plantón se calla.
@@ -230,43 +222,6 @@ export function AppointmentDetailSheet({
     if (!appointment) return;
     const yaCobradaAsi = appointment.paidAt && appointment.paymentMethod === metodo;
     markPaid(appointment.id, yaCobradaAsi ? null : metodo);
-  }
-
-  /**
-   * Fianza por Bizum: abre WhatsApp con el mensaje escrito y deja constancia
-   * de que se ha pedido. No se envía nada solo y no hay pasarela de pago: el
-   * Bizum llega al banco del salón y lo confirma una persona, abajo.
-   */
-  function handlePedirFianza() {
-    if (!appointment) return;
-    const importeDeEstaCita = appointment.depositEur && appointment.depositEur > 0
-      ? appointment.depositEur
-      : importeSenal(reglaSen, { serviceIds: appointment.serviceIds, durationMin: appointment.duration, priceEur: appointment.priceEur }) || depositAmountEur;
-    const telefono = client?.phone ?? "";
-    if (!telefono) {
-      toast.error("Esta cita no tiene teléfono al que escribir");
-      return;
-    }
-    const requestedAt = new Date().toISOString();
-    // Misma comprobación que al confirmar el envío: si no se puede pedir (cita
-    // pasada, ya recibida…), no se abre WhatsApp; y el plazo del mensaje es
-    // el que quedará, nunca después de la cita.
-    const preparada = prepararPeticionSenal(appointment, reglaSen, importeDeEstaCita, new Date(requestedAt));
-    if (!preparada.ok) {
-      toast.error(mensajeErrorSenal(preparada.error));
-      return;
-    }
-    const url = enlaceDeFianza(telefono, {
-      clientName: appointment.clientName,
-      startISO: appointment.start,
-      salonName,
-      bizumPhone: depositBizumPhone,
-      importeEur: preparada.importeEur,
-      deadlineISO: preparada.venceISO,
-      plantilla: reglaSen.plantilla,
-    }, requestedAt);
-    markDepositRequested(appointment.id, depositAmountEur, requestedAt);
-    useSalonStore.getState().abrirWhatsAppDeCita(appointment.id, url);
   }
 
   function handleCancel() {
