@@ -344,6 +344,11 @@ export interface SalonProfile {
   /** Horas de antelación por debajo de las cuales cancelar cuenta como plantón. Por defecto 2. */
   noShowNoticeHours?: number;
   /**
+   * Minutos mínimos entre «ahora» y el primer hueco que ofrece la reserva
+   * pública. Ausente = 30. Ver lib/primer-hueco.ts.
+   */
+  antelacionMinimaMin?: number;
+  /**
    * Reparto de agenda: sugiere una hora más tranquila cuando el cliente elige
    * una franja "con espera" (12:00–14:00 o las últimas horas del día). `false`
    * o ausente = todo como siempre, sin etiquetas ni sugerencias.
