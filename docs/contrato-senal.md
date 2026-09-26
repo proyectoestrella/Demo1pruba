@@ -25,8 +25,8 @@ Este documento dice qué llamar y qué esperar. **Los textos visibles de las pan
 | `depositDeadlineHours` | 1, 2, 3 o 4 | 4 | Horas para hacer el Bizum; se aceptan también 12 y 24 por compatibilidad, que la regla trata como 4 |
 | `depositBizumPhone` | string | — | Número del Bizum del salón |
 | `depositAuto` | boolean | `false` | La reserva por la web ya nace «pedida» y enseña el Bizum. Si es `false`, la pide la dueña por WhatsApp |
-| `depositAutoRelease` | boolean | `false` | Una señal vencida libera el hueco sola. Si es `false`, se avisa y decide la dueña |
-| `depositCancelHours` | number | igual que la casilla de la reserva: con recargo, `noShowNoticeHours`; sin él, 24 | Hasta cuántas horas antes cancelar devuelve la señal |
+| `depositAutoRelease` | boolean | **`true`** (lote 12, commit `34c7ed7`) | Una señal vencida libera el hueco sola. Solo `false` explícito la apaga y deja que avise y decida la dueña |
+| `depositCancelHours` | number | **24** (lote 12, commit `34c7ed7`) | Hasta cuántas horas antes cancelar devuelve la señal. Ya no depende de `noShowNoticeHours`/`noShowFeeEur` |
 | `depositTemplate` | string | vacía = texto de siempre | Plantilla del WhatsApp (§5) |
 
 `reglaSenal(perfil)` devuelve la regla con todos los valores por defecto resueltos (`ReglaSenal`). Usadla siempre en lugar de leer los campos sueltos.
@@ -100,11 +100,19 @@ else → abrir WhatsApp con mensajeDeFianza({ …, importeEur: preparada.importe
 
 ## 5. Textos
 
-- **Web pública (reserva, resumen y confirmación):** `textoSenalPublico(regla, reserva, nombreSalon, eur)` es el **único** mensaje sobre la señal. Devuelve `null` si esa reserva no la lleva. Para la etiqueta de cada servicio de la carta: `servicioLlevaSenal(regla, servicio)` → «con señal».
-- **FAQ:** `respuestaFaqSenal(regla, eur)`.
+- **Web pública (reserva, resumen y confirmación):** `textoSenalPublico(regla, reserva, nombreSalon, eur)` es el **único** mensaje sobre la señal. Devuelve `null` si esa reserva no la lleva. Para la etiqueta de cada servicio de la carta: `servicioLlevaSenal(regla, servicio)` → «con señal». Con `regla.liberacionAutomatica` activa (el valor por defecto), el texto termina con «Si no llega a tiempo, la cita se anula y el hueco queda libre.»; con ella apagada, no se añade nada.
+- **FAQ:** `respuestaFaqSenal(regla, eur)`. Termina con el mismo aviso de liberación cuando aplica.
 - **Tarjeta de cancelación:** `resumenCancelacionSenal(regla, eur)`.
 - **WhatsApp:** plantilla del perfil con los marcadores `{nombre}`, `{salon}`, `{importe}`, `{bizum}`, `{cuando}` y `{plazo}`. `rellenarPlantillaSenal(plantilla, datos)`; si está vacía, sale `PLANTILLA_SENAL_POR_DEFECTO`, que es el texto de siempre. Un marcador desconocido se deja a la vista. En Ajustes, `marcadoresQueFaltan(plantilla)` avisa si falta `{importe}` o `{bizum}`.
 - **Errores:** `mensajeErrorSenal(código)` da un texto por defecto para la dueña.
+
+## 5b. Recordatorio de última hora (lote 12)
+
+`recordatorioSenal(cita, regla, salon, ahora?)` → `{ texto, enlace, minutosRestantes } | null`. Es el aviso «te quedan X min para el Bizum», para un botón de un toque desde Hoy/Avisos.
+
+- `cita` necesita, además de los campos de siempre, `clientPhone` (el teléfono de la clienta, sin el que no hay a quién escribir).
+- Devuelve `null` si la señal no está `pedida` (ya se recibió, no se ha pedido o ya venció) o si falta más de 1 hora para el vencimiento: no es un recordatorio de última hora, es ruido.
+- `texto` ya lleva el nombre del salón, los minutos, el importe y el número de Bizum; `enlace` es el `wa.me` a `clientPhone` con ese texto precargado. **FRONTEND pone el botón**; esta función no abre nada.
 
 ## 6. Códigos de error
 
