@@ -1,4 +1,5 @@
 import type { Appointment, Client, Employee, Service } from "./mock/types";
+import { fechaCorta } from "./copy";
 
 /**
  * Campañas de marketing calculadas a partir de los datos reales del salón:
@@ -63,7 +64,7 @@ function nombresServicios(ids: string[], map: Record<string, Service>): string {
 }
 
 function formatDateEs(iso: string): string {
-  return new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  return fechaCorta(iso);
 }
 
 /** Deja solo dígitos: "+34 611 111 222" → "34611111222", listo para wa.me. */
@@ -76,10 +77,38 @@ export function whatsappUrl(phone: string, mensaje: string): string {
   return `https://wa.me/${phoneDigits(phone)}?text=${encodeURIComponent(mensaje)}`;
 }
 
+/**
+ * Citas agrupadas por clienta, en el orden original. Se calcula una vez por
+ * lista (la store sustituye el array en cada cambio, así que la identidad
+ * del array es la versión de los datos). Antes cada campaña recorría TODAS
+ * las citas por CADA clienta: 595 × 3.344 en la demo PeluChic, tres veces
+ * (barrido de calidad 2026-09-26).
+ */
+const indicePorClienta = new WeakMap<Appointment[], Map<string, Appointment[]>>();
+function citasDeClienta(appointments: Appointment[], clientId: string): Appointment[] {
+  let indice = indicePorClienta.get(appointments);
+  if (!indice) {
+    indice = new Map();
+    for (const a of appointments) {
+      const lista = indice.get(a.clientId);
+      if (lista) lista.push(a);
+      else indice.set(a.clientId, [a]);
+    }
+    indicePorClienta.set(appointments, indice);
+  }
+  return indice.get(clientId) ?? [];
+}
+
 function ultimaVisitaCompletada(appointments: Appointment[], clientId: string): Appointment | undefined {
-  return appointments
-    .filter((a) => a.clientId === clientId && a.status === "completed")
-    .sort((a, b) => +new Date(b.start) - +new Date(a.start))[0];
+  // La más reciente; a igualdad de hora, la primera de la lista (como el sort estable de antes).
+  let mejor: Appointment | undefined;
+  let mejorMs = -Infinity;
+  for (const a of citasDeClienta(appointments, clientId)) {
+    if (a.status !== "completed") continue;
+    const ms = +new Date(a.start);
+    if (mejor === undefined || ms > mejorMs) { mejor = a; mejorMs = ms; }
+  }
+  return mejor;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -107,9 +136,8 @@ export function clientesQueNoVuelven(
       if (dias < DIAS_INACTIVIDAD) return null;
 
       // Si ya tiene una cita futura puesta, ya ha vuelto: no hace falta campaña.
-      const tieneProximaCita = appointments.some(
+      const tieneProximaCita = citasDeClienta(appointments, client.id).some(
         (a) =>
-          a.clientId === client.id &&
           (a.status === "pending" || a.status === "confirmed") &&
           +new Date(a.start) > nowMs,
       );
@@ -175,6 +203,14 @@ export function calcularHuecoFlojo(
     (a) => a.status !== "cancelled" && +new Date(a.start) >= desde && +new Date(a.start) < nowMs,
   );
 
+  // Slots usados por día×franja, en UNA pasada (antes eran 14 pasadas creando
+  // un Date por cita en cada una). Índice: weekday * 2 + (tarde ? 1 : 0).
+  const usadosPorCruce = new Array<number>(14).fill(0);
+  for (const a of pasadas) {
+    const d = new Date(a.start);
+    usadosPorCruce[d.getDay() * 2 + (d.getHours() < HORA_CORTE_TARDE ? 0 : 1)] += a.duration / 30;
+  }
+
   let mejor: HuecoFlojo | null = null;
   let mejorOcupacion = Infinity;
   let mejorHuecos = -1;
@@ -191,14 +227,7 @@ export function calcularHuecoFlojo(
       }
       if (capacidadSlots === 0) continue; // cerrado en esa franja
 
-      const usadasSlots = pasadas
-        .filter((a) => {
-          const d = new Date(a.start);
-          const esFranja =
-            half === "mañana" ? d.getHours() < HORA_CORTE_TARDE : d.getHours() >= HORA_CORTE_TARDE;
-          return d.getDay() === weekday && esFranja;
-        })
-        .reduce((sum, a) => sum + a.duration / 30, 0);
+      const usadasSlots = usadosPorCruce[weekday * 2 + (half === "mañana" ? 0 : 1)];
 
       const capacidadTotal = capacidadSlots * ROLLING_WEEKS;
       const ocupacionPct = Math.min(100, Math.round((usadasSlots / capacidadTotal) * 100));
@@ -280,7 +309,7 @@ export function segundaVisita(
 
   const personas: CampanaPersona[] = clients
     .map((client): CampanaPersona | null => {
-      const todas = appointments.filter((a) => a.clientId === client.id && a.status !== "cancelled");
+      const todas = citasDeClienta(appointments, client.id).filter((a) => a.status !== "cancelled");
       if (todas.length !== 1) return null; // solo cuenta con EXACTAMENTE una cita en toda su historia
       const unica = todas[0];
       if (unica.status !== "completed") return null; // aún no ha pasado de verdad por el salón

@@ -258,9 +258,42 @@ export function textoComparacion(id: PeriodoId, rango: Rango, now: Date = new Da
  * ---------------------------------------------------------------------- */
 
 /** ¿Cae esta cita dentro del rango? */
-function dentro(a: Appointment, rango: Rango): boolean {
-  const t = +new Date(a.start);
-  return t >= +rango.inicio && t < +rango.fin;
+/**
+ * Citas ordenadas por inicio, una vez por lista (barrido de calidad
+ * 2026-09-26). `resumenDePeriodo` mira 10 rangos (actual, previo y 8 cubos
+ * de la minigráfica) y antes cada uno recorría y parseaba las 3.300 citas;
+ * ahora cada rango es una búsqueda binaria y un trozo. Las citas sin fecha
+ * legible no caen en ningún rango, igual que antes.
+ */
+const ordenPorLista = new WeakMap<Appointment[], { ms: Float64Array; citas: Appointment[] }>();
+function ordenadas(appts: Appointment[]) {
+  let o = ordenPorLista.get(appts);
+  if (!o) {
+    const pares: Array<[number, Appointment]> = [];
+    for (const a of appts) {
+      const t = +new Date(a.start);
+      if (Number.isFinite(t)) pares.push([t, a]);
+    }
+    pares.sort((x, y) => x[0] - y[0]);
+    o = { ms: Float64Array.from(pares, (p) => p[0]), citas: pares.map((p) => p[1]) };
+    ordenPorLista.set(appts, o);
+  }
+  return o;
+}
+function primeraPosicion(ms: Float64Array, t: number): number {
+  let lo = 0;
+  let hi = ms.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (ms[mid] < t) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+/** Las citas con inicio en `[rango.inicio, rango.fin)`. */
+function citasDelRango(appts: Appointment[], rango: Rango): Appointment[] {
+  const o = ordenadas(appts);
+  return o.citas.slice(primeraPosicion(o.ms, +rango.inicio), primeraPosicion(o.ms, +rango.fin));
 }
 
 /** Huecos de media hora que el equipo tiene abiertos en el rango, día a día. */
@@ -304,8 +337,13 @@ export const METRICAS_VACIAS: MetricasPeriodo = {
  * evita recorrer el histórico entero por cada tarjeta y por cada cubo de la
  * minigráfica.
  */
+const primerasPorLista = new WeakMap<Appointment[], Map<string, number>>();
 export function primerasCitas(appts: Appointment[]): Map<string, number> {
+  // La store sustituye el array en cada cambio: su identidad es la versión de los datos.
+  const hecho = primerasPorLista.get(appts);
+  if (hecho) return hecho;
   const out = new Map<string, number>();
+  primerasPorLista.set(appts, out);
   for (const a of appts) {
     if (a.status === "cancelled" || a.status === "blocked") continue;
     if (!a.clientId) continue;
@@ -334,8 +372,7 @@ export function metricasDePeriodo(
   let cancelaciones = 0;
   const nuevos = new Set<string>();
 
-  for (const a of appts) {
-    if (!dentro(a, rango)) continue;
+  for (const a of citasDelRango(appts, rango)) {
     if (a.status === "cancelled") {
       cancelaciones += 1;
       continue;

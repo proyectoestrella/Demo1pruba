@@ -24,21 +24,29 @@ export const eurRedondo = (n: number) => `${Math.round(n).toLocaleString("es-ES"
 /** Porcentaje a la española, con espacio antes del signo: 87 -> "87 %". */
 export const pct = (n: number) => `${Math.round(n)} %`;
 
+/*
+ * Formateadores creados UNA vez (barrido de calidad 2026-09-26):
+ * `toLocaleDateString` construye un `Intl.DateTimeFormat` nuevo en cada
+ * llamada, ~30 µs; en una lista de 600 clientas eran 20 ms solo en fechas.
+ * La salida es idéntica. Una fecha que no se puede leer da «—» en vez de
+ * «Invalid Date» (y en vez de la excepción que lanzaría `format`).
+ */
+const FMT_HORA = new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit", hour12: false });
+const FMT_CORTA = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" });
+const FMT_LARGA = new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long" });
+const formatear = (f: Intl.DateTimeFormat, iso: string | number | Date) => {
+  const d = new Date(iso);
+  return Number.isFinite(d.getTime()) ? f.format(d) : "—";
+};
+
 /** Hora en 24 h, que es como se lee una agenda en España: "09:30". */
-export const hora = (iso: string | number | Date) =>
-  new Date(iso).toLocaleTimeString("es-ES", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+export const hora = (iso: string | number | Date) => formatear(FMT_HORA, iso);
 
 /** Fecha corta: "20 sept". */
-export const fechaCorta = (iso: string | number | Date) =>
-  new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+export const fechaCorta = (iso: string | number | Date) => formatear(FMT_CORTA, iso);
 
 /** Fecha larga sin año: "domingo, 20 de septiembre". */
-export const fechaLarga = (iso: string | number | Date) =>
-  new Date(iso).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+export const fechaLarga = (iso: string | number | Date) => formatear(FMT_LARGA, iso);
 
 /**
  * Primera letra en mayúscula y el resto tal cual. En español solo va en
