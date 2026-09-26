@@ -50,3 +50,6 @@ medir("solapaConAgenda (1 hueco)", () => solapaConAgenda(d.citas, { employeeId: 
 medir("solapaConAgenda ×200 (rejilla de huecos)", () => {
   for (let i = 0; i < 200; i++) solapaConAgenda(d.citas, { employeeId: c.employeeId, start: c.start, duration: 45 });
 }, 5);
+import { conservarIguales } from "./conservar-iguales";
+const llegada = JSON.parse(JSON.stringify(d.citas));
+medir("conservarIguales (refresco sin cambios, 3.344 citas)", () => conservarIguales(llegada, d.citas));

@@ -491,11 +491,13 @@ describe("el botón «Reintentar» respeta el orden (segunda pasada)", () => {
     fallarTodo = false;
     reintentar();
     await esperarAvisos();
-    expect(argumentosCitas).toEqual([]); // en cola, detrás del parche que está esperando
+    // Solo las de esta cita: bajo carga, una subida tardía de otra prueba puede colarse aquí.
+    const deQ1 = () => (argumentosCitas as Array<{ data: { localId: string; patch: object } }>).filter((a) => a.data.localId === "q-1");
+    expect(deQ1()).toEqual([]); // en cola, detrás del parche que está esperando
     soltar();
     await esperarAvisos();
     esperaDeReintentoParaPruebas(async (ms) => { esperasPedidas.push(ms); });
-    const orden = (argumentosCitas as Array<{ data: { patch: object } }>).map((a) => a.data.patch);
+    const orden = deQ1().map((a) => a.data.patch);
     expect(orden).toEqual([{ status: "completed" }, { note: "a" }]);
   });
 });
