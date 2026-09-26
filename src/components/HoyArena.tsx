@@ -37,6 +37,7 @@ import { useAplicarDesenlace } from "@/components/CitasPorResolver";
 import { DecisionDeudaDialog } from "@/components/DecisionDeudaDialog";
 import { AvisoDeudasHoy } from "@/components/DeudaCliente";
 import { ExpiredDepositsNotice } from "@/components/ExpiredDepositsNotice";
+import { RecordatoriosSenal, useRecordatoriosSenal } from "@/components/RecordatoriosSenal";
 import { RecargosPendientes } from "@/components/RecargosPendientes";
 import { Button } from "@/components/ui/button";
 import {
@@ -129,9 +130,12 @@ export function HoyArena() {
   const filasManana = hojaDelDia(appointments, fechaLocal(manana)).sort((x, y) => +new Date(x.cita.start) - +new Date(y.cita.start));
   const sinRecordar = filasManana.filter((f) => !f.cita.reminderSentAt).length;
   const conRecargo = recargoActivo({ noShowFeeEur });
+  // 14a: las señales a menos de 1 h de vencer también cuentan como aviso.
+  const porVencer = useRecordatoriosSenal().length;
   const avisos =
     (conRecargo && veDeudas ? resumenDeDeuda(clients).personas : 0) +
-    senalesVencidas;
+    senalesVencidas +
+    porVencer;
 
   const nombreCorto = (a: Appointment) => {
     const e = equipo.find((x) => x.id === a.employeeId);
@@ -226,11 +230,12 @@ export function HoyArena() {
             id: "avisos",
             titulo: "Avisos",
             contador: avisos,
-            resumen: avisos > 0 ? (veDeudas ? "Deudas, señales vencidas o recargos" : "Señales vencidas") : "Nada pendiente",
+            resumen: avisos > 0 ? (porVencer > 0 ? `${porVencer} ${porVencer === 1 ? "señal vence" : "señales vencen"} en menos de 1 h` : veDeudas ? "Deudas, señales vencidas o recargos" : "Señales vencidas") : "Nada pendiente",
             contenido: (
               <div className="space-y-4">
                 {avisos === 0 && <p className="text-[14px] text-muted-foreground">{veDeudas ? "Nada pendiente: ni deudas, ni señales vencidas, ni recargos." : "Nada pendiente: ninguna señal vencida."}</p>}
                 {veDeudas && <AvisoDeudasHoy />}
+                <RecordatoriosSenal />
                 <ExpiredDepositsNotice onOpenDetail={setSeleccionada} />
                 {conRecargo && veDeudas && <RecargosPendientes title="Recargos pendientes" />}
               </div>
