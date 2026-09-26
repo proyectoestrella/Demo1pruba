@@ -31,7 +31,7 @@ type Json = string | number | boolean | null | Json[] | { [k: string]: Json };
 const cambioSchema = z.object({
   id: z.string().min(8).max(64),
   tipo: z.enum(TIPOS_CAMBIO),
-  entidad: z.enum(["cita", "clienta", "servicio", "perfil"]),
+  entidad: z.enum(["cita", "clienta", "servicio", "perfil", "pago"]),
   idEntidad: z.string().min(1).max(200),
   antes: z.record(z.string(), z.unknown()),
   despues: z.record(z.string(), z.unknown()),
