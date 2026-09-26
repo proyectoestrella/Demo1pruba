@@ -8,6 +8,7 @@ import {
   pagosPorMetodo,
   refSenalAplicada,
   totalPagos,
+  TEXTO_CAJA_NO_FACTURA,
   type Pago,
 } from "./pagos";
 
@@ -79,4 +80,9 @@ describe("esperado del día y descuadre", () => {
     expect(calcularDescuadre(80, 95)).toEqual({ efectivoContado: 80, efectivoEsperado: 95, descuadre: -15 });
     expect(calcularDescuadre(95, 95).descuadre).toBe(0);
   });
+});
+
+it("el texto obligatorio dice que no hay tickets ni facturas y menciona Verifactu", () => {
+  expect(TEXTO_CAJA_NO_FACTURA).toContain("no emite tickets ni facturas");
+  expect(TEXTO_CAJA_NO_FACTURA).toContain("Verifactu");
 });

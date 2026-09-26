@@ -17,6 +17,14 @@ import type { Appointment, PaymentMethod } from "./mock/types";
 export type MetodoPago = PaymentMethod;
 export const METODOS_PAGO: MetodoPago[] = ["efectivo", "tarjeta", "bizum"];
 
+/**
+ * El texto obligatorio en cualquier pantalla de Caja (Ajustes, la propia
+ * pantalla, o donde FRONTEND decida ponerlo — pero tiene que estar en algún
+ * sitio, al menos una vez): siShow no emite tickets ni facturas.
+ */
+export const TEXTO_CAJA_NO_FACTURA =
+  "siShow no emite tickets ni facturas (queda fuera de Verifactu): esto es un registro interno para cuadrar la caja, no un documento fiscal.";
+
 export type ConceptoPago = "servicio" | "producto" | "propina" | "senal" | "ajuste";
 export type OrigenPago = "sishow" | "tpv123";
 

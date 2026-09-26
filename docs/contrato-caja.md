@@ -147,11 +147,11 @@ confianza).
   entrada de Analítica) también acepta y reenvía este mismo parámetro
   opcional al final de su firma.
 
-**Import obligatorio de textos, en cualquier pantalla que hable de dinero:**
-"siShow no emite tickets ni facturas (fuera de Verifactu): esto es un
-registro interno para cuadrar la caja." — no hace falta literal, pero la idea
-tiene que estar en algún sitio de Ajustes › Caja o en la propia pantalla, al
-menos una vez.
+**Texto obligatorio, en cualquier pantalla que hable de dinero:**
+`TEXTO_CAJA_NO_FACTURA` (exportado en `src/lib/pagos.ts`) — no hace falta
+literal, pero la idea tiene que estar en algún sitio de Ajustes › Caja o en
+la propia pantalla, al menos una vez: siShow no emite tickets ni facturas
+(fuera de Verifactu), es un registro interno.
 
 ## 7. Qué NO hace (a propósito)
 
