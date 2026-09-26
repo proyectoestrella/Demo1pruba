@@ -1,3 +1,4 @@
+import { soloMetodos } from "@/lib/api/metodos";
 import { createFileRoute } from "@tanstack/react-router";
 import { procesarNotificacionGoogle } from "@/lib/calendario-externo/calendario-externo.server";
 
@@ -31,5 +32,5 @@ async function manejar({ request }: { request: Request }) {
 }
 
 export const Route = createFileRoute("/api/calendario-externo/google/webhook")({
-  server: { handlers: { POST: manejar, GET: manejar } },
+  server: { handlers: soloMetodos({ POST: manejar, GET: manejar }) },
 });

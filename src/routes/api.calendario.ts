@@ -1,3 +1,4 @@
+import { soloMetodos } from "@/lib/api/metodos";
 import { createFileRoute } from "@tanstack/react-router";
 import { getSupabaseServerClient } from "@/lib/supabase.server";
 import { generarCalendarioIcs, type CitaCalendario } from "@/lib/calendario-ics";
@@ -14,7 +15,7 @@ function error(status: number) {
 }
 
 export const Route = createFileRoute("/api/calendario")({
-  server: { handlers: { GET: async ({ request }) => {
+  server: { handlers: soloMetodos({ GET: async ({ request }) => {
     const params = new URL(request.url).searchParams;
     const token = params.get("token") ?? "";
     const profesional = params.get("profesional") ?? undefined;
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/api/calendario")({
     if (salonError || !salon) return error(503);
     const perfil = salon.profile as SalonProfile;
     const servicios = Object.fromEntries(servicesForType(inferBusinessType(perfil.tagline, perfil.name), perfil.menu).map((s) => [s.id, s.name]));
-    type Fila = { id: string; local_id: string | null; client_name: string | null; service_id: string; employee_id: string; start_at: string; duration_min: number; status: string };
+    type Fila = { id: string; local_id: string | null; client_name: string | null; service_id: string | null; employee_id: string; start_at: string; duration_min: number; status: string };
     const citas: CitaCalendario[] = [];
     for (let offset = 0; ; offset += 500) {
       const { data: filas, error: citasError } = await db.from("appointments")
@@ -40,7 +41,7 @@ export const Route = createFileRoute("/api/calendario")({
       const lote = (filas ?? []) as Fila[];
       for (const fila of lote) citas.push({
         id: fila.local_id ?? fila.id, clientName: fila.client_name ?? "Cliente",
-        service: fila.service_id.split(",").map((id) => servicios[id] ?? nombreServicioLibre(id) ?? "Servicio").join(" + "),
+        service: (fila.service_id ?? "").split(",").filter(Boolean).map((id) => servicios[id] ?? nombreServicioLibre(id) ?? "Servicio").join(" + ") || "Servicio",
         employeeId: fila.employee_id, start: fila.start_at, duration: fila.duration_min, status: fila.status,
       });
       if (lote.length < 500) break;
@@ -48,5 +49,5 @@ export const Route = createFileRoute("/api/calendario")({
     return new Response(generarCalendarioIcs(citas, perfil.name || "siShow", profesional), {
       headers: { "Content-Type": "text/calendar; charset=utf-8", "Content-Disposition": "inline; filename=\"sishow.ics\"", "Cache-Control": "private, no-store" },
     });
-  } } },
+  } }) },
 });
