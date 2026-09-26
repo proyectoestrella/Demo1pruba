@@ -39,6 +39,14 @@ mock.module("./api/salons.functions", () => ({
   checkClientPenalty: registra("checkClientPenalty"),
 }));
 
+const idsDePago: string[] = [];
+mock.module("./api/pagos.functions", () => ({
+  registrarPago: (a: { data: { pago: { id: string } } }) => { idsDePago.push(a.data.pago.id); return registra("registrarPago")(a); },
+  borrarPago: registra("borrarPago"),
+  listarPagos: registra("listarPagos"),
+  cerrarCaja: registra("cerrarCaja"),
+}));
+
 const {
   cambioSinGuardar,
   olvidarCambiosSinGuardar,
@@ -53,7 +61,13 @@ const {
   pushPenaltyCleared,
   pushClientNotes,
   pushClient,
+  pushPago,
+  esperaDeReintentoParaPruebas,
+  ESPERAS_REINTENTO_MS,
 } = await import("./salon-sync");
+// Los reintentos automáticos esperan 1 s, 3 s y 9 s: en pruebas, sin espera.
+const esperasPedidas: number[] = [];
+esperaDeReintentoParaPruebas(async (ms) => { esperasPedidas.push(ms); });
 const { salon } = await import("./mock/salon");
 const { leerAvisos, limpiarAvisos } = await import("./avisos-sync");
 
@@ -250,7 +264,7 @@ describe("un fallo de guardado se ve en pantalla y se puede reintentar", () => {
 
 /** Las subidas son fire-and-forget: hay que dejar correr la cola de promesas. */
 async function esperarAvisos() {
-  for (let i = 0; i < 5; i++) await Promise.resolve();
+  for (let i = 0; i < 10; i++) await new Promise((r) => setTimeout(r, 0));
 }
 
 /**
@@ -299,10 +313,12 @@ describe("parche por campos desde el panel", () => {
 });
 
 describe("solapes desde el panel", () => {
-  it("permitirSolape viaja explícito en el alta y en el parche, y por defecto es false", () => {
+  it("permitirSolape viaja explícito en el alta y en el parche, y por defecto es false", async () => {
     pushAppointment("the-best-shave-barber", cita, cliente);
     pushAppointment("the-best-shave-barber", cita, cliente, { permitirSolape: true });
     pushAppointmentPatch("the-best-shave-barber", cita, { start: cita.start }, cliente, { permitirSolape: true });
+    // Los tres son de la misma cita: suben en cola, uno detrás de otro.
+    await esperarAvisos();
     const [sin, con, parche] = argumentosCitas as Array<{ data: { permitirSolape?: boolean } }>;
     expect(sin.data.permitirSolape).toBe(false);
     expect(con.data.permitirSolape).toBe(true);
@@ -347,5 +363,83 @@ describe("bloqueo manual con columna propia", () => {
     expect(llamadas).toEqual(["applyClientPenalty", "clearClientPenalty"]);
     expect(bloqueo.data.manualBlock).toBe(true);
     expect(desbloqueo.data.manualBlock).toBe(false);
+  });
+});
+
+/**
+ * Barrido de calidad 2026-09-26: red lenta y 5xx de paso. El dueño no debe
+ * ver un aviso por un corte de un segundo, nada se duplica al repetir, y
+ * dos cambios de la misma cita llegan en el orden en que se hicieron.
+ */
+describe("reintentos automáticos con espera creciente", () => {
+  it("un fallo pasajero se reintenta solo y no llega a aviso", async () => {
+    let fallos = 2;
+    const original = fallarTodo;
+    fallarTodo = true;
+    esperaDeReintentoParaPruebas(async (ms) => { esperasPedidas.push(ms); if (--fallos === 0) fallarTodo = original; });
+    esperasPedidas.length = 0;
+    pushAppointment("the-best-shave-barber", cita, cliente);
+    await esperarAvisos();
+    esperaDeReintentoParaPruebas(async (ms) => { esperasPedidas.push(ms); });
+    expect(esperasPedidas).toEqual([ESPERAS_REINTENTO_MS[0], ESPERAS_REINTENTO_MS[1]]);
+    expect(llamadas).toEqual(["syncAppointment", "syncAppointment", "syncAppointment"]);
+    expect(leerAvisos()).toEqual([]);
+    expect(cambioSinGuardar(`cita:${cita.id}`)).toBe(false);
+  });
+
+  it("si la red sigue caída, se rinde tras los reintentos y deja UN aviso", async () => {
+    fallarTodo = true;
+    esperasPedidas.length = 0;
+    pushAppointment("the-best-shave-barber", cita, cliente);
+    await esperarAvisos();
+    expect(esperasPedidas).toEqual([...ESPERAS_REINTENTO_MS]);
+    expect(llamadas).toHaveLength(1 + ESPERAS_REINTENTO_MS.length);
+    expect(leerAvisos()).toHaveLength(1);
+    expect(cambioSinGuardar(`cita:${cita.id}`)).toBe(true);
+  });
+
+  it("un rechazo del servidor (solape) no se reintenta: reintentar no lo arregla", async () => {
+    rechazo = "RESERVA_SOLAPE_PANEL";
+    pushAppointment("the-best-shave-barber", cita, cliente);
+    await esperarAvisos();
+    expect(llamadas).toEqual(["syncAppointment"]);
+    expect(leerAvisos()).toHaveLength(1);
+  });
+
+  it("un pago que se reintenta viaja siempre con el mismo id (el servidor ignora duplicados)", async () => {
+    let fallos = 1;
+    fallarTodo = true;
+    esperaDeReintentoParaPruebas(async () => { if (--fallos === 0) fallarTodo = false; });
+    idsDePago.length = 0;
+    pushPago("the-best-shave-barber", {
+      id: "p-1", appointmentId: cita.id, clientId: "c-1", clientName: "Marta", importeEur: 15,
+      metodo: "efectivo", concepto: "cita", fecha: "2026-09-26T13:30:00.000Z",
+    } as never);
+    await esperarAvisos();
+    esperaDeReintentoParaPruebas(async (ms) => { esperasPedidas.push(ms); });
+    expect(idsDePago).toEqual(["p-1", "p-1"]);
+    expect(leerAvisos()).toEqual([]);
+  });
+
+  it("la ficha sin teléfono es un alta que no se repite sola (evita fichas dobles)", async () => {
+    fallarTodo = true;
+    pushClient("the-best-shave-barber", { ...cliente, id: "c-sin-tel", phone: "" });
+    await esperarAvisos();
+    expect(llamadas).toEqual(["saveClient"]);
+    expect(leerAvisos()).toHaveLength(1);
+  });
+
+  it("dos cambios de la misma cita suben en orden aunque el primero tenga que reintentarse", async () => {
+    let fallos = 1;
+    fallarTodo = true;
+    esperaDeReintentoParaPruebas(async () => { await new Promise((r) => setTimeout(r, 0)); if (--fallos === 0) fallarTodo = false; });
+    pushAppointmentPatch("the-best-shave-barber", cita, { status: "confirmed" }, cliente);
+    pushAppointmentPatch("the-best-shave-barber", cita, { status: "completed" }, cliente);
+    await esperarAvisos();
+    esperaDeReintentoParaPruebas(async (ms) => { esperasPedidas.push(ms); });
+    const estados = (argumentosCitas as Array<{ data: { patch: { status: string } } }>).map((a) => a.data.patch.status);
+    // confirmed (falla), confirmed (reintento, va bien), y solo DESPUÉS completed.
+    expect(estados).toEqual(["confirmed", "confirmed", "completed"]);
+    expect(leerAvisos()).toEqual([]);
   });
 });

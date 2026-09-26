@@ -79,15 +79,60 @@ function aviso(que: string, intentar: () => Promise<unknown>) {
   return manejar;
 }
 
-/** Lanza la subida y, si falla, la convierte en un aviso reintentable. */
-function subir(que: string, intentar: () => Promise<unknown>, claveLocal?: string): Promise<void> {
+/**
+ * Reintentos automáticos (barrido de calidad 2026-09-26). Un corte de red o
+ * un 5xx de paso no deberían llegar al dueño como aviso: se reintenta solo,
+ * con espera creciente, y solo si sigue fallando aparece el aviso con su
+ * botón. Todo lo que se reintenta es idempotente en el servidor (upsert por
+ * id local, borrado por id, pagos y cambios con `ignoreDuplicates`), así que
+ * repetir la llamada no duplica nada. La única alta que NO lo es —la ficha
+ * sin teléfono, que es un `insert`— pasa `reintentable: false`.
+ */
+export const ESPERAS_REINTENTO_MS = [1_000, 3_000, 9_000] as const;
+let esperar = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+/** Solo para pruebas: sustituye la espera entre reintentos (p. ej. por 0 ms). */
+export function esperaDeReintentoParaPruebas(fn: ((ms: number) => Promise<void>) | null): void {
+  esperar = fn ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+}
+
+/** El servidor contestó y dijo que no (solape, bloqueo…): reintentar no lo arregla. */
+class RechazoDelServidor extends Error {}
+
+async function conReintentos(intentar: () => Promise<unknown>): Promise<unknown> {
+  for (let i = 0; ; i++) {
+    try {
+      return await intentar();
+    } catch (err) {
+      if (err instanceof RechazoDelServidor || i >= ESPERAS_REINTENTO_MS.length) throw err;
+      await esperar(ESPERAS_REINTENTO_MS[i]);
+    }
+  }
+}
+
+/**
+ * Cola por id local: dos cambios seguidos de la misma cita suben en orden.
+ * Sin esto, un primer parche que falla y se reintenta segundos después podía
+ * llegar DETRÁS del segundo y pisarlo con un valor viejo.
+ */
+const colas = new Map<string, Promise<unknown>>();
+
+/** Lanza la subida y, si falla (tras los reintentos automáticos), la convierte en un aviso reintentable. */
+function subir(que: string, intentar: () => Promise<unknown>, claveLocal?: string, reintentable = true): Promise<void> {
   pendientes += 1;
   if (claveLocal) sinGuardar.add(claveLocal);
-  const reintentar = async () => {
+  const unaVez = async () => {
     await intentar();
     if (claveLocal) sinGuardar.delete(claveLocal);
   };
-  return reintentar().then(() => {}, aviso(que, reintentar)).finally(() => { pendientes -= 1; });
+  const primera = () => (reintentable ? conReintentos(unaVez) : unaVez());
+  const anterior = claveLocal ? colas.get(claveLocal) : undefined;
+  const turno = anterior ? anterior.then(primera, primera) : primera();
+  const hecho = turno.then(() => {}, aviso(que, unaVez)).finally(() => { pendientes -= 1; });
+  if (claveLocal) {
+    colas.set(claveLocal, hecho);
+    void hecho.finally(() => { if (colas.get(claveLocal) === hecho) colas.delete(claveLocal); });
+  }
+  return hecho;
 }
 
 let pendientes = 0;
@@ -133,7 +178,7 @@ export interface OpcionesGuardado {
  * reintento en vez de dar la cita por guardada.
  */
 function exigirGuardado<T extends { synced: boolean; reason?: string }>(r: T): T {
-  if (!r.synced && r.reason && r.reason !== "sin-fila") throw new Error(r.reason);
+  if (!r.synced && r.reason && r.reason !== "sin-fila") throw new RechazoDelServidor(r.reason);
   return r;
 }
 
@@ -383,7 +428,7 @@ export function pushClient(slug: string | null, cliente: Client): void {
   const pending = subir(`la ficha de ${cliente.name}`, () => saveClient({ data: {
     slug, name: cliente.name, phone: cliente.phone, email: cliente.email, notes: cliente.notes, createdAt: cliente.createdAt,
     tpvCode: cliente.tpvCode, birthday: cliente.birthday,
-  } }));
+  } }), undefined, Boolean(cliente.phone)); // sin teléfono es un insert: no se repite solo
   altasPendientes.set(clave, pending);
   void pending.finally(() => { if (altasPendientes.get(clave) === pending) altasPendientes.delete(clave); });
 }
