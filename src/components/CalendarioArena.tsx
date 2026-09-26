@@ -28,7 +28,7 @@ import type { Appointment, Employee, EmployeeId, Service } from "@/lib/mock/type
 import { cn } from "@/lib/utils";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
-import { RejillaCalendario, colorProfesional, type ColumnaRejilla } from "@/components/RejillaCalendario";
+import { IconoEstado, RejillaCalendario, colorProfesional, type ColumnaRejilla } from "@/components/RejillaCalendario";
 import { CamposPreferenciasCalendario } from "@/components/CamposPreferenciasCalendario";
 import { MAX_DIAS_ELEGIDOS, diasDesde, rangoDeDias, VISTAS_CALENDARIO, diasDeRejilla, inicioDeSemana, pasoDeVista, preferenciasDe, type PrimerDia, type VistaCalendario } from "@/lib/preferencias-calendario";
 
@@ -375,7 +375,7 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
       {/* Caja del calendario: la vista, con scroll interno. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[20px] border border-lino-fuerte bg-card">
         {vista === "cronograma" && (
-          <Cronograma dia={anchor} citas={citasDia} equipo={equipo} ahora={ahora} carta={carta} services={services} irAAhora={irAAhora} onCita={setSeleccionada} onHueco={abrirHueco} />
+          <Cronograma dia={anchor} citas={citasDia} equipo={equipo} ahora={ahora} carta={carta} services={services} irAAhora={irAAhora} seleccionadaId={seleccionada?.id} onCita={setSeleccionada} onHueco={abrirHueco} />
         )}
         {esRejilla && (
           <RejillaCalendario
@@ -389,6 +389,7 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
             carta={carta}
             services={services}
             colorPor={vista !== "dia" && filtroPro === "todas" && !soloUno ? "profesional" : "servicio"}
+            seleccionadaId={seleccionada?.id}
             anchoMinimo={vista === "dia" ? 150 : diasRejilla.length <= 3 ? 96 : diasRejilla.length > 7 ? 60 : 44}
             onCita={setSeleccionada}
             onHueco={abrirHueco}
@@ -501,6 +502,7 @@ function BloqueCita({
   services,
   style,
   variante,
+  seleccionada = false,
   onClick,
 }: {
   a: Appointment;
@@ -508,6 +510,7 @@ function BloqueCita({
   services: Service[];
   style: CSSProperties;
   variante: "crono" | "dia" | "semana";
+  seleccionada?: boolean;
   onClick: () => void;
 }) {
   const n = indiceColorServicio(a.serviceIds[0], services);
@@ -526,32 +529,31 @@ function BloqueCita({
       onClick={onClick}
       title={`${a.clientName} · ${nombreServicio} · ${hora(a.start)}–${minutosAHora(ini + a.duration)}${pendiente ? " · por confirmar" : ""}`}
       className={cn(
-        "absolute flex flex-col overflow-hidden text-left leading-[1.28] text-k-tinta hover:shadow-[0_2px_8px_rgba(31,38,51,0.12)] hover:brightness-[0.97] [&>*]:shrink-0",
-        "rounded-md border border-cafe",
+        "absolute flex flex-col overflow-hidden text-left leading-[1.28] text-k-tinta hover:shadow-[0_3px_10px_rgba(59,47,42,0.16)] [&>*]:shrink-0",
+        "rounded-[5px] border border-cafe transition-shadow duration-150",
         variante === "semana" ? "px-1.5 py-[5px] text-[11.5px]" : "px-2.5 py-2 text-[13px]",
         variante !== "crono" && corta && "py-[3px]",
         variante === "crono" && corta && "px-[7px] py-[7px]",
         pendiente && "border-dashed",
         noVino && "opacity-55 line-through",
+        seleccionada && "z-[6] ring-2 ring-primary ring-offset-1 ring-offset-card",
       )}
       style={{
         ...style,
         background: pendiente ? "var(--superficie)" : `var(--serv-${n})`,
       }}
     >
-      {vino && variante !== "semana" && (
-        <span className="absolute top-[7px] right-2 rounded-md bg-white/80 px-1.5 text-[10.5px] font-bold text-[color:var(--k-vino)]">✓ vino</span>
-      )}
+      <IconoEstado status={a.status} className="top-1.5 right-1.5" />
       {/* En bloques estrechos (citas cortas, o la semana) el nombre va en
           dos líneas —nombre y apellido— cortadas cada una, sin servicio: el
           color ya lo dice y el nombre entero sale al pasar el ratón. */}
       {corta || variante === "semana" ? (
-        <b className={cn("font-extrabold", variante === "semana" || variante === "crono" ? "text-[11.5px] leading-[1.2]" : "text-[13px]", vino && variante !== "semana" && "pr-12")}>
+        <b className={cn("font-extrabold", variante === "semana" || variante === "crono" ? "text-[11.5px] leading-[1.2]" : "text-[13px]", (vino || pendiente) && "pr-4")}>
           <span className="block truncate">{nombre}</span>
           {apellido && <span className="block truncate">{apellido}</span>}
         </b>
       ) : (
-        <b className={cn("line-clamp-2 text-[13px] font-extrabold", vino && "pr-12")}>{a.clientName || "Sin nombre"}</b>
+        <b className={cn("line-clamp-2 text-[13px] font-extrabold", (vino || pendiente) && "pr-4")}>{a.clientName || "Sin nombre"}</b>
       )}
       <span className={cn("font-bold text-k-tinta2 tabular-nums", variante === "semana" ? "text-[10.5px]" : corta ? "text-[11px]" : "text-xs")}>{rango}</span>
     </button>
@@ -612,6 +614,7 @@ function Cronograma({
   carta,
   services,
   irAAhora = 0,
+  seleccionadaId,
   onCita,
   onHueco,
 }: {
@@ -622,6 +625,7 @@ function Cronograma({
   carta: Record<string, Service>;
   services: Service[];
   irAAhora?: number;
+  seleccionadaId?: string;
   onCita: (a: Appointment) => void;
   onHueco: AbrirHueco;
 }) {
@@ -698,7 +702,7 @@ function Cronograma({
             {Array.from({ length: horas }, (_, i) => (
               <span
                 key={i}
-                className="absolute top-[13px] text-xs font-bold text-k-tinta2 tabular-nums"
+                className={cn("absolute top-[13px] text-xs font-bold text-k-tinta2 tabular-nums", esHoy && minAhora - i * 60 > -20 && minAhora - i * 60 < 45 && "opacity-0")}
                 // Etiqueta a la derecha de su línea: con scroll horizontal, la columna fija no la tapa a medias.
                 style={{ left: `calc(${(i / horas) * 100}% + 6px)` }}
               >
@@ -727,7 +731,7 @@ function Cronograma({
                   a.status === "blocked" ? (
                     <BloquePausa key={a.id} texto={a.note || "Bloqueado"} style={posCita(a)} />
                   ) : (
-                    <BloqueCita key={a.id} a={a} carta={carta} services={services} variante="crono" style={posCita(a)} onClick={() => onCita(a)} />
+                    <BloqueCita key={a.id} a={a} carta={carta} services={services} variante="crono" seleccionada={a.id === seleccionadaId} style={posCita(a)} onClick={() => onCita(a)} />
                   ),
                 )}
               </div>
