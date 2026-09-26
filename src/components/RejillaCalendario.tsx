@@ -47,10 +47,46 @@ export function altoPorHora(altoDisponible: number, horas: number): number {
  * horas visibles; si hoy está en pantalla y la hora actual cae dentro,
  * una hora antes de ahora. Pura, con test.
  */
-export function scrollInicial(pxHora: number, verDesde: number, verHasta: number, minutoAhoraSiHoy: number | null): number {
+export function scrollInicial(pxHora: number, verDesde: number, verHasta: number, minutoAhoraSiHoy: number | null, altoVisible?: number): number {
+  // Lote 16: si las horas visibles caben enteras, se enseñan enteras (con
+  // «ahora» dentro): es lo que se ha pedido en Ajustes.
+  if (altoVisible !== undefined && (verHasta - verDesde) * pxHora <= altoVisible + 1) return Math.max(0, verDesde * pxHora);
   const dentro = minutoAhoraSiHoy !== null && minutoAhoraSiHoy >= verDesde * 60 && minutoAhoraSiHoy < verHasta * 60;
   const minuto = dentro ? minutoAhoraSiHoy - 60 : verDesde * 60;
-  return Math.max(0, (minuto / 60) * pxHora);
+  const top = Math.max(0, (minuto / 60) * pxHora);
+  // Y nunca tan abajo que el final de las horas visibles quede por encima.
+  return altoVisible !== undefined ? Math.min(top, Math.max(verDesde * pxHora, verHasta * pxHora - altoVisible)) : top;
+}
+
+/**
+ * Lote 16: al pasar de semana o de día NO se recalcula el scroll; si cambia
+ * el alto de una hora, se conserva la misma hora arriba. Pura, con test.
+ */
+export function scrollConservado(top: number, pxAntes: number, pxAhora: number): number {
+  if (pxAntes <= 0 || pxAntes === pxAhora) return top;
+  return Math.max(0, (top / pxAntes) * pxAhora);
+}
+
+/**
+ * Tramos rayados de una columna (minutos): lo que queda fuera del horario de
+ * sus profesionales Y lo que queda fuera de las horas visibles de Ajustes
+ * (lote 16: las horas visibles también se ven, no solo deciden el scroll).
+ * Pura, con test.
+ */
+export function tramosCerrados(abiertas: { ini: number; fin: number }[], verDesde: number, verHasta: number): { ini: number; fin: number }[] {
+  const lim = { ini: verDesde * 60, fin: verHasta * 60 };
+  const dentro = abiertas
+    .map((t) => ({ ini: Math.max(t.ini, lim.ini), fin: Math.min(t.fin, lim.fin) }))
+    .filter((t) => t.fin > t.ini)
+    .sort((x, y) => x.ini - y.ini);
+  const fuera: { ini: number; fin: number }[] = [];
+  let cursor = 0;
+  for (const t of dentro) {
+    if (t.ini > cursor) fuera.push({ ini: cursor, fin: t.ini });
+    cursor = Math.max(cursor, t.fin);
+  }
+  if (cursor < HORAS_DIA * 60) fuera.push({ ini: cursor, fin: HORAS_DIA * 60 });
+  return fuera;
 }
 
 export type ColumnaRejilla = {
@@ -132,12 +168,35 @@ export function RejillaCalendario({
   // pantalla y la hora actual cae dentro, «ahora» menos una hora.
   const hoyVisible = columnas.some((c) => mismoDia(c.dia, ahora));
   const claveScroll = columnas.map((c) => c.clave).join("|");
-  const topInicial = () => scrollInicial(px, verDesde, verHasta, hoyVisible ? minutosDe(ahora) : null);
+  const topInicial = () => {
+    const el = ref.current;
+    const alto = el ? el.clientHeight - (cabecera.current?.offsetHeight ?? 64) - 1 : undefined;
+    return scrollInicial(px, verDesde, verHasta, hoyVisible ? minutosDe(ahora) : null, alto);
+  };
+  // Lote 16: el scroll inicial se pone al montar y al cambiar las horas
+  // visibles; al pasar de semana o de día se queda donde estaba (misma hora
+  // arriba). Si cambia el alto de una hora, se reescala para no moverse.
+  const pxPrevio = useRef(px);
+  // Hasta que se mide el alto real de una hora (primer fotograma), el scroll
+  // inicial se recalcula con cada medida; después, solo se conserva.
+  const inicialPendiente = useRef(true);
   useLayoutEffect(() => {
     const el = ref.current;
     if (el) el.scrollTop = topInicial();
+    pxPrevio.current = px;
+    inicialPendiente.current = true;
+    const id = requestAnimationFrame(() => (inicialPendiente.current = false));
+    return () => cancelAnimationFrame(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [claveScroll, px, verDesde, verHasta]);
+  }, [verDesde, verHasta]);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (el && pxPrevio.current !== px) {
+      el.scrollTop = inicialPendiente.current ? topInicial() : scrollConservado(el.scrollTop, pxPrevio.current, px);
+    }
+    pxPrevio.current = px;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [px]);
   // Al cambiar de día, semana o vista: fundido corto, sin desmontar la rejilla
   // (así no se pierde el scroll ni se repinta en blanco).
   const primera = useRef(true);
@@ -236,6 +295,8 @@ export function RejillaCalendario({
             todoElEquipo={todoElEquipo}
             desde={desde}
             horas={horas}
+            verDesde={verDesde}
+            verHasta={verHasta}
             ahora={ahora}
             carta={carta}
             services={services}
@@ -270,6 +331,8 @@ function mismaColumna(a: PropsColumna, b: PropsColumna): boolean {
     a.px === b.px &&
     a.desde === b.desde &&
     a.horas === b.horas &&
+    a.verDesde === b.verDesde &&
+    a.verHasta === b.verHasta &&
     a.colorPor === b.colorPor &&
     a.carta === b.carta &&
     a.services === b.services &&
@@ -287,6 +350,8 @@ type PropsColumna = {
   todoElEquipo: Employee[];
   desde: number;
   horas: number;
+  verDesde: number;
+  verHasta: number;
   ahora: Date;
   carta: Record<string, Service>;
   services: Service[];
@@ -303,6 +368,8 @@ const ColumnaDia = memo(function ColumnaDia({
   todoElEquipo,
   desde,
   horas,
+  verDesde,
+  verHasta,
   ahora,
   carta,
   services,
@@ -332,13 +399,7 @@ const ColumnaDia = memo(function ColumnaDia({
     if (ult && f.start <= ult.fin) ult.fin = Math.max(ult.fin, f.end);
     else abiertas.push({ ini: f.start, fin: f.end });
   }
-  const cerradas: { ini: number; fin: number }[] = [];
-  let cursor = desde * 60;
-  for (const a of abiertas) {
-    if (a.ini > cursor) cerradas.push({ ini: cursor, fin: a.ini });
-    cursor = Math.max(cursor, a.fin);
-  }
-  if (cursor < (desde + horas) * 60) cerradas.push({ ini: cursor, fin: (desde + horas) * 60 });
+  const cerradas = tramosCerrados(abiertas, verDesde, verHasta);
 
   const minutoDe = (evY: number) => Math.floor((desde * 60 + (evY / px) * 60) / 15) * 15;
   const quienAtiende = (min: number): Employee | undefined =>

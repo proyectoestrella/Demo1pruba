@@ -1,3 +1,4 @@
+import { tituloCalendario } from "@/lib/calendario-titulo-panel";
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
 import { useOcupadoExterno, useSincronizarCalendarios } from "@/lib/calendarios-panel";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -77,7 +78,6 @@ const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "
 const DCORTO = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 const capital = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
-const fechaTxt = (d: Date) => `${capital(DIAS[d.getDay()])}, ${d.getDate()} de ${MESES[d.getMonth()]}`;
 /** Pasteles de profesional para los avatares (taupe, salvia, nata tostada). */
 const colorPro = (i: number) => `var(--stylist-${["mario", "diego", "ruben"][i % 3]})`;
 /** Color de la barra de ocupación de la profesional, por orden del equipo. */
@@ -176,19 +176,8 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
   const diasRejilla =
     vista === "rango" && rango ? diasDesde(rango.inicio, rango.n) : esRejilla && vista !== "rango" ? diasDeRejilla(anchor, vista, pref.primerDia) : [];
   const variosDias = vista === "semana" || vista === "tres" || vista === "rango";
-  let titulo: string;
-  if (variosDias && diasRejilla.length > 0) {
-    const pri = diasRejilla[0];
-    const ult = diasRejilla[diasRejilla.length - 1];
-    titulo =
-      pri.getMonth() === ult.getMonth()
-        ? `${pri.getDate()} – ${ult.getDate()} de ${MESES[ult.getMonth()]}`
-        : `${pri.getDate()} de ${MESES[pri.getMonth()]} – ${ult.getDate()} de ${MESES[ult.getMonth()]}`;
-  } else if (vista === "mes") {
-    titulo = `${capital(MESES[anchor.getMonth()])} de ${anchor.getFullYear()}`;
-  } else {
-    titulo = fechaTxt(anchor);
-  }
+  // Lote 16: siempre con el año, en todas las vistas.
+  const titulo = tituloCalendario(vista === "mes" ? "mes" : variosDias ? "varios" : "dia", diasRejilla, anchor);
   const porConfirmar = citasDia.filter((a) => a.status === "pending").length;
   const numCitas = citasDia.filter((a) => a.status !== "blocked").length;
 
@@ -271,8 +260,12 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
       )}
     >
       {/* Controles: navegar, qué periodo es, profesional, colores, vista y ajustes. */}
-      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
-        <div className="flex items-center gap-1">
+      {/* Lote 16: la fila de controles ya no se parte en dos según lo largo que
+          sea el título (eso subía o bajaba la rejilla al cambiar de semana):
+          en PC, título a la izquierda con el ancho que quede y controles fijos
+          a la derecha; en móvil, navegación, título y vistas en filas fijas. */}
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 lg:flex-nowrap">
+        <div className="flex shrink-0 items-center gap-1">
           <button type="button" onClick={() => { setAnchor(inicioDelDia(new Date())); setIrAAhora((n) => n + 1); }} className="mr-1 h-10 rounded-full border border-lino bg-card px-4 text-sm font-bold hover:bg-beige">
             Hoy
           </button>
@@ -283,8 +276,8 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
             <ChevronRight className="size-5" strokeWidth={1.6} />
           </button>
         </div>
-        <div className="min-w-0 flex-1 md:flex-none">
-          <h1 className="text-xl leading-tight font-extrabold tracking-[-0.02em] md:text-[24px]">{titulo}</h1>
+        <div className="order-last w-full min-w-0 lg:order-2 lg:w-auto lg:flex-1">
+          <h1 className="truncate text-[17px] leading-tight font-extrabold tracking-[-0.02em] md:text-[22px]" title={titulo}>{titulo}</h1>
           {(vista === "dia" || vista === "cronograma") && (
             <p className="text-[13.5px] text-muted-foreground tabular-nums">
               {numCitas} citas · {huecosDia.length} huecos libres
@@ -292,7 +285,36 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
             </p>
           )}
         </div>
-        <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto">
+        <div className="ml-auto flex shrink-0 items-center gap-1 lg:order-3">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-bold text-cafe-medio hover:bg-beige">
+                <Palette className="size-[18px]" strokeWidth={1.6} />
+                <span className="hidden sm:inline">Colores</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-[min(360px,calc(100vw-2rem))] rounded-2xl p-0">
+              <Leyenda vista={vista} porPro={variosDias && filtroPro === "todas" && !soloUno} services={services} equipo={equipo} />
+              <p className="px-4 py-3 text-[12.5px] text-muted-foreground">
+                Pulsa una cita para ver su detalle, o un hueco vacío para dar una cita a esa hora.
+              </p>
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" aria-label="Ajustes del calendario" title="Ajustes del calendario" className="grid size-10 shrink-0 place-items-center rounded-full text-cafe-medio hover:bg-beige">
+                <Settings2 className="size-[18px]" strokeWidth={1.6} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-[min(320px,calc(100vw-2rem))] rounded-2xl p-4">
+              <p className="mb-3 text-[14px] font-extrabold">Ajustes del calendario</p>
+              <CamposPreferenciasCalendario />
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+      {/* Segunda fila fija: profesional y vista. */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
           {variosDias && !soloUno && (
             <label className="relative">
               <span className="sr-only">Profesional</span>
@@ -311,21 +333,7 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
               <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-cafe-medio" strokeWidth={1.6} />
             </label>
           )}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button type="button" className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-bold text-cafe-medio hover:bg-beige">
-                <Palette className="size-[18px]" strokeWidth={1.6} />
-                <span className="hidden sm:inline">Colores</span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-[min(360px,calc(100vw-2rem))] rounded-2xl p-0">
-              <Leyenda vista={vista} porPro={variosDias && filtroPro === "todas" && !soloUno} services={services} equipo={equipo} />
-              <p className="px-4 py-3 text-[12.5px] text-muted-foreground">
-                Pulsa una cita para ver su detalle, o un hueco vacío para dar una cita a esa hora.
-              </p>
-            </PopoverContent>
-          </Popover>
-          <div role="tablist" aria-label="Vista del calendario" className="order-last grid w-full grid-cols-5 gap-0.5 rounded-full bg-beige p-1 md:order-none md:inline-flex md:w-auto">
+          <div role="tablist" aria-label="Vista del calendario" className="order-last grid w-full grid-cols-5 gap-0.5 rounded-full bg-beige p-1 md:order-none md:ml-auto md:inline-flex md:w-auto">
             {VISTAS_CALENDARIO.map((v) => (
               <button
                 key={v.id}
@@ -375,18 +383,6 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
               </PopoverContent>
             </Popover>
           </div>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button type="button" aria-label="Ajustes del calendario" title="Ajustes del calendario" className="grid size-10 shrink-0 place-items-center rounded-full text-cafe-medio hover:bg-beige">
-                <Settings2 className="size-[18px]" strokeWidth={1.6} />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-[min(320px,calc(100vw-2rem))] rounded-2xl p-4">
-              <p className="mb-3 text-[14px] font-extrabold">Ajustes del calendario</p>
-              <CamposPreferenciasCalendario />
-            </PopoverContent>
-          </Popover>
-        </div>
       </div>
 
       {/* Caja del calendario: la vista, con scroll interno. */}
