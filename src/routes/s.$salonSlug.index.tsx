@@ -34,7 +34,7 @@ import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useMemo } from "react";
 import { isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
 import { useClientNow } from "@/lib/use-client-now";
-import { galleryPhotosFor } from "@/lib/demo-photos";
+import { conAncho, galleryPhotosFor } from "@/lib/demo-photos";
 import { useImagenConRespaldo } from "@/lib/imagen-rota";
 import heroImg from "@/assets/hero-salon.jpg";
 import heroSalonImg from "@/assets/gallery-salon.jpg";
@@ -384,7 +384,16 @@ function SalonHome() {
         <img
           // Sin foto propia, o si la propia no carga, se usa una de ejemplo
           // acorde al tipo de negocio (ver useImagenConRespaldo).
-          src={portada.src}
+          // Portada a 800 o 1600 px según pantalla (lote 17.7): la de 1600
+          // pesaba 424 KB y era el 86 % del LCP en móvil. Una foto que no es
+          // del proxy (subida por el salón o de respaldo) no lleva srcSet.
+          src={conAncho(portada.src, 800) ?? portada.src}
+          srcSet={
+            portada.src.startsWith("/api/foto?")
+              ? `${conAncho(portada.src, 800)} 800w, ${conAncho(portada.src, 1600)} 1600w`
+              : undefined
+          }
+          sizes="100vw"
           ref={portada.ref}
           onError={portada.onError}
           alt={`Interior de ${profile.name}`}

@@ -9,6 +9,7 @@ import galleryDegradado from "@/assets/gallery-degradado.jpg";
 import gallerySalon from "@/assets/gallery-salon.jpg";
 import { inferBusinessType } from "@/lib/business-type";
 import { useImagenesRotas } from "@/lib/imagen-rota";
+import { conAncho } from "@/lib/demo-photos";
 
 /**
  * Fotos de relleno, para cuando el local no tiene suficientes suyas.
@@ -101,7 +102,7 @@ export function WorkGallery({ photos = [], tipo }: { photos?: string[]; tipo?: s
                 >
                   {cerca && (
                   <img
-                    src={img.src}
+                    src={conAncho(img.src, 600) ?? img.src}
                     ref={vigilar(img.src)}
                     onError={() => marcar(img.src)}
                     alt={img.alt}
