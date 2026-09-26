@@ -125,11 +125,14 @@ confianza).
 
 ## 6. CSV para gestoría y "cobrado real" (`src/lib/export-csv.ts`, `src/lib/periodos.ts`)
 
-- `pagosToCsvGestoria(pagos, desde, hasta)`: nueva función. Separador `;`,
-  **coma decimal española** (`20,00` no `20.00`) y BOM UTF-8, como el resto de
-  exportaciones — pero con coma decimal a propósito porque este CSV lo abre
-  una gestoría, no el propio panel. Columnas: Fecha, Hora, Concepto, Método,
-  Importe (€), Cliente, Cobrado por, Nota, Origen.
+- `pagosToCsvGestoria(pagos, clientNameById?, cobradoPorLabel?)`: nueva
+  función pura en `export-csv.ts`. El filtro por rango de fechas lo hace quien
+  la llama (el servidor, en `generarCsvGestoria`, o el propio navegador si
+  algún día hiciera falta client-side); esta función solo formatea. Separador
+  `;`, **coma decimal española** (`20,00` no `20.00`) y BOM UTF-8, como el
+  resto de exportaciones — pero con coma decimal a propósito porque este CSV
+  lo abre una gestoría, no el propio panel. Columnas: Fecha, Hora, Concepto,
+  Método, Importe (€), Cliente, Cobrado por, Nota, Origen.
 - `citasToCsv(...)` y `resumenMensualToCsv(...)` ganan un **quinto/tercer
   parámetro opcional** `pagosPorCita?: Map<string, number>`
   (`agruparPagosPorCita(pagos)`). Si se pasa, la columna de precio/facturación

@@ -16,6 +16,7 @@
 
 import type { Appointment, Employee } from "./mock/types";
 import { franjasProfesional } from "./horario-equipo";
+import { cobradoDeCita } from "./pagos";
 
 export type PeriodoId = "hoy" | "semana" | "mes" | "personalizado";
 
@@ -320,6 +321,12 @@ export function metricasDePeriodo(
   rango: Rango,
   equipo: Employee[],
   primeras: Map<string, number> = primerasCitas(appts),
+  /**
+   * Lo cobrado real por cita (`agruparPagosPorCita`, lib/pagos.ts). Sin este
+   * mapa, `caja` sigue siendo `priceEur` como hasta hoy — es responsabilidad
+   * de quien llama pasarlo solo cuando el salón ya usa Caja.
+   */
+  pagosPorCita?: Map<string, number>,
 ): MetricasPeriodo {
   let citas = 0;
   let caja = 0;
@@ -336,7 +343,7 @@ export function metricasDePeriodo(
     if (a.status === "blocked") continue;
     citas += 1;
     minutos += a.duration;
-    if (a.status !== "no-show") caja += a.priceEur;
+    if (a.status !== "no-show") caja += pagosPorCita ? cobradoDeCita(a.id, pagosPorCita, a.priceEur) : a.priceEur;
     const primera = primeras.get(a.clientId);
     if (primera !== undefined && primera >= +rango.inicio && primera < +rango.fin) {
       nuevos.add(a.clientId);
@@ -417,19 +424,21 @@ export function resumenDePeriodo(
   equipo: Employee[],
   now: Date = new Date(),
   personalizado?: RangoPersonalizado | null,
+  /** Igual que en `metricasDePeriodo`: opcional, mismo fallback a `priceEur`. */
+  pagosPorCita?: Map<string, number>,
 ): ResumenPeriodo {
   const rango = rangoDePeriodo(id, now, personalizado);
   const rangoPrevio = rangoAnterior(id, rango, now);
   const primeras = primerasCitas(appts);
 
-  const actual = metricasDePeriodo(appts, rango, equipo, primeras);
+  const actual = metricasDePeriodo(appts, rango, equipo, primeras, pagosPorCita);
   const previoVacio = +rangoPrevio.fin <= +rangoPrevio.inicio;
   const previo = previoVacio
     ? METRICAS_VACIAS
-    : metricasDePeriodo(appts, rangoPrevio, equipo, primeras);
+    : metricasDePeriodo(appts, rangoPrevio, equipo, primeras, pagosPorCita);
 
   const cubos = periodosPrevios(id, rango, CUBOS_MINIGRAFICA).map((r) =>
-    metricasDePeriodo(appts, r, equipo, primeras),
+    metricasDePeriodo(appts, r, equipo, primeras, pagosPorCita),
   );
 
   return {
