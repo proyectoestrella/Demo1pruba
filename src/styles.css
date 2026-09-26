@@ -628,3 +628,17 @@
   .plegable { transition: none; }
   .micro-check, .micro-check path { animation: none; stroke-dashoffset: 0; }
 }
+
+/* Hover con elevación sutil (tarjetas pulsables). */
+.elevar {
+  transition: transform 160ms var(--curva-salida), box-shadow 160ms var(--curva-salida), background-color 160ms;
+}
+@media (hover: hover) {
+  .elevar:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(59, 47, 42, 0.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .elevar, .elevar:hover { transition: none; transform: none; }
+}

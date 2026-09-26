@@ -32,6 +32,7 @@ import type { Appointment, Client } from "@/lib/mock/types";
 import { VentanaConfirmar } from "@/components/VentanaConfirmar";
 import { DuracionOtra } from "@/components/DuracionOtra";
 import { cn } from "@/lib/utils";
+import { ahoraDelDia, enCuanto, lineaDelDia } from "@/lib/hoy-ahora-panel";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { useAplicarDesenlace } from "@/components/CitasPorResolver";
 import { DecisionDeudaDialog } from "@/components/DecisionDeudaDialog";
@@ -219,13 +220,17 @@ export function HoyArena() {
       {/* Lo único que pide respuesta, y solo si lo hay. */}
       {mostrarSolicitudes && pendientes.length > 0 && <EstoTeEspera pendientes={pendientes} onAbrirDetalle={setSeleccionada} />}
 
+      {/* Lote 16: «Ahora», siempre a la vista: la cita en curso, la siguiente y
+          la agenda del día en una línea de tiempo. */}
+      <BloqueAhora hoy={hoy} equipo={equipo} ahora={ahora} carta={carta} services={services} detalle={nombreCorto} onAbrir={setSeleccionada} />
+
       {/* El resto del día, plegado: cada bloque dice cuánto hay dentro. */}
       <Plegables
-        porDefecto={mostrarSolicitudes && pendientes.length > 0 ? null : "ahora"}
+        porDefecto={null}
         items={[
           {
             id: "ahora",
-            titulo: "Ahora y siguientes",
+            titulo: "Todas las citas que quedan",
             contador: hoy.filter((a) => !terminada(a, ahora)).length,
             resumen: "Las citas que quedan hoy",
             tour: "today-list",
@@ -269,6 +274,118 @@ export function HoyArena() {
         onOpenChange={(o) => !o && setSeleccionada(null)}
       />
     </div>
+  );
+}
+
+/* ---------- Ahora (lote 16) ---------- */
+
+function BloqueAhora({
+  hoy,
+  equipo,
+  ahora,
+  carta,
+  services,
+  detalle,
+  onAbrir,
+}: {
+  hoy: Appointment[];
+  equipo: ReturnType<typeof useEquipoVisible>;
+  ahora: Date;
+  carta: ReturnType<typeof selectServiceMap>;
+  services: Parameters<typeof colorServicio>[1];
+  detalle: (a: Appointment) => string;
+  onAbrir: (a: Appointment) => void;
+}) {
+  const { enCurso, siguiente, minutosHastaSiguiente } = ahoraDelDia(hoy, ahora);
+  const linea = useMemo(() => lineaDelDia(hoy, equipo, ahora), [hoy, equipo, ahora.getHours()]); // eslint-disable-line react-hooks/exhaustive-deps
+  const total = linea.fin - linea.ini;
+  const pct = (min: number) => `${((min - linea.ini) / total) * 100}%`;
+  const minAhora = ahora.getHours() * 60 + ahora.getMinutes();
+  const horas = Array.from({ length: total / 60 + 1 }, (_, i) => linea.ini + i * 60);
+  const tarjeta = (a: Appointment, etiqueta: string, viva: boolean) => (
+    <button
+      key={a.id}
+      type="button"
+      onClick={() => onAbrir(a)}
+      className={cn(
+        "elevar flex w-full min-w-0 items-center gap-3 rounded-2xl border px-4 py-3 text-left",
+        viva ? "border-salvia bg-salvia-suave" : "border-lino bg-card hover:bg-superficie",
+      )}
+    >
+      <span className="min-w-0 flex-1">
+        <span className={cn("block text-[11px] font-bold tracking-[0.06em] uppercase", viva ? "text-hoja-tinta" : "text-cafe-suave")}>{etiqueta}</span>
+        <span className="mt-0.5 block truncate font-display text-[18px] font-medium">{a.clientName}</span>
+        <span className="block truncate text-[13px] text-cafe-medio">
+          {serviceLabelOf(a, carta)}
+          {detalle(a)}
+        </span>
+      </span>
+      <span className="shrink-0 text-right text-[15px] font-extrabold tabular-nums">
+        {hora(a.start)}
+        <span className="block text-[12px] font-semibold text-muted-foreground">{a.duration} min</span>
+      </span>
+    </button>
+  );
+  const sinNada = hoy.filter((a) => a.status !== "cancelled" && a.status !== "blocked").length === 0;
+  return (
+    <section className={bloque} aria-labelledby="ahora-titulo">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="ahora-titulo" className={tituloBloque}>Ahora</h2>
+        <Link to="/app/calendar" className="text-[13.5px] font-bold text-cafe-medio hover:text-foreground">Ver calendario</Link>
+      </div>
+      {sinNada ? (
+        <p className="mt-3 text-[14px] text-muted-foreground">Hoy no hay citas. Un buen día para poner al día la carta o avisar a quien está en la lista de espera.</p>
+      ) : (
+        <>
+          <div className="mt-3 grid gap-2.5 md:grid-cols-2">
+            {enCurso.length > 0
+              ? enCurso.slice(0, 2).map((a) => tarjeta(a, `En curso · hasta las ${hora(new Date(Date.parse(a.start) + a.duration * 60_000).toISOString())}`, true))
+              : <p className="flex items-center rounded-2xl border border-dashed border-lino-fuerte px-4 py-3 text-[14px] text-cafe-medio">Nadie en el sillón ahora mismo.</p>}
+            {siguiente
+              ? tarjeta(siguiente, `Siguiente · ${enCuanto(minutosHastaSiguiente)}`, false)
+              : <p className="flex items-center rounded-2xl border border-dashed border-lino-fuerte px-4 py-3 text-[14px] text-cafe-medio">No queda ninguna cita más hoy.</p>}
+          </div>
+          {/* Agenda del día en una línea de tiempo: una fila por profesional. */}
+          <div className="mt-5 overflow-x-auto">
+            <div className="min-w-[520px] pr-3">
+              <div className="relative ml-16 h-4 text-[11px] text-muted-foreground tabular-nums">
+                {horas.map((h) => (
+                  <span key={h} className="absolute -translate-x-1/2" style={{ left: pct(h) }}>{h / 60}</span>
+                ))}
+              </div>
+              <div className="mt-1 space-y-1.5">
+                {linea.filas.map((f) => (
+                  <div key={f.e.id} className="flex items-center gap-2">
+                    <span className="w-14 shrink-0 truncate text-[12.5px] font-bold text-cafe-medio">{f.e.name}</span>
+                    <div className="relative h-7 flex-1 rounded-lg bg-beige/60">
+                      {f.tramos.map((t, i) => (
+                        <button
+                          key={t.cita.id}
+                          type="button"
+                          onClick={() => onAbrir(t.cita)}
+                          title={`${hora(t.cita.start)} · ${t.cita.clientName} · ${serviceLabelOf(t.cita, carta)}`}
+                          aria-label={`${hora(t.cita.start)}, ${t.cita.clientName}`}
+                          className={cn(
+                            "barra-rellena absolute top-0.5 bottom-0.5 overflow-hidden rounded-md border border-[rgba(59,47,42,0.25)] px-1 text-left text-[10.5px] leading-6 font-bold whitespace-nowrap text-[#1F2633] hover:brightness-95",
+                            t.cita.status === "pending" && "border-dashed bg-card",
+                          )}
+                          style={{ left: pct(t.ini), width: `calc(${((t.fin - t.ini) / total) * 100}% - 2px)`, background: t.cita.status === "pending" ? undefined : colorServicio(t.cita.serviceIds[0], services).replace("-borde)", ")"), borderLeft: `3px solid ${colorServicio(t.cita.serviceIds[0], services)}`, animationDelay: `${i * 25}ms` }}
+                        >
+                          {t.cita.clientName.split(" ")[0]}
+                        </button>
+                      ))}
+                      {minAhora >= linea.ini && minAhora <= linea.fin && (
+                        <span className="pointer-events-none absolute -top-1 -bottom-1 w-0.5 rounded-full bg-hoja" style={{ left: pct(minAhora) }} aria-hidden="true" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 

@@ -1,5 +1,6 @@
 import { avisar } from "@/lib/deshacer-maqueta";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { esperandoDesde, filtrarEspera, proximoHuecoPara, type HuecoPropuesto } from "@/lib/lista-espera-panel";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
@@ -42,7 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarCheck, Clock, ListChecks, MessageCircle, Plus, Trash2 } from "lucide-react";
+import { CalendarCheck, ListChecks, MessageCircle, Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/app/waitlist")({
   beforeLoad: beforeLoadSiModuloVisible("lista-espera"),
@@ -74,7 +75,13 @@ function Waitlist() {
   const waitlist = useSalonStore((s) => s.waitlist);
   // Un solo profesional: en la ficha de quien espera no se escribe "con Adam"
   // ni "cualquier barbero" — no hay alternativa.
-  const soloUno = esSoloUnProfesional(useEquipo());
+  const equipo = useEquipo();
+  const soloUno = esSoloUnProfesional(equipo);
+  const citas = useSalonStore((s) => s.appointments);
+  const [ahora] = useState(() => new Date());
+  // Lote 16: filtros y, para cada una, el primer hueco donde cabe lo que pide.
+  const [fServicio, setFServicio] = useState("todos");
+  const [fPro, setFPro] = useState("todas");
   const services = useSalonStore((s) => s.services);
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const deleteWaitlist = useSalonStore((s) => s.deleteWaitlist);
@@ -82,6 +89,16 @@ function Waitlist() {
   const lastFreedSlot = useSalonStore((s) => s.lastFreedSlot);
   const tipo = useBusinessType();
   const serviceMap = selectServiceMap(services);
+  const filtradas = filtrarEspera(waitlist, { servicio: fServicio, profesional: fPro });
+  const huecos = useMemo(() => {
+    const m = new Map<string, HuecoPropuesto>();
+    for (const w of waitlist) {
+      const h = proximoHuecoPara(w, citas, equipo, serviceMap[w.serviceId]?.durationMin ?? 45, ahora);
+      if (h) m.set(w.id, h);
+    }
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waitlist, citas, equipo, ahora, services]);
 
   const [convertTarget, setConvertTarget] = useState<WaitlistEntry | null>(null);
   const [convertOpen, setConvertOpen] = useState(false);
@@ -130,8 +147,8 @@ function Waitlist() {
       <div className="rounded-2xl bg-salvia-clara px-4 py-3 text-[12.5px] text-hoja-tinta">
         <p className="font-bold">Para cuando se libere un hueco</p>
         <p className="mt-0.5">
-          Si alguien cancela, aquí tienes a quién llamar primero. <strong>Avisar</strong> abre tu
-          WhatsApp con la hora concreta ya escrita y <strong>Convertir a cita</strong> lo mete en la
+          Si alguien cancela, aquí tienes a quién llamar primero. <strong>Avisar hueco</strong> abre tu
+          WhatsApp con la hora concreta ya escrita y <strong>Convertir en cita</strong> lo mete en la
           agenda. El mensaje lo envías tú desde tu móvil: siShow no manda nada solo.
         </p>
         {lastFreedSlot && siguiente && (
@@ -155,37 +172,73 @@ function Waitlist() {
         )}
       </div>
 
+      {waitlist.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <select aria-label="Filtrar por servicio" value={fServicio} onChange={(e) => setFServicio(e.target.value)} className="h-10 rounded-full border border-lino bg-card px-4 text-[13px] font-bold text-cafe hover:bg-beige">
+            <option value="todos">Todos los servicios</option>
+            {services.filter((x) => waitlist.some((w) => w.serviceId === x.id)).map((x) => (
+              <option key={x.id} value={x.id}>{x.name}</option>
+            ))}
+          </select>
+          {!soloUno && (
+            <select aria-label="Filtrar por profesional" value={fPro} onChange={(e) => setFPro(e.target.value)} className="h-10 rounded-full border border-lino bg-card px-4 text-[13px] font-bold text-cafe hover:bg-beige">
+              <option value="todas">Cualquier {professionalWord(tipo)}</option>
+              {equipo.map((e) => (
+                <option key={e.id} value={e.id}>{e.name}</option>
+              ))}
+            </select>
+          )}
+          <span className="text-[13px] text-muted-foreground tabular-nums">
+            {filtradas.length === waitlist.length ? `${waitlist.length} esperando` : `${filtradas.length} de ${waitlist.length}`}
+          </span>
+        </div>
+      )}
+
       {waitlist.length === 0 ? (
         <div className="flex-1 rounded-[20px] border border-border bg-card">
           <EmptyState
             icon={ListChecks}
-            title="Lista de espera vacía"
-            description="Apunta aquí a quien pida un hueco que no tienes. Cuando se libere uno, podrás avisarle en un toque."
+            title="Nadie esperando, de momento"
+            description="Cuando alguien te pida un hueco que no tienes, apúntala aquí. En cuanto se libere uno, le avisas por WhatsApp en un toque."
           />
         </div>
       ) : (
         <div className="flex-1 overflow-hidden rounded-[20px] border border-border bg-card">
-          {waitlist.map((w) => {
+          <div className="hidden grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1fr)_96px_470px] gap-4 border-b border-lino bg-beige/40 px-5 py-2.5 text-[11px] font-bold tracking-[0.06em] text-cafe-suave uppercase lg:grid">
+            <span>Quién</span>
+            <span>Qué quiere</span>
+            <span>Cuándo puede</span>
+            <span>Espera</span>
+            <span>Hueco propuesto y acciones</span>
+          </div>
+          {filtradas.length === 0 && (
+            <p className="px-5 py-6 text-[14px] text-muted-foreground">Nadie espera con ese filtro. <button type="button" className="font-bold text-foreground underline" onClick={() => { setFServicio("todos"); setFPro("todas"); }}>Quitar filtros</button></p>
+          )}
+          {filtradas.map((w) => {
             const s = serviceMap[w.serviceId];
-            const e = w.preferredEmployeeId === "any" ? null : employeeMap[w.preferredEmployeeId];
+            const e = w.preferredEmployeeId === "any" ? null : equipo.find((x) => x.id === w.preferredEmployeeId) ?? employeeMap[w.preferredEmployeeId];
+            const h = huecos.get(w.id);
             return (
               <div
                 key={w.id}
-                className="flex flex-col gap-3 border-b border-border px-5 py-3.5 sm:flex-row sm:items-center sm:gap-4"
+                className="entrada-lista grid gap-x-4 gap-y-1.5 border-b border-lino px-5 py-3.5 last:border-b-0 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1fr)_96px_470px] lg:items-center"
               >
-                <Clock className="hidden size-[18px] shrink-0 text-muted-foreground sm:block" strokeWidth={1.6} />
-                <div className="min-w-0 flex-1">
-                  <p className="font-bold">{w.clientName}</p>
-                  <p className="text-[12.5px] text-muted-foreground">
-                    {s?.name ?? "Sin servicio concreto"}
-                    {soloUno
-                      ? ""
-                      : ` · ${e ? `con ${e.name}` : `cualquier ${professionalWord(tipo)}`}`}
-                    {w.preferredRange ? ` · ${w.preferredRange}` : ""}
-                  </p>
+                <div className="min-w-0">
+                  <p className="truncate font-bold">{w.clientName}</p>
+                  <p className="text-[12.5px] text-muted-foreground tabular-nums">{w.phone || "Sin teléfono"}</p>
                 </div>
-                <span className="text-[12.5px] text-muted-foreground tabular-nums">{w.phone}</span>
-                <div className="flex shrink-0 flex-wrap gap-2">
+                <p className="min-w-0 text-[13.5px]">
+                  {s?.name ?? "Sin servicio concreto"}
+                  {!soloUno && <span className="block text-[12.5px] text-muted-foreground">{e ? `con ${e.name}` : `cualquier ${professionalWord(tipo)}`}</span>}
+                </p>
+                <p className="min-w-0 text-[13.5px] text-cafe-medio">{w.preferredRange || "Cuando sea"}</p>
+                <p className="text-[12.5px] font-bold text-cafe-medio">
+                  <span className="lg:hidden">Espera </span>{esperandoDesde(w.createdAt, ahora)}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="mr-auto text-[12.5px] text-muted-foreground tabular-nums">
+                    {h ? `${h.fecha.toLocaleDateString("es-ES", { weekday: "short", day: "numeric" })} ${toTimeInput(h.fecha)}${soloUno ? "" : ` · ${equipo.find((x) => x.id === h.employeeId)?.name ?? ""}`}` : "Sin hueco en 14 días"}
+                  </span>
                   <Button
                     size="sm"
                     variant="outline"
@@ -194,10 +247,10 @@ function Waitlist() {
                     disabled={!w.phone}
                     title={w.phone ? undefined : "Sin teléfono no hay a quién escribir"}
                   >
-                    <MessageCircle className="h-3.5 w-3.5" /> Avisar
+                    <MessageCircle className="h-3.5 w-3.5" /> Avisar hueco
                   </Button>
                   <Button size="sm" className="gap-1.5" onClick={() => openConvert(w)}>
-                    <CalendarCheck className="h-3.5 w-3.5" /> Convertir a cita
+                    <CalendarCheck className="h-3.5 w-3.5" /> Convertir en cita
                   </Button>
                   <Button
                     size="icon"
@@ -228,7 +281,7 @@ function Waitlist() {
         entry={avisoTarget}
         salonName={salonName}
         servicio={avisoTarget ? serviceMap[avisoTarget.serviceId]?.name : undefined}
-        sugerida={horaSugerida(lastFreedSlot)}
+        sugerida={(avisoTarget && !lastFreedSlot && huecos.get(avisoTarget.id)?.fecha) || horaSugerida(lastFreedSlot)}
         onOpenChange={(o) => !o && setAvisoTarget(null)}
       />
 
@@ -239,10 +292,10 @@ function Waitlist() {
         defaultPhone={convertTarget?.phone}
         defaultServiceId={convertTarget?.serviceId}
         defaultEmployeeId={
-          convertTarget?.preferredEmployeeId === "any"
-            ? undefined
-            : convertTarget?.preferredEmployeeId
+          (convertTarget && huecos.get(convertTarget.id)?.employeeId) ||
+          (convertTarget?.preferredEmployeeId === "any" ? undefined : convertTarget?.preferredEmployeeId)
         }
+        defaultDate={convertTarget ? huecos.get(convertTarget.id)?.fecha : undefined}
         onCreated={handleConverted}
       />
 
