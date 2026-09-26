@@ -1,3 +1,4 @@
+import { msDe } from "./instante-cita";
 import type { Appointment, BookingAnswers, Client, Employee, Service } from "./mock/types";
 import { depositState } from "./deposit-deadline";
 import { nombreServicioLibre } from "./appointment-services";
@@ -39,7 +40,7 @@ export function fichaDeClienta(clientId: string, datos: DatosFicha) {
   const propias = datos.citas.filter((c) => c.clientId === clientId);
   const completas = propias
     .filter((c) => c.status === "completed" && new Date(c.start).getTime() < ahora)
-    .sort((a, b) => +new Date(b.start) - +new Date(a.start));
+    .sort((a, b) => msDe(b) - msDe(a));
   const nombresServicio = new Map(datos.servicios.map((s) => [s.id, s.name]));
   const nombresEquipo = new Map(datos.equipo.map((e) => [e.id, e.name]));
   const visitas: VisitaFicha[] = completas.map((c) => ({
@@ -55,9 +56,9 @@ export function fichaDeClienta(clientId: string, datos: DatosFicha) {
     origen: c.origen ?? "sishow",
   }));
   const proxima = propias
-    .filter((c) => (c.status === "pending" || c.status === "confirmed") && +new Date(c.start) >= ahora)
-    .sort((a, b) => +new Date(a.start) - +new Date(b.start))[0];
-  const fechas = completas.map((c) => +new Date(c.start));
+    .filter((c) => (c.status === "pending" || c.status === "confirmed") && msDe(c) >= ahora)
+    .sort((a, b) => msDe(a) - msDe(b))[0];
+  const fechas = completas.map((c) => msDe(c));
   const frecuenciaMediaDias = fechas.length >= 2
     ? Math.round((fechas[0] - fechas[fechas.length - 1]) / DIA / (fechas.length - 1))
     : undefined;

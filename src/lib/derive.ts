@@ -1,3 +1,4 @@
+import { diaDe, medianoche, msDe } from "./instante-cita";
 import { employees, serviceMap } from "./mock/salon";
 import type { Appointment, Employee } from "./mock/types";
 import { nombreServicioLibre } from "./appointment-services";
@@ -14,7 +15,8 @@ export function isSameDay(a: Date, b: Date) {
 
 export function todayKpis(appts: Appointment[]) {
   const now = new Date();
-  const today = appts.filter((a) => isSameDay(new Date(a.start), now) && a.status !== "cancelled");
+  const hoy = medianoche(now);
+  const today = appts.filter((a) => diaDe(a) === hoy && a.status !== "cancelled");
   const revenue = today
     .filter((a) => a.status !== "no-show")
     .reduce((sum, a) => sum + a.priceEur, 0);
@@ -23,7 +25,7 @@ export function todayKpis(appts: Appointment[]) {
     revenue,
     next: today
       .filter((a) => new Date(a.start) >= now)
-      .sort((a, b) => +new Date(a.start) - +new Date(b.start))[0],
+      .sort((a, b) => msDe(a) - msDe(b))[0],
   };
 }
 
@@ -47,7 +49,7 @@ export function newClientsThisWeek(appts: Appointment[]) {
   const start = +new Date(now.getTime() - 7 * DAY_MS);
   const ids = new Set<string>();
   appts.forEach((a) => {
-    if (+new Date(a.start) >= start) ids.add(a.clientId);
+    if (msDe(a) >= start) ids.add(a.clientId);
   });
   // Mock "new" as ~30% of weekly clients
   return Math.ceil(ids.size * 0.3);
@@ -55,7 +57,7 @@ export function newClientsThisWeek(appts: Appointment[]) {
 
 export function cancellationsThisWeek(appts: Appointment[]) {
   const start = Date.now() - 7 * DAY_MS;
-  return appts.filter((a) => a.status === "cancelled" && +new Date(a.start) >= start).length;
+  return appts.filter((a) => a.status === "cancelled" && msDe(a) >= start).length;
 }
 
 export function mostBookedService(appts: Appointment[]) {
@@ -69,23 +71,33 @@ export function mostBookedService(appts: Appointment[]) {
 }
 
 export function revenueByDay(appts: Appointment[], days = 30) {
-  const out: { date: string; revenue: number; bookings: number }[] = [];
+  // Lote 15: una pasada por las citas agrupando por día (antes, 30 filtros
+  // sobre todas las citas con un `new Date` cada vez: ~19 ms con la demo).
   const now = new Date();
+  const dias: Date[] = [];
+  const porDia = new Map<number, { revenue: number; bookings: number }>();
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setHours(0, 0, 0, 0);
     d.setDate(d.getDate() - i);
-    const label = d.toLocaleDateString("en", { month: "short", day: "numeric" });
-    const dayAppts = appts.filter(
-      (a) => isSameDay(new Date(a.start), d) && a.status !== "cancelled" && a.status !== "no-show",
-    );
-    out.push({
-      date: label,
-      revenue: dayAppts.reduce((s, a) => s + a.priceEur, 0),
-      bookings: dayAppts.length,
-    });
+    dias.push(d);
+    porDia.set(d.getTime(), { revenue: 0, bookings: 0 });
   }
-  return out;
+  const desde = dias[0]?.getTime() ?? 0;
+  for (const a of appts) {
+    if (a.status === "cancelled" || a.status === "no-show") continue;
+    const t = new Date(a.start);
+    if (t.getTime() < desde) continue;
+    t.setHours(0, 0, 0, 0);
+    const b = porDia.get(t.getTime());
+    if (!b) continue;
+    b.revenue += a.priceEur;
+    b.bookings += 1;
+  }
+  return dias.map((d) => {
+    const b = porDia.get(d.getTime())!;
+    return { date: d.toLocaleDateString("en", { month: "short", day: "numeric" }), revenue: b.revenue, bookings: b.bookings };
+  });
 }
 
 export function serviceMix(appts: Appointment[]) {
@@ -135,7 +147,7 @@ export function clientFrequency(appts: Appointment[], clientId: string, now: Dat
   const ahora = now.getTime();
   const own = appts
     .filter((a) => a.clientId === clientId && a.status !== "cancelled")
-    .sort((a, b) => +new Date(a.start) - +new Date(b.start));
+    .sort((a, b) => msDe(a) - msDe(b));
   const totalSpent = own.filter((a) => a.status !== "no-show").reduce((s, a) => s + a.priceEur, 0);
   const fav: Record<string, number> = {};
   own.forEach((a) => a.serviceIds.forEach((id) => (fav[id] = (fav[id] ?? 0) + 1)));
@@ -146,8 +158,8 @@ export function clientFrequency(appts: Appointment[], clientId: string, now: Dat
   // ascendente, futuras incluidas. En una ficha con cita para la semana que
   // viene, "Última visita" enseñaba esa fecha futura — y es justo el dato con
   // el que se decide a quién hay que reactivar.
-  const pasadas = own.filter((a) => +new Date(a.start) <= ahora && cuentaComoVisita(a));
-  const futuras = own.filter((a) => +new Date(a.start) > ahora && a.status !== "no-show");
+  const pasadas = own.filter((a) => msDe(a) <= ahora && cuentaComoVisita(a));
+  const futuras = own.filter((a) => msDe(a) > ahora && a.status !== "no-show");
 
   return {
     visits: own.length,
@@ -187,14 +199,14 @@ export function duracionRecordada(
     .filter(
       (a) =>
         a.clientId === clientId &&
-        +new Date(a.start) <= ahora &&
+        msDe(a) <= ahora &&
         cuentaComoVisita(a) &&
         // Una solicitud pendiente no demuestra cuánto duró un servicio,
         // aunque su hora ya haya pasado y aún no se haya resuelto en el panel.
         a.status !== "pending" &&
         [...a.serviceIds].sort().join(",") === clave,
     )
-    .sort((a, b) => +new Date(a.start) - +new Date(b.start));
+    .sort((a, b) => msDe(a) - msDe(b));
   const ultima = previas[previas.length - 1];
   if (!ultima) return null;
   if (ultima.duration === duracionDeCatalogo) return null;
@@ -240,7 +252,7 @@ const SIN_DATOS = "Todavía no hay suficientes reservas para sacar un patrón de
 function citasAnalizables(appts: Appointment[], now: Date) {
   const ahora = now.getTime();
   return appts.filter(
-    (a) => a.status !== "cancelled" && a.status !== "blocked" && +new Date(a.start) <= ahora,
+    (a) => a.status !== "cancelled" && a.status !== "blocked" && msDe(a) <= ahora,
   );
 }
 
@@ -266,7 +278,7 @@ export function patronDeRegreso(
   for (const a of pasadas) {
     if (!a.clientId) continue;
     const lista = porCliente.get(a.clientId) ?? [];
-    lista.push(+new Date(a.start));
+    lista.push(msDe(a));
     porCliente.set(a.clientId, lista);
   }
   if (pasadas.length < MIN_CITAS_PARA_ANALIZAR) return null;
@@ -274,7 +286,7 @@ export function patronDeRegreso(
 
   const conCitaFutura = new Set(
     appts
-      .filter((a) => +new Date(a.start) > ahora && a.status !== "cancelled")
+      .filter((a) => msDe(a) > ahora && a.status !== "cancelled")
       .map((a) => a.clientId),
   );
 
@@ -442,9 +454,8 @@ export function trendDisplay(trend: KpiTrend): TrendDisplay {
 
 /** Non-cancelled appointment count + revenue for the single calendar day containing `date`. */
 function dayCountAndRevenue(appts: Appointment[], date: Date) {
-  const dayAppts = appts.filter(
-    (a) => isSameDay(new Date(a.start), date) && a.status !== "cancelled",
-  );
+  const dia = medianoche(date);
+  const dayAppts = appts.filter((a) => diaDe(a) === dia && a.status !== "cancelled");
   const revenue = dayAppts
     .filter((a) => a.status !== "no-show")
     .reduce((sum, a) => sum + a.priceEur, 0);
@@ -497,7 +508,7 @@ function weeklyCapacitySlots() {
 
 function occupancyPct(appts: Appointment[], start: number, end: number) {
   const inRange = appts.filter((a) => {
-    const t = +new Date(a.start);
+    const t = msDe(a);
     return t >= start && t < end && a.status !== "cancelled";
   });
   const totalSlots = weeklyCapacitySlots();
@@ -520,7 +531,7 @@ export function weeklyOccupancyTrend(appts: Appointment[]): KpiTrend {
 function newClientsInRange(appts: Appointment[], start: number, end: number) {
   const ids = new Set<string>();
   appts.forEach((a) => {
-    const t = +new Date(a.start);
+    const t = msDe(a);
     if (t >= start && t < end) ids.add(a.clientId);
   });
   // Mirrors newClientsThisWeek's "new" mock heuristic (~30% of weekly clients).
@@ -541,7 +552,7 @@ export function newClientsTrend(appts: Appointment[]): KpiTrend {
 
 function cancellationsInRange(appts: Appointment[], start: number, end: number) {
   return appts.filter(
-    (a) => a.status === "cancelled" && +new Date(a.start) >= start && +new Date(a.start) < end,
+    (a) => a.status === "cancelled" && msDe(a) >= start && msDe(a) < end,
   ).length;
 }
 
@@ -630,14 +641,14 @@ type RangeAgg = (appts: Appointment[], start: number, end: number) => number;
 
 const aggCitas: RangeAgg = (appts, start, end) =>
   appts.filter((a) => {
-    const t = +new Date(a.start);
+    const t = msDe(a);
     return t >= start && t < end && a.status !== "cancelled";
   }).length;
 
 const aggIngresos: RangeAgg = (appts, start, end) =>
   appts
     .filter((a) => {
-      const t = +new Date(a.start);
+      const t = msDe(a);
       return t >= start && t < end && a.status !== "cancelled" && a.status !== "no-show";
     })
     .reduce((sum, a) => sum + a.priceEur, 0);
@@ -645,7 +656,7 @@ const aggIngresos: RangeAgg = (appts, start, end) =>
 const aggOcupacion: RangeAgg = (appts, start, end) => {
   const totalSlots = weeklyCapacitySlots() * ((end - start) / WEEK_MS);
   const inRange = appts.filter((a) => {
-    const t = +new Date(a.start);
+    const t = msDe(a);
     return t >= start && t < end && a.status !== "cancelled";
   });
   const used = inRange.reduce((s, a) => s + a.duration / 30, 0);
@@ -663,6 +674,13 @@ function slidingTrend(
   agg: RangeAgg,
 ): KpiTrend {
   const start = end - durationMs;
+  // Lote 15: los 10 cortes caen en [end - 9·dur, end); se filtra una vez y
+  // cada agregado recorre solo ese tramo (antes, todas las citas 10 veces).
+  const inicioTotal = end - 9 * durationMs;
+  appts = appts.filter((a) => {
+    const t = Date.parse(a.start);
+    return !(t >= end) && !(t < inicioTotal);
+  });
   const spark: number[] = [];
   for (let i = 7; i >= 0; i--) {
     spark.push(agg(appts, end - (i + 1) * durationMs, end - i * durationMs));

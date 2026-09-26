@@ -1,3 +1,4 @@
+import { msDe } from "./instante-cita";
 import type { Appointment, Employee, Service } from "./mock/types";
 import { colorElegidoServicio } from "./colores-elegidos";
 import { franjasProfesional } from "./horario-equipo";
@@ -19,16 +20,16 @@ export function citasDelDia(appts: Appointment[], dia: Date): Appointment[] {
         a.status !== "cancelled" &&
         a.status !== "blocked",
     )
-    .sort((a, b) => +new Date(a.start) - +new Date(b.start));
+    .sort((a, b) => msDe(a) - msDe(b));
 }
 
 export function finDe(a: Appointment): number {
-  return +new Date(a.start) + a.duration * 60_000;
+  return msDe(a) + a.duration * 60_000;
 }
 
 /** Empezada y sin terminar a la hora dada. */
 export function enCurso(a: Appointment, ahora: Date): boolean {
-  return +new Date(a.start) <= +ahora && finDe(a) > +ahora;
+  return msDe(a) <= +ahora && finDe(a) > +ahora;
 }
 
 /** Ya terminada a la hora dada. */
@@ -87,7 +88,7 @@ export function duracionCorta(min: number): string {
 
 /** «en 20 min», «en 2 h 20». Vacío si ya ha empezado. */
 export function faltaPara(a: Appointment, ahora: Date): string {
-  const min = Math.round((+new Date(a.start) - +ahora) / 60_000);
+  const min = Math.round((msDe(a) - +ahora) / 60_000);
   if (min <= 0) return "";
   return `en ${duracionCorta(min)}`;
 }

@@ -1,3 +1,4 @@
+import { msDe } from "./instante-cita";
 import type { Appointment, Client, Employee, Service } from "./mock/types";
 import { fechaCorta } from "./copy";
 import { momentoLocal } from "./zona-horaria";
@@ -111,7 +112,7 @@ function ultimaVisitaCompletada(appointments: Appointment[], clientId: string): 
   let mejorMs = -Infinity;
   for (const a of citasDeClienta(appointments, clientId)) {
     if (a.status !== "completed") continue;
-    const ms = +new Date(a.start);
+    const ms = msDe(a);
     if (mejor === undefined || ms > mejorMs) { mejor = a; mejorMs = ms; }
   }
   return mejor;
@@ -145,7 +146,7 @@ export function clientesQueNoVuelven(
       const tieneProximaCita = citasDeClienta(appointments, client.id).some(
         (a) =>
           (a.status === "pending" || a.status === "confirmed") &&
-          +new Date(a.start) > nowMs,
+          msDe(a) > nowMs,
       );
       if (tieneProximaCita) return null;
 
@@ -207,7 +208,7 @@ export function calcularHuecoFlojo(
   const nowMs = +now;
   const desde = nowMs - ROLLING_WEEKS * 7 * DAY_MS;
   const pasadas = appointments.filter(
-    (a) => a.status !== "cancelled" && +new Date(a.start) >= desde && +new Date(a.start) < nowMs,
+    (a) => a.status !== "cancelled" && msDe(a) >= desde && msDe(a) < nowMs,
   );
 
   // Slots usados por día×franja, en UNA pasada (antes eran 14 pasadas creando
@@ -380,10 +381,10 @@ export function resenaTrasLaCita(
   const porCliente = new Map<string, Appointment>();
   for (const a of appointments) {
     if (a.status !== "completed") continue;
-    const dias = (nowMs - +new Date(a.start)) / DAY_MS;
+    const dias = (nowMs - msDe(a)) / DAY_MS;
     if (dias < 0 || dias > DIAS_RESENA) continue;
     const previa = porCliente.get(a.clientId);
-    if (!previa || +new Date(a.start) > +new Date(previa.start)) porCliente.set(a.clientId, a);
+    if (!previa || msDe(a) > +new Date(previa.start)) porCliente.set(a.clientId, a);
   }
 
   const personas: CampanaPersona[] = [...porCliente.entries()]
@@ -470,7 +471,7 @@ export function servicioQueMasDeja(
     if (a.serviceIds.includes(comboId)) entry.proboCombo = true;
     if (a.serviceIds.length === 1 && a.serviceIds[0] === baseId) {
       entry.veces += 1;
-      if (+new Date(a.start) > +new Date(entry.ultima.start)) entry.ultima = a;
+      if (msDe(a) > +new Date(entry.ultima.start)) entry.ultima = a;
     }
     porCliente.set(a.clientId, entry);
   }

@@ -1,3 +1,4 @@
+import { parcheCalendario, type PreferenciasCalendario } from "./preferencias-calendario";
 import { conservarIguales } from "./conservar-iguales";
 import { create } from "zustand";
 import { PERMISOS_DEMO, permisosDe, puede, type MiembroActual } from "./permisos";
@@ -222,7 +223,8 @@ interface SalonState {
   markPaid: (id: string, method: PaymentMethod | null) => void;
   /** Deja constancia de que se ha pedido la señal por Bizum de esta cita. */
   /** @deprecated usar `pedirSenal`. Se conserva para las pantallas que aún lo llaman. */
-  markDepositRequested: (id: string, eur: number, requestedAt: string) => void;
+  /** Devuelve el código de error si no se pudo (antes se tragaba en silencio, lote 15). */
+  markDepositRequested: (id: string, eur: number, requestedAt: string) => CodigoErrorSenal | null;
   /**
    * Señal (lib/senal.ts, contrato-senal.md). Cada acción devuelve `null` si se
    * aplicó o el código de error si no se podía (y entonces no cambia nada).
@@ -702,7 +704,7 @@ export const useSalonStore = create<SalonState>()(
       },
 
       markDepositRequested: (id, eur, requestedAt) => {
-        aplicarSenalA(id, (c) => pedirSenal(c, reglaSenal(get().salonProfile), eur, new Date(requestedAt)));
+        return aplicarSenalA(id, (c) => pedirSenal(c, reglaSenal(get().salonProfile), eur, new Date(requestedAt)));
       },
 
       pedirSenal: (id) => {
@@ -948,7 +950,12 @@ export const useSalonStore = create<SalonState>()(
         sincronizarCarta();
       },
 
-      updateSalonProfile: (patch) => {
+      updateSalonProfile: (patchEntrada) => {
+        // Lote 15: `calendario` se fusiona con lo que había y se sanea (una
+        // pantalla que mande solo `{ desde }` no borra la vista ni el primer día).
+        const patch = patchEntrada.calendario
+          ? { ...patchEntrada, ...parcheCalendario(get().salonProfile.calendario, patchEntrada.calendario as Partial<PreferenciasCalendario>) }
+          : patchEntrada;
         set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } }));
         const perfil = get().salonProfile;
         setEmployeesForType(

@@ -1,3 +1,4 @@
+import { msDe } from "./instante-cita";
 import type { Appointment, Employee, Service } from "./mock/types";
 import type { PeriodoId, Rango } from "./periodos";
 import { franjasProfesional } from "./horario-equipo";
@@ -20,7 +21,7 @@ export interface Barra {
 
 const cuenta = (a: Appointment) => a.status !== "cancelled" && a.status !== "blocked";
 const dentro = (a: Appointment, r: Rango) => {
-  const t = +new Date(a.start);
+  const t = msDe(a);
   return t >= +r.inicio && t < +r.fin;
 };
 const DCORTO = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
@@ -76,6 +77,15 @@ export function barrasDelPeriodo(
 export function ocupacionPorProfesional(appts: Appointment[], r: Rango, equipo: Employee[]): { e: Employee; pct: number; citas: number }[] {
   const citas = citasDelRango(appts, r);
   const dias = Math.max(1, Math.round((+r.fin - +r.inicio) / 86_400_000));
+  // Lote 15: las citas se agrupan por día una sola vez (antes se filtraban
+  // todas por cada día y cada profesional).
+  const porDia = new Map<string, Appointment[]>();
+  for (const a of citas) {
+    const k = new Date(a.start).toDateString();
+    const l = porDia.get(k);
+    if (l) l.push(a);
+    else porDia.set(k, [a]);
+  }
   return equipo.map((e) => {
     let jornada = 0;
     let ocupado = 0;
@@ -84,7 +94,7 @@ export function ocupacionPorProfesional(appts: Appointment[], r: Rango, equipo: 
       d.setDate(r.inicio.getDate() + i);
       const j = franjasProfesional(e, d.getDay()).reduce((t, f) => t + (f.end - f.start), 0);
       if (!j) continue;
-      const delDia = citas.filter((a) => new Date(a.start).toDateString() === d.toDateString());
+      const delDia = porDia.get(d.toDateString()) ?? [];
       jornada += j;
       ocupado += (ocupacionDe(delDia, e, d.getDay()) * j) / 100;
     }
@@ -115,7 +125,7 @@ export function nuevasYRecurrentes(appts: Appointment[], r: Rango): { nuevas: nu
   const primera = new Map<string, number>();
   for (const a of appts) {
     if (!cuenta(a)) continue;
-    const t = +new Date(a.start);
+    const t = msDe(a);
     const p = primera.get(a.clientId);
     if (p === undefined || t < p) primera.set(a.clientId, t);
   }
