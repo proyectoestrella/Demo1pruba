@@ -149,6 +149,33 @@ export function RejillaCalendario({
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     lienzo.current?.animate?.([{ opacity: 0.35, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], { duration: 160, easing: "ease-out" });
   }, [claveScroll]);
+  // Etiquetas de hora que quedarían medio tapadas por la cabecera fija: se
+  // ocultan enteras (como Google Calendar). Sin React: 23 spans, una vez por fotograma.
+  const horasCol = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const col = horasCol.current;
+    if (!el || !col) return;
+    let pendiente = 0;
+    const ajustar = () => {
+      pendiente = 0;
+      const limite = el.scrollTop + 10; // media etiqueta: por encima, la taparía la cabecera
+      for (const sp of Array.from(col.children) as HTMLElement[]) {
+        const top = Number(sp.dataset.top);
+        sp.style.visibility = top < limite ? "hidden" : "";
+      }
+    };
+    const alScroll = () => {
+      if (!pendiente) pendiente = requestAnimationFrame(ajustar);
+    };
+    ajustar();
+    el.addEventListener("scroll", alScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", alScroll);
+      cancelAnimationFrame(pendiente);
+    };
+  }, [px]);
+  const minAhoraVisible = hoyVisible ? minutosDe(ahora) : null;
   // «Hoy»: hasta ahora, con scroll suave (sin animación si se pide menos movimiento).
   useLayoutEffect(() => {
     const el = ref.current;
@@ -182,12 +209,17 @@ export function RejillaCalendario({
         })}
 
         {/* Columna de horas, fija a la izquierda. */}
-        <div className="sticky left-0 z-[9] border-r border-k-linea-f bg-k-cab" style={{ height: horas * px }}>
+        <div ref={horasCol} className="sticky left-0 z-[9] border-r border-k-linea-f bg-k-cab" style={{ height: horas * px }}>
           {Array.from({ length: horas }, (_, i) =>
             i === 0 ? null : (
               <span
                 key={i}
-                className="absolute right-2 -translate-y-1/2 text-[10.5px] font-semibold text-cafe-suave tabular-nums"
+                data-top={i * px}
+                className={cn(
+                  "absolute right-2 -translate-y-1/2 text-[10.5px] font-semibold text-cafe-suave tabular-nums",
+                  // El punto rojo de «ahora» no pisa la etiqueta de su hora.
+                  minAhoraVisible !== null && Math.abs(minAhoraVisible - i * 60) < 12 && "opacity-0",
+                )}
                 style={{ top: i * px }}
               >
                 {desde + i}:00
