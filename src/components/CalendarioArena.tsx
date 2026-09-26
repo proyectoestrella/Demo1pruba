@@ -375,7 +375,7 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
       {/* Caja del calendario: la vista, con scroll interno. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[20px] border border-lino-fuerte bg-card">
         {vista === "cronograma" && (
-          <Cronograma dia={anchor} citas={citasDia} equipo={equipo} ahora={ahora} carta={carta} services={services} onCita={setSeleccionada} onHueco={abrirHueco} />
+          <Cronograma dia={anchor} citas={citasDia} equipo={equipo} ahora={ahora} carta={carta} services={services} irAAhora={irAAhora} onCita={setSeleccionada} onHueco={abrirHueco} />
         )}
         {esRejilla && (
           <RejillaCalendario
@@ -611,6 +611,7 @@ function Cronograma({
   ahora,
   carta,
   services,
+  irAAhora = 0,
   onCita,
   onHueco,
 }: {
@@ -620,29 +621,40 @@ function Cronograma({
   ahora: Date;
   carta: Record<string, Service>;
   services: Service[];
+  irAAhora?: number;
   onCita: (a: Appointment) => void;
   onHueco: AbrirHueco;
 }) {
   const scroll = useRef<HTMLDivElement>(null);
   const derecha = useRef<HTMLDivElement>(null);
-  const h = horizonteDelDia(equipo, dia.getDay());
+  // Lote 15: el día entero a lo ancho (00:00-24:00); la jornada llena la
+  // pantalla al abrir y lo de antes o después se ve con scroll horizontal.
+  const jornada = horizonteDelDia(equipo, dia.getDay());
+  const h = { ini: 0, fin: 24 * 60 };
   const esHoy = mismoDia(dia, ahora);
   const minAhora = minutosDe(ahora);
-
-  // Hoy, si la rejilla no cabe a lo ancho, arranca centrada en «ahora».
-  useLayoutEffect(() => {
+  const irA = (min: number, suave = false) => {
     const el = scroll.current;
     const der = derecha.current;
-    if (!el || !der || !h || !esHoy) return;
-    if (el.scrollWidth > el.clientWidth + 10) {
-      el.scrollLeft = Math.max(0, (porcentaje(minAhora, h) / 100) * der.offsetWidth - 80);
-    }
+    if (!el || !der) return;
+    el.scrollTo({ left: Math.max(0, (min / (24 * 60)) * der.offsetWidth), behavior: suave && !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "smooth" : "auto" });
+  };
+  // Al abrir: el principio de la jornada, o una hora antes de ahora si es hoy y cae dentro.
+  useLayoutEffect(() => {
+    if (!jornada) return;
+    const dentro = esHoy && minAhora >= jornada.ini && minAhora < jornada.fin;
+    irA(dentro ? minAhora - 60 : jornada.ini);
     // Solo al cambiar de día: no perseguir la línea de «ahora» cada minuto.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dia.getTime()]);
+  }, [dia.getTime(), !!jornada]);
+  useLayoutEffect(() => {
+    if (irAAhora) irA(minAhora - 60, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [irAAhora]);
 
-  if (!h) return <VacioDia dia={dia} />;
-  const horas = (h.fin - h.ini) / 60;
+  if (!jornada) return <VacioDia dia={dia} />;
+  const horas = 24;
+  const horasJornada = Math.max(1, (jornada.fin - jornada.ini) / 60);
   const filas = `44px repeat(${equipo.length}, minmax(120px, 1fr))`;
   const pos = (ini: number, dur: number): CSSProperties => ({
     left: `calc(${porcentaje(ini, h)}% + 2px)`,
@@ -658,7 +670,11 @@ function Cronograma({
 
   return (
     <div ref={scroll} className="relative min-h-0 flex-1 overflow-auto">
-      <div className="grid h-full min-h-[376px] min-w-[1000px] grid-cols-[92px_1fr] md:min-w-[1100px] md:grid-cols-[168px_1fr]">
+      <div
+        className="grid h-full min-h-[376px] grid-cols-[92px_1fr] [--izq:92px] md:grid-cols-[168px_1fr] md:[--izq:168px]"
+        // La jornada ocupa el ancho visible; las 24 h, 24/jornada veces eso (60 px por hora como mínimo).
+        style={{ width: `max(calc(var(--izq) + (100% - var(--izq)) * ${24 / horasJornada}), calc(var(--izq) + ${24 * 60}px))` }}
+      >
         <div className="sticky left-0 z-[8] grid border-r border-k-linea-f bg-card" style={{ gridTemplateRows: filas }}>
           <div className="flex items-center border-b border-k-linea-f bg-k-cab pl-4 text-[11px] font-bold tracking-[0.06em] text-k-tinta2 uppercase">Profesional</div>
           {equipo.map((e, i) => {
@@ -683,9 +699,10 @@ function Cronograma({
               <span
                 key={i}
                 className="absolute top-[13px] text-xs font-bold text-k-tinta2 tabular-nums"
-                style={i === 0 ? { left: 8 } : { left: `${(i / horas) * 100}%`, transform: "translateX(-50%)" }}
+                // Etiqueta a la derecha de su línea: con scroll horizontal, la columna fija no la tapa a medias.
+                style={{ left: `calc(${(i / horas) * 100}% + 6px)` }}
               >
-                {h.ini / 60 + i}:00
+                {i}:00
               </span>
             ))}
           </div>
@@ -716,6 +733,15 @@ function Cronograma({
               </div>
             );
           })}
+          {/* Fuera de la jornada: rayado tenue, como en la rejilla. */}
+          {[{ ini: 0, fin: jornada.ini }, { ini: jornada.fin, fin: 24 * 60 }].filter((t) => t.fin > t.ini).map((t) => (
+            <div
+              key={`f${t.ini}`}
+              aria-hidden="true"
+              className="pointer-events-none absolute top-[46px] bottom-0 z-[1] bg-[repeating-linear-gradient(135deg,var(--k-cerrado)_0_6px,transparent_6px_12px)] opacity-55"
+              style={{ left: `${porcentaje(t.ini, h)}%`, width: `${((t.fin - t.ini) / (24 * 60)) * 100}%` }}
+            />
+          ))}
           {esHoy && minAhora >= h.ini && minAhora <= h.fin && (
             <div className="pointer-events-none absolute top-0 bottom-0 z-[5] w-0.5 bg-k-ahora" style={{ left: `${porcentaje(minAhora, h)}%` }} aria-hidden="true">
               <i className="absolute top-[11px] -left-[22px] rounded-full bg-k-ahora px-1.5 text-[10px] font-extrabold text-white not-italic tabular-nums">{hora(ahora)}</i>
@@ -729,7 +755,6 @@ function Cronograma({
 
 /* ---------- Día y semana: rejilla vertical ---------- */
 
-/** Alto de una hora para que la rejilla llene la caja (64 px como mínimo). */
 /* ---------- Mes ---------- */
 
 function VistaMes({ anchor, appointments, equipo, ahora, primerDia, onDia }: { anchor: Date; appointments: Appointment[]; equipo: Employee[]; ahora: Date; primerDia: PrimerDia; onDia: (d: Date) => void }) {
