@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Expand } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Reveal } from "@/components/Reveal";
-import { Lens } from "@/components/magicui/lens";
+import { cn } from "@/lib/utils";
+import { CONTENEDOR_WEB, SECCION_WEB } from "@/lib/web-publica";
 import galleryRecorte from "@/assets/gallery-recorte.jpg";
 import galleryDegradado from "@/assets/gallery-degradado.jpg";
 import gallerySalon from "@/assets/gallery-salon.jpg";
@@ -33,52 +34,69 @@ function relleno(tipo: string | undefined) {
 /** Con menos de esto la fila se ve incompleta y la página parece a medio hacer. */
 const MINIMO_EN_REJILLA = 3;
 
+/**
+ * Lote 17: la rejilla nunca queda coja. Con 6 fotos en 4 columnas la segunda
+ * fila dejaba dos huecos; ahora se enseñan en múltiplos de 3 (3 columnas
+ * desde md) y, en móvil (2 columnas), si el número es impar la primera ocupa
+ * el ancho entero. Tamaño fijo y carga diferida: sin saltos de maquetación.
+ */
+function paraRejilla<T>(items: T[]): T[] {
+  if (items.length <= MINIMO_EN_REJILLA) return items;
+  return items.slice(0, items.length - (items.length % 3));
+}
+
 export function WorkGallery({ photos = [], tipo }: { photos?: string[]; tipo?: string }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
-  // Se enseñan las fotos del propio local. Cuando tiene una o dos —hay locales
-  // del rutero con una sola foto en Google, y alguno con ninguna— se completa
-  // la fila con las de ejemplo: una rejilla con un hueco se lee como error, y
-  // lo que se está enseñando es cómo quedaría su web, no un inventario de su
-  // ficha. Las suyas van primero, que son las que le van a llamar la atención.
-  // Una foto propia que no carga (sin clave de Google, foto retirada) se quita
-  // y su hueco lo rellena una de ejemplo.
   const { rotas, marcar, vigilar } = useImagenesRotas();
-  const propias = photos.filter((src) => !rotas.has(src)).map((src, i) => ({ src, alt: `Foto ${i + 1} del local` }));
+  const propias = photos.filter((src) => !rotas.has(src)).map((src, i) => ({ src, alt: `Foto ${i + 1} de ${tipo ? "la " + tipo.toLowerCase() : "el local"}` }));
   const faltan = Math.max(0, MINIMO_EN_REJILLA - propias.length);
-  const images = [...propias, ...relleno(tipo).slice(0, faltan)];
+  const images = paraRejilla([...propias, ...relleno(tipo).slice(0, faltan)]);
   const openImage = openIndex !== null ? images[openIndex] : null;
+  const impar = images.length % 2 === 1;
 
   return (
-    <section id="galeria" className="border-t border-border/40">
-      <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24">
-        <Reveal className="mb-10">
-          <p className="text-xs uppercase tracking-[0.25em] text-primary">Nuestro trabajo</p>
-          <h2 className="mt-2 font-display text-3xl md:text-4xl">Galería</h2>
+    <section id="galeria" className="border-t border-lino bg-card">
+      <div className={cn(CONTENEDOR_WEB, SECCION_WEB)}>
+        <Reveal className="mb-8 md:mb-10">
+          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Nuestro trabajo</p>
+          <h2 className="mt-2 text-[26px] font-extrabold leading-tight tracking-tight md:text-[32px]">Galería</h2>
         </Reveal>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+        <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
           {images.map((img, i) => (
-            <Reveal key={img.src} delay={i * 80}>
-              {/* La lupa deja mirar el degradado y el remate de cerca sin salir
-                  de la página; el clic sigue abriendo la foto a tamaño grande. */}
-              <Lens zoomFactor={1.6} lensSize={140} ariaLabel={`Ampliar: ${img.alt}`}>
+            <li key={img.src} className={cn(impar && i === 0 && "col-span-2 md:col-span-1")}>
+              <Reveal delay={(i % 3) * 60}>
                 <button
                   type="button"
                   onClick={() => setOpenIndex(i)}
-                  className="group relative block aspect-square w-full overflow-hidden rounded-2xl border border-border/60 transition-colors hover:border-primary/40"
+                  aria-label={`Ampliar: ${img.alt}`}
+                  className={cn(
+                    "group relative block w-full overflow-hidden rounded-[20px] border border-lino bg-beige",
+                    impar && i === 0 ? "aspect-[2/1] md:aspect-square" : "aspect-square",
+                  )}
                 >
-                  <img src={img.src} ref={vigilar(img.src)} onError={() => marcar(img.src)} alt={img.alt} className="h-full w-full object-cover" />
-                  <span className="absolute bottom-2 right-2 flex size-7 items-center justify-center rounded-full bg-black/50 text-white opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
-                    <Expand className="h-3.5 w-3.5" />
+                  <img
+                    src={img.src}
+                    ref={vigilar(img.src)}
+                    onError={() => marcar(img.src)}
+                    alt={img.alt}
+                    width={600}
+                    height={600}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+                  />
+                  <span className="absolute bottom-2 right-2 flex size-9 items-center justify-center rounded-full bg-cafe/70 text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
+                    <Expand className="h-4 w-4" aria-hidden="true" />
                   </span>
                 </button>
-              </Lens>
-            </Reveal>
+              </Reveal>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
 
       <Dialog open={openIndex !== null} onOpenChange={(open) => !open && setOpenIndex(null)}>
-        <DialogContent className="max-w-3xl overflow-hidden border-border p-0 sm:rounded-2xl">
+        <DialogContent className="max-w-3xl overflow-hidden border-lino p-0 sm:rounded-[20px]">
           <DialogTitle className="sr-only">{openImage?.alt ?? "Foto de la galería"}</DialogTitle>
           {openImage && (
             <img

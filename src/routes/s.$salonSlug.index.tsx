@@ -3,19 +3,13 @@ import { DEMO_PARAM } from "@/lib/demo-profile";
 import { logoDelSalon } from "@/lib/logo-salon";
 import {
   ArrowRight,
-  CalendarCheck,
+  ChevronRight,
   Clock,
-  Info,
   Instagram,
   MapPin,
   Navigation,
   Phone,
-  Quote,
-  Scissors,
-  ShieldCheck,
-  Sparkles,
   Star,
-  Users,
 } from "lucide-react";
 import {
   employeesForType,
@@ -37,7 +31,7 @@ import {
 import { StylistAvatar } from "@/components/StylistAvatar";
 import type { EmployeeId } from "@/lib/mock/types";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
 import { useClientNow } from "@/lib/use-client-now";
 import { galleryPhotosFor } from "@/lib/demo-photos";
@@ -47,11 +41,6 @@ import heroSalonImg from "@/assets/gallery-salon.jpg";
 import { WorkGallery } from "@/components/WorkGallery";
 import { MobileBookingBar } from "@/components/MobileBookingBar";
 import { Reveal } from "@/components/Reveal";
-import { TextEffect } from "@/components/motion-primitives/text-effect";
-import { AnimatedGroup } from "@/components/motion-primitives/animated-group";
-import { ShinyText } from "@/components/reactbits/ShinyText";
-import { SpotlightCard } from "@/components/reactbits/SpotlightCard";
-import { ScrollVelocity } from "@/components/reactbits/ScrollVelocity";
 import {
   Accordion,
   AccordionContent,
@@ -59,17 +48,9 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
-import { AvatarCircles } from "@/components/magicui/avatar-circles";
-import { BentoCard, BentoGrid } from "@/components/magicui/bento-grid";
-import { BorderBeam } from "@/components/magicui/border-beam";
-import { DotPattern } from "@/components/magicui/dot-pattern";
-import { Marquee } from "@/components/magicui/marquee";
-import { cintaDeSalon } from "@/lib/salon-words";
-import { ShimmerButton } from "@/components/magicui/shimmer-button";
-import { WordRotate } from "@/components/magicui/word-rotate";
 import { TeamShowcase } from "@/components/twentyfirst/team-showcase";
 import { cn } from "@/lib/utils";
+import { CONTENEDOR_WEB, SECCION_WEB, listaConY, notaEs } from "@/lib/web-publica";
 import { eur } from "@/lib/copy";
 import { faqPublica } from "@/lib/faq";
 import { reglaSenal, respuestaFaqSenal, resumenCancelacionSenal, servicioLlevaSenal, type ReglaSenal } from "@/lib/senal";
@@ -184,129 +165,32 @@ const REVIEWS_BY_TYPE: Record<BusinessType, Review[]> = {
   ],
 };
 
-/** Card hover lift, gated so it's fully inert under prefers-reduced-motion. */
-const CARD_HOVER =
-  "transition-all duration-300 hover:-translate-y-1 motion-reduce:hover:translate-y-0";
-
-/** Variantes de entrada del hero — el patrón de los bloques de Tailark. */
-const HERO_IN = {
-  container: {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.12, delayChildren: 0.4 } },
-  },
-  item: {
-    hidden: { opacity: 0, y: 24, filter: "blur(8px)" },
-    visible: {
-      opacity: 1,
-      y: 0,
-      filter: "blur(0px)",
-      transition: { type: "spring" as const, bounce: 0.3, duration: 1.4 },
-    },
-  },
-};
-
-/**
- * Celdas de la rejilla bento. Todo lo que se afirma aquí es cierto en la app:
- * el equipo son tres, la cancelación gratuita es la que marca la política de
- * plantón del salón (24 h por defecto, o las horas pactadas si tiene
- * penalización activa — ver no-show.ts) y los precios y duraciones salen del
- * catálogo.
- *
- * Los destinos son anclas de esta misma página a propósito: `BentoCard`
- * renderiza un `<a href>` normal y una ruta real forzaría recarga completa en
- * vez de navegar por el router. Para reservar ya están los botones de arriba,
- * el de la cabecera y la barra fija del móvil.
- */
-function bentoItemsFor(
-  tipo: BusinessType,
-  noShowFeeEur: number,
-  noShowNoticeHours: number,
-  single: boolean,
-  proName?: string,
-  textoSenal = "",
-) {
-  const palabra = professionalWord(tipo);
-  // Señal por Bizum (caso PeluChic): el salón no penaliza, pide una señal al
-  // confirmar la cita. Se enseña en la tarjeta de cancelación, que es donde
-  // la clienta busca "qué pasa con mi dinero".
-  const cancelacion =
-    recargoActivo({ noShowFeeEur })
-      ? `Hasta ${noShowNoticeHours} h antes, sin coste. Después, ${eur(noShowFeeEur)} de penalización.`
-      : textoSenal
-        ? textoSenal
-        : "Hasta 24 horas antes, sin coste y sin dar explicaciones.";
-  return [
-    {
-      Icon: CalendarCheck,
-      name: "Reserva sin llamar",
-      description: single
-        ? "Eliges servicio y hora desde el móvil. Sin teléfono y sin esperar a que abramos."
-        : `Eliges servicio, ${palabra} y hora desde el móvil. Sin teléfono y sin esperar a que abramos.`,
-      href: "#servicios",
-      cta: "Empezar por la carta",
-      className: "lg:col-span-2",
-    },
-    single
-      ? {
-          Icon: Users,
-          name: "Trato directo",
-          description: `Siempre te atiende ${proName ?? "la misma persona"}, sin intermediarios ni cambios de última hora.`,
-          href: "#equipo",
-          cta: "Conócele",
-          className: "lg:col-span-1",
-        }
-      : {
-          Icon: Users,
-          name: `Eliges ${palabra}`,
-          description:
-            "El equipo que prefieras. O el primero que tenga hueco, si lo que corre es la hora.",
-          href: "#equipo",
-          cta: "Ver el equipo",
-          className: "lg:col-span-1",
-        },
-    {
-      Icon: ShieldCheck,
-      name: "Cancelas gratis",
-      description: cancelacion,
-      href: "#faq",
-      cta: "Ver condiciones",
-      className: "lg:col-span-1",
-    },
-    {
-      Icon: Scissors,
-      name: "Nuestro trabajo, de cerca",
-      description: "Pasa la lupa por las fotos de la galería y mira el detalle de cada servicio.",
-      href: "#galeria",
-      cta: "Ver la galería",
-      className: "lg:col-span-2",
-    },
-  ];
+/** Estrellas de una nota, legibles por lector de pantalla como una sola imagen. */
+function Estrellas({ nota, className }: { nota: number; className?: string }) {
+  return (
+    <span role="img" aria-label={`${notaEs(nota)} de 5 estrellas`} className={cn("flex gap-0.5", className)}>
+      {Array.from({ length: 5 }).map((_, j) => (
+        <Star
+          key={j}
+          aria-hidden="true"
+          className={cn("h-4 w-4", j < Math.round(nota) ? "fill-moca text-moca" : "text-taupe")}
+        />
+      ))}
+    </span>
+  );
 }
 
-/** Tarjeta de reseña del muro. Ancho fijo: es lo que espera un marquee. */
-function ReviewCard({ name, rating, quote }: Review) {
+/** Tarjeta de reseña: rejilla fija, sin marquesina ni máscaras que la corten. */
+function ReviewCard({ name, rating, quote, ejemplo }: Review & { ejemplo: boolean }) {
   return (
-    <figure className="relative flex w-72 shrink-0 flex-col rounded-2xl border border-border/60 bg-card p-5 transition-colors hover:border-primary/40 sm:w-80">
-      <span className="absolute right-4 top-4 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        Ejemplo
-      </span>
-      <Quote className="h-5 w-5 text-primary/40" aria-hidden="true" />
-      <blockquote className="mt-3 flex-1 pr-10 text-sm leading-relaxed text-foreground">
-        &ldquo;{quote}&rdquo;
+    <figure className="flex h-full flex-col rounded-[20px] border border-lino bg-card p-5 sm:p-6">
+      <Estrellas nota={rating} />
+      <blockquote className="mt-4 flex-1 text-[15px] leading-relaxed text-foreground">
+        «{quote}»
       </blockquote>
-      <figcaption className="mt-5 flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">{name}</span>
-        <span className="flex gap-0.5" aria-label={`${rating} de 5 estrellas`}>
-          {Array.from({ length: 5 }).map((_, j) => (
-            <Star
-              key={j}
-              className={cn(
-                "h-3.5 w-3.5",
-                j < rating ? "fill-primary text-primary" : "text-muted-foreground/30",
-              )}
-            />
-          ))}
-        </span>
+      <figcaption className="mt-5 flex items-center justify-between gap-3 border-t border-lino pt-4 text-sm">
+        <span className="font-semibold text-foreground">{name}</span>
+        {ejemplo && <span className="text-xs text-cafe-suave">Reseña de ejemplo</span>}
       </figcaption>
     </figure>
   );
@@ -340,7 +224,7 @@ function SoloProfessional({
         )}
       >
         {photo ? (
-          <img src={photo} alt={name} className="h-full w-full object-cover" />
+          <img src={photo} alt={name} width={256} height={256} loading="lazy" decoding="async" className="h-full w-full object-cover" />
         ) : (
           <StylistAvatar name={name} employeeId={employeeId} size="lg" className="h-full w-full" />
         )}
@@ -358,20 +242,29 @@ function SoloProfessional({
   );
 }
 
-/** Encabezado de sección: cintillo en latón + titular display. */
+/**
+ * Encabezado de sección (lote 17): etiqueta en mayúsculas pequeñas y título en
+ * Manrope 800 a 26/32 px, la escala de DESIGN.md. La serif queda para los
+ * nombres propios (el salón y las profesionales).
+ */
 function SectionHeading({
   eyebrow,
   title,
+  intro,
   className,
 }: {
   eyebrow: string;
   title: string;
+  intro?: string;
   className?: string;
 }) {
   return (
-    <Reveal className={cn("mb-10", className)}>
-      <p className="text-xs uppercase tracking-[0.25em] text-primary">{eyebrow}</p>
-      <h2 className="mt-2 font-display text-3xl md:text-4xl">{title}</h2>
+    <Reveal className={cn("mb-8 md:mb-10", className)}>
+      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">{eyebrow}</p>
+      <h2 className="mt-2 text-[26px] font-extrabold leading-tight tracking-tight text-foreground md:text-[32px]">
+        {title}
+      </h2>
+      {intro && <p className="mt-2 max-w-xl text-[15px] text-muted-foreground">{intro}</p>}
     </Reveal>
   );
 }
@@ -442,15 +335,6 @@ function SalonHome() {
   // La señal sale de UNA regla (9j): la carta, la tarjeta de cancelación y la
   // FAQ dicen lo mismo, y nada si el salón no la pide.
   const reglaDeSenal = reglaSenal(profile);
-  const textoSenal = reglaDeSenal.activa ? respuestaFaqSenal(reglaDeSenal, (n) => eur(n).replace(",00", "")) : "";
-  const bentoItems = bentoItemsFor(
-    tipo,
-    noShowFeeEur,
-    noShowNoticeHours,
-    soloUno,
-    soloPro?.name,
-    textoSenal,
-  );
   const faq = faqPublica(tipo, noShowFeeEur, noShowNoticeHours, profile.faq, soloUno, respuestaFaqSenal(reglaDeSenal, eur)).map(
     (entry) => {
       if (profile.faq?.length) return entry;
@@ -480,32 +364,26 @@ function SalonHome() {
   // iniciales (ver `fotoDeProfesional`).
   const fotoDe = (e: (typeof employees)[number]) =>
     fotoDeProfesional(e.name, e.id, e.photo, tipo, isRealSalon);
-  const TEAM_AVATARS = employees.map((e) => ({
-    imageUrl: fotoDe(e),
-    profileUrl: `/s/${salonSlug}#equipo`,
-  }));
   const totalTeamYears = employees.reduce((sum, e) => sum + e.yearsExperience, 0);
-  // "entre los tres" solo tiene sentido con equipo de tres; con un enlace de
-  // equipo real puede haber uno o dos. Máximo tres: nunca hay más franjas.
-  const entreElEquipo =
-    employees.length === 1 ? "" : employees.length === 2 ? " entre los dos" : " entre los tres";
-  // Cifras sacadas del propio catálogo/equipo, no inventadas.
+  const especialidades = listaConY(profile.specialties);
+  const telefono = profile.phone.replace(/\s/g, "");
+  // Día de hoy en el cuadro de horario: solo en el cliente (ver useClientNow),
+  // o el servidor en UTC marcaría otro día y la hidratación no lo corrige.
+  const hoyIndice = now ? (now.getDay() + 6) % 7 : -1;
+  const reseñasVisibles = reviews.slice(0, 3);
 
   return (
     <>
       {/* ------------------------------------------------------------------
-       * Hero a sangre. Foto + doble degradado para que el texto sea legible
-       * pase lo que pase con la imagen, y entrada escalonada al estilo de
-       * los bloques de Tailark.
+       * Portada. Foto a sangre con velo café al 70 %: el texto blanco más
+       * pequeño da ≥ 4,5:1 incluso sobre la zona más clara de la foto (lote
+       * 17; con el 60 % y la especialidad en moca se quedaba en 1,15:1).
+       * Entrada única de 520 ms desde opacidad 0,4, sin rebotes ni bucles.
        * ---------------------------------------------------------------- */}
-      <section className="relative isolate flex min-h-[85vh] items-end overflow-hidden text-white sm:items-center">
+      <section className="relative isolate overflow-hidden text-white">
         <img
-          // Sin foto propia (hay dos locales del rutero cuya ficha de Google
-          // está vacía), o si la propia no carga (404 o 503 de /api/foto,
-          // ficha cambiada…), se usa una de ejemplo, pero no la misma para
-          // todos: un sillón de barbero de portada en una peluquería de
-          // señoras canta tanto como una foto mala. El fallo puede llegar
-          // antes de hidratar: lo cubre useImagenConRespaldo.
+          // Sin foto propia, o si la propia no carga, se usa una de ejemplo
+          // acorde al tipo de negocio (ver useImagenConRespaldo).
           src={portada.src}
           ref={portada.ref}
           onError={portada.onError}
@@ -514,309 +392,199 @@ function SalonHome() {
           width={1920}
           height={1280}
           fetchPriority="high"
+          decoding="async"
         />
-        {/* Velo en tinta café sobre la foto (nunca negro puro): lo justo para
-            que el texto blanco se lea encima de cualquier portada. */}
-        <div className="absolute inset-0 -z-10 bg-cafe/60" />
+        <div className="absolute inset-0 -z-10 bg-cafe/70" aria-hidden="true" />
 
-        <div className="mx-auto w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-20 sm:py-24 md:py-32">
-          <AnimatedGroup variants={HERO_IN} className="max-w-2xl space-y-6">
-            {/* Dos píldoras en una sola fila: estado real del salón a la
-                izquierda y el reclamo a la derecha. Apiladas competían entre sí. */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-sm backdrop-blur-sm">
+        <div className={cn(CONTENEDOR_WEB, "flex min-h-[520px] flex-col justify-end pb-12 pt-20 md:min-h-[600px] md:justify-center md:py-24")}>
+          <div className="entrada-portada max-w-2xl">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="inline-flex h-8 items-center gap-2 rounded-full bg-white/15 px-3 font-semibold">
                 <span
-                  className={cn(
-                    "size-1.5 rounded-full",
-                    openNow ? "bg-success animate-pulse motion-reduce:animate-none" : "bg-white/40",
-                  )}
+                  className={cn("size-2 rounded-full", openNow ? "bg-salvia" : "bg-white/60")}
                   aria-hidden="true"
                 />
-                <ShinyText
-                  text={estadoHoy}
-                  baseColor="rgb(255 255 255 / 0.92)"
-                  className="font-medium"
-                  speed={5}
-                />
-                <span className="text-white/40" aria-hidden="true">
-                  ·
+                {estadoHoy}
+              </span>
+              {profile.rating > 0 && (
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-white/15 px-3">
+                  <Star className="h-3.5 w-3.5 fill-white text-white" aria-hidden="true" />
+                  <span className="font-semibold tabular-nums">{notaEs(profile.rating)}</span>
+                  {profile.reviewCount > 0 && (
+                    <span className="text-white/90">· {profile.reviewCount} reseñas</span>
+                  )}
                 </span>
-                <span className="flex items-center gap-1">
-                  <Star className="h-3.5 w-3.5 fill-primary text-primary" />
-                  <span className="font-medium">{profile.rating}</span>
-                </span>
-              </div>
-
-              <div className="inline-flex items-center rounded-full border border-white/15 bg-white/5 backdrop-blur-sm">
-                {/* El color base tiene que ir con la variante `dark:` puesta:
-                    el componente trae `dark:text-neutral-400/70` y esa variante
-                    le gana a un `text-white/70` a secas por especificidad, no
-                    por orden — quedaba gris ilegible sobre la foto del hero. */}
-                <AnimatedShinyText className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-white/85 dark:text-white/85">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Reservas en menos de un minuto
-                </AnimatedShinyText>
-              </div>
+              )}
             </div>
 
-            {logoPortada && (
-              <span className="mb-4 block size-[72px] overflow-hidden rounded-full border border-white/40 bg-white shadow-[0_6px_20px_rgba(0,0,0,0.18)]">
-                <img src={logoPortada} alt={`Logo de ${profile.name}`} className="h-full w-full object-cover" />
-              </span>
-            )}
-            <h1
-              className={cn(
-                "font-display leading-[1.05] text-balance",
-                // El tamaño baja con la longitud del nombre: "Pepe" merece el
-                // titular grande, pero "Peluquería y Estética Los Ángeles" a
-                // 7xl parte por la mitad y deja letras sueltas colgando.
-                profile.name.length > 28
-                  ? "text-3xl sm:text-4xl md:text-5xl"
-                  : profile.name.length > 18
-                    ? "text-4xl sm:text-5xl md:text-6xl"
-                    : "text-5xl sm:text-6xl md:text-7xl",
+            <div className="mt-6 flex items-center gap-4">
+              {logoPortada && (
+                <span className="block size-16 shrink-0 overflow-hidden rounded-full border border-white/50 bg-white md:size-[72px]">
+                  <img
+                    src={logoPortada}
+                    alt={`Logo de ${profile.name}`}
+                    width={72}
+                    height={72}
+                    className="h-full w-full object-cover"
+                  />
+                </span>
               )}
-            >
-              {/* Anima por palabras y no por letras: con `per="char"` cada letra es
-                  un span suelto y un nombre largo se parte por la mitad
-                  ("Bar/bería" en una barbería real de Alcalá). */}
-              <TextEffect
-                as="span"
-                per="word"
-                preset="fade-in-blur"
-                speedSegment={2.4}
-                delay={0.2}
-                className="block"
+              <h1
+                className={cn(
+                  "font-display font-medium leading-[1.05] text-balance",
+                  // El tamaño baja con la longitud del nombre para no partirlo.
+                  profile.name.length > 28
+                    ? "text-3xl sm:text-4xl md:text-5xl"
+                    : profile.name.length > 18
+                      ? "text-4xl sm:text-5xl md:text-6xl"
+                      : "text-5xl sm:text-6xl md:text-7xl",
+                )}
               >
                 {profile.name}
-              </TextEffect>
-            </h1>
+              </h1>
+            </div>
 
-            {/* La palabra que va rotando cuenta lo que se hace aquí sin ocupar
-                cuatro líneas de texto. Sin especialidades no hay frase: un
-                "Especialistas en" a medias es peor que no decir nada. */}
-            {profile.specialties.length > 0 && (
-              <div className="flex flex-wrap items-baseline gap-x-2 text-lg text-white/80">
-                <span>Especialistas en</span>
-                <WordRotate
-                  words={profile.specialties}
-                  duration={2200}
-                  className="font-display text-2xl text-primary"
-                />
-              </div>
-            )}
-
-            <p className="flex items-center gap-2 text-white/85">
-              <MapPin className="h-4 w-4 shrink-0 text-primary" /> {profile.address}
-            </p>
-            {profile.about ? <p className="max-w-md text-white/70">{profile.about}</p> : null}
-
-            {isV2 ? (
-              // v2: tres botones del mismo peso — reservar, llamar, cómo
-              // llegar. Cambio priorizado del informe: el dueño quiere que
-              // sin cita y por teléfono sigan siendo caminos igual de
-              // válidos, no un botón grande y dos enlaces sueltos.
-              <div className="grid grid-cols-1 gap-2.5 pt-2 sm:grid-cols-3 sm:gap-3">
-                <Button asChild size="lg" className="w-full rounded-full px-6 font-medium">
-                  <Link
-                    to="/s/$salonSlug/book"
-                    params={{ salonSlug }}
-                    search={(prev) => prev}
-                    className="gap-2"
-                  >
-                    Reservar por internet <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="w-full rounded-full border-white/30 bg-white/10 px-6 text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"
-                >
-                  <a href={`tel:${profile.phone.replace(/\s/g, "")}`} className="gap-2">
-                    <Phone className="h-4 w-4" /> Llamar
-                  </a>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="w-full rounded-full border-white/30 bg-white/10 px-6 text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"
-                >
-                  <a href={directionsUrl} target="_blank" rel="noreferrer" className="gap-2">
-                    <Navigation className="h-4 w-4" /> Cómo llegar
-                  </a>
-                </Button>
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center gap-3 pt-2">
-                <ShimmerButton
-                  asChild
-                  shimmerColor="#f5e6c8"
-                  background="var(--color-primary)"
-                  className="px-7 py-3 font-medium"
-                >
-                  <Link
-                    to="/s/$salonSlug/book"
-                    params={{ salonSlug }}
-                    search={(prev) => prev}
-                    className="flex items-center gap-2 text-[color:var(--color-primary-foreground)]"
-                  >
-                    Reservar cita <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </ShimmerButton>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="rounded-full border-white/30 bg-white/10 px-7 text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"
-                >
-                  <a href="#servicios">Ver la carta</a>
-                </Button>
-              </div>
-            )}
-
-            {/* Línea honesta: quien atiende sin cita y por teléfono no debe
-                leer la web como si eso no contara. */}
-            {isV2 && (
-              <p className="pt-1 text-sm text-white/65">
-                También puedes venir sin cita o llamar: la agenda la lleva{" "}
-                {soloUno ? employees[0].name : `el equipo de ${profile.name}`}
-                {soloUno ? ", de " + profile.name + "." : "."}
+            {especialidades && (
+              <p className="mt-5 text-lg text-white md:text-xl">
+                Especialistas en <span className="font-semibold">{especialidades}</span>
               </p>
             )}
-          </AnimatedGroup>
+            {profile.about ? <p className="mt-3 max-w-md text-[15px] text-white/90">{profile.about}</p> : null}
+
+            <p className="mt-4 flex items-start gap-2 text-[15px] text-white/90">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{profile.address}</span>
+            </p>
+
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Button asChild size="lg" className="h-12 rounded-full px-7 text-[15px] font-semibold">
+                <Link to="/s/$salonSlug/book" params={{ salonSlug }} search={(prev) => prev} className="gap-2">
+                  Reservar cita <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </Button>
+              {isV2 ? (
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="h-12 rounded-full border-white/60 bg-transparent px-6 text-[15px] text-white hover:bg-white/10 hover:text-white"
+                >
+                  <a href={`tel:${telefono}`} className="gap-2">
+                    <Phone className="h-4 w-4" aria-hidden="true" /> Llamar
+                  </a>
+                </Button>
+              ) : (
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="h-12 rounded-full border-white/60 bg-transparent px-6 text-[15px] text-white hover:bg-white/10 hover:text-white"
+                >
+                  <a href="#carta">Ver precios</a>
+                </Button>
+              )}
+            </div>
+            {isV2 && (
+              <p className="mt-4 text-sm text-white/90">
+                También puedes venir sin cita o llamar: la agenda la lleva{" "}
+                {soloUno ? `${employees[0].name}, de ${profile.name}.` : `el equipo de ${profile.name}.`}
+              </p>
+            )}
+          </div>
         </div>
       </section>
-
-      {/* Barra de info rápida */}
-      <section className="border-y border-border/60 bg-card">
-        <div className="mx-auto flex max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] flex-wrap items-center gap-x-8 gap-y-3 px-5 py-4 text-sm">
-          <span className="flex items-center gap-2 font-medium text-foreground">
-            <Clock className="h-4 w-4 shrink-0 text-primary" /> {estadoHoy}
-          </span>
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <MapPin className="h-4 w-4 shrink-0 text-primary" /> {profile.address}
-          </span>
-          <a
-            href={`tel:${profile.phone.replace(/\s/g, "")}`}
-            className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <Phone className="h-4 w-4 shrink-0 text-primary" /> {profile.phone}
-          </a>
-        </div>
-      </section>
-
-      {/* Cinta que reacciona al scroll */}
-      <div className="overflow-hidden border-b border-border/40 bg-background py-4">
-        <ScrollVelocity
-          items={cintaDeSalon(profile.tagline, profile.specialties)}
-          velocity={28}
-          className="font-display text-xl text-muted-foreground/70 sm:text-2xl"
-        />
-      </div>
 
       {/* Servicios destacados */}
-      <section
-        id="servicios"
-        className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24"
-      >
-        <SectionHeading eyebrow="Más reservados" title="Servicios destacados" />
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <section id="servicios" className={cn(CONTENEDOR_WEB, SECCION_WEB)}>
+        <SectionHeading
+          eyebrow="Lo más pedido"
+          title="Servicios destacados"
+          intro="Toca uno para reservarlo directamente."
+        />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {featuredIds.map((id, i) => {
             const s = serviceMap[id];
             if (!s) return null;
-            const label = { name: s.name, description: s.description };
             return (
-              <Reveal key={id} delay={i * 70} className="h-full">
-                <SpotlightCard
-                  className={cn(
-                    "group relative h-full rounded-2xl border border-border/60 bg-card hover:border-primary/40",
-                    CARD_HOVER,
-                  )}
+              <Reveal key={id} delay={i * 60} className="h-full">
+                <Link
+                  to="/s/$salonSlug/book"
+                  params={{ salonSlug }}
+                  search={(prev) => ({ ...prev, service: id })}
+                  className="elevar group flex h-full flex-col sm:min-h-[132px] rounded-[20px] border border-lino bg-card p-5"
                 >
-                  <Link
-                    to="/s/$salonSlug/book"
-                    params={{ salonSlug }}
-                    search={(prev) => ({ ...prev, service: id })}
-                    className="relative flex h-full flex-col p-6"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <Scissors className="h-5 w-5 text-primary" />
-                      <span className="font-display text-xl">{eur(s.priceEur)}</span>
-                    </div>
-                    <h3 className="mt-5 text-base font-semibold">{label.name}</h3>
-                    <p className="mt-1 flex-1 text-sm text-muted-foreground">{label.description}</p>
-                    <span className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Clock className="h-3.5 w-3.5" /> {s.durationMin} min
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-base font-bold leading-snug text-foreground">{s.name}</h3>
+                    <span className="shrink-0 text-lg font-extrabold tabular-nums text-foreground">{eur(s.priceEur)}</span>
+                  </div>
+                  {s.description ? (
+                    <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{s.description}</p>
+                  ) : null}
+                  <div className="mt-auto flex items-center justify-between gap-3 pt-4 text-sm">
+                    <span className="inline-flex items-center gap-1.5 text-cafe-suave tabular-nums">
+                      <Clock className="h-3.5 w-3.5" aria-hidden="true" /> {s.durationMin} min
                     </span>
-                  </Link>
-                  {/* Haz de luz recorriendo el borde, desfasado por tarjeta para
-                      que no vayan las cuatro a la vez. */}
-                  <BorderBeam
-                    size={70}
-                    duration={9}
-                    delay={i * 2.2}
-                    colorFrom="var(--color-primary)"
-                    colorTo="transparent"
-                    className="opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                  />
-                </SpotlightCard>
+                    <span className="inline-flex items-center gap-1 font-semibold text-primary">
+                      Reservar <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden="true" />
+                    </span>
+                  </div>
+                </Link>
               </Reveal>
             );
           })}
         </div>
       </section>
 
-      {/* Catálogo completo */}
-      <section className="border-t border-border/40">
-        <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24">
-          <SectionHeading eyebrow="El menú completo" title="Todos los servicios" />
+      {/* Carta completa */}
+      <section id="carta" className="border-t border-lino bg-card">
+        <div className={cn(CONTENEDOR_WEB, SECCION_WEB)}>
+          <SectionHeading
+            eyebrow="Precios"
+            title="Carta completa"
+            intro={reglaDeSenal.activa ? "Los servicios marcados «con señal» se confirman con un pequeño adelanto." : undefined}
+          />
           <Reveal>
             <Accordion
-              type="single"
-              collapsible
-              defaultValue={categoryOrder[0]}
-              className="divide-y divide-border/40"
+              type="multiple"
+              defaultValue={categoryOrder.slice(0, 1)}
+              className="space-y-3"
             >
               {categoryOrder.map((cat) => {
                 const items = activeServices.filter((s) => (s.category ?? "Otros") === cat);
                 if (!items.length) return null;
                 return (
-                  <AccordionItem key={cat} value={cat} className="border-b-0">
-                    <AccordionTrigger className="py-4 text-base font-display font-medium hover:no-underline">
-                      {cat}
-                      <span className="ml-auto mr-3 text-xs font-normal text-muted-foreground">
-                        {items.length}
+                  <AccordionItem key={cat} value={cat} className="rounded-[20px] border border-lino bg-background px-4 sm:px-5">
+                    <AccordionTrigger className="min-h-14 gap-3 py-3 text-base font-bold hover:no-underline">
+                      <span className="flex-1 text-left">{cat}</span>
+                      <span className="rounded-full bg-beige px-2.5 py-0.5 text-xs font-semibold tabular-nums text-cafe-medio">
+                        {items.length} {items.length === 1 ? "servicio" : "servicios"}
                       </span>
                     </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="space-y-2 pb-2">
-                        {items.map((s) => {
-                          const label = { name: s.name, description: s.description };
-                          return (
+                    <AccordionContent className="pb-4">
+                      <ul className="grid gap-2 lg:grid-cols-2">
+                        {items.map((s) => (
+                          <li key={s.id}>
                             <Link
-                              key={s.id}
                               to="/s/$salonSlug/book"
                               params={{ salonSlug }}
                               search={(prev) => ({ ...prev, service: s.id })}
-                              className="group flex items-center justify-between gap-4 rounded-lg border border-border/60 px-4 py-3.5 transition-colors hover:border-primary/40 hover:bg-muted/30"
+                              className="group flex min-h-14 items-center justify-between gap-4 rounded-xl border border-lino bg-card px-4 py-3 transition-colors hover:border-lino-fuerte hover:bg-perla"
                             >
-                              <div className="min-w-0">
-                                <p className="font-medium">{label.name}</p>
-                                <p className="text-sm text-muted-foreground">
+                              <span className="min-w-0">
+                                <span className="block font-semibold text-foreground">{s.name}</span>
+                                <span className="block text-sm text-muted-foreground tabular-nums">
                                   {s.durationMin} min
                                   {servicioLlevaSenal(reglaDeSenal, s) ? " · con señal" : ""}
-                                </p>
-                              </div>
-                              <span className="flex shrink-0 items-center gap-2 font-display text-lg">
+                                </span>
+                              </span>
+                              <span className="flex shrink-0 items-center gap-2 font-extrabold tabular-nums text-foreground">
                                 {eur(s.priceEur)}
-                                <ArrowRight className="h-4 w-4 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
+                                <ChevronRight className="h-4 w-4 text-cafe-suave" aria-hidden="true" />
                               </span>
                             </Link>
-                          );
-                        })}
-                      </div>
+                          </li>
+                        ))}
+                      </ul>
                     </AccordionContent>
                   </AccordionItem>
                 );
@@ -826,38 +594,32 @@ function SalonHome() {
         </div>
       </section>
 
-      {/* Galería de trabajos */}
-      <WorkGallery photos={galleryPhotosFor(profile)} tipo={profile.tagline} />
-
       {/* Equipo */}
-      <section id="equipo" className="border-t border-border/40 bg-card">
-        <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24">
-          <SectionHeading eyebrow="Equipo" title="Quién te va a atender" className="mb-12" />
-          {soloUno && soloPro ? (
-            // Con un solo profesional, la rejilla de tres fichas de
-            // TeamShowcase no tiene sentido: una presentación de una sola
-            // persona, con foto grande si la hay.
-            <Reveal>
-              <SoloProfessional
-                name={soloPro.name}
-                specialty={soloPro.specialty}
-                yearsExperience={soloPro.yearsExperience}
-                photo={showsRealPhotos(tipo) ? fotoDe(soloPro) : undefined}
-                employeeId={soloPro.id}
-              />
-            </Reveal>
-          ) : (
-            /* Retratos grandes en vez de avatares pequeños: en una barbería
-               la cara del que te va a cortar es parte de lo que se vende. */
-            <Reveal>
-              {employees.every((e) => fotoDe(e) === placeholderAvatar(e.name, e.id)) ? (
-                // Sin ninguna foto, el collage de retratos solo enseñaba letras
-                // gigantes montadas unas sobre otras: fichas sencillas y legibles.
-                <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {employees.map((e, i) => (
-                    <li key={e.id} className="flex items-center gap-4 rounded-[20px] border border-lino bg-background p-5">
+      {!soloUno || soloPro ? (
+        <section id="equipo" className="border-t border-lino">
+          <div className={cn(CONTENEDOR_WEB, SECCION_WEB)}>
+            <SectionHeading
+              eyebrow="Equipo"
+              title="Quién te va a atender"
+              intro={soloUno ? undefined : `${employees.length} ${professionalWord(tipo, true)} y ${totalTeamYears} años de oficio entre todas. Puedes elegir con quién reservar.`}
+            />
+            {soloUno && soloPro ? (
+              <Reveal>
+                <SoloProfessional
+                  name={soloPro.name}
+                  specialty={soloPro.specialty}
+                  yearsExperience={soloPro.yearsExperience}
+                  photo={showsRealPhotos(tipo) ? fotoDe(soloPro) : undefined}
+                  employeeId={soloPro.id}
+                />
+              </Reveal>
+            ) : employees.every((e) => fotoDe(e) === placeholderAvatar(e.name, e.id)) ? (
+              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {employees.map((e, i) => (
+                  <Reveal key={e.id} delay={i * 60} className="h-full">
+                    <li className="flex h-full items-center gap-4 rounded-[20px] border border-lino bg-card p-5">
                       <span
-                        className="grid size-16 shrink-0 place-items-center rounded-full border border-cafe/30 font-display text-2xl text-cafe"
+                        className="grid size-16 shrink-0 place-items-center rounded-full font-display text-2xl text-cafe"
                         style={{ background: `var(--pro-${(i % 4) + 1})` }}
                         aria-hidden="true"
                       >
@@ -869,57 +631,42 @@ function SalonHome() {
                         <span className="block text-[13px] text-cafe-suave tabular-nums">{e.yearsExperience} años de experiencia</span>
                       </span>
                     </li>
-                  ))}
-                </ul>
-              ) : (
-              <TeamShowcase
-                members={employees.map((e) => ({
-                  id: e.id,
-                  name: e.name,
-                  role: `${e.specialty} · ${e.yearsExperience} años`,
-                  image: fotoDe(e),
-                }))}
-              />
-              )}
-            </Reveal>
-          )}
-        </div>
-      </section>
+                  </Reveal>
+                ))}
+              </ul>
+            ) : (
+              <Reveal>
+                <TeamShowcase
+                  members={employees.map((e) => ({
+                    id: e.id,
+                    name: e.name,
+                    role: `${e.specialty} · ${e.yearsExperience} años`,
+                    image: fotoDe(e),
+                  }))}
+                />
+              </Reveal>
+            )}
+          </div>
+        </section>
+      ) : null}
 
-      {/* Reseñas.
-          Auditoría de UX, hallazgo C3: la web de un salón REAL no puede
-          enseñar dos reseñas inventadas con la etiqueta "Ejemplo" a su propio
-          cliente — es lo que le pasaba a Adam, que en Google tiene 132
-          reseñas de verdad. Un salón real usa la nota y el número que ya trae
-          su perfil, con un enlace a su ficha; si no tiene ninguno, no se
-          enseña nada inventado. Las demos de venta (más abajo) siguen
-          exactamente igual que siempre: las siguen enseñando, marcadas. */}
+      {/* Galería de trabajos */}
+      <WorkGallery photos={galleryPhotosFor(profile)} tipo={profile.tagline} />
+
+      {/* Reseñas. Un salón REAL solo enseña su nota de Google (nunca reseñas
+          inventadas); las demos de venta, tres de ejemplo marcadas como tal. */}
       {isRealSalon ? (
         hasGoogleReviews ? (
-          <section id="resenas" className="border-t border-border/40 bg-card">
-            <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 text-center md:py-24">
-              <p className="text-xs uppercase tracking-[0.25em] text-primary">Reseñas</p>
-              <h2 className="mt-2 font-display text-3xl md:text-4xl">Lo que dicen en Google</h2>
+          <section id="resenas" className="border-t border-lino bg-card">
+            <div className={cn(CONTENEDOR_WEB, SECCION_WEB, "text-center")}>
+              <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Reseñas</p>
+              <h2 className="mt-2 text-[26px] font-extrabold tracking-tight md:text-[32px]">Lo que dicen en Google</h2>
               <div className="mt-6 flex items-center justify-center gap-2">
-                <span className="flex" aria-hidden="true">
-                  {Array.from({ length: 5 }).map((_, j) => (
-                    <Star
-                      key={j}
-                      className={cn(
-                        "h-5 w-5",
-                        j < Math.round(profile.rating)
-                          ? "fill-primary text-primary"
-                          : "text-muted-foreground/30",
-                      )}
-                    />
-                  ))}
-                </span>
-                <span className="font-display text-2xl">{profile.rating}</span>
+                <Estrellas nota={profile.rating} className="[&_svg]:h-5 [&_svg]:w-5" />
+                <span className="text-2xl font-extrabold tabular-nums">{notaEs(profile.rating)}</span>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {profile.reviewCount} reseñas en Google
-              </p>
-              <Button asChild variant="outline" className="mt-6 rounded-full">
+              <p className="mt-1 text-sm text-muted-foreground">{profile.reviewCount} reseñas en Google</p>
+              <Button asChild variant="outline" className="mt-6 h-11 rounded-full px-6">
                 <a href={googleReviewsUrl} target="_blank" rel="noreferrer">
                   Ver reseñas en Google
                 </a>
@@ -928,59 +675,46 @@ function SalonHome() {
           </section>
         ) : null
       ) : (
-        <section
-          id="resenas"
-          className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24"
-        >
-          <Reveal className="mb-6 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-primary">Reseñas</p>
-              <h2 className="mt-2 font-display text-3xl md:text-4xl">
-                Lo que dicen de nosotros
-              </h2>
-            </div>
-            <div className="flex items-center gap-1.5 text-sm">
-              <Star className="h-4 w-4 fill-primary text-primary" />
-              <span className="font-medium">{profile.rating}</span>
-              <span className="text-muted-foreground">· {profile.reviewCount} reseñas</span>
-            </div>
-          </Reveal>
-          <Reveal className="mb-8 inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground">
-            <Info className="h-3.5 w-3.5 shrink-0" /> Reseñas de ejemplo — sustitúyelas por las
-            reseñas reales de tu salón.
-          </Reveal>
-
-          {/* Muro en dos filas que se cruzan. Se para al pasar el ratón para
-              poder leer la que te interese. */}
-          <Reveal className="relative [mask-image:linear-gradient(to_right,transparent,#000_7%,#000_93%,transparent)]">
-            <Marquee pauseOnHover className="[--duration:38s] [--gap:1.25rem]">
-              {reviews.map((r) => (
-                <ReviewCard key={r.name} {...r} />
+        <section id="resenas" className="border-t border-lino bg-card">
+          <div className={cn(CONTENEDOR_WEB, SECCION_WEB)}>
+            <Reveal className="mb-8 flex flex-wrap items-end justify-between gap-4 md:mb-10">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Reseñas</p>
+                <h2 className="mt-2 text-[26px] font-extrabold leading-tight tracking-tight md:text-[32px]">
+                  Lo que dicen las clientas
+                </h2>
+              </div>
+              {profile.rating > 0 && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Estrellas nota={profile.rating} />
+                  <span className="font-bold tabular-nums">{notaEs(profile.rating)}</span>
+                  <span className="text-muted-foreground">· {profile.reviewCount} reseñas</span>
+                </div>
+              )}
+            </Reveal>
+            <div className="grid gap-3 md:grid-cols-3">
+              {reseñasVisibles.map((r, i) => (
+                <Reveal key={r.name} delay={i * 60} className="h-full">
+                  <ReviewCard {...r} ejemplo />
+                </Reveal>
               ))}
-            </Marquee>
-            <Marquee reverse pauseOnHover className="mt-5 [--duration:44s] [--gap:1.25rem]">
-              {[...reviews].reverse().map((r) => (
-                <ReviewCard key={r.name} {...r} />
-              ))}
-            </Marquee>
-            {/* Sin degradados pintados (DESIGN.md): el borde del carrusel se
-                recorta con una máscara, así las tarjetas no se cortan en seco. */}
-          </Reveal>
+            </div>
+          </div>
         </section>
       )}
 
       {/* Preguntas frecuentes */}
-      <section id="faq" className="border-t border-border/40 bg-card">
-        <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24">
-          <SectionHeading eyebrow="Antes de venir" title="Preguntas frecuentes" />
+      <section id="faq" className="border-t border-lino">
+        <div className={cn(CONTENEDOR_WEB, SECCION_WEB, "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-12")}>
+          <SectionHeading eyebrow="Antes de venir" title="Preguntas frecuentes" className="lg:mb-0" />
           <Reveal>
-            <Accordion type="single" collapsible className="divide-y divide-border/40">
+            <Accordion type="single" collapsible className="divide-y divide-lino rounded-[20px] border border-lino bg-card px-4 sm:px-5">
               {faq.map((item) => (
                 <AccordionItem key={item.q} value={item.q} className="border-b-0">
-                  <AccordionTrigger className="py-4 text-left text-base font-medium hover:no-underline">
+                  <AccordionTrigger className="min-h-14 gap-3 py-3 text-left text-[15px] font-semibold hover:no-underline">
                     {item.q}
                   </AccordionTrigger>
-                  <AccordionContent className="pb-4 text-sm leading-relaxed text-muted-foreground">
+                  <AccordionContent className="pb-4 text-[15px] leading-relaxed text-muted-foreground">
                     {item.a}
                   </AccordionContent>
                 </AccordionItem>
@@ -990,112 +724,92 @@ function SalonHome() {
         </div>
       </section>
 
-      {/* Ubicación + horario */}
-      <section id="ubicacion" className="border-t border-border/40">
-        <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-16 md:py-24">
-          <SectionHeading
-            eyebrow="Ubicación y horario"
-            title="Te esperamos aquí"
-            className="mb-12"
-          />
-          <div className="grid gap-6 md:grid-cols-2">
-            <Reveal className="space-y-6">
-              <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-6">
-                <p className="flex items-start gap-3 text-sm">
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> {profile.address}
+      {/* Ubicación y horario: sin iframe de Google Maps (se quedaba en blanco
+          hasta cargar y restaba rendimiento); un botón abre la ruta. */}
+      <section id="ubicacion" className="border-t border-lino bg-card">
+        <div className={cn(CONTENEDOR_WEB, SECCION_WEB)}>
+          <SectionHeading eyebrow="Ubicación y horario" title="Te esperamos aquí" />
+          <div className="grid gap-3 md:grid-cols-2">
+            <Reveal className="h-full">
+              <div className="flex h-full flex-col rounded-[20px] border border-lino bg-background p-5 sm:p-6">
+                <p className="flex items-start gap-3 text-[15px]">
+                  <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                  <span>{profile.address}</span>
                 </p>
                 <a
-                  href={`tel:${profile.phone.replace(/\s/g, "")}`}
-                  className="flex items-center gap-3 text-sm transition-colors hover:text-primary"
+                  href={`tel:${telefono}`}
+                  className="mt-2 flex min-h-11 items-center gap-3 text-[15px] font-semibold tabular-nums hover:text-primary"
                 >
-                  <Phone className="h-4 w-4 shrink-0 text-primary" /> {profile.phone}
+                  <Phone className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" /> {profile.phone}
                 </a>
-                <p className="flex items-center gap-3 text-sm">
-                  <Instagram className="h-4 w-4 shrink-0 text-primary" /> {profile.instagram}
-                </p>
-              </div>
-              <div className="overflow-hidden rounded-2xl border border-border/60">
-                <iframe
-                  src={mapSrc}
-                  title={`Mapa de ubicación de ${profile.name}`}
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  className="h-72 w-full border-0 dark:brightness-90 dark:invert dark:contrast-[0.9] dark:hue-rotate-180"
-                />
+                {profile.instagram?.trim() ? (
+                  <a
+                    href={`https://instagram.com/${profile.instagram.replace(/^@/, "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex min-h-11 items-center gap-3 text-[15px] hover:text-primary"
+                  >
+                    <Instagram className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" /> {profile.instagram}
+                  </a>
+                ) : null}
+                <div className="flex flex-wrap gap-2 pt-5">
+                  <Button asChild className="h-11 rounded-full px-5">
+                    <a href={directionsUrl} target="_blank" rel="noreferrer" className="gap-2">
+                      <Navigation className="h-4 w-4" aria-hidden="true" /> Cómo llegar
+                    </a>
+                  </Button>
+                  <Button asChild variant="outline" className="h-11 rounded-full px-5">
+                    <a href={`tel:${telefono}`} className="gap-2">
+                      <Phone className="h-4 w-4" aria-hidden="true" /> Llamar
+                    </a>
+                  </Button>
+                </div>
               </div>
             </Reveal>
-            <Reveal delay={100} className="rounded-2xl border border-border/60 bg-card p-6">
-              <p className="mb-3 text-xs uppercase tracking-widest text-muted-foreground">
-                Horario
-              </p>
-              <div className="divide-y divide-border/40">
-                {weekSchedule(profile.openingHours).map((d, i) => {
-                  // Domingo es el índice 6 de WEEK_DAYS_ES, pero el 0 de getDay().
-                  const isToday = (new Date().getDay() + 6) % 7 === i;
-                  return (
-                    <div
+            <Reveal delay={60} className="h-full">
+              <div className="h-full rounded-[20px] border border-lino bg-background p-5 sm:p-6">
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Horario</p>
+                <ul className="divide-y divide-lino">
+                  {weekSchedule(profile.openingHours).map((d, i) => (
+                    <li
                       key={d.label}
                       className={cn(
-                        "flex justify-between py-2 text-sm",
-                        isToday && "font-medium text-primary",
+                        "flex justify-between gap-4 py-2.5 text-[15px]",
+                        i === hoyIndice && "font-bold text-foreground",
                       )}
                     >
-                      <span className={cn(!isToday && "text-muted-foreground")}>{d.label}</span>
-                      <span className={cn(!isToday && "font-medium")}>{d.value}</span>
-                    </div>
-                  );
-                })}
+                      <span className={cn(i !== hoyIndice && "text-muted-foreground")}>
+                        {d.label}
+                        {i === hoyIndice && <span className="ml-2 rounded-full bg-salvia-clara px-2 py-0.5 text-xs font-semibold text-hoja-tinta">Hoy</span>}
+                      </span>
+                      <span className="tabular-nums">{d.value}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </Reveal>
           </div>
         </div>
       </section>
 
-      {/* CTA final */}
-      <section className="relative isolate overflow-hidden border-t border-border/40">
-        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-nata" />
-        <div className="mx-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] px-5 py-20 text-center md:py-28">
+      {/* Llamada final */}
+      <section className="border-t border-lino">
+        <div className={cn(CONTENEDOR_WEB, SECCION_WEB, "text-center")}>
           <Reveal className="flex flex-col items-center">
-            <h2 className="font-display text-3xl md:text-5xl">
-              ¿Nos vemos pronto?
-            </h2>
-            <p className="mt-3 text-muted-foreground">
+            <h2 className="text-[26px] font-extrabold tracking-tight md:text-[32px]">¿Te guardamos un hueco?</h2>
+            <p className="mt-2 max-w-md text-[15px] text-muted-foreground">
               {soloUno
                 ? "Elige servicio y hora en menos de un minuto."
                 : `Elige servicio, ${professionalWord(tipo)} y hora en menos de un minuto.`}
             </p>
-
-            {/* Caras reales del equipo en barbería; avatar de iniciales en el resto. */}
-            <div className="mt-7 flex flex-col items-center gap-2">
-              <AvatarCircles avatarUrls={TEAM_AVATARS} />
-              <p className="text-xs text-muted-foreground">
-                {soloUno
-                  ? `Te atiende ${employees[0].name} · ${totalTeamYears} años de oficio`
-                  : `${employees.length} ${professionalWord(tipo, true)} · ${totalTeamYears} años de oficio${entreElEquipo}`}
-              </p>
-            </div>
-
-            <ShimmerButton
-              asChild
-              shimmerColor="#f5e6c8"
-              background="var(--color-primary)"
-              className="mt-8 px-8 py-3.5 font-medium"
-            >
-              <Link
-                to="/s/$salonSlug/book"
-                params={{ salonSlug }}
-                search={(prev) => prev}
-                className="flex items-center gap-2 text-[color:var(--color-primary-foreground)]"
-              >
-                Reservar ahora <ArrowRight className="h-4 w-4" />
+            <Button asChild size="lg" className="mt-7 h-12 rounded-full px-8 text-[15px] font-semibold">
+              <Link to="/s/$salonSlug/book" params={{ salonSlug }} search={(prev) => prev} className="gap-2">
+                Reservar cita <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
-            </ShimmerButton>
+            </Button>
           </Reveal>
         </div>
       </section>
-
-      {/* Espaciador para que la barra fija móvil no tape el CTA final en pantallas pequeñas */}
-      <div className="h-20 md:hidden" aria-hidden="true" />
 
       <MobileBookingBar salonSlug={salonSlug} />
     </>

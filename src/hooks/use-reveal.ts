@@ -1,44 +1,56 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * Tracks whether an element has scrolled into the viewport, for scroll-reveal
- * animations. Respects `prefers-reduced-motion: reduce`: reduced-motion users
- * get `visible: true` immediately (no observer, no motion at all).
+ * Entrada suave de un bloque la primera vez que aparece en pantalla.
  *
- * The element starts hidden on both server and first client render (so SSR
- * markup and hydration match — no flash/mismatch), then flips to visible once
- * it intersects the viewport.
+ * Lote 17: antes el bloque nacía OCULTO (opacidad 0 desde el servidor) y solo
+ * aparecía al cruzar el 15 % de su alto. Sin JS, al saltar por un ancla, en la
+ * vista previa de un enlace o en una captura de página completa, media web
+ * salía en blanco. Ahora es al revés:
+ *
+ * - `armado` empieza en false: el servidor y el primer pintado lo enseñan todo.
+ * - Al montar, solo se «arma» (se oculta para entrar luego) lo que está POR
+ *   DEBAJO de la pantalla; lo que ya se ve no parpadea.
+ * - Entra en cuanto asoma un píxel (umbral 0), una sola vez, y hay un seguro
+ *   de 2,5 s que lo enseña igualmente si el observador no llega a dispararse.
+ * - Con `prefers-reduced-motion` no se arma nunca.
  */
-export function useReveal<T extends HTMLElement>(options?: IntersectionObserverInit) {
+export function useReveal<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
-  const [visible, setVisible] = useState(false);
+  const [armado, setArmado] = useState(false);
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     const node = ref.current;
-    if (!node) return;
+    if (!node || typeof IntersectionObserver === "undefined") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (node.getBoundingClientRect().top < window.innerHeight) return;
 
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    setArmado(true);
+    setVisible(false);
+    const mostrar = () => {
       setVisible(true);
-      return;
-    }
-
+      observer.disconnect();
+      window.clearTimeout(seguro);
+    };
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
+        if (entry.isIntersecting) mostrar();
       },
-      { threshold: 0.15, rootMargin: "0px 0px -10% 0px", ...options },
+      { threshold: 0, rootMargin: "0px 0px -6% 0px" },
     );
     observer.observe(node);
-    return () => observer.disconnect();
-    // `options` intentionally excluded: it's only ever passed as an inline
-    // literal (new identity every render) by the few callers that need it,
-    // and re-subscribing the observer on every render would be wasteful —
-    // the observer only needs to be (re)created when the node itself changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const seguro = window.setTimeout(() => {
+      // Si nadie ha hecho scroll hasta él, no hace falta enseñarlo ya; pero si
+      // el navegador no dispara el observador (pestaña en segundo plano,
+      // captura), que el bloque no se quede nunca a opacidad 0.
+      if (node.getBoundingClientRect().top < window.innerHeight * 1.5) mostrar();
+    }, 2500);
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(seguro);
+    };
   }, []);
 
-  return { ref, visible };
+  return { ref, visible: !armado || visible, armado };
 }

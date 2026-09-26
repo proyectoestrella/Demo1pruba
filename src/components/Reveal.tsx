@@ -3,27 +3,27 @@ import { useReveal } from "@/hooks/use-reveal";
 import { cn } from "@/lib/utils";
 
 export interface RevealProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** Stagger delay in ms, applied only once the element becomes visible. */
+  /** Retraso escalonado en ms (máximo 180), solo cuando el bloque entra. */
   delay?: number;
 }
 
 /**
- * Reusable scroll-reveal wrapper: fades and lifts its children into place the
- * first time they enter the viewport. Discreet by design (short distance,
- * moderate duration) and fully inert under `prefers-reduced-motion: reduce`
- * (see useReveal — reduced-motion users get content shown immediately).
+ * Envoltorio de entrada suave (lote 17): fundido desde 12 px más abajo, 480 ms
+ * con curva de salida, una sola vez. El contenido nace VISIBLE (ver useReveal):
+ * solo se oculta, para entrar, lo que empieza por debajo de la pantalla.
  */
 export function Reveal({ className, style, delay = 0, ...props }: RevealProps) {
-  const { ref, visible } = useReveal<HTMLDivElement>();
+  const { ref, visible, armado } = useReveal<HTMLDivElement>();
   return (
     <div
       ref={ref}
       className={cn(
-        "transition-[opacity,transform] duration-700 ease-out motion-reduce:transition-none motion-reduce:opacity-100 motion-reduce:translate-y-0",
-        visible ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0",
+        armado &&
+          "transition-[opacity,transform] duration-[480ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+        visible ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0",
         className,
       )}
-      style={{ transitionDelay: visible ? `${delay}ms` : "0ms", ...style }}
+      style={{ transitionDelay: visible && armado ? `${Math.min(delay, 180)}ms` : "0ms", ...style }}
       {...props}
     />
   );

@@ -642,3 +642,21 @@
 @media (prefers-reduced-motion: reduce) {
   .elevar, .elevar:hover { transition: none; transform: none; }
 }
+
+/* Portada de la web pública (lote 17): cada bloque entra una vez, desde
+   opacidad 0,4 y 10 px más abajo, 520 ms, escalonado 60 ms. Empieza visible:
+   no retrasa el primer pintado ni el LCP. */
+@keyframes entrar-portada {
+  from { opacity: 0.4; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.entrada-portada > * {
+  animation: entrar-portada 520ms var(--curva-salida) both;
+}
+.entrada-portada > :nth-child(2) { animation-delay: 60ms; }
+.entrada-portada > :nth-child(3) { animation-delay: 120ms; }
+.entrada-portada > :nth-child(4) { animation-delay: 180ms; }
+.entrada-portada > :nth-child(n + 5) { animation-delay: 240ms; }
+@media (prefers-reduced-motion: reduce) {
+  .entrada-portada > * { animation: none; }
+}

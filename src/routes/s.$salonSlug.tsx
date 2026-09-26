@@ -14,7 +14,8 @@ import { Logo } from "@/components/Logo";
 import { logoDelSalon } from "@/lib/logo-salon";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { ScrollProgress } from "@/components/magicui/scroll-progress";
+import { CONTENEDOR_WEB } from "@/lib/web-publica";
+import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 
 export const Route = createFileRoute("/s/$salonSlug")({
@@ -66,10 +67,11 @@ function demoSessionKey(salonSlug: string): string {
 function navLinks(soloUno: boolean) {
   return [
     { href: "#servicios", label: "Servicios" },
-    { href: "#galeria", label: "Galería" },
+    { href: "#carta", label: "Precios" },
     ...(soloUno ? [] : [{ href: "#equipo", label: "Equipo" }]),
+    { href: "#galeria", label: "Galería" },
     { href: "#resenas", label: "Reseñas" },
-    { href: "#faq", label: "FAQ" },
+    { href: "#faq", label: "Preguntas" },
     { href: "#ubicacion", label: "Cómo llegar" },
   ];
 }
@@ -232,24 +234,18 @@ function SalonLayout() {
     // En la home NO hace falta: su barra de «Reservar cita» ya se esconde sola
     // al llegar el pie (ver MobileBookingBar), y reservarle sitio dejaría una
     // banda negra vacía al final de la página.
-    <div
-      className={`min-h-screen bg-background text-foreground ${
-        onBooking ? "hueco-barra-fija" : ""
-      }`}
-    >
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
-        {/* Barra de avance de lectura, pegada al borde inferior de la cabecera. */}
-        <ScrollProgress className="absolute inset-x-0 bottom-0 top-auto h-0.5 bg-none bg-primary" />
-        <div className="mx-auto flex max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] items-center justify-between gap-4 px-5 py-4">
+        <div className={cn(CONTENEDOR_WEB, "flex min-h-16 items-center justify-between gap-4 py-2.5")}>
           <div className="flex min-w-0 items-center gap-3">
             <Link
               to="/s/$salonSlug"
               params={{ salonSlug }}
-              className="flex min-w-0 items-center gap-2"
+              className="flex min-h-11 min-w-0 items-center gap-2.5"
             >
               {logoSalon ? (
                 <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
-                  <img src={logoSalon} alt={`Logo de ${profile.name}`} className="h-full w-full object-cover" />
+                  <img src={logoSalon} alt={`Logo de ${profile.name}`} width={36} height={36} className="h-full w-full object-cover" />
                 </span>
               ) : (
                 <Logo label={profile.name} />
@@ -262,7 +258,7 @@ function SalonLayout() {
                   {profile.name}
                 </p>
                 {profile.tagline ? (
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-cafe-suave">
                     {profile.tagline}
                   </p>
                 ) : null}
@@ -278,7 +274,7 @@ function SalonLayout() {
                 // guardado. Para una demo de venta el parámetro no existe en
                 // `salons` y el panel se comporta exactamente como siempre.
                 href={`/app?v=2&acceso=demo&s=${encodeURIComponent(salonSlug)}`}
-                className="ml-2 hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted sm:inline-flex"
+                className="ml-1 hidden h-9 items-center gap-1.5 rounded-full border border-lino-fuerte bg-card px-3 text-xs font-medium text-cafe-medio hover:bg-beige sm:inline-flex"
               >
                 <Lock className="h-3 w-3" />
                 Acceso {professionalWord(tipo)}
@@ -286,7 +282,7 @@ function SalonLayout() {
             ) : (
               <Link
                 to="/login"
-                className="ml-2 hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted sm:inline-flex"
+                className="ml-1 hidden h-9 items-center gap-1.5 rounded-full border border-lino-fuerte bg-card px-3 text-xs font-medium text-cafe-medio hover:bg-beige sm:inline-flex"
               >
                 <Lock className="h-3 w-3" />
                 Acceso {professionalWord(tipo)}
@@ -294,12 +290,12 @@ function SalonLayout() {
             )}
           </div>
           {!onBooking && (
-            <nav className="hidden items-center gap-6 text-sm lg:flex">
+            <nav className="hidden items-center gap-6 text-sm font-medium lg:flex" aria-label="Secciones">
               {NAV_LINKS.map((l) => (
                 <a
                   key={l.href}
                   href={l.href}
-                  className="relative text-muted-foreground transition-colors after:absolute after:-bottom-1 after:left-0 after:h-px after:w-0 after:bg-primary after:transition-all hover:text-foreground hover:after:w-full motion-reduce:after:transition-none"
+                  className="relative text-cafe-medio transition-colors after:absolute after:-bottom-1 after:left-0 after:h-px after:w-0 after:bg-primary after:transition-all hover:text-foreground hover:after:w-full motion-reduce:after:transition-none"
                 >
                   {l.label}
                 </a>
@@ -331,7 +327,7 @@ function SalonLayout() {
                         <a
                           key={l.href}
                           href={l.href}
-                          className="rounded-lg px-3 py-2.5 text-base text-foreground transition-colors hover:bg-muted hover:text-primary"
+                          className="flex min-h-12 items-center rounded-xl px-3 text-base text-foreground transition-colors hover:bg-muted hover:text-primary"
                           onClick={() => setMobileMenuOpen(false)}
                         >
                           {l.label}
@@ -341,7 +337,7 @@ function SalonLayout() {
                   </SheetContent>
                 </Sheet>
 
-                <Button asChild size="sm" className="shrink-0 rounded-full px-4">
+                <Button asChild className="h-11 shrink-0 rounded-full px-5 font-semibold">
                   <Link to="/s/$salonSlug/book" params={{ salonSlug }} search={(prev) => prev}>
                     Reservar
                   </Link>
@@ -352,17 +348,25 @@ function SalonLayout() {
         </div>
       </header>
 
-      <main>
+      <main className="flex-1">
         <Outlet />
       </main>
 
-      <footer className="mt-24 border-t border-border/60 bg-card">
-        <div className="mx-auto grid max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] gap-10 px-5 py-16 md:grid-cols-4">
+      {/* El pie reserva debajo el alto de la barra fija de móvil (reservar en
+          la portada, resumen en la reserva): así la barra nunca tapa nada y
+          no queda la banda vacía que dejaba antes el hueco en toda la página. */}
+      <footer
+        className={cn(
+          "border-t border-lino bg-card",
+          onBooking ? "pb-[var(--alto-barra-fija)] lg:pb-0" : "pb-[var(--alto-barra-fija)] md:pb-0",
+        )}
+      >
+        <div className={cn(CONTENEDOR_WEB, "grid gap-8 py-12 md:grid-cols-4 md:gap-10 md:py-14")}>
           <div className="md:col-span-2">
             <div className="flex items-center gap-2">
               {logoSalon ? (
                 <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
-                  <img src={logoSalon} alt={`Logo de ${profile.name}`} className="h-full w-full object-cover" />
+                  <img src={logoSalon} alt={`Logo de ${profile.name}`} width={36} height={36} className="h-full w-full object-cover" />
                 </span>
               ) : (
                 <Logo label={profile.name} />
@@ -374,34 +378,51 @@ function SalonLayout() {
             ) : null}
           </div>
           <div>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Visítanos</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Visítanos</p>
             <p className="mt-3 flex items-start gap-2 text-sm">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               {profile.address}
             </p>
-            <p className="mt-2 flex items-center gap-2 text-sm">
-              <Phone className="h-4 w-4 shrink-0 text-primary" />
+            <a
+              href={`tel:${profile.phone.replace(/\s/g, "")}`}
+              className="mt-1 flex min-h-11 items-center gap-2 text-sm tabular-nums hover:text-primary"
+            >
+              <Phone className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
               {profile.phone}
-            </p>
-            <p className="mt-2 flex items-center gap-2 text-sm">
-              <Instagram className="h-4 w-4 shrink-0 text-primary" />
-              {profile.instagram}
-            </p>
+            </a>
+            {profile.instagram?.trim() ? (
+              <a
+                href={`https://instagram.com/${profile.instagram.replace(/^@/, "")}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex min-h-11 items-center gap-2 text-sm hover:text-primary"
+              >
+                <Instagram className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                {profile.instagram}
+              </a>
+            ) : null}
           </div>
           <div>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Horario</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Horario</p>
             {weekSchedule(profile.openingHours).map((d) => (
-              <p key={d.label} className="mt-2 flex justify-between gap-4 text-sm">
+              <p key={d.label} className="mt-2 flex justify-between gap-4 text-sm tabular-nums">
                 <span className="text-muted-foreground">{d.label}</span>
                 <span>{d.value}</span>
               </p>
             ))}
           </div>
         </div>
-        <div className="border-t border-border/60">
-          <div className="mx-auto flex max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] flex-col gap-2 px-5 py-6 text-xs text-muted-foreground sm:flex-row sm:justify-between">
-            <p>© {profile.name}</p>
-            <p><Link to="/s/$salonSlug/privacidad" params={{ salonSlug }} search={(prev) => prev} className="hover:text-foreground hover:underline">Privacidad</Link> · Términos · Política de cancelación</p>
+        <div className="border-t border-lino">
+          <div className={cn(CONTENEDOR_WEB, "flex flex-col gap-1 py-4 text-[13px] text-cafe-suave sm:flex-row sm:items-center sm:justify-between")}>
+            <p>© {profile.name} · Reservas con siShow</p>
+            <Link
+              to="/s/$salonSlug/privacidad"
+              params={{ salonSlug }}
+              search={(prev) => prev}
+              className="inline-flex min-h-11 items-center font-medium text-cafe-medio underline-offset-2 hover:text-foreground hover:underline"
+            >
+              Privacidad
+            </Link>
           </div>
         </div>
       </footer>
