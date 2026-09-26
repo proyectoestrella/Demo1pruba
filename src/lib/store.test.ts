@@ -337,3 +337,25 @@ describe("señal: reajuste al cambiar servicio u hora", () => {
     useSalonStore.getState().updateSalonProfile({ depositEnabled: false, depositAppliesTo: "todas" });
   });
 });
+
+describe("caja (lote 11)", () => {
+  it("registrarPago añade al array local; borrarPago lo quita", () => {
+    const antes = useSalonStore.getState().payments.length;
+    const p = useSalonStore.getState().registrarPago({
+      importeEur: 20, metodo: "efectivo", concepto: "servicio", fecha: new Date().toISOString(),
+    });
+    expect(p.id).toBeTruthy();
+    expect(p.origen).toBe("sishow");
+    expect(useSalonStore.getState().payments).toHaveLength(antes + 1);
+    expect(useSalonStore.getState().payments[0]).toMatchObject({ importeEur: 20, metodo: "efectivo" });
+    useSalonStore.getState().borrarPago(p.id);
+    expect(useSalonStore.getState().payments.find((x) => x.id === p.id)).toBeUndefined();
+  });
+
+  it("en una demo (sin salón real), cargarPagos y cerrarCaja no tocan la red y no rompen", async () => {
+    expect(useSalonStore.getState().realSalonSlug).toBeNull();
+    await useSalonStore.getState().cargarPagos("2026-01-01", "2026-01-31");
+    const cierre = await useSalonStore.getState().cerrarCaja("2026-01-01", 50);
+    expect(cierre).toBeNull();
+  });
+});

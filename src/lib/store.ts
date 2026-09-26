@@ -6,7 +6,7 @@ import {
   type Cambio, type ContextoDeshacer, type EntidadCambio, type EstadoDeshacer, type MotivoNoDeshacer, type TipoCambio,
 } from "./cambios";
 import {
-  ACCIONES_REGISTRADAS, ACCIONES_SIN_REGISTRO, CAMPOS_PERFIL_SIN_REGISTRO, resumenCita, resumenClienta, resumenServicio, tipoCambioCita, tipoCambioClienta,
+  ACCIONES_REGISTRADAS, ACCIONES_SIN_REGISTRO, CAMPOS_PERFIL_SIN_REGISTRO, resumenCita, resumenClienta, resumenPago, resumenServicio, tipoCambioCita, tipoCambioClienta,
 } from "./registro-cambios";
 import type { PeriodoId, RangoPersonalizado } from "./periodos";
 import { persist, createJSONStorage } from "zustand/middleware";
@@ -31,6 +31,8 @@ import type {
   MetodoSenal,
 } from "./mock/types";
 import type { DemoProfile } from "./demo-profile";
+import type { Pago } from "./pagos";
+import type { CierreCaja } from "./api/pagos.functions";
 import { recargoActivo } from "./recargo-activo";
 import { inferBusinessType, menuDesdeServicios, slugForId, type BusinessType } from "./business-type";
 import { solapaConAgenda } from "./solape";
@@ -71,6 +73,10 @@ import {
   type ClienteDeCita,
   pushCambio,
   pushAvisoEnviado,
+  pushPago,
+  pushPagoDeletion,
+  cargarPagosDeServidor,
+  cerrarCajaEnServidor,
 } from "./salon-sync";
 
 interface SalonState {
@@ -78,6 +84,21 @@ interface SalonState {
   waitlist: WaitlistEntry[];
   clients: Client[];
   services: Service[];
+  /**
+   * Pagos reales (lote 11). A diferencia de `appointments`/`clients`/
+   * `waitlist`, NO se rellena en la carga inicial de un salón real: se pide
+   * aparte con `cargarPagos`, igual que el historial de cambios. Se persiste
+   * para que una demo conserve lo apuntado.
+   */
+  payments: Pago[];
+  /** En un salón real, sustituye `payments` por lo de ese rango. En una demo, no hace nada. */
+  cargarPagos: (desde: string, hasta: string) => Promise<void>;
+  /** Alta manual de un pago. `datos` sin `id`/`createdAt`/`origen` (siempre "sishow"). */
+  registrarPago: (datos: Omit<Pago, "id" | "createdAt" | "origen">) => Pago;
+  /** Borra un pago manual mal apuntado. Es la única acción de Caja que se registra en el historial (ver docs/contrato-caja.md §5b). */
+  borrarPago: (id: string) => void;
+  /** `null` en demo: no hay servidor que calcule el esperado del día. */
+  cerrarCaja: (fecha: string, efectivoContado: number, nota?: string) => Promise<CierreCaja | null>;
   // El perfil real vive tipado como `SalonProfile`, pero cuando esta ventana
   // enseña una demo (`useApplyDemoFromUrl` en app.tsx) se le mezclan también
   // los campos de personalización de `DemoProfile` (modulosOcultos,
@@ -466,6 +487,7 @@ function estadoActualDe(st: SalonState, c: Cambio): Record<string, unknown> | nu
   if (c.entidad === "cita") return (st.appointments.find((a) => a.id === c.idEntidad) as unknown as Record<string, unknown>) ?? null;
   if (c.entidad === "clienta") return (st.clients.find((x) => x.id === c.idEntidad) as unknown as Record<string, unknown>) ?? null;
   if (c.entidad === "servicio") return { servicio: st.services.find((x) => x.id === c.idEntidad) ?? null };
+  if (c.entidad === "pago") return { pago: st.payments.find((p) => p.id === c.idEntidad) ?? null };
   return st.salonProfile as unknown as Record<string, unknown>;
 }
 
@@ -524,6 +546,7 @@ export const useSalonStore = create<SalonState>()(
       waitlist: seedWaitlist,
       clients: seedClients,
       services: seedServices,
+      payments: [],
       salonProfile: salon,
       savedDemos: [],
       panelV2: false,
@@ -720,6 +743,36 @@ export const useSalonStore = create<SalonState>()(
         if (recibido) get().recibirSenal(id, { metodo: "bizum" });
         else get().deshacerSenalRecibida(id);
       },
+
+      /* -------------------------------------------------------------- */
+      /* Caja (lote 11)                                                  */
+      /* -------------------------------------------------------------- */
+
+      cargarPagos: async (desde, hasta) => {
+        const slug = get().realSalonSlug;
+        if (!slug) return; // demo: no hay servidor, se queda con lo que ya hubiera local
+        const pagos = await cargarPagosDeServidor(slug, desde, hasta);
+        if (pagos) set({ payments: pagos });
+      },
+
+      registrarPago: (datos) => {
+        const pago: Pago = {
+          ...datos,
+          id: crypto.randomUUID(),
+          origen: "sishow",
+          createdAt: new Date().toISOString(),
+        };
+        set((s) => ({ payments: [pago, ...s.payments] }));
+        pushPago(get().realSalonSlug, pago);
+        return pago;
+      },
+
+      borrarPago: (id) => {
+        set((s) => ({ payments: s.payments.filter((p) => p.id !== id) }));
+        pushPagoDeletion(get().realSalonSlug, id);
+      },
+
+      cerrarCaja: (fecha, efectivoContado, nota) => cerrarCajaEnServidor(get().realSalonSlug, fecha, efectivoContado, nota),
 
       addClient: (c) => {
         const client: Client = {
@@ -1013,6 +1066,18 @@ export const useSalonStore = create<SalonState>()(
                 : s.services.filter((x) => x.id !== c.idEntidad),
             }));
             sincronizarCarta();
+          } else if (c.entidad === "pago") {
+            const previo = c.antes.pago as Pago | null | undefined;
+            set((s) => ({
+              payments: previo
+                ? s.payments.some((p) => p.id === c.idEntidad)
+                  ? s.payments.map((p) => (p.id === c.idEntidad ? previo : p))
+                  : [previo, ...s.payments]
+                : s.payments.filter((p) => p.id !== c.idEntidad),
+            }));
+            // Deshacer un borrado recupera el pago: se vuelve a subir tal cual.
+            const restaurado = get().payments.find((p) => p.id === c.idEntidad);
+            if (restaurado) pushPago(get().realSalonSlug, restaurado);
           } else {
             get().updateSalonProfile(parche as Partial<SalonProfile>);
           }
@@ -1090,6 +1155,7 @@ export const useSalonStore = create<SalonState>()(
           waitlist: state.waitlist,
           clients: state.clients,
           services: state.services,
+          payments: state.payments,
           salonProfile: state.salonProfile,
           savedDemos: state.savedDemos,
           panelV2: state.panelV2,
@@ -1284,6 +1350,7 @@ function instalarRegistroDeCambios() {
     const s = useSalonStore.getState();
     if (entidad === "cita") return (s.appointments.find((a) => a.id === id) as unknown as Record<string, unknown>) ?? null;
     if (entidad === "clienta") return (s.clients.find((c) => c.id === id) as unknown as Record<string, unknown>) ?? null;
+    if (entidad === "pago") return { pago: s.payments.find((p) => p.id === id) ?? null };
     return { servicio: s.services.find((x) => x.id === id) ?? null };
   };
 
@@ -1309,6 +1376,9 @@ function instalarRegistroDeCambios() {
           } else if (entidad === "clienta") {
             tipo = tipoCambioClienta(accion, args, antes as Partial<Client>, despues as Partial<Client>);
             resumen = resumenClienta(tipo, despues as Partial<Client>);
+          } else if (entidad === "pago") {
+            tipo = "pago.borrar";
+            resumen = resumenPago((antes.pago as Pago) ?? null);
           } else {
             tipo = accion === "deleteService" ? "servicio.borrar" : "servicio.editar";
             resumen = resumenServicio(tipo, (antes.servicio as Service) ?? null, (despues.servicio as Service) ?? null);

@@ -36,7 +36,15 @@ import {
 import { registrarAviso } from "./avisos-sync";
 import type { Cambio } from "./cambios";
 import { guardarCambio, marcarAvisoEnviadoServidor } from "./api/cambios.functions";
+import {
+  borrarPago as borrarPagoApi,
+  cerrarCaja as cerrarCajaApi,
+  listarPagos as listarPagosApi,
+  registrarPago as registrarPagoApi,
+  type CierreCaja,
+} from "./api/pagos.functions";
 import type { Appointment, Client, SalonProfile, WaitlistEntry } from "./mock/types";
+import type { Pago } from "./pagos";
 import { manualBlockNote } from "./no-show";
 
 /** Datos del cliente que acompañan a una cita cuando se conocen (reserva pública, cita por teléfono). */
@@ -399,4 +407,52 @@ export function pushCambio(slug: string | null, c: Cambio): void {
 export function pushAvisoEnviado(slug: string | null, cambioId: string): void {
   if (!slug) return;
   subir("el aviso a la clienta", () => marcarAvisoEnviadoServidor({ data: { slug, cambioId } }));
+}
+
+/* ---------------------------------------------------------------------- */
+/* Caja (lote 11)                                                         */
+/* ---------------------------------------------------------------------- */
+
+/** Sube un pago (alta manual). Idempotente por `id`. */
+export function pushPago(slug: string | null, pago: Pago): void {
+  if (!slug) return;
+  subir("el pago", () =>
+    registrarPagoApi({
+      data: {
+        slug,
+        pago: {
+          id: pago.id, appointmentId: pago.appointmentId, clientId: pago.clientId, clientName: pago.clientName,
+          importeEur: pago.importeEur, metodo: pago.metodo, concepto: pago.concepto, cobradoPor: pago.cobradoPor,
+          nota: pago.nota, refExterna: pago.refExterna, fecha: pago.fecha,
+        },
+      },
+    }),
+  );
+}
+
+export function pushPagoDeletion(slug: string | null, id: string): void {
+  if (!slug) return;
+  subir("el pago borrado", () => borrarPagoApi({ data: { slug, id } }));
+}
+
+/**
+ * Sustituye `payments` por lo que haya en el servidor para ese rango (como
+ * `listarCambios`: no forma parte de la carga inicial del salón). En una
+ * demo no hay nada que pedir: se resuelve con `null` sin tocar la red.
+ */
+export async function cargarPagosDeServidor(slug: string | null, desde: string, hasta: string): Promise<Pago[] | null> {
+  if (!slug) return null;
+  const r = await listarPagosApi({ data: { slug, desde, hasta } });
+  return r.pagos as Pago[];
+}
+
+/** `null` en demo: no hay servidor que calcule el esperado del día. */
+export async function cerrarCajaEnServidor(
+  slug: string | null,
+  fecha: string,
+  efectivoContado: number,
+  nota?: string,
+): Promise<CierreCaja | null> {
+  if (!slug) return null;
+  return cerrarCajaApi({ data: { slug, fecha, efectivoContado, nota } });
 }
