@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Expand } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Reveal } from "@/components/Reveal";
@@ -53,9 +53,34 @@ export function WorkGallery({ photos = [], tipo }: { photos?: string[]; tipo?: s
   const images = paraRejilla([...propias, ...relleno(tipo).slice(0, faltan)]);
   const openImage = openIndex !== null ? images[openIndex] : null;
   const impar = images.length % 2 === 1;
+  // Las fotos de la galería (de Google, 200–650 KB cada una) solo se piden
+  // cuando la sección está a 600 px de verse. Con \`loading="lazy"\` a secas,
+  // Chrome las descargaba al hidratar y le quitaban ancho de banda a la foto
+  // de portada: el LCP móvil se iba a 6,7 s (lote 17). Mientras tanto, cada
+  // hueco ya tiene su tamaño final: no hay salto de maquetación.
+  const seccion = useRef<HTMLElement | null>(null);
+  const [cerca, setCerca] = useState(false);
+  useEffect(() => {
+    const nodo = seccion.current;
+    if (!nodo || typeof IntersectionObserver === "undefined") {
+      setCerca(true);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setCerca(true);
+          obs.disconnect();
+        }
+      },
+      { rootMargin: "600px 0px" },
+    );
+    obs.observe(nodo);
+    return () => obs.disconnect();
+  }, []);
 
   return (
-    <section id="galeria" className="border-t border-lino bg-card">
+    <section id="galeria" ref={seccion} className="border-t border-lino bg-card">
       <div className={cn(CONTENEDOR_WEB, SECCION_WEB)}>
         <Reveal className="mb-8 md:mb-10">
           <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Nuestro trabajo</p>
@@ -74,6 +99,7 @@ export function WorkGallery({ photos = [], tipo }: { photos?: string[]; tipo?: s
                     impar && i === 0 ? "aspect-[2/1] md:aspect-square" : "aspect-square",
                   )}
                 >
+                  {cerca && (
                   <img
                     src={img.src}
                     ref={vigilar(img.src)}
@@ -85,6 +111,7 @@ export function WorkGallery({ photos = [], tipo }: { photos?: string[]; tipo?: s
                     decoding="async"
                     className="h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
                   />
+                  )}
                   <span className="absolute bottom-2 right-2 flex size-9 items-center justify-center rounded-full bg-cafe/70 text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
                     <Expand className="h-4 w-4" aria-hidden="true" />
                   </span>

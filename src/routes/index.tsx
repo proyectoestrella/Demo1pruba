@@ -229,15 +229,15 @@ function WebSishow() {
             </Reveal>
             <ol className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               {SEMANA.map((p, i) => (
-                <Reveal key={p.cuando} delay={i * 60} className="h-full">
-                  <li className="flex h-full flex-col rounded-[20px] border border-lino bg-background p-5">
+                <li key={p.cuando} className="h-full">
+                  <Reveal delay={i * 60} className="flex h-full flex-col rounded-[20px] border border-lino bg-background p-5">
                     <span className="inline-flex w-fit rounded-full bg-beige px-3 py-1 text-xs font-bold text-cafe-medio">
                       {p.cuando}
                     </span>
                     <h3 className="mt-3 text-base font-extrabold">{p.titulo}</h3>
                     <p className="mt-1.5 text-[15px] text-muted-foreground">{p.texto}</p>
-                  </li>
-                </Reveal>
+                  </Reveal>
+                </li>
               ))}
             </ol>
           </div>

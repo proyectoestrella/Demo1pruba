@@ -366,7 +366,7 @@ function SalonLayout() {
             <div className="flex items-center gap-2">
               {logoSalon ? (
                 <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
-                  <img src={logoSalon} alt={`Logo de ${profile.name}`} width={36} height={36} className="h-full w-full object-cover" />
+                  <img src={logoSalon} alt={`Logo de ${profile.name}`} width={36} height={36} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                 </span>
               ) : (
                 <Logo label={profile.name} />

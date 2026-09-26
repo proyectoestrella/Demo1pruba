@@ -616,8 +616,8 @@ function SalonHome() {
             ) : employees.every((e) => fotoDe(e) === placeholderAvatar(e.name, e.id)) ? (
               <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {employees.map((e, i) => (
-                  <Reveal key={e.id} delay={i * 60} className="h-full">
-                    <li className="flex h-full items-center gap-4 rounded-[20px] border border-lino bg-card p-5">
+                  <li key={e.id} className="h-full">
+                  <Reveal delay={i * 60} className="flex h-full items-center gap-4 rounded-[20px] border border-lino bg-card p-5">
                       <span
                         className="grid size-16 shrink-0 place-items-center rounded-full font-display text-2xl text-cafe"
                         style={{ background: `var(--pro-${(i % 4) + 1})` }}
@@ -630,8 +630,8 @@ function SalonHome() {
                         <span className="block text-sm text-muted-foreground">{e.specialty}</span>
                         <span className="block text-[13px] text-cafe-suave tabular-nums">{e.yearsExperience} años de experiencia</span>
                       </span>
-                    </li>
                   </Reveal>
+                  </li>
                 ))}
               </ul>
             ) : (

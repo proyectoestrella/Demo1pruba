@@ -672,7 +672,7 @@ function BookingWizard() {
       {showRepeatBanner && repeatNextSlot && (
         <div className="mt-6 flex items-start gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-4">
           <Repeat className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-          <button type="button" onClick={applyRepeat} className="min-w-0 flex-1 text-left">
+          <button type="button" onClick={applyRepeat} className="min-h-11 min-w-0 flex-1 text-left">
             <p className="text-sm font-medium">
               Repetir: {repeatServiceNames}
               {!soloUno && repeatEmployeeName ? ` con ${repeatEmployeeName}` : ""}
@@ -685,7 +685,7 @@ function BookingWizard() {
             type="button"
             onClick={dismissRepeat}
             aria-label="Descartar sugerencia de repetir cita"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="-my-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>
