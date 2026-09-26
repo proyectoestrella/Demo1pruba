@@ -115,16 +115,11 @@ Es la clave con la que se cifran en la base de datos el refresh token de Google 
 aplicación de Apple de cada conexión. Sin ella no se puede ni cifrar ni descifrar nada — trátala como
 una contraseña maestra. Ponla también en Vercel (Production), igual que las de Google.
 
-Por último, si `/api/recordatorios` ya tiene configurado `CRON_SECRET`, no hace falta nada más: el
-polling de calendarios (cada 5 minutos) reutiliza esa misma variable. Si no lo tenías puesto todavía,
-genera otro valor al azar igual que arriba y ponlo como `CRON_SECRET`.
+Por último, el polling de calendarios reutiliza `CRON_SECRET`, la misma variable del recordatorio. Si todavía no la tienes puesta, genera un valor al azar igual que arriba y ponlo como `CRON_SECRET`.
 
-**Aviso sobre el plan de Vercel**: un cron cada 5 minutos (`*/5 * * * *`, en `vercel.json`) normalmente
-exige el plan **Pro** de Vercel — el plan gratuito (Hobby) solo permite crons de una vez al día. Si
-seguís en el plan gratuito, el cron de calendarios no se ejecutará solo (Vercel lo puede rechazar o
-ignorar en el despliegue) y habría que decidir: pasar a Pro, o bajar la frecuencia a algo compatible
-con Hobby (una vez al día — Apple sincronizaría mucho más lento, y el webhook de Google seguiría
-funcionando en tiempo real igualmente). Dímelo cuando lleguemos a desplegar y lo ajustamos.
+**El plan de Vercel.** El proyecto está en el plan gratuito (Hobby), que solo permite crons diarios. Un despliegue con un cron más frecuente falla. Por eso `vercel.json` lleva el cron de calendarios **una vez al día** (`30 5 * * *`, hora UTC). El efecto es este:
+- **Google:** va en tiempo real por su webhook (`watch`); el cron diario solo es el respaldo.
+- **Apple:** iCloud no tiene webhook, así que se sincroniza al abrir el panel y, como mínimo, una vez al día. Para bajarlo a 5 minutos hace falta el plan Pro, con `*/5 * * * *` en `vercel.json`. Esa decisión es tuya.
 
 ## 2. Apple / iCloud — 5 minutos
 
