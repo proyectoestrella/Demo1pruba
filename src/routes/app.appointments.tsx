@@ -2,7 +2,7 @@ import { BotonConPlan } from "@/components/BotonConPlan";
 import { usePermisos } from "@/lib/accesos-panel";
 import { alcance, puede } from "@/lib/permisos";
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
@@ -130,7 +130,7 @@ function Appointments() {
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
   const carta = selectServiceMap(services);
-  const clientById = new Map(clients.map((c) => [c.id, c] as const));
+  const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c] as const)), [clients]);
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const [status, setStatus] = useState<string>("all");
@@ -149,12 +149,25 @@ function Appointments() {
   // El recorte va al final: si se aplicara antes, buscar solo miraría dentro de
   // las 60 citas más recientes.
   const termino = busqueda.trim().toLowerCase();
-  const filtered = appointments
-    .filter((a) => (status === "all" ? true : a.status === status))
-    .filter((a) => (emp === "all" ? true : a.employeeId === emp))
-    .filter((a) => (termino === "" ? true : a.clientName.toLowerCase().includes(termino)))
-    .sort((a, b) => +new Date(b.start) - +new Date(a.start))
-    .slice(0, 60);
+  // Lote 16: ordenadas UNA vez por lista de citas (antes, en cada pintado, con
+  // dos `new Date` por comparación sobre ~3.300 citas).
+  const recientesPrimero = useMemo(
+    () =>
+      appointments
+        .map((a) => [+new Date(a.start), a] as const)
+        .sort((x, y) => y[0] - x[0])
+        .map(([, a]) => a),
+    [appointments],
+  );
+  const filtered = useMemo(
+    () =>
+      recientesPrimero
+        .filter((a) => (status === "all" ? true : a.status === status))
+        .filter((a) => (emp === "all" ? true : a.employeeId === emp))
+        .filter((a) => (termino === "" ? true : a.clientName.toLowerCase().includes(termino)))
+        .slice(0, 60),
+    [recientesPrimero, status, emp, termino],
+  );
 
   function handleStatusChange(a: Appointment, next: AppointmentStatus) {
     // Lote 12: el aviso con «Deshacer» lo pone el registro de cambios.

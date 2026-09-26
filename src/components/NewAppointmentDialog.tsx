@@ -97,7 +97,26 @@ export interface NewAppointmentDialogProps {
  * cabecera, el calendario (con profesional y hora puestas), la lista de
  * espera, la ficha y Hoy.
  */
-export function NewAppointmentDialog({
+/**
+ * Lote 16: cerrado, el formulario no se monta (antes calculaba clientas
+ * frecuentes, huecos y carta en cada pintado de cada pantalla que lo lleva).
+ * Se queda montado 400 ms tras cerrar para que la salida se anime.
+ */
+export function NewAppointmentDialog(props: NewAppointmentDialogProps) {
+  const [montado, setMontado] = useState(props.open);
+  useEffect(() => {
+    if (props.open) {
+      setMontado(true);
+      return;
+    }
+    const t = setTimeout(() => setMontado(false), 400);
+    return () => clearTimeout(t);
+  }, [props.open]);
+  if (!props.open && !montado) return null;
+  return <FormularioNuevaCita {...props} />;
+}
+
+function FormularioNuevaCita({
   open,
   onOpenChange,
   defaultDate,

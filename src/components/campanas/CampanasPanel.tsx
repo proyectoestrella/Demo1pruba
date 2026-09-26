@@ -1,3 +1,4 @@
+import { useTrasPintar } from "@/lib/tras-pintar-panel";
 import { useTienePlan } from "@/lib/accesos-panel";
 import { LlegaConPlan } from "@/components/LlegaConPlan";
 import { useMemo, useState } from "react";
@@ -64,9 +65,12 @@ export function CampanasPanel() {
    */
   const [preparadas, setPreparadas] = useState<{ id: string; titulo: string; personas: number; cuando: string }[]>([]);
 
+  // Lote 16: las campañas (cálculo caro de BACKEND) se calculan un fotograma
+  // después de pintar la pantalla, para que el clic del menú responda ya.
+  const listo = useTrasPintar();
   const campanas = useMemo(
     () =>
-      buildCampanas({
+      !listo ? [] : buildCampanas({
         appointments,
         clients,
         services,
@@ -78,7 +82,7 @@ export function CampanasPanel() {
         // Día y franja de cada cita en la zona del salón.
         timeZone: zonaDelSalon(salonProfile),
       }),
-    [appointments, clients, services, employees, salonProfile],
+    [listo, appointments, clients, services, employees, salonProfile],
   );
 
   const resumen = resumenDelMes(campanas);
@@ -87,7 +91,13 @@ export function CampanasPanel() {
     <div className="space-y-5">
       {ampliadas && <ResumenBanner recuperables={resumen.recuperables} huecos={resumen.huecos} />}
 
-      {campanas.length === 0 ? (
+      {!listo ? (
+        <div className="grid gap-3" aria-busy="true">
+          {[0, 1].map((i) => (
+            <div key={i} className="esqueleto h-28 rounded-[20px]" />
+          ))}
+        </div>
+      ) : campanas.length === 0 ? (
         <div className="rounded-[20px] border border-border bg-card">
           <EmptyState
             icon={Users}

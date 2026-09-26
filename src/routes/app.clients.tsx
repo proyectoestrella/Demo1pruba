@@ -32,6 +32,7 @@ import { Users, Search, Download } from "lucide-react";
 export const Route = createFileRoute("/app/clients")({ component: Clients });
 
 const DAY_MS = 86400_000;
+const SIN_CITAS: Appointment[] = [];
 /** Sin visita en más de 60 días se trata como "en riesgo" de perderlo. */
 const INACTIVE_DAYS = 60;
 /** 3 o más visitas ya es un patrón, no una casualidad. */
@@ -100,15 +101,33 @@ function Clients() {
   const [cuantas, setCuantas] = useState(20);
   useEffect(() => setCuantas(20), [filtro, busqueda]);
 
-  const now = Date.now();
-  const hoyClave = toDateKey(new Date());
+  // Lote 16: «ahora» fijo mientras la pantalla está abierta (al minuto no
+  // cambia nada de lo que se enseña) para poder memoizar lo pesado.
+  const [now] = useState(() => Date.now());
+  const hoyClave = toDateKey(new Date(now));
+
+  // Lote 16: las citas se agrupan por clienta UNA vez. Antes cada una de las
+  // ~600 clientas recorría las ~3.300 citas varias veces en cada pintado.
+  const citasPorClienta = useMemo(() => {
+    const m = new Map<string, Appointment[]>();
+    for (const a of appointments) {
+      const l = m.get(a.clientId);
+      if (l) l.push(a);
+      else m.set(a.clientId, [a]);
+    }
+    return m;
+  }, [appointments]);
 
   // El recorte va DESPUÉS de buscar: al revés, el buscador solo miraría dentro
   // de los 40 primeros. Y ya no se esconde a quien no tiene visitas todavía:
   // un cliente recién dado de alta también hay que poder encontrarlo.
-  const allRows: (Row & { tag: ClientTag })[] = clients
-    .map((c) => ({ ...c, ...clientFrequency(appointments, c.id) }))
-    .map((r) => ({ ...r, tag: tagFor(r, now) }));
+  const allRows: (Row & { tag: ClientTag })[] = useMemo(
+    () =>
+      clients
+        .map((c) => ({ ...c, ...clientFrequency(citasPorClienta.get(c.id) ?? SIN_CITAS, c.id, new Date(now)) }))
+        .map((r) => ({ ...r, tag: tagFor(r, now) })),
+    [clients, citasPorClienta, now],
+  );
 
   const kpis = {
     total: allRows.length,
@@ -130,19 +149,25 @@ function Clients() {
   }, [appointments, hoyClave]);
 
   const limiteColor = now + 14 * DAY_MS;
-  const proximasSinColor = allRows.flatMap((client) => {
-    const cita = appointments.filter((a) => a.clientId === client.id && (a.status === "confirmed" || a.status === "pending") && +new Date(a.start) >= now && +new Date(a.start) <= limiteColor)
+  const proximasSinColor = useMemo(() => allRows.flatMap((client) => {
+    const suyas = citasPorClienta.get(client.id) ?? SIN_CITAS;
+    const cita = suyas.filter((a) => (a.status === "confirmed" || a.status === "pending") && +new Date(a.start) >= now && +new Date(a.start) <= limiteColor)
       .sort((a, b) => +new Date(a.start) - +new Date(b.start))[0];
-    const tieneColor = appointments.some((a) => a.clientId === client.id && a.status === "completed" && +new Date(a.start) < now && !!a.colorFormula?.trim());
+    const tieneColor = suyas.some((a) => a.status === "completed" && +new Date(a.start) < now && !!a.colorFormula?.trim());
     return cita && !tieneColor ? [{ client, cita }] : [];
-  }).sort((a, b) => +new Date(a.cita.start) - +new Date(b.cita.start));
-  const colorPendiente = new Set(proximasSinColor.map((x) => x.client.id));
+  }).sort((a, b) => +new Date(a.cita.start) - +new Date(b.cita.start)), [allRows, citasPorClienta, now, limiteColor]);
+  const colorPendiente = useMemo(() => new Set(proximasSinColor.map((x) => x.client.id)), [proximasSinColor]);
 
   // Solo se ofrece el filtro cuando hay a quién filtrar: una pestaña "Me
   // deben" vacía es ruido en cualquier demo sin plantones.
   const hayPenalizados = conRecargo && puede(permisos, "recargo.gestionar") && allRows.some((r) => (r.penaltyEur ?? 0) > 0);
 
-  const buscados = buscarClientas(busqueda, { clientes: clients, citas: appointments });
+  // Lote 16: sin texto no hay nada que buscar (antes se normalizaban todas las fichas igualmente).
+  const hayBusqueda = busqueda.trim().length > 0;
+  const buscados = useMemo(
+    () => (hayBusqueda ? buscarClientas(busqueda, { clientes: clients, citas: appointments }) : clients),
+    [hayBusqueda, busqueda, clients, appointments],
+  );
   // Fuera de las suyas: las del salón que coinciden, solo para darles cita (ficha reducida).
   const otrasDelSalon = !todasLasClientas && busqueda.trim().length >= 2
     ? buscarClientas(busqueda, { clientes: clientesSalon, citas: todasLasCitas }).filter((c) => !propias.has(c.id)).slice(0, 5)
@@ -180,7 +205,7 @@ function Clients() {
   const fichas = new Map(
     rows.map((c) => [
       c.id,
-      fichaDeClienta(c.id, { citas: appointments, clientes: clients, servicios: services, equipo, ahora: new Date(now) }).resumen,
+      fichaDeClienta(c.id, { citas: citasPorClienta.get(c.id) ?? SIN_CITAS, clientes: clients, servicios: services, equipo, ahora: new Date(now) }).resumen,
     ]),
   );
   const frecuencia = (id: string) => {

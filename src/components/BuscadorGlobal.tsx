@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
 import { buscarClientas } from "@/lib/buscar-clientas";
@@ -38,7 +38,12 @@ export function BuscadorGlobal({ variante = "icono" }: {
   }, []);
   useEffect(() => { if (open) requestAnimationFrame(() => input.current?.focus()); }, [open]);
 
-  const resultados = buscarClientas(texto, { clientes, citas }).slice(0, 12);
+  // Lote 16: solo se busca con el buscador abierto (antes normalizaba las ~600
+  // clientas y sus citas en CADA pintado de la cabecera, en cada pantalla).
+  const resultados = useMemo(
+    () => (open ? buscarClientas(texto, { clientes, citas }).slice(0, 12) : []),
+    [open, texto, clientes, citas],
+  );
   return <>
     {variante === "campo" ? (
       <button

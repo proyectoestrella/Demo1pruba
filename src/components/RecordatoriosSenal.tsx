@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { MessageCircle } from "lucide-react";
 import { recordatorioSenal, reglaSenal, type RecordatorioSenal } from "@/lib/senal";
 import { useSalonStore } from "@/lib/store";
@@ -10,13 +11,20 @@ export function useRecordatoriosSenal(ahora: Date = new Date()): Array<{ cita: A
   const citas = useCitasVisibles();
   const clientes = useSalonStore((s) => s.clients);
   const perfil = useSalonStore((s) => s.salonProfile);
-  const regla = reglaSenal(perfil);
-  return citas.flatMap((cita) => {
-    const telefono = clientes.find((c) => c.id === cita.clientId)?.phone ?? "";
-    if (!telefono) return [];
-    const r = recordatorioSenal({ ...cita, clientPhone: telefono }, regla, { name: perfil.name }, ahora);
-    return r ? [{ cita, r }] : [];
-  });
+  // Lote 16: teléfonos en un mapa y cálculo memoizado al minuto (antes, un
+  // `find` sobre todas las clientas por cada cita, en cada pintado de Hoy).
+  const minuto = Math.floor(ahora.getTime() / 60_000);
+  return useMemo(() => {
+    const regla = reglaSenal(perfil);
+    const telefonos = new Map(clientes.map((c) => [c.id, c.phone] as const));
+    const momento = new Date(minuto * 60_000);
+    return citas.flatMap((cita) => {
+      const telefono = telefonos.get(cita.clientId) ?? "";
+      if (!telefono) return [];
+      const r = recordatorioSenal({ ...cita, clientPhone: telefono }, regla, { name: perfil.name }, momento);
+      return r ? [{ cita, r }] : [];
+    });
+  }, [citas, clientes, perfil, minuto]);
 }
 
 /**

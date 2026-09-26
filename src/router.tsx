@@ -10,6 +10,10 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    // Lote 16: el código de cada pantalla se trae al pasar el ratón (o al
+    // tocar) por su enlace, no al pulsarlo.
+    defaultPreload: "intent",
+    defaultPreloadDelay: 30,
   });
 
   return router;

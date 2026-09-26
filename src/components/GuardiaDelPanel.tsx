@@ -27,7 +27,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 
-import { accesoAlPanel } from "@/lib/api/salons.functions";
+import { accesoPanel } from "@/lib/acceso-actual-panel";
 
 type Estado = "comprobando" | "adelante" | "fuera";
 
@@ -36,7 +36,12 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
   // Empieza SIEMPRE comprobando, también al pintar la página en el servidor.
   // Así no existe ni un instante en el que el panel esté en pantalla sin que
   // se haya comprobado nada.
-  const [estado, setEstado] = useState<Estado>("comprobando");
+  // Lote 16: si el `beforeLoad` ya lo comprobó, se reutiliza sin esperar.
+  const [estado, setEstado] = useState<Estado>(() => {
+    const ya = slug ? accesoPanel.guardado(slug) : undefined;
+    if (!ya) return "comprobando";
+    return !ya.real || ya.permitido ? "adelante" : "fuera";
+  });
 
   useEffect(() => {
     // Sin salón no hay nada que proteger: es el panel de ejemplo de siempre.
@@ -45,7 +50,8 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
       return;
     }
     let vivo = true;
-    accesoAlPanel({ data: { slug } })
+    accesoPanel
+      .obtener(slug)
       .then(({ real, permitido }) => {
         if (!vivo) return;
         setEstado(!real || permitido ? "adelante" : "fuera");

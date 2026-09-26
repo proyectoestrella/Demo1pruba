@@ -16,7 +16,7 @@ import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { PanelV2Shell } from "@/components/PanelV2Shell";
 import { GuardiaDelPanel } from "@/components/GuardiaDelPanel";
-import { accesoAlPanel } from "@/lib/api/salons.functions";
+import { accesoPanel } from "@/lib/acceso-actual-panel";
 import { hasSeenTour, startTour } from "@/lib/tour";
 import { BarraInferior, CabeceraArena, MenuLateral, TODOS_LOS_ITEMS, estaActivo } from "@/components/ArenaShell";
 import { FranjaVerComo } from "@/components/VerComo";
@@ -59,10 +59,19 @@ export const Route = createFileRoute("/app")({
         : useSalonStore.getState().salonProfile.slug;
     if (!slug) return;
     try {
-      const { real, permitido, miembro } = await accesoAlPanel({ data: { slug } });
+      // Lote 16: con caché. Solo la primera entrada espera al servidor; las
+      // navegaciones entre pantallas del panel ya no hacen ida y vuelta.
+      const { real, permitido, miembro } = await accesoPanel.obtener(slug, () => {
+        window.location.assign("/login");
+      });
       if (real && !permitido) throw redirect({ to: "/login", replace: true });
       // Rol y nombre de quien entra (lote 8): para usePermisos() y el saludo.
-      useSalonStore.getState().setMiembro(miembro ?? null);
+      // Lote 16: solo si cambia. Cada `set` de la store reescribe entera la
+      // copia local (~1,3 MB en la demo), y esto corría en cada navegación.
+      const actual = useSalonStore.getState().miembro ?? null;
+      if (JSON.stringify(actual) !== JSON.stringify(miembro ?? null)) {
+        useSalonStore.getState().setMiembro(miembro ?? null);
+      }
     } catch (err) {
       // El `redirect` de TanStack se lanza como excepción: hay que dejarlo
       // pasar. Cualquier otro fallo se ignora y decide `GuardiaDelPanel`.

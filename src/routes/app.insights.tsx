@@ -41,7 +41,7 @@ function Insights() {
   // El equipo de la store, no el array mutado en sitio: con un solo
   // profesional la tarjeta de fidelización deja de coronar a nadie.
   const employees = useEquipo();
-  const cards = aiInsights(appointments, employees);
+  const cards = useMemo(() => aiInsights(appointments, employees), [appointments, employees]);
 
   // Todas las gráficas miran el MISMO periodo que las cifras (el selector
   // vive en la store). Los patrones de «Lo que llama la atención» necesitan
