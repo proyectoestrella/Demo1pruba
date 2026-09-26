@@ -172,3 +172,13 @@ export function diffBloqueosExternos(
   }
   return { aCrear, aActualizar, aBorrar };
 }
+
+/** Minutos mínimos entre dos sincronizaciones de la misma conexión pedidas desde el panel. */
+export const MINUTOS_ENTRE_SINCRONIZACIONES_PANEL = 5;
+
+/** ¿Toca sincronizar esta conexión? Pura: sin sincronización previa, sí; si no, cuando han pasado los minutos. */
+export function tocaSincronizar(ultimaSincronizacion: string | null, ahora: Date, minutos = MINUTOS_ENTRE_SINCRONIZACIONES_PANEL): boolean {
+  if (!ultimaSincronizacion) return true;
+  const t = Date.parse(ultimaSincronizacion);
+  return !Number.isFinite(t) || ahora.getTime() - t >= minutos * 60_000;
+}

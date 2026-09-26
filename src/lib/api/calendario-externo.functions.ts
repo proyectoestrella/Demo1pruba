@@ -24,6 +24,7 @@ import {
   listarConexiones,
   listarOcupadoExterno as listarOcupadoExternoServer,
   obtenerConexion,
+  sincronizarSalonDesdePanel,
 } from "../calendario-externo/calendario-externo.server";
 
 const slug = z.string().min(1).max(120);
@@ -145,4 +146,18 @@ export const listarOcupadoExterno = createServerFn({ method: "GET" })
     const todo = tienePermiso(acceso, "cita.ver-todas");
     const miEmployeeId = acceso.tipo === "miembro" ? acceso.employeeId : null;
     return listarOcupadoExternoServer(data.slug, data.desde, data.hasta, { todo, miEmployeeId });
+  });
+
+/**
+ * Al abrir el panel: pone al día las conexiones del salón que llevan 5 minutos
+ * o más sin sincronizar (Apple no tiene webhook y, en el plan Hobby, el cron
+ * es diario). Leer la agenda basta para pedirlo; en una demo no hace nada.
+ */
+export const sincronizarCalendarios = createServerFn({ method: "POST" })
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug }))
+  .handler(async ({ data }) => {
+    const acceso = await exigirAcceso(data.slug);
+    if (acceso.tipo !== "miembro") return { procesadas: 0, errores: 0 };
+    return sincronizarSalonDesdePanel(data.slug);
   });

@@ -90,6 +90,12 @@ ajustarConexionCalendario({ slug, conexionId, bloquearHuecos, escribirCitas }: {
  * la estilista que llama (nunca hay que filtrar en el cliente por seguridad, solo por comodidad).
  */
 listarOcupadoExterno({ slug, desde, hasta }: { slug: string; desde: string; hasta: string }): Promise<OcupadoExterno[]>
+
+// Al abrir el panel (Hoy o Calendario), una vez por visita: pone al día las
+// conexiones que llevan 5 minutos o más sin sincronizar. En el plan Hobby
+// el cron es diario y Apple no tiene webhook, así que esto es lo que mantiene
+// Apple al día. En una demo no hace nada. No hace falta esperar el resultado.
+sincronizarCalendarios({ slug }: { slug: string }): Promise<{ procesadas: number; errores: number }>
 ```
 
 El callback de Google (`/api/calendario-externo/google/callback`) es una ruta normal (navegación del

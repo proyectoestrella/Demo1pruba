@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { diffBloqueosExternos, sincronizarCitaSaliente, type AdaptadorCalendario, type DepsMapeo, type EventoExternoListado } from "./servicio-sincronizacion";
+import { diffBloqueosExternos, sincronizarCitaSaliente, tocaSincronizar, type AdaptadorCalendario, type DepsMapeo, type EventoExternoListado } from "./servicio-sincronizacion";
 import type { BloqueoExterno, CitaParaCalendario, MapeoEvento } from "./tipos";
 
 const CITA: CitaParaCalendario = {
@@ -164,5 +164,17 @@ describe("diffBloqueosExternos", () => {
     expect(r.aCrear).toEqual([]);
     expect(r.aActualizar).toEqual([]);
     expect(r.aBorrar).toEqual([previo.eventoExternoId]);
+  });
+});
+
+describe("tocaSincronizar (panel)", () => {
+  const ahora = new Date("2026-09-27T10:00:00Z");
+  it("sin sincronización previa o con fecha rota, toca", () => {
+    expect(tocaSincronizar(null, ahora)).toBe(true);
+    expect(tocaSincronizar("no-es-fecha", ahora)).toBe(true);
+  });
+  it("a los 5 minutos toca; antes, no", () => {
+    expect(tocaSincronizar("2026-09-27T09:55:00Z", ahora)).toBe(true);
+    expect(tocaSincronizar("2026-09-27T09:56:00Z", ahora)).toBe(false);
   });
 });

@@ -119,7 +119,7 @@ Por último, el polling de calendarios reutiliza `CRON_SECRET`, la misma variabl
 
 **El plan de Vercel.** El proyecto está en el plan gratuito (Hobby), que solo permite crons diarios. Un despliegue con un cron más frecuente falla. Por eso `vercel.json` lleva el cron de calendarios **una vez al día** (`30 5 * * *`, hora UTC). El efecto es este:
 - **Google:** va en tiempo real por su webhook (`watch`); el cron diario solo es el respaldo.
-- **Apple:** iCloud no tiene webhook, así que se sincroniza al abrir el panel y, como mínimo, una vez al día. Para bajarlo a 5 minutos hace falta el plan Pro, con `*/5 * * * *` en `vercel.json`. Esa decisión es tuya.
+- **Apple:** iCloud no tiene webhook, así que se sincroniza al abrir el panel (`sincronizarCalendarios`, como mucho cada 5 minutos por conexión) y, como mínimo, una vez al día. Para bajarlo a 5 minutos hace falta el plan Pro, con `*/5 * * * *` en `vercel.json`. Esa decisión es tuya.
 
 ## 2. Apple / iCloud — 5 minutos
 

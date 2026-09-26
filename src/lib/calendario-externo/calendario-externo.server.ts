@@ -51,8 +51,7 @@ import {
   type DepsMapeo,
   type DiffBloqueos,
   type EventoExternoListado,
-  type ResultadoSincronizacion,
-} from "./servicio-sincronizacion";
+  type ResultadoSincronizacion, tocaSincronizar } from "./servicio-sincronizacion";
 import type {
   BloqueoExterno,
   CitaParaCalendario,
@@ -756,5 +755,21 @@ export async function sincronizarPollingDeRespaldo(): Promise<{ procesadas: numb
     const ok = await sincronizarConexionEntrante(fila);
     if (!ok) errores += 1;
   }
+  return { procesadas: filas.length, errores };
+}
+
+/**
+ * Sincroniza al abrir el panel las conexiones activas de UN salón que llevan
+ * 5 minutos o más sin sincronizar. En el plan Hobby de Vercel el cron es
+ * diario, así que esto es lo que mantiene Apple (sin webhook) al día. Nunca lanza.
+ */
+export async function sincronizarSalonDesdePanel(salonSlug: string, ahora = new Date()): Promise<{ procesadas: number; errores: number }> {
+  const db = getSupabaseServerClient();
+  if (!db) return { procesadas: 0, errores: 0 };
+  const { data, error } = await db.from("calendario_conexiones").select("*").eq("salon_slug", salonSlug).eq("estado", "activa");
+  if (error) return { procesadas: 0, errores: tablaNoExiste(error) ? 0 : 1 };
+  const filas = ((data ?? []) as FilaConexion[]).filter((f) => tocaSincronizar(f.ultima_sincronizacion ?? null, ahora));
+  let errores = 0;
+  for (const fila of filas) if (!(await sincronizarConexionEntrante(fila))) errores += 1;
   return { procesadas: filas.length, errores };
 }
