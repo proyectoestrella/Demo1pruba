@@ -3,6 +3,10 @@
     {
       "path": "/api/recordatorios",
       "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/senales-vencidas",
+      "schedule": "0 7 * * *"
     }
   ]
 }

@@ -29,6 +29,7 @@ import { Route as AppDemosRouteImport } from './routes/app.demos'
 import { Route as AppClientsRouteImport } from './routes/app.clients'
 import { Route as AppCalendarRouteImport } from './routes/app.calendar'
 import { Route as AppAppointmentsRouteImport } from './routes/app.appointments'
+import { Route as ApiSenalesVencidasRouteImport } from './routes/api.senales-vencidas'
 import { Route as ApiRecordatoriosRouteImport } from './routes/api.recordatorios'
 import { Route as ApiFotoRouteImport } from './routes/api.foto'
 import { Route as ApiCalendarioRouteImport } from './routes/api.calendario'
@@ -138,6 +139,11 @@ const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
   path: '/appointments',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiSenalesVencidasRoute = ApiSenalesVencidasRouteImport.update({
+  id: '/api/senales-vencidas',
+  path: '/api/senales-vencidas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiRecordatoriosRoute = ApiRecordatoriosRouteImport.update({
   id: '/api/recordatorios',
   path: '/api/recordatorios',
@@ -189,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
   '/api/recordatorios': typeof ApiRecordatoriosRoute
+  '/api/senales-vencidas': typeof ApiSenalesVencidasRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/clients': typeof AppClientsRoute
@@ -218,6 +225,7 @@ export interface FileRoutesByTo {
   '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
   '/api/recordatorios': typeof ApiRecordatoriosRoute
+  '/api/senales-vencidas': typeof ApiSenalesVencidasRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/clients': typeof AppClientsRoute
@@ -248,6 +256,7 @@ export interface FileRoutesById {
   '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
   '/api/recordatorios': typeof ApiRecordatoriosRoute
+  '/api/senales-vencidas': typeof ApiSenalesVencidasRoute
   '/app/appointments': typeof AppAppointmentsRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/clients': typeof AppClientsRoute
@@ -280,6 +289,7 @@ export interface FileRouteTypes {
     | '/api/calendario'
     | '/api/foto'
     | '/api/recordatorios'
+    | '/api/senales-vencidas'
     | '/app/appointments'
     | '/app/calendar'
     | '/app/clients'
@@ -309,6 +319,7 @@ export interface FileRouteTypes {
     | '/api/calendario'
     | '/api/foto'
     | '/api/recordatorios'
+    | '/api/senales-vencidas'
     | '/app/appointments'
     | '/app/calendar'
     | '/app/clients'
@@ -338,6 +349,7 @@ export interface FileRouteTypes {
     | '/api/calendario'
     | '/api/foto'
     | '/api/recordatorios'
+    | '/api/senales-vencidas'
     | '/app/appointments'
     | '/app/calendar'
     | '/app/clients'
@@ -369,6 +381,7 @@ export interface RootRouteChildren {
   ApiCalendarioRoute: typeof ApiCalendarioRoute
   ApiFotoRoute: typeof ApiFotoRoute
   ApiRecordatoriosRoute: typeof ApiRecordatoriosRoute
+  ApiSenalesVencidasRoute: typeof ApiSenalesVencidasRoute
   SSalonSlugRoute: typeof SSalonSlugRouteWithChildren
 }
 
@@ -514,6 +527,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppointmentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/senales-vencidas': {
+      id: '/api/senales-vencidas'
+      path: '/api/senales-vencidas'
+      fullPath: '/api/senales-vencidas'
+      preLoaderRoute: typeof ApiSenalesVencidasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/recordatorios': {
       id: '/api/recordatorios'
       path: '/api/recordatorios'
@@ -637,6 +657,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCalendarioRoute: ApiCalendarioRoute,
   ApiFotoRoute: ApiFotoRoute,
   ApiRecordatoriosRoute: ApiRecordatoriosRoute,
+  ApiSenalesVencidasRoute: ApiSenalesVencidasRoute,
   SSalonSlugRoute: SSalonSlugRouteWithChildren,
 }
 export const routeTree = rootRouteImport
