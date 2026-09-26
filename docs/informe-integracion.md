@@ -31,6 +31,11 @@ Demo PeluChic en :8085, con Node 22:
 | Historial | OK: agrupado por día, con resumen, y deshacer con su motivo |
 | Portada y galería | Arreglado: la imagen fallaba antes de hidratar y React no veía `onError`. Ahora `useImagenConRespaldo` y `useImagenesRotas` (`src/lib/imagen-rota.ts`) lo detectan al montar |
 
+**El test de rendimiento del asistente** («menos de 20 ms por pregunta») ya no entra en la suite normal: fallaba de vez en cuando con la máquina cargada. Se ejecuta aparte, con la máquina tranquila:
+```sh
+ASISTENTE_RENDIMIENTO=1 TZ=UTC bun test src/lib/asistente/corpus.test.ts
+```
+
 ## 1. Fusionar
 
 1. Revisar y fusionar `codex/integracion` en `main`. Lo hace Tomás, igual que el push.
