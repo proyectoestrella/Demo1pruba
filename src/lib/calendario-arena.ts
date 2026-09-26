@@ -31,6 +31,28 @@ export function inicioDelDia(d: Date): Date {
  * Citas que se pintan en el calendario de un día: todo menos las canceladas.
  * Los bloqueos (`blocked`) sí se pintan, como pausa, porque ocupan agenda.
  */
+/**
+ * Las mismas citas que `citasDeCalendario`, agrupadas por día (clave
+ * AAAA-MM-DD) y ordenadas, en una sola pasada. La rejilla la calcula una vez
+ * por lista de citas: cambiar de semana o hacer scroll no vuelve a recorrer
+ * toda la agenda (3.300 citas en la demo) por cada columna.
+ */
+export function citasPorDia(appts: Appointment[]): Map<string, Appointment[]> {
+  const mapa = new Map<string, { t: number; a: Appointment }[]>();
+  for (const a of appts) {
+    if (a.status === "cancelled") continue;
+    const d = new Date(a.start);
+    const clave = toDateKey(d);
+    const lista = mapa.get(clave);
+    const item = { t: +d, a };
+    if (lista) lista.push(item);
+    else mapa.set(clave, [item]);
+  }
+  const out = new Map<string, Appointment[]>();
+  for (const [k, l] of mapa) out.set(k, l.sort((x, y) => x.t - y.t).map((x) => x.a));
+  return out;
+}
+
 export function citasDeCalendario(appts: Appointment[], dia: Date): Appointment[] {
   const clave = toDateKey(dia);
   return appts

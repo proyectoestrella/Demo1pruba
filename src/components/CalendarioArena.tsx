@@ -1,6 +1,6 @@
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
 import { useOcupadoExterno, useSincronizarCalendarios } from "@/lib/calendarios-panel";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, Palette, Settings2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
@@ -145,12 +145,13 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
     [citasDia, equipo, anchor, desde],
   );
 
-  const abrirHueco: AbrirHueco = (employeeId, minuto, dia) => {
+  // Estable entre renders: las columnas memoizadas de la rejilla no se repintan por él.
+  const abrirHueco: AbrirHueco = useCallback((employeeId, minuto, dia) => {
     const date = new Date(dia);
     date.setHours(Math.floor(minuto / 60), minuto % 60, 0, 0);
     setPrefill({ date, employeeId });
     setNuevaAbierta(true);
-  };
+  }, []);
 
   function mover(n: number) {
     const d = new Date(anchor);
@@ -241,6 +242,22 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
         });
   // Lote 15: la rejilla pinta el día entero; las horas elegidas son lo que se ve al abrir.
   const horasVisibles = { desde: pref.desde, hasta: pref.hasta };
+
+  // «Nueva cita» cerrada no se vuelve a pintar en cada cambio de semana o minuto.
+  const dialogoNueva = useMemo(
+    () => (
+      <NewAppointmentDialog
+        open={nuevaAbierta}
+        onOpenChange={(o) => {
+          setNuevaAbierta(o);
+          if (!o) setPrefill(null);
+        }}
+        defaultDate={prefill?.date}
+        defaultEmployeeId={prefill?.employeeId}
+      />
+    ),
+    [nuevaAbierta, prefill],
+  );
 
   return (
     // Altura fija a la ventana para que las rejillas y el mes tengan scroll
@@ -416,15 +433,7 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
       )}
 
       <AppointmentDetailSheet appointment={seleccionada} open={!!seleccionada} onOpenChange={(o) => !o && setSeleccionada(null)} />
-      <NewAppointmentDialog
-        open={nuevaAbierta}
-        onOpenChange={(o) => {
-          setNuevaAbierta(o);
-          if (!o) setPrefill(null);
-        }}
-        defaultDate={prefill?.date}
-        defaultEmployeeId={prefill?.employeeId}
-      />
+      {dialogoNueva}
     </div>
   );
 }

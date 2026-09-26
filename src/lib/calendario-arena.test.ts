@@ -3,6 +3,7 @@ import type { Appointment, Employee } from "./mock/types";
 import {
   celdasDelMes,
   citasDeCalendario,
+  citasPorDia,
   diasDeSemana,
   horizonteDeDias,
   horizonteDelDia,
@@ -141,6 +142,18 @@ describe("utilidades", () => {
       cita({ start: "2026-09-26T10:00:00", duration: 45 }),
     ];
     expect(citasDeCalendario(lista, viernes).map((a) => a.status)).toEqual(["blocked", "confirmed"]);
+  });
+  test("citas por día: lo mismo que citasDeCalendario, en una pasada", () => {
+    const lista = [
+      cita({ start: "2026-09-25T15:00:00", duration: 45 }),
+      cita({ start: "2026-09-25T10:00:00", duration: 45, status: "cancelled" }),
+      cita({ start: "2026-09-25T11:00:00", duration: 45, status: "blocked" }),
+      cita({ start: "2026-09-26T10:00:00", duration: 45 }),
+    ];
+    const mapa = citasPorDia(lista);
+    expect(mapa.get("2026-09-25")).toEqual(citasDeCalendario(lista, viernes));
+    expect(mapa.get("2026-09-26")).toHaveLength(1);
+    expect(mapa.has("2026-09-27")).toBe(false);
   });
   test("porcentaje e iniciales", () => {
     expect(porcentaje(h(15), { ini: h(10), fin: h(20) })).toBe(50);

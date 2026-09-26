@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { memo, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Check, Clock3, UserX } from "lucide-react";
 import { colorElegidoProfesional } from "@/lib/colores-elegidos";
 import { hora } from "@/lib/copy";
@@ -6,7 +6,8 @@ import { serviceLabelOf } from "@/lib/appointment-services";
 import { franjasProfesional } from "@/lib/horario-equipo";
 import { indiceColorServicio, minutosAHora } from "@/lib/hoy-arena";
 import { esBloqueExterno } from "@/lib/calendarios-panel";
-import { carrilesSolapados, citasDeCalendario, iniciales, minutosDe, mismoDia, pausasDe } from "@/lib/calendario-arena";
+import { carrilesSolapados, citasPorDia, iniciales, minutosDe, mismoDia, pausasDe } from "@/lib/calendario-arena";
+import { toDateKey } from "@/lib/reparto";
 import type { Appointment, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 
@@ -123,6 +124,9 @@ export function RejillaCalendario({
     return () => obs.disconnect();
   }, [horasVisibles]);
   const y = (min: number) => ((min - desde * 60) / 60) * px;
+  // Lote 15.4: la agenda se agrupa por día UNA vez por lista de citas; cada
+  // columna recibe solo las suyas y no se repinta si no cambian (memo).
+  const porDia = useMemo(() => citasPorDia(appointments), [appointments]);
 
   // Al abrir: arriba, el principio de las horas visibles; si hoy está en
   // pantalla y la hora actual cae dentro, «ahora» menos una hora.
@@ -196,7 +200,7 @@ export function RejillaCalendario({
           <ColumnaDia
             key={c.clave}
             columna={c}
-            appointments={appointments}
+            citasDelDia={porDia.get(toDateKey(c.dia)) ?? SIN_CITAS}
             todoElEquipo={todoElEquipo}
             desde={desde}
             horas={horas}
@@ -204,7 +208,6 @@ export function RejillaCalendario({
             carta={carta}
             services={services}
             colorPor={colorPor}
-            y={y}
             px={px}
             seleccionadaId={seleccionadaId}
             onCita={onCita}
@@ -216,24 +219,39 @@ export function RejillaCalendario({
   );
 }
 
-function ColumnaDia({
-  columna,
-  appointments,
-  todoElEquipo,
-  desde,
-  horas,
-  ahora,
-  carta,
-  services,
-  colorPor,
-  y,
-  px,
-  seleccionadaId,
-  onCita,
-  onHueco,
-}: {
+const SIN_CITAS: Appointment[] = [];
+
+/**
+ * Solo se repinta si cambia algo suyo: sus citas, el alto de hora, la cita
+ * seleccionada (si es suya), el color, o el minuto de «ahora» si es hoy. La
+ * cabecera de la columna (JSX nuevo en cada render del padre) no cuenta.
+ */
+function mismaColumna(a: PropsColumna, b: PropsColumna): boolean {
+  const ids = (l: Employee[]) => l.map((e) => e.id).join(",");
+  const esHoy = mismoDia(b.columna.dia, b.ahora);
+  const sel = (p: PropsColumna) => (p.seleccionadaId && p.citasDelDia.some((c) => c.id === p.seleccionadaId) ? p.seleccionadaId : "");
+  return (
+    a.columna.clave === b.columna.clave &&
+    ids(a.columna.equipo) === ids(b.columna.equipo) &&
+    a.citasDelDia === b.citasDelDia &&
+    ids(a.todoElEquipo) === ids(b.todoElEquipo) &&
+    a.px === b.px &&
+    a.desde === b.desde &&
+    a.horas === b.horas &&
+    a.colorPor === b.colorPor &&
+    a.carta === b.carta &&
+    a.services === b.services &&
+    a.onCita === b.onCita &&
+    a.onHueco === b.onHueco &&
+    sel(a) === sel(b) &&
+    (!esHoy || (mismoDia(a.ahora, b.ahora) && minutosDe(a.ahora) === minutosDe(b.ahora))) &&
+    mismoDia(a.columna.dia, a.ahora) === esHoy
+  );
+}
+
+type PropsColumna = {
   columna: ColumnaRejilla;
-  appointments: Appointment[];
+  citasDelDia: Appointment[];
   todoElEquipo: Employee[];
   desde: number;
   horas: number;
@@ -241,17 +259,36 @@ function ColumnaDia({
   carta: Record<string, Service>;
   services: Service[];
   colorPor: "servicio" | "profesional";
-  y: (min: number) => number;
   px: number;
   seleccionadaId?: string;
   onCita: (a: Appointment) => void;
   onHueco: (employeeId: EmployeeId, minuto: number, dia: Date) => void;
-}) {
+};
+
+const ColumnaDia = memo(function ColumnaDia({
+  columna,
+  citasDelDia,
+  todoElEquipo,
+  desde,
+  horas,
+  ahora,
+  carta,
+  services,
+  colorPor,
+  px,
+  seleccionadaId,
+  onCita,
+  onHueco,
+}: PropsColumna) {
   const { dia, equipo } = columna;
   const [fantasma, setFantasma] = useState<number | null>(null);
-  const ids = new Set(equipo.map((e) => e.id));
-  const citas = citasDeCalendario(appointments, dia).filter((a) => ids.has(a.employeeId));
-  const carriles = carrilesSolapados(citas);
+  const y = (min: number) => ((min - desde * 60) / 60) * px;
+  const claveEquipo = equipo.map((e) => e.id).join(",");
+  const citas = useMemo(() => {
+    const ids = new Set(claveEquipo.split(","));
+    return citasDelDia.filter((a) => ids.has(a.employeeId));
+  }, [citasDelDia, claveEquipo]);
+  const carriles = useMemo(() => carrilesSolapados(citas), [citas]);
   const weekday = dia.getDay();
   const esHoy = mismoDia(dia, ahora);
 
@@ -373,7 +410,7 @@ function ColumnaDia({
       {esHoy && <LineaAhora y={y(minutosDe(ahora))} alto={horas * px} />}
     </div>
   );
-}
+}, mismaColumna);
 
 function LineaAhora({ y, alto }: { y: number; alto: number }) {
   if (y < 0 || y > alto) return null;
