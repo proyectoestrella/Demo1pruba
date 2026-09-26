@@ -136,7 +136,7 @@ export function crearFuentesBackend(d: DatosBackend): FuentesAsistente {
   const campanas = () => {
     const tramo = Math.floor(ahora().getTime() / 900_000);
     if (!campCache || campCache.tramo !== tramo) {
-      campCache = { tramo, v: buildCampanas({ appointments: d.citas, clients: d.clientes, services: d.servicios, employees: d.equipo, salonName: d.perfil.name, salonAddress: d.perfil.address, now: ahora() }) };
+      campCache = { tramo, v: buildCampanas({ appointments: d.citas, clients: d.clientes, services: d.servicios, employees: d.equipo, salonName: d.perfil.name, salonAddress: d.perfil.address, now: ahora(), timeZone: tz }) };
     }
     return campCache.v;
   };
@@ -178,7 +178,7 @@ export function crearFuentesBackend(d: DatosBackend): FuentesAsistente {
     },
 
     resumenPeriodo: ({ tipo, desde, hasta }) => {
-      const r = resumenDePeriodo(d.citas, tipo, d.equipo, ahora(), tipo === "personalizado" && desde && hasta ? { desde, hasta } : null);
+      const r = resumenDePeriodo(d.citas, tipo, d.equipo, ahora(), tipo === "personalizado" && desde && hasta ? { desde, hasta } : null, undefined, tz);
       const ok = r.hayComparacion && !r.cerrado;
       const oc = comparar(r.actual.ocupacion ?? 0, ok ? r.previo.ocupacion : null);
       return {

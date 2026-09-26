@@ -23,17 +23,28 @@ export function zonaDelSalon(perfil: { timeZone?: string } | null | undefined): 
 
 const DIAS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/** Un formateador por zona: crear un `Intl.DateTimeFormat` cuesta ~30 µs y esto se llama por cita. */
+const formateadores = new Map<string, Intl.DateTimeFormat>();
+function formateador(timeZone: string): Intl.DateTimeFormat {
+  let f = formateadores.get(timeZone);
+  if (!f) {
+    f = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      weekday: "short",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    });
+    formateadores.set(timeZone, f);
+  }
+  return f;
+}
+
 function partes(iso: string | Date, timeZone: string) {
-  const lista = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    weekday: "short",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(new Date(iso));
+  const lista = formateador(timeZone).formatToParts(new Date(iso));
   const v = (t: string) => lista.find((p) => p.type === t)?.value ?? "";
   return {
     weekday: DIAS.indexOf(v("weekday")),

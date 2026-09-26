@@ -1,5 +1,6 @@
 import type { Appointment, Client, Employee, Service } from "./mock/types";
 import { fechaCorta } from "./copy";
+import { momentoLocal } from "./zona-horaria";
 
 /**
  * Campañas de marketing calculadas a partir de los datos reales del salón:
@@ -49,6 +50,11 @@ export interface CampanasInput {
   salonAddress: string;
   /** Fijo para que los tests sean deterministas; por defecto "ahora". */
   now?: Date;
+  /**
+   * Zona del salón para decidir día y franja de cada cita («los martes por
+   * la tarde»). Sin ella, la hora local del dispositivo, como hasta ahora.
+   */
+  timeZone?: string;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -196,6 +202,7 @@ export function calcularHuecoFlojo(
   appointments: Appointment[],
   employees: Employee[],
   now: Date,
+  timeZone?: string,
 ): HuecoFlojo | null {
   const nowMs = +now;
   const desde = nowMs - ROLLING_WEEKS * 7 * DAY_MS;
@@ -207,8 +214,18 @@ export function calcularHuecoFlojo(
   // un Date por cita en cada una). Índice: weekday * 2 + (tarde ? 1 : 0).
   const usadosPorCruce = new Array<number>(14).fill(0);
   for (const a of pasadas) {
-    const d = new Date(a.start);
-    usadosPorCruce[d.getDay() * 2 + (d.getHours() < HORA_CORTE_TARDE ? 0 : 1)] += a.duration / 30;
+    let dia: number;
+    let hora: number;
+    if (timeZone) {
+      const m = momentoLocal(a.start, timeZone);
+      dia = m.weekday;
+      hora = Math.floor(m.minuto / 60);
+    } else {
+      const d = new Date(a.start);
+      dia = d.getDay();
+      hora = d.getHours();
+    }
+    usadosPorCruce[dia * 2 + (hora < HORA_CORTE_TARDE ? 0 : 1)] += a.duration / 30;
   }
 
   let mejor: HuecoFlojo | null = null;
@@ -257,8 +274,9 @@ export function huecosFlojos(
   employees: Employee[],
   salonName: string,
   now: Date = new Date(),
+  timeZone?: string,
 ): Campana | null {
-  const hueco = calcularHuecoFlojo(appointments, employees, now);
+  const hueco = calcularHuecoFlojo(appointments, employees, now, timeZone);
   if (!hueco || hueco.huecosLibres <= 0) return null;
 
   const personas: CampanaPersona[] = clients
@@ -495,7 +513,7 @@ export function buildCampanas(input: CampanasInput): Campana[] {
   const now = input.now ?? new Date();
   const candidatas = [
     clientesQueNoVuelven(input.appointments, input.clients, input.services, input.salonName, now),
-    huecosFlojos(input.appointments, input.clients, input.employees, input.salonName, now),
+    huecosFlojos(input.appointments, input.clients, input.employees, input.salonName, now, input.timeZone),
     segundaVisita(
       input.appointments,
       input.clients,
