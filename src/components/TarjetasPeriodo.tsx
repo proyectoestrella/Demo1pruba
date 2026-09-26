@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Ban, Calendar, Euro, Scissors, TrendingUp, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
+import { zonaDelSalon } from "@/lib/zona-horaria";
 import { useEquipo } from "@/lib/use-equipo";
 import { resumenDePeriodo, comparar, type ResumenPeriodo } from "@/lib/periodos";
 import { nuevasYRecurrentes, serviciosDelRango } from "@/lib/analitica-arena";
@@ -21,11 +22,13 @@ export function TarjetasPeriodo({ className }: { className?: string }) {
   const services = useSalonStore((s) => s.services);
   const periodo = useSalonStore((s) => s.periodoAnalitica);
   const rango = useSalonStore((s) => s.rangoAnalitica);
+  // Días y semanas en la zona del salón, no en la del dispositivo.
+  const zona = useSalonStore((s) => zonaDelSalon(s.salonProfile));
   const equipo = useEquipo();
 
   const resumen = useMemo(
-    () => resumenDePeriodo(appointments, periodo, equipo, new Date(), rango),
-    [appointments, periodo, rango, equipo],
+    () => resumenDePeriodo(appointments, periodo, equipo, new Date(), rango, undefined, zona),
+    [appointments, periodo, rango, equipo, zona],
   );
 
   return (

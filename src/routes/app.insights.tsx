@@ -13,6 +13,7 @@ import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { ExportCsvButtons } from "@/components/campanas/ExportCsvButtons";
 import { TarjetasPeriodo } from "@/components/TarjetasPeriodo";
 import { rangoDePeriodo, textoRango } from "@/lib/periodos";
+import { zonaDelSalon } from "@/lib/zona-horaria";
 import {
   barrasDelPeriodo,
   nuevasYRecurrentes,
@@ -45,18 +46,19 @@ function Insights() {
   // Todas las gráficas miran el MISMO periodo que las cifras (el selector
   // vive en la store). Los patrones de «Lo que llama la atención» necesitan
   // todo el histórico y lo dicen.
+  const zona = useSalonStore((s) => zonaDelSalon(s.salonProfile));
   const datos = useMemo(() => {
     const ahora = new Date();
-    const r = rangoDePeriodo(periodo, ahora, rangoGuardado);
+    const r = rangoDePeriodo(periodo, ahora, rangoGuardado, zona);
     return {
       rango: r,
-      etiqueta: textoRango(r),
+      etiqueta: textoRango(r, zona),
       barras: barrasDelPeriodo(appointments, periodo, r, employees, ahora),
       ocupacion: ocupacionPorProfesional(appointments, r, employees),
       servicios: serviciosDelRango(appointments, r, services).slice(0, 6),
       clientas: nuevasYRecurrentes(appointments, r),
     };
-  }, [appointments, periodo, rangoGuardado, employees, services]);
+  }, [appointments, periodo, rangoGuardado, employees, services, zona]);
   // Mismo criterio que `barrasDelPeriodo`: un periodo de un solo día va por horas.
   const porHoras = periodo === "hoy" || Math.round((+datos.rango.fin - +datos.rango.inicio) / 86_400_000) === 1;
   const totalServ = datos.servicios.reduce((t, x) => t + x.euros, 0);

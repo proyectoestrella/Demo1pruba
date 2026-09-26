@@ -4,6 +4,7 @@ import type { DateRange } from "react-day-picker";
 import { es } from "react-day-picker/locale";
 import { CalendarDays, Check } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
+import { zonaDelSalon } from "@/lib/zona-horaria";
 import {
   ETIQUETA_PERIODO,
   claveDeDia,
@@ -41,6 +42,7 @@ const ETIQUETA_CORTA: Record<PeriodoId, string> = {
 export function SelectorPeriodo({ className }: { className?: string }) {
   const periodo = useSalonStore((s) => s.periodoAnalitica);
   const rangoGuardado = useSalonStore((s) => s.rangoAnalitica);
+  const zona = useSalonStore((s) => zonaDelSalon(s.salonProfile));
   const setPeriodo = useSalonStore((s) => s.setPeriodoAnalitica);
   const [abierto, setAbierto] = useState(false);
   // Lote 13: «Personalizado» es analítica avanzada (Todo incluido). Sin ella, vuelve a «Este mes».
@@ -55,7 +57,7 @@ export function SelectorPeriodo({ className }: { className?: string }) {
       : undefined,
   );
 
-  const rango = rangoDePeriodo(periodo, new Date(), rangoGuardado);
+  const rango = rangoDePeriodo(periodo, new Date(), rangoGuardado, zona);
 
   function aplicar() {
     if (!borrador?.from) return;
@@ -138,7 +140,7 @@ export function SelectorPeriodo({ className }: { className?: string }) {
                       ? `${textoRango({
                           inicio: borrador.from,
                           fin: new Date(+(borrador.to ?? borrador.from) + 86_400_000),
-                        })}`
+                        }, zona)}`
                       : "Toca el primer día y luego el último."}
                   </p>
                   <Button
@@ -158,7 +160,7 @@ export function SelectorPeriodo({ className }: { className?: string }) {
         })}
       </div>
       <p className="text-[12.5px] text-muted-foreground" aria-live="polite">
-        Estás viendo <strong className="font-bold text-foreground">{textoRango(rango)}</strong>
+        Estás viendo <strong className="font-bold text-foreground">{textoRango(rango, zona)}</strong>
       </p>
     </div>
   );

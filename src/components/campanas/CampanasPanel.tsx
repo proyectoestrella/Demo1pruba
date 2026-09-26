@@ -17,6 +17,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
+import { zonaDelSalon } from "@/lib/zona-horaria";
 import { useEquipo } from "@/lib/use-equipo";
 import { cn } from "@/lib/utils";
 import {
@@ -74,8 +75,10 @@ export function CampanasPanel() {
         employees,
         salonName: salonProfile.name,
         salonAddress: salonProfile.address,
+        // Día y franja de cada cita en la zona del salón.
+        timeZone: zonaDelSalon(salonProfile),
       }),
-    [appointments, clients, services, employees, salonProfile.name, salonProfile.address],
+    [appointments, clients, services, employees, salonProfile],
   );
 
   const resumen = resumenDelMes(campanas);
