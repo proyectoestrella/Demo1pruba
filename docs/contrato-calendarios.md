@@ -95,8 +95,9 @@ listarOcupadoExterno({ slug, desde, hasta }: { slug: string; desde: string; hast
 El callback de Google (`/api/calendario-externo/google/callback`) es una ruta normal (navegación del
 navegador tras el consentimiento), no una función de servidor: FRONTEND no la llama directamente, solo
 navega a la `url` que devuelve `iniciarConexionGoogle`. Al terminar, esa ruta redirige de vuelta a
-`/app/settings?calendario=ok` o `/app/settings?calendario=error&motivo=...` — la pantalla lee esos
-parámetros para el aviso de éxito/error, no hace falta volver a pedir estado.
+`/app/settings?s=<slug>&calendario=ok` o `/app/settings?s=<slug>&calendario=error&motivo=...` (el `s=`
+es el mismo parámetro que ya resuelve el salón en el resto de `/app`, ver `src/routes/app.tsx`) — la
+pantalla lee esos parámetros para el aviso de éxito/error, no hace falta volver a pedir estado.
 
 ## 3. Permisos (añadidos a `src/lib/permisos.ts`, docs/contrato-accesos.md)
 

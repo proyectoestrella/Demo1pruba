@@ -3,6 +3,10 @@
     {
       "path": "/api/recordatorios",
       "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/calendario-externo/cron",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
