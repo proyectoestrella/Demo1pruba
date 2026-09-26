@@ -18,6 +18,13 @@ import { cn } from "@/lib/utils";
  * «Nueva cita» a esa hora (redondeada al cuarto).
  */
 
+/**
+ * Lote 15: la rejilla pinta las 24 h (00:00-24:00) y se recorre con scroll,
+ * como Google y Apple Calendar. Las «horas visibles» de Ajustes son el tramo
+ * que se ve AL ABRIR (y el que decide el alto de una hora), no un recorte.
+ */
+export const HORAS_DIA = 24;
+
 /** Alto de una hora en la rejilla. Fijo, como en Google: el día se recorre con scroll. */
 export const PX_HORA = 64;
 /** Por debajo de esto, las citas de media hora no se leen: la rejilla pasa a tener scroll. */
@@ -31,6 +38,17 @@ export const PX_HORA_MINIMO = 48;
 export function altoPorHora(altoDisponible: number, horas: number): number {
   if (horas <= 0 || altoDisponible <= 0) return PX_HORA;
   return Math.max(PX_HORA_MINIMO, Math.floor(altoDisponible / horas));
+}
+
+/**
+ * Dónde queda el scroll al abrir (px desde las 00:00): el principio de las
+ * horas visibles; si hoy está en pantalla y la hora actual cae dentro,
+ * una hora antes de ahora. Pura, con test.
+ */
+export function scrollInicial(pxHora: number, verDesde: number, verHasta: number, minutoAhoraSiHoy: number | null): number {
+  const dentro = minutoAhoraSiHoy !== null && minutoAhoraSiHoy >= verDesde * 60 && minutoAhoraSiHoy < verHasta * 60;
+  const minuto = dentro ? minutoAhoraSiHoy - 60 : verDesde * 60;
+  return Math.max(0, (minuto / 60) * pxHora);
 }
 
 export type ColumnaRejilla = {
@@ -50,8 +68,9 @@ export function RejillaCalendario({
   columnas,
   appointments,
   todoElEquipo,
-  desde,
-  hasta,
+  desde: verDesde,
+  hasta: verHasta,
+  irAAhora = 0,
   ahora,
   carta,
   services,
@@ -64,8 +83,11 @@ export function RejillaCalendario({
   appointments: Appointment[];
   /** El equipo entero, en su orden: da el color de cada profesional. */
   todoElEquipo: Employee[];
+  /** Horas que se ven al abrir (Ajustes › Tu agenda): el resto, con scroll. */
   desde: number;
   hasta: number;
+  /** Cambia cada vez que se pulsa «Hoy»: baja hasta ahora con scroll suave. */
+  irAAhora?: number;
   ahora: Date;
   carta: Record<string, Service>;
   services: Service[];
@@ -76,47 +98,48 @@ export function RejillaCalendario({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const cabecera = useRef<HTMLDivElement>(null);
-  const horas = hasta - desde;
-  // La altura de una hora se ajusta al hueco: el rango elegido llena la
-  // pantalla y solo hay scroll si no cabe a 48 px por hora. Se mide con
-  // ResizeObserver, así sigue bien al abrir un panel o cambiar la ventana.
+  const desde = 0;
+  const horas = HORAS_DIA;
+  const horasVisibles = Math.max(1, verHasta - verDesde);
+  // La altura de una hora hace que las horas visibles llenen el hueco (48 px
+  // como mínimo); el resto del día queda arriba y abajo, con scroll. Se mide
+  // con ResizeObserver, así sigue bien al abrir un panel o cambiar la ventana.
   const [px, setPx] = useState(PX_HORA);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     const medir = () => {
       const altoCab = cabecera.current?.offsetHeight ?? 64;
-      setPx(altoPorHora(el.clientHeight - altoCab - 1, horas));
+      setPx(altoPorHora(el.clientHeight - altoCab - 1, horasVisibles));
     };
     medir();
     const obs = new ResizeObserver(medir);
     obs.observe(el);
     return () => obs.disconnect();
-  }, [horas]);
+  }, [horasVisibles]);
   const y = (min: number) => ((min - desde * 60) / 60) * px;
 
-  // Al abrir, el día laborable a la vista: desde la hora actual si hoy está
-  // en pantalla y ya ha empezado la jornada; si no, desde la primera franja.
-  const primeraFranja = Math.min(
-    ...columnas.flatMap((c) => c.equipo.flatMap((e) => franjasProfesional(e, c.dia.getDay()).map((f) => f.start))),
-    24 * 60,
-  );
+  // Al abrir: arriba, el principio de las horas visibles; si hoy está en
+  // pantalla y la hora actual cae dentro, «ahora» menos una hora.
   const hoyVisible = columnas.some((c) => mismoDia(c.dia, ahora));
   const claveScroll = columnas.map((c) => c.clave).join("|");
+  const topInicial = () => scrollInicial(px, verDesde, verHasta, hoyVisible ? minutosDe(ahora) : null);
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el) return;
-    // Arriba, el principio de la jornada. Si hoy está en pantalla y la hora
-    // actual no cabría, se baja lo justo para dejarla a un tercio del alto.
-    let top = y(primeraFranja - 30);
-    const yAhora = y(minutosDe(ahora));
-    if (hoyVisible && yAhora > top + el.clientHeight - 140) top = yAhora - el.clientHeight / 3;
-    el.scrollTop = Math.max(0, top);
+    if (el) el.scrollTop = topInicial();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [claveScroll]);
+  }, [claveScroll, px, verDesde, verHasta]);
+  // «Hoy»: hasta ahora, con scroll suave (sin animación si se pide menos movimiento).
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !irAAhora) return;
+    const suave = !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    el.scrollTo({ top: Math.max(0, y(minutosDe(ahora) - 60)), behavior: suave ? "smooth" : "auto" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [irAAhora]);
 
   return (
-    <div ref={ref} className="relative min-h-0 flex-1 overflow-auto overscroll-contain">
+    <div ref={ref} className="relative min-h-0 flex-1 overflow-auto overscroll-contain [scrollbar-gutter:stable]">
       <div className="grid" style={{ gridTemplateColumns: `52px repeat(${columnas.length}, minmax(${anchoMinimo}px, 1fr))` }}>
         {/* Cabecera fija: esquina vacía y un encabezado por columna. */}
         <div ref={cabecera} className="sticky top-0 left-0 z-[12] border-r border-b border-k-linea-f bg-k-cab" />
@@ -262,7 +285,7 @@ function ColumnaDia({
         <div
           key={`c${t.ini}`}
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bg-[repeating-linear-gradient(135deg,var(--k-cerrado)_0_6px,transparent_6px_12px)]"
+          className="pointer-events-none absolute inset-x-0 bg-[repeating-linear-gradient(135deg,var(--k-cerrado)_0_6px,transparent_6px_12px)] opacity-55"
           style={{ top: y(t.ini), height: y(t.fin) - y(t.ini) }}
         />
       ))}
