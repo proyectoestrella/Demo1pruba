@@ -1,4 +1,7 @@
 import { useMemo, useState } from "react";
+import { ImportarVentasTpv } from "@/components/ImportarVentasTpv";
+import { usePermisos } from "@/lib/accesos-panel";
+import { puede } from "@/lib/permisos";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useSalonStore } from "@/lib/store";
@@ -27,6 +30,9 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [resumen, setResumen] = useState("");
+  // 14b: las ventas de TPV 123 van a la caja; solo quien puede importar dinero.
+  const puedeVentas = puede(usePermisos(), "dinero.importar");
+  const [pestana, setPestana] = useState<"clientas" | "ventas">("clientas");
   const previa = useMemo(() => tabla && mapa.nombre !== undefined ? vistaPreviaClientas(tabla, clientes, mapa) : null, [tabla, clientes, mapa]);
   const clientesPrevios = useMemo(() => [...clientes, ...(previa?.filas.filter((f) => f.estado === "nueva").map((f) => ({
     id: `previa-${f.fila}`, name: f.nombre, phone: f.telefono, createdAt: "",
@@ -91,6 +97,17 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
         <DialogTitle>Importar desde TPV 123</DialogTitle>
         <DialogDescription>Trae tus clientas y su histórico de ventas. Revisa la vista previa antes de importar.</DialogDescription>
       </DialogHeader>
+      {puedeVentas && (
+        <div role="tablist" aria-label="Qué importar" className="inline-flex gap-0.5 rounded-full border border-border bg-nata p-1">
+          {([["clientas", "Clientas y su historial"], ["ventas", "Ventas de TPV 123"]] as const).map(([id, t]) => (
+            <button key={id} type="button" role="tab" aria-selected={pestana === id} onClick={() => setPestana(id)}
+              className={pestana === id ? "rounded-full bg-card px-3.5 py-1.5 text-[13px] font-bold shadow-sm" : "rounded-full px-3.5 py-1.5 text-[13px] font-bold text-cafe-medio"}>
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+      {pestana === "ventas" && puedeVentas ? <ImportarVentasTpv /> :
       <div className="space-y-4 text-sm">
         <label className="block space-y-1 font-medium">Fichero de clientas (.csv o .xlsx)
           <input type="file" accept=".csv,.xlsx,.xls" onChange={(e) => void cargar(e.target.files?.[0], "clientes")}
@@ -132,7 +149,7 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
             <p>La ficha técnica del color se pasa desde la ficha de cada clienta, con «Añadir color de TPV 123».</p>
           </div>
         </details>
-      </div>
+      </div>}
     </DialogContent>
   </Dialog>;
 }
