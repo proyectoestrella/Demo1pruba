@@ -14,6 +14,7 @@
  * (supabase/pendiente.sql sin aplicar), guardar no falla: se avisa y el
  * cambio sigue en el navegador.
  */
+import { cursorHistorial } from "./cursor-historial";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -91,6 +92,8 @@ export const listarCambios = createServerFn({ method: "GET" })
     z.object({
       slug,
       antesDe: z.string().optional(),
+      /** Desempate del cursor: el id del último cambio recibido (ver cursorHistorial). */
+      antesDeId: z.string().max(200).optional(),
       tipo: z.enum(TIPOS_CAMBIO).optional(),
       autor: z.string().optional(),
       idEntidad: z.string().optional(),
@@ -103,8 +106,11 @@ export const listarCambios = createServerFn({ method: "GET" })
     if (quien.tipo !== "miembro") return { cambios: [] };
     const sb = getSupabaseServerClient();
     if (!sb) return { cambios: [] };
-    let q = sb.from("cambios").select("*").eq("salon_slug", data.slug).order("fecha", { ascending: false }).limit(data.limite);
-    if (data.antesDe) q = q.lt("fecha", data.antesDe);
+    // `limite` ≤ 200 (validador): siempre por debajo de las 1000 filas que corta PostgREST.
+    let q = sb.from("cambios").select("*").eq("salon_slug", data.slug)
+      .order("fecha", { ascending: false }).order("id", { ascending: false }).limit(data.limite);
+    if (data.antesDe && data.antesDeId) q = q.or(cursorHistorial(data.antesDe, data.antesDeId));
+    else if (data.antesDe) q = q.lt("fecha", data.antesDe);
     if (data.tipo) q = q.eq("tipo", data.tipo);
     if (data.autor) q = q.eq("autor", data.autor);
     if (data.idEntidad) q = q.eq("id_entidad", data.idEntidad);

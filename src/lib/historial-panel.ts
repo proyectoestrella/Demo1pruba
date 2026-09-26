@@ -100,13 +100,17 @@ export function useHistorialServidor(slug: string, activo: boolean): EstadoHisto
   }, [activo, pedirPrimeraPagina]);
 
   const cargarMas = useCallback(() => {
-    const antesDe = cambios[cambios.length - 1]?.fecha;
+    const ultimo = cambios[cambios.length - 1];
+    const antesDe = ultimo?.fecha;
     if (!antesDe || cargandoMas) return;
     setCargandoMas(true);
     setError(null);
-    listarCambios({ data: { slug, antesDe, limite: CAMBIOS_POR_PAGINA } })
+    listarCambios({ data: { slug, antesDe, antesDeId: ultimo.id, limite: CAMBIOS_POR_PAGINA } })
       .then((res) => {
-        setCambios((prev) => [...prev, ...(res.cambios as Cambio[])]);
+        setCambios((prev) => {
+          const vistos = new Set(prev.map((c) => c.id));
+          return [...prev, ...(res.cambios as Cambio[]).filter((c) => !vistos.has(c.id))];
+        });
         setHayMas(siguientePagina(res.cambios.length, CAMBIOS_POR_PAGINA, res.cambios[res.cambios.length - 1]?.fecha).hayMas);
         if ("aviso" in res && res.aviso) setError(res.aviso);
       })
