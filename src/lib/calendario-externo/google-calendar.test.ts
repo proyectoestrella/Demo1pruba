@@ -4,6 +4,7 @@ import {
   SISHOW_PROP,
   actualizarEvento,
   borrarEvento,
+  comoEventoExternoListado,
   consultarOcupado,
   crearEvento,
   iniciarWatch,
@@ -108,6 +109,23 @@ describe("consultarOcupado", () => {
     ]);
     const r = await consultarOcupado("acc", "primary", "2026-10-01T00:00:00Z", "2026-10-02T00:00:00Z", impl);
     expect(r).toEqual([{ inicio: "2026-10-01T09:00:00Z", fin: "2026-10-01T09:30:00Z" }]);
+  });
+});
+
+describe("comoEventoExternoListado", () => {
+  it("un evento ajeno se ve como ocupado, con su resumen y sin marca propia", () => {
+    const r = comoEventoExternoListado({ id: "e1", status: "confirmed", summary: "Dentista", start: { dateTime: "2026-10-01T09:00:00Z" }, end: { dateTime: "2026-10-01T09:30:00Z" } });
+    expect(r).toEqual({ eventoExternoId: "e1", intervalo: { start: "2026-10-01T09:00:00Z", end: "2026-10-01T09:30:00Z" }, resumen: "Dentista", citaIdPropio: null });
+  });
+
+  it("un eco propio trae su citaId desde extendedProperties", () => {
+    const r = comoEventoExternoListado({ id: "e2", status: "confirmed", summary: "Corte · Ana", start: { dateTime: "x" }, end: { dateTime: "y" }, extendedProperties: { private: { [SISHOW_PROP]: "cita-1" } } });
+    expect(r.citaIdPropio).toBe("cita-1");
+  });
+
+  it("un evento cancelado no tiene intervalo", () => {
+    const r = comoEventoExternoListado({ id: "e3", status: "cancelled" });
+    expect(r.intervalo).toBeNull();
   });
 });
 

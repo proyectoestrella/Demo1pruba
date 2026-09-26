@@ -3,10 +3,19 @@
  * por `fetchImpl` inyectado (misma convención que `email.server.ts` /
  * `proveedorDeCorreo`), así que se prueba entero sin red.
  *
- * Scopes mínimos: `calendar.events` (crear/editar/borrar SUS eventos, no lee
- * el resto del calendario) + `calendar.freebusy` (solo "ocupado/libre", nunca
- * el título ni el detalle de una cita ajena) + `userinfo.email` (para poder
- * enseñar qué cuenta está conectada en el panel).
+ * Scopes: `calendar.events` (crear/editar/borrar los eventos de siShow; Google
+ * no ofrece un scope de "solo tus propios eventos" más estrecho — con este
+ * scope el servidor SÍ puede leer el resto de eventos del calendario, que es
+ * justo lo que necesita `listarEventosIncremental` para detectar huecos
+ * ocupados por otra cosa) + `userinfo.email` (para enseñar qué cuenta está
+ * conectada). El límite de privacidad no está en el scope, está en lo que se
+ * GUARDA y se ENSEÑA: `servicio-sincronizacion.ts` descarta el resumen real
+ * de un evento ajeno y solo persiste fechas; `listarOcupadoExterno` nunca
+ * devuelve título ni detalle, solo el intervalo. `calendar.freebusy` se deja
+ * como scope adicional y como cliente (`consultarOcupado`) por si algún día
+ * hace falta una vía más estrecha, pero el flujo por defecto usa el listado
+ * incremental de eventos, no freebusy (freebusy no da ids estables por
+ * evento, y hace falta un id para diferenciar creado/movido/borrado).
  */
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 

@@ -23,9 +23,28 @@ export interface EventoGoogleInput {
 export interface EventoGoogle {
   id: string;
   status: string;
-  start?: { dateTime?: string };
-  end?: { dateTime?: string };
+  summary?: string;
+  start?: { dateTime?: string; date?: string };
+  end?: { dateTime?: string; date?: string };
   extendedProperties?: { private?: Record<string, string> };
+}
+
+/** Convierte un `EventoGoogle` en lo que necesita `diffBloqueosExternos` (servicio-sincronizacion.ts). */
+export function comoEventoExternoListado(ev: EventoGoogle): {
+  eventoExternoId: string;
+  intervalo: { start: string; end: string } | null;
+  resumen: string | null;
+  citaIdPropio: string | null;
+} {
+  const inicio = ev.start?.dateTime ?? ev.start?.date;
+  const fin = ev.end?.dateTime ?? ev.end?.date;
+  const intervalo = ev.status !== "cancelled" && inicio && fin ? { start: inicio, end: fin } : null;
+  return {
+    eventoExternoId: ev.id,
+    intervalo,
+    resumen: ev.summary ?? null,
+    citaIdPropio: ev.extendedProperties?.private?.[SISHOW_PROP] ?? null,
+  };
 }
 
 function cuerpoEvento(evento: EventoGoogleInput) {
