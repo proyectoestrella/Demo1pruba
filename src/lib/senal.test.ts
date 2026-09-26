@@ -50,11 +50,17 @@ describe("una sola regla de señal por salón", () => {
     expect(reglaSenal({ depositDeadlineHours: 24 }).ventanaHoras).toBe(4);
   });
 
-  it("la cancelación gratuita sale de la regla o de la política de plantón", () => {
+  it("la cancelación gratuita: 24 h por defecto, ya no depende de la política de plantón", () => {
     expect(reglaSenal({ depositCancelHours: 48 }).horasCancelacion).toBe(48);
-    // Igual que la casilla de la reserva: sin recargo, 24 h; con recargo, su antelación.
-    expect(reglaSenal({ noShowNoticeHours: 2 }).horasCancelacion).toBe(24);
-    expect(reglaSenal({ noShowNoticeHours: 2, noShowFeeEur: 10 }).horasCancelacion).toBe(2);
+    expect(reglaSenal({}).horasCancelacion).toBe(24);
+    // noShowNoticeHours / noShowFeeEur ya no se leen aquí (lote 12): la señal tiene su propia regla.
+    expect(reglaSenal({ noShowNoticeHours: 2, noShowFeeEur: 10 }).horasCancelacion).toBe(24);
+  });
+
+  it("liberación automática: encendida por defecto; solo `false` explícito la apaga", () => {
+    expect(reglaSenal({}).liberacionAutomatica).toBe(true);
+    expect(reglaSenal({ depositAutoRelease: true }).liberacionAutomatica).toBe(true);
+    expect(reglaSenal({ depositAutoRelease: false }).liberacionAutomatica).toBe(false);
   });
 });
 
@@ -82,7 +88,16 @@ describe("un solo mensaje para la clienta", () => {
   it("la FAQ dice lo mismo que la reserva, o que se paga al terminar", () => {
     expect(respuestaFaqSenal(reglaSenal({}), eur)).toBe("No. Se paga en el salón al terminar.");
     const r = reglaSenal({ depositEnabled: true, depositAppliesTo: "duracion", depositMinMinutes: 60, depositMode: "porcentaje", depositPercent: 20 });
-    expect(respuestaFaqSenal(r, eur)).toBe("Solo en los servicios de 60 minutos o más: pedimos una señal del 20 % del servicio por Bizum, con 4 horas para hacerlo. Se descuenta del precio; si cancelas con más de 24 h de antelación, te la devolvemos.");
+    expect(respuestaFaqSenal(r, eur)).toBe("Solo en los servicios de 60 minutos o más: pedimos una señal del 20 % del servicio por Bizum, con 4 horas para hacerlo. Se descuenta del precio; si cancelas con más de 24 h de antelación, te la devolvemos. Si no llega a tiempo, la cita se anula y el hueco queda libre.");
+  });
+
+  it("con liberación automática (por defecto), la web y la FAQ avisan de que el hueco se libera; apagada, no", () => {
+    const conLiberacion = reglaSenal({ depositEnabled: true, depositAmountEur: 20, depositCancelHours: 24 });
+    const sinLiberacion = reglaSenal({ depositEnabled: true, depositAmountEur: 20, depositCancelHours: 24, depositAutoRelease: false });
+    expect(textoSenalPublico(conLiberacion, corte, "PeluChic", eur)).toContain("Si no llega a tiempo, la cita se anula y el hueco queda libre.");
+    expect(textoSenalPublico(sinLiberacion, corte, "PeluChic", eur)).not.toContain("se anula");
+    expect(respuestaFaqSenal(conLiberacion, eur)).toContain("Si no llega a tiempo, la cita se anula y el hueco queda libre.");
+    expect(respuestaFaqSenal(sinLiberacion, eur)).not.toContain("se anula");
   });
 });
 

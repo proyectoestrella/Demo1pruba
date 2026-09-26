@@ -14,6 +14,7 @@
  * Funciones puras: sin store, sin red, sin React. Ver `contrato-senal.md`.
  */
 import type { Appointment, EstadoSenalGuardado, MetodoSenal, SalonProfile } from "./mock/types";
+import { whatsappUrl } from "./campanas";
 
 /** Horas que tiene la clienta para hacer el Bizum. María pidió de 1 a 4. */
 export const VENTANAS_SENAL = [1, 2, 3, 4] as const;
@@ -40,7 +41,7 @@ export interface ReglaSenal {
   bizumTelefono: string;
   /** Si es true, la reserva por la web ya nace con la señal pedida (la web enseña el Bizum). */
   automatica: boolean;
-  /** Si es true, una señal vencida libera el hueco sola. Por defecto, avisa y decide la dueña. */
+  /** Si es true (por defecto), una señal vencida libera el hueco sola. Con `false`, avisa y decide la dueña. */
   liberacionAutomatica: boolean;
   /** Horas antes de la cita hasta las que cancelar devuelve la señal. */
   horasCancelacion: number;
@@ -88,13 +89,12 @@ export function reglaSenal(perfil: Partial<PerfilSenal> | null | undefined): Reg
     ventanaHoras: ventana(p.depositDeadlineHours),
     bizumTelefono: (p.depositBizumPhone ?? "").trim(),
     automatica: p.depositAuto === true,
-    liberacionAutomatica: p.depositAutoRelease === true,
-    // Por defecto, la misma que la casilla «Acepto la política de cancelación»
-    // de la reserva: con recargo por plantón, su antelación; sin él, 24 h.
-    horasCancelacion: Math.max(
-      0,
-      Number(p.depositCancelHours ?? ((p.noShowFeeEur ?? 0) > 0 ? (p.noShowNoticeHours ?? 2) : 24)) || 0,
-    ),
+    // Por defecto ENCENDIDA: una señal vencida libera el hueco sola. `false`
+    // explícito es lo único que la apaga (perfil.md v6, lote 12).
+    liberacionAutomatica: p.depositAutoRelease !== false,
+    // 24 h por defecto, ya no ligado a la política de plantón (noShowNoticeHours):
+    // es una decisión de la señal, no un préstamo de otra regla.
+    horasCancelacion: Math.max(0, Number(p.depositCancelHours ?? 24) || 0),
     plantilla: (p.depositTemplate ?? "").trim(),
   };
 }
@@ -158,10 +158,20 @@ export function textoSenalPublico(
   const primera = regla.aplicaA === "nuevas" && r.esNueva === undefined ? "Si es tu primera visita, " : "";
   const quien = primera ? "te pediremos" : `${salonName} te pedirá`;
   const plazo = `${regla.ventanaHoras} ${regla.ventanaHoras === 1 ? "hora" : "horas"}`;
+  const aviso = avisoLiberacionAutomatica(regla);
   if (regla.automatica && regla.bizumTelefono) {
-    return `${primera}${primera ? "" : "Para confirmar la cita, "}haz un Bizum de ${eur(importe)} al ${regla.bizumTelefono} en las próximas ${plazo}. Se descuenta del precio; si cancelas con más de ${regla.horasCancelacion} h, te la devolvemos.`;
+    return `${primera}${primera ? "" : "Para confirmar la cita, "}haz un Bizum de ${eur(importe)} al ${regla.bizumTelefono} en las próximas ${plazo}. Se descuenta del precio; si cancelas con más de ${regla.horasCancelacion} h, te la devolvemos.${aviso}`;
   }
-  return `${primera}${quien} por WhatsApp una señal de ${eur(importe)} por Bizum para confirmar la cita (tendrás ${plazo}). Se descuenta del precio; si cancelas con más de ${regla.horasCancelacion} h, te la devolvemos.`;
+  return `${primera}${quien} por WhatsApp una señal de ${eur(importe)} por Bizum para confirmar la cita (tendrás ${plazo}). Se descuenta del precio; si cancelas con más de ${regla.horasCancelacion} h, te la devolvemos.${aviso}`;
+}
+
+/**
+ * Con la liberación automática encendida, la web y la FAQ avisan de que el
+ * hueco no espera indefinidamente. Con ella apagada no se dice nada: la
+ * decide la dueña y no hay plazo duro que anunciar.
+ */
+function avisoLiberacionAutomatica(regla: ReglaSenal): string {
+  return regla.liberacionAutomatica ? " Si no llega a tiempo, la cita se anula y el hueco queda libre." : "";
 }
 
 /** Datos de una cita que la señal necesita (subconjunto de Appointment). */
@@ -176,7 +186,7 @@ export function respuestaFaqSenal(regla: ReglaSenal, eur: (n: number) => string)
     regla.aplicaA === "duracion" ? `Solo en los servicios de ${regla.minutosMinimos} minutos o más: ` :
     regla.aplicaA === "servicios" ? "Solo en algunos servicios (lo verás al reservar): " : "";
   const pedimos = aQuien ? "pedimos" : "Pedimos";
-  return `${aQuien}${pedimos} ${cuanto} por Bizum, con ${regla.ventanaHoras} ${regla.ventanaHoras === 1 ? "hora" : "horas"} para hacerlo. Se descuenta del precio; si cancelas con más de ${regla.horasCancelacion} h de antelación, te la devolvemos.`;
+  return `${aQuien}${pedimos} ${cuanto} por Bizum, con ${regla.ventanaHoras} ${regla.ventanaHoras === 1 ? "hora" : "horas"} para hacerlo. Se descuenta del precio; si cancelas con más de ${regla.horasCancelacion} h de antelación, te la devolvemos.${avisoLiberacionAutomatica(regla)}`;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -578,4 +588,42 @@ export function prepararPeticionSenal(
   if (!r.ok) return r;
   const vence = r.patch.depositDueAt ?? vencimientoSenal(c, regla.ventanaHoras);
   return { ok: true, importeEur: r.patch.depositEur ?? importeEur, venceISO: vence ?? ahora.toISOString() };
+}
+
+/* ------------------------------------------------------------------------ */
+/* Recordatorio de última hora (liberación automática, lote 12)             */
+/* ------------------------------------------------------------------------ */
+
+/** Lo que hace falta de una cita para preparar su recordatorio de última hora. */
+export type CitaParaRecordatorio = CitaCiclo & { clientPhone: string };
+
+export interface RecordatorioSenal {
+  /** «Te quedan 12 min para el Bizum…», listo para copiar o mandar tal cual. */
+  texto: string;
+  /** wa.me al teléfono de la clienta con `texto` ya escrito. FRONTEND pone el botón. */
+  enlace: string;
+  minutosRestantes: number;
+}
+
+/**
+ * El aviso «te quedan X min para el Bizum», para un botón de un toque desde
+ * Hoy/Avisos. `null` si no toca avisar: la señal no está `pedida` (ya se
+ * recibió, aún no se pidió, o ya venció) o falta más de 1 hora para el
+ * vencimiento — no es un recordatorio de última hora, es ruido.
+ */
+export function recordatorioSenal(
+  c: CitaParaRecordatorio,
+  regla: ReglaSenal,
+  salon: { name: string },
+  ahora: Date = new Date(),
+): RecordatorioSenal | null {
+  if (estadoSenal(c, ahora) !== "pedida") return null;
+  const due = vencimientoSenal(c, regla.ventanaHoras);
+  if (!due) return null;
+  const msRestantes = Date.parse(due) - ahora.getTime();
+  if (msRestantes <= 0 || msRestantes > HORA) return null;
+  const minutosRestantes = Math.max(1, Math.round(msRestantes / 60_000));
+  const importe = c.depositEur ?? 0;
+  const texto = `Hola, soy ${salon.name}. Te quedan ${minutosRestantes} min para hacer el Bizum de ${importe} € al ${regla.bizumTelefono} y confirmar tu cita. ¡Gracias!`;
+  return { texto, enlace: whatsappUrl(c.clientPhone, texto), minutosRestantes };
 }
