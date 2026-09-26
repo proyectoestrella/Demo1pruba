@@ -12,6 +12,8 @@ import { AjustesSenal } from "@/components/AjustesSenal";
 import { AjustesPreguntas } from "@/components/AjustesPreguntas";
 import { GuiaAsistente } from "@/components/GuiaAsistente";
 import { AjustesAccesos } from "@/components/AjustesAccesos";
+import { AjustesCalendarios } from "@/components/AjustesCalendarios";
+import { API_CALENDARIOS, alcanceCalendario, avisoVueltaGoogle, useCalendariosActivos } from "@/lib/calendarios-panel";
 import { HistorialCambios } from "@/components/HistorialCambios";
 import { usePermisos, useTienePlan } from "@/lib/accesos-panel";
 import { LlegaConPlan } from "@/components/LlegaConPlan";
@@ -45,6 +47,16 @@ export const Route = createFileRoute("/app/settings")({ component: Settings });
  */
 function Settings() {
   const permisos = usePermisos();
+  const calendarios = useCalendariosActivos();
+  // 14c: la vuelta de Google (/app/settings?calendario=ok|error&motivo=…).
+  useEffect(() => {
+    const q = Object.fromEntries(new URLSearchParams(window.location.search));
+    const aviso = avisoVueltaGoogle(q);
+    if (!aviso) return;
+    if (aviso.ok) toast.success(aviso.texto);
+    else toast.error(aviso.texto);
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
   const tieneAsistente = useTienePlan("asistente");
   const salonProfile = useSalonStore((s) => s.salonProfile);
   const realSlug = useSalonStore((s) => s.realSalonSlug);
@@ -278,6 +290,12 @@ function Settings() {
           </div>
           <AjustesSenal />
         </SeccionAjustes>
+
+        {calendarios.activo && calendarios.slug && alcanceCalendario(permisos) === "todo" && (
+          <SeccionAjustes titulo="Calendarios" resumen="Google Calendar y el calendario del iPhone: tus huecos y tus citas, cruzados">
+            <AjustesCalendarios api={API_CALENDARIOS} slug={calendarios.slug} />
+          </SeccionAjustes>
+        )}
 
         {puede(permisos, "historial.ver") && (
           <SeccionAjustes titulo="Historial de cambios" resumen="Quién cambió qué, antes y después, y deshacerlo">

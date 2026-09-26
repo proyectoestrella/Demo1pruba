@@ -6,6 +6,18 @@
  * hay maqueta. Todo detrás de `profile.calendariosExternosActivo`.
  */
 import { alcance, type AccionId, type Permisos } from "./permisos";
+import { useEffect, useMemo, useState } from "react";
+import { useSalonStore } from "./store";
+import {
+  ajustarConexionCalendario,
+  conectarApple,
+  desconectarCalendario,
+  iniciarConexionGoogle,
+  listarConexionesCalendario,
+  listarOcupadoExterno,
+  sincronizarCalendarios,
+} from "./api/calendario-externo.functions";
+import type { Appointment } from "./mock/types";
 
 export type ProveedorCalendario = "google" | "apple";
 export type EstadoConexion = "activa" | "error" | "desconectada";
@@ -99,3 +111,77 @@ export function avisoVueltaGoogle(search: Record<string, unknown>): { ok: boolea
   }
   return null;
 }
+
+/* ---------- lo ocupado en calendarios externos, en el calendario del panel ---------- */
+
+
+/** Prefijo de los bloques que vienen de fuera: se pintan rayados y no se abren. */
+export const PREFIJO_EXTERNO = "ext-";
+export const esBloqueExterno = (a: Pick<Appointment, "id">) => a.id.startsWith(PREFIJO_EXTERNO);
+
+/** Un hueco ocupado fuera, como bloqueo de pantalla (sin título ni clienta). Sin profesional = todo el salón. */
+export function bloquesDeOcupado(ocupado: OcupadoExterno[], equipoIds: string[]): Appointment[] {
+  return ocupado.flatMap((o, i) => {
+    const duracion = Math.max(5, Math.round((Date.parse(o.fin) - Date.parse(o.inicio)) / 60_000));
+    const para = o.employeeId ? [o.employeeId] : equipoIds;
+    return para.map((employeeId) => ({
+      id: `${PREFIJO_EXTERNO}${i}-${employeeId}`,
+      clientId: "",
+      clientName: "",
+      serviceIds: [],
+      employeeId,
+      start: o.inicio,
+      duration: duracion,
+      priceEur: 0,
+      status: "blocked",
+      note: `Ocupado (${NOMBRE_PROVEEDOR[o.proveedor].split(" ")[0]})`,
+    }) as unknown as Appointment);
+  });
+}
+
+/** ¿Están activados los calendarios externos en este salón (real)? */
+export function useCalendariosActivos(): { activo: boolean; slug: string | null } {
+  const slug = useSalonStore((s) => s.realSalonSlug);
+  const flag = useSalonStore((s) => !!s.salonProfile.calendariosExternosActivo);
+  return { activo: !!slug && flag, slug };
+}
+
+/**
+ * Los bloques «Ocupado (Google)» de un rango para el calendario (14c). Solo
+ * con los calendarios activados en un salón real; en otro caso, ninguno.
+ */
+export function useOcupadoExterno(desde: string, hasta: string, equipoIds: string[]): Appointment[] {
+  const { activo, slug } = useCalendariosActivos();
+  const [ocupado, setOcupado] = useState<OcupadoExterno[]>([]);
+  useEffect(() => {
+    if (!activo || !slug) return setOcupado([]);
+    let vivo = true;
+    listarOcupadoExterno({ data: { slug, desde, hasta } }).then(
+      (r) => vivo && setOcupado(r as OcupadoExterno[]),
+      () => vivo && setOcupado([]),
+    );
+    return () => {
+      vivo = false;
+    };
+  }, [activo, slug, desde, hasta]);
+  const clave = equipoIds.join(",");
+  return useMemo(() => bloquesDeOcupado(ocupado, equipoIds), [ocupado, clave]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+/** Al abrir Hoy o el Calendario: que Apple (sin webhook) se ponga al día. Sin esperar la respuesta. */
+export function useSincronizarCalendarios() {
+  const { activo, slug } = useCalendariosActivos();
+  useEffect(() => {
+    if (activo && slug) void sincronizarCalendarios({ data: { slug } }).catch(() => undefined);
+  }, [activo, slug]);
+}
+
+/** Las funciones de servidor reales con la forma que usa la pantalla (`{ data }` por dentro). */
+export const API_CALENDARIOS: ApiCalendarios = {
+  listarConexionesCalendario: (d) => listarConexionesCalendario({ data: d }) as Promise<ConexionCalendario[]>,
+  iniciarConexionGoogle: (d) => iniciarConexionGoogle({ data: d }),
+  conectarApple: (d) => conectarApple({ data: d }),
+  desconectarCalendario: (d) => desconectarCalendario({ data: d }) as Promise<{ ok: true }>,
+  ajustarConexionCalendario: (d) => ajustarConexionCalendario({ data: d }) as Promise<{ ok: true }>,
+  listarOcupadoExterno: (d) => listarOcupadoExterno({ data: d }) as Promise<OcupadoExterno[]>,
+};

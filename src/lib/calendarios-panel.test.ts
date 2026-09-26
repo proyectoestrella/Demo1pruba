@@ -36,3 +36,18 @@ describe("Ajustes › Calendarios (lote 14c)", () => {
     expect(avisoVueltaGoogle({})).toBeNull();
   });
 });
+
+import { bloquesDeOcupado, esBloqueExterno } from "./calendarios-panel";
+
+describe("lo ocupado fuera, en el calendario del panel (14c)", () => {
+  test("un bloque por hueco y profesional, sin título ni clienta", () => {
+    const b = bloquesDeOcupado([{ employeeId: "noelia", inicio: "2026-09-26T10:00:00Z", fin: "2026-09-26T11:30:00Z", proveedor: "google" }], ["maria", "noelia"]);
+    expect(b).toHaveLength(1);
+    expect(b[0]).toMatchObject({ employeeId: "noelia", duration: 90, status: "blocked", note: "Ocupado (Google)", clientName: "" });
+    expect(esBloqueExterno(b[0])).toBe(true);
+  });
+  test("lo del calendario del salón bloquea a todo el equipo", () => {
+    const b = bloquesDeOcupado([{ employeeId: null, inicio: "2026-09-26T10:00:00Z", fin: "2026-09-26T10:30:00Z", proveedor: "apple" }], ["maria", "noelia"]);
+    expect(b.map((x) => `${x.employeeId}:${x.note}`)).toEqual(["maria:Ocupado (Apple)", "noelia:Ocupado (Apple)"]);
+  });
+});

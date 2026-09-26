@@ -1,4 +1,5 @@
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
+import { useOcupadoExterno, useSincronizarCalendarios } from "@/lib/calendarios-panel";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, Palette, Settings2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -98,7 +99,7 @@ function useAhora() {
  * «Nueva cita» abierta. Sin él, hoy y la vista preferida.
  */
 export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: string; nueva?: boolean } } = {}) {
-  const appointments = useCitasVisibles();
+  const visibles = useCitasVisibles();
   const services = useSalonStore((s) => s.services);
   const guardadas = useSalonStore((s) => s.salonProfile.calendario);
   const equipo = useEquipoVisible();
@@ -107,12 +108,18 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
   const ahora = useAhora();
   const pref = preferenciasDe(guardadas);
 
-  const citaInicial = inicio?.cita ? (appointments.find((a) => a.id === inicio.cita) ?? null) : null;
+  const citaInicial = inicio?.cita ? (visibles.find((a) => a.id === inicio.cita) ?? null) : null;
   const [anchor, setAnchor] = useState(() => {
     if (citaInicial) return inicioDelDia(new Date(citaInicial.start));
     const m = inicio?.dia?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     return m ? new Date(+m[1], +m[2] - 1, +m[3]) : inicioDelDia(new Date());
   });
+  // 14c: lo ocupado en Google/Apple, rayado y sin título (solo con los calendarios activados).
+  useSincronizarCalendarios();
+  const desdeExt = fechaISO(new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() - 7));
+  const hastaExt = fechaISO(new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() + 42));
+  const externos = useOcupadoExterno(desdeExt, hastaExt, equipo.map((e) => e.id));
+  const appointments = useMemo(() => (externos.length ? [...visibles, ...externos] : visibles), [visibles, externos]);
   const [vista, setVista] = useState<Vista>(inicio?.dia || citaInicial ? "dia" : pref.vista);
   /** En Semana y 3 días: «todas» o el id de una profesional. */
   const [filtroPro, setFiltroPro] = useState<string>("todas");

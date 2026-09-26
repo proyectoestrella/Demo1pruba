@@ -38,6 +38,7 @@ import { DecisionDeudaDialog } from "@/components/DecisionDeudaDialog";
 import { AvisoDeudasHoy } from "@/components/DeudaCliente";
 import { ExpiredDepositsNotice } from "@/components/ExpiredDepositsNotice";
 import { agruparPagosPorCita, cobradoDeCita } from "@/lib/pagos";
+import { useSincronizarCalendarios } from "@/lib/calendarios-panel";
 import { RecordatoriosSenal, useRecordatoriosSenal } from "@/components/RecordatoriosSenal";
 import { RecargosPendientes } from "@/components/RecargosPendientes";
 import { Button } from "@/components/ui/button";
@@ -114,6 +115,8 @@ export function HoyArena() {
   const dineroCitas = useMemo(() => dineroDelRango(appointments, rangoDelDia(ahora), ahora), [appointments]); // eslint-disable-line react-hooks/exhaustive-deps
   // 14b: lo cobrado de verdad (pagos apuntados; si una cita no tiene pagos, su precio si está marcada cobrada).
   const pagos = useSalonStore((s) => s.payments);
+  // 14c: que los calendarios externos (Apple no avisa solo) se pongan al día al abrir Hoy.
+  useSincronizarCalendarios();
   const cargarPagos = useSalonStore((s) => s.cargarPagos);
   useEffect(() => {
     const d = fechaLocal(new Date());

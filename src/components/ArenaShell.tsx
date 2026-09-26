@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   Bell,
   Calendar,
+  CalendarCheck,
   ChartColumn,
   Clock,
   Compass,
@@ -33,6 +34,8 @@ import { TOTAL_PASOS, useProgresoPrimerosPasos } from "@/components/PrimerosPaso
 import { Button } from "@/components/ui/button";
 import { AvatarSalon } from "@/components/AvatarSalon";
 import { VerComo } from "@/components/VerComo";
+import { AjustesCalendarios } from "@/components/AjustesCalendarios";
+import { API_CALENDARIOS, alcanceCalendario, useCalendariosActivos } from "@/lib/calendarios-panel";
 import { useCitasVisibles, useEsDemo, useMiembroActual, usePermisos, veRuta } from "@/lib/accesos-panel";
 import { NOMBRE_ROL } from "@/lib/accesos-maqueta";
 import {
@@ -237,6 +240,8 @@ function BloqueUsuario() {
   const permisos = usePermisos();
   const nombre = miembro?.displayName ?? null;
   const verWeb = veRuta(permisos, "/app/web");
+  const calendarios = useCalendariosActivos();
+  const [miCalendario, setMiCalendario] = useState(false);
   return (
     <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2.5">
       {nombre ? <AvatarPersona nombre={nombre} /> : <AvatarSalon size={34} />}
@@ -252,8 +257,27 @@ function BloqueUsuario() {
             Ver tu web <ArrowUpRight className="size-3" />
           </a>
         )}
+        {/* 14c: la estilista gestiona su calendario desde aquí (no ve Ajustes). */}
+        {calendarios.activo && calendarios.slug && alcanceCalendario(permisos) === "propio" && (
+          <button type="button" onClick={() => setMiCalendario(true)} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary">
+            Mi calendario <CalendarCheck className="size-3" />
+          </button>
+        )}
       </div>
       <BotonCerrarSesion variante="icono" />
+      {calendarios.slug && (
+        <Sheet open={miCalendario} onOpenChange={setMiCalendario}>
+          <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
+            <SheetHeader className="border-b border-border px-5 py-4 text-left">
+              <SheetTitle className="text-base font-extrabold">Mi calendario</SheetTitle>
+              <SheetDescription>Tu Google Calendar o el calendario de tu iPhone, cruzado con tus citas.</SheetDescription>
+            </SheetHeader>
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              <AjustesCalendarios api={API_CALENDARIOS} slug={calendarios.slug} />
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   );
 }

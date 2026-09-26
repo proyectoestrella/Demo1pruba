@@ -4,6 +4,7 @@ import { hora } from "@/lib/copy";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { franjasProfesional } from "@/lib/horario-equipo";
 import { indiceColorServicio, minutosAHora } from "@/lib/hoy-arena";
+import { esBloqueExterno } from "@/lib/calendarios-panel";
 import { carrilesSolapados, citasDeCalendario, iniciales, minutosDe, mismoDia, pausasDe } from "@/lib/calendario-arena";
 import type { Appointment, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
@@ -295,7 +296,13 @@ function ColumnaDia({
         };
         if (a.status === "blocked") {
           return (
-            <div key={a.id} data-cita className="absolute z-[4] grid place-items-center overflow-hidden rounded-md border border-cafe/60 bg-beige text-[11px] font-semibold text-cafe-suave" style={style}>
+            <div
+              key={a.id}
+              data-cita
+              className="absolute z-[4] grid place-items-center overflow-hidden rounded-md border border-cafe/60 bg-beige text-[11px] font-semibold text-cafe-suave"
+              // 14c: lo ocupado en un calendario externo va rayado, como la pausa.
+              style={esBloqueExterno(a) ? { ...style, background: "repeating-linear-gradient(135deg,#EDE4D8 0 7px,#F5EFE6 7px 14px)" } : style}
+            >
               {a.note || "Bloqueado"}
             </div>
           );
