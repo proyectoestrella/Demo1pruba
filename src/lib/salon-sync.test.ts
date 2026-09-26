@@ -314,10 +314,9 @@ describe("parche por campos desde el panel", () => {
 
 describe("solapes desde el panel", () => {
   it("permitirSolape viaja explícito en el alta y en el parche, y por defecto es false", async () => {
-    pushAppointment("the-best-shave-barber", cita, cliente);
-    pushAppointment("the-best-shave-barber", cita, cliente, { permitirSolape: true });
-    pushAppointmentPatch("the-best-shave-barber", cita, { start: cita.start }, cliente, { permitirSolape: true });
-    // Los tres son de la misma cita: suben en cola, uno detrás de otro.
+    pushAppointment("the-best-shave-barber", { ...cita, id: "s-1" }, cliente);
+    pushAppointment("the-best-shave-barber", { ...cita, id: "s-2" }, cliente, { permitirSolape: true });
+    pushAppointmentPatch("the-best-shave-barber", { ...cita, id: "s-3" }, { start: cita.start }, cliente, { permitirSolape: true });
     await esperarAvisos();
     const [sin, con, parche] = argumentosCitas as Array<{ data: { permitirSolape?: boolean } }>;
     expect(sin.data.permitirSolape).toBe(false);
@@ -438,8 +437,65 @@ describe("reintentos automáticos con espera creciente", () => {
     await esperarAvisos();
     esperaDeReintentoParaPruebas(async (ms) => { esperasPedidas.push(ms); });
     const estados = (argumentosCitas as Array<{ data: { patch: { status: string } } }>).map((a) => a.data.patch.status);
-    // confirmed (falla), confirmed (reintento, va bien), y solo DESPUÉS completed.
-    expect(estados).toEqual(["confirmed", "confirmed", "completed"]);
+    // confirmed falla; su reintento ya no se manda porque «completed» es
+    // posterior y toca el mismo campo; completed llega después y gana.
+    expect(estados).toEqual(["confirmed", "completed"]);
     expect(leerAvisos()).toEqual([]);
+  });
+});
+
+describe("el botón «Reintentar» respeta el orden (segunda pasada)", () => {
+  it("un parche viejo reintentado a mano no pisa un campo que cambió después", async () => {
+    fallarTodo = true;
+    pushAppointmentPatch("the-best-shave-barber", cita, { status: "confirmed", note: "vieja" }, cliente);
+    await esperarAvisos();
+    const reintentar = leerAvisos()[0]!.reintentar!;
+    fallarTodo = false;
+    pushAppointmentPatch("the-best-shave-barber", cita, { status: "completed" }, cliente);
+    await esperarAvisos();
+    argumentosCitas.length = 0;
+    limpiarAvisos();
+    reintentar();
+    await esperarAvisos();
+    // Solo viaja lo que nadie ha vuelto a tocar: la nota, no el estado.
+    expect((argumentosCitas as Array<{ data: { patch: object } }>).map((a) => a.data.patch)).toEqual([{ note: "vieja" }]);
+    expect(leerAvisos()).toEqual([]);
+  });
+
+  it("reintentar la cita entera tras otro cambio de ella no la sube con la versión vieja", async () => {
+    fallarTodo = true;
+    pushAppointment("the-best-shave-barber", { ...cita, id: "r-1" }, cliente);
+    await esperarAvisos();
+    const reintentar = leerAvisos()[0]!.reintentar!;
+    fallarTodo = false;
+    pushAppointmentPatch("the-best-shave-barber", { ...cita, id: "r-1" }, { status: "completed" }, cliente);
+    await esperarAvisos();
+    llamadas.length = 0;
+    reintentar();
+    await esperarAvisos();
+    expect(llamadas).toEqual([]);
+  });
+
+  it("el reintento espera a que termine la subida en curso de esa cita", async () => {
+    fallarTodo = true;
+    pushAppointmentPatch("the-best-shave-barber", { ...cita, id: "q-1" }, { note: "a" }, cliente);
+    await esperarAvisos();
+    const reintentar = leerAvisos()[0]!.reintentar!;
+    fallarTodo = false;
+    let soltar!: () => void;
+    esperaDeReintentoParaPruebas(() => new Promise<void>((r) => { soltar = r; }));
+    fallarTodo = true;
+    pushAppointmentPatch("the-best-shave-barber", { ...cita, id: "q-1" }, { status: "completed" }, cliente);
+    await esperarAvisos();
+    argumentosCitas.length = 0;
+    fallarTodo = false;
+    reintentar();
+    await esperarAvisos();
+    expect(argumentosCitas).toEqual([]); // en cola, detrás del parche que está esperando
+    soltar();
+    await esperarAvisos();
+    esperaDeReintentoParaPruebas(async (ms) => { esperasPedidas.push(ms); });
+    const orden = (argumentosCitas as Array<{ data: { patch: object } }>).map((a) => a.data.patch);
+    expect(orden).toEqual([{ status: "completed" }, { note: "a" }]);
   });
 });
