@@ -21,6 +21,8 @@ export interface ConexionCalendario {
   cuenta: string | null;
   /** Google: calendarId a usar (normalmente "primary"). Apple: href del calendario. */
   calendarioExternoId: string | null;
+  /** El nombre del calendario tal y como lo devuelve el proveedor ("Noelia", "Trabajo"). */
+  calendarioNombre: string | null;
   /** Google: syncToken de la última sincronización incremental. */
   syncToken: string | null;
   /** Apple: ctag del calendario en la última sincronización. */
@@ -30,8 +32,29 @@ export interface ConexionCalendario {
   canalCaduca: string | null;
   ultimoError: string | null;
   ultimoErrorEn: string | null;
+  /** Cuándo terminó con éxito la última sincronización (push o polling). */
+  ultimaSincronizacion: string | null;
+  /**
+   * Los dos interruptores de v1 (pedidos por FRONTEND, 26/09):
+   *   - `bloquearHuecos`: si está apagado, lo ocupado en el calendario externo
+   *     NO cuenta para bloquear huecos de reserva ni se importa como bloqueo.
+   *   - `escribirCitas`: si está apagado, las citas de siShow no se escriben
+   *     en el calendario externo (la conexión sigue viva para lo demás).
+   * Los dos por defecto `true`: conectar un calendario hace las dos cosas
+   * salvo que se apague explícitamente una.
+   */
+  bloquearHuecos: boolean;
+  escribirCitas: boolean;
   creada: string;
   actualizada: string;
+}
+
+/** Un hueco ocupado por un calendario externo, sin título ni detalle (lo que ve `listarOcupadoExterno`). */
+export interface OcupadoExterno {
+  employeeId: string | null;
+  inicio: string;
+  fin: string;
+  proveedor: ProveedorCalendario;
 }
 
 /** La credencial en claro, tal y como viaja DENTRO del cifrado (nunca fuera de él). */

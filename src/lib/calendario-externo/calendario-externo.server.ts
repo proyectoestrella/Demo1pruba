@@ -148,6 +148,18 @@ function filaAMapeo(f: { id: string; conexion_id: string; cita_id: string; event
 // Lectura de conexiones (para el panel)
 // -----------------------------------------------------------------------
 
+/** Una conexión concreta (para comprobar de quién es antes de dejar tocarla — nunca te fíes del `employeeId` que manda el navegador). */
+export async function obtenerConexion(salonSlug: string, conexionId: string): Promise<ConexionCalendario | null> {
+  const db = getSupabaseServerClient();
+  if (!db) return null;
+  const { data, error } = await db.from("calendario_conexiones").select("*").eq("id", conexionId).eq("salon_slug", salonSlug).maybeSingle();
+  if (error) {
+    if (tablaNoExiste(error)) return null;
+    throw new Error(`calendario-externo (obtener conexión): ${error.message}`);
+  }
+  return data ? filaAConexion(data as FilaConexion) : null;
+}
+
 export async function listarConexiones(salonSlug: string): Promise<ConexionCalendario[]> {
   const db = getSupabaseServerClient();
   if (!db) return [];
