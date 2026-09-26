@@ -36,7 +36,8 @@ export function AjustesSenal() {
     depositDeadlineHours: String(perfil.depositDeadlineHours && perfil.depositDeadlineHours <= 4 ? perfil.depositDeadlineHours : 4),
     depositBizumPhone: perfil.depositBizumPhone ?? "",
     depositAuto: !!perfil.depositAuto,
-    depositAutoRelease: !!perfil.depositAutoRelease,
+    // 14a: el valor por defecto lo decide la regla (encendida), no un campo vacío.
+    depositAutoRelease: reglaSenal(perfil).liberacionAutomatica,
     depositCancelHours: String(reglaSenal(perfil).horasCancelacion),
     depositTemplate: perfil.depositTemplate ?? "",
   });
@@ -173,6 +174,7 @@ export function AjustesSenal() {
               <span className="flex items-center gap-2 font-normal">
                 <input aria-label="Horas de cancelación" className={cn(campo, "w-20")} inputMode="numeric" value={f.depositCancelHours} onChange={(e) => set("depositCancelHours", e.target.value)} /> horas de antelación
               </span>
+              <span className="text-[12.5px] font-normal text-muted-foreground">Por defecto, 24 h. Si cancela más tarde o no viene, la señal se queda en el salón.</span>
             </label>
           </div>
 
@@ -185,7 +187,7 @@ export function AjustesSenal() {
             />
             <Interruptor
               titulo="Liberar el hueco sola si vence"
-              texto="Si pasa el plazo sin recibirla, la cita se cancela y el hueco queda libre. Si lo apagas, se te avisa en Hoy y decides tú."
+              texto="Viene encendida. Cuando falte 1 hora para que venza, en Hoy › Avisos tienes un botón para escribirle por WhatsApp «te quedan X min». Si vence sin recibirla, la cita se cancela y el hueco queda libre. Si lo apagas, se te avisa en Hoy y decides tú."
               valor={f.depositAutoRelease}
               onCambio={(v) => set("depositAutoRelease", v)}
             />

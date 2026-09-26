@@ -95,7 +95,8 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
   const detalle: Partial<Record<EstadoSenal, string>> = {
     no_aplica: "Tu regla no la pide para esta cita. Puedes pedirla igualmente.",
     por_pedir: `Tu regla pide una señal de ${eur(cita.depositEur ?? importeSenal(regla, { serviceIds: cita.serviceIds, durationMin: cita.duration, priceEur: cita.priceEur }))}.`,
-    pedida: `${eur(cita.depositEur ?? 0)} ${vence}. Márcala cuando la veas en tu banco.`,
+    // 14a: lo mismo que dice Ajustes › Señal (recordatorio a 1 h desde Hoy y liberación al vencer).
+    pedida: `${eur(cita.depositEur ?? 0)} ${vence}. Márcala cuando la veas en tu banco. ${regla.liberacionAutomatica ? "Si no llega a tiempo, el hueco se libera solo; a 1 h de vencer, en Hoy › Avisos puedes recordárselo." : "Si no llega a tiempo, te avisamos en Hoy y decides tú."}`,
     vencida: `Pasó el plazo sin recibir ${eur(cita.depositEur ?? 0)}. Tú decides: más tiempo o liberar el hueco.`,
     recibida: `${eur(cita.depositReceivedEur ?? cita.depositEur ?? 0)} por ${METODOS.find((m) => m.id === cita.depositMethod)?.texto.toLowerCase() ?? "bizum"}. Se descuenta sola al cobrar.`,
   };
