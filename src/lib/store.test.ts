@@ -297,6 +297,20 @@ describe("señal: ciclo de vida desde el store", () => {
     expect(cita(a.id)).toMatchObject({ status: "cancelled", depositStatus: "anulada" });
     useSalonStore.getState().updateSalonProfile({ depositEnabled: false, depositAutoRelease: false });
   });
+
+  it("varias vencidas se liberan en UN solo cambio de estado (un render), no uno por cita", () => {
+    useSalonStore.getState().updateSalonProfile({ depositEnabled: true, depositAmountEur: 10, depositDeadlineHours: 1, depositAutoRelease: true });
+    const ids = [nueva(), nueva(), nueva()].map((c) => c.id);
+    for (const id of ids) useSalonStore.getState().pedirSenal(id);
+    let avisos = 0;
+    const quitar = useSalonStore.subscribe(() => { avisos += 1; });
+    const n = useSalonStore.getState().liberarSenalesVencidas(new Date(Date.now() + 2 * 3_600_000));
+    quitar();
+    expect(n).toBeGreaterThanOrEqual(3);
+    expect(avisos).toBe(1);
+    for (const id of ids) expect(cita(id)).toMatchObject({ status: "cancelled", depositStatus: "anulada" });
+    useSalonStore.getState().updateSalonProfile({ depositEnabled: false, depositAutoRelease: false });
+  });
 });
 
 describe("señal: reajuste al cambiar servicio u hora", () => {

@@ -248,20 +248,55 @@ const HORA = 3_600_000;
 const ok = (patch: Partial<Appointment>): ResultadoSenal => ({ ok: true, patch });
 const fallo = (error: CodigoErrorSenal): ResultadoSenal => ({ ok: false, error });
 const iso = (ms: number) => new Date(ms).toISOString();
+/**
+ * Un plazo nunca pasa de la hora de la cita — salvo que esa hora no se pueda
+ * leer (fila corrompida): entonces no hay con qué topar, y se deja `limite`
+ * tal cual en vez de que `Date.parse` devuelva NaN y reviente el ISO de
+ * después (barrido de calidad 2026-09-26).
+ */
+const topeCita = (limiteMs: number, startISO: string): number => {
+  const inicioMs = Date.parse(startISO);
+  return Number.isFinite(inicioMs) ? Math.min(limiteMs, inicioMs) : limiteMs;
+};
+
+/**
+ * El primer valor que sea de verdad un número (`NaN` no cuenta, aunque
+ * `typeof NaN === "number"` y `??` lo deja pasar), o 0. Una fila con un
+ * importe corrompido no puede colar un NaN en un patch que luego se guarda
+ * (barrido de calidad 2026-09-26).
+ */
+const num = (...vals: Array<number | undefined>): number => {
+  for (const v of vals) if (Number.isFinite(v)) return v as number;
+  return 0;
+};
 
 /** Estado guardado, o el que se deduce de las fechas en citas anteriores al 25/09/2026. */
 function estadoGuardado(c: CitaCiclo): EstadoSenalGuardado | "no_aplica" {
   if (c.depositStatus) return c.depositStatus;
   if (c.depositReceivedAt) return "recibida";
   if (c.depositRequestedAt) return "pedida";
-  return (c.depositEur ?? 0) > 0 ? "por_pedir" : "no_aplica";
+  return num(c.depositEur) > 0 ? "por_pedir" : "no_aplica";
 }
 
-/** Vencimiento efectivo: el guardado o, en citas antiguas, pedida + plazo. Nunca después de la propia cita. */
+/**
+ * Vencimiento efectivo: el guardado o, en citas antiguas, pedida + plazo.
+ * Nunca después de la propia cita.
+ *
+ * `depositRequestedAt`, `depositDueAt` y `start` llegan de fuera (una fila
+ * importada o corrompida puede traer una fecha que no se pueda parsear):
+ * `undefined` en vez de reventar con «RangeError: Invalid Date» al construir
+ * el ISO (barrido de calidad 2026-09-26).
+ */
 export function vencimientoSenal(c: CitaCiclo, ventanaPorDefecto: number = 4): string | undefined {
-  if (!c.depositRequestedAt) return c.depositDueAt;
-  const due = c.depositDueAt ?? iso(Date.parse(c.depositRequestedAt) + (c.depositPeriodHours ?? ventanaPorDefecto) * HORA);
-  return iso(Math.min(Date.parse(due), Date.parse(c.start)));
+  if (!c.depositRequestedAt) return Number.isFinite(Date.parse(c.depositDueAt ?? "")) ? c.depositDueAt : undefined;
+  const pedidaMs = Date.parse(c.depositRequestedAt);
+  const due = c.depositDueAt ?? (Number.isFinite(pedidaMs) ? iso(pedidaMs + (c.depositPeriodHours ?? ventanaPorDefecto) * HORA) : undefined);
+  if (due === undefined) return undefined;
+  const dueMs = Date.parse(due);
+  if (!Number.isFinite(dueMs)) return undefined;
+  const startMs = Date.parse(c.start);
+  if (!Number.isFinite(startMs)) return due;
+  return iso(Math.min(dueMs, startMs));
 }
 
 export function estadoSenal(c: CitaCiclo, ahora: Date = new Date()): EstadoSenal {
@@ -294,7 +329,7 @@ export function senalDeReservaNueva(
     depositEur: importe,
     depositRequestedAt: ahora.toISOString(),
     depositPeriodHours: regla.ventanaHoras,
-    depositDueAt: iso(Math.min(ahora.getTime() + regla.ventanaHoras * HORA, Date.parse(startISO))),
+    depositDueAt: iso(topeCita(ahora.getTime() + regla.ventanaHoras * HORA, startISO)),
   };
 }
 
@@ -317,7 +352,7 @@ export function pedirSenal(c: CitaCiclo, regla: ReglaSenal, importeEur: number, 
     depositEur: importe,
     depositRequestedAt: ahora.toISOString(),
     depositPeriodHours: regla.ventanaHoras,
-    depositDueAt: iso(Math.min(ahora.getTime() + regla.ventanaHoras * HORA, Date.parse(c.start))),
+    depositDueAt: iso(topeCita(ahora.getTime() + regla.ventanaHoras * HORA, c.start)),
   });
 }
 
@@ -326,9 +361,15 @@ export function darMasTiempo(c: CitaCiclo, regla: ReglaSenal, ahora: Date = new 
   if (!CITA_ABIERTA.has(c.status) || Date.parse(c.start) <= ahora.getTime()) return fallo("SENAL_CITA_CERRADA");
   const e = estadoSenal(c, ahora);
   if (e !== "pedida" && e !== "vencida") return fallo("SENAL_ESTADO_INVALIDO");
+  // Sin un vencimiento que se pueda calcular (fecha corrompida), no hay desde
+  // dónde alargar el plazo.
+  const vencimientoActual = vencimientoSenal(c, regla.ventanaHoras);
+  if (!vencimientoActual) return fallo("SENAL_ESTADO_INVALIDO");
   const horas = c.depositPeriodHours ?? regla.ventanaHoras;
-  const desde = Math.max(Date.parse(vencimientoSenal(c, regla.ventanaHoras)!), ahora.getTime());
-  return ok({ depositStatus: "pedida", depositDueAt: iso(Math.min(desde + horas * HORA, Date.parse(c.start))) });
+  const desde = Math.max(Date.parse(vencimientoActual), ahora.getTime());
+  const finCita = Date.parse(c.start);
+  const tope = Number.isFinite(finCita) ? finCita : desde + horas * HORA;
+  return ok({ depositStatus: "pedida", depositDueAt: iso(Math.min(desde + horas * HORA, tope)) });
 }
 
 /**
@@ -376,9 +417,9 @@ export function aplicarSenal(
 ): { ok: true; patch: Partial<Appointment>; aCobrarEur: number } {
   const precio = c.priceEur;
   if (estadoSenal(c, ahora) !== "recibida") return { ok: true, patch: {}, aCobrarEur: precio };
-  const recibido = c.depositReceivedEur ?? c.depositEur ?? 0;
+  const recibido = num(c.depositReceivedEur, c.depositEur);
   // Lo que ya estaba «a devolver» por un reajuste no se descuenta: se devuelve.
-  const yaADevolver = c.depositRefundedAt ? 0 : (c.depositRefundedEur ?? 0);
+  const yaADevolver = c.depositRefundedAt ? 0 : num(c.depositRefundedEur);
   const disponible = Math.max(0, recibido - yaADevolver);
   const aplicado = Math.min(disponible, precio);
   const aDevolver = Math.round((yaADevolver + disponible - aplicado) * 100) / 100;
@@ -416,7 +457,7 @@ export function resolverCancelacion(
   const e = estadoSenal(c, ahora);
   if (e === "por_pedir" || e === "pedida" || e === "vencida") return ok({ depositStatus: "anulada" });
   if (e !== "recibida") return ok({});
-  const recibido = c.depositReceivedEur ?? c.depositEur ?? 0;
+  const recibido = num(c.depositReceivedEur, c.depositEur);
   const aTiempo = Date.parse(c.start) - ahora.getTime() >= regla.horasCancelacion * HORA;
   if (porQuien === "salon" || aTiempo) {
     return ok({ depositStatus: "devuelta", depositRefundedEur: recibido });
@@ -434,7 +475,7 @@ export function resolverPlanton(c: CitaCiclo, ahora: Date = new Date()): Resulta
 
 /** La dueña confirma que ya ha hecho la devolución (Bizum de vuelta o en mano). */
 export function confirmarDevolucion(c: CitaCiclo, ahora: Date = new Date()): ResultadoSenal {
-  const aDevolver = c.depositRefundedEur ?? 0;
+  const aDevolver = num(c.depositRefundedEur);
   if (aDevolver <= 0 || c.depositRefundedAt) return fallo("SENAL_ESTADO_INVALIDO");
   return ok({ depositRefundedAt: ahora.toISOString() });
 }
@@ -464,7 +505,7 @@ export function reabrirSenal(c: CitaCiclo): ResultadoSenal {
   const base = { depositRetainedAt: undefined, depositRefundedEur: undefined };
   if (c.depositReceivedAt) return ok({ ...base, depositStatus: "recibida" });
   if (c.depositRequestedAt) return ok({ ...base, depositStatus: "pedida" });
-  return ok({ ...base, depositStatus: (c.depositEur ?? 0) > 0 ? "por_pedir" : undefined });
+  return ok({ ...base, depositStatus: num(c.depositEur) > 0 ? "por_pedir" : undefined });
 }
 
 /* ------------------------------------------------------------------------ */
@@ -480,14 +521,14 @@ export function reabrirSenal(c: CitaCiclo): ResultadoSenal {
  *  - debe más → la diferencia queda pendiente (ver `diferenciaSenal`).
  */
 export function reajustarSenal(c: CitaCiclo, nuevoDebidoEur: number, ahora: Date = new Date()): ResultadoSenal {
-  const nuevo = Math.max(0, Math.round(nuevoDebidoEur));
+  const nuevo = Math.max(0, Math.round(num(nuevoDebidoEur)));
   const e = estadoSenal(c, ahora);
   if (e === "no_aplica") return nuevo > 0 ? ok({ depositStatus: "por_pedir", depositEur: nuevo }) : ok({});
   if (e === "por_pedir" || e === "pedida" || e === "vencida") {
     return nuevo > 0 ? ok({ depositEur: nuevo }) : ok({ depositStatus: "anulada", depositEur: 0 });
   }
   if (e !== "recibida") return ok({});
-  const recibido = c.depositReceivedEur ?? c.depositEur ?? 0;
+  const recibido = num(c.depositReceivedEur, c.depositEur);
   if (nuevo === 0) return ok({ depositStatus: "devuelta", depositEur: 0, depositRefundedEur: recibido });
   const sobra = Math.round((recibido - nuevo) * 100) / 100;
   return ok({ depositEur: nuevo, depositRefundedEur: sobra > 0 ? sobra : undefined });
@@ -504,9 +545,9 @@ export function moverSenal(c: CitaCiclo, nuevoStartISO: string, ahora: Date = ne
 /** Lo que falta por recibir y lo que hay que devolver, para enseñarlo a la dueña. */
 export function diferenciaSenal(c: CitaCiclo, ahora: Date = new Date()): { pendienteEur: number; aDevolverEur: number } {
   const e = estadoSenal(c, ahora);
-  const recibido = c.depositReceivedEur ?? 0;
-  const pendienteEur = e === "recibida" ? Math.max(0, Math.round(((c.depositEur ?? 0) - recibido) * 100) / 100) : 0;
-  const aDevolverEur = c.depositRefundedAt ? 0 : Math.max(0, c.depositRefundedEur ?? 0);
+  const recibido = num(c.depositReceivedEur);
+  const pendienteEur = e === "recibida" ? Math.max(0, Math.round((num(c.depositEur) - recibido) * 100) / 100) : 0;
+  const aDevolverEur = c.depositRefundedAt ? 0 : Math.max(0, num(c.depositRefundedEur));
   return { pendienteEur, aDevolverEur };
 }
 
@@ -623,7 +664,7 @@ export function recordatorioSenal(
   const msRestantes = Date.parse(due) - ahora.getTime();
   if (msRestantes <= 0 || msRestantes > HORA) return null;
   const minutosRestantes = Math.max(1, Math.round(msRestantes / 60_000));
-  const importe = c.depositEur ?? 0;
+  const importe = num(c.depositEur);
   const texto = `Hola, soy ${salon.name}. Te quedan ${minutosRestantes} min para hacer el Bizum de ${importe} € al ${regla.bizumTelefono} y confirmar tu cita. ¡Gracias!`;
   return { texto, enlace: whatsappUrl(c.clientPhone, texto), minutosRestantes };
 }

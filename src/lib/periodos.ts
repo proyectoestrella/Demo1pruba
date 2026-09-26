@@ -14,6 +14,7 @@
  *   consecutivos no comparten ni un milisegundo.
  */
 
+import { fechaEnZona, horaEnZona, isoDelSalon, momentoLocal } from "./zona-horaria";
 import type { Appointment, Employee } from "./mock/types";
 import { franjasProfesional } from "./horario-equipo";
 import { cobradoDeCita } from "./pagos";
@@ -94,6 +95,55 @@ export function deClaveDeDia(clave: string): Date {
   return new Date(a, (m ?? 1) - 1, d ?? 1, 0, 0, 0, 0);
 }
 
+/**
+ * Calendario con el que se cortan días, semanas y meses (segunda pasada del
+ * barrido, 26/09/2026). Sin zona: la hora LOCAL del dispositivo, como
+ * siempre (el panel en el iPad del salón). Con `timeZone`: la del salón,
+ * pase lo que pase en la máquina — hace falta en el servidor (Vercel corre
+ * en UTC: «hoy» empezaba a las 02:00 de Madrid) y con la dueña de viaje.
+ */
+interface Calendario {
+  inicioDeDia(d: Date): Date;
+  sumarDias(d: Date, n: number): Date;
+  sumarMeses(d: Date, n: number): Date;
+  diaSemana(d: Date): number;
+  clave(d: Date): string;
+  deClave(k: string): Date;
+}
+const LOCAL: Calendario = {
+  inicioDeDia, sumarDias, sumarMeses, diaSemana: (d) => d.getDay(), clave: claveDeDia, deClave: deClaveDeDia,
+};
+/** Aritmética de fechas sobre la clave `AAAA-MM-DD` (en UTC, que no tiene cambios de hora). */
+function moverClave(k: string, dias: number, meses = 0): string {
+  const [a, m, d] = k.split("-").map(Number);
+  const u = new Date(Date.UTC(a, m - 1 + meses, d + dias));
+  return `${u.getUTCFullYear()}-${String(u.getUTCMonth() + 1).padStart(2, "0")}-${String(u.getUTCDate()).padStart(2, "0")}`;
+}
+const calendarios = new Map<string, Calendario>();
+function calendario(timeZone?: string): Calendario {
+  if (!timeZone) return LOCAL;
+  let c = calendarios.get(timeZone);
+  if (c) return c;
+  const clave = (d: Date) => fechaEnZona(d, timeZone);
+  const deClave = (k: string) => new Date(isoDelSalon(k, "00:00", timeZone));
+  // Conserva la hora de pared: 00:00 sigue siendo 00:00 al cruzar un cambio de hora.
+  const mover = (d: Date, dias: number, meses: number) => {
+    const resto = +d - +deClave(clave(d));
+    const base = deClave(moverClave(clave(d), dias, meses));
+    return resto === 0 ? base : new Date(isoDelSalon(fechaEnZona(base, timeZone), horaEnZona(d, timeZone), timeZone));
+  };
+  c = {
+    inicioDeDia: (d) => deClave(clave(d)),
+    sumarDias: (d, n) => mover(d, n, 0),
+    sumarMeses: (d, n) => mover(d, 0, n),
+    diaSemana: (d) => momentoLocal(d, timeZone).weekday,
+    clave,
+    deClave,
+  };
+  calendarios.set(timeZone, c);
+  return c;
+}
+
 /* -------------------------------------------------------------------------
  * Rango del periodo elegido y su comparación
  * ---------------------------------------------------------------------- */
@@ -102,25 +152,31 @@ export function rangoDePeriodo(
   id: PeriodoId,
   now: Date = new Date(),
   personalizado?: RangoPersonalizado | null,
+  timeZone?: string,
 ): Rango {
+  const c = calendario(timeZone);
+  const dia = (d: Date) => ({ inicio: c.inicioDeDia(d), fin: c.sumarDias(c.inicioDeDia(d), 1) });
   switch (id) {
     case "hoy":
-      return { inicio: inicioDeDia(now), fin: finDeDia(now) };
+      return dia(now);
     case "semana": {
-      const inicio = inicioDeSemana(now);
-      return { inicio, fin: sumarDias(inicio, 7) };
+      const hoy = c.inicioDeDia(now);
+      // Día de la semana: 0 domingo … 6 sábado. Queremos retroceder hasta el lunes.
+      const inicio = c.sumarDias(hoy, -((c.diaSemana(hoy) + 6) % 7));
+      return { inicio, fin: c.sumarDias(inicio, 7) };
     }
     case "mes": {
-      const inicio = inicioDeMes(now);
-      return { inicio, fin: sumarMeses(inicio, 1) };
+      const hoy = c.inicioDeDia(now);
+      const inicio = c.deClave(`${c.clave(hoy).slice(0, 8)}01`);
+      return { inicio, fin: c.sumarMeses(inicio, 1) };
     }
     case "personalizado": {
-      if (!personalizado) return { inicio: inicioDeDia(now), fin: finDeDia(now) };
+      if (!personalizado) return dia(now);
       // Si las fechas vienen al revés, se ordenan en vez de devolver un rango vacío.
-      const a = deClaveDeDia(personalizado.desde);
-      const b = deClaveDeDia(personalizado.hasta);
+      const a = c.deClave(personalizado.desde);
+      const b = c.deClave(personalizado.hasta);
       const [ini, fin] = +a <= +b ? [a, b] : [b, a];
-      return { inicio: ini, fin: finDeDia(fin) };
+      return { inicio: ini, fin: c.sumarDias(fin, 1) };
     }
   }
 }
@@ -134,7 +190,8 @@ export function rangoDePeriodo(
  * recorta al mismo tramo. Comparar 5 días de este mes contra los 31 del
  * anterior daría un "-84 %" que no significa nada.
  */
-export function rangoAnterior(id: PeriodoId, rango: Rango, now: Date = new Date()): Rango {
+export function rangoAnterior(id: PeriodoId, rango: Rango, now: Date = new Date(), timeZone?: string): Rango {
+  const { sumarDias, sumarMeses } = calendario(timeZone);
   let inicio: Date;
   let fin: Date;
   switch (id) {
@@ -175,7 +232,8 @@ export function enCurso(rango: Rango, now: Date = new Date()): boolean {
  * incluido el propio. Alimenta la minigráfica sin inventarse cubos: para
  * "mes" son meses de calendario de verdad, no bloques de 30 días.
  */
-export function periodosPrevios(id: PeriodoId, rango: Rango, n: number): Rango[] {
+export function periodosPrevios(id: PeriodoId, rango: Rango, n: number, timeZone?: string): Rango[] {
+  const { sumarDias, sumarMeses } = calendario(timeZone);
   const out: Rango[] = [];
   for (let i = n - 1; i >= 0; i--) {
     switch (id) {
@@ -222,10 +280,13 @@ const FECHA_LARGA = new Intl.DateTimeFormat("es-ES", {
 });
 
 /** "20 sept" · "20 sept – 26 sept" — el último día del rango, que es inclusivo. */
-export function textoRango(rango: Rango): string {
-  const ultimo = sumarDias(rango.fin, -1);
-  if (claveDeDia(rango.inicio) === claveDeDia(ultimo)) return FECHA_LARGA.format(rango.inicio);
-  return `${FECHA_CORTA.format(rango.inicio)} – ${FECHA_CORTA.format(ultimo)}`;
+export function textoRango(rango: Rango, timeZone?: string): string {
+  const c = calendario(timeZone);
+  const ultimo = c.sumarDias(rango.fin, -1);
+  const corta = timeZone ? new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", timeZone }) : FECHA_CORTA;
+  const larga = timeZone ? new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "long", year: "numeric", timeZone }) : FECHA_LARGA;
+  if (c.clave(rango.inicio) === c.clave(ultimo)) return larga.format(rango.inicio);
+  return `${corta.format(rango.inicio)} – ${corta.format(ultimo)}`;
 }
 
 /** Días naturales que abarca el rango (el fin es exclusivo). */
@@ -258,21 +319,65 @@ export function textoComparacion(id: PeriodoId, rango: Rango, now: Date = new Da
  * ---------------------------------------------------------------------- */
 
 /** ¿Cae esta cita dentro del rango? */
-function dentro(a: Appointment, rango: Rango): boolean {
-  const t = +new Date(a.start);
-  return t >= +rango.inicio && t < +rango.fin;
+/**
+ * Citas ordenadas por inicio, una vez por lista (barrido de calidad
+ * 2026-09-26). `resumenDePeriodo` mira 10 rangos (actual, previo y 8 cubos
+ * de la minigráfica) y antes cada uno recorría y parseaba las 3.300 citas;
+ * ahora cada rango es una búsqueda binaria y un trozo. Las citas sin fecha
+ * legible no caen en ningún rango, igual que antes.
+ */
+const ordenPorLista = new WeakMap<Appointment[], { ms: Float64Array; citas: Appointment[] }>();
+function ordenadas(appts: Appointment[]) {
+  let o = ordenPorLista.get(appts);
+  if (!o) {
+    const pares: Array<[number, Appointment]> = [];
+    for (const a of appts) {
+      const t = +new Date(a.start);
+      if (Number.isFinite(t)) pares.push([t, a]);
+    }
+    pares.sort((x, y) => x[0] - y[0]);
+    o = { ms: Float64Array.from(pares, (p) => p[0]), citas: pares.map((p) => p[1]) };
+    ordenPorLista.set(appts, o);
+  }
+  return o;
+}
+function primeraPosicion(ms: Float64Array, t: number): number {
+  let lo = 0;
+  let hi = ms.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (ms[mid] < t) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+/** Las citas con inicio en `[rango.inicio, rango.fin)`. */
+function citasDelRango(appts: Appointment[], rango: Rango): Appointment[] {
+  const o = ordenadas(appts);
+  return o.citas.slice(primeraPosicion(o.ms, +rango.inicio), primeraPosicion(o.ms, +rango.fin));
 }
 
 /** Huecos de media hora que el equipo tiene abiertos en el rango, día a día. */
-export function capacidadDelRango(rango: Rango, equipo: Employee[]): number {
+/** Capacidad ya calculada, por lista de equipo (su identidad es su versión) y rango. */
+const capacidadCache = new WeakMap<Employee[], Map<string, number>>();
+export function capacidadDelRango(rango: Rango, equipo: Employee[], timeZone?: string): number {
+  let porRango = capacidadCache.get(equipo);
+  if (!porRango) capacidadCache.set(equipo, (porRango = new Map()));
+  const clave = `${+rango.inicio}|${+rango.fin}|${timeZone ?? ""}`;
+  const hecho = porRango.get(clave);
+  if (hecho !== undefined) return hecho;
+  const v = calcularCapacidad(rango, equipo, timeZone);
+  porRango.set(clave, v);
+  return v;
+}
+function calcularCapacidad(rango: Rango, equipo: Employee[], timeZone?: string): number {
+  const c = calendario(timeZone);
   let slots = 0;
-  const d = new Date(rango.inicio);
-  while (+d < +rango.fin) {
-    const dia = d.getDay();
+  for (let d = c.inicioDeDia(rango.inicio); +d < +rango.fin; d = c.sumarDias(d, 1)) {
+    const dia = c.diaSemana(d);
     for (const e of equipo) {
       slots += franjasProfesional(e, dia).reduce((total, jornada) => total + (jornada.end - jornada.start) / 30, 0);
     }
-    d.setDate(d.getDate() + 1);
   }
   return slots;
 }
@@ -304,8 +409,13 @@ export const METRICAS_VACIAS: MetricasPeriodo = {
  * evita recorrer el histórico entero por cada tarjeta y por cada cubo de la
  * minigráfica.
  */
+const primerasPorLista = new WeakMap<Appointment[], Map<string, number>>();
 export function primerasCitas(appts: Appointment[]): Map<string, number> {
+  // La store sustituye el array en cada cambio: su identidad es la versión de los datos.
+  const hecho = primerasPorLista.get(appts);
+  if (hecho) return hecho;
   const out = new Map<string, number>();
+  primerasPorLista.set(appts, out);
   for (const a of appts) {
     if (a.status === "cancelled" || a.status === "blocked") continue;
     if (!a.clientId) continue;
@@ -327,6 +437,8 @@ export function metricasDePeriodo(
    * de quien llama pasarlo solo cuando el salón ya usa Caja.
    */
   pagosPorCita?: Map<string, number>,
+  /** Zona del salón para la capacidad por día de la semana; sin ella, la local. */
+  timeZone?: string,
 ): MetricasPeriodo {
   let citas = 0;
   let caja = 0;
@@ -334,8 +446,7 @@ export function metricasDePeriodo(
   let cancelaciones = 0;
   const nuevos = new Set<string>();
 
-  for (const a of appts) {
-    if (!dentro(a, rango)) continue;
+  for (const a of citasDelRango(appts, rango)) {
     if (a.status === "cancelled") {
       cancelaciones += 1;
       continue;
@@ -350,7 +461,7 @@ export function metricasDePeriodo(
     }
   }
 
-  const capacidad = capacidadDelRango(rango, equipo);
+  const capacidad = capacidadDelRango(rango, equipo, timeZone);
   return {
     citas,
     caja,
@@ -426,19 +537,24 @@ export function resumenDePeriodo(
   personalizado?: RangoPersonalizado | null,
   /** Igual que en `metricasDePeriodo`: opcional, mismo fallback a `priceEur`. */
   pagosPorCita?: Map<string, number>,
+  /**
+   * Zona del salón (`zonaDelSalon(perfil)`). Sin ella se corta por la hora
+   * local del dispositivo, como hasta ahora; el servidor SIEMPRE la pasa.
+   */
+  timeZone?: string,
 ): ResumenPeriodo {
-  const rango = rangoDePeriodo(id, now, personalizado);
-  const rangoPrevio = rangoAnterior(id, rango, now);
+  const rango = rangoDePeriodo(id, now, personalizado, timeZone);
+  const rangoPrevio = rangoAnterior(id, rango, now, timeZone);
   const primeras = primerasCitas(appts);
 
-  const actual = metricasDePeriodo(appts, rango, equipo, primeras, pagosPorCita);
+  const actual = metricasDePeriodo(appts, rango, equipo, primeras, pagosPorCita, timeZone);
   const previoVacio = +rangoPrevio.fin <= +rangoPrevio.inicio;
   const previo = previoVacio
     ? METRICAS_VACIAS
-    : metricasDePeriodo(appts, rangoPrevio, equipo, primeras, pagosPorCita);
+    : metricasDePeriodo(appts, rangoPrevio, equipo, primeras, pagosPorCita, timeZone);
 
-  const cubos = periodosPrevios(id, rango, CUBOS_MINIGRAFICA).map((r) =>
-    metricasDePeriodo(appts, r, equipo, primeras, pagosPorCita),
+  const cubos = periodosPrevios(id, rango, CUBOS_MINIGRAFICA, timeZone).map((r) =>
+    metricasDePeriodo(appts, r, equipo, primeras, pagosPorCita, timeZone),
   );
 
   return {
@@ -446,13 +562,13 @@ export function resumenDePeriodo(
     rango,
     rangoPrevio,
     parcial: enCurso(rango, now),
-    textoRango: textoRango(rango),
+    textoRango: textoRango(rango, timeZone),
     textoComparacion: textoComparacion(id, rango, now),
     actual,
     previo,
     hayComparacion:
       !previoVacio && (previo.citas > 0 || previo.caja > 0 || previo.cancelaciones > 0),
-    cerrado: capacidadDelRango(rango, equipo) === 0,
+    cerrado: capacidadDelRango(rango, equipo, timeZone) === 0,
     series: {
       citas: cubos.map((m) => m.citas),
       caja: cubos.map((m) => m.caja),

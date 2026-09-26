@@ -1,3 +1,4 @@
+import { leerTodasLasFilas } from "./paginar";
 import { randomUUID } from "node:crypto";
 /**
  * Backend de los salones REALES (los que pagan), frente a las ~54 demos de
@@ -600,7 +601,10 @@ export const listSalonData = createServerFn({ method: "GET" })
       async function traer<T>(tabla: string, selects: string[]) {
         let ultimo: { data: T[]; error: { message: string } | null } = { data: [], error: null };
         for (const columnas of selects) {
-          const r = await supabase!.from(tabla).select(columnas).eq("salon_slug", data.slug);
+          // Por páginas: PostgREST corta en 1000 filas sin avisar (ver api/paginar.ts).
+          const r = await leerTodasLasFilas<T, { message: string }>((desde, hasta) =>
+            supabase!.from(tabla).select(columnas).eq("salon_slug", data.slug).order("id").range(desde, hasta) as unknown as PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+          );
           if (!r.error) return { data: (r.data ?? []) as unknown as T[], error: null };
           if (!faltaEsquema(r.error)) return { data: [] as T[], error: r.error };
           console.warn(`listSalonData: ${tabla} sin alguna columna de «${columnas}»; falta aplicar supabase/pendiente.sql`);
@@ -619,11 +623,9 @@ export const listSalonData = createServerFn({ method: "GET" })
         // debe ver un salón real, en vez de las 4 entradas de ejemplo del seed.
         publica
           ? Promise.resolve({ data: [] as WaitlistRow[], error: null })
-          : supabase
-              .from("waitlist")
-              .select(WAITLIST_COLS)
-              .eq("salon_slug", data.slug)
-              .then((r) => ({
+          : leerTodasLasFilas<WaitlistRow, { message: string }>((desde, hasta) =>
+              supabase.from("waitlist").select(WAITLIST_COLS).eq("salon_slug", data.slug).order("id").range(desde, hasta) as unknown as PromiseLike<{ data: WaitlistRow[] | null; error: { message: string } | null }>,
+            ).then((r) => ({
                 data: (r.data ?? []) as unknown as WaitlistRow[],
                 error: faltaEsquema(r.error) ? null : r.error,
               })),

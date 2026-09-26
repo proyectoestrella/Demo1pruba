@@ -1,3 +1,4 @@
+import { leerTodasLasFilas } from "./paginar";
 /**
  * Caja en el servidor (lote 11): listar, registrar y borrar pagos, cerrar el
  * día, el CSV para la gestoría y la subida en bloque del importador de
@@ -64,13 +65,18 @@ export const listarPagos = createServerFn({ method: "GET" })
     // Días de la zona del salón, ambos incluidos: ventana UTC holgada y filtro después.
     const zona = await zonaDe(supabase, data.slug);
     const ventana = ventanaUtcEntreDias(data.desde, data.hasta);
-    const { data: filas, error } = await supabase
-      .from("payments")
-      .select("*")
-      .eq("salon_slug", data.slug)
-      .gte("fecha", ventana.desde)
-      .lt("fecha", ventana.hasta)
-      .order("fecha", { ascending: false });
+    // Por páginas: un año de caja pasa de las 1000 filas que corta PostgREST.
+    const { data: filas, error } = await leerTodasLasFilas<Record<string, unknown>, unknown>((d, h) =>
+      supabase
+        .from("payments")
+        .select("*")
+        .eq("salon_slug", data.slug)
+        .gte("fecha", ventana.desde)
+        .lt("fecha", ventana.hasta)
+        .order("fecha", { ascending: false })
+        .order("id")
+        .range(d, h) as unknown as PromiseLike<{ data: Record<string, unknown>[] | null; error: unknown }>,
+    );
     if (error) return { pagos: [] as Pago[], aviso: AVISO_SIN_TABLA };
     let pagos = pagosEntreDias((filas ?? []).map(filaAPago), data.desde, data.hasta, zona);
     if (!puedeTodo) {
@@ -246,16 +252,22 @@ export const generarCsvGestoria = createServerFn({ method: "GET" })
     if (!supabase) return { csv: null };
     const zona = await zonaDe(supabase, data.slug);
     const ventana = ventanaUtcEntreDias(data.desde, data.hasta);
-    const { data: filas, error } = await supabase
-      .from("payments").select("*").eq("salon_slug", data.slug).gte("fecha", ventana.desde).lt("fecha", ventana.hasta)
-      .order("fecha", { ascending: true });
+    // Por páginas: el CSV de un año para la gestoría no puede salir cortado en 1000 pagos.
+    const { data: filas, error } = await leerTodasLasFilas<Record<string, unknown>, unknown>((d, h) =>
+      supabase
+        .from("payments").select("*").eq("salon_slug", data.slug).gte("fecha", ventana.desde).lt("fecha", ventana.hasta)
+        .order("fecha", { ascending: true }).order("id").range(d, h) as unknown as PromiseLike<{ data: Record<string, unknown>[] | null; error: unknown }>,
+    );
     if (error) return { csv: null, aviso: AVISO_SIN_TABLA };
     const pagos = pagosEntreDias((filas ?? []).map(filaAPago), data.desde, data.hasta, zona);
     const clientIds = [...new Set(pagos.map((p) => p.clientId).filter((x): x is string => !!x))];
     const clientNameById: Record<string, string> = {};
     if (clientIds.length) {
-      const { data: clientesFilas } = await supabase.from("clients").select("id, name").eq("salon_slug", data.slug).in("id", clientIds);
-      for (const c of clientesFilas ?? []) clientNameById[c.id as string] = c.name as string;
+      // A tandas de 100: cientos de ids en un solo `in(...)` pasan del largo máximo de URL.
+      for (let i = 0; i < clientIds.length; i += 100) {
+        const { data: clientesFilas } = await supabase.from("clients").select("id, name").eq("salon_slug", data.slug).in("id", clientIds.slice(i, i + 100));
+        for (const c of clientesFilas ?? []) clientNameById[c.id as string] = c.name as string;
+      }
     }
     return { csv: pagosToCsvGestoria(pagos, clientNameById, {}, zona) };
   });

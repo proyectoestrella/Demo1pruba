@@ -107,3 +107,25 @@ describe("salón de un solo profesional", () => {
     expect(c.cobradas).toHaveLength(2);
   });
 });
+
+// Barrido de calidad 2026-09-26: salón recién dado de alta e ids huérfanos.
+describe("cierre de caja: salón vacío e ids huérfanos", () => {
+  it("sin equipo ni citas, el cierre sale a cero y sin reventar", () => {
+    const c = cierreDelDia([], [], HOY);
+    expect(c).toEqual({ cobradas: [], pendientes: [], total: 0, porMetodo: { efectivo: 0, bizum: 0, tarjeta: 0 }, senalesDescontadas: 0, porProfesional: [] });
+  });
+
+  it("una cita de un profesional ya borrado del equipo sale con su id, no en blanco", () => {
+    const appts = [cita({ employeeId: "borrado", paidAt: HOY.toISOString(), paymentMethod: "tarjeta", priceEur: 30 })];
+    const c = cierreDelDia(appts, EQUIPO, HOY);
+    expect(c.total).toBe(30);
+    expect(c.porProfesional).toEqual([{ employeeId: "borrado", nombre: "borrado", total: 30, citas: 1 }]);
+  });
+
+  it("una señal aplicada mayor que el precio no deja el cobro en negativo", () => {
+    const appts = [cita({ priceEur: 10, depositAppliedEur: 20, paidAt: HOY.toISOString(), paymentMethod: "bizum" })];
+    const c = cierreDelDia(appts, EQUIPO, HOY);
+    expect(c.total).toBe(0);
+    expect(c.senalesDescontadas).toBe(20);
+  });
+});

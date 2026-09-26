@@ -1,3 +1,4 @@
+import { soloMetodos } from "@/lib/api/metodos";
 import { createFileRoute } from "@tanstack/react-router";
 import process from "node:process";
 import { timingSafeEqual } from "node:crypto";
@@ -41,5 +42,5 @@ async function manejar({ request }: { request: Request }) {
 }
 
 export const Route = createFileRoute("/api/senales-vencidas")({
-  server: { handlers: { GET: manejar, POST: manejar } },
+  server: { handlers: soloMetodos({ GET: manejar, POST: manejar }) },
 });

@@ -1,3 +1,4 @@
+import { soloMetodos } from "@/lib/api/metodos";
 import { createFileRoute } from "@tanstack/react-router";
 import { completarConexionGoogle } from "@/lib/calendario-externo/calendario-externo.server";
 
@@ -15,7 +16,7 @@ function redirigir(salonSlug: string | undefined, params: Record<string, string>
 
 export const Route = createFileRoute("/api/calendario-externo/google/callback")({
   server: {
-    handlers: {
+    handlers: soloMetodos({
       GET: async ({ request }) => {
         const params = new URL(request.url).searchParams;
         const errorGoogle = params.get("error");
@@ -32,6 +33,6 @@ export const Route = createFileRoute("/api/calendario-externo/google/callback")(
         if (!resultado.ok) return redirigir(resultado.salonSlug, { calendario: "error", motivo: resultado.error ?? "No se ha podido completar la conexión." });
         return redirigir(resultado.salonSlug, { calendario: "ok" });
       },
-    },
+    }),
   },
 });

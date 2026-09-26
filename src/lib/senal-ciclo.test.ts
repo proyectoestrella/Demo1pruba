@@ -8,6 +8,7 @@ import {
   aplicarSenal,
   confirmarDevolucion,
   darMasTiempo,
+  desaplicarSenal,
   deshacerRecibida,
   diferenciaSenal,
   estadoSenal,
@@ -27,6 +28,7 @@ import {
 } from "./senal";
 import { isoDelSalon } from "./zona-horaria";
 import type { Appointment } from "./mock/types";
+import type { ResultadoSenal } from "./senal";
 
 // `depositAutoRelease: false` explícito: estas pruebas comprueban justo el caso
 // SIN liberación automática (que desde el lote 12 ya no es el valor por defecto).
@@ -278,5 +280,95 @@ describe("recordatorio de última hora (lote 12): «te quedan X min para el Bizu
     expect(r!.texto).toContain(regla.bizumTelefono);
     expect(r!.enlace).toContain("wa.me/622334455");
     expect(r!.enlace).toContain(encodeURIComponent(r!.texto));
+  });
+});
+
+/**
+ * Barrido de calidad 2026-09-26: fuzzing determinista de todo el ciclo con
+ * citas adversarias (campos ausentes como en una fila anterior al 25/09/2026,
+ * fechas rotas, importes negativos o NaN, estados que no deberían coexistir)
+ * encadenando varias transiciones seguidas. Ninguna transición puede reventar
+ * ni dejar un campo numérico en NaN en su `patch` — si algo no tiene sentido,
+ * la función ya sabe decir `{ ok: false }`, nunca explota.
+ */
+describe("fuzzing del ciclo de la señal con citas adversarias", () => {
+  function mulberry32(seed: number) {
+    return function () {
+      let t = (seed += 0x6d2b79f5);
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const salon = { name: "PeluChic" };
+  const ESTADOS = [undefined, "por_pedir", "pedida", "recibida", "aplicada", "devuelta", "retenida", "anulada"] as const;
+  const FECHAS = [undefined, "2026-09-28T10:00:00.000Z", "fecha-invalida", "", "2026-09-30T25:99:00.000Z"];
+  const IMPORTES = [undefined, 0, -5, NaN, 20, 1e9];
+  const STATUS: Appointment["status"][] = ["pending", "confirmed", "completed", "cancelled", "no-show", "late", "blocked"];
+
+  function citaAdversaria(rand: () => number): Appointment {
+    const pick = <T,>(arr: readonly T[]) => arr[Math.floor(rand() * arr.length)];
+    return {
+      id: "a-fuzz", clientId: "c-fuzz", clientName: "Fuzz", serviceIds: ["corte"], employeeId: "mario",
+      start: pick(FECHAS) || isoDelSalon("2026-09-29", "17:00"),
+      duration: 45,
+      priceEur: pick(IMPORTES) ?? 25,
+      status: pick(STATUS),
+      depositStatus: pick(ESTADOS),
+      depositEur: pick(IMPORTES),
+      depositRequestedAt: pick(FECHAS),
+      depositDueAt: pick(FECHAS),
+      depositPeriodHours: pick([1, 2, 3, 4, undefined]) as Appointment["depositPeriodHours"],
+      depositReceivedAt: pick(FECHAS),
+      depositReceivedEur: pick(IMPORTES),
+      depositMethod: pick(["bizum", "efectivo", "tarjeta", "transferencia", undefined]) as Appointment["depositMethod"],
+      depositAppliedAt: pick(FECHAS),
+      depositAppliedEur: pick(IMPORTES),
+      depositRefundedAt: pick(FECHAS),
+      depositRefundedEur: pick(IMPORTES),
+      depositRetainedAt: pick(FECHAS),
+    };
+  }
+
+  function comprobarPatchLimpio(etiqueta: string, r: ResultadoSenal) {
+    if (!r.ok) return;
+    for (const [k, v] of Object.entries(r.patch)) {
+      if (typeof v === "number") expect([etiqueta, k, Number.isFinite(v)]).toEqual([etiqueta, k, true]);
+    }
+  }
+
+  it("500 citas adversarias, encadenando todas las transiciones, sin reventar ni ensuciar el patch", () => {
+    const rand = mulberry32(7);
+    const ahora = madrid("2026-09-28", "10:00");
+    for (let i = 0; i < 500; i++) {
+      let c = citaAdversaria(rand);
+      const pasos: Array<[string, () => ResultadoSenal]> = [
+        ["pedir", () => pedirSenal(c, regla, 20, ahora)],
+        ["dar-mas-tiempo", () => darMasTiempo(c, regla, ahora)],
+        ["recibir", () => recibirSenal(c, { metodo: "bizum", importeEur: 20 }, ahora)],
+        ["deshacer-recibida", () => deshacerRecibida(c, ahora)],
+        ["aplicar", () => { const a = aplicarSenal(c, ahora); return a.ok ? { ok: true, patch: a.patch } : a; }],
+        ["desaplicar", () => desaplicarSenal(c)],
+        ["cancela-clienta", () => resolverCancelacion(c, regla, "clienta", ahora)],
+        ["cancela-salon", () => resolverCancelacion(c, regla, "salon", ahora)],
+        ["planton", () => resolverPlanton(c, ahora)],
+        ["confirmar-devolucion", () => confirmarDevolucion(c, ahora)],
+        ["reabrir", () => reabrirSenal(c)],
+        ["reajustar", () => reajustarSenal(c, 15, ahora)],
+        ["mover", () => moverSenal(c, "2026-09-30T17:00:00.000Z", ahora)],
+      ];
+      for (const [nombre, paso] of pasos) {
+        let r: ResultadoSenal;
+        expect(() => { r = paso(); }).not.toThrow();
+        comprobarPatchLimpio(`caso ${i} · ${nombre}`, r!);
+        c = { ...c, ...(r!.ok ? r!.patch : {}) };
+      }
+      // Consultas de solo lectura: tampoco pueden reventar con esta cita.
+      expect(() => estadoSenal(c, ahora)).not.toThrow();
+      expect(() => vencimientoSenal(c)).not.toThrow();
+      expect(() => diferenciaSenal(c, ahora)).not.toThrow();
+      expect(() => revisarVencimiento(c, regla, ahora)).not.toThrow();
+      expect(() => recordatorioSenal({ ...c, clientPhone: "600000000" }, regla, salon, ahora)).not.toThrow();
+    }
   });
 });

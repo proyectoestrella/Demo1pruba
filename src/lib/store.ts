@@ -1,3 +1,4 @@
+import { conservarIguales } from "./conservar-iguales";
 import { create } from "zustand";
 import { PERMISOS_DEMO, permisosDe, puede, type MiembroActual } from "./permisos";
 import {
@@ -730,7 +731,21 @@ export const useSalonStore = create<SalonState>()(
       liberarSenalesVencidas: (ahora = new Date()) => {
         const regla = reglaSenal(get().salonProfile);
         const aLiberar = get().appointments.filter((a) => revisarVencimiento(a, regla, ahora).liberar);
-        for (const a of aLiberar) get().cancelAppointment(a.id, { porSalon: true });
+        if (!aLiberar.length) return 0;
+        // Un solo `set` para todas (segunda pasada del barrido): antes era un
+        // `cancelAppointment` —y un render del panel— por cita. Mismo parche
+        // que cancelAppointment con `porSalon`; no se registra en el historial
+        // (está en ACCIONES_SIN_REGISTRO) y cada cita sube por su cola.
+        const parches = new Map<string, Partial<Appointment>>();
+        for (const a of aLiberar) {
+          const senal = resolverCancelacion(a, regla, "salon", ahora);
+          parches.set(a.id, { status: "cancelled", ...(senal.ok ? senal.patch : {}) });
+        }
+        set((s) => ({
+          appointments: s.appointments.map((a) => (parches.has(a.id) ? { ...a, ...parches.get(a.id) } : a)),
+          lastFreedSlot: aLiberar[aLiberar.length - 1].start,
+        }));
+        for (const a of aLiberar) sincronizarCita(get(), a.id, a);
         return aLiberar.length;
       },
 
@@ -1093,16 +1108,20 @@ export const useSalonStore = create<SalonState>()(
       setPublicBookingResolution: (value) => set({ publicBookingResolution: value }),
 
       hydrateFromServer: ({ appointments, clients, waitlist }) =>
-        set((s) => ({
+        set((s) => {
           // Una cita con un cambio local todavía sin guardar (subida en
           // camino o fallida con aviso) conserva su versión local: el
           // refresco no puede enseñarle a la dueña lo contrario de lo que
           // acaba de hacer. Al reintentar y guardarse, el siguiente refresco
           // ya trae la versión buena.
-          appointments: conservarSinGuardar(appointments, s.appointments, "cita"),
-          clients,
-          waitlist,
-        })),
+          const citas = conservarIguales(conservarSinGuardar(appointments, s.appointments, "cita"), s.appointments);
+          const fichas = conservarIguales(clients, s.clients);
+          const espera = conservarIguales(waitlist, s.waitlist);
+          // Nada ha cambiado: el MISMO estado, así la store no avisa a nadie
+          // y no se repinta el panel cada 60 s (ver conservar-iguales.ts).
+          if (citas === s.appointments && fichas === s.clients && espera === s.waitlist) return s;
+          return { appointments: citas, clients: fichas, waitlist: espera };
+        }),
 
       // Un salón real tampoco «está en una demo»: fuera la marca del enlace.
       vaciarDatosDeEjemplo: () => set({ appointments: [], clients: [], waitlist: [], demoActive: false }),

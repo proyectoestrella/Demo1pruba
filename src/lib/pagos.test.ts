@@ -126,3 +126,38 @@ describe("el día de un pago es el de la zona del salón, no el día UTC", () =>
     }
   });
 });
+
+// Barrido de calidad 2026-09-26: un salón recién dado de alta (cero pagos
+// todavía) no puede reventar ninguna de estas cuentas.
+describe("salón sin ningún pago apuntado", () => {
+  it("totales y desglose a cero, sin NaN", () => {
+    expect(totalPagos([])).toBe(0);
+    expect(pagosPorMetodo([])).toEqual({ efectivo: 0, tarjeta: 0, bizum: 0 });
+    expect(agruparPagosPorCita([])).toEqual(new Map());
+  });
+
+  it("esperadoDelDia y descuadre sobre cero pagos", () => {
+    const r = esperadoDelDia([], "2026-09-27");
+    expect(r).toEqual({ fecha: "2026-09-27", porMetodo: { efectivo: 0, tarjeta: 0, bizum: 0 }, total: 0 });
+    expect(calcularDescuadre(0, 0).descuadre).toBe(0);
+  });
+
+  it("cobradoDeCita sin mapa de pagos usa el fallback tal cual", () => {
+    expect(cobradoDeCita("a1", new Map(), 25)).toBe(25);
+  });
+});
+
+describe("pagos con una cita ya borrada (ids huérfanos)", () => {
+  it("agruparPagosPorCita y cobradoDeCita no necesitan que la cita siga viva", () => {
+    const pagos = [pago({ appointmentId: "a-borrada", importeEur: 12 })];
+    const mapa = agruparPagosPorCita(pagos);
+    expect(mapa.get("a-borrada")).toBe(12);
+    expect(cobradoDeCita("a-borrada", mapa, 99)).toBe(12);
+  });
+
+  it("pagosToCsvGestoria no revienta con un clientId que ya no está en la lista", async () => {
+    const { pagosToCsvGestoria } = await import("./export-csv");
+    const csv = pagosToCsvGestoria([pago({ clientId: "c-borrada", clientName: undefined })], {});
+    expect(csv).not.toContain("undefined");
+  });
+});

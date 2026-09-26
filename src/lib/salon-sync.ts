@@ -79,15 +79,94 @@ function aviso(que: string, intentar: () => Promise<unknown>) {
   return manejar;
 }
 
-/** Lanza la subida y, si falla, la convierte en un aviso reintentable. */
-function subir(que: string, intentar: () => Promise<unknown>, claveLocal?: string): Promise<void> {
+/**
+ * Reintentos automáticos (barrido de calidad 2026-09-26). Un corte de red o
+ * un 5xx de paso no deberían llegar al dueño como aviso: se reintenta solo,
+ * con espera creciente, y solo si sigue fallando aparece el aviso con su
+ * botón. Todo lo que se reintenta es idempotente en el servidor (upsert por
+ * id local, borrado por id, pagos y cambios con `ignoreDuplicates`), así que
+ * repetir la llamada no duplica nada. La única alta que NO lo es —la ficha
+ * sin teléfono, que es un `insert`— pasa `reintentable: false`.
+ */
+export const ESPERAS_REINTENTO_MS = [1_000, 3_000, 9_000] as const;
+let esperar = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+/** Solo para pruebas: sustituye la espera entre reintentos (p. ej. por 0 ms). */
+export function esperaDeReintentoParaPruebas(fn: ((ms: number) => Promise<void>) | null): void {
+  esperar = fn ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+}
+
+/** El servidor contestó y dijo que no (solape, bloqueo…): reintentar no lo arregla. */
+class RechazoDelServidor extends Error {}
+
+async function conReintentos(intentar: () => Promise<unknown>): Promise<unknown> {
+  for (let i = 0; ; i++) {
+    try {
+      return await intentar();
+    } catch (err) {
+      if (err instanceof RechazoDelServidor || i >= ESPERAS_REINTENTO_MS.length) throw err;
+      await esperar(ESPERAS_REINTENTO_MS[i]);
+    }
+  }
+}
+
+/**
+ * Cola por id local: dos cambios seguidos de la misma cita suben en orden.
+ * Sin esto, un primer parche que falla y se reintenta segundos después podía
+ * llegar DETRÁS del segundo y pisarlo con un valor viejo.
+ */
+const colas = new Map<string, Promise<unknown>>();
+
+/** Pone `tarea` en la cola de `clave` (o la lanza ya si no hay clave). */
+function encolar(clave: string | undefined, tarea: () => Promise<unknown>): Promise<unknown> {
+  const anterior = clave ? colas.get(clave) : undefined;
+  const turno = anterior ? anterior.then(tarea, tarea) : tarea();
+  if (clave) {
+    const marca = turno.then(() => {}, () => {});
+    colas.set(clave, marca);
+    void marca.then(() => { if (colas.get(clave) === marca) colas.delete(clave); });
+  }
+  return turno;
+}
+
+/**
+ * Generaciones de escritura por id local y por campo (segunda pasada del
+ * barrido). Un reintento —automático o del botón del aviso— de un cambio
+ * VIEJO no puede pisar lo que un cambio posterior de la misma cita ya dejó:
+ *  - una subida entera se salta si después hubo otra escritura de esa cita;
+ *  - un parche solo manda los campos que nadie ha vuelto a tocar después.
+ */
+let generacion = 0;
+const ultimaDeClave = new Map<string, number>();
+const ultimaDeCampo = new Map<string, number>();
+function nuevaGeneracion(clave: string, campos: string[] | "todos"): number {
+  const g = ++generacion;
+  ultimaDeClave.set(clave, g);
+  if (campos === "todos") ultimaDeCampo.set(`${clave}|*`, g);
+  else for (const c of campos) ultimaDeCampo.set(`${clave}|${c}`, g);
+  return g;
+}
+const hayPosterior = (clave: string, g: number) => (ultimaDeClave.get(clave) ?? 0) > g;
+function camposVigentes<T extends object>(clave: string, g: number, patch: T): Partial<T> {
+  const todos = ultimaDeCampo.get(`${clave}|*`) ?? 0;
+  return Object.fromEntries(
+    Object.entries(patch).filter(([k]) => (ultimaDeCampo.get(`${clave}|${k}`) ?? 0) === g && todos < g),
+  ) as Partial<T>;
+}
+
+/** Lanza la subida y, si falla (tras los reintentos automáticos), la convierte en un aviso reintentable. */
+function subir(que: string, intentar: () => Promise<unknown>, claveLocal?: string, reintentable = true): Promise<void> {
   pendientes += 1;
   if (claveLocal) sinGuardar.add(claveLocal);
-  const reintentar = async () => {
+  const unaVez = async () => {
     await intentar();
     if (claveLocal) sinGuardar.delete(claveLocal);
   };
-  return reintentar().then(() => {}, aviso(que, reintentar)).finally(() => { pendientes -= 1; });
+  // El botón «Reintentar» también pasa por la cola de la cita: nunca adelanta
+  // a un cambio que esté subiendo en ese momento.
+  const desdeAviso = () => encolar(claveLocal, unaVez);
+  return encolar(claveLocal, () => (reintentable ? conReintentos(unaVez) : unaVez()))
+    .then(() => {}, aviso(que, desdeAviso))
+    .finally(() => { pendientes -= 1; });
 }
 
 let pendientes = 0;
@@ -114,7 +193,10 @@ export function pushAppointment(
 ): void {
   if (!slug) return;
   const quien = (cliente?.name ?? appt.clientName ?? "").trim();
+  const g = nuevaGeneracion(`cita:${appt.id}`, "todos");
   subir(quien ? `la cita de ${quien}` : "la cita", async () => {
+    // Un reintento de la cita entera tras otro cambio de ella la pisaría con la versión vieja.
+    if (hayPosterior(`cita:${appt.id}`, g)) return;
     if (appt.origen === "tpv123" && !cliente?.phone) await altasPendientes.get(`${slug}|${quien}`);
     return exigirGuardado(await syncAppointment({ data: appointmentPayload(slug, appt, cliente, opciones) }));
   }, `cita:${appt.id}`);
@@ -133,7 +215,7 @@ export interface OpcionesGuardado {
  * reintento en vez de dar la cita por guardada.
  */
 function exigirGuardado<T extends { synced: boolean; reason?: string }>(r: T): T {
-  if (!r.synced && r.reason && r.reason !== "sin-fila") throw new Error(r.reason);
+  if (!r.synced && r.reason && r.reason !== "sin-fila") throw new RechazoDelServidor(r.reason);
   return r;
 }
 
@@ -195,11 +277,15 @@ export function pushAppointmentPatch(
 ): void {
   if (!slug) return;
   const quien = (cliente?.name ?? appt.clientName ?? "").trim();
+  const g = nuevaGeneracion(`cita:${appt.id}`, Object.keys(patch));
   subir(quien ? `la cita de ${quien}` : "la cita", async () => {
+    const vigente = camposVigentes(`cita:${appt.id}`, g, patch);
+    if (Object.keys(vigente).length === 0) return; // todo lo de este parche ya lo cambió otro posterior
     const r = await syncAppointmentPatch({
-      data: { slug, localId: appt.id, patch, permitirSolape: opciones.permitirSolape === true, ...(opciones.origen ? { origen: opciones.origen } : {}) },
+      data: { slug, localId: appt.id, patch: vigente, permitirSolape: opciones.permitirSolape === true, ...(opciones.origen ? { origen: opciones.origen } : {}) },
     });
     if (!r.synced && r.reason === "sin-fila") {
+      if (hayPosterior(`cita:${appt.id}`, g)) return exigirGuardado({ ...r, reason: undefined });
       return exigirGuardado(await syncAppointment({ data: appointmentPayload(slug, appt, cliente, opciones) }));
     }
     return exigirGuardado(r);
@@ -383,7 +469,7 @@ export function pushClient(slug: string | null, cliente: Client): void {
   const pending = subir(`la ficha de ${cliente.name}`, () => saveClient({ data: {
     slug, name: cliente.name, phone: cliente.phone, email: cliente.email, notes: cliente.notes, createdAt: cliente.createdAt,
     tpvCode: cliente.tpvCode, birthday: cliente.birthday,
-  } }));
+  } }), undefined, Boolean(cliente.phone)); // sin teléfono es un insert: no se repite solo
   altasPendientes.set(clave, pending);
   void pending.finally(() => { if (altasPendientes.get(clave) === pending) altasPendientes.delete(clave); });
 }
