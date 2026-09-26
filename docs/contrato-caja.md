@@ -67,7 +67,8 @@ No hay `updatedAt` ni edición de un pago: se borra y se vuelve a crear
 | `cobradoDeCita(appointmentId, pagosPorCita, fallbackEur)` | Lo real si hay pagos de esa cita; si no, `fallbackEur` (comportamiento actual) |
 | `refSenalAplicada(appointmentId)` | `senal:<id>`, la `refExterna` estable del pago que crea la señal al aplicarse |
 | `pagoDeSenalAplicada(cita, ahora?)` | El pago (sin `id`/`createdAt`) que corresponde a `depositAppliedEur`; `null` si no hay nada que apuntar. Lo llama el SERVIDOR al cobrar (síncrono con `aplicarSenal` de `senal.ts`), nunca el navegador |
-| `esperadoDelDia(pagos, dia?)` | `{ fecha, porMetodo, total }` de los pagos de ese día — el "esperado" del cierre |
+| `esperadoDelDia(pagos, dia?, timeZone?)` | `{ fecha, porMetodo, total }` de los pagos de ese día — el "esperado" del cierre. El día es el de la **zona del salón** (`zonaDelSalon(perfil)`), no el UTC: un cobro a las 00:30 de Madrid es del día nuevo. `dia` puede ser `YYYY-MM-DD` o un instante |
+| `diaDelPago(p, timeZone?)`, `pagosDelDia(pagos, dia, timeZone?)`, `pagosEntreDias(pagos, desde, hasta, timeZone?)` | Agrupan por día local. Úsalas en vez de `fecha.slice(0, 10)` |
 | `calcularDescuadre(contado, esperado)` | `{ contado, esperado, descuadre }`; `descuadre = contado - esperado` |
 
 ## 3. Señal aplicada → pago automático (idempotente)
@@ -87,7 +88,7 @@ pierde al recargar, sin servidor detrás — ver §7).
 
 | Función | Guarda | Qué hace |
 |---|---|---|
-| `listarPagos({ slug, desde, hasta })` | `dinero.ver-global` o `dinero.ver-propio` | Con `ver-global`, todos; con solo `ver-propio`, los de `cobradoPor === miEmployeeId` |
+| `listarPagos({ slug, desde, hasta })`: días `YYYY-MM-DD` de la zona del salón, ambos incluidos | `dinero.ver-global` o `dinero.ver-propio` | Con `ver-global`, todos; con solo `ver-propio`, los de `cobradoPor === miEmployeeId` |
 | `registrarPago({ slug, pago })` | `dinero.crear` | Alta manual (upsert por `id`, idempotente) |
 | `borrarPago({ slug, id })` | `dinero.crear` | Borra un pago manual mal apuntado |
 | `cerrarCaja({ slug, fecha, efectivoContado, nota? })` | `dinero.cerrar` | Calcula `esperado` desde `payments` de ese día, guarda en `cash_closings` (único por salón+fecha); re-cerrar actualiza y conserva el cierre anterior en la propia fila (`anterior` jsonb) como auditoría |

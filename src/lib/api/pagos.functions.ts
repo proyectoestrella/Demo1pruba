@@ -14,13 +14,21 @@ import { exigirAcceso } from "./autorizacion.server";
 import { PermisoDenegado, tienePermiso } from "./autorizacion";
 import { conSesion } from "./sesion.middleware";
 import { getSupabaseServerClient } from "../supabase.server";
+import { zonaDelSalon } from "../zona-horaria";
 import { pagosToCsvGestoria } from "../export-csv";
-import { calcularDescuadre, pagosPorMetodo, type ConceptoPago, type MetodoPago, type Pago } from "../pagos";
+import { calcularDescuadre, pagosDelDia, pagosEntreDias, pagosPorMetodo, ventanaUtcDelDia, ventanaUtcEntreDias, type ConceptoPago, type MetodoPago, type Pago } from "../pagos";
 
 const slug = z.string().min(1).max(120);
 const metodoSchema = z.enum(["efectivo", "tarjeta", "bizum"]);
 const conceptoSchema = z.enum(["servicio", "producto", "propina", "senal", "ajuste"]);
 const fechaISO = z.string().min(10);
+
+/** La zona del salón, leída de su perfil (Europe/Madrid si no la tiene). */
+async function zonaDe(supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>, salonSlug: string): Promise<string> {
+  const { data } = await supabase.from("salons").select("profile").eq("slug", salonSlug).maybeSingle();
+  return zonaDelSalon((data?.profile ?? null) as { timeZone?: string } | null);
+}
+
 
 function filaAPago(f: Record<string, unknown>): Pago {
   return {
@@ -53,15 +61,18 @@ export const listarPagos = createServerFn({ method: "GET" })
     if (!puedeTodo && !puedePropio) throw new PermisoDenegado("dinero.ver-global");
     const supabase = getSupabaseServerClient();
     if (!supabase) return { pagos: [] as Pago[] };
+    // Días de la zona del salón, ambos incluidos: ventana UTC holgada y filtro después.
+    const zona = await zonaDe(supabase, data.slug);
+    const ventana = ventanaUtcEntreDias(data.desde, data.hasta);
     const { data: filas, error } = await supabase
       .from("payments")
       .select("*")
       .eq("salon_slug", data.slug)
-      .gte("fecha", data.desde)
-      .lte("fecha", data.hasta)
+      .gte("fecha", ventana.desde)
+      .lt("fecha", ventana.hasta)
       .order("fecha", { ascending: false });
     if (error) return { pagos: [] as Pago[], aviso: AVISO_SIN_TABLA };
-    let pagos = (filas ?? []).map(filaAPago);
+    let pagos = pagosEntreDias((filas ?? []).map(filaAPago), data.desde, data.hasta, zona);
     if (!puedeTodo) {
       const miEmployeeId = quien.tipo === "miembro" ? quien.employeeId : null;
       pagos = pagos.filter((p) => !!miEmployeeId && p.cobradoPor === miEmployeeId);
@@ -176,15 +187,17 @@ export const cerrarCaja = createServerFn({ method: "POST" })
     if (!tienePermiso(quien, "dinero.cerrar")) throw new PermisoDenegado("dinero.cerrar");
     const supabase = getSupabaseServerClient();
     if (!supabase) return null;
-    const desde = `${data.fecha}T00:00:00.000Z`;
-    const hasta = `${data.fecha}T23:59:59.999Z`;
+    // El día es el de la zona del salón (un cobro a las 00:30 de Madrid es del
+    // día nuevo): se pide una ventana UTC holgada y se filtra con pagosDelDia.
+    const zona = await zonaDe(supabase, data.slug);
+    const { desde, hasta } = ventanaUtcDelDia(data.fecha);
     const { data: filas, error } = await supabase
-      .from("payments").select("*").eq("salon_slug", data.slug).gte("fecha", desde).lte("fecha", hasta);
+      .from("payments").select("*").eq("salon_slug", data.slug).gte("fecha", desde).lt("fecha", hasta);
     if (error) {
       console.warn(`cerrarCaja (leer pagos): ${error.message}`);
       return null;
     }
-    const porMetodo = pagosPorMetodo((filas ?? []).map(filaAPago));
+    const porMetodo = pagosPorMetodo(pagosDelDia((filas ?? []).map(filaAPago), data.fecha, zona));
     const { descuadre } = calcularDescuadre(data.efectivoContado, porMetodo.efectivo);
 
     const { data: previa } = await supabase
@@ -231,18 +244,20 @@ export const generarCsvGestoria = createServerFn({ method: "GET" })
     if (!tienePermiso(quien, "dinero.exportar")) throw new PermisoDenegado("dinero.exportar");
     const supabase = getSupabaseServerClient();
     if (!supabase) return { csv: null };
+    const zona = await zonaDe(supabase, data.slug);
+    const ventana = ventanaUtcEntreDias(data.desde, data.hasta);
     const { data: filas, error } = await supabase
-      .from("payments").select("*").eq("salon_slug", data.slug).gte("fecha", data.desde).lte("fecha", data.hasta)
+      .from("payments").select("*").eq("salon_slug", data.slug).gte("fecha", ventana.desde).lt("fecha", ventana.hasta)
       .order("fecha", { ascending: true });
     if (error) return { csv: null, aviso: AVISO_SIN_TABLA };
-    const pagos = (filas ?? []).map(filaAPago);
+    const pagos = pagosEntreDias((filas ?? []).map(filaAPago), data.desde, data.hasta, zona);
     const clientIds = [...new Set(pagos.map((p) => p.clientId).filter((x): x is string => !!x))];
     const clientNameById: Record<string, string> = {};
     if (clientIds.length) {
       const { data: clientesFilas } = await supabase.from("clients").select("id, name").eq("salon_slug", data.slug).in("id", clientIds);
       for (const c of clientesFilas ?? []) clientNameById[c.id as string] = c.name as string;
     }
-    return { csv: pagosToCsvGestoria(pagos, clientNameById) };
+    return { csv: pagosToCsvGestoria(pagos, clientNameById, {}, zona) };
   });
 
 const pagoImportadoSchema = z.object({

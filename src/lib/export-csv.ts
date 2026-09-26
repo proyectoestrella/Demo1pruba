@@ -4,6 +4,7 @@ import { nombreServicioLibre } from "./appointment-services";
 import { respuestasLegibles } from "./preguntas-reserva";
 import type { BusinessType } from "./business-type";
 import { cobradoDeCita, type Pago } from "./pagos";
+import { fechaEnZona, horaEnZona, ZONA_HORARIA_SALON } from "./zona-horaria";
 
 /**
  * Exportación de citas y resumen mensual a CSV, generados en cliente con
@@ -163,15 +164,25 @@ function euroEs(n: number): string {
  * ni comillas). Nunca es un ticket ni una factura — es el registro interno
  * de lo apuntado en Caja (ver docs/contrato-caja.md §6).
  */
-export function pagosToCsvGestoria(pagos: Pago[], clientNameById: Record<string, string> = {}, cobradoPorLabel: Record<string, string> = {}): string {
+/**
+ * `timeZone`: la del salón. Este CSV se genera en el SERVIDOR (en UTC en
+ * Vercel), así que la fecha y la hora se escriben en la zona del salón, no en
+ * la del proceso.
+ */
+export function pagosToCsvGestoria(
+  pagos: Pago[],
+  clientNameById: Record<string, string> = {},
+  cobradoPorLabel: Record<string, string> = {},
+  timeZone: string = ZONA_HORARIA_SALON,
+): string {
   const header = fila(["Fecha", "Hora", "Concepto", "Método", "Importe (€)", "Cliente", "Cobrado por", "Nota", "Origen"]);
   const filas = pagos
     .slice()
     .sort((a, b) => +new Date(a.fecha) - +new Date(b.fecha))
     .map((p) =>
       fila([
-        fechaEs(p.fecha),
-        horaEs(p.fecha),
+        fechaEnZona(p.fecha, timeZone).split("-").reverse().join("/"),
+        horaEnZona(p.fecha, timeZone),
         CONCEPTO_LABEL[p.concepto] ?? p.concepto,
         METODO_LABEL[p.metodo] ?? p.metodo,
         euroEs(p.importeEur),
