@@ -66,8 +66,8 @@ function WebSishow() {
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-lino bg-background/90 backdrop-blur">
         <div className={cn(CONTENEDOR_WEB, "flex min-h-16 items-center justify-between gap-4 py-2.5")}>
-          <a href="#inicio" className="flex min-h-11 items-center gap-2" aria-label="siShow, inicio">
-            <span className="grid size-9 place-items-center rounded-full bg-primary text-sm font-extrabold text-primary-foreground">
+          <a href="#inicio" className="flex min-h-11 items-center gap-2">
+            <span className="grid size-9 place-items-center rounded-full bg-primary text-sm font-extrabold text-primary-foreground" aria-hidden="true">
               sí
             </span>
             <span className="text-lg font-extrabold tracking-tight">siShow</span>
