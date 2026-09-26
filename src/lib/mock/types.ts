@@ -380,9 +380,9 @@ export interface SalonProfile {
   depositServiceIds?: string[];
   /** La reserva por la web nace con la señal pedida y enseña el Bizum. Por defecto, la pide la dueña por WhatsApp. */
   depositAuto?: boolean;
-  /** Una señal vencida libera el hueco sola. Por defecto no: avisa y decide la dueña. */
+  /** Una señal vencida libera el hueco sola. Por defecto sí (`!== false`); `false` avisa y decide la dueña. */
   depositAutoRelease?: boolean;
-  /** Horas antes de la cita hasta las que cancelar devuelve la señal. Por defecto, `noShowNoticeHours` o 24. */
+  /** Horas antes de la cita hasta las que cancelar devuelve la señal. Por defecto, 24. */
   depositCancelHours?: number;
   /** Plantilla del WhatsApp de la señal. Ver `mensajeSenal` en lib/senal.ts. */
   depositTemplate?: string;

@@ -17,6 +17,7 @@ import {
   reabrirSenal,
   reajustarSenal,
   recibirSenal,
+  recordatorioSenal,
   reglaSenal,
   resolverCancelacion,
   resolverPlanton,
@@ -27,7 +28,9 @@ import {
 import { isoDelSalon } from "./zona-horaria";
 import type { Appointment } from "./mock/types";
 
-const regla = reglaSenal({ depositEnabled: true, depositAmountEur: 20, depositDeadlineHours: 2, depositCancelHours: 24, depositBizumPhone: "666777888" });
+// `depositAutoRelease: false` explícito: estas pruebas comprueban justo el caso
+// SIN liberación automática (que desde el lote 12 ya no es el valor por defecto).
+const regla = reglaSenal({ depositEnabled: true, depositAmountEur: 20, depositDeadlineHours: 2, depositCancelHours: 24, depositBizumPhone: "666777888", depositAutoRelease: false });
 const conLiberacion = reglaSenal({ depositEnabled: true, depositAmountEur: 20, depositDeadlineHours: 2, depositAutoRelease: true });
 const madrid = (fecha: string, hora: string) => new Date(isoDelSalon(fecha, hora));
 
@@ -247,5 +250,33 @@ describe("preparar el WhatsApp sin cambiar nada", () => {
   it("reenviar mientras sigue en plazo dice el mismo vencimiento", () => {
     const pedida = cita({ depositStatus: "pedida", depositEur: 20, depositRequestedAt: isoDelSalon("2026-09-28", "09:00"), depositDueAt: isoDelSalon("2026-09-28", "11:00") });
     expect(prepararPeticionSenal(pedida, regla, 20, madrid("2026-09-28", "10:00"))).toEqual({ ok: true, importeEur: 20, venceISO: isoDelSalon("2026-09-28", "11:00") });
+  });
+});
+
+describe("recordatorio de última hora (lote 12): «te quedan X min para el Bizum»", () => {
+  const pedida = { ...cita({ depositStatus: "pedida" as const, depositEur: 20, depositRequestedAt: isoDelSalon("2026-09-28", "09:00"), depositDueAt: isoDelSalon("2026-09-28", "11:00"), depositPeriodHours: 2 }), clientPhone: "622334455" };
+  const salon = { name: "PeluChic" };
+
+  it("null si no está pedida (por pedir, recibida, sin señal)", () => {
+    expect(recordatorioSenal({ ...pedida, depositStatus: "por_pedir" }, regla, salon, madrid("2026-09-28", "10:50"))).toBeNull();
+    expect(recordatorioSenal({ ...pedida, depositStatus: "recibida" }, regla, salon, madrid("2026-09-28", "10:50"))).toBeNull();
+    expect(recordatorioSenal({ ...cita(), clientPhone: "622334455" }, regla, salon, madrid("2026-09-28", "10:50"))).toBeNull();
+  });
+
+  it("null si queda más de 1 hora, o si ya venció", () => {
+    expect(recordatorioSenal(pedida, regla, salon, madrid("2026-09-28", "09:30"))).toBeNull(); // quedan 90 min
+    expect(recordatorioSenal(pedida, regla, salon, madrid("2026-09-28", "11:00"))).toBeNull(); // ya venció
+  });
+
+  it("con menos de 1 hora, el texto avisa de los minutos, el importe y el Bizum; el enlace es a la clienta", () => {
+    const r = recordatorioSenal(pedida, regla, salon, madrid("2026-09-28", "10:48"));
+    expect(r).not.toBeNull();
+    expect(r!.minutosRestantes).toBe(12);
+    expect(r!.texto).toContain("PeluChic");
+    expect(r!.texto).toContain("12 min");
+    expect(r!.texto).toContain("20 €");
+    expect(r!.texto).toContain(regla.bizumTelefono);
+    expect(r!.enlace).toContain("wa.me/622334455");
+    expect(r!.enlace).toContain(encodeURIComponent(r!.texto));
   });
 });
