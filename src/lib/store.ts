@@ -222,7 +222,8 @@ interface SalonState {
   markPaid: (id: string, method: PaymentMethod | null) => void;
   /** Deja constancia de que se ha pedido la señal por Bizum de esta cita. */
   /** @deprecated usar `pedirSenal`. Se conserva para las pantallas que aún lo llaman. */
-  markDepositRequested: (id: string, eur: number, requestedAt: string) => void;
+  /** Devuelve el código de error si no se pudo (antes se tragaba en silencio, lote 15). */
+  markDepositRequested: (id: string, eur: number, requestedAt: string) => CodigoErrorSenal | null;
   /**
    * Señal (lib/senal.ts, contrato-senal.md). Cada acción devuelve `null` si se
    * aplicó o el código de error si no se podía (y entonces no cambia nada).
@@ -702,7 +703,7 @@ export const useSalonStore = create<SalonState>()(
       },
 
       markDepositRequested: (id, eur, requestedAt) => {
-        aplicarSenalA(id, (c) => pedirSenal(c, reglaSenal(get().salonProfile), eur, new Date(requestedAt)));
+        return aplicarSenalA(id, (c) => pedirSenal(c, reglaSenal(get().salonProfile), eur, new Date(requestedAt)));
       },
 
       pedirSenal: (id) => {

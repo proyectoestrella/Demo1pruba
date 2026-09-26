@@ -246,7 +246,7 @@ describe("preparar el WhatsApp sin cambiar nada", () => {
   });
 
   it("una cita que ya pasó no deja ni abrir el WhatsApp (caso real de la demo, 25/09 a las 18:54)", () => {
-    expect(prepararPeticionSenal(cita({ start: isoDelSalon("2026-09-25", "10:00"), status: "pending" }), regla, 20, madrid("2026-09-25", "18:54"))).toEqual({ ok: false, error: "SENAL_CITA_CERRADA" });
+    expect(prepararPeticionSenal(cita({ start: isoDelSalon("2026-09-25", "10:00"), status: "pending" }), regla, 20, madrid("2026-09-25", "18:54"))).toMatchObject({ ok: false, error: "SENAL_CITA_CERRADA", motivo: "pasada" });
   });
 
   it("reenviar mientras sigue en plazo dice el mismo vencimiento", () => {

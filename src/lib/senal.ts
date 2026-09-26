@@ -242,7 +242,7 @@ type CitaCiclo = Pick<
   | "depositRefundedAt"
   | "depositRefundedEur"
   | "depositRetainedAt"
->;
+> & { duration?: number };
 
 const HORA = 3_600_000;
 const ok = (patch: Partial<Appointment>): ResultadoSenal => ({ ok: true, patch });
@@ -310,6 +310,49 @@ export function estadoSenal(c: CitaCiclo, ahora: Date = new Date()): EstadoSenal
 
 const CITA_ABIERTA = new Set(["pending", "confirmed"]);
 
+/** Por qué no se puede pedir (ni dar más tiempo a) la señal de una cita. */
+export type MotivoCitaCerrada = "cancelada" | "no_vino" | "atendida" | "en_curso" | "pasada" | "sin_fecha";
+
+/**
+ * Lote 15 (bug «en Citas no deja pedir señal»): la pantalla enseñaba el botón
+ * mirando solo el estado de la SEÑAL (`no_aplica`/`por_pedir`), nunca el de la
+ * CITA ni su hora; en la demo la mayoría de citas de la lista ya pasaron
+ * (atendidas, o de hoy ya empezadas), así que el botón salía y el dominio lo
+ * rechazaba con un texto que además decía «ya ha pasado» de una cita en curso.
+ * Esta es la única regla: la pantalla debe preguntar aquí antes de pintar el
+ * botón. `null` = se puede. La hora es instante absoluto (ms), sin zona.
+ */
+export function motivoCitaCerrada(
+  c: Pick<Appointment, "start" | "status"> & { duration?: number },
+  ahora: Date = new Date(),
+): MotivoCitaCerrada | null {
+  if (c.status === "cancelled") return "cancelada";
+  if (c.status === "no-show") return "no_vino";
+  if (!CITA_ABIERTA.has(c.status)) return "atendida";
+  const inicio = Date.parse(c.start);
+  if (!Number.isFinite(inicio)) return "sin_fecha";
+  if (inicio > ahora.getTime()) return null;
+  const fin = inicio + Math.max(0, Number.isFinite(c.duration) ? (c.duration as number) : 0) * 60_000;
+  return fin > ahora.getTime() ? "en_curso" : "pasada";
+}
+
+/** ¿Se puede pedir señal (o dar más tiempo) a esta cita ahora? */
+export function puedePedirSenal(c: Pick<Appointment, "start" | "status"> & { duration?: number }, ahora: Date = new Date()): boolean {
+  return motivoCitaCerrada(c, ahora) === null;
+}
+
+/** Frase exacta para cada motivo (sustituye al genérico «ya ha pasado o está cancelada»). */
+export function mensajeCitaCerrada(m: MotivoCitaCerrada): string {
+  switch (m) {
+    case "cancelada": return "La cita está cancelada: no se puede pedir señal.";
+    case "no_vino": return "La cita está marcada como «No vino»: no se puede pedir señal.";
+    case "atendida": return "La cita ya está atendida: la señal se pide antes de la cita.";
+    case "en_curso": return "La cita ya ha empezado: la señal se pide antes de la hora de la cita.";
+    case "pasada": return "La cita ya ha pasado: no se puede pedir señal.";
+    case "sin_fecha": return "La cita no tiene una hora válida: revísala antes de pedir señal.";
+  }
+}
+
 /**
  * Lo que debe una reserva nueva hecha por la web. Con la señal automática
  * nace `pedida` (la web ya enseñó el Bizum y el plazo); si no, `por_pedir`
@@ -340,7 +383,7 @@ export function senalDeReservaNueva(
  * volver a pedirla tras vencer (plazo nuevo).
  */
 export function pedirSenal(c: CitaCiclo, regla: ReglaSenal, importeEur: number, ahora: Date = new Date()): ResultadoSenal {
-  if (!CITA_ABIERTA.has(c.status) || Date.parse(c.start) <= ahora.getTime()) return fallo("SENAL_CITA_CERRADA");
+  if (motivoCitaCerrada(c, ahora)) return fallo("SENAL_CITA_CERRADA");
   const e = estadoSenal(c, ahora);
   if (!["no_aplica", "por_pedir", "pedida", "vencida"].includes(e)) return fallo("SENAL_ESTADO_INVALIDO");
   const importe = c.depositEur && c.depositEur > 0 ? c.depositEur : Math.round(importeEur);
@@ -358,7 +401,7 @@ export function pedirSenal(c: CitaCiclo, regla: ReglaSenal, importeEur: number, 
 
 /** Otro plazo igual desde ahora (o desde el vencimiento, si aún no ha llegado), sin pasar de la cita. */
 export function darMasTiempo(c: CitaCiclo, regla: ReglaSenal, ahora: Date = new Date()): ResultadoSenal {
-  if (!CITA_ABIERTA.has(c.status) || Date.parse(c.start) <= ahora.getTime()) return fallo("SENAL_CITA_CERRADA");
+  if (motivoCitaCerrada(c, ahora)) return fallo("SENAL_CITA_CERRADA");
   const e = estadoSenal(c, ahora);
   if (e !== "pedida" && e !== "vencida") return fallo("SENAL_ESTADO_INVALIDO");
   // Sin un vencimiento que se pueda calcular (fecha corrompida), no hay desde
@@ -610,7 +653,7 @@ export function mensajeErrorSenal(error: CodigoErrorSenal): string {
     case "SENAL_SIN_IMPORTE": return "Esta cita no lleva señal con la regla del salón.";
     case "SENAL_ESTADO_INVALIDO": return "La señal de esta cita ya no está en un estado que permita eso.";
     case "SENAL_IMPORTE_INVALIDO": return "El importe tiene que ser mayor que cero.";
-    case "SENAL_CITA_CERRADA": return "La cita ya ha pasado o está cancelada: no se puede pedir señal.";
+    case "SENAL_CITA_CERRADA": return "La cita ya ha empezado, pasó o está cancelada: la señal se pide antes de la cita.";
   }
 }
 
@@ -624,9 +667,14 @@ export function prepararPeticionSenal(
   regla: ReglaSenal,
   importeEur: number,
   ahora: Date = new Date(),
-): { ok: true; importeEur: number; venceISO: string } | { ok: false; error: CodigoErrorSenal } {
+):
+  | { ok: true; importeEur: number; venceISO: string }
+  | { ok: false; error: CodigoErrorSenal; motivo?: MotivoCitaCerrada; mensaje: string } {
   const r = pedirSenal(c, regla, importeEur, ahora);
-  if (!r.ok) return r;
+  if (!r.ok) {
+    const motivo = r.error === "SENAL_CITA_CERRADA" ? (motivoCitaCerrada(c, ahora) ?? undefined) : undefined;
+    return { ok: false, error: r.error, motivo, mensaje: motivo ? mensajeCitaCerrada(motivo) : mensajeErrorSenal(r.error) };
+  }
   const vence = r.patch.depositDueAt ?? vencimientoSenal(c, regla.ventanaHoras);
   return { ok: true, importeEur: r.patch.depositEur ?? importeEur, venceISO: vence ?? ahora.toISOString() };
 }
