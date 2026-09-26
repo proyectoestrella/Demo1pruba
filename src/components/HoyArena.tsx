@@ -32,6 +32,7 @@ import type { Appointment, Client } from "@/lib/mock/types";
 import { VentanaConfirmar } from "@/components/VentanaConfirmar";
 import { DuracionOtra } from "@/components/DuracionOtra";
 import { cn } from "@/lib/utils";
+import { CifraAnimada } from "@/components/CifraAnimada";
 import { ahoraDelDia, enCuanto, lineaDelDia } from "@/lib/hoy-ahora-panel";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { useAplicarDesenlace } from "@/components/CitasPorResolver";
@@ -182,17 +183,17 @@ export function HoyArena() {
 
       <div data-tour="kpis" className="-mt-2 grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4 xl:group-data-[panel=abierto]/panel:grid-cols-2">
         <TarjetaCifra icono={CalendarDays} titulo="Citas de hoy" to="/app/calendar">
-          <Cifra>{agenda.total}</Cifra>
+          <Cifra><CifraAnimada texto={agenda.total} /></Cifra>
           <Detalle>{soloUno ? `${agenda.ocupacionPct} % de tu jornada` : agenda.porPro.map((x) => `${x.citas} ${x.e.name}`).join(" · ")}</Detalle>
           <Barra pct={agenda.ocupacionPct} texto={`Agenda al ${agenda.ocupacionPct} %`} />
         </TarjetaCifra>
         <TarjetaCifra icono={Clock3} titulo="Huecos libres" to="/app/calendar">
-          <Cifra extra={agenda.minutosLibres > 0 ? `· ${duracionCorta(agenda.minutosLibres)}` : undefined}>{agenda.huecos.length}</Cifra>
+          <Cifra extra={agenda.minutosLibres > 0 ? `· ${duracionCorta(agenda.minutosLibres)}` : undefined}><CifraAnimada texto={agenda.huecos.length} /></Cifra>
           <Detalle>{agenda.huecos.length ? agenda.detalleHuecos : "Hoy ya no queda ningún hueco de media hora."}</Detalle>
         </TarjetaCifra>
         {veDinero ? (
         <TarjetaCifra icono={Euro} titulo={dineroPropio ? "Lo tuyo de hoy" : "Ingresos de hoy"}>
-          <Cifra>{eurRedondo(valorDelDia)}</Cifra>
+          <Cifra><CifraAnimada texto={eurRedondo(valorDelDia)} /></Cifra>
           <Detalle>
             {dinero.cobrado === 0 && dinero.sinCobroMarcado > 0 && !esDemo
               ? "0 € cobrados · marca los cobros en el detalle de cada cita"
@@ -208,7 +209,7 @@ export function HoyArena() {
           </TarjetaCifra>
         )}
         <TarjetaCifra icono={Bell} titulo="Pendiente de ti" destacada={pendienteDeTi > 0} href={solicitudesVisibles > 0 ? "#espera" : undefined} to={solicitudesVisibles > 0 ? undefined : "/app/appointments"}>
-          <Cifra>{pendienteDeTi}</Cifra>
+          <Cifra><CifraAnimada texto={pendienteDeTi} /></Cifra>
           <Detalle>
             {pendienteDeTi === 0
               ? "Nada pendiente: todo al día."
@@ -417,7 +418,7 @@ function TarjetaCifra({
   children: ReactNode;
 }) {
   const clase = cn(
-    "flex min-w-0 flex-col rounded-[20px] border px-3.5 py-3 transition-colors sm:px-5 sm:py-4",
+    "entrada-lista elevar flex min-w-0 flex-col rounded-[20px] border px-3.5 py-3 sm:px-5 sm:py-4",
     destacada ? "border-miel-borde bg-miel hover:bg-[#EFDFB5]" : "border-lino bg-card hover:bg-superficie",
   );
   const dentro = (
@@ -451,7 +452,7 @@ function Barra({ pct, texto, oculto = false }: { pct: number; texto: string; ocu
   return (
     <div className="mt-auto pt-3">
       <span className="block h-1.5 overflow-hidden rounded-full bg-beige" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={texto}>
-        <i className="block h-full rounded-full bg-hoja" style={{ width: `${Math.min(100, pct)}%` }} />
+        <i className="barra-rellena block h-full rounded-full bg-hoja" style={{ width: `${Math.min(100, pct)}%` }} />
       </span>
       {!oculto && <span className="mt-1.5 block text-[12.5px] text-cafe-medio tabular-nums">{texto}</span>}
     </div>

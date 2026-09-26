@@ -97,7 +97,7 @@ function Insights() {
                   </span>
                   <span className="text-muted-foreground tabular-nums"><b className="text-foreground">{pct} %</b> · {citas} citas</span>
                 </div>
-                <div className="h-3 overflow-hidden rounded-full bg-nata"><i className="block h-full rounded-full bg-hoja" style={{ width: `${pct}%` }} /></div>
+                <div className="h-3 overflow-hidden rounded-full bg-nata"><i className="barra-rellena block h-full rounded-full bg-hoja" style={{ width: `${pct}%` }} /></div>
               </div>
             ))}
           </div>
@@ -114,7 +114,7 @@ function Insights() {
                     <span className="truncate font-bold">{sv.name}</span>
                     <span className="shrink-0 text-muted-foreground tabular-nums"><b className="text-foreground">{veces}</b> · {eurRedondo(euros)} · {totalServ ? Math.round((euros / totalServ) * 100) : 0} %</span>
                   </div>
-                  <div className="h-3 overflow-hidden rounded-full bg-nata"><i className="block h-full rounded-full" style={{ width: `${(veces / maxVeces) * 100}%`, background: i === 0 ? "var(--moca-fuerte)" : "var(--moca)" }} /></div>
+                  <div className="h-3 overflow-hidden rounded-full bg-nata"><i className="barra-rellena block h-full rounded-full" style={{ width: `${(veces / maxVeces) * 100}%`, background: i === 0 ? "var(--moca-fuerte)" : "var(--moca)" }} /></div>
                 </div>
               ))}
             </div>
@@ -132,7 +132,7 @@ function Insights() {
                     <span><b>{t}</b> <span className="text-[12.5px] text-muted-foreground">{d}</span></span>
                     <span className="tabular-nums"><b>{n}</b> <span className="text-muted-foreground">· {Math.round((n / totalClientas) * 100)} %</span></span>
                   </div>
-                  <div className="h-3 overflow-hidden rounded-full bg-nata"><i className="block h-full rounded-full bg-hoja" style={{ width: `${(n / totalClientas) * 100}%` }} /></div>
+                  <div className="h-3 overflow-hidden rounded-full bg-nata"><i className="barra-rellena block h-full rounded-full bg-hoja" style={{ width: `${(n / totalClientas) * 100}%` }} /></div>
                 </div>
               ))}
               <p className="text-[12.5px] text-muted-foreground tabular-nums">{totalClientas} clientas en total.</p>

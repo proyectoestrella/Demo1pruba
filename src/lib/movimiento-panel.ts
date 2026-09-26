@@ -38,3 +38,24 @@ export function useContador(valor: number, ms = 600): number {
   }, [valor, ms]);
   return Number.isInteger(valor) && n !== valor ? Math.round(n) : Math.round(n * 100) / 100;
 }
+
+/**
+ * Para animar una cifra ya formateada («1.234,50 €», «84 %», «16»): separa
+ * el número (formato español) del resto. `null` si no hay número.
+ */
+export function partirCifra(texto: string): { antes: string; n: number; decimales: number; despues: string } | null {
+  const m = /-?\d{1,3}(?:\.\d{3})+(?:,\d+)?|-?\d+(?:,\d+)?/.exec(texto);
+  if (!m) return null;
+  const crudo = m[0];
+  const coma = crudo.indexOf(",");
+  const decimales = coma >= 0 ? crudo.length - coma - 1 : 0;
+  const n = Number(crudo.replace(/\./g, "").replace(",", "."));
+  if (!Number.isFinite(n)) return null;
+  return { antes: texto.slice(0, m.index), n, decimales, despues: texto.slice(m.index + crudo.length) };
+}
+
+/** Vuelve a montar la cifra con otro valor, con el mismo formato. */
+export function montarCifra(p: { antes: string; decimales: number; despues: string }, n: number, miles = true): string {
+  const num = n.toLocaleString("es-ES", { minimumFractionDigits: p.decimales, maximumFractionDigits: p.decimales, useGrouping: miles });
+  return `${p.antes}${num}${p.despues}`;
+}

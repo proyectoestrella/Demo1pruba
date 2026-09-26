@@ -1,3 +1,4 @@
+import { CifraAnimada } from "@/components/CifraAnimada";
 import { useMemo } from "react";
 import { Ban, Calendar, Euro, Scissors, TrendingUp, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -146,7 +147,7 @@ export function FilaDeTarjetas({
             {t.label}
           </div>
           <div className={cn("mt-0.5 truncate leading-tight font-extrabold tabular-nums", t.valor.length > 8 ? "text-lg md:text-xl" : "text-[22px] md:text-[26px]")} title={t.valor}>
-            {t.valor}
+            <CifraAnimada texto={t.valor} />
           </div>
           <div className="flex items-center gap-1.5">{t.pie}</div>
           {t.serie && <Mini serie={t.serie} />}

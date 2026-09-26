@@ -251,7 +251,10 @@ function DashboardLayoutV1() {
             puede crecer hasta el borde (flex-1). */}
         <FranjaVerComo />
         <main className="flex min-w-0 flex-1 flex-col px-4 pt-5 pb-[100px] md:px-8 md:pt-8 md:pb-8">
-          {permitida ? <Outlet /> : <SinPermiso seccion={seccion} />}
+          {/* Lote 16: cada pantalla entra con un fundido y 8 px de desplazamiento (180 ms). */}
+          <div key={path} className="entrada-ruta flex min-w-0 flex-1 flex-col">
+            {permitida ? <Outlet /> : <SinPermiso seccion={seccion} />}
+          </div>
         </main>
       </div>
 
