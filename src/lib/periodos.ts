@@ -358,7 +358,19 @@ function citasDelRango(appts: Appointment[], rango: Rango): Appointment[] {
 }
 
 /** Huecos de media hora que el equipo tiene abiertos en el rango, día a día. */
+/** Capacidad ya calculada, por lista de equipo (su identidad es su versión) y rango. */
+const capacidadCache = new WeakMap<Employee[], Map<string, number>>();
 export function capacidadDelRango(rango: Rango, equipo: Employee[], timeZone?: string): number {
+  let porRango = capacidadCache.get(equipo);
+  if (!porRango) capacidadCache.set(equipo, (porRango = new Map()));
+  const clave = `${+rango.inicio}|${+rango.fin}|${timeZone ?? ""}`;
+  const hecho = porRango.get(clave);
+  if (hecho !== undefined) return hecho;
+  const v = calcularCapacidad(rango, equipo, timeZone);
+  porRango.set(clave, v);
+  return v;
+}
+function calcularCapacidad(rango: Rango, equipo: Employee[], timeZone?: string): number {
   const c = calendario(timeZone);
   let slots = 0;
   for (let d = c.inicioDeDia(rango.inicio); +d < +rango.fin; d = c.sumarDias(d, 1)) {
