@@ -97,13 +97,15 @@ function nombreDeCambio(c: Cambio): { nombre: string; telefono: string | null; c
   const s = useSalonStore.getState();
   const cita = c.entidad === "cita" ? (s.appointments.find((a) => a.id === c.idEntidad) ?? null) : null;
   const cliente = cita ? s.clients.find((x) => x.id === cita.clientId) : c.entidad === "clienta" ? s.clients.find((x) => x.id === c.idEntidad) : undefined;
-  const nombre = (cita?.clientName ?? cliente?.name ?? "la clienta").split(" ")[0];
+  // `||` y no `??`: un nombre vacío ("") daba «Hola , perdona» (barrido 2026-09-26).
+  const nombre = (cita?.clientName?.trim() || cliente?.name?.trim() || "la clienta").split(" ")[0];
   return { nombre, telefono: cliente?.phone ?? null, cita };
 }
 
 /** Mensaje de corrección cuando se deshace algo que ya se le había contado a la clienta. */
-function mensajeCorreccion(c: Cambio, nombre: string, cita: Appointment | null): string {
-  const cuando = cita ? new Date(cita.start).toLocaleString("es-ES", { weekday: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+export function mensajeCorreccion(c: Pick<Cambio, "tipo">, nombre: string, cita: Pick<Appointment, "start"> | null): string {
+  // Una cita con la fecha ilegible no puede mandarle «del Invalid Date» a la clienta.
+  const cuando = cita && Number.isFinite(Date.parse(cita.start)) ? new Date(cita.start).toLocaleString("es-ES", { weekday: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
   if (c.tipo === "cita.confirmar") return `Hola ${nombre}, perdona: tu cita${cuando ? ` del ${cuando}` : ""} aún no está confirmada. Te escribimos en cuanto lo esté.`;
   if (c.tipo === "cita.rechazar" || c.tipo === "cita.cancelar") return `Hola ${nombre}, perdona el lío: tu cita${cuando ? ` del ${cuando}` : ""} sigue en pie.`;
   if (c.tipo === "cita.mover") return `Hola ${nombre}, perdona: tu cita vuelve a ser${cuando ? ` el ${cuando}` : " a la hora de antes"}.`;
