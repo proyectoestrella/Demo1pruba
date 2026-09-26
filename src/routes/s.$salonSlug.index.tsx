@@ -501,7 +501,7 @@ function SalonHome() {
           title="Servicios destacados"
           intro="Toca uno para reservarlo directamente."
         />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {featuredIds.map((id, i) => {
             const s = serviceMap[id];
             if (!s) return null;
