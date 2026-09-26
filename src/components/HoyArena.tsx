@@ -37,6 +37,7 @@ import { useAplicarDesenlace } from "@/components/CitasPorResolver";
 import { DecisionDeudaDialog } from "@/components/DecisionDeudaDialog";
 import { AvisoDeudasHoy } from "@/components/DeudaCliente";
 import { ExpiredDepositsNotice } from "@/components/ExpiredDepositsNotice";
+import { agruparPagosPorCita, cobradoDeCita } from "@/lib/pagos";
 import { RecordatoriosSenal, useRecordatoriosSenal } from "@/components/RecordatoriosSenal";
 import { RecargosPendientes } from "@/components/RecargosPendientes";
 import { Button } from "@/components/ui/button";
@@ -110,12 +111,27 @@ export function HoyArena() {
     .filter((a) => a.status === "pending")
     .sort((a, b) => +new Date(a.start) - +new Date(b.start));
   const agenda = useMemo(() => agendaDeHoy(hoy, equipo, ahora), [hoy, equipo]); // eslint-disable-line react-hooks/exhaustive-deps
-  const dinero = useMemo(() => dineroDelRango(appointments, rangoDelDia(ahora), ahora), [appointments]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dineroCitas = useMemo(() => dineroDelRango(appointments, rangoDelDia(ahora), ahora), [appointments]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 14b: lo cobrado de verdad (pagos apuntados; si una cita no tiene pagos, su precio si está marcada cobrada).
+  const pagos = useSalonStore((s) => s.payments);
+  const cargarPagos = useSalonStore((s) => s.cargarPagos);
+  useEffect(() => {
+    const d = fechaLocal(new Date());
+    void cargarPagos(d, d);
+  }, [cargarPagos]);
+  const dinero = useMemo(() => {
+    const porCita = agruparPagosPorCita(pagos);
+    const cobrado = Math.round(hoy.reduce((t, a) => t + cobradoDeCita(a.id, porCita, a.paidAt ? a.priceEur : 0), 0) * 100) / 100;
+    // Lo que queda por cobrar no cuenta las propinas: son un extra, no parte del precio.
+    const sinPropina = agruparPagosPorCita(pagos.filter((p) => p.concepto !== "propina"));
+    const delPrecio = Math.round(hoy.reduce((t, a) => t + cobradoDeCita(a.id, sinPropina, a.paidAt ? a.priceEur : 0), 0) * 100) / 100;
+    return { ...dineroCitas, cobrado, delPrecio };
+  }, [pagos, hoy, dineroCitas]);
   const esDemo = useSalonStore((s) => !s.realSalonSlug);
   // Lo que vale el día (ni canceladas ni «no vino»): cobrado + lo que queda por
   // cobrar, sea futuro o ya pasado sin marcar. Así ninguna cita se pierde.
   const valorDelDia = hoy.filter(esCobrable).reduce((s, a) => s + a.priceEur, 0);
-  const porCobrar = Math.max(0, valorDelDia - dinero.cobrado);
+  const porCobrar = Math.max(0, valorDelDia - dinero.delPrecio);
 
   // Lo de las pestañas, contado para que la pestaña diga cuánto hay dentro.
   // Una solicitud sin confirmar se resuelve en «Solicitudes» (confirmar o rechazar), no en

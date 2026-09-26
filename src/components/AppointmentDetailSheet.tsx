@@ -1,3 +1,5 @@
+import { VentanaCobrar } from "@/components/VentanaCobrar";
+import { importeACobrar } from "@/lib/cobro-panel";
 import { avisar, marcarAvisoDeCita } from "@/lib/deshacer-maqueta";
 import { useEffect, useState } from "react";
 import { SenalCita } from "@/components/SenalCita";
@@ -115,6 +117,9 @@ export function AppointmentDetailSheet({
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const markClientConfirmed = useSalonStore((s) => s.markClientConfirmed);
   const markPaid = useSalonStore((s) => s.markPaid);
+  const [cobrarAbierta, setCobrarAbierta] = useState(false);
+  const pagos = useSalonStore((s) => s.payments);
+  const pagosCita = appointment ? pagos.filter((p) => p.appointmentId === appointment.id) : [];
   // Lote 11: cada bloque solo si el rol puede hacerlo sobre ESTA cita (la suya, si es estilista).
   const permisos = usePermisos();
   const mio = useMiEmployeeId();
@@ -463,32 +468,31 @@ export function AppointmentDetailSheet({
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Cobro
             </p>
-            <div className="grid grid-cols-3 gap-2">
-              {PAYMENT_METHODS.map((m) => {
-                const elegido = !!appointment.paidAt && appointment.paymentMethod === m;
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    aria-pressed={elegido}
-                    onClick={() => handlePago(m)}
-                    className={cn(
-                      "rounded-lg border px-3 py-2 text-sm transition-colors",
-                      elegido
-                        ? "border-success bg-success/10 font-medium text-success"
-                        : "border-border/60 text-muted-foreground hover:bg-muted/40",
-                    )}
-                  >
-                    {PAYMENT_METHOD_LABELS[m]}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {appointment.paidAt
-                ? `Cobrada el ${new Date(appointment.paidAt).toLocaleDateString("es", { day: "numeric", month: "short" })} · vuelve a pulsar para desmarcarla.`
-                : "Marca cómo se ha cobrado y entrará en el cierre del día. No se procesa ningún pago."}
-            </p>
+            {/* 14b: se cobra en la ventana «Cobrar» (importe real, forma de pago, propina). */}
+            {pagosCita.length > 0 && (
+              <ul className="space-y-1 rounded-xl border border-lino bg-superficie px-3 py-2 text-[13px] tabular-nums">
+                {pagosCita.map((p) => (
+                  <li key={p.id} className="flex justify-between gap-2">
+                    <span>{p.concepto === "senal" ? "Señal" : p.concepto === "propina" ? "Propina" : "Servicio"} · {PAYMENT_METHOD_LABELS[p.metodo].toLowerCase()}</span>
+                    <b>{p.importeEur.toLocaleString("es-ES", { maximumFractionDigits: 2 })} €</b>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {appointment.paidAt ? (
+              <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                Cobrada el {new Date(appointment.paidAt).toLocaleDateString("es", { day: "numeric", month: "short" })}
+                {appointment.paymentMethod ? ` en ${PAYMENT_METHOD_LABELS[appointment.paymentMethod].toLowerCase()}` : ""}.
+                <button type="button" className="font-bold text-hoja-tinta hover:underline" onClick={() => setCobrarAbierta(true)}>
+                  Añadir un pago
+                </button>
+              </p>
+            ) : (
+              <Button className="w-full rounded-full font-bold" onClick={() => setCobrarAbierta(true)}>
+                Cobrar {importeACobrar(appointment).toLocaleString("es-ES", { maximumFractionDigits: 2 })} €
+              </Button>
+            )}
+            <VentanaCobrar cita={appointment} abierta={cobrarAbierta} onCerrar={() => setCobrarAbierta(false)} />
           </div>}
 
           {(puedeEn("cita.marcar-asistencia") || puedeEn("cita.editar")) && <div className="space-y-1.5">
