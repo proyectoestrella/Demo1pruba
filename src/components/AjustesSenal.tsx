@@ -1,3 +1,4 @@
+import { plantillaSenalEfectiva } from "@/lib/senal-panel";
 import { guardarPerfil } from "@/lib/deshacer-maqueta";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -76,7 +77,8 @@ export function AjustesSenal() {
   }
 
   const regla = reglaSenal({ ...perfil, ...{ depositEnabled: f.depositEnabled, depositBizumPhone: f.depositBizumPhone, depositMode: f.depositMode, depositAmountEur: Number(f.depositAmountEur) || 10, depositPercent: Number(f.depositPercent) || 20, depositCancelHours: Number(f.depositCancelHours) || 24 } });
-  const faltan = marcadoresQueFaltan(f.depositTemplate);
+  // 14a: vacía = la de siempre, que ya lleva {importe} y {bizum}.
+  const faltan = marcadoresQueFaltan(plantillaSenalEfectiva(f.depositTemplate));
   const manana = new Date();
   manana.setDate(manana.getDate() + 1);
   manana.setHours(12, 0, 0, 0);
@@ -224,7 +226,7 @@ export function AjustesSenal() {
                 bizumPhone: f.depositBizumPhone || "600 111 222",
                 importeEur: regla.modo === "porcentaje" ? Math.max(1, Math.round((45 * regla.porcentaje) / 100)) : regla.importeFijoEur,
                 deadlineISO: vence.toISOString(),
-                plantilla: f.depositTemplate,
+                plantilla: plantillaSenalEfectiva(f.depositTemplate),
               })}
             </p>
           </div>
