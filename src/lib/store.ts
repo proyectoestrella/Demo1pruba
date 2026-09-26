@@ -1,3 +1,4 @@
+import { parcheCalendario, type PreferenciasCalendario } from "./preferencias-calendario";
 import { conservarIguales } from "./conservar-iguales";
 import { create } from "zustand";
 import { PERMISOS_DEMO, permisosDe, puede, type MiembroActual } from "./permisos";
@@ -949,7 +950,12 @@ export const useSalonStore = create<SalonState>()(
         sincronizarCarta();
       },
 
-      updateSalonProfile: (patch) => {
+      updateSalonProfile: (patchEntrada) => {
+        // Lote 15: `calendario` se fusiona con lo que había y se sanea (una
+        // pantalla que mande solo `{ desde }` no borra la vista ni el primer día).
+        const patch = patchEntrada.calendario
+          ? { ...patchEntrada, ...parcheCalendario(get().salonProfile.calendario, patchEntrada.calendario as Partial<PreferenciasCalendario>) }
+          : patchEntrada;
         set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } }));
         const perfil = get().salonProfile;
         setEmployeesForType(

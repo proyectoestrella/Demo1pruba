@@ -33,18 +33,40 @@ export const PRIMEROS_DIAS: { id: PrimerDia; label: string }[] = [
 
 export const PREFERENCIAS_POR_DEFECTO: PreferenciasCalendario = { vista: "semana", primerDia: 1, desde: 8, hasta: 21 };
 
-/** Completa y sanea lo guardado: horas enteras entre 0 y 24, y al menos dos horas visibles. */
-export function preferenciasDe(guardadas: SalonProfile["calendario"] | undefined): PreferenciasCalendario {
-  const p = { ...PREFERENCIAS_POR_DEFECTO, ...(guardadas ?? {}) };
-  const vista = VISTAS_CALENDARIO.some((v) => v.id === p.vista) ? p.vista : PREFERENCIAS_POR_DEFECTO.vista;
-  const primerDia = PRIMEROS_DIAS.some((d) => d.id === p.primerDia) ? p.primerDia : 1;
-  let desde = Math.min(22, Math.max(0, Math.round(Number(p.desde))));
-  let hasta = Math.min(24, Math.max(2, Math.round(Number(p.hasta))));
-  if (!Number.isFinite(desde)) desde = PREFERENCIAS_POR_DEFECTO.desde;
-  if (!Number.isFinite(hasta)) hasta = PREFERENCIAS_POR_DEFECTO.hasta;
+/**
+ * Completa y sanea lo guardado: horas enteras entre 0 y 24, `hasta` > `desde`
+ * con al menos dos horas visibles. Un valor ausente, `null`, vacío o que no
+ * sea número vale el de por defecto (lote 15: antes `null` se leía como las
+ * 00:00 porque `Number(null) === 0`). Solo es PREFERENCIA DE VISTA: ningún
+ * helper recorta citas ni huecos por estas horas.
+ */
+export function preferenciasDe(guardadas: SalonProfile["calendario"] | null | undefined): PreferenciasCalendario {
+  const g = (guardadas && typeof guardadas === "object" ? guardadas : {}) as Record<string, unknown>;
+  const hora = (v: unknown, def: number) => {
+    if (v === null || v === undefined || (typeof v === "string" && v.trim() === "")) return def;
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) ? n : def;
+  };
+  const vista = VISTAS_CALENDARIO.some((v) => v.id === g.vista) ? (g.vista as VistaCalendario) : PREFERENCIAS_POR_DEFECTO.vista;
+  const pd = Number(g.primerDia);
+  const primerDia = g.primerDia !== null && g.primerDia !== "" && PRIMEROS_DIAS.some((d) => d.id === pd) ? (pd as PrimerDia) : PREFERENCIAS_POR_DEFECTO.primerDia;
+  let desde = Math.min(22, Math.max(0, hora(g.desde, PREFERENCIAS_POR_DEFECTO.desde)));
+  let hasta = Math.min(24, Math.max(2, hora(g.hasta, PREFERENCIAS_POR_DEFECTO.hasta)));
   if (hasta - desde < 2) hasta = Math.min(24, desde + 2);
   if (hasta - desde < 2) desde = hasta - 2;
   return { vista, primerDia, desde, hasta };
+}
+
+/**
+ * Parche de perfil para cambiar UNA preferencia sin perder las demás: el
+ * servidor fusiona el perfil a un nivel (`fusionarPerfil`), así que
+ * `calendario` viaja siempre completo y saneado.
+ */
+export function parcheCalendario(
+  actual: SalonProfile["calendario"] | null | undefined,
+  cambio: Partial<PreferenciasCalendario> | null | undefined,
+): { calendario: PreferenciasCalendario } {
+  return { calendario: preferenciasDe({ ...preferenciasDe(actual), ...(cambio ?? {}) } as SalonProfile["calendario"]) };
 }
 
 /** Primer día de la semana que contiene `d`, según la preferencia. */
