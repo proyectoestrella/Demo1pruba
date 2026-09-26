@@ -28,6 +28,7 @@ import { Route as AppEmployeesRouteImport } from './routes/app.employees'
 import { Route as AppDemosRouteImport } from './routes/app.demos'
 import { Route as AppClientsRouteImport } from './routes/app.clients'
 import { Route as AppCalendarRouteImport } from './routes/app.calendar'
+import { Route as AppCajaRouteImport } from './routes/app.caja'
 import { Route as AppAppointmentsRouteImport } from './routes/app.appointments'
 import { Route as ApiSenalesVencidasRouteImport } from './routes/api.senales-vencidas'
 import { Route as ApiRecordatoriosRouteImport } from './routes/api.recordatorios'
@@ -137,6 +138,11 @@ const AppCalendarRoute = AppCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCajaRoute = AppCajaRouteImport.update({
+  id: '/caja',
+  path: '/caja',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
   id: '/appointments',
   path: '/appointments',
@@ -218,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/api/recordatorios': typeof ApiRecordatoriosRoute
   '/api/senales-vencidas': typeof ApiSenalesVencidasRoute
   '/app/appointments': typeof AppAppointmentsRoute
+  '/app/caja': typeof AppCajaRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/clients': typeof AppClientsRoute
   '/app/demos': typeof AppDemosRoute
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/api/recordatorios': typeof ApiRecordatoriosRoute
   '/api/senales-vencidas': typeof ApiSenalesVencidasRoute
   '/app/appointments': typeof AppAppointmentsRoute
+  '/app/caja': typeof AppCajaRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/clients': typeof AppClientsRoute
   '/app/demos': typeof AppDemosRoute
@@ -285,6 +293,7 @@ export interface FileRoutesById {
   '/api/recordatorios': typeof ApiRecordatoriosRoute
   '/api/senales-vencidas': typeof ApiSenalesVencidasRoute
   '/app/appointments': typeof AppAppointmentsRoute
+  '/app/caja': typeof AppCajaRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/clients': typeof AppClientsRoute
   '/app/demos': typeof AppDemosRoute
@@ -321,6 +330,7 @@ export interface FileRouteTypes {
     | '/api/recordatorios'
     | '/api/senales-vencidas'
     | '/app/appointments'
+    | '/app/caja'
     | '/app/calendar'
     | '/app/clients'
     | '/app/demos'
@@ -354,6 +364,7 @@ export interface FileRouteTypes {
     | '/api/recordatorios'
     | '/api/senales-vencidas'
     | '/app/appointments'
+    | '/app/caja'
     | '/app/calendar'
     | '/app/clients'
     | '/app/demos'
@@ -387,6 +398,7 @@ export interface FileRouteTypes {
     | '/api/recordatorios'
     | '/api/senales-vencidas'
     | '/app/appointments'
+    | '/app/caja'
     | '/app/calendar'
     | '/app/clients'
     | '/app/demos'
@@ -562,6 +574,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCalendarRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/caja': {
+      id: '/app/caja'
+      path: '/caja'
+      fullPath: '/app/caja'
+      preLoaderRoute: typeof AppCajaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/appointments': {
       id: '/app/appointments'
       path: '/appointments'
@@ -658,6 +677,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAppointmentsRoute: typeof AppAppointmentsRoute
+  AppCajaRoute: typeof AppCajaRoute
   AppCalendarRoute: typeof AppCalendarRoute
   AppClientsRoute: typeof AppClientsRoute
   AppDemosRoute: typeof AppDemosRoute
@@ -674,6 +694,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAppointmentsRoute: AppAppointmentsRoute,
+  AppCajaRoute: AppCajaRoute,
   AppCalendarRoute: AppCalendarRoute,
   AppClientsRoute: AppClientsRoute,
   AppDemosRoute: AppDemosRoute,

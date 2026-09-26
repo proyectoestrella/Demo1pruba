@@ -426,6 +426,7 @@ const PAGINA_DE_RUTA: Array<[RegExp, PaginaId]> = [
   [/^\/app\/settings/, "ajustes"],
   [/^\/app\/insights/, "analitica"],
   [/^\/app\/marketing/, "marketing"],
+  [/^\/app\/caja/, "caja"],
   [/^\/app\/demos/, "demos"],
 ];
 

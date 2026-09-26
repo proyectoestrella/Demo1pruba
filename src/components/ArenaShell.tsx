@@ -20,6 +20,7 @@ import {
   Sparkles,
   Users,
   UsersRound,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -78,6 +79,7 @@ export const GRUPOS_NAV: { label: string | null; items: NavItem[] }[] = [
     items: [
       { to: "/app/employees", label: "Equipo", icon: UsersRound, modulo: "equipo" },
       { to: "/app/services", label: "Servicios y precios", icon: Scissors },
+      { to: "/app/caja", label: "Caja del día", icon: Wallet },
       { to: "/app/web", label: "Mi página de reservas", icon: Globe },
       { to: "/app/settings", label: "Ajustes", icon: Settings },
     ],

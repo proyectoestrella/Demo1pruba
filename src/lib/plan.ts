@@ -30,7 +30,9 @@ export type FuncionPlan =
   | "analitica-avanzada"
   | "exportar"
   | "senal-liberacion-automatica"
-  | "importacion-mensual";
+  | "importacion-mensual"
+  | "caja-exportar"
+  | "caja-cierre";
 
 export const FUNCIONES_POR_PLAN: Record<FuncionPlan, PlanSishow> = {
   asistente: "reservas-asistente",
@@ -41,6 +43,9 @@ export const FUNCIONES_POR_PLAN: Record<FuncionPlan, PlanSishow> = {
   exportar: "todo-incluido",
   "senal-liberacion-automatica": "todo-incluido",
   "importacion-mensual": "todo-incluido",
+  // 14b: cobrar cada cita va en todos los planes; exportar y guardar el cierre, en Todo incluido.
+  "caja-exportar": "todo-incluido",
+  "caja-cierre": "todo-incluido",
 };
 
 /** Qué es cada función, para la tarjeta «llega con el plan…». */
@@ -53,6 +58,8 @@ export const QUE_ES: Record<FuncionPlan, { titulo: string; texto: string; plural
   exportar: { titulo: "Exportar a Excel", texto: "Tus citas y tu analítica en un fichero para tu gestoría o para lo que quieras." },
   "senal-liberacion-automatica": { titulo: "La señal que se libera sola", texto: "Si no llega la señal a tiempo, el hueco se libera sin que tengas que estar pendiente." },
   "importacion-mensual": { titulo: "Importación mensual", texto: "Traemos cada mes tus clientas de TPV 123 para que siShow esté al día." },
+  "caja-exportar": { titulo: "Exportar para la gestoría", texto: "Todos los cobros del periodo que elijas en un fichero listo para tu gestoría: fecha, concepto, forma de pago, importe y quién cobró." },
+  "caja-cierre": { titulo: "El cierre de caja guardado", texto: "Cuenta el efectivo al cerrar, siShow calcula el descuadre y guarda cada cierre para que puedas revisarlo después." },
 };
 
 const RANGO: Record<PlanSishow, number> = { reservas: 0, "reservas-asistente": 1, "todo-incluido": 2 };
