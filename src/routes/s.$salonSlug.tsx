@@ -4,6 +4,8 @@ import { useSalonStore } from "@/lib/store";
 import { useRealSalon, useRealSalonSlug } from "@/lib/use-real-salon";
 import { useDisplayProfile } from "@/lib/use-display-profile";
 import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "@/lib/demo-profile";
+import { demoPorSlug } from "@/lib/demos";
+import { useDemoRegistrada } from "@/lib/demos/aplicar";
 import { weekSchedule } from "@/lib/opening-hours";
 import { useBusinessType } from "@/lib/use-display-profile";
 import { BUSINESS_LABEL, inferBusinessType, professionalWord } from "@/lib/business-type";
@@ -32,7 +34,8 @@ export const Route = createFileRoute("/s/$salonSlug")({
     // título neutro es honesto sobre lo que se sabe en este punto; el
     // `useEffect` de más abajo lo corrige en cuanto llega el dato real.
     const raw = (match.search as Record<string, unknown> | undefined)?.[DEMO_PARAM];
-    const fromUrl = decodeDemoProfile(typeof raw === "string" ? raw : undefined);
+    // Sin `?d=`, la demo registrada con este slug (lib/demos), si la hay.
+    const fromUrl = decodeDemoProfile(typeof raw === "string" ? raw : undefined) ?? demoPorSlug(match.params.salonSlug);
     const name = fromUrl?.name?.trim();
     const description = name
       ? `${BUSINESS_LABEL[inferBusinessType(fromUrl?.tagline, fromUrl?.name)]} · Reserva tu cita en ${name} en segundos, sin llamar.`
@@ -180,6 +183,8 @@ function SalonLayout() {
   // no, esto no hace nada más y la página se comporta igual que siempre.
   useRealSalon(salonSlug, "publica");
   const realSlug = useRealSalonSlug();
+  // Lote P: sin `?d=`, un slug con demo registrada (`/s/peluchic`) tiene salón.
+  const hayDemoRegistrada = useDemoRegistrada(salonSlug, Boolean(demoRaw));
 
   // Auditoría C2, segunda mitad: ni el enlace ni sessionStorage traen una
   // demo, Y este slug tampoco se ha resuelto como salón real. En vez de
@@ -197,7 +202,7 @@ function SalonLayout() {
     const t = setTimeout(() => setGraceOver(true), 1500);
     return () => clearTimeout(t);
   }, [salonSlug]);
-  const salonUnresolved = sessionChecked && graceOver && !fromUrl && realSlug !== salonSlug;
+  const salonUnresolved = sessionChecked && graceOver && !fromUrl && !hayDemoRegistrada && realSlug !== salonSlug;
 
   useEffect(() => {
     document.title = salonUnresolved ? "Salón no encontrado" : `${profile.name} — Reserva por internet`;

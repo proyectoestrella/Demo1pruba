@@ -26,6 +26,13 @@ export interface Service {
   active?: boolean;
   /** Grupo del menú público ("Cortes", "Color"…). Ver lib/business-type.ts. */
   category?: string;
+  /**
+   * El precio tal y como lo publica el salón cuando no es un importe único
+   * («24 € / 28 € / 31 €», «desde 150 € (sin IVA)»). `priceEur` guarda el más
+   * bajo, que es con el que se reserva y se suma. Sale de
+   * `SalonProfile.preciosLiterales`; ausente = el precio es `priceEur` y ya.
+   */
+  priceText?: string;
 }
 
 export interface Employee {
@@ -323,6 +330,12 @@ export interface SalonProfile {
   galeriaPropia?: { url: string; alt: string }[];
   /** Texto corto de cada servicio de la carta, por id de servicio (lo que el salón cuenta en su web). */
   descripcionesServicios?: Record<string, string>;
+  /**
+   * Precio literal de los servicios que no tienen un importe único, por id de
+   * servicio («43,50 € / 47,50 €», «desde 150 € (sin IVA)»). La carta (`menu`)
+   * solo admite un número: ahí va el más bajo, y aquí lo que el salón dice.
+   */
+  preciosLiterales?: Record<string, string>;
   /** Textos de WhatsApp de la dueña (9h). Vacío o ausente: el texto de siempre. */
   plantillas?: { recordatorio?: string; confirmacion?: string };
   /** Color elegido por la dueña (9h): servicio → 1-6 de la paleta; profesional → 1-4. */

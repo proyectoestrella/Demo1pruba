@@ -563,7 +563,10 @@ const MENU_DURATION_MIN = 5;
 const MENU_DURATION_MAX = 240;
 const TEAM_NAME_MAX = 60;
 const TEAM_SPECIALTY_MAX = 80;
-const MENU_NAME_MAX = 60;
+// 80 y no 60: hay cartas reales con nombres largos («Linfting pestañas +tinte de
+// pestañas +laminado de cejas+tinte de cejas», PeluChic) y cortarlos en
+// silencio cambia lo que el salón vende.
+const MENU_NAME_MAX = 80;
 const MENU_CATEGORY_MAX = 40;
 
 export interface TeamOverrideEntry {
