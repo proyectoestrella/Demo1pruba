@@ -1,8 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import {
+  claveHojaCalendarioMovil,
   construirEnlaceGoogleCalendar,
   construirIcs,
   construirIcsDataUri,
+  debeMostrarHojaCalendarioMovil,
+  diaBaldosaCalendario,
   esDispositivoApple,
   type DatosCita,
 } from "@/lib/calendario";
@@ -128,6 +131,62 @@ describe("esDispositivoApple", () => {
   it("no detecta escritorio", () => {
     expect(
       esDispositivoApple("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"),
+    ).toBe(false);
+  });
+});
+
+describe("diaBaldosaCalendario", () => {
+  it("da el día de la semana abreviado y el número de día correctos", () => {
+    expect(diaBaldosaCalendario("2026-09-25")).toEqual({ diaSemana: "VIE", diaMes: 25 });
+    expect(diaBaldosaCalendario("2026-01-15")).toEqual({ diaSemana: "JUE", diaMes: 15 });
+  });
+
+  it("no depende de la zona horaria del proceso (domingo, día 1 dígito)", () => {
+    expect(diaBaldosaCalendario("2026-01-04")).toEqual({ diaSemana: "DOM", diaMes: 4 });
+  });
+
+  it("acierta al cruzar fin de año", () => {
+    expect(diaBaldosaCalendario("2026-12-31")).toEqual({ diaSemana: "JUE", diaMes: 31 });
+  });
+});
+
+describe("claveHojaCalendarioMovil", () => {
+  const base = { service: "corte", employeeId: "mario", date: "2026-09-25", time: "10:00", name: "Ana" };
+
+  it("es determinista para los mismos datos", () => {
+    expect(claveHojaCalendarioMovil(base)).toBe(claveHojaCalendarioMovil({ ...base }));
+  });
+
+  it("cambia si cambia cualquier dato de la cita", () => {
+    const clave = claveHojaCalendarioMovil(base);
+    expect(claveHojaCalendarioMovil({ ...base, date: "2026-09-26" })).not.toBe(clave);
+    expect(claveHojaCalendarioMovil({ ...base, time: "11:00" })).not.toBe(clave);
+    expect(claveHojaCalendarioMovil({ ...base, employeeId: "sara" })).not.toBe(clave);
+  });
+});
+
+describe("debeMostrarHojaCalendarioMovil", () => {
+  it("solo se muestra en móvil estrecho, con datos de cita y sin cerrar antes", () => {
+    expect(
+      debeMostrarHojaCalendarioMovil({ esMovilAngosto: true, hayDatosCita: true, yaCerrada: false }),
+    ).toBe(true);
+  });
+
+  it("no se muestra en escritorio aunque haya datos y no se haya cerrado", () => {
+    expect(
+      debeMostrarHojaCalendarioMovil({ esMovilAngosto: false, hayDatosCita: true, yaCerrada: false }),
+    ).toBe(false);
+  });
+
+  it("no se muestra sin datos de cita", () => {
+    expect(
+      debeMostrarHojaCalendarioMovil({ esMovilAngosto: true, hayDatosCita: false, yaCerrada: false }),
+    ).toBe(false);
+  });
+
+  it("no vuelve a mostrarse si ya se cerró para esa cita", () => {
+    expect(
+      debeMostrarHojaCalendarioMovil({ esMovilAngosto: true, hayDatosCita: true, yaCerrada: true }),
     ).toBe(false);
   });
 });
