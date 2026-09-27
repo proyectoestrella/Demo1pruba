@@ -1,11 +1,18 @@
 import { describe, expect, it } from "bun:test";
+import { readdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   DOMINIO_POR_DEFECTO,
   SUBDOMINIOS_RESERVADOS,
+  SUBRUTAS_SALON,
   dominioRaiz,
   normalizarHostname,
   redireccionWww,
+  reescrituraPorDominio,
   resolverHost,
+  rutaInternaDeSalon,
+  rutaPublicaDeSalon,
   slugAdmiteSubdominio,
   subdominioDeSalon,
 } from "./host";
@@ -148,6 +155,134 @@ describe("redireccionWww", () => {
       "https://www.peluchic.sishow.es/",
     ]) {
       expect(redireccionWww(new URL(u), "sishow.es")).toBeNull();
+    }
+  });
+});
+
+describe("rutaInternaDeSalon (subdominio → router)", () => {
+  it("la raíz es la portada del salón", () => {
+    expect(rutaInternaDeSalon("/", "peluchic")).toBe("/s/peluchic");
+    expect(rutaInternaDeSalon("", "peluchic")).toBe("/s/peluchic");
+  });
+
+  it("las subrutas del salón cuelgan de la raíz", () => {
+    expect(rutaInternaDeSalon("/book", "peluchic")).toBe("/s/peluchic/book");
+    expect(rutaInternaDeSalon("/book/", "peluchic")).toBe("/s/peluchic/book/");
+    expect(rutaInternaDeSalon("/confirmation", "peluchic")).toBe("/s/peluchic/confirmation");
+    expect(rutaInternaDeSalon("/dosier", "peluchic")).toBe("/s/peluchic/dosier");
+    expect(rutaInternaDeSalon("/privacidad", "peluchic")).toBe("/s/peluchic/privacidad");
+  });
+
+  it("nunca reescribe el panel, la API, los ficheros ni las rutas internas", () => {
+    for (const p of [
+      "/app",
+      "/app/calendar",
+      "/api/recordatorios",
+      "/api/calendario-externo/google/callback",
+      "/aceptar",
+      "/demo",
+      "/demo/peluchic-logo.png",
+      "/assets/index-abc.js",
+      "/_serverFn/abc",
+      "/_build/x.js",
+      "/login",
+      "/dashboard",
+      "/rutero",
+      "/manifest.webmanifest",
+      "/favicon.ico",
+      "/robots.txt",
+      "/s/peluchic",
+      "/s/peluchic/book",
+      "/s/otro-salon",
+      "/booking",
+      "/bookings/1",
+    ]) {
+      expect(rutaInternaDeSalon(p, "peluchic")).toBeNull();
+    }
+  });
+});
+
+describe("rutaPublicaDeSalon (router → enlace en el subdominio)", () => {
+  it("quita el prefijo del propio salón", () => {
+    expect(rutaPublicaDeSalon("/s/peluchic", "peluchic")).toBe("/");
+    expect(rutaPublicaDeSalon("/s/peluchic/", "peluchic")).toBe("/");
+    expect(rutaPublicaDeSalon("/s/peluchic/book", "peluchic")).toBe("/book");
+    expect(rutaPublicaDeSalon("/s/peluchic/confirmation", "peluchic")).toBe("/confirmation");
+    expect(rutaPublicaDeSalon("/s/peluchic/privacidad", "peluchic")).toBe("/privacidad");
+  });
+
+  it("deja como están otro salón, prefijos parecidos, subrutas desconocidas y el resto", () => {
+    expect(rutaPublicaDeSalon("/s/otro", "peluchic")).toBeNull();
+    expect(rutaPublicaDeSalon("/s/peluchic-2/book", "peluchic")).toBeNull();
+    expect(rutaPublicaDeSalon("/s/peluchic/galeria", "peluchic")).toBeNull();
+    expect(rutaPublicaDeSalon("/app", "peluchic")).toBeNull();
+    expect(rutaPublicaDeSalon("/login", "peluchic")).toBeNull();
+    expect(rutaPublicaDeSalon("/", "peluchic")).toBeNull();
+  });
+
+  it("ida y vuelta: lo público vuelve a sí mismo", () => {
+    for (const p of ["/", "/book", "/confirmation", "/dosier", "/privacidad"]) {
+      const interna = rutaInternaDeSalon(p, "peluchic");
+      expect(interna).not.toBeNull();
+      expect(rutaPublicaDeSalon(interna as string, "peluchic")).toBe(p);
+    }
+  });
+});
+
+describe("SUBRUTAS_SALON y los ficheros de rutas", () => {
+  const dirRutas = join(dirname(fileURLToPath(import.meta.url)), "..", "routes");
+  const ficheros = readdirSync(dirRutas);
+
+  it("coincide con src/routes/s.$salonSlug.<subruta>.tsx", () => {
+    const subrutas = ficheros
+      .map((f) => /^s\.\$salonSlug\.([a-z0-9-]+)\.tsx$/.exec(f)?.[1])
+      .filter((x): x is string => !!x && x !== "index");
+    expect([...subrutas].sort()).toEqual([...SUBRUTAS_SALON].sort());
+  });
+
+  it("ninguna subruta choca con una ruta de primer nivel", () => {
+    const primerNivel = new Set(
+      ficheros
+        .filter((f) => !f.startsWith("s.") && !f.startsWith("__") && /\.tsx?$/.test(f))
+        .map((f) => f.split(".")[0]),
+    );
+    for (const sub of SUBRUTAS_SALON) expect(primerNivel.has(sub)).toBe(false);
+  });
+});
+
+describe("reescrituraPorDominio (par rewrite del router)", () => {
+  const rw = reescrituraPorDominio("sishow.es");
+  const entrada = (u: string) => rw.input({ url: new URL(u) })?.href ?? null;
+  const salida = (u: string) => rw.output({ url: new URL(u) })?.href ?? null;
+
+  it("en el subdominio de un salón traduce en los dos sentidos y conserva ?d= y el ancla", () => {
+    expect(entrada("https://peluchic.sishow.es/?d=abc#carta")).toBe("https://peluchic.sishow.es/s/peluchic?d=abc#carta");
+    expect(entrada("https://peluchic.sishow.es/book?d=abc&service=tinte")).toBe(
+      "https://peluchic.sishow.es/s/peluchic/book?d=abc&service=tinte",
+    );
+    expect(salida("https://peluchic.sishow.es/s/peluchic/book?d=abc")).toBe("https://peluchic.sishow.es/book?d=abc");
+    expect(salida("https://peluchic.sishow.es/s/peluchic?d=abc")).toBe("https://peluchic.sishow.es/?d=abc");
+    expect(entrada("http://peluchic.localhost:8083/book")).toBe("http://peluchic.localhost:8083/s/peluchic/book");
+  });
+
+  it("en el subdominio no toca /app, /api ni /_serverFn", () => {
+    expect(entrada("https://peluchic.sishow.es/app")).toBeNull();
+    expect(entrada("https://peluchic.sishow.es/api/recordatorios")).toBeNull();
+    expect(entrada("https://peluchic.sishow.es/_serverFn/x")).toBeNull();
+    expect(salida("https://peluchic.sishow.es/app/calendar")).toBeNull();
+  });
+
+  it("en sishow.es, www, vercel.app y localhost no hace nada", () => {
+    for (const u of [
+      "https://sishow.es/",
+      "https://sishow.es/s/peluchic/book",
+      "https://www.sishow.es/s/peluchic",
+      "https://prueba28juliokt.vercel.app/s/peluchic?d=abc",
+      "http://localhost:8083/s/peluchic",
+      "https://api.sishow.es/",
+    ]) {
+      expect(entrada(u)).toBeNull();
+      expect(salida(u)).toBeNull();
     }
   });
 });

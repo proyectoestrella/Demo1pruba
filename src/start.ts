@@ -2,6 +2,7 @@ import { createStart, createMiddleware } from "@tanstack/react-start";
 
 import { renderErrorPage } from "./lib/error-page";
 import { vigilarEntrada } from "./lib/api/errores-serverfn";
+import { redireccionWww } from "./lib/host";
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
@@ -33,6 +34,18 @@ const entradaMiddleware = createMiddleware().server(async ({ request, next }) =>
   return ctx ?? next();
 });
 
+/**
+ * Lote 17: `www.sishow.es/<ruta>` → 308 a `https://sishow.es/<ruta>` (misma
+ * ruta y búsqueda). El resto de hosts pasa sin tocar. Ver docs/dominios-sishow.md.
+ */
+const wwwMiddleware = createMiddleware().server(async ({ request, next }) => {
+  const destino = redireccionWww(new URL(request.url));
+  if (destino) {
+    return new Response(null, { status: 308, headers: { location: destino } });
+  }
+  return next();
+});
+
 export const startInstance = createStart(() => ({
-  requestMiddleware: [errorMiddleware, entradaMiddleware],
+  requestMiddleware: [errorMiddleware, wwwMiddleware, entradaMiddleware],
 }));

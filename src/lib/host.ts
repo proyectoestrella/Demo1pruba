@@ -146,3 +146,77 @@ export function redireccionWww(url: URL, dominio: string = dominioRaiz()): strin
   if (normalizarHostname(url.hostname) !== `www.${raiz}`) return null;
   return `https://${raiz}${url.pathname}${url.search}${url.hash}`;
 }
+
+/**
+ * Subrutas de la web de un salón que en su subdominio cuelgan de la raíz:
+ * `peluchic.sishow.es/book` ≡ `/s/peluchic/book`. Es una LISTA BLANCA: lo que
+ * no esté aquí (`/app`, `/api`, `/aceptar`, `/login`, `/assets`, `/_serverFn`…)
+ * no se reescribe nunca. Tiene que coincidir con los ficheros
+ * `src/routes/s.$salonSlug.<subruta>.tsx` (lo comprueba host.test.ts). Si se
+ * añade una subruta y no se apunta aquí, no se rompe nada: sus enlaces
+ * seguirán saliendo como `/s/<slug>/<subruta>`, que también funciona en el
+ * subdominio.
+ */
+export const SUBRUTAS_SALON: readonly string[] = ["book", "confirmation", "dosier", "privacidad"];
+
+function primerSegmento(pathname: string): string {
+  const resto = pathname.startsWith("/") ? pathname.slice(1) : pathname;
+  const fin = resto.indexOf("/");
+  return fin === -1 ? resto : resto.slice(0, fin);
+}
+
+/**
+ * Ruta pública del subdominio → ruta interna del router, o `null` si no se
+ * toca. `/` → `/s/<slug>`, `/book` → `/s/<slug>/book`. `/s/...` se deja como
+ * está (los enlaces viejos siguen funcionando en el subdominio).
+ */
+export function rutaInternaDeSalon(pathname: string, slug: string): string | null {
+  if (pathname === "" || pathname === "/") return `/s/${slug}`;
+  if (SUBRUTAS_SALON.includes(primerSegmento(pathname))) return `/s/${slug}${pathname}`;
+  return null;
+}
+
+/**
+ * Ruta interna → ruta pública en el subdominio de ESE salón, o `null` si no
+ * se toca. `/s/<slug>` → `/`, `/s/<slug>/book` → `/book`. Las rutas de otro
+ * salón o de fuera de la lista blanca salen como están.
+ */
+export function rutaPublicaDeSalon(pathname: string, slug: string): string | null {
+  const base = `/s/${slug}`;
+  if (pathname === base || pathname === `${base}/`) return "/";
+  if (!pathname.startsWith(`${base}/`)) return null;
+  const resto = pathname.slice(base.length);
+  if (!SUBRUTAS_SALON.includes(primerSegmento(resto))) return null;
+  return resto;
+}
+
+/**
+ * Par `rewrite` para `createRouter`: en el subdominio de un salón traduce la
+ * URL pública a la interna al entrar (SSR y cliente) y la interna a la
+ * pública al construir enlaces y redirecciones. En cualquier otro host no
+ * toca nada (devuelve `undefined`).
+ */
+export function reescrituraPorDominio(dominio?: string) {
+  const salonDe = (url: URL): string | null => {
+    const h = resolverHost(url.hostname, dominio ?? dominioRaiz());
+    return h.tipo === "salon" ? h.slug : null;
+  };
+  return {
+    input: ({ url }: { url: URL }): URL | undefined => {
+      const slug = salonDe(url);
+      if (!slug) return undefined;
+      const interna = rutaInternaDeSalon(url.pathname, slug);
+      if (interna === null) return undefined;
+      url.pathname = interna;
+      return url;
+    },
+    output: ({ url }: { url: URL }): URL | undefined => {
+      const slug = salonDe(url);
+      if (!slug) return undefined;
+      const publica = rutaPublicaDeSalon(url.pathname, slug);
+      if (publica === null) return undefined;
+      url.pathname = publica;
+      return url;
+    },
+  };
+}
