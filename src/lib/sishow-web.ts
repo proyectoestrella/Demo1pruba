@@ -31,8 +31,23 @@ export function enlaceWhatsapp(numero: string = WHATSAPP_SISHOW): string | null 
   return `https://wa.me/${digitos}?text=${encodeURIComponent(MENSAJE_WHATSAPP)}`;
 }
 
-export function enlaceCorreo(asunto = "Quiero ver siShow para mi salón"): string {
-  return `mailto:${CORREO_SISHOW}?subject=${encodeURIComponent(asunto)}`;
+export function enlaceCorreo(asunto = "Quiero ver siShow para mi salón", cuerpo?: string): string {
+  const base = `mailto:${CORREO_SISHOW}?subject=${encodeURIComponent(asunto)}`;
+  return cuerpo ? `${base}&body=${encodeURIComponent(cuerpo)}` : base;
+}
+
+/** Lo que nos ayuda saber para enseñarle siShow con su salón. */
+export const DATOS_PARA_LA_DEMO = [
+  "Nombre del salón y ciudad",
+  "Cuántas sois y qué servicios hacéis",
+  "Cómo lleváis hoy la agenda: libreta, WhatsApp u otro programa",
+  "Si pedís señal o querríais pedirla",
+];
+
+/** Correo con esas preguntas ya escritas, para contestarlas debajo. */
+export function enlaceCorreoConDatos(): string {
+  const cuerpo = `Hola:\n\nMe gustaría ver siShow con mi salón.\n\n${DATOS_PARA_LA_DEMO.map((d) => `- ${d}: `).join("\n")}\n\nGracias.`;
+  return enlaceCorreo("Quiero ver siShow para mi salón", cuerpo);
 }
 
 /** Perfil de la demo de PeluChic (el mismo `?d=` que se enseña a María). */
@@ -214,3 +229,197 @@ export const RESUMEN_PLANES: Record<PlanSishow, { para: string; puntos: string[]
     puntos: ["Todo lo de Reservas + Asistente", "Más tipos de acceso e historial completo", "Campañas, analítica completa y Excel", "Tu propio dominio y soporte prioritario"],
   },
 };
+
+/* -------------------------------------------------------------------------
+ * Precios: detalle de cada plan, comparativa y «a tu medida»
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Si los precios publicados llevan IVA. PENDIENTE (Tomás): la LSSI (art. 10)
+ * pide decir si los precios incluyen los impuestos. `null` = sin decidir: la
+ * página de precios enseña el aviso de pendiente en vez de inventarlo.
+ */
+export const PRECIOS_CON_IVA: boolean | null = null;
+
+export function notaImpuestos(conIva: boolean | null = PRECIOS_CON_IVA): string | null {
+  if (conIva === null) return null;
+  return conIva ? "Precios con IVA incluido." : "Precios sin IVA: se añade el IVA que corresponda.";
+}
+
+/** Lo que trae cada plan, en la tarjeta de /precios. */
+export const DETALLE_PLANES: Record<PlanSishow, { para: string; puntos: string[] }> = {
+  reservas: {
+    para: "Para recibir reservas por internet y ordenar la agenda del salón.",
+    puntos: [
+      "Web de reservas en tusalon.sishow.es",
+      "Agenda del equipo y la pantalla Hoy",
+      "Fichas con el color y el historial de cada clienta",
+      "Caja del día y señal por Bizum",
+      "Recordatorio por correo automático y por WhatsApp con un toque",
+      "Lista de espera y hoja del día",
+      "Accesos de gerente y estilista",
+      "Deshacer lo de las últimas 24 horas",
+      "Enlace para pedir reseñas en Google",
+    ],
+  },
+  "reservas-asistente": {
+    para: "Lo mismo, y un asistente que te responde con tus datos.",
+    puntos: [
+      "Todo lo de Reservas",
+      "El asistente, sin inteligencia artificial",
+      "Historial de ventas de TPV 123 en cada ficha",
+      "Lo que gasta cada clienta",
+    ],
+  },
+  "todo-incluido": {
+    para: "Para el salón que lo quiere todo y que se lo llevemos al día.",
+    puntos: [
+      "Todo lo de Reservas + Asistente",
+      "Subencargada y recepción, cada una con lo suyo",
+      "Historial de 90 días y versiones de tu web",
+      "Campañas: las que no vuelven, horas flojas y segunda visita",
+      "Analítica completa y exportar a Excel",
+      "Cierre de caja guardado y fichero para tu gestoría",
+      "La señal que libera el hueco sola",
+      "Importación mensual de TPV 123",
+      "Tu propio dominio (tusalon.es)",
+      "Informe y sesión de ajuste cada mes",
+      "Soporte prioritario",
+    ],
+  },
+};
+
+/** Celda de la comparativa: incluido, no incluido o un texto corto. */
+export type CeldaPlan = boolean | string;
+
+export interface GrupoComparativa {
+  grupo: string;
+  filas: { funcion: string; planes: Record<PlanSishow, CeldaPlan> }[];
+}
+
+const todos = (v: CeldaPlan = true): Record<PlanSishow, CeldaPlan> => ({ reservas: v, "reservas-asistente": v, "todo-incluido": v });
+const soloTodo: Record<PlanSishow, CeldaPlan> = { reservas: false, "reservas-asistente": false, "todo-incluido": true };
+const desdeAsistente: Record<PlanSishow, CeldaPlan> = { reservas: false, "reservas-asistente": true, "todo-incluido": true };
+
+/**
+ * Comparativa de planes. Sale de la hoja de planes v2 (aprobada el 26-sep) y
+ * de `FUNCIONES_POR_PLAN` en `lib/plan.ts`: si cambia una, cambia la otra.
+ */
+export const COMPARATIVA: GrupoComparativa[] = [
+  {
+    grupo: "Reservas y agenda",
+    filas: [
+      { funcion: "Web de reservas en tusalon.sishow.es", planes: todos() },
+      { funcion: "Tu propio dominio (tusalon.es)", planes: soloTodo },
+      { funcion: "Agenda: día, 3 días, semana, mes y cronograma", planes: todos() },
+      { funcion: "Preguntas propias al reservar", planes: todos() },
+      { funcion: "Lista de espera y hoja del día", planes: todos() },
+      { funcion: "Recordatorio por correo automático y por WhatsApp con un toque", planes: todos() },
+      { funcion: "Google Calendar (en pruebas)", planes: todos() },
+    ],
+  },
+  {
+    grupo: "Clientas",
+    filas: [
+      { funcion: "Fichas con color, historial y avisos", planes: todos() },
+      { funcion: "Historial de ventas de TPV 123 y gasto por clienta", planes: desdeAsistente },
+      { funcion: "Importación mensual de TPV 123", planes: soloTodo },
+    ],
+  },
+  {
+    grupo: "Caja y señal",
+    filas: [
+      { funcion: "Cobros en efectivo, tarjeta y Bizum", planes: todos() },
+      { funcion: "Señal por Bizum con plazo", planes: todos() },
+      { funcion: "La señal libera el hueco sola si no llega", planes: soloTodo },
+      { funcion: "Cierre de caja guardado y fichero para la gestoría", planes: soloTodo },
+    ],
+  },
+  {
+    grupo: "Equipo",
+    filas: [
+      { funcion: "Accesos de gerente y estilista", planes: todos() },
+      { funcion: "Accesos de subencargada y recepción", planes: soloTodo },
+      { funcion: "Deshacer e historial de cambios", planes: { reservas: "24 horas", "reservas-asistente": "24 horas", "todo-incluido": "90 días" } },
+      { funcion: "Versiones de tu web para volver a una anterior", planes: soloTodo },
+    ],
+  },
+  {
+    grupo: "Asistente y crecimiento",
+    filas: [
+      { funcion: "El asistente, sin inteligencia artificial", planes: desdeAsistente },
+      { funcion: "Enlace para pedir reseñas en Google", planes: todos() },
+      { funcion: "Campañas para recuperar clientas y llenar horas flojas", planes: soloTodo },
+      { funcion: "Analítica del mes", planes: todos() },
+      { funcion: "Analítica completa y exportar a Excel", planes: soloTodo },
+    ],
+  },
+  {
+    grupo: "Acompañamiento",
+    filas: [
+      { funcion: "Puesta en marcha en una semana", planes: todos() },
+      { funcion: "Acompañamiento por WhatsApp las dos primeras semanas", planes: todos() },
+      { funcion: "Informe y sesión de ajuste cada mes", planes: soloTodo },
+      { funcion: "Soporte prioritario", planes: soloTodo },
+    ],
+  },
+];
+
+/** Qué incluye la puesta en marcha (hoja de planes v2). */
+export const PUESTA_INCLUYE = [
+  "Cargamos tu carta, tu equipo y tu horario",
+  "Traemos tus clientas, y su historial si usas TPV 123",
+  "Dejamos lista tu web de reservas con tu enlace",
+  "Formación con tu equipo",
+  "Te acompañamos por WhatsApp las dos primeras semanas",
+];
+
+/** Lo que no entra en los planes y se presupuesta aparte (sin cifras en la web). */
+export const A_TU_MEDIDA: { titulo: string; texto: string }[] = [
+  {
+    titulo: "Conexión con tu contabilidad y facturación",
+    texto: "Una sola herramienta para ver y controlar todo el negocio al momento, conectada con el programa que ya usas.",
+  },
+  {
+    titulo: "Gestión de formaciones",
+    texto: "Tus cursos, las plazas, las alumnas, los cobros y los certificados.",
+  },
+  {
+    titulo: "WhatsApp automático",
+    texto:
+      "Que tu número conteste y envíe solo los recordatorios, las confirmaciones y los avisos de la señal. Hay que dar de alta tu número en Meta (de 3 a 4 semanas) y Meta cobra unos pocos euros al mes por los mensajes.",
+  },
+];
+
+export const PREGUNTAS_PRECIOS: Pregunta[] = [
+  {
+    pregunta: "¿Qué cambia entre pagar al año o mes a mes?",
+    respuesta:
+      "Pagando el año entero, cada mes sale más barato (36, 42 o 55 € en vez de 40, 47 o 59 €) y la puesta en marcha se queda en la mitad: 45 € en lugar de 90 €.",
+  },
+  {
+    pregunta: "¿Hay comisiones por reserva o por cobro?",
+    respuesta:
+      "No. La cuota es fija. siShow no cobra a tus clientas ni pasa por sus pagos: te pagan a ti, en efectivo, con tarjeta o por Bizum.",
+  },
+  {
+    pregunta: "¿Qué incluye la puesta en marcha?",
+    respuesta:
+      "Cinco horas de trabajo nuestro: cargamos tu carta, tu equipo y tu horario, traemos tus clientas, dejamos lista tu web de reservas, damos la formación a tu equipo y te acompañamos por WhatsApp las dos primeras semanas.",
+  },
+  {
+    pregunta: "¿Los mensajes de WhatsApp están incluidos?",
+    respuesta:
+      "Los botones que abren tu WhatsApp con el mensaje preparado, sí, en todos los planes: recordatorio, confirmación, señal y campañas. Que se envíen solos desde tu número va a tu medida.",
+  },
+  {
+    pregunta: "¿Qué es «a tu medida»?",
+    respuesta:
+      "Lo que no entra en ningún plan: conectar siShow con tu contabilidad, gestionar formaciones o el WhatsApp automático. Nos cuentas qué necesitas y te lo presupuestamos por escrito.",
+  },
+  {
+    pregunta: "¿Puedo verlo antes de decidir?",
+    respuesta:
+      "Sí. La demo de un salón de ejemplo está abierta, y si quieres te lo enseñamos con tus servicios y tu equipo, sin compromiso.",
+  },
+];

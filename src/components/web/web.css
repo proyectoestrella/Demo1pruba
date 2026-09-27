@@ -194,7 +194,7 @@
   .ws-pregunta > div { padding-bottom: 1.25rem; max-width: 46rem; }
 
   /* ---- Tabla comparativa ---- */
-  .ws-tabla-caja { overflow-x: auto; border: 1px solid var(--ws-lino); border-radius: 1.25rem; background: var(--ws-crema); }
+  .ws-tabla-caja { position: relative; overflow-x: auto; border: 1px solid var(--ws-lino); border-radius: 1.25rem; background: var(--ws-crema); }
   .ws-tabla { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 0.95rem; }
   .ws-tabla th, .ws-tabla td { padding: 0.8rem 1rem; text-align: center; border-bottom: 1px solid var(--ws-lino); vertical-align: middle; }
   .ws-tabla th:first-child, .ws-tabla td:first-child { text-align: left; }
