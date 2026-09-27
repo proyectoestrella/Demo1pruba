@@ -1,7 +1,9 @@
-import type { Appointment, Client, SalonProfile } from "../mock/types";
+import type { Appointment, BookingAnswers, Client, SalonProfile } from "../mock/types";
 import { formatMenuEntry } from "../business-type";
 import { DURACION_FLEXIBLE_CLIENT_NAME, sembrarCobros, type MezclaSemilla } from "../mock/seed";
 import { ultimoColor } from "../colores";
+import { fechaLocal, hojaDelDia } from "../hoja-del-dia";
+import { preguntasPorDefecto } from "../preguntas-reserva";
 
 /**
  * PeluChic (Sanchinarro, Madrid) — la demo registrada para la presentación a
@@ -31,7 +33,7 @@ import { ultimoColor } from "../colores";
  */
 
 /** Sube cuando cambien estos datos: los navegadores con la demo vieja la vuelven a cargar. */
-export const VERSION_PELUCHIC = "2026-09-27.6";
+export const VERSION_PELUCHIC = "2026-09-27.7";
 
 export interface ServicioPeluChic {
   /** Id estable (sexto campo de la carta): las citas de la semilla y las descripciones cuelgan de él. */
@@ -298,6 +300,24 @@ function carta(): string[] {
   );
 }
 
+/**
+ * Sus preguntas de reserva: las tres de siempre (25/09, ver preguntas-reserva.ts)
+ * más una cuarta propia de peluquería — «¿Cómo es tu pelo?» — para que María
+ * vea también textura y grosor sin tener que preguntarlo en el sillón. Un
+ * único `opcion` con las nueve combinaciones (el modelo de preguntas no
+ * admite dos preguntas en una).
+ */
+const HAIR_TYPE_TEXTURAS = ["Liso", "Ondulado", "Rizado"] as const;
+const HAIR_TYPE_GROSORES = ["Fino", "Normal", "Grueso"] as const;
+/** Las nueve combinaciones, en orden estable: índice = textura*3 + grosor. */
+export const HAIR_TYPE_OPCIONES: string[] = HAIR_TYPE_TEXTURAS.flatMap((t) =>
+  HAIR_TYPE_GROSORES.map((g) => `${t} y ${g.toLowerCase()}`),
+);
+const PREGUNTAS_RESERVA_PELUCHIC = [
+  ...preguntasPorDefecto({}, "peluqueria"),
+  { id: "hairType", texto: "¿Cómo es tu pelo?", tipo: "opcion" as const, opciones: HAIR_TYPE_OPCIONES, obligatoria: false, activa: true },
+];
+
 export const PELUCHIC: SalonProfile = {
   id: "peluchic",
   slug: "peluchic",
@@ -380,6 +400,7 @@ export const PELUCHIC: SalonProfile = {
     SERVICIOS_PELUCHIC.filter((s) => s.precioLiteral).map((s) => [s.id, s.precioLiteral as string]),
   ),
   faq: PREGUNTAS,
+  preguntasReserva: PREGUNTAS_RESERVA_PELUCHIC,
   // «Trabajamos con Fianza a la hora de reservar la cita previa»: la señal
   // por Bizum, con el importe del enlace `?d=` (20 €).
   depositEnabled: true,
@@ -466,4 +487,111 @@ export function conHistorialColorPeluchic(citas: Appointment[], clients: Client[
     });
   }
   return nuevas.length ? sembrarCobros([...citas, ...nuevas]) : citas;
+}
+
+/**
+ * Cómo describiría la propia clienta, en su reserva, el color que ya lleva —
+ * mismo índice que FORMULAS_HISTORIAL_COLOR (voz de la clienta, no la fórmula
+ * técnica de la estilista) — y si esa fórmula es de mechas (para redactar
+ * «tratamiento químico reciente» con la palabra correcta).
+ */
+const COLOR_EN_VOZ_DE_CLIENTA: ReadonlyArray<{ detalle: string; mechas: boolean }> = [
+  { detalle: "Castaño con reflejos, cubriendo canas de las sienes", mechas: false },
+  { detalle: "Rubio ceniza en la raíz", mechas: false },
+  { detalle: "Rubio con brillo, sin cubrir canas", mechas: false },
+  { detalle: "Castaño oscuro, cubriendo canas", mechas: false },
+  { detalle: "Rubio dorado, sin amoníaco", mechas: false },
+  { detalle: "Castaño claro con reflejos", mechas: false },
+  { detalle: "Mechas finas, rubio natural", mechas: true },
+  { detalle: "Balayage rubio miel", mechas: true },
+  { detalle: "Balayage cobrizo", mechas: true },
+  { detalle: "Mechas con papel, rubio ceniza", mechas: true },
+];
+
+/** Sin historial de color anotado en siShow: una minoría dice igual que sí lleva (se lo hace fuera, o no está anotado). */
+const COLOR_SIN_HISTORIAL: readonly string[] = [
+  "Rubio, me lo hago en casa",
+  "Castaña con mechas de otro salón",
+  "Pelirroja, tinte natural",
+];
+
+/** Tratamiento químico reciente sin relación con el color (alisado, keratina…). */
+const QUIMICO_SIN_COLOR: readonly string[] = ["Keratina hace unas tres semanas", "Alisado hace un mes"];
+
+const OPCIONES_LARGO = PREGUNTAS_RESERVA_PELUCHIC.find((p) => p.id === "hairLength")!.opciones!;
+
+/**
+ * Siembra `bookingAnswers` (dolor nº2 de María, además del color: largo y
+ * tipo de pelo, si lleva color —y cuál, coherente con su historial cuando lo
+ * tiene— y si se ha hecho algún tratamiento químico el último mes) en ~75 %
+ * de las citas de hoy y de mañana: las que enseñan la Hoja del día y la de
+ * mañana (`hojaDelDia`). El resto se deja sin respuestas — reservó por
+ * WhatsApp o no rellenó el formulario, algo real (ver `PELUCHIC.faq`).
+ *
+ * No añade ni quita citas, ni toca hora, precio, profesional ni ningún otro
+ * campo: solo esta clave. Determinista por el id de la cita (si trae
+ * respuestas) y el de la clienta (cuáles): misma semilla, mismo resultado.
+ * Se ejecuta DESPUÉS de `conHistorialColorPeluchic` para que el color
+ * contado en la reserva pueda coincidir con el que ya anota la ficha.
+ */
+export function conRespuestasReservaPeluchic(citas: Appointment[], _clients: Client[], ahora: Date = new Date()): Appointment[] {
+  const manana = new Date(ahora);
+  manana.setDate(manana.getDate() + 1);
+  const ventana = [...hojaDelDia(citas, fechaLocal(ahora)), ...hojaDelDia(citas, fechaLocal(manana))];
+
+  const respuestasPorId = new Map<string, BookingAnswers>();
+  for (const { cita, ultimoColor: ultimo } of ventana) {
+    if (cita.clientName === DURACION_FLEXIBLE_CLIENT_NAME) continue;
+    const numeroCita = Number(cita.id.replace(/\D/g, "")) || 0;
+    if (numeroCita % 4 === 0) continue; // ~25 % sin respuestas: WhatsApp o formulario sin rellenar.
+    const numero = Number(cita.clientId.replace(/\D/g, "")) || 0;
+
+    const respuestas: BookingAnswers = {
+      hairLength: OPCIONES_LARGO[numero % OPCIONES_LARGO.length],
+      hairType: HAIR_TYPE_OPCIONES[numero % HAIR_TYPE_OPCIONES.length],
+    };
+
+    let mechas = false;
+    let diasDesdeColor: number | undefined;
+    if (ultimo?.colorFormula) {
+      const idx = FORMULAS_HISTORIAL_COLOR.findIndex((f) => f.formula === ultimo.colorFormula);
+      const voz = idx >= 0 ? COLOR_EN_VOZ_DE_CLIENTA[idx] : undefined;
+      respuestas.hasColor = "Sí";
+      respuestas.colorDetail = voz?.detalle ?? "Con color";
+      mechas = voz?.mechas ?? false;
+      diasDesdeColor = Math.round((+new Date(cita.start) - +new Date(ultimo.start)) / 86_400_000);
+    } else if (numero % 6 === 1) {
+      respuestas.hasColor = "Sí";
+      respuestas.colorDetail = COLOR_SIN_HISTORIAL[numero % COLOR_SIN_HISTORIAL.length];
+    } else {
+      respuestas.hasColor = "No";
+    }
+
+    if (diasDesdeColor !== undefined && diasDesdeColor <= 35) {
+      respuestas.recentChemical = "Sí";
+      respuestas.chemicalDetail = mechas ? "Mechas hace unas semanas" : "Tinte hace unas semanas";
+    } else if (respuestas.hasColor === "No" && numero % 8 === 3) {
+      respuestas.recentChemical = "Sí";
+      respuestas.chemicalDetail = QUIMICO_SIN_COLOR[numero % QUIMICO_SIN_COLOR.length];
+    } else {
+      respuestas.recentChemical = "No";
+    }
+
+    respuestasPorId.set(cita.id, respuestas);
+  }
+
+  if (!respuestasPorId.size) return citas;
+  return citas.map((cita) => {
+    const respuestas = respuestasPorId.get(cita.id);
+    return respuestas ? { ...cita, bookingAnswers: respuestas } : cita;
+  });
+}
+
+/**
+ * Todo el retoque de la demo de PeluChic tras `buildSeed`: primero el
+ * historial de color (para que las respuestas de hoy y mañana puedan
+ * coincidir con él) y después las respuestas de reserva.
+ */
+export function posprocesarPeluchic(citas: Appointment[], clients: Client[]): Appointment[] {
+  return conRespuestasReservaPeluchic(conHistorialColorPeluchic(citas, clients), clients);
 }

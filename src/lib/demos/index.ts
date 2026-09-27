@@ -1,6 +1,6 @@
 import type { Appointment, Client, SalonProfile } from "../mock/types";
 import type { MezclaSemilla } from "../mock/seed";
-import { conHistorialColorPeluchic, MEZCLA_PELUCHIC, PELUCHIC, SERVICIOS_PELUCHIC, VERSION_PELUCHIC } from "./peluchic";
+import { MEZCLA_PELUCHIC, PELUCHIC, posprocesarPeluchic, SERVICIOS_PELUCHIC, VERSION_PELUCHIC } from "./peluchic";
 
 /**
  * Demos registradas por slug (lote P).
@@ -35,7 +35,7 @@ const REGISTRO: Record<string, DemoRegistrada> = {
     mezcla: MEZCLA_PELUCHIC,
     version: VERSION_PELUCHIC,
     estimadas: Object.fromEntries(SERVICIOS_PELUCHIC.filter((s) => s.estimada).map((s) => [s.id, s.duracionMin])),
-    posprocesarCitas: conHistorialColorPeluchic,
+    posprocesarCitas: posprocesarPeluchic,
   },
 };
 
