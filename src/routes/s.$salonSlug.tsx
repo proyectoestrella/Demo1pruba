@@ -357,7 +357,7 @@ function SalonLayout() {
           no queda la banda vacía que dejaba antes el hueco en toda la página. */}
       <footer
         className={cn(
-          "border-t border-lino bg-card",
+          "ws-pie",
           onBooking ? "pb-[var(--alto-barra-fija)] lg:pb-0" : "pb-[var(--alto-barra-fija)] md:pb-0",
         )}
       >
@@ -378,7 +378,7 @@ function SalonLayout() {
             ) : null}
           </div>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Visítanos</p>
+            <p className="ws-etiqueta">Visítanos</p>
             <p className="mt-3 flex items-start gap-2 text-sm">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               {profile.address}
@@ -403,7 +403,7 @@ function SalonLayout() {
             ) : null}
           </div>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Horario</p>
+            <p className="ws-etiqueta">Horario</p>
             {weekSchedule(profile.openingHours).map((d) => (
               <p key={d.label} className="mt-2 flex justify-between gap-4 text-sm tabular-nums">
                 <span className="text-muted-foreground">{d.label}</span>

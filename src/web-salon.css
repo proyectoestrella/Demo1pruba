@@ -25,3 +25,137 @@
   margin-inline: auto;
   padding-inline: var(--ws-gutter);
 }
+
+/* ---- Paleta de la web del salón (18.2) -----------------------------------
+ * Sale de la marca real de PeluChic (peluchic.online, leída el 27-09-2026):
+ * caramelo #DEA378, canela #9C6C49, chocolate #5B412E y chocolate oscuro
+ * #402C1E. Encima, un verde que su web casi no usa: salvia en pastel para
+ * fondos y eucalipto para acentos de texto. Nunca negro: el texto más oscuro
+ * es su chocolate oscuro.
+ *
+ * Contraste medido (WCAG 2.1, texto normal ≥ 4,5:1):
+ *   tinta #402C1E ........ 12,1 crema · 10,5 arena · 10,2 caramelo claro · 10,9 salvia clara
+ *   texto suave #6A5242 ..  6,7 crema ·  5,8 arena ·  5,6 caramelo claro ·  6,0 salvia clara
+ *   eucalipto #3A6553 ....  6,1 crema ·  5,3 arena ·  5,1 caramelo claro ·  5,5 salvia clara
+ *   acción #85593A .......  5,6 crema ·  4,8 arena · blanco sobre acción 6,0
+ *   sobre chocolate oscuro: crema 12,1 · caramelo 6,0 · salvia 6,7
+ * Canela #9C6C49 (4,2 sobre crema) y caramelo #DEA378 (2,0) son decorativos:
+ * trazos, estrellas, puntos y bordes; nunca texto pequeño.
+ * ------------------------------------------------------------------------- */
+:root {
+  --ws-crema: #FAF5EE;
+  --ws-tarjeta: #FFFCF8;
+  --ws-arena: #F0E4D6;
+  --ws-lino: #E6D6C4;
+  --ws-lino-fuerte: #D6C1AA;
+  --ws-taupe: #CDB9A4;
+  --ws-caramelo-claro: #F3DFCB;
+  --ws-caramelo: #DEA378;
+  --ws-canela: #9C6C49;
+  --ws-accion: #85593A;
+  --ws-chocolate: #5B412E;
+  --ws-tinta: #402C1E;
+  --ws-texto-suave: #6A5242;
+  --ws-salvia-clara: #E4ECE0;
+  --ws-eucalipto-claro: #D3E3D8;
+  --ws-salvia: #A8BFA8;
+  --ws-oliva: #8A9A5B;
+  --ws-eucalipto: #3A6553;
+}
+
+@theme inline {
+  --color-ws-crema: var(--ws-crema);
+  --color-ws-tarjeta: var(--ws-tarjeta);
+  --color-ws-arena: var(--ws-arena);
+  --color-ws-lino: var(--ws-lino);
+  --color-ws-caramelo-claro: var(--ws-caramelo-claro);
+  --color-ws-caramelo: var(--ws-caramelo);
+  --color-ws-canela: var(--ws-canela);
+  --color-ws-accion: var(--ws-accion);
+  --color-ws-chocolate: var(--ws-chocolate);
+  --color-ws-tinta: var(--ws-tinta);
+  --color-ws-texto-suave: var(--ws-texto-suave);
+  --color-ws-salvia-clara: var(--ws-salvia-clara);
+  --color-ws-eucalipto-claro: var(--ws-eucalipto-claro);
+  --color-ws-salvia: var(--ws-salvia);
+  --color-ws-oliva: var(--ws-oliva);
+  --color-ws-eucalipto: var(--ws-eucalipto);
+}
+
+/*
+ * Los roles de shadcn y de «Arena» que usan la portada, la reserva y la
+ * confirmación se resuelven aquí sobre la paleta de la marca. `body:has()`
+ * alcanza también lo que se pinta en un portal (menú móvil, fotos ampliadas,
+ * desplegables); el panel no lleva `.web-salon` y no cambia.
+ */
+.web-salon,
+body:has(.web-salon) {
+  --background: var(--ws-crema);
+  --foreground: var(--ws-tinta);
+  --card: var(--ws-tarjeta);
+  --card-foreground: var(--ws-tinta);
+  --popover: var(--ws-tarjeta);
+  --popover-foreground: var(--ws-tinta);
+  --primary: var(--ws-accion);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--ws-arena);
+  --secondary-foreground: var(--ws-tinta);
+  --muted: var(--ws-arena);
+  --muted-foreground: var(--ws-texto-suave);
+  --accent: var(--ws-caramelo-claro);
+  --accent-foreground: var(--ws-tinta);
+  --border: var(--ws-lino);
+  --input: var(--ws-lino-fuerte);
+  --ring: var(--ws-canela);
+
+  --pagina: var(--ws-crema);
+  --superficie: var(--ws-tarjeta);
+  --perla: #FBF6EF;
+  --beige: var(--ws-arena);
+  --nata: var(--ws-arena);
+  --arena: var(--ws-caramelo-claro);
+  --taupe: var(--ws-taupe);
+  --lino: var(--ws-lino);
+  --lino-fuerte: var(--ws-lino-fuerte);
+  --cafe: var(--ws-tinta);
+  --cafe-medio: var(--ws-chocolate);
+  --cafe-suave: var(--ws-texto-suave);
+  --moca: var(--ws-canela);
+  --moca-fuerte: var(--ws-accion);
+  --salvia: var(--ws-salvia);
+  --salvia-clara: var(--ws-salvia-clara);
+  --salvia-suave: var(--ws-salvia-clara);
+  --hoja-tinta: var(--ws-eucalipto);
+  --pro-1: var(--ws-caramelo-claro);
+  --pro-2: var(--ws-eucalipto-claro);
+  --pro-3: var(--ws-arena);
+  --pro-4: var(--ws-salvia-clara);
+}
+
+/* Etiqueta de sección (la mayúscula pequeña de encima del título), en eucalipto. */
+.web-salon .ws-etiqueta {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ws-eucalipto);
+}
+
+/* Pie en chocolate oscuro (el color de «activo» de la web de PeluChic):
+ * crema 12,1:1 · texto suave #D9C6B3 7,9:1 · caramelo 6,0:1 · líneas #6A5040. */
+.web-salon .ws-pie {
+  --background: var(--ws-tinta);
+  --foreground: var(--ws-crema);
+  --card: #4A3425;
+  --muted-foreground: #D9C6B3;
+  --cafe-suave: #D9C6B3;
+  --cafe-medio: #EADCCB;
+  --primary: var(--ws-caramelo);
+  --lino: #6A5040;
+  --border: #6A5040;
+  background-color: var(--ws-tinta);
+  color: var(--ws-crema);
+}
+.web-salon .ws-pie .ws-etiqueta {
+  color: var(--ws-salvia);
+}

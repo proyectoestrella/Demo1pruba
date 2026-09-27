@@ -81,10 +81,10 @@ export function WorkGallery({ photos = [], tipo }: { photos?: string[]; tipo?: s
   }, []);
 
   return (
-    <section id="galeria" ref={seccion} className="border-t border-lino bg-card">
+    <section id="galeria" ref={seccion} className="bg-ws-salvia-clara">
       <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
         <Reveal className="mb-8 md:mb-10">
-          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Nuestro trabajo</p>
+          <p className="ws-etiqueta">Nuestro trabajo</p>
           <h2 className="mt-2 text-[26px] font-extrabold leading-tight tracking-tight md:text-[32px]">Galería</h2>
         </Reveal>
         <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">

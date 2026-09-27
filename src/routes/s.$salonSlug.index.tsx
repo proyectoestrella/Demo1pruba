@@ -260,7 +260,7 @@ function SectionHeading({
 }) {
   return (
     <Reveal className={cn("mb-8 md:mb-10", className)}>
-      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">{eyebrow}</p>
+      <p className="ws-etiqueta">{eyebrow}</p>
       <h2 className="mt-2 text-[26px] font-extrabold leading-tight tracking-tight text-foreground md:text-[32px]">
         {title}
       </h2>
@@ -504,48 +504,50 @@ function SalonHome() {
       </section>
 
       {/* Servicios destacados */}
-      <section id="servicios" className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
-        <SectionHeading
-          eyebrow="Lo más pedido"
-          title="Servicios destacados"
-          intro="Toca uno para reservarlo directamente."
-        />
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {featuredIds.map((id, i) => {
-            const s = serviceMap[id];
-            if (!s) return null;
-            return (
-              <Reveal key={id} delay={i * 60} className="h-full">
-                <Link
-                  to="/s/$salonSlug/book"
-                  params={{ salonSlug }}
-                  search={(prev) => ({ ...prev, service: id })}
-                  className="elevar group flex h-full flex-col sm:min-h-[132px] rounded-[20px] border border-lino bg-card p-5"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-base font-bold leading-snug text-foreground">{s.name}</h3>
-                    <span className="shrink-0 text-lg font-extrabold tabular-nums text-foreground">{eur(s.priceEur)}</span>
-                  </div>
-                  {s.description ? (
-                    <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{s.description}</p>
-                  ) : null}
-                  <div className="mt-auto flex items-center justify-between gap-3 pt-4 text-sm">
-                    <span className="inline-flex items-center gap-1.5 text-cafe-suave tabular-nums">
-                      <Clock className="h-3.5 w-3.5" aria-hidden="true" /> {s.durationMin} min
-                    </span>
-                    <span className="inline-flex items-center gap-1 font-semibold text-primary">
-                      Reservar <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden="true" />
-                    </span>
-                  </div>
-                </Link>
-              </Reveal>
-            );
-          })}
+      <section id="servicios" className="bg-ws-crema">
+        <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
+          <SectionHeading
+            eyebrow="Lo más pedido"
+            title="Servicios destacados"
+            intro="Toca uno para reservarlo directamente."
+          />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {featuredIds.map((id, i) => {
+              const s = serviceMap[id];
+              if (!s) return null;
+              return (
+                <Reveal key={id} delay={i * 60} className="h-full">
+                  <Link
+                    to="/s/$salonSlug/book"
+                    params={{ salonSlug }}
+                    search={(prev) => ({ ...prev, service: id })}
+                    className="elevar group flex h-full flex-col sm:min-h-[132px] rounded-[20px] border border-lino bg-card p-5"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="text-base font-bold leading-snug text-foreground">{s.name}</h3>
+                      <span className="shrink-0 text-lg font-extrabold tabular-nums text-foreground">{eur(s.priceEur)}</span>
+                    </div>
+                    {s.description ? (
+                      <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{s.description}</p>
+                    ) : null}
+                    <div className="mt-auto flex items-center justify-between gap-3 pt-4 text-sm">
+                      <span className="inline-flex items-center gap-1.5 text-cafe-suave tabular-nums">
+                        <Clock className="h-3.5 w-3.5" aria-hidden="true" /> {s.durationMin} min
+                      </span>
+                      <span className="inline-flex items-center gap-1 font-semibold text-primary">
+                        Reservar <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden="true" />
+                      </span>
+                    </div>
+                  </Link>
+                </Reveal>
+              );
+            })}
+          </div>
         </div>
       </section>
 
       {/* Carta completa */}
-      <section id="carta" className="border-t border-lino bg-card">
+      <section id="carta" className="bg-ws-arena">
         <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
           <SectionHeading
             eyebrow="Precios"
@@ -605,7 +607,7 @@ function SalonHome() {
 
       {/* Equipo */}
       {!soloUno || soloPro ? (
-        <section id="equipo" className="border-t border-lino">
+        <section id="equipo" className="bg-ws-crema">
           <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
             <SectionHeading
               eyebrow="Equipo"
@@ -666,9 +668,9 @@ function SalonHome() {
           inventadas); las demos de venta, tres de ejemplo marcadas como tal. */}
       {isRealSalon ? (
         hasGoogleReviews ? (
-          <section id="resenas" className="border-t border-lino bg-card">
+          <section id="resenas" className="bg-ws-caramelo-claro">
             <div className={cn(CONTENEDOR_SALON, SECCION_WEB, "text-center")}>
-              <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Reseñas</p>
+              <p className="ws-etiqueta">Reseñas</p>
               <h2 className="mt-2 text-[26px] font-extrabold tracking-tight md:text-[32px]">Lo que dicen en Google</h2>
               <div className="mt-6 flex items-center justify-center gap-2">
                 <Estrellas nota={profile.rating} className="[&_svg]:h-5 [&_svg]:w-5" />
@@ -684,11 +686,11 @@ function SalonHome() {
           </section>
         ) : null
       ) : (
-        <section id="resenas" className="border-t border-lino bg-card">
+        <section id="resenas" className="bg-ws-caramelo-claro">
           <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
             <Reveal className="mb-8 flex flex-wrap items-end justify-between gap-4 md:mb-10">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Reseñas</p>
+                <p className="ws-etiqueta">Reseñas</p>
                 <h2 className="mt-2 text-[26px] font-extrabold leading-tight tracking-tight md:text-[32px]">
                   Lo que dicen las clientas
                 </h2>
@@ -713,7 +715,7 @@ function SalonHome() {
       )}
 
       {/* Preguntas frecuentes */}
-      <section id="faq" className="border-t border-lino">
+      <section id="faq" className="bg-ws-crema">
         <div className={cn(CONTENEDOR_SALON, SECCION_WEB, "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-12")}>
           <SectionHeading eyebrow="Antes de venir" title="Preguntas frecuentes" className="lg:mb-0" />
           <Reveal>
@@ -735,7 +737,7 @@ function SalonHome() {
 
       {/* Ubicación y horario: sin iframe de Google Maps (se quedaba en blanco
           hasta cargar y restaba rendimiento); un botón abre la ruta. */}
-      <section id="ubicacion" className="border-t border-lino bg-card">
+      <section id="ubicacion" className="bg-ws-arena">
         <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
           <SectionHeading eyebrow="Ubicación y horario" title="Te esperamos aquí" />
           <div className="grid gap-3 md:grid-cols-2">
@@ -777,7 +779,7 @@ function SalonHome() {
             </Reveal>
             <Reveal delay={60} className="h-full">
               <div className="h-full rounded-[20px] border border-lino bg-background p-5 sm:p-6">
-                <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Horario</p>
+                <p className="ws-etiqueta mb-2">Horario</p>
                 <ul className="divide-y divide-lino">
                   {weekSchedule(profile.openingHours).map((d, i) => (
                     <li
@@ -802,7 +804,7 @@ function SalonHome() {
       </section>
 
       {/* Llamada final */}
-      <section className="border-t border-lino">
+      <section className="bg-ws-crema">
         <div className={cn(CONTENEDOR_SALON, SECCION_WEB, "text-center")}>
           <Reveal className="flex flex-col items-center">
             <h2 className="text-[26px] font-extrabold tracking-tight md:text-[32px]">¿Te guardamos un hueco?</h2>
