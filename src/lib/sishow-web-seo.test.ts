@@ -32,7 +32,7 @@ describe("SEO de la web oficial", () => {
       expect(p.descripcion.length).toBeGreaterThanOrEqual(70);
       expect(p.descripcion.length).toBeLessThanOrEqual(160);
       expect(links).toContainEqual({ rel: "canonical", href: urlCanonica(p.ruta) });
-      expect(meta).toContainEqual({ property: "og:image", content: "https://sishow.es/web/og-sishow.jpg" });
+      expect(meta).toContainEqual({ property: "og:image", content: "https://sishow.es/web/icono-512.png" });
       expect(meta).toContainEqual({ name: "twitter:card", content: "summary_large_image" });
     }
   });
@@ -62,11 +62,16 @@ describe("SEO de la web oficial", () => {
     expect(bloqueada("/apple-touch-icon.png")).toBe(false);
   });
 
-  test("sitemap.xml con las siete páginas y XML bien formado", () => {
+  test("sitemap.xml: solo las páginas vivas (inicio y legales), sin las retiradas, y XML bien formado", () => {
     const xml = sitemapXml();
     expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
-    for (const p of Object.values(PAGINAS_WEB)) expect(xml).toContain(`<loc>${urlCanonica(p.ruta)}</loc>`);
-    expect(xml.match(/<url>/g)).toHaveLength(7);
+    const RETIRADAS: ClavePagina[] = ["funcionalidades", "precios", "contacto"];
+    for (const clave of Object.keys(PAGINAS_WEB) as ClavePagina[]) {
+      const loc = `<loc>${urlCanonica(PAGINAS_WEB[clave].ruta)}</loc>`;
+      if (RETIRADAS.includes(clave)) expect(xml).not.toContain(loc);
+      else expect(xml).toContain(loc);
+    }
+    expect(xml.match(/<url>/g)).toHaveLength(Object.keys(PAGINAS_WEB).length - RETIRADAS.length);
     expect(xml.match(/<url>/g)?.length).toBe(xml.match(/<\/url>/g)?.length);
   });
 });

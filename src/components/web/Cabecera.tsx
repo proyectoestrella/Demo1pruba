@@ -1,12 +1,15 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
-import { NAV_WEB } from "@/lib/sishow-web";
+import { NAV_WEB, enlaceCorreo } from "@/lib/sishow-web";
 import { MarcaSishow } from "./Marca";
 
 /**
- * Cabecera fija de la web oficial: logo, las tres páginas y «Hablemos».
- * En móvil y tablet la navegación se pliega en un menú que se cierra solo al
+ * Cabecera fija de la web oficial: logo y «Hablemos» (correo). Desde el
+ * 27-09-2026 `NAV_WEB` está vacío (Tomás retiró funcionalidades, precios y
+ * contacto de la vista pública; ver `src/web-archivada/README.md`), así que
+ * la navegación central no pinta nada; se deja el `.map` para reactivarla
+ * sin tocar esta plantilla. En móvil y tablet, un menú que se cierra solo al
  * cambiar de página.
  */
 export function Cabecera() {
@@ -28,9 +31,9 @@ export function Cabecera() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <Link to="/contacto" className="ws-boton ws-boton-p min-h-11 px-5 text-[0.95rem]">
+          <a href={enlaceCorreo()} className="ws-boton ws-boton-p min-h-11 px-5 text-[0.95rem]">
             Hablemos
-          </Link>
+          </a>
           <button
             type="button"
             className="grid size-11 place-items-center rounded-full border border-[color:var(--ws-lino-f)] text-[color:var(--ws-cafe)] lg:hidden"
@@ -57,11 +60,6 @@ export function Cabecera() {
               </Link>
             </li>
           ))}
-          <li>
-            <Link to="/" hash="demo" className="flex min-h-12 items-center text-[1.05rem] font-semibold no-underline">
-              Probar la demo
-            </Link>
-          </li>
         </ul>
       </nav>
     </header>

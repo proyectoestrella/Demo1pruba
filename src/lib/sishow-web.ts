@@ -109,9 +109,8 @@ export interface PaginaWeb {
 export const PAGINAS_WEB: Record<ClavePagina, PaginaWeb> = {
   inicio: {
     ruta: "/",
-    titulo: "siShow: reservas online y agenda para peluquerías y centros de belleza",
-    descripcion:
-      "Tus clientas reservan solas desde tu web, tú llevas la agenda del equipo, las fichas de color y la caja desde el móvil. Funcionando en una semana.",
+    titulo: "siShow: reservas y gestión para peluquerías",
+    descripcion: "siShow: reservas y gestión para peluquerías y centros de belleza. Escríbenos y te contamos más.",
   },
   funcionalidades: {
     ruta: "/funcionalidades",
@@ -149,19 +148,25 @@ export const PAGINAS_WEB: Record<ClavePagina, PaginaWeb> = {
   },
 };
 
-/** Navegación principal de la cabecera. */
-export const NAV_WEB: { ruta: "/funcionalidades" | "/precios" | "/contacto"; texto: string }[] = [
-  { ruta: "/funcionalidades", texto: "Funcionalidades" },
-  { ruta: "/precios", texto: "Precios" },
-  { ruta: "/contacto", texto: "Contacto" },
-];
+/**
+ * Navegación principal de la cabecera. Vacía desde el 27-09-2026: Tomás
+ * retiró la web oficial (funcionalidades, precios y contacto) de la vista
+ * pública; ver `src/web-archivada/README.md` para reactivarla.
+ */
+export const NAV_WEB: { ruta: "/funcionalidades" | "/precios" | "/contacto"; texto: string }[] = [];
 
-/** Imagen para compartir (Open Graph y Twitter), 1200×630, en `public/web/`. */
+/**
+ * Imagen para compartir (Open Graph y Twitter). Desde el 27-09-2026 es solo
+ * el símbolo de siShow (antes, `og-sishow.jpg`, un montaje con capturas del
+ * panel y datos de PeluChic): la portada sobria no enseña capturas, y esa
+ * imagen sale también al compartir el enlace, no solo dentro de la página.
+ * `og-sishow.jpg` sigue en `public/web/` sin usarse, no se ha borrado.
+ */
 export const IMAGEN_SOCIAL = {
-  ruta: "/web/og-sishow.jpg",
-  ancho: 1200,
-  alto: 630,
-  alt: "siShow: el panel del salón en un portátil y la web de reservas en un móvil, con el lema «Tus clientas reservan solas. Tú, a lo tuyo.»",
+  ruta: "/web/icono-512.png",
+  ancho: 512,
+  alto: 512,
+  alt: "siShow",
 };
 
 /** Color de la barra del navegador en la web oficial (crema de la cabecera). */
@@ -302,11 +307,19 @@ export function jsonLdPreguntas(preguntas: Pregunta[]): Record<string, unknown> 
  */
 export const RUTAS_NO_INDEXABLES = ["/app$", "/app/", "/api/", "/login", "/aceptar", "/rutero", "/dashboard", "/demo/"];
 
+/**
+ * Páginas de `PAGINAS_WEB` retiradas de la vista pública el 27-09-2026
+ * (redirigen a `/` con 307): no van en el sitemap y sí en el Disallow de
+ * robots.txt, aunque no estén indexadas. Ver `src/web-archivada/README.md`.
+ */
+const PAGINAS_RETIRADAS: ClavePagina[] = ["funcionalidades", "precios", "contacto"];
+
 export function robotsTxt(): string {
   return [
     "User-agent: *",
     "Allow: /",
     ...RUTAS_NO_INDEXABLES.map((r) => `Disallow: ${r}`),
+    ...PAGINAS_RETIRADAS.map((c) => `Disallow: ${PAGINAS_WEB[c].ruta}`),
     "",
     `Sitemap: ${SITIO_URL}/sitemap.xml`,
     "",
@@ -317,10 +330,12 @@ export function robotsTxt(): string {
 export const ULTIMA_REVISION_WEB = "2026-09-27";
 
 export function sitemapXml(): string {
-  const urls = (Object.keys(PAGINAS_WEB) as ClavePagina[]).map((c) => {
-    const prioridad = c === "inicio" ? "1.0" : c === "funcionalidades" || c === "precios" ? "0.9" : c === "contacto" ? "0.7" : "0.3";
-    return `  <url>\n    <loc>${urlCanonica(PAGINAS_WEB[c].ruta)}</loc>\n    <lastmod>${ULTIMA_REVISION_WEB}</lastmod>\n    <priority>${prioridad}</priority>\n  </url>`;
-  });
+  const urls = (Object.keys(PAGINAS_WEB) as ClavePagina[])
+    .filter((c) => !PAGINAS_RETIRADAS.includes(c))
+    .map((c) => {
+      const prioridad = c === "inicio" ? "1.0" : "0.3";
+      return `  <url>\n    <loc>${urlCanonica(PAGINAS_WEB[c].ruta)}</loc>\n    <lastmod>${ULTIMA_REVISION_WEB}</lastmod>\n    <priority>${prioridad}</priority>\n  </url>`;
+    });
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
 }
 
