@@ -14,6 +14,7 @@ import { AjustesColores } from "@/components/AjustesColores";
 import { AjustesSenal } from "@/components/AjustesSenal";
 import { AjustesPreguntas } from "@/components/AjustesPreguntas";
 import { GuiaAsistente } from "@/components/GuiaAsistente";
+import { GuiaUso } from "@/components/GuiaUso";
 import { AjustesAccesos } from "@/components/AjustesAccesos";
 import { AjustesCalendarios } from "@/components/AjustesCalendarios";
 import { API_CALENDARIOS, alcanceCalendario, avisoVueltaGoogle, useCalendariosActivos } from "@/lib/calendarios-panel";
@@ -194,6 +195,10 @@ function Settings() {
               Ningún ajuste habla de «{buscar}». Prueba con otra palabra: «señal», «horas», «WhatsApp»…
             </p>
           )}
+        <SeccionAjustes id="guia" oculta={!visibles.includes("guia")} abrir={abrir} titulo="Guía de uso de la app" resumen="Cómo se usa siShow, con capturas de tu propio panel" abierta>
+          <GuiaUso />
+        </SeccionAjustes>
+
         <SeccionAjustes id="agenda" oculta={!visibles.includes("agenda")} abrir={abrir} valor={valorActual("agenda", salonProfile)} titulo="Tu agenda" resumen="Duración al aceptar, cómo se abre el calendario y verlo en tu móvil" abierta>
           <div className={fila}>
             <div className="flex items-center justify-between gap-4">

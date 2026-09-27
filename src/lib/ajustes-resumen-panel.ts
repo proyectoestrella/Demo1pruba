@@ -7,9 +7,10 @@ import { preferenciasDe, VISTAS_CALENDARIO } from "./preferencias-calendario";
 import { reglaSenal } from "./senal";
 import { recargoActivo } from "./recargo-activo";
 
-export type IdSeccionAjustes = "agenda" | "reservas" | "mensajes" | "plantones" | "calendarios" | "historial" | "accesos" | "asistente" | "colores";
+export type IdSeccionAjustes = "guia" | "agenda" | "reservas" | "mensajes" | "plantones" | "calendarios" | "historial" | "accesos" | "asistente" | "colores";
 
 export const SECCIONES_AJUSTES: { id: IdSeccionAjustes; titulo: string; palabras: string }[] = [
+  { id: "guia", titulo: "Guía de uso de la app", palabras: "guía uso ayuda manual tutorial cómo funciona empezar capturas" },
   { id: "agenda", titulo: "Tu agenda", palabras: "duración calendario vista semana día horas visibles primer día lunes móvil iphone google suscripción" },
   { id: "reservas", titulo: "Reservas por internet", palabras: "preguntas reservar reparto agenda franjas web cierre últimos minutos" },
   { id: "mensajes", titulo: "Mensajes de WhatsApp", palabras: "whatsapp confirmación recordatorio plantilla texto mensaje" },
