@@ -52,6 +52,7 @@ import {
 } from "../salon-rows";
 import type { Appointment, Client, SalonProfile, WaitlistEntry } from "../mock/types";
 import { hayOcupadoExternoEnHueco, procesarCitaParaConexiones } from "../calendario-externo/calendario-externo.server";
+import { accionCalendarioDe, citaParaCalendarioDeFila, parcheAfectaCalendario } from "./cita-calendario";
 import type { CitaParaCalendario } from "../calendario-externo/tipos";
 
 /**
@@ -1137,9 +1138,23 @@ export const syncAppointmentPatch = createServerFn({ method: "POST" })
         .update(columnas)
         .eq("salon_slug", data.slug)
         .eq("local_id", data.localId)
-        .select("id");
+        .select("*");
       if (!error) {
         if (!filas?.length) return { synced: false as const, reason: "sin-fila" as const };
+        // Lote 17: confirmar, mover, cambiar de profesional o cancelar desde
+        // el panel también llega a los calendarios externos conectados (antes
+        // solo la cita nueva, por `syncAppointment`). Nunca lanza: un fallo
+        // del calendario externo no deshace el cambio ya guardado.
+        if (parcheAfectaCalendario(columnas)) {
+          const cita = citaParaCalendarioDeFila(filas[0] as Record<string, unknown>);
+          if (cita) {
+            try {
+              await procesarCitaParaConexiones(data.slug, cita, accionCalendarioDe(cita));
+            } catch (err) {
+              console.error("calendario-externo (tras parchear cita):", err);
+            }
+          }
+        }
         // Auditoría: cuándo se deshizo algo en esta cita. Aparte y sin romper
         // si la columna aún no existe (supabase/pendiente.sql, sección 13).
         if (data.origen === "deshacer") {
@@ -1172,12 +1187,24 @@ export const deleteAppointment = createServerFn({ method: "POST" })
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
     if (quien.tipo === "miembro") exigirAcciones(quien, ["cita.cancelar"], [await profesionalActual(supabase, data.slug, data.localId)]);
-    const { error } = await supabase
+    const { data: borradas, error } = await supabase
       .from("appointments")
       .delete()
       .eq("salon_slug", data.slug)
-      .eq("local_id", data.localId);
+      .eq("local_id", data.localId)
+      .select("*");
     if (error) throw new Error(`deleteAppointment: ${error.message}`);
+    // Lote 17: la cita borrada desaparece también de los calendarios
+    // externos conectados. Nunca lanza.
+    for (const fila of borradas ?? []) {
+      const cita = citaParaCalendarioDeFila(fila as Record<string, unknown>);
+      if (!cita) continue;
+      try {
+        await procesarCitaParaConexiones(data.slug, cita, "borrar");
+      } catch (err) {
+        console.error("calendario-externo (tras borrar cita):", err);
+      }
+    }
     return { synced: true as const };
   });
 

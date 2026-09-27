@@ -101,8 +101,10 @@ Qué hacer:
    - `GOOGLE_CALENDAR_CLIENT_ID` y `GOOGLE_CALENDAR_CLIENT_SECRET`, del proyecto de Google Cloud.
    - `GOOGLE_CALENDAR_REDIRECT_URI`: `https://<dominio>/api/calendario-externo/google/callback`.
    - `CALENDARIO_CLAVE_CIFRADO`: 32 bytes en base64, que cifra los tokens guardados. Si se pierde, hay que volver a conectar los calendarios.
+   - `SITE_URL` (lote 17): la URL pública estable del sitio, sin barra final: `https://sishow.es` (o `https://prueba28juliokt.vercel.app` mientras sishow.es no resuelva). Con ella se construye la dirección del aviso push de Google (`<SITE_URL>/api/calendario-externo/google/webhook`). Sin ella se usa `VERCEL_PROJECT_PRODUCTION_URL` y, en último lugar, `VERCEL_URL`, que es la URL única del despliegue y la protección SSO de Vercel la manda al login: el aviso no llegaría. Ver `docs/pruebas-google-2026-09-27.md`.
    - `APPLE_CALDAV_BASE_URL`: opcional; por defecto, iCloud.
-6. **Fuera de este ciclo:** `RESEND_API_KEY` y `REMINDER_FROM_EMAIL`, que son del recordatorio por email. Sin ellas, `/api/recordatorios` responde «sin-proveedor». Las invitaciones de Accesos no dependen de Resend: salen por el correo de Supabase Auth.
+6. **Fuera de este ciclo:** `RESEND_API_KEY` y `REMINDER_FROM_EMAIL` (p. ej. `siShow <recordatorios@sishow.es>`, sin comillas alrededor; el dominio tiene que estar verificado en Resend), que son del recordatorio por email. Sin ellas, `/api/recordatorios` responde «sin-proveedor». Las invitaciones de Accesos no dependen de Resend: salen por el correo de Supabase Auth.
+7. **Dominios (lote 17):** `VITE_SISHOW_DOMINIO` es opcional (por defecto `sishow.es`); solo hace falta si el dominio raíz cambia, y como es `VITE_*` exige redesplegar. El enrutado por subdominio y el alta de cada salón están en `docs/dominios-sishow.md`.
 
 ### Crons (`vercel.json`)
 
