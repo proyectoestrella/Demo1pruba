@@ -63,6 +63,7 @@ export function fichaDeClienta(clientId: string, datos: DatosFicha) {
     ? Math.round((fechas[0] - fechas[fechas.length - 1]) / DIA / (fechas.length - 1))
     : undefined;
   const ultimoColor = visitas.find((v) => v.colorFormula?.trim());
+  const ultimaConNotaTecnica = visitas.find((v) => v.technicalNotes?.trim());
   const servicioHabitualId = habitual(completas.flatMap((c) => c.serviceIds));
   const profesionalHabitualId = habitual(completas.map((c) => c.employeeId));
   const resumen = {
@@ -77,6 +78,8 @@ export function fichaDeClienta(clientId: string, datos: DatosFicha) {
     profesionalHabitual: profesionalHabitualId ? nombresEquipo.get(profesionalHabitualId) ?? profesionalHabitualId : undefined,
     proximaCita: proxima?.start,
     ultimoColor: ultimoColor ? { formula: ultimoColor.colorFormula!, fecha: ultimoColor.fecha } : undefined,
+    /** La nota técnica más reciente que tenga alguna visita (no todas la llevan). */
+    ultimaNotaTecnica: ultimaConNotaTecnica ? { texto: ultimaConNotaTecnica.technicalNotes!.trim(), fecha: ultimaConNotaTecnica.fecha } : undefined,
   };
   const avisos: string[] = [];
   if (cliente?.notes?.trim()) avisos.push(`Observaciones: ${cliente.notes.trim()}`);

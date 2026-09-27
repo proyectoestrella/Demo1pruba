@@ -499,7 +499,11 @@ export const ESPECIFICACION: FamiliaEspecificacion[] = [
       "marta la ultima vez",
       "q se hizo paula",
       "ultima cita de cristina",
-      "historial de marta"
+      "historial de marta",
+      "que se ha hecho elena",
+      "q se ha hecho marta",
+      "que le han hecho a lucia",
+      "que se hizo elena la ultima vez"
     ],
     "modelo": "«Marta Ruiz vino el **14 de julio**: Mechas / balayage con Noelia, 80 €. [Abrir ficha]»"
   },
@@ -1707,9 +1711,9 @@ export const ESPECIFICACION: FamiliaEspecificacion[] = [
       "web de formacion",
       "segundo enlace"
     ],
-    "plan": "Todo incluido (por confirmar)",
-    "alternativa": "La carta de Mi página ya separa por categorías (guía §8)",
-    "mensaje": "Hola, me interesaría una segunda página de reservas para novias. ¿Cuándo estaría y qué plan necesito?"
+    "plan": "Ningún plan (a tu medida)",
+    "alternativa": "Tu web de reservas ya tiene su propia dirección en todos los planes (tusalon.sishow.es) y la carta de Mi página ya separa por categorías (guía §8); una segunda página se estudia a tu medida.",
+    "mensaje": "Hola, me interesaría una segunda página de reservas para novias. ¿Qué necesitaría y cuánto costaría?"
   },
   {
     "id": "plan-dominio-propio",
@@ -1720,9 +1724,9 @@ export const ESPECIFICACION: FamiliaEspecificacion[] = [
       "mi propio dominio",
       "url mia"
     ],
-    "plan": "Todo incluido (por confirmar)",
-    "alternativa": "Comparte el enlace de siShow desde Mi página (guía §8)",
-    "mensaje": "Hola, me gustaría usar mi propio dominio para las reservas. ¿Qué necesito?"
+    "plan": "Ningún plan (a tu medida)",
+    "alternativa": "Tu web de reservas ya tiene su propia dirección en todos los planes (tusalon.sishow.es); comparte ese enlace desde Mi página (guía §8). Tu propio dominio se estudia a tu medida.",
+    "mensaje": "Hola, me gustaría usar mi propio dominio para las reservas. ¿Qué necesitaría y cuánto costaría?"
   },
   {
     "id": "plan-informe-mensual",
@@ -1744,9 +1748,9 @@ export const ESPECIFICACION: FamiliaEspecificacion[] = [
       "respuestas automaticas en whatsapp",
       "que conteste solo el whatsapp"
     ],
-    "plan": "Todo incluido (cuando Meta lo apruebe)",
-    "alternativa": "Los mensajes se mandan con un toque desde tu WhatsApp (guía §1)",
-    "mensaje": "Hola, me interesan las respuestas automáticas por WhatsApp. ¿En qué punto está?"
+    "plan": "Ningún plan (a tu medida)",
+    "alternativa": "Los mensajes se mandan con un toque desde tu WhatsApp, con el texto ya escrito, en todos los planes (guía §1); que conteste o escriba solo, sin que lo toques, es un desarrollo a tu medida: hace falta dar de alta tu número en Meta y se presupuesta aparte.",
+    "mensaje": "Hola, me interesan las respuestas automáticas por WhatsApp. ¿Qué necesito y cuánto costaría?"
   },
   {
     "id": "plan-recordatorio-automatico",
@@ -1756,9 +1760,9 @@ export const ESPECIFICACION: FamiliaEspecificacion[] = [
       "que mande solo los recordatorios",
       "recordatorio automatico"
     ],
-    "plan": "Reservas + Asistente (noviembre)",
-    "alternativa": "Desde la hoja de mañana, uno a uno y con un toque (guía §1)",
-    "mensaje": "Hola, ¿cuándo estarán los recordatorios automáticos por WhatsApp?"
+    "plan": "Ningún plan (a tu medida)",
+    "alternativa": "El botón de WhatsApp con el recordatorio ya escrito está en todos los planes, listo para mandarlo tú con un toque desde tu número (guía §1); que salga solo, sin que lo toques, es un desarrollo a tu medida: hace falta dar de alta tu número en Meta y se presupuesta aparte.",
+    "mensaje": "Hola, me interesa que los recordatorios salgan solos por WhatsApp sin que yo tenga que tocarlos. ¿Qué necesito y cuánto costaría?"
   },
   {
     "id": "plan-importar-mensual",
@@ -1769,8 +1773,8 @@ export const ESPECIFICACION: FamiliaEspecificacion[] = [
       "actualizar de tpv 123",
       "sincronizar tpv"
     ],
-    "plan": "Todo incluido (por confirmar)",
-    "alternativa": "Importar el Excel de TPV 123 desde Clientas cuando quieras (guía §4)",
+    "plan": "Todo incluido",
+    "alternativa": "En Todo incluido te lo traemos nosotros cada mes, revisando duplicados; en cualquier plan puedes importar tú el Excel de TPV 123 desde Clientas cuando quieras (guía §4).",
     "mensaje": "Hola, sigo usando TPV 123. ¿Podéis traer mis datos cada mes?"
   },
   {

@@ -28,6 +28,7 @@ describe("fichaDeClienta", () => {
     expect(ficha.resumen.gastoTotal).toBe(95);
     expect(ficha.resumen.gastoUltimos12Meses).toBe(95);
     expect(ficha.resumen.ultimoColor).toEqual({ formula: "7.1", fecha: "2025-10-01T10:00:00Z" });
+    expect(ficha.resumen.ultimaNotaTecnica).toEqual({ texto: "Matizar", fecha: "2026-08-01T10:00:00Z" });
     expect(ficha.resumen.servicioHabitual).toBe("Color raíz");
     expect(ficha.resumen.profesionalHabitual).toBe("Sara");
     expect(ficha.resumen.proximaCita).toBe("2026-10-01T10:00:00Z");
