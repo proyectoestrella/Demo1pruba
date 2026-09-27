@@ -37,7 +37,7 @@ describe("accesos de la demo (lote 11)", () => {
   test("una estilista necesita profesional vinculada", () => {
     expect(accesos.invitarMiembro({ email: "b@x.es", rol: "estilista", employeeId: null, displayName: null }, "todo-incluido")).toMatchObject({ codigo: "VINCULO" });
   });
-  test("fuera de Todo incluido, solo dos tipos de acceso", () => {
+  test("fuera de Completo, solo dos tipos de acceso", () => {
     useAccesosDemo.setState({ miembros: miembrosDeDemo(equipo).filter((m) => m.rol !== "subencargado") });
     expect(accesos.invitarMiembro({ email: "r@x.es", rol: "recepcion", employeeId: null, displayName: null }, "reservas")).toMatchObject({ codigo: "PLAN" });
   });

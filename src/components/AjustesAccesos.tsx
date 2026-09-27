@@ -50,7 +50,7 @@ function resultado(r: ResultadoAccesosPanel, ok: string, deshacer?: () => void) 
       r.codigo === "PLAN"
         ? {
             description:
-              "Con el plan Todo incluido puedes usar los cuatro. Escríbenos a ejemplo@sishow.com.",
+              "Con el plan Embajador puedes usar los cuatro. Escríbenos a ejemplo@sishow.com.",
           }
         : undefined,
     );
@@ -417,7 +417,7 @@ function HojaInvitar({
                       {NOMBRE_ROL[r]}
                       {!rolesAmpliados && (r === "subencargado" || r === "recepcion") && (
                         <span className="ml-1.5 rounded-full bg-salvia-clara px-2 py-0.5 text-[11.5px] text-hoja-tinta">
-                          Todo incluido
+                          Embajador
                         </span>
                       )}
                     </b>

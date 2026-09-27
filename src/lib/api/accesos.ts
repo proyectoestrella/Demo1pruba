@@ -4,10 +4,19 @@
  * (service role, `auth.admin.inviteUserByEmail`) vive en
  * `accesos.functions.ts` y NUNCA en el navegador.
  */
-import { cabeRol, esRol, rolVigente, type Rol } from "../permisos";
+import { cabeRol, esRol, rolesPermitidosPorPlan, rolVigente, type Rol } from "../permisos";
 import { PermisoDenegado, tienePermiso, type Acceso } from "./autorizacion";
 
 export const DIAS_CADUCIDAD_INVITACION = 7;
+
+const NUM_EN_LETRA: Record<number, string> = { 2: "dos", 3: "tres", 4: "cuatro" };
+
+/** El motivo cuando un tipo de rol no cabe en el plan (28-sep: Básico dos, Completo tres, Embajador cuatro). */
+function motivoLimiteRoles(plan: string | null | undefined): string {
+  const n = rolesPermitidosPorPlan(plan);
+  const siguiente = n >= 3 ? "Embajador" : "Completo";
+  return `Tu plan permite ${NUM_EN_LETRA[n] ?? n} tipos de acceso. Para más, el plan ${siguiente}.`;
+}
 
 export interface MiembroFila {
   userId: string;
@@ -108,7 +117,7 @@ export async function invitarMiembro(
     return {
       ok: false,
       codigo: "PLAN",
-      motivo: "Tu plan permite dos tipos de acceso. Para más, el plan Todo incluido.",
+      motivo: motivoLimiteRoles(plan),
     };
   const ahora = deps.ahora();
   const inv: InvitacionFila = {
@@ -190,11 +199,12 @@ export async function cambiarRol(
   if (nuevo.rol === "estilista" && !nuevo.employeeId)
     return { ok: false, codigo: "DATOS", motivo: "Elige qué profesional es." };
   const otros = miembros.filter((x) => x.userId !== userId);
-  if (!cabeRol(nuevo.rol, rolesEnUso(otros, await deps.invitaciones()), await deps.plan()))
+  const plan = await deps.plan();
+  if (!cabeRol(nuevo.rol, rolesEnUso(otros, await deps.invitaciones()), plan))
     return {
       ok: false,
       codigo: "PLAN",
-      motivo: "Tu plan permite dos tipos de acceso. Para más, el plan Todo incluido.",
+      motivo: motivoLimiteRoles(plan),
     };
   await deps.guardarMiembro({
     ...m,
@@ -281,7 +291,7 @@ export async function reactivarMiembro(
     return {
       ok: false,
       codigo: "PLAN",
-      motivo: "Tu plan permite dos tipos de acceso. Para más, el plan Todo incluido.",
+      motivo: motivoLimiteRoles(plan),
     };
   await deps.guardarMiembro({ ...m, estado: "activa" });
   return { ok: true };

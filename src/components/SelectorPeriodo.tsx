@@ -45,7 +45,7 @@ export function SelectorPeriodo({ className }: { className?: string }) {
   const zona = useSalonStore((s) => zonaDelSalon(s.salonProfile));
   const setPeriodo = useSalonStore((s) => s.setPeriodoAnalitica);
   const [abierto, setAbierto] = useState(false);
-  // Lote 13: «Personalizado» es analítica avanzada (Todo incluido). Sin ella, vuelve a «Este mes».
+  // Lote 13: «Personalizado» es analítica avanzada (Completo, 28-sep: bajó de Embajador). Sin ella, vuelve a «Este mes».
   const avanzada = useTienePlan("analitica-avanzada");
   const botones = avanzada ? BOTONES : BOTONES.filter((b) => b !== "personalizado");
   useEffect(() => {

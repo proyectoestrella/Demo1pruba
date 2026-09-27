@@ -1,13 +1,26 @@
 import { describe, expect, test } from "bun:test";
-import { FUNCIONES_POR_PLAN, planDe, tienePlan } from "./plan";
+import { FUNCIONES_POR_PLAN, NOMBRE_PLAN, planDe, tienePlan } from "./plan";
 
 describe("plan del salón (lote 13)", () => {
-  test("decisión de Tomás: el asistente desde Reservas + Asistente; lo demás, Todo incluido", () => {
+  test("decisión de Tomás: el asistente desde Completo; lo demás (fuera de lo bajado el 28-sep), Embajador", () => {
     expect(FUNCIONES_POR_PLAN.asistente).toBe("reservas-asistente");
-    for (const f of ["roles-ampliados", "historial-completo", "campanas-ampliadas", "analitica-avanzada", "importacion-mensual"] as const) {
+    for (const f of ["roles-ampliados", "importacion-mensual"] as const) {
       expect(FUNCIONES_POR_PLAN[f]).toBe("todo-incluido");
     }
     expect(Object.keys(FUNCIONES_POR_PLAN)).not.toContain("mas-profesionales");
+  });
+  test("decisión de Tomás (28-sep, plan-final-v2): historial completo, analítica avanzada y campañas ampliadas bajan a Completo", () => {
+    for (const f of ["historial-completo", "analitica-avanzada", "campanas-ampliadas"] as const) {
+      expect(FUNCIONES_POR_PLAN[f]).toBe("reservas-asistente");
+      expect(tienePlan("reservas", f)).toBe(false);
+      expect(tienePlan("reservas-asistente", f)).toBe(true);
+      expect(tienePlan("todo-incluido", f)).toBe(true);
+    }
+  });
+  test("los nombres de los planes son Básico, Completo y Embajador (28-sep)", () => {
+    expect(NOMBRE_PLAN.reservas).toBe("Básico");
+    expect(NOMBRE_PLAN["reservas-asistente"]).toBe("Completo");
+    expect(NOMBRE_PLAN["todo-incluido"]).toBe("Embajador");
   });
   test("decisión de Tomás (27-sep), alineado con el presupuesto: exportar citas/analítica a Excel va en todos los planes", () => {
     expect(FUNCIONES_POR_PLAN.exportar).toBe("reservas");

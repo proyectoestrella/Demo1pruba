@@ -13,7 +13,14 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { Employee } from "./mock/types";
-import { cabeRol, type Rol } from "./permisos";
+import { cabeRol, rolesPermitidosPorPlan, type Rol } from "./permisos";
+
+/** El mensaje cuando un tipo de rol no cabe en el plan (28-sep: Básico dos, Completo tres, Embajador cuatro). */
+function mensajeLimiteRoles(plan: string | null): string {
+  const n = rolesPermitidosPorPlan(plan);
+  if (n >= 3) return "Tu plan incluye tres tipos de acceso (gerente, encargada y estilista).";
+  return "Tu plan incluye dos tipos de acceso (gerente y estilista).";
+}
 
 export interface Miembro {
   userId: string;
@@ -146,7 +153,7 @@ export const accesos = {
       return {
         ok: false,
         codigo: "PLAN",
-        mensaje: "Tu plan incluye dos tipos de acceso (gerente y estilista).",
+        mensaje: mensajeLimiteRoles(plan),
       };
     const caduca = new Date(ahora);
     caduca.setDate(caduca.getDate() + DIAS_INVITACION);
@@ -212,7 +219,7 @@ export const accesos = {
       return {
         ok: false,
         codigo: "PLAN",
-        mensaje: "Tu plan incluye dos tipos de acceso (gerente y estilista).",
+        mensaje: mensajeLimiteRoles(plan),
       };
     useAccesosDemo
       .getState()

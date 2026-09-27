@@ -63,8 +63,8 @@ describe("responder", () => {
     if (r.tipo !== "respuesta") return;
     expect(r.intencion).toBe("resumen-mes");
     expect(r.tambien?.intencion).toBe("plan-informe-mensual");
-    expect(r.texto).toContain("Si te referías a recibir el informe del mes por correo, eso llega con el plan **Todo incluido**");
-    // Con Todo incluido tampoco: esa función está «por confirmar».
+    expect(r.texto).toContain("Si te referías a recibir el informe del mes por correo, eso llega con el plan **Embajador**");
+    // Con Embajador tampoco: esa función está «por confirmar».
     const n = nuevo().responder("cuantas citas tengo hoy");
     expect(n.tipo === "respuesta" && n.tambien).toBeFalsy();
   });
@@ -238,19 +238,24 @@ describe("responder", () => {
     const r = nuevo("reservas").responder("quiero recibir el informe del mes por correo");
     expect(r.tipo).toBe("escalar");
     if (r.tipo !== "escalar") return;
-    expect(r.texto).toContain("Todo incluido");
+    expect(r.texto).toContain("Embajador");
     expect(r.contacto.cierre).toContain("activarlo");
   });
 
-  test("más profesionales entra en cualquier plan: nunca promete «Todo incluido»", () => {
+  test("más profesionales depende del plan (28-sep, plan-final-v2): Básico sube a Completo; Completo y Embajador ya lo tienen", () => {
+    const esperado: Record<"reservas" | "reservas-asistente" | "todo-incluido", string> = {
+      reservas: "llega con el plan **Completo**",
+      "reservas-asistente": "ya entra en tu plan (**Completo**)",
+      "todo-incluido": "ya entra en tu plan (**Embajador**)",
+    };
     for (const plan of ["reservas", "reservas-asistente", "todo-incluido"] as const) {
       const r = nuevo(plan).responder("quiero meter a otra peluquera en el equipo");
       expect(r.tipo).toBe("escalar");
       if (r.tipo !== "escalar") return;
-      expect(r.texto).toContain("ya entra en tu plan");
+      expect(r.texto).toContain(esperado[plan]);
       const todo = `${r.texto} ${r.pasos.join(" ")} ${r.contacto.mensaje}`;
-      expect(todo).not.toContain("llega con el plan");
-      if (plan !== "todo-incluido") expect(todo).not.toContain("Todo incluido");
+      expect(todo).not.toContain("Todo incluido");
+      expect(todo).not.toContain("Reservas + Asistente");
       expect(r.guia).toBe("§6 Equipo");
     }
   });
@@ -260,7 +265,7 @@ describe("responder", () => {
     expect(r.tipo === "escalar" && r.texto).toContain("siShow no lo hace");
   });
 
-  test("plan Reservas: las preguntas de negocio remiten a Reservas + Asistente", () => {
+  test("plan Básico: las preguntas de negocio remiten a Completo", () => {
     const r = nuevo("reservas").responder("cuantas citas tengo hoy");
     expect(r.tipo === "escalar" && r.intencion).toBe("plan-asistente");
   });

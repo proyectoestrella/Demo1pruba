@@ -1,5 +1,5 @@
 /**
- * Recordatorio automático por email el día anterior (plan Reservas).
+ * Recordatorio automático por email el día anterior (plan Básico).
  *
  * Aquí no hay red ni Supabase: solo la selección de qué citas toca recordar
  * y el contenido del correo. El envío y la lectura viven en

@@ -176,11 +176,15 @@ export function vePagina(p: Permisos, pagina: PaginaId): boolean {
 }
 
 /**
- * Límite de roles distintos en uso según el plan: fuera de «Todo incluido»,
- * dos (normalmente gerente y estilista).
+ * Límite de roles distintos en uso según el plan (decisión de Tomás,
+ * 28-sep, `plan-final-v2.md`): Básico (`reservas`) dos — gerente y
+ * estilista —, Completo (`reservas-asistente`) tres — gerente, encargada o
+ * subencargada, y estilista —, Embajador (`todo-incluido`) los cuatro.
  */
 export function rolesPermitidosPorPlan(plan: string | null | undefined): number {
-  return plan === "todo-incluido" ? ROLES.length : 2;
+  if (plan === "todo-incluido") return ROLES.length;
+  if (plan === "reservas-asistente") return 3;
+  return 2;
 }
 
 /** ¿Cabe un miembro más con este rol, dados los roles ya en uso y el plan? */

@@ -32,7 +32,7 @@ const ICONS = {
 } as const;
 
 function Insights() {
-  // Lote 13: patrones y exportar, con Todo incluido.
+  // Lote 13: patrones y exportar, con Completo (28-sep: bajó de Embajador).
   const avanzada = useTienePlan("analitica-avanzada");
   const appointments = useSalonStore((s) => s.appointments);
   const services = useSalonStore((s) => s.services);

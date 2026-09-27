@@ -24,15 +24,22 @@
  * ningún plan (no existen): son desarrollo a tu medida. Igual el WhatsApp o
  * los recordatorios totalmente automáticos, sin que la dueña toque nada
  * (requieren dar de alta el número en Meta): a tu medida, sin plan ni fecha.
+ *
+ * Decisión de Tomás (28-sep, `plan-final-v2.md`): los planes cambian de
+ * nombre — Reservas → Básico, Reservas + Asistente → Completo, Todo
+ * incluido → Embajador — sin tocar los ids internos. Y de reparto: el
+ * historial completo, la analítica avanzada y las campañas ampliadas bajan
+ * de Embajador a Completo (`historial-completo`, `analitica-avanzada`,
+ * `campanas-ampliadas`). El resto de funciones no se mueve.
  */
 export type PlanSishow = "reservas" | "reservas-asistente" | "todo-incluido";
 
 export const PLANES: readonly PlanSishow[] = ["reservas", "reservas-asistente", "todo-incluido"];
 
 export const NOMBRE_PLAN: Record<PlanSishow, string> = {
-  reservas: "Reservas",
-  "reservas-asistente": "Reservas + Asistente",
-  "todo-incluido": "Todo incluido",
+  reservas: "Básico",
+  "reservas-asistente": "Completo",
+  "todo-incluido": "Embajador",
 };
 
 export type FuncionPlan =
@@ -50,9 +57,9 @@ export type FuncionPlan =
 export const FUNCIONES_POR_PLAN: Record<FuncionPlan, PlanSishow> = {
   asistente: "reservas-asistente",
   "roles-ampliados": "todo-incluido",
-  "historial-completo": "todo-incluido",
-  "campanas-ampliadas": "todo-incluido",
-  "analitica-avanzada": "todo-incluido",
+  "historial-completo": "reservas-asistente",
+  "campanas-ampliadas": "reservas-asistente",
+  "analitica-avanzada": "reservas-asistente",
   exportar: "reservas",
   "senal-liberacion-automatica": "reservas",
   "importacion-mensual": "todo-incluido",
