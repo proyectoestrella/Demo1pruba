@@ -99,7 +99,102 @@ producción (`www.localhost` o un `vercel.app` no se tocan). Si en Vercel se
 configura además «Redirect to sishow.es» al añadir `www.sishow.es`, Vercel lo
 hace antes de llegar a la función; las dos cosas juntas no chocan.
 
-## 3. Cómo se comprobó (27-sep-2026)
+## 2. Registros DNS (IONOS) y dominios en Vercel
+
+El DNS de `sishow.es` está en IONOS. Registros:
+
+| Nombre | Tipo | Valor | Para |
+|---|---|---|---|
+| `@` (raíz) | A | `76.76.21.21` | `sishow.es` |
+| `www` | CNAME | `cname.vercel-dns.com.` | `www.sishow.es` (Vercel y el código lo redirigen a la raíz) |
+| `*` | CNAME | `cname.vercel-dns.com.` | que cualquier `<slug>.sishow.es` resuelva a Vercel |
+
+- Vercel también acepta el CNAME propio del proyecto que recomienda su API
+  (`GET /v6/domains/<dominio>/config`, `recommendedCNAME` de rango 1; el
+  27-sep era `89473fbe2128fab6.vercel-dns-017.com.`). Los dos funcionan;
+  `scripts/alta-subdominio.ts` lo enseña.
+- No borrar los registros MX/TXT de correo que ya tenga IONOS. Si se usa
+  Resend para el recordatorio, sus registros (DKIM en `resend._domainkey`,
+  MX y SPF en `send`) conviven con estos; por eso `send` está en
+  `SUBDOMINIOS_RESERVADOS`.
+
+**El comodín DNS no basta para Vercel.** Que `*.sishow.es` resuelva no hace
+que Vercel sirva ese host: cada dominio tiene que estar **añadido al
+proyecto** para que Vercel lo enrute y emita su certificado. Un dominio
+comodín `*.sishow.es` en Vercel exige, según su documentación, usar los
+nameservers de Vercel o delegar `_acme-challenge` (registros NS
+`_acme-challenge` → `ns1.vercel-dns.com.` y `ns2.vercel-dns.com.` en IONOS)
+para que pueda emitir el certificado comodín por DNS-01. Mientras no se haga
+eso, se da de alta **cada salón uno a uno** (§3).
+
+Estado el 27-sep (API de Vercel, proyecto `prueba28juliokt`): `sishow.es`,
+`www.sishow.es` (con redirección 308 a `sishow.es` configurada en Vercel),
+`peluchic.sishow.es` y `prueba28juliokt.vercel.app` añadidos y verificados;
+ninguno resolvía todavía en DNS.
+
+## 3. Dar de alta un salón en su subdominio
+
+1. Comprueba que el slug sirve como subdominio: minúsculas, dígitos y guiones,
+   sin guion al principio ni al final, hasta 63 caracteres, y no reservado
+   (`www`, `app`, `api`, `admin`, `demo`, `mail`, `correo`, `blog`, `send`,
+   `status`…; lista completa en `SUBDOMINIOS_RESERVADOS`). Si no sirve, su web
+   sigue en `sishow.es/s/<slug>`.
+2. Simula (solo lee; no cambia nada):
+
+   ```bash
+   set -a; source ~/.config/sishow/credenciales.env; set +a   # VERCEL_TOKEN
+   bun scripts/alta-subdominio.ts <slug>
+   ```
+
+3. Aplica:
+
+   ```bash
+   bun scripts/alta-subdominio.ts <slug> --aplicar
+   ```
+
+   Añade `<slug>.sishow.es` al proyecto (`POST /v10/projects/prueba28juliokt/domains`
+   del equipo `estrellavercel-s-projects`), lo verifica si Vercel lo pide
+   (`POST /v9/projects/…/domains/<dominio>/verify`) y lee su DNS
+   (`GET /v6/domains/<dominio>/config`). Es idempotente. Salida: `0` listo,
+   `1` error (slug inválido, token, dominio en otro proyecto…), `2` añadido
+   pero pendiente (verificación o DNS/certificado).
+4. Con el comodín `*` ya en IONOS no hay que tocar DNS. Sin comodín, crea un
+   CNAME `<slug>` → `cname.vercel-dns.com.`.
+5. Comprueba: `curl -sI https://<slug>.sishow.es/` → 200, y la portada del
+   salón en el navegador.
+
+No hace falta redesplegar: el enrutado lee el host en cada petición.
+
+## 4. Límites conocidos
+
+- **Plan Hobby de Vercel** (comprobado por API el 27-sep): como mucho **50
+  dominios propios por proyecto**, es decir `sishow.es` + `www` + 48 salones.
+  Además, las condiciones de Vercel reservan Hobby a uso no comercial; con
+  clientes de pago toca Pro.
+- **Sin certificado comodín** (§2), cada salón nuevo necesita su alta en
+  Vercel; un subdominio sin alta da el error de Vercel, no la web.
+- **Un slug inexistente** con alta en Vercel sirve lo mismo que
+  `/s/<slug-inexistente>` hoy.
+- **Inicio de sesión en `sishow.es`.** El enlace mágico del panel vuelve a
+  `window.location.origin` + `/app`; Supabase Auth solo redirige a URLs de su
+  lista (Authentication › URL Configuration). Hay que añadir
+  `https://sishow.es/**` (y `https://*.sishow.es/**` si se entra al panel desde
+  un subdominio), o el enlace llevará a la «Site URL» configurada.
+- **La sesión del panel es por dominio**: quien entra en
+  `prueba28juliokt.vercel.app` no está dentro en `sishow.es`, y al revés. Lo
+  mismo con el callback de Google (ver `docs/pruebas-google-2026-09-27.md`).
+- **Enlaces escritos a mano con `/s/<slug>`** en la landing (dosier, QR,
+  «Primeros pasos») siguen funcionando en el subdominio (307 a la forma corta)
+  y en `sishow.es`; no se han cambiado.
+- **Subrutas nuevas del salón**: si se añade `s.$salonSlug.<algo>.tsx`, hay
+  que apuntarla en `SUBRUTAS_SALON` para que salga corta; el test
+  `host.test.ts` falla hasta que se haga. Mientras, funciona con la forma
+  larga.
+- **Vite en local** bloquea hosts ajenos: `peluchic.localhost` funciona sin
+  más; para `curl -H 'Host: peluchic.sishow.es'` hace falta
+  `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=.sishow.es`.
+
+## 5. Cómo se comprobó (27-sep-2026)
 
 - `curl -H 'Host: peluchic.sishow.es'` contra el servidor de desarrollo **y**
   contra el paquete de producción (`.vercel/output/functions/__server.func`
