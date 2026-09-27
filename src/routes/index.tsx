@@ -1,35 +1,20 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Scissors } from "lucide-react";
-import { NOMBRE_PLAN } from "@/lib/plan";
-import {
-  PREGUNTAS_INICIO,
-  cabezaWeb,
-  jsonLdAplicacion,
-  jsonLdOrganizacion,
-  jsonLdPreguntas,
-  jsonLdSitioWeb,
-} from "@/lib/sishow-web";
+import { createFileRoute } from "@tanstack/react-router";
+import { CORREO_SISHOW, cabezaWeb, enlaceCorreo, jsonLdOrganizacion, jsonLdSitioWeb } from "@/lib/sishow-web";
 import { EsqueletoWeb } from "@/components/web/EsqueletoWeb";
 import { ESTILOS_WEB } from "@/components/web/estilos";
-import { Portada } from "@/components/web/Portada";
-import { Problemas } from "@/components/web/Problemas";
-import { BloqueModulo, MODULOS_INICIO, Tranquilidad } from "@/components/web/Modulos";
-import { CtaFinal, Demo, Preguntas, PreciosResumen, Semana, TituloSeccion } from "@/components/web/Secciones";
+import { MarcaSishow } from "@/components/web/Marca";
 
 /**
- * Inicio de la web oficial de siShow (sishow.es): para la dueña de una
- * peluquería o un centro de belleza. Qué es, qué problema le quita, cómo se
- * ve de verdad (capturas reales), cuánto cuesta y cómo empezamos. Las
- * barberías, en un segundo plano.
+ * Inicio de sishow.es, retirado a portada sobria el 27-09-2026: Tomás no
+ * quiere de momento una web de proyecto que enseñe todas las
+ * funcionalidades de la app ni que use el caso de un cliente (PeluChic,
+ * que aún no lo es y no ha dado permiso) para publicitarla. Una sola
+ * pantalla: marca, una frase y un contacto por correo. El inicio anterior
+ * (con funcionalidades, precios y capturas) sigue en `src/web-archivada/`.
  */
 export const Route = createFileRoute("/")({
   head: () => ({
-    ...cabezaWeb("inicio", [
-      jsonLdOrganizacion(),
-      jsonLdSitioWeb(),
-      jsonLdAplicacion(NOMBRE_PLAN),
-      jsonLdPreguntas(PREGUNTAS_INICIO),
-    ]),
+    ...cabezaWeb("inicio", [jsonLdOrganizacion(), jsonLdSitioWeb()]),
     styles: [ESTILOS_WEB],
   }),
   component: Inicio,
@@ -38,66 +23,20 @@ export const Route = createFileRoute("/")({
 function Inicio() {
   return (
     <EsqueletoWeb>
-      <Portada />
-      <Problemas />
-      <section className="ws-seccion" aria-labelledby="ws-modulos">
-        <div className="ws-contenedor">
-          <TituloSeccion
-            id="ws-modulos"
-            titulo="Todo tu salón en una sola app"
-            entradilla="Estas son pantallas reales de siShow, con los datos de un salón de ejemplo."
-          />
-          <div className="mt-14 space-y-24 lg:mt-20 lg:space-y-32">
-            {MODULOS_INICIO.map((m, i) => (
-              <BloqueModulo key={m.modulo.id} modulo={m.modulo} visual={m.visual} invertido={i % 2 === 1} />
-            ))}
-          </div>
-          <div className="mt-24 lg:mt-32">
-            <h3 className="ws-display ws-h3 max-w-2xl">Y lo que te da tranquilidad</h3>
-            <div className="mt-10">
-              <Tranquilidad />
-            </div>
-          </div>
-          <p className="mt-12">
-            <Link to="/funcionalidades" className="ws-boton ws-boton-s">
-              Ver todas las funcionalidades
-            </Link>
+      <section className="flex min-h-[calc(100vh-4.25rem)] items-center justify-center px-6 py-20 text-center">
+        <div className="ws-medida-l">
+          <MarcaSishow className="mx-auto justify-center" />
+          <p className="ws-display ws-h2 mt-8">Reservas y gestión para peluquerías</p>
+          <p className="ws-texto ws-entradilla mx-auto mt-5 max-w-xl">
+            Estamos preparando cómo enseñarlo. Si quieres saber más, escríbenos.
+          </p>
+          <p className="mt-9">
+            <a href={enlaceCorreo()} className="ws-boton ws-boton-p ws-boton-g">
+              {CORREO_SISHOW}
+            </a>
           </p>
         </div>
       </section>
-      <Semana />
-      <Demo />
-      <PreciosResumen />
-      <Barberias />
-      <Preguntas id="ws-preguntas" titulo="Preguntas frecuentes" preguntas={PREGUNTAS_INICIO} />
-      <CtaFinal />
     </EsqueletoWeb>
-  );
-}
-
-/** Las barberías, en segundo plano: una franja discreta. */
-function Barberias() {
-  return (
-    <section className="border-y border-[color:var(--ws-lino)]" aria-labelledby="ws-barberias">
-      <div className="ws-contenedor flex flex-col gap-5 py-10 md:flex-row md:items-center md:justify-between md:gap-10">
-        <div className="flex gap-4">
-          <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[color:var(--ws-beige)] text-[color:var(--ws-moca)]">
-            <Scissors className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <div>
-            <h2 id="ws-barberias" className="text-[1.2rem] font-extrabold">
-              ¿Tienes una barbería? También te sirve.
-            </h2>
-            <p className="ws-texto mt-1 max-w-2xl">
-              La agenda, la web de reservas, las fichas y la caja funcionan igual con cortes, degradados y arreglos de
-              barba. Cuéntanos cómo trabajas y te lo enseñamos.
-            </p>
-          </div>
-        </div>
-        <Link to="/contacto" className="ws-boton ws-boton-s shrink-0 self-start md:self-center">
-          Escríbenos
-        </Link>
-      </div>
-    </section>
   );
 }

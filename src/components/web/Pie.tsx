@@ -1,11 +1,16 @@
 import { Link } from "@tanstack/react-router";
-import { CORREO_SISHOW, DEMO_PANEL_URL, DEMO_WEB_URL, enlaceCorreo, enlaceWhatsapp } from "@/lib/sishow-web";
+import { CORREO_SISHOW, enlaceCorreo, enlaceWhatsapp } from "@/lib/sishow-web";
 import { MarcaSishow } from "./Marca";
 
 const TITULO = "text-[0.95rem] font-extrabold text-[color:var(--ws-cafe)]";
 const ENLACE = "inline-flex min-h-10 items-center text-[color:var(--ws-cafe-m)] no-underline hover:text-[color:var(--ws-cafe)] hover:underline";
 
-/** Pie de la web oficial: qué es siShow, páginas, contacto y legales. */
+/**
+ * Pie de la web oficial: qué es siShow, contacto y legales. Sin la sección
+ * «Producto» desde el 27-09-2026 (enlazaba a Funcionalidades, Precios y a la
+ * demo de PeluChic, retiradas de la vista pública; ver
+ * `src/web-archivada/README.md`).
+ */
 export function Pie() {
   const whatsapp = enlaceWhatsapp();
   return (
@@ -23,19 +28,9 @@ export function Pie() {
             {CORREO_SISHOW}
           </a>
         </div>
-        <nav aria-label="Producto">
-          <p className={TITULO}>Producto</p>
-          <ul className="mt-2">
-            <li><Link to="/funcionalidades" className={ENLACE}>Funcionalidades</Link></li>
-            <li><Link to="/precios" className={ENLACE}>Precios</Link></li>
-            <li><a href={DEMO_WEB_URL} className={ENLACE}>Web de reservas de ejemplo</a></li>
-            <li><a href={DEMO_PANEL_URL} className={ENLACE}>Panel de ejemplo</a></li>
-          </ul>
-        </nav>
         <nav aria-label="Contacto">
           <p className={TITULO}>Contacto</p>
           <ul className="mt-2">
-            <li><Link to="/contacto" className={ENLACE}>Hablemos</Link></li>
             <li><a href={enlaceCorreo()} className={ENLACE}>Correo</a></li>
             {whatsapp && (
               <li><a href={whatsapp} target="_blank" rel="noopener noreferrer" className={ENLACE}>WhatsApp</a></li>

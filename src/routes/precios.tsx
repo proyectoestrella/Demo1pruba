@@ -1,56 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { NOMBRE_PLAN } from "@/lib/plan";
-import { PREGUNTAS_PRECIOS, cabezaWeb, jsonLdAplicacion, jsonLdPreguntas } from "@/lib/sishow-web";
-import { EsqueletoWeb } from "@/components/web/EsqueletoWeb";
-import { ESTILOS_WEB } from "@/components/web/estilos";
-import { IntroPagina } from "@/components/web/IntroPagina";
-import { PuestaYMedida, TablaComparativa, TarjetasPlanes } from "@/components/web/Planes";
-import { CtaFinal, Preguntas, TituloSeccion } from "@/components/web/Secciones";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 /**
- * Precios de siShow: los tres planes (anual o mes a mes), la puesta en
- * marcha, lo que va a tu medida, la comparativa completa y las preguntas.
- * Cifras de `lib/sishow-web.ts` (hoja de planes v2, aprobada el 26-sep).
+ * Retirada de la vista pública el 27-09-2026 (redirección temporal, 307):
+ * de momento no se publican precios en una web de proyecto. El código
+ * original sigue en `src/web-archivada/` (ver su README para reactivarlo).
  */
 export const Route = createFileRoute("/precios")({
-  head: () => ({
-    ...cabezaWeb("precios", [jsonLdAplicacion(NOMBRE_PLAN), jsonLdPreguntas(PREGUNTAS_PRECIOS)]),
-    styles: [ESTILOS_WEB],
-  }),
-  component: Precios,
+  beforeLoad: () => {
+    throw redirect({ to: "/" });
+  },
 });
-
-function Precios() {
-  return (
-    <EsqueletoWeb>
-      <IntroPagina
-        titulo="Precios claros, sin comisiones por reserva"
-        entradilla="Tres planes con cuota fija al mes. Pagando el año entero, cada mes sale más barato y la puesta en marcha se queda en la mitad."
-      />
-      <section className="ws-seccion-s" aria-label="Planes">
-        <div className="ws-contenedor">
-          <TarjetasPlanes />
-        </div>
-      </section>
-      <section className="pb-16 md:pb-24" aria-label="Puesta en marcha y a tu medida">
-        <div className="ws-contenedor">
-          <PuestaYMedida />
-        </div>
-      </section>
-      <section className="ws-banda-arena ws-seccion" aria-labelledby="ws-comparativa">
-        <div className="ws-contenedor">
-          <TituloSeccion
-            id="ws-comparativa"
-            titulo="Qué incluye cada plan"
-            entradilla="Todo, fila a fila. En la cabecera, el precio al mes con pago anual y mes a mes."
-          />
-          <div className="mt-10">
-            <TablaComparativa />
-          </div>
-        </div>
-      </section>
-      <Preguntas id="ws-preguntas-precios" titulo="Preguntas sobre precios" preguntas={PREGUNTAS_PRECIOS} />
-      <CtaFinal titulo="¿Qué plan le va a tu salón?" />
-    </EsqueletoWeb>
-  );
-}
