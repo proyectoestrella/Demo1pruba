@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
-  Link,
   createRootRouteWithContext,
   useRouter,
   HeadContent,
@@ -12,29 +11,39 @@ import { useEffect, useState } from "react";
 import { LayoutGrid, Maximize, Minimize } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { AvisosDeSincronizacion } from "@/components/AvisosDeSincronizacion";
-import { useSalonStore } from "@/lib/store";
+import { SimboloSishow } from "@/components/web/Marca";
+import { IMAGEN_SOCIAL, SITIO_URL } from "@/lib/sishow-web";
+import { zonaDeRuta } from "@/lib/zona-web";
 
 import appCss from "../styles.css?url";
 
+/**
+ * Página no encontrada, en español y con la identidad de siShow (integración
+ * 7; antes decía «Page not found»). «Volver al inicio» es un enlace normal a
+ * `/`: en sishow.es lleva a la web oficial y en el subdominio de un salón, a
+ * la web de ese salón.
+ */
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <main className="flex min-h-screen items-center justify-center bg-background px-6 py-16 text-foreground">
       <div className="max-w-md text-center">
-        <h1 className="text-7xl font-display">404</h1>
-        <h2 className="mt-4 text-xl font-semibold">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist.
+        <SimboloSishow size={56} className="mx-auto" />
+        <p className="mt-8 text-sm font-semibold tracking-[0.12em] text-muted-foreground">ERROR 404</p>
+        <h1 className="mt-2 font-display text-4xl leading-tight">Esta página no existe</h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
+          Puede que el enlace esté mal copiado o que la página ya no esté. Si venías a pedir cita, vuelve al enlace
+          que te mandó tu salón.
         </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <a
+            href="/"
+            className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
           >
-            Go home
-          </Link>
+            Volver al inicio
+          </a>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 
@@ -43,35 +52,49 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <main className="flex min-h-screen items-center justify-center bg-background px-6 py-16 text-foreground">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold">This page didn't load</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Something went wrong. Try refreshing.</p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
+        <SimboloSishow size={56} className="mx-auto" />
+        <h1 className="mt-8 font-display text-3xl leading-tight">Esta página no ha cargado</h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
+          Algo ha fallado por nuestra parte. Prueba otra vez en un momento.
+        </p>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
           <button
+            type="button"
             onClick={() => {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
           >
-            Try again
+            Volver a intentarlo
           </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
+            className="inline-flex h-11 items-center justify-center rounded-full border border-input bg-background px-6 text-sm font-semibold hover:bg-accent"
           >
-            Go home
+            Ir al inicio
           </a>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => {
-    const fallbackTitle = `${useSalonStore.getState().salonProfile.name} — Premium hair salon booking`;
+  head: ({ matches }) => {
+    // Integración 7: lo global del <head> sin rastro de «Trimly» ni de Lovable,
+    // en español, y sin leer la store del panel (antes el título salía del
+    // salón guardado en el proceso del servidor, «… — Premium hair salon booking»).
+    // Cada página pisa título, descripción e imagen con los suyos: la web
+    // oficial (cabezaWeb) y la del salón (s.$salonSlug.tsx).
+    const ruta = matches[matches.length - 1]?.pathname ?? "/";
+    const zona = zonaDeRuta(ruta);
+    const titulo = "siShow — Reservas y agenda para tu salón";
+    const descripcion =
+      "siShow: reservas por internet y agenda para peluquerías, barberías y centros de belleza. Tus clientas reservan solas; tú, a lo tuyo.";
+    const imagen = `${SITIO_URL}${IMAGEN_SOCIAL.ruta}`;
     return {
       meta: [
         { charSet: "utf-8" },
@@ -81,51 +104,34 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { name: "apple-mobile-web-app-capable", content: "yes" },
         { name: "mobile-web-app-capable", content: "yes" },
         { name: "apple-mobile-web-app-status-bar-style", content: "black" },
-        { name: "apple-mobile-web-app-title", content: "Trimly" },
+        { name: "apple-mobile-web-app-title", content: "siShow" },
         { name: "theme-color", content: "#111113" },
-        { title: fallbackTitle },
-        {
-          name: "description",
-          content:
-            "Reservas para peluquerías y barberías. Gestiona tu agenda y deja que tus clientes reserven en segundos.",
-        },
-        { property: "og:title", content: fallbackTitle },
+        { title: titulo },
+        { name: "description", content: descripcion },
+        { property: "og:title", content: titulo },
         { property: "og:type", content: "website" },
-        { name: "twitter:title", content: fallbackTitle },
-        {
-          name: "description",
-          content: "Trimly permite gestionar la agenda y las reservas de peluquerías y barberías.",
-        },
-        {
-          property: "og:description",
-          content: "Trimly permite gestionar la agenda y las reservas de peluquerías y barberías.",
-        },
-        {
-          name: "twitter:description",
-          content: "Trimly permite gestionar la agenda y las reservas de peluquerías y barberías.",
-        },
-        {
-          property: "og:image",
-          content:
-            "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1f9f21d7-b627-4fc9-a76d-ebf1f67d7d96/id-preview-8062d78c--8482e4c5-95d6-4696-a2e1-c9514fc10a7b.lovable.app-1779993805471.png",
-        },
-        {
-          name: "twitter:image",
-          content:
-            "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1f9f21d7-b627-4fc9-a76d-ebf1f67d7d96/id-preview-8062d78c--8482e4c5-95d6-4696-a2e1-c9514fc10a7b.lovable.app-1779993805471.png",
-        },
+        { property: "og:site_name", content: "siShow" },
+        { property: "og:locale", content: "es_ES" },
+        { name: "twitter:title", content: titulo },
+        { property: "og:description", content: descripcion },
+        { name: "twitter:description", content: descripcion },
+        { property: "og:image", content: imagen },
+        { name: "twitter:image", content: imagen },
         { name: "twitter:card", content: "summary_large_image" },
       ],
       links: [
         { rel: "stylesheet", href: appCss },
-        { rel: "manifest", href: "/manifest.webmanifest" },
-        { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
-        { rel: "preconnect", href: "https://fonts.googleapis.com" },
-        { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-        {
-          rel: "stylesheet",
-          href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap",
-        },
+        // Fuentes autoalojadas (ver styles.css): se precarga solo el texto
+        // (Manrope, latín), que es lo que se pinta primero en todas las páginas.
+        { rel: "preload", as: "font", type: "font/woff2", href: "/fonts/manrope-latin.woff2", crossOrigin: "anonymous" },
+        // El manifiesto instala la app del rutero (start_url /rutero): solo en
+        // el panel. En la web oficial o la de un salón, «Añadir a pantalla de
+        // inicio» no puede llevar a una clienta a una herramienta interna.
+        ...(zona === "panel" ? [{ rel: "manifest", href: "/manifest.webmanifest" }] : []),
+        { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
+        // Sin esto el navegador pedía /favicon.ico (404 en la consola).
+        { rel: "icon", href: "/web/favicon.svg", type: "image/svg+xml" },
+        { rel: "icon", href: "/web/favicon-32.png", type: "image/png", sizes: "32x32" },
       ],
     };
   },
@@ -142,7 +148,7 @@ const THEME_ANTI_FLASH_SCRIPT = `
 (function () {
   try {
     document.documentElement.classList.remove("dark");
-    window.localStorage.removeItem("trimly-theme");
+    if (window.localStorage.getItem("trimly-theme") !== null) window.localStorage.removeItem("trimly-theme");
   } catch (e) {}
 })();
 `;
@@ -238,8 +244,14 @@ function ControlesIpad() {
     }
   };
 
-  const verVolver = (app || enPantallaCompleta) && path !== "/rutero";
-  const verPantalla = !app && tablet && puede;
+  // Integración 7: ni en la web oficial ni en la web de reservas de un salón
+  // (las ven clientas y dueñas, no son la demo del iPad). En la del salón solo
+  // queda «Volver al rutero» si se entró a pantalla completa desde el panel,
+  // que es el recorrido de la demo; instalada como app por una clienta, nada.
+  const zona = zonaDeRuta(path);
+  if (zona === "oficial") return null;
+  const verVolver = (zona === "salon" ? enPantallaCompleta : app || enPantallaCompleta) && path !== "/rutero";
+  const verPantalla = zona === "panel" && !app && tablet && puede;
   if (!verVolver && !verPantalla) return null;
 
   const boton =

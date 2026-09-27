@@ -4,7 +4,7 @@ export interface LogoProps {
   className?: string;
   /**
    * Nombre accesible del icono para lectores de pantalla. Por defecto
-   * "Trimly" (el panel y el login, donde no hay un salón de por medio), pero
+   * "siShow" (el panel y el login, donde no hay un salón de por medio), pero
    * la web pública de un salón debe pasar el nombre DEL SALÓN: un lector de
    * pantalla no debe anunciar el nombre interno del producto en la web de un
    * cliente de pago (hallazgo de accesibilidad de la auditoría de UX).
@@ -18,7 +18,7 @@ export interface LogoProps {
  * Uses `currentColor` so it inherits the surrounding text color and adapts
  * automatically to light/dark theme.
  */
-export function Logo({ className, label = "Trimly" }: LogoProps) {
+export function Logo({ className, label = "siShow" }: LogoProps) {
   return (
     <svg
       viewBox="0 0 32 32"

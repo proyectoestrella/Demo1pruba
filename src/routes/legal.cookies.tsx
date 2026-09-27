@@ -57,10 +57,10 @@ function Resto() {
         </table>
       </div>
       <div className="ws-legal text-[1.02rem] leading-relaxed">
-        <h2>Tipografías de Google</h2>
+        <h2>Tipografías</h2>
         <p>
-          La web carga sus tipografías desde Google Fonts. No pone cookies, pero tu navegador se conecta a servidores de
-          Google, que reciben tu dirección IP. Más detalle en la{" "}
+          Las tipografías se sirven desde la propia web: abrirla no conecta tu navegador con Google Fonts ni con ningún
+          otro servicio de tipografías. Más detalle en la{" "}
           <Link to="/legal/privacidad" className="ws-enlace">
             política de privacidad
           </Link>

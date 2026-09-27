@@ -85,8 +85,8 @@ function Privacidad() {
           (Supabase).
         </p>
         <p>
-          La web carga sus tipografías desde Google Fonts: al abrirla, tu navegador se conecta a servidores de Google, que
-          reciben tu dirección IP.
+          Las tipografías de la web se sirven desde la propia web, no desde Google Fonts: abrirla no envía tu dirección IP
+          a ningún servicio de tipografías.
         </p>
 
         <h2>6. Transferencias internacionales</h2>

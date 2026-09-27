@@ -17,7 +17,7 @@ import heroSalon from "@/assets/gallery-salon.jpg";
  */
 export const Route = createFileRoute("/rutero")({
   head: () => ({
-    meta: [{ title: "Rutero · Trimly" }, { name: "robots", content: "noindex, nofollow" }],
+    meta: [{ title: "Rutero · siShow" }, { name: "robots", content: "noindex, nofollow" }],
   }),
   component: Rutero,
 });

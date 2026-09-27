@@ -12,6 +12,7 @@ import {
 } from "./registro-cambios";
 import type { PeriodoId, RangoPersonalizado } from "./periodos";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { pestanaEnWebOficial } from "./zona-web";
 import { seedAppointments, seedWaitlist, clients as seedClients, buildSeed, type MezclaSemilla } from "./mock/seed";
 import {
   serviceMap,
@@ -410,9 +411,25 @@ export interface SavedDemo extends DemoProfile {
 // no-ops on the server and only persists once hydrated in the browser —
 // otherwise every dashboard edit (rename, service CRUD, etc.) would be
 // lost on refresh, which is exactly what looked "broken" before.
+//
+// Integración 7: en la web oficial (sishow.es, sus precios, legales…) la
+// store se carga igual —va en el paquete común de la aplicación—, pero NO
+// escribe: la web oficial es un escaparate y no tiene por qué dejar 250 KB de
+// datos de la demo en el navegador de quien la visita. Se sigue LEYENDO (si
+// ese navegador ya tenía el panel, lo conserva en memoria) y, en cuanto la
+// pestaña pasa al panel o a una web de salón, el siguiente cambio lo guarda
+// entero como siempre. Se decide en cada escritura por la dirección real de
+// la pestaña (ver `pestanaEnWebOficial`).
 const storage = createJSONStorage<SalonState>(() =>
   typeof window !== "undefined"
-    ? window.localStorage
+    ? {
+        getItem: (k: string) => window.localStorage.getItem(k),
+        setItem: (k: string, v: string) => {
+          if (pestanaEnWebOficial()) return;
+          window.localStorage.setItem(k, v);
+        },
+        removeItem: (k: string) => window.localStorage.removeItem(k),
+      }
     : { getItem: () => null, setItem: () => {}, removeItem: () => {} },
 );
 
