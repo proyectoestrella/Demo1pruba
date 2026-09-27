@@ -1,6 +1,7 @@
-import type { SalonProfile } from "../mock/types";
+import type { Appointment, Client, SalonProfile } from "../mock/types";
 import { formatMenuEntry } from "../business-type";
-import type { MezclaSemilla } from "../mock/seed";
+import { DURACION_FLEXIBLE_CLIENT_NAME, sembrarCobros, type MezclaSemilla } from "../mock/seed";
+import { ultimoColor } from "../colores";
 
 /**
  * PeluChic (Sanchinarro, Madrid) — la demo registrada para la presentación a
@@ -30,7 +31,7 @@ import type { MezclaSemilla } from "../mock/seed";
  */
 
 /** Sube cuando cambien estos datos: los navegadores con la demo vieja la vuelven a cargar. */
-export const VERSION_PELUCHIC = "2026-09-27.5";
+export const VERSION_PELUCHIC = "2026-09-27.6";
 
 export interface ServicioPeluChic {
   /** Id estable (sexto campo de la carta): las citas de la semilla y las descripciones cuelgan de él. */
@@ -389,3 +390,80 @@ export const PELUCHIC: SalonProfile = {
   calendario: { desde: 9, hasta: 21 },
   plan: "todo-incluido",
 };
+
+/**
+ * Historial de color realista para la demo (dolor nº1 de María: mirar a mano
+ * el color de cada clienta antes de que llegue). Diez fórmulas estables,
+ * ligadas a un servicio real de la carta para que su duración y precio no se
+ * inventen.
+ */
+const FORMULAS_HISTORIAL_COLOR: ReadonlyArray<{ servicioId: string; formula: string; nota: string }> = [
+  { servicioId: "color-organico", formula: "Color orgánico 7.4 en raíz, oxidante 20 vol, 35 min", nota: "Cubrir canas de sienes; emulsión suave." },
+  { servicioId: "color-10-minutos", formula: "Tinte 6.3 en raíz, oxidante 20 vol, 35 min", nota: "Respetar medios; refrescar solo al aclarar." },
+  { servicioId: "bano-brillo", formula: "Baño de color 7.13, oxidante 10 vol, 20 min", nota: "Vigilar puntas porosas; aclarar con suavidad." },
+  { servicioId: "color-organico", formula: "Color orgánico 5.0 en raíz, oxidante 20 vol, 30 min", nota: "Cubrir canas; anotar el resultado." },
+  { servicioId: "color-10-minutos", formula: "Tinte 8.1 sin amoníaco, oxidante 10 vol, 30 min", nota: "Comprobar el cuero cabelludo antes de aplicar." },
+  { servicioId: "bano-brillo", formula: "Baño de color 6.34, oxidante 10 vol, 25 min", nota: "De medios a puntas; revisar el brillo." },
+  { servicioId: "mechas", formula: "Mechas finas: decoloración con oxidante 20 vol, 35 min; matiz 9.1, 10 vol, 10 min", nota: "Dejar libre el contorno; comprobar elasticidad." },
+  { servicioId: "mechas", formula: "Balayage: decoloración con oxidante 30 vol, 30 min; matiz 9.13, 10 vol, 15 min", nota: "Difuminar la raíz; vigilar puntas." },
+  { servicioId: "mechas", formula: "Balayage cobrizo: decoloración con oxidante 30 vol, 25 min; matiz 8.34, 10 vol, 15 min", nota: "No solapar la decoloración anterior." },
+  { servicioId: "mechas", formula: "Mechas con papel: decoloración con oxidante 20 vol, 40 min; matiz 8.21, 10 vol, 10 min", nota: "Separaciones finas en coronilla." },
+];
+
+/**
+ * Añade, para quien tenga cita hoy o mañana y no tenga ya un color anotado
+ * antes de esa cita, UNA visita de color pasada (entre 30 y 129 días atrás,
+ * nunca antes de que la clienta existiera). Determinista por el id de la
+ * clienta: ~70 % quedan con último color; el resto, a propósito, sin él —
+ * así la ficha y la Hoja del día lo siguen enseñando como lo que es: lo que
+ * falta por anotar. No toca ninguna cita existente (ni su precio, ni su
+ * hora): solo AÑADE histórico, con la marca «TPV 123» de una visita
+ * importada, igual que el resto del pasado de la semilla.
+ */
+export function conHistorialColorPeluchic(citas: Appointment[], clients: Client[], ahora: Date = new Date()): Appointment[] {
+  const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+  const finVentana = new Date(inicioHoy);
+  finVentana.setDate(finVentana.getDate() + 2); // hoy + mañana
+  const porServicio = new Map(SERVICIOS_PELUCHIC.map((s) => [s.id, s] as const));
+  const creadaEl = new Map(clients.map((c) => [c.id, +new Date(c.createdAt)] as const));
+
+  const primeraCitaPorClienta = new Map<string, Appointment>();
+  for (const cita of citas) {
+    if (cita.status === "cancelled" || cita.status === "blocked") continue;
+    if (cita.clientName === DURACION_FLEXIBLE_CLIENT_NAME) continue;
+    const inicio = new Date(cita.start);
+    if (inicio < inicioHoy || inicio >= finVentana) continue;
+    const previa = primeraCitaPorClienta.get(cita.clientId);
+    if (!previa || +new Date(cita.start) < +new Date(previa.start)) primeraCitaPorClienta.set(cita.clientId, cita);
+  }
+
+  const nuevas: Appointment[] = [];
+  for (const [clientId, cita] of primeraCitaPorClienta) {
+    if (ultimoColor(citas, clientId, cita.start)) continue;
+    const numero = Number(clientId.replace(/\D/g, "")) || 0;
+    if (numero % 10 >= 7) continue; // ~30 % se dejan, a propósito, sin color.
+    const receta = FORMULAS_HISTORIAL_COLOR[numero % FORMULAS_HISTORIAL_COLOR.length];
+    const servicio = porServicio.get(receta.servicioId);
+    if (!servicio) continue;
+    const fecha = new Date(inicioHoy);
+    fecha.setDate(fecha.getDate() - (30 + (numero % 100)));
+    fecha.setHours(12, (numero % 4) * 15, 0, 0);
+    const creada = creadaEl.get(clientId);
+    if (creada !== undefined && +fecha < creada) continue; // nunca antes de que existiera la clienta.
+    nuevas.push({
+      id: `a-color-hist-${clientId}`,
+      clientId,
+      clientName: cita.clientName,
+      serviceIds: [servicio.id],
+      employeeId: cita.employeeId,
+      start: fecha.toISOString(),
+      duration: servicio.duracionMin,
+      priceEur: servicio.precio,
+      status: "completed",
+      colorFormula: receta.formula,
+      technicalNotes: receta.nota,
+      origen: "tpv123",
+    });
+  }
+  return nuevas.length ? sembrarCobros([...citas, ...nuevas]) : citas;
+}
