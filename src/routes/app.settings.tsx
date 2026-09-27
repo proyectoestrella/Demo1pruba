@@ -195,7 +195,7 @@ function Settings() {
               Ningún ajuste habla de «{buscar}». Prueba con otra palabra: «señal», «horas», «WhatsApp»…
             </p>
           )}
-        <SeccionAjustes id="guia" oculta={!visibles.includes("guia")} abrir={abrir} titulo="Guía de uso de la app" resumen="Cómo se usa siShow, con capturas de tu propio panel">
+        <SeccionAjustes id="guia" oculta={!visibles.includes("guia")} abrir={abrir} titulo="Guía de uso de la app" resumen="Cómo se usa siShow, con capturas de tu propio panel" abierta>
           <GuiaUso />
         </SeccionAjustes>
 
