@@ -94,6 +94,11 @@ function SalonLayout() {
     select: (s) => (s.location.search as Record<string, unknown>)?.[DEMO_PARAM],
   });
   const demoRawFromUrl = typeof demoRawParam === "string" ? demoRawParam : undefined;
+  // Lote P: la vista previa de «Mi página» (`&previa=1`, en un iframe del
+  // panel) PINTA el borrador pero no lo carga: ni en la store —compartida con
+  // el panel por localStorage: le recortaba la carta a 12 y le resembraba la
+  // agenda— ni como enlace de demo de la pestaña.
+  const esPrevia = useRouterState({ select: (s) => (s.location.search as Record<string, unknown>)?.previa !== undefined });
   // El rediseño v2 de la web pública se activa por enlace (`&v=2`), no se
   // guarda: quien abre el mismo enlace sin el parámetro ve la web de siempre.
   // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
@@ -132,7 +137,7 @@ function SalonLayout() {
     const key = demoSessionKey(salonSlug);
     try {
       if (demoRawFromUrl) {
-        window.sessionStorage.setItem(key, demoRawFromUrl);
+        if (!esPrevia) window.sessionStorage.setItem(key, demoRawFromUrl);
         setDemoRawFromSession(demoRawFromUrl);
       } else {
         setDemoRawFromSession(window.sessionStorage.getItem(key) ?? undefined);
@@ -143,7 +148,7 @@ function SalonLayout() {
       setDemoRawFromSession(undefined);
     }
     setSessionChecked(true);
-  }, [demoRawFromUrl, salonSlug]);
+  }, [demoRawFromUrl, salonSlug, esPrevia]);
   // `||`, no `??`: un `?d=` vacío en la URL (nunca lo genera la app, pero un
   // enlace puede llegar recortado así) debe tratarse igual que "ausente" y
   // caer también a sessionStorage, no quedarse con la cadena vacía.
@@ -159,7 +164,7 @@ function SalonLayout() {
   // `applyBusinessType` en lib/store.ts) en vez de quedarse en barbería.
   const fromUrl = decodeDemoProfile(demoRaw);
   useEffect(() => {
-    if (!fromUrl) return;
+    if (!fromUrl || esPrevia) return;
     // Si este slug ya se ha resuelto como salón REAL, su perfil manda sobre el
     // del enlace: aplicar aquí el `?d=` lo pisaría y — peor — se lo escribiría
     // encima en Supabase. El enlace de demo de Adam sigue abriendo, pero
@@ -173,10 +178,12 @@ function SalonLayout() {
       noShowFeeEur: fromUrl.noShowFeeEur,
       smartSpread: fromUrl.smartSpread,
       duracionFlexible: fromUrl.duracionFlexible,
+      // Lote P: si hoy el salón cierra, el panel de la demo abre igual.
+      abrirHoy: true,
     });
     markDemoActive();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [demoRaw, salonSlug, updateSalonProfile, applyBusinessType, markDemoActive]);
+  }, [demoRaw, salonSlug, esPrevia, updateSalonProfile, applyBusinessType, markDemoActive]);
 
   // ¿Es este slug un salón real (una fila en `salons`) o una demo de venta?
   // Si es real, su perfil y su agenda vienen de Supabase y pisan el `?d=`; si

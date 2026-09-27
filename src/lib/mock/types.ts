@@ -351,6 +351,15 @@ export interface SalonProfile {
   teamIds?: string[];
   /** Horario semanal por posición del equipo; cada día conserva el formato de openingHours. */
   teamHours?: string[][];
+  /**
+   * SOLO DEMOS (lote P): fecha local «AAAA-MM-DD» en que el panel de la demo
+   * abre aunque el horario del salón cierre ese día, con los turnos de su
+   * siguiente día abierto. La presentación a PeluChic es un lunes y PeluChic
+   * cierra los lunes: sin esto, «Hoy» salía vacío. No toca `openingHours` (la
+   * web pública y Ajustes siguen diciendo «Cerrado»). Lo pone
+   * `applyBusinessType` al cargar una demo; un salón real nunca lo lleva.
+   */
+  demoAbreHoy?: string;
   /** Estado de la tarjeta de primeros pasos. */
   setupChecklistHidden?: boolean;
   setupChecklistDone?: number[];

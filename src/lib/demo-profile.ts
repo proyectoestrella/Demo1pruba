@@ -94,7 +94,7 @@ export type DemoProfile = DemoProfileNegocio & DemoPersonalizacion;
  */
 export type CamposSinHeredar = Pick<
   SalonProfile,
-  "logoUrl" | "enlaces" | "whatsapp" | "boletin" | "galeriaPropia" | "descripcionesServicios" | "preciosLiterales"
+  "logoUrl" | "enlaces" | "whatsapp" | "boletin" | "galeriaPropia" | "descripcionesServicios" | "preciosLiterales" | "demoAbreHoy"
 >;
 
 /**
@@ -202,6 +202,7 @@ export function blankDemoProfile(): DemoProfile & CamposSinHeredar {
     galeriaPropia: undefined,
     descripcionesServicios: undefined,
     preciosLiterales: undefined,
+    demoAbreHoy: undefined,
   };
 }
 

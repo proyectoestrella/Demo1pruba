@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, setSystemTime } from "bun:test";
 import {
   buildSeed,
   PENALIZED_CLIENT_PHONE,
@@ -171,17 +171,57 @@ describe("buildSeed — fichas creíbles de peluquería", () => {
   });
 
   it("conserva agenda llena hoy y el sábado, solicitudes y visitas importadas de hace más de un año", () => {
-    const seed = buildSeed("peluqueria", equipo, carta);
-    const sabado = new Date();
-    sabado.setDate(sabado.getDate() + (6 - sabado.getDay() + 7) % 7);
-    for (const day of [new Date(), sabado]) {
-      const citas = seed.appointments.filter((a) => fechaLocal(new Date(a.start)) === fechaLocal(day));
-      expect(citas.length).toBeGreaterThanOrEqual(12);
-      expect(citas.length).toBeLessThanOrEqual(20);
+    // Reloj fijo en un miércoles: el equipo de ejemplo no trabaja el domingo, y
+    // con el reloj real esta prueba fallaba cada domingo.
+    setSystemTime(new Date("2026-09-30T09:30:00+02:00"));
+    try {
+      const seed = buildSeed("peluqueria", employeesForType("peluqueria"), carta);
+      const sabado = new Date();
+      sabado.setDate(sabado.getDate() + (6 - sabado.getDay() + 7) % 7);
+      for (const day of [new Date(), sabado]) {
+        const citas = seed.appointments.filter((a) => fechaLocal(new Date(a.start)) === fechaLocal(day));
+        expect(citas.length).toBeGreaterThanOrEqual(12);
+        expect(citas.length).toBeLessThanOrEqual(20);
+      }
+      expect(seed.appointments.filter((a) => a.status === "pending" && fechaLocal(new Date(a.start)) === fechaLocal(new Date())).length).toBeGreaterThanOrEqual(2);
+      expect(seed.appointments.some((a) => a.origen === "tpv123" && +new Date(a.start) < Date.now() - 365 * 86_400_000)).toBe(true);
+      expect(buildSeed("peluqueria", employeesForType("peluqueria"), carta)).toEqual(seed);
+    } finally {
+      setSystemTime();
     }
-    expect(seed.appointments.filter((a) => a.status === "pending" && fechaLocal(new Date(a.start)) === fechaLocal(new Date())).length).toBeGreaterThanOrEqual(2);
-    expect(seed.appointments.some((a) => a.origen === "tpv123" && +new Date(a.start) < Date.now() - 365 * 86_400_000)).toBe(true);
-    expect(buildSeed("peluqueria", equipo, carta)).toEqual(seed);
+  });
+
+  it("hoy es lunes y el salón cierra los lunes: la DEMO abre hoy con los turnos del martes", () => {
+    // La presentación a PeluChic: lunes 28/09/2026 a las 9:30, y PeluChic cierra los lunes.
+    setSystemTime(new Date("2026-09-28T09:30:00+02:00"));
+    try {
+      const horario = ["Cerrado", "10:00–20:00", "10:00–20:00", "10:00–20:00", "10:00–20:00", "10:00–14:00", "Cerrado"];
+      const equipoPeluChic = ["María", "Sara", "Noelia"];
+      const hoy = fechaLocal(new Date());
+      // Un salón real (o la web pública): el lunes sigue cerrado y no hay citas.
+      const cerrado = employeesForType("peluqueria", equipoPeluChic, undefined, horario);
+      expect(cerrado.every((e) => (e.scheduleRanges?.[1] ?? []).length === 0)).toBe(true);
+      const sinDemo = buildSeed("peluqueria", cerrado, carta);
+      expect(sinDemo.appointments.filter((a) => fechaLocal(new Date(a.start)) === hoy)).toHaveLength(0);
+      // La demo (demoAbreHoy = hoy): abre con el horario del martes y la agenda está llena.
+      const abierto = employeesForType("peluqueria", equipoPeluChic, undefined, horario, undefined, hoy);
+      expect(abierto.every((e) => (e.scheduleRanges?.[1] ?? []).some((f) => f.start === 600 && f.end === 1200))).toBe(true);
+      // Solo hoy: el lunes que viene sigue cerrado para ella también.
+      expect(employeesForType("peluqueria", equipoPeluChic, undefined, horario, undefined, "2026-09-21").every((e) => (e.scheduleRanges?.[1] ?? []).length === 0)).toBe(true);
+      const conDemo = buildSeed("peluqueria", abierto, carta, { duracionFlexible: true });
+      const deHoy = conDemo.appointments.filter((a) => fechaLocal(new Date(a.start)) === hoy);
+      expect(deHoy.length).toBeGreaterThanOrEqual(12);
+      expect(deHoy.filter((a) => a.status === "pending").length).toBeGreaterThanOrEqual(2);
+      // Y cada cita de hoy cae dentro del turno de su profesional.
+      for (const a of deHoy) {
+        const e = abierto.find((x) => x.id === a.employeeId);
+        const d = new Date(a.start);
+        const ini = d.getHours() * 60 + d.getMinutes();
+        expect((e?.scheduleRanges?.[1] ?? []).some((f) => f.start <= ini && ini + a.duration <= f.end)).toBe(true);
+      }
+    } finally {
+      setSystemTime();
+    }
   });
 
   it("mantiene destinatarias para las campañas de inactividad y segunda visita", () => {

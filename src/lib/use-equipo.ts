@@ -19,8 +19,9 @@ import { useSalonStore } from "./store";
 export function useEquipo(): Employee[] {
   const profile = useSalonStore((s) => s.salonProfile);
   return useMemo(
-    () => employeesForType(inferBusinessType(profile.tagline, profile.name), profile.team, profile.teamHours, profile.openingHours, profile.teamIds),
-    [profile.tagline, profile.name, profile.team, profile.teamHours, profile.openingHours, profile.teamIds],
+    // `demoAbreHoy`: solo demos, abre hoy aunque el salón cierre (lote P).
+    () => employeesForType(inferBusinessType(profile.tagline, profile.name), profile.team, profile.teamHours, profile.openingHours, profile.teamIds, profile.demoAbreHoy),
+    [profile.tagline, profile.name, profile.team, profile.teamHours, profile.openingHours, profile.teamIds, profile.demoAbreHoy],
   );
 }
 

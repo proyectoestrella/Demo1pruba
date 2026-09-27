@@ -14,8 +14,9 @@ import { MEZCLA_PELUCHIC, PELUCHIC } from "./peluchic";
  */
 const LUNES_PRESENTACION = new Date("2026-09-28T09:30:00+02:00");
 
-function semilla() {
-  const equipo = employeesForType("peluqueria", PELUCHIC.team, PELUCHIC.teamHours, PELUCHIC.openingHours);
+/** `abreHoy`: lo que hace la demo de verdad (`SalonProfile.demoAbreHoy`): si hoy cierra, abre igual. */
+function semilla(abreHoy?: string) {
+  const equipo = employeesForType("peluqueria", PELUCHIC.team, PELUCHIC.teamHours, PELUCHIC.openingHours, PELUCHIC.teamIds, abreHoy);
   const carta = servicesForType("peluqueria", PELUCHIC.menu, textosDeCarta(PELUCHIC));
   const seed = buildSeed("peluqueria", equipo, carta, { duracionFlexible: true, mezcla: MEZCLA_PELUCHIC });
   return { equipo, carta, seed };
@@ -77,7 +78,22 @@ describe("semilla de PeluChic con su carta real", () => {
     }
   });
 
-  it("el lunes (cerrado) no hay citas; las solicitudes esperan en el martes", () => {
+  it("en la demo, el lunes de la presentación abre con los turnos del martes y la agenda llena", () => {
+    const { equipo, seed } = semilla("2026-09-28");
+    const hoy = diaDe({ start: LUNES_PRESENTACION.toISOString() });
+    const deHoy = seed.appointments.filter((a) => diaDe(a) === hoy);
+    expect(deHoy.length).toBeGreaterThanOrEqual(12);
+    expect(new Set(deHoy.map((a) => a.employeeId)).size).toBe(3);
+    // Dos solicitudes por confirmar, hoy mismo, y la de la duración flexible.
+    expect(deHoy.filter((a) => a.status === "pending").length).toBeGreaterThanOrEqual(2);
+    for (const a of deHoy) {
+      const e = equipo.find((x) => x.id === a.employeeId);
+      const ini = minutosDelDia(a.start);
+      expect((e?.scheduleRanges?.[1] ?? []).some((f) => f.start <= ini && ini + a.duration <= f.end)).toBe(true);
+    }
+  });
+
+  it("sin la marca de demo (un salón real), el lunes sigue cerrado y las solicitudes esperan al martes", () => {
     const { seed } = semilla();
     const hoy = diaDe({ start: LUNES_PRESENTACION.toISOString() });
     expect(seed.appointments.filter((a) => diaDe(a) === hoy)).toHaveLength(0);

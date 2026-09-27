@@ -128,7 +128,8 @@ function MiWeb() {
   );
 
   const urlPrevia = useMemo(
-    () => `/s/${slugPrevia}?${DEMO_PARAM}=${encodeDemoProfile(perfilPrevio)}`,
+    // `previa=1`: la web lo pinta sin cargarlo en la store del panel (ver s.$salonSlug.tsx).
+    () => `/s/${slugPrevia}?${DEMO_PARAM}=${encodeDemoProfile(perfilPrevio)}&previa=1`,
     [slugPrevia, perfilPrevio],
   );
 
