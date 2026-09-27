@@ -10,13 +10,19 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RuteroRouteImport } from './routes/rutero'
+import { Route as PreciosRouteImport } from './routes/precios'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as FuncionalidadesRouteImport } from './routes/funcionalidades'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ContactoRouteImport } from './routes/contacto'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AceptarRouteImport } from './routes/aceptar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as SSalonSlugRouteImport } from './routes/s.$salonSlug'
+import { Route as LegalPrivacidadRouteImport } from './routes/legal.privacidad'
+import { Route as LegalCookiesRouteImport } from './routes/legal.cookies'
+import { Route as LegalAvisoLegalRouteImport } from './routes/legal.aviso-legal'
 import { Route as AppWebRouteImport } from './routes/app.web'
 import { Route as AppWaitlistRouteImport } from './routes/app.waitlist'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
@@ -48,14 +54,29 @@ const RuteroRoute = RuteroRouteImport.update({
   path: '/rutero',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PreciosRoute = PreciosRouteImport.update({
+  id: '/precios',
+  path: '/precios',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FuncionalidadesRoute = FuncionalidadesRouteImport.update({
+  id: '/funcionalidades',
+  path: '/funcionalidades',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactoRoute = ContactoRouteImport.update({
+  id: '/contacto',
+  path: '/contacto',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -81,6 +102,21 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const SSalonSlugRoute = SSalonSlugRouteImport.update({
   id: '/s/$salonSlug',
   path: '/s/$salonSlug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalPrivacidadRoute = LegalPrivacidadRouteImport.update({
+  id: '/legal/privacidad',
+  path: '/legal/privacidad',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalCookiesRoute = LegalCookiesRouteImport.update({
+  id: '/legal/cookies',
+  path: '/legal/cookies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalAvisoLegalRoute = LegalAvisoLegalRouteImport.update({
+  id: '/legal/aviso-legal',
+  path: '/legal/aviso-legal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppWebRoute = AppWebRouteImport.update({
@@ -216,8 +252,11 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/aceptar': typeof AceptarRoute
   '/app': typeof AppRouteWithChildren
+  '/contacto': typeof ContactoRoute
   '/dashboard': typeof DashboardRoute
+  '/funcionalidades': typeof FuncionalidadesRoute
   '/login': typeof LoginRoute
+  '/precios': typeof PreciosRoute
   '/rutero': typeof RuteroRoute
   '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
@@ -236,6 +275,9 @@ export interface FileRoutesByFullPath {
   '/app/settings': typeof AppSettingsRoute
   '/app/waitlist': typeof AppWaitlistRoute
   '/app/web': typeof AppWebRoute
+  '/legal/aviso-legal': typeof LegalAvisoLegalRoute
+  '/legal/cookies': typeof LegalCookiesRoute
+  '/legal/privacidad': typeof LegalPrivacidadRoute
   '/s/$salonSlug': typeof SSalonSlugRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/api/calendario-externo/cron': typeof ApiCalendarioExternoCronRoute
@@ -250,8 +292,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/aceptar': typeof AceptarRoute
+  '/contacto': typeof ContactoRoute
   '/dashboard': typeof DashboardRoute
+  '/funcionalidades': typeof FuncionalidadesRoute
   '/login': typeof LoginRoute
+  '/precios': typeof PreciosRoute
   '/rutero': typeof RuteroRoute
   '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
@@ -270,6 +315,9 @@ export interface FileRoutesByTo {
   '/app/settings': typeof AppSettingsRoute
   '/app/waitlist': typeof AppWaitlistRoute
   '/app/web': typeof AppWebRoute
+  '/legal/aviso-legal': typeof LegalAvisoLegalRoute
+  '/legal/cookies': typeof LegalCookiesRoute
+  '/legal/privacidad': typeof LegalPrivacidadRoute
   '/app': typeof AppIndexRoute
   '/api/calendario-externo/cron': typeof ApiCalendarioExternoCronRoute
   '/s/$salonSlug/book': typeof SSalonSlugBookRoute
@@ -285,8 +333,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/aceptar': typeof AceptarRoute
   '/app': typeof AppRouteWithChildren
+  '/contacto': typeof ContactoRoute
   '/dashboard': typeof DashboardRoute
+  '/funcionalidades': typeof FuncionalidadesRoute
   '/login': typeof LoginRoute
+  '/precios': typeof PreciosRoute
   '/rutero': typeof RuteroRoute
   '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
@@ -305,6 +356,9 @@ export interface FileRoutesById {
   '/app/settings': typeof AppSettingsRoute
   '/app/waitlist': typeof AppWaitlistRoute
   '/app/web': typeof AppWebRoute
+  '/legal/aviso-legal': typeof LegalAvisoLegalRoute
+  '/legal/cookies': typeof LegalCookiesRoute
+  '/legal/privacidad': typeof LegalPrivacidadRoute
   '/s/$salonSlug': typeof SSalonSlugRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/api/calendario-externo/cron': typeof ApiCalendarioExternoCronRoute
@@ -322,8 +376,11 @@ export interface FileRouteTypes {
     | '/'
     | '/aceptar'
     | '/app'
+    | '/contacto'
     | '/dashboard'
+    | '/funcionalidades'
     | '/login'
+    | '/precios'
     | '/rutero'
     | '/api/calendario'
     | '/api/foto'
@@ -342,6 +399,9 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/waitlist'
     | '/app/web'
+    | '/legal/aviso-legal'
+    | '/legal/cookies'
+    | '/legal/privacidad'
     | '/s/$salonSlug'
     | '/app/'
     | '/api/calendario-externo/cron'
@@ -356,8 +416,11 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/aceptar'
+    | '/contacto'
     | '/dashboard'
+    | '/funcionalidades'
     | '/login'
+    | '/precios'
     | '/rutero'
     | '/api/calendario'
     | '/api/foto'
@@ -376,6 +439,9 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/waitlist'
     | '/app/web'
+    | '/legal/aviso-legal'
+    | '/legal/cookies'
+    | '/legal/privacidad'
     | '/app'
     | '/api/calendario-externo/cron'
     | '/s/$salonSlug/book'
@@ -390,8 +456,11 @@ export interface FileRouteTypes {
     | '/'
     | '/aceptar'
     | '/app'
+    | '/contacto'
     | '/dashboard'
+    | '/funcionalidades'
     | '/login'
+    | '/precios'
     | '/rutero'
     | '/api/calendario'
     | '/api/foto'
@@ -410,6 +479,9 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/waitlist'
     | '/app/web'
+    | '/legal/aviso-legal'
+    | '/legal/cookies'
+    | '/legal/privacidad'
     | '/s/$salonSlug'
     | '/app/'
     | '/api/calendario-externo/cron'
@@ -426,13 +498,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AceptarRoute: typeof AceptarRoute
   AppRoute: typeof AppRouteWithChildren
+  ContactoRoute: typeof ContactoRoute
   DashboardRoute: typeof DashboardRoute
+  FuncionalidadesRoute: typeof FuncionalidadesRoute
   LoginRoute: typeof LoginRoute
+  PreciosRoute: typeof PreciosRoute
   RuteroRoute: typeof RuteroRoute
   ApiCalendarioRoute: typeof ApiCalendarioRoute
   ApiFotoRoute: typeof ApiFotoRoute
   ApiRecordatoriosRoute: typeof ApiRecordatoriosRoute
   ApiSenalesVencidasRoute: typeof ApiSenalesVencidasRoute
+  LegalAvisoLegalRoute: typeof LegalAvisoLegalRoute
+  LegalCookiesRoute: typeof LegalCookiesRoute
+  LegalPrivacidadRoute: typeof LegalPrivacidadRoute
   SSalonSlugRoute: typeof SSalonSlugRouteWithChildren
   ApiCalendarioExternoCronRoute: typeof ApiCalendarioExternoCronRoute
   ApiCalendarioExternoGoogleCallbackRoute: typeof ApiCalendarioExternoGoogleCallbackRoute
@@ -448,6 +526,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RuteroRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/precios': {
+      id: '/precios'
+      path: '/precios'
+      fullPath: '/precios'
+      preLoaderRoute: typeof PreciosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -455,11 +540,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/funcionalidades': {
+      id: '/funcionalidades'
+      path: '/funcionalidades'
+      fullPath: '/funcionalidades'
+      preLoaderRoute: typeof FuncionalidadesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contacto': {
+      id: '/contacto'
+      path: '/contacto'
+      fullPath: '/contacto'
+      preLoaderRoute: typeof ContactoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -495,6 +594,27 @@ declare module '@tanstack/react-router' {
       path: '/s/$salonSlug'
       fullPath: '/s/$salonSlug'
       preLoaderRoute: typeof SSalonSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/privacidad': {
+      id: '/legal/privacidad'
+      path: '/legal/privacidad'
+      fullPath: '/legal/privacidad'
+      preLoaderRoute: typeof LegalPrivacidadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/cookies': {
+      id: '/legal/cookies'
+      path: '/legal/cookies'
+      fullPath: '/legal/cookies'
+      preLoaderRoute: typeof LegalCookiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/aviso-legal': {
+      id: '/legal/aviso-legal'
+      path: '/legal/aviso-legal'
+      fullPath: '/legal/aviso-legal'
+      preLoaderRoute: typeof LegalAvisoLegalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/web': {
@@ -735,13 +855,19 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AceptarRoute: AceptarRoute,
   AppRoute: AppRouteWithChildren,
+  ContactoRoute: ContactoRoute,
   DashboardRoute: DashboardRoute,
+  FuncionalidadesRoute: FuncionalidadesRoute,
   LoginRoute: LoginRoute,
+  PreciosRoute: PreciosRoute,
   RuteroRoute: RuteroRoute,
   ApiCalendarioRoute: ApiCalendarioRoute,
   ApiFotoRoute: ApiFotoRoute,
   ApiRecordatoriosRoute: ApiRecordatoriosRoute,
   ApiSenalesVencidasRoute: ApiSenalesVencidasRoute,
+  LegalAvisoLegalRoute: LegalAvisoLegalRoute,
+  LegalCookiesRoute: LegalCookiesRoute,
+  LegalPrivacidadRoute: LegalPrivacidadRoute,
   SSalonSlugRoute: SSalonSlugRouteWithChildren,
   ApiCalendarioExternoCronRoute: ApiCalendarioExternoCronRoute,
   ApiCalendarioExternoGoogleCallbackRoute:
