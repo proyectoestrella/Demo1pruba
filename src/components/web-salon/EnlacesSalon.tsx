@@ -104,7 +104,7 @@ export function BloqueComunidad({
       <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
         <Reveal className="mb-8 md:mb-10">
           <p className="ws-etiqueta">Más de {nombre}</p>
-          <h2 id="siguenos-titulo" className="mt-2 text-[26px] font-extrabold leading-tight tracking-tight md:text-[32px]">
+          <h2 id="siguenos-titulo" className="mt-2 ws-titulo text-[28px] md:text-[38px]">
             Síguenos
           </h2>
         </Reveal>

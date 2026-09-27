@@ -136,7 +136,7 @@ export function WorkGallery({ fotos = [], tipo }: { fotos?: FotoGaleria[]; tipo?
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4 md:mb-10">
           <Reveal>
             <p className="ws-etiqueta">Nuestro trabajo</p>
-            <h2 id="galeria-titulo" className="mt-2 text-[26px] font-extrabold leading-tight tracking-tight md:text-[32px]">
+            <h2 id="galeria-titulo" className="mt-2 ws-titulo text-[28px] md:text-[38px]">
               Galería
             </h2>
             <p className="mt-2 max-w-xl text-[15px] text-muted-foreground">Pulsa una foto para verla en grande.</p>

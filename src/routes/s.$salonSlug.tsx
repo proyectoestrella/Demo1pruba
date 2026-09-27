@@ -43,6 +43,15 @@ export const Route = createFileRoute("/s/$salonSlug")({
       : "Reserva tu cita en segundos, sin llamar.";
     const title = name ? `${name} — Reserva por internet` : "Reserva por internet";
     return {
+      // Lote 18.2b: títulos en Playfair Display, la serif de la marca de
+      // PeluChic. Solo en la web del salón (el panel no la descarga); el
+      // origen de Google Fonts ya está preconectado desde __root.
+      links: [
+        {
+          rel: "stylesheet",
+          href: "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&display=swap",
+        },
+      ],
       meta: [
         { title },
         { name: "description", content: description },

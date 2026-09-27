@@ -159,3 +159,24 @@ body:has(.web-salon) {
 .web-salon .ws-pie .ws-etiqueta {
   color: var(--ws-salvia);
 }
+
+/* ---- Tipografía de la marca (18.2b) ---------------------------------------
+ * Los títulos de su web van en Playfair Display: aquí también, para los
+ * títulos de sección (`.ws-titulo`) y lo que ya era serif (`.font-display`:
+ * el nombre del salón y de las profesionales). Mientras carga, Fraunces (ya
+ * descargada) y Georgia. El texto sigue en Manrope.
+ * ------------------------------------------------------------------------- */
+.web-salon,
+body:has(.web-salon) {
+  --ws-serif: "Playfair Display", "Fraunces", Georgia, serif;
+}
+.web-salon .font-display,
+body:has(.web-salon) [role="dialog"] .font-display {
+  font-family: var(--ws-serif);
+}
+.web-salon .ws-titulo {
+  font-family: var(--ws-serif);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.005em;
+}

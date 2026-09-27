@@ -265,7 +265,7 @@ function SectionHeading({
   return (
     <Reveal className={cn("mb-8 md:mb-10", className)}>
       <p className="ws-etiqueta">{eyebrow}</p>
-      <h2 className="mt-2 text-[26px] font-extrabold leading-tight tracking-tight text-foreground md:text-[32px]">
+      <h2 className="mt-2 ws-titulo text-[28px] text-foreground md:text-[38px]">
         {title}
       </h2>
       {intro && <p className="mt-2 max-w-xl text-[15px] text-muted-foreground">{intro}</p>}
@@ -662,7 +662,7 @@ function SalonHome() {
           <section id="resenas" className="bg-ws-caramelo-claro">
             <div className={cn(CONTENEDOR_SALON, SECCION_WEB, "text-center")}>
               <p className="ws-etiqueta">Reseñas</p>
-              <h2 className="mt-2 text-[26px] font-extrabold tracking-tight md:text-[32px]">Lo que dicen en Google</h2>
+              <h2 className="mt-2 ws-titulo text-[28px] md:text-[38px]">Lo que dicen en Google</h2>
               <div className="mt-6 flex items-center justify-center gap-2">
                 <Estrellas nota={profile.rating} className="[&_svg]:h-5 [&_svg]:w-5" />
                 <span className="text-2xl font-extrabold tabular-nums">{notaEs(profile.rating)}</span>
@@ -682,7 +682,7 @@ function SalonHome() {
             <Reveal className="mb-8 flex flex-wrap items-end justify-between gap-4 md:mb-10">
               <div>
                 <p className="ws-etiqueta">Reseñas</p>
-                <h2 className="mt-2 text-[26px] font-extrabold leading-tight tracking-tight md:text-[32px]">
+                <h2 className="mt-2 ws-titulo text-[28px] md:text-[38px]">
                   Lo que dicen las clientas
                 </h2>
               </div>
@@ -804,7 +804,7 @@ function SalonHome() {
       <section className="bg-ws-crema">
         <div className={cn(CONTENEDOR_SALON, SECCION_WEB, "text-center")}>
           <Reveal className="flex flex-col items-center">
-            <h2 className="text-[26px] font-extrabold tracking-tight md:text-[32px]">¿Te guardamos un hueco?</h2>
+            <h2 className="ws-titulo text-[28px] md:text-[38px]">¿Te guardamos un hueco?</h2>
             <p className="mt-2 max-w-md text-[15px] text-muted-foreground">
               {soloUno
                 ? "Elige servicio y hora en menos de un minuto."
