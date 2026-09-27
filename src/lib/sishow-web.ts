@@ -437,3 +437,32 @@ export const PREGUNTAS_PRECIOS: Pregunta[] = [
       "Sí. La demo de un salón de ejemplo está abierta, y si quieres te lo enseñamos con tus servicios y tu equipo, sin compromiso.",
   },
 ];
+
+/* -------------------------------------------------------------------------
+ * Legales (LSSI y RGPD)
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Titular de sishow.es (LSSI art. 10 y responsable del tratamiento, RGPD
+ * art. 13). PENDIENTE (Tomás): no se inventa; mientras un dato sea `null`,
+ * las páginas legales enseñan el bloque «Pendiente: datos del titular».
+ */
+export const TITULAR: {
+  nombre: string | null;
+  nif: string | null;
+  domicilio: string | null;
+  /** Datos del registro mercantil, solo si es una sociedad. */
+  registro: string | null;
+} = { nombre: null, nif: null, domicilio: null, registro: null };
+
+/** Qué datos obligatorios del titular faltan todavía (el registro no lo es siempre). */
+export function datosTitularPendientes(t: typeof TITULAR = TITULAR): string[] {
+  const faltan: string[] = [];
+  if (!t.nombre) faltan.push("nombre o razón social");
+  if (!t.nif) faltan.push("NIF");
+  if (!t.domicilio) faltan.push("domicilio");
+  return faltan;
+}
+
+/** Fecha de la última revisión de los textos legales, en español. */
+export const REVISION_LEGAL = "27 de septiembre de 2026";

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { enlaceWhatsapp, precioPuestaEnMarcha, PRECIOS, ENLACE_WEB_EJEMPLO, ENLACE_PANEL_EJEMPLO, DEMO_WEB_URL, DEMO_PANEL_URL } from "./sishow-web";
+import { enlaceWhatsapp, precioPuestaEnMarcha, PRECIOS, ENLACE_WEB_EJEMPLO, ENLACE_PANEL_EJEMPLO, DEMO_WEB_URL, DEMO_PANEL_URL, datosTitularPendientes, notaImpuestos, TITULAR } from "./sishow-web";
 import { decodeDemoProfile } from "./demo-profile";
 
 describe("web de siShow", () => {
@@ -25,5 +25,20 @@ describe("web de siShow", () => {
   test("la demo de la web oficial: web del salón y panel de PeluChic", () => {
     expect(DEMO_WEB_URL).toBe("/s/peluchic");
     expect(DEMO_PANEL_URL).toBe("/demo/peluchic");
+  });
+  test("titular: sin datos, se ve lo que falta; el registro no es obligatorio", () => {
+    expect(datosTitularPendientes({ nombre: null, nif: null, domicilio: null, registro: null })).toEqual([
+      "nombre o razón social",
+      "NIF",
+      "domicilio",
+    ]);
+    expect(datosTitularPendientes({ nombre: "X", nif: "Y", domicilio: "Z", registro: null })).toEqual([]);
+    // Mientras Tomás no los dé, siguen sin inventarse.
+    expect(TITULAR.nif).toBeNull();
+  });
+  test("IVA: sin decidir no hay nota; decidido, una frase", () => {
+    expect(notaImpuestos(null)).toBeNull();
+    expect(notaImpuestos(true)).toContain("incluido");
+    expect(notaImpuestos(false)).toContain("sin IVA");
   });
 });
