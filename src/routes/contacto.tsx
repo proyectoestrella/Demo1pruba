@@ -3,8 +3,8 @@ import { Check, Mail, MessageCircle } from "lucide-react";
 import {
   CORREO_SISHOW,
   DATOS_PARA_LA_DEMO,
-  ENLACE_PANEL_EJEMPLO,
-  ENLACE_WEB_EJEMPLO,
+  DEMO_PANEL_URL,
+  DEMO_WEB_URL,
   cabezaWeb,
   enlaceCorreo,
   enlaceCorreoConDatos,
@@ -80,12 +80,12 @@ function Contacto() {
             <p className="ws-texto mt-2">Un salón de ejemplo, PeluChic, con su carta, su equipo y su horario.</p>
             <ul className="mt-5 flex-1 space-y-3">
               <li>
-                <a href={ENLACE_WEB_EJEMPLO} className="ws-enlace inline-flex min-h-11 items-center">
+                <a href={DEMO_WEB_URL} className="ws-enlace inline-flex min-h-11 items-center">
                   Ver la web de reservas de un salón
                 </a>
               </li>
               <li>
-                <a href={ENLACE_PANEL_EJEMPLO} className="ws-enlace inline-flex min-h-11 items-center">
+                <a href={DEMO_PANEL_URL} className="ws-enlace inline-flex min-h-11 items-center">
                   Entrar al panel de ejemplo
                 </a>
               </li>

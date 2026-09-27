@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { CORREO_SISHOW, ENLACE_PANEL_EJEMPLO, ENLACE_WEB_EJEMPLO, enlaceCorreo, enlaceWhatsapp } from "@/lib/sishow-web";
+import { CORREO_SISHOW, DEMO_PANEL_URL, DEMO_WEB_URL, enlaceCorreo, enlaceWhatsapp } from "@/lib/sishow-web";
 import { MarcaSishow } from "./Marca";
 
 const TITULO = "text-[0.95rem] font-extrabold text-[color:var(--ws-cafe)]";
@@ -28,8 +28,8 @@ export function Pie() {
           <ul className="mt-2">
             <li><Link to="/funcionalidades" className={ENLACE}>Funcionalidades</Link></li>
             <li><Link to="/precios" className={ENLACE}>Precios</Link></li>
-            <li><a href={ENLACE_WEB_EJEMPLO} className={ENLACE}>Web de reservas de ejemplo</a></li>
-            <li><a href={ENLACE_PANEL_EJEMPLO} className={ENLACE}>Panel de ejemplo</a></li>
+            <li><a href={DEMO_WEB_URL} className={ENLACE}>Web de reservas de ejemplo</a></li>
+            <li><a href={DEMO_PANEL_URL} className={ENLACE}>Panel de ejemplo</a></li>
           </ul>
         </nav>
         <nav aria-label="Contacto">

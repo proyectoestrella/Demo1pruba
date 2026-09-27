@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { enlaceWhatsapp, precioPuestaEnMarcha, PRECIOS, ENLACE_WEB_EJEMPLO, ENLACE_PANEL_EJEMPLO } from "./sishow-web";
+import { enlaceWhatsapp, precioPuestaEnMarcha, PRECIOS, ENLACE_WEB_EJEMPLO, ENLACE_PANEL_EJEMPLO, DEMO_WEB_URL, DEMO_PANEL_URL } from "./sishow-web";
 import { decodeDemoProfile } from "./demo-profile";
 
 describe("web de siShow", () => {
@@ -21,5 +21,9 @@ describe("web de siShow", () => {
       const d = new URL(enlace, "https://x").searchParams.get("d") ?? undefined;
       expect(decodeDemoProfile(d)?.name).toBe("PeluChic");
     }
+  });
+  test("la demo de la web oficial: web del salón y panel de PeluChic", () => {
+    expect(DEMO_WEB_URL).toBe("/s/peluchic");
+    expect(DEMO_PANEL_URL).toBe("/demo/peluchic");
   });
 });

@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 import { NOMBRE_PLAN, PLANES } from "@/lib/plan";
 import {
   CORREO_SISHOW,
-  ENLACE_PANEL_EJEMPLO,
-  ENLACE_WEB_EJEMPLO,
+  DEMO_PANEL_URL,
+  DEMO_WEB_URL,
   PRECIOS,
   RESUMEN_PLANES,
   SEMANA_PUESTA,
@@ -65,14 +65,14 @@ export function Semana() {
 export function Demo() {
   const tarjetas = [
     {
-      href: ENLACE_WEB_EJEMPLO,
+      href: DEMO_WEB_URL,
       titulo: "Ver la web de reservas de un salón",
       texto: "Lo que ve tu clienta al abrir tu enlace: servicios, equipo y hueco en cuatro pasos.",
       captura: "movil-reserva-estilista" as const,
       movil: true,
     },
     {
-      href: ENLACE_PANEL_EJEMPLO,
+      href: DEMO_PANEL_URL,
       titulo: "Entrar al panel de ejemplo",
       texto: "Hoy, la agenda del equipo, las fichas y la caja, con datos de ejemplo. Toca lo que quieras.",
       captura: "hoy" as const,
