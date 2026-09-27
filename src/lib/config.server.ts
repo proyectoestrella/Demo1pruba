@@ -35,7 +35,28 @@ export function getConfigCalendarios() {
     appleBaseUrl: process.env.APPLE_CALDAV_BASE_URL,
     // La propia URL pública del sitio, para construir la `address` del canal
     // watch de Google y la redirect_uri si algún día se deriva sola. Hoy
-    // solo se usa para el watch.
-    siteUrl: process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.SITE_URL,
+    // solo se usa para el watch. Ver `urlPublicaDelSitio`.
+    siteUrl: urlPublicaDelSitio(),
   };
+}
+
+/**
+ * URL pública y estable del sitio, sin barra final: la que puede llamar un
+ * tercero (el aviso push de Google Calendar) sin toparse con el login.
+ *
+ * Orden (lote 17): `SITE_URL` (la fija el equipo, p. ej. `https://sishow.es`)
+ * → `VERCEL_PROJECT_PRODUCTION_URL` (dominio de producción que expone Vercel,
+ * sin protocolo) → `VERCEL_URL` (la URL única del despliegue) solo como
+ * último recurso. Antes se usaba `VERCEL_URL` primero, y esa URL la protege
+ * la SSO de Vercel (`ssoProtection: all_except_custom_domains`): Google
+ * recibía un 302 al login y el canal watch no servía.
+ */
+export function urlPublicaDelSitio(env: Record<string, string | undefined> = process.env): string | undefined {
+  const normalizar = (valor: string | undefined): string | undefined => {
+    const v = valor?.trim();
+    if (!v) return undefined;
+    const conProtocolo = /^https?:\/\//i.test(v) ? v : `https://${v}`;
+    return conProtocolo.replace(/\/+$/, "");
+  };
+  return normalizar(env.SITE_URL) ?? normalizar(env.VERCEL_PROJECT_PRODUCTION_URL) ?? normalizar(env.VERCEL_URL);
 }
