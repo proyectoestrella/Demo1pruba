@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { DEMO_PARAM } from "@/lib/demo-profile";
-import { logoDelSalon } from "@/lib/logo-salon";
+import { logoDelSalon, logotipoDelSalon } from "@/lib/logo-salon";
 import {
   ArrowRight,
   ChevronRight,
@@ -283,6 +283,7 @@ function SalonHome() {
   const sinSalonReal = useSalonStore((s) => !s.realSalonSlug);
   const conEnlaceDemo = useRouterState({ select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string" });
   const logoPortada = logoDelSalon(profile, sinSalonReal || conEnlaceDemo);
+  const logotipoPortada = logotipoDelSalon(profile, sinSalonReal || conEnlaceDemo, "claro");
   const tipo = useBusinessType();
   // Una portada propia puede dejar de cargar sin que nadie lo sepa: el enlace
   // de demo la trae fija (caso PeluChic, foto de Google Places servida por
@@ -453,32 +454,39 @@ function SalonHome() {
               )}
             </div>
 
-            <div className="mt-6 flex items-center gap-4">
-              {logoPortada && (
-                <span className="block size-16 shrink-0 overflow-hidden rounded-full border border-white/50 bg-white md:size-[72px]">
-                  <img
-                    src={logoPortada}
-                    alt={`Logo de ${profile.name}`}
-                    width={72}
-                    height={72}
-                    className="h-full w-full object-cover"
-                  />
-                </span>
-              )}
-              <h1
-                className={cn(
-                  "font-display font-medium leading-[1.05] text-balance",
-                  // El tamaño baja con la longitud del nombre para no partirlo.
-                  profile.name.length > 28
-                    ? "text-3xl sm:text-4xl md:text-5xl"
-                    : profile.name.length > 18
-                      ? "text-4xl sm:text-5xl md:text-6xl"
-                      : "text-5xl sm:text-6xl md:text-7xl",
-                )}
-              >
-                {profile.name}
+            {logotipoPortada ? (
+              // El logotipo real, en blanco sobre la foto: es el título de la página.
+              <h1 className="mt-6">
+                <img src={logotipoPortada} alt={profile.name} width={1455} height={432} className="h-auto w-[min(88vw,420px)] drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)] md:w-[480px]" />
               </h1>
-            </div>
+            ) : (
+            <div className="mt-6 flex items-center gap-4">
+                {logoPortada && (
+                  <span className="block size-16 shrink-0 overflow-hidden rounded-full border border-white/50 bg-white md:size-[72px]">
+                    <img
+                      src={logoPortada}
+                      alt={`Logo de ${profile.name}`}
+                      width={72}
+                      height={72}
+                      className="h-full w-full object-cover"
+                    />
+                  </span>
+                )}
+                <h1
+                  className={cn(
+                    "font-display font-medium leading-[1.05] text-balance",
+                    // El tamaño baja con la longitud del nombre para no partirlo.
+                    profile.name.length > 28
+                      ? "text-3xl sm:text-4xl md:text-5xl"
+                      : profile.name.length > 18
+                        ? "text-4xl sm:text-5xl md:text-6xl"
+                        : "text-5xl sm:text-6xl md:text-7xl",
+                  )}
+                >
+                  {profile.name}
+                </h1>
+              </div>
+            )}
 
             {especialidades && (
               <p className="mt-5 text-lg text-white md:text-xl">
