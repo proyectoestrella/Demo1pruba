@@ -2,14 +2,28 @@
 import { citasDe, contarServicios, esteMes, rangoDe } from "./calculos";
 import { duracionDeClienta } from "./clientas";
 import { duracion, enPeriodo, euros, lista, mayus, plural, respuesta, type Resolutor } from "./tipos";
+import { normalizar } from "../normalizar";
+
+/**
+ * Lote P: el precio como lo anuncia el salón cuando no es un importe único
+ * («24 € / 28 € / 31 €», «desde 150 € (sin IVA)»); si no, el de la carta.
+ */
+const precio = (x: { priceEur: number; priceText?: string }) => x.priceText || euros(x.priceEur);
+
+/** Palabras de la pregunta que no dicen QUÉ servicios busca («qué servicios de novia tenéis»). */
+const GENERICAS = new Set(
+  ("que cual cuales servicio servicios tengo tenemos teneis tienes tiene hay carta lista precios precio ofrezco ofrecemos " +
+    "hacemos hago haceis activos todos todas algo para puede pueden reservar reservables disponibles completa entera " +
+    "ensename pasame dime quiero saber sobre tipo tipos cosas mios mias nuestra nuestros nuestras mis").split(" "),
+);
 
 const verServicios = { tipo: "ver-seccion" as const, etiqueta: "Ver Servicios", destino: "Servicios" };
 const activos = (s: { active?: boolean }) => s.active !== false;
 
 export const precioServicio: Resolutor = (c) => {
   const s = c.e.servicios;
-  if (s.length > 1) return respuesta(`${lista(s.slice(0, 4).map((x) => `${x.name} **${euros(x.priceEur)}**`))}.`, { acciones: [verServicios] });
-  return respuesta(`${mayus(s[0].name)} está a **${euros(s[0].priceEur)}** (${duracion(s[0].durationMin)}).`, {
+  if (s.length > 1) return respuesta(`${lista(s.slice(0, 4).map((x) => `${x.name} **${precio(x)}**`))}.`, { acciones: [verServicios] });
+  return respuesta(`${mayus(s[0].name)} está a **${precio(s[0])}** (${duracion(s[0].durationMin)}).`, {
     cifras: [{ etiqueta: s[0].name, valor: s[0].priceEur, unidad: "€" }],
     acciones: [verServicios],
   });
@@ -42,7 +56,38 @@ export const servicioMasRentable: Resolutor = (c) => {
 export const carta: Resolutor = (c) => {
   const s = c.estado.servicios.filter(activos);
   if (!s.length) return respuesta("Aún no tienes servicios en la carta.", { acciones: [verServicios] });
-  const items = s.slice(0, 8).map((x) => `${x.name} ${euros(x.priceEur)}`);
+  // Lote P: «qué servicios de novia tenéis», «qué tratamientos capilares
+  // tengo»: la parte de la carta que la pregunta nombra, buscada en el
+  // nombre, la sección y la descripción de cada servicio.
+  const claves = c.pregunta.split(" ").filter((w) => w.length >= 4 && !GENERICAS.has(w));
+  if (claves.length) {
+    const raiz = (w: string) => w.replace(/(es|s)$/, "");
+    const tiene = (texto: string, k: string) => texto.includes(k) || (raiz(k).length >= 4 && texto.includes(raiz(k)));
+    const nombreYSeccion = (x: (typeof s)[number]) => normalizar(`${x.name} ${x.category ?? ""}`);
+    const todo = (x: (typeof s)[number]) => normalizar(`${x.name} ${x.category ?? ""} ${x.description ?? ""}`);
+    // De más a menos estricto: todas las palabras en el nombre o la sección;
+    // todas contando la descripción; alguna en el nombre o la sección;
+    // alguna en cualquier parte.
+    const niveles = [
+      s.filter((x) => claves.every((k) => tiene(nombreYSeccion(x), k))),
+      s.filter((x) => claves.every((k) => tiene(todo(x), k))),
+      s.filter((x) => claves.some((k) => tiene(nombreYSeccion(x), k))),
+      s.filter((x) => claves.some((k) => tiene(todo(x), k))),
+    ];
+    // Con una sola palabra («novia»), lo que la nombra y detrás lo que la
+    // cuenta en su descripción («Maquillaje de Correccion: también novias»).
+    const encajan = claves.length === 1
+      ? [...new Set([...niveles[0], ...niveles[1]])]
+      : (niveles.find((n) => n.length > 0) ?? []);
+    if (encajan.length && encajan.length < s.length) {
+      const items = encajan.slice(0, 8).map((x) => `${x.name} ${precio(x)}`);
+      return respuesta(`Para «${claves.join(" ")}» tienes **${plural(encajan.length, "servicio", "servicios")}**: ${lista(items)}${encajan.length > 8 ? ` y ${encajan.length - 8} más` : ""}.`, {
+        cifras: [{ etiqueta: "servicios", valor: encajan.length }],
+        acciones: [verServicios],
+      });
+    }
+  }
+  const items = s.slice(0, 8).map((x) => `${x.name} ${precio(x)}`);
   return respuesta(`Tienes **${plural(s.length, "servicio", "servicios")}**: ${lista(items)}${s.length > 8 ? ` y ${s.length - 8} más` : ""}.`, {
     cifras: [{ etiqueta: "servicios", valor: s.length }],
     acciones: [verServicios],

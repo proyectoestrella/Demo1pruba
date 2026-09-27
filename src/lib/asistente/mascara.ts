@@ -19,6 +19,8 @@ export const MARCA_FRANJA = "zzfranja";
 
 /** Palabras que nombran un servicio en cualquier salón (alias de la especificación). */
 export const PALABRAS_SERVICIO = new Set(Object.values(ALIAS_SERVICIO).flat());
+/** Palabras que salen en nombres de servicio pero son de la pregunta («¿qué servicios…?», «¿cuántos minutos…?»). */
+const GENERICAS_DE_CARTA = /^(servici|minut|sesion)/;
 
 export interface Nombres {
   clientas?: string[];
@@ -46,7 +48,9 @@ export function enmascarar(texto: string, n: Nombres = {}): string {
     let m = p;
     if (p.length >= 3 && n.pros?.length && casa(p, n.pros)) m = MARCA_PRO;
     else if (p.length >= 3 && n.clientas?.length && casa(p, n.clientas)) m = MARCA_CLIENTA;
-    else if (PALABRAS_SERVICIO.has(p) || (p.length >= 4 && servicios.includes(p))) m = MARCA_SERVICIO;
+    // Lote P: con una falta en palabras largas de la carta («ozonoterapia» por
+    // «OZONOTHERAPIA», «depilacion» por «depilación»), como en extraerServicio.
+    else if (PALABRAS_SERVICIO.has(p) || (p.length >= 4 && servicios.includes(p)) || (p.length >= 6 && !GENERICAS_DE_CARTA.test(p) && servicios.some((w) => w.length >= 6 && w[0] === p[0] && damerau(w, p) <= 1))) m = MARCA_SERVICIO;
     if (m.startsWith("zz") && out[out.length - 1] === m) continue;
     out.push(m);
   }

@@ -277,11 +277,33 @@ export function extraerServicio(texto: string, servicios: Service[]): Service[] 
   for (const [clave, alias] of Object.entries(ALIAS_SERVICIO)) {
     if (alias.some((a) => contienePalabra(palabras, a))) alias.concat(clave).forEach((a) => buscadas.add(a));
   }
-  return servicios.filter((s) => {
+  const encontrados = servicios.filter((s) => {
     const nombre = sinAcentos(s.name).split(" ").filter((p) => p.length >= 4 && !PALABRAS_VACIAS.has(p));
     return nombre.some((p) => buscadas.has(p) || contienePalabra(palabras, p));
   });
+  // Lote P: con una carta real de 60 servicios, el primero de la lista es
+  // el que contesta «cuánto dura…». Primero lo que la pregunta nombra tal
+  // cual («keratina» → «tratamiento keratina», no «Diagnostico capilar»);
+  // detrás, lo que es de otra zona que la pregunta no nombra («tinte» →
+  // el color del pelo antes que el «tinte de cejas»). A igualdad, el orden
+  // de la carta.
+  // Por raíces («cejas» y «ceja» cuentan igual) y sin repetir palabras.
+  const raiz = (w: string) => w.replace(/(es|s)$/, "");
+  const deLaPregunta = new Set(palabras.map(raiz));
+  const puntos = (s: Service) => {
+    const nombre = [...new Set(sinAcentos(s.name).split(" ").filter((p) => p.length >= 4 && !PALABRAS_VACIAS.has(p)).map(raiz))];
+    const literales = nombre.filter((p) => deLaPregunta.has(p)).length;
+    const deOtraZona = nombre.filter((p) => ZONAS_DE_SERVICIO.has(p) && !deLaPregunta.has(p)).length;
+    return literales - deOtraZona;
+  };
+  return encontrados
+    .map((s, i) => ({ s, i, p: puntos(s) }))
+    .sort((a, b) => b.p - a.p || a.i - b.i)
+    .map((x) => x.s);
 }
+
+/** Palabras que dicen en qué zona se hace un servicio: si la pregunta no la nombra, ese servicio va detrás. */
+const ZONAS_DE_SERVICIO = new Set(["cejas", "ceja", "pestanas", "pestana", "facial", "faciales", "corporal", "ojos", "cuero", "cabelludo", "caballero"]);
 
 /** Palabras que nunca son el nombre de una clienta (vocabulario del salón y de las preguntas). */
 const NO_ES_NOMBRE = new Set<string>([

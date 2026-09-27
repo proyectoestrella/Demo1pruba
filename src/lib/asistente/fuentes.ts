@@ -62,6 +62,9 @@ export interface ServicioA {
   priceEur: number;
   active?: boolean;
   category?: string;
+  /** Lote P (opcionales): lo que el salón cuenta del servicio y su precio literal («desde 150 €»). */
+  description?: string;
+  priceText?: string;
 }
 
 export interface EsperaA {
