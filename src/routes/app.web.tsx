@@ -556,7 +556,7 @@ function MiWeb() {
 
           <Bloque titulo="Tu blog, redes y tienda" forzar={errores.length > 0}>
             <p className="text-[13px] text-muted-foreground">
-              Sale un botón discreto por cada uno que rellenes. Pega la dirección completa, tal y como la ves en el navegador.
+              Sale un botón discreto por cada uno que rellenes. Pega la dirección completa, tal y como la ves en el navegador. Con tu ficha de Google, la web enseña tu nota real y «Ver reseñas en Google».
             </p>
             {CAMPOS_ENLACES.map((clave) => (
               <Campo
@@ -928,6 +928,7 @@ const ETIQUETA_ENLACE: Record<(typeof CAMPOS_ENLACES)[number], string> = {
   facebook: "Facebook",
   tienda: "Tienda online",
   web: "Web",
+  resenas: "Ficha de Google (reseñas)",
 };
 
 /**

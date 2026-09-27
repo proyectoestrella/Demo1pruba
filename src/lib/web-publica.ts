@@ -124,3 +124,47 @@ export function precioDeCarta(s: { priceEur: number; priceText?: string }): stri
   });
   return `${n}\u00a0€`;
 }
+
+/* ---- Lote P.5: lo más pedido y las reseñas de Google --------------------- */
+
+/** «Lo más pedido» enseña cuatro como mucho. */
+const MAX_LO_MAS_PEDIDO = 4;
+
+/**
+ * Ids de «Lo más pedido»: los `destacados` del salón que siguen en su carta
+ * y activos, en su orden; si no queda ninguno, `respaldo` (los del tipo de
+ * negocio, con la carta de ejemplo) o los cuatro primeros de la carta. Antes
+ * eran siempre los cuatro primeros, y PeluChic abría con «Lavado
+ * personalizado 10 €».
+ */
+export function idsLoMasPedido(
+  destacados: readonly string[] | undefined,
+  activos: readonly { id: string }[],
+  respaldo?: readonly string[],
+): string[] {
+  const hay = new Set(activos.map((s) => s.id));
+  const elegidos = [...new Set((destacados ?? []).filter((id) => hay.has(id)))].slice(0, MAX_LO_MAS_PEDIDO);
+  if (elegidos.length) return elegidos;
+  return respaldo ? [...respaldo] : activos.slice(0, MAX_LO_MAS_PEDIDO).map((s) => s.id);
+}
+
+/**
+ * Las reseñas de Google que puede enseñar la web del salón: su nota, cuántas
+ * y adónde se salta para verlas, o `null` si no hay nota.
+ *
+ * - Con ficha (`enlaces.resenas`, http(s)) y nota: siempre, demo o salón real.
+ *   Es la nota real del salón y sustituye a las reseñas de ejemplo.
+ * - Sin ficha, solo un salón real (se busca por nombre y dirección); una demo
+ *   sin ficha sigue con sus reseñas de ejemplo marcadas como tal.
+ */
+export function resenasDeGoogle(
+  p: { enlaces?: { resenas?: string; [otro: string]: string | undefined }; rating: number; reviewCount: number; name: string; address: string },
+  esSalonReal: boolean,
+): { url: string; nota: number; total: number } | null {
+  if (!(p.rating > 0) || !(p.reviewCount > 0)) return null;
+  const ficha = urlSegura(p.enlaces?.resenas);
+  if (ficha) return { url: ficha, nota: p.rating, total: p.reviewCount };
+  if (!esSalonReal) return null;
+  const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.name} ${p.address}`)}`;
+  return { url, nota: p.rating, total: p.reviewCount };
+}

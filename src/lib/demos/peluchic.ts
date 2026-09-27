@@ -30,7 +30,7 @@ import type { MezclaSemilla } from "../mock/seed";
  */
 
 /** Sube cuando cambien estos datos: los navegadores con la demo vieja la vuelven a cargar. */
-export const VERSION_PELUCHIC = "2026-09-27.4";
+export const VERSION_PELUCHIC = "2026-09-27.5";
 
 export interface ServicioPeluChic {
   /** Id estable (sexto campo de la carta): las citas de la semilla y las descripciones cuelgan de él. */
@@ -317,7 +317,13 @@ export const PELUCHIC: SalonProfile = {
     instagram: "https://www.instagram.com/peluchicprofesional",
     facebook: "https://www.facebook.com/peluchicprofesional/",
     tienda: "https://peluchic.online/tienda/ols/all",
+    // Su ficha de Google Maps (la del enlace `?d=`, place_id ChIJc_dY3q0uQg0ReeAzc1Y3irs).
+    resenas: "https://www.google.com/maps/search/?api=1&query=PeluChic&query_place_id=ChIJc_dY3q0uQg0ReeAzc1Y3irs",
   },
+  // «Lo más pedido» (lote P.5): lo que la representa, no lo primero de la
+  // carta (que es el lavado de 10 €): corte y peinado, su color orgánico, las
+  // mechas o el balayage y las novias.
+  destacados: ["lavado-corte-peinar", "color-organico", "mechas", "novias"],
   // Su web anuncia «un 10 % en tu primera compra», pero el cupón de su tienda
   // está vacío (descuento 0): no se promete ninguna cifra. Es una invitación a
   // apuntarse a sus novedades, con el texto de su propio formulario.
@@ -327,10 +333,16 @@ export const PELUCHIC: SalonProfile = {
   },
   openingHours: HORARIO,
   timeZone: "Europe/Madrid",
-  // Ficha de Google (la misma del enlace `?d=`): nota, reseñas y fotos.
+  // Ficha de Google (la misma del enlace `?d=`): nota y número de reseñas.
   rating: 4.5,
   reviewCount: 81,
-  heroImage: "/api/foto?place=ChIJc_dY3q0uQg0ReeAzc1Y3irs&i=0",
+  // Portada propia y estática (lote P.5): su foto mejor valorada en
+  // horizontal (imagenes.json: valoración 5, «usar»), la estilista trenzando
+  // un semirrecogido. Antes era la primera foto de su ficha de Google por
+  // `/api/foto`, que el 27-09 respondió 429 y 502. A 800 y 1600 px.
+  heroImage: "/demo/peluchic-galeria/portada-1600.webp",
+  // Las fotos de su ficha de Google ya no se usan (manda `galeriaPropia` y la
+  // portada no es de Google); se quedan para no perder la selección.
   photoCount: 10,
   galleryPhotos: ["5", "2", "7", "4", "3", "6"],
   // Galería propia (manda sobre las fotos de Google, así que las tres que

@@ -69,3 +69,19 @@ export function envolver(pos: number, anchoSerie: number): number {
   const r = pos % anchoSerie;
   return r < 0 ? r + anchoSerie : r;
 }
+
+/** Portada propia preparada a dos anchos: `nombre-800.webp` y `nombre-1600.webp` (lote P.5). */
+const PORTADA_DOS_ANCHOS = /-(800|1600)\.(webp|avif|jpe?g|png)$/i;
+
+/**
+ * La portada con sus dos anchos si es un fichero propio `…-800` / `…-1600`
+ * (se deduce el otro ancho), o `null` si no lo es: la foto del proxy de
+ * Google ya pide su ancho con `&w=` y cualquier otra URL va tal cual.
+ */
+export function portadaConAnchos(url: string | undefined): { src: string; srcSet: string } | null {
+  const u = url?.trim();
+  if (!u || u.startsWith("/api/foto?") || !PORTADA_DOS_ANCHOS.test(u)) return null;
+  const peq = u.replace(PORTADA_DOS_ANCHOS, "-800.$2");
+  const gran = u.replace(PORTADA_DOS_ANCHOS, "-1600.$2");
+  return { src: peq, srcSet: `${peq} 800w, ${gran} 1600w` };
+}

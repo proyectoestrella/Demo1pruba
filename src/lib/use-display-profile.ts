@@ -4,7 +4,7 @@ import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "./demo-profile"
 import { useSalonStore } from "./store";
 import type { SalonProfile } from "./mock/types";
 import { inferBusinessType, type BusinessType } from "./business-type";
-import { demoPorSlug } from "./demos";
+import { completarConDemoRegistrada, demoPorSlug } from "./demos";
 import { enlaceDemoEnPestana, perfilDeDemoRegistrada } from "./demos/aplicar";
 import { leerPrevia } from "./vista-previa";
 
@@ -42,14 +42,25 @@ export function useDisplayProfile(): SalonProfile {
     : search?.previa !== undefined ? leerPrevia(slugPublico(pathname)) : undefined;
   const realSalonSlug = useSalonStore((s) => s.realSalonSlug);
 
+  // `?d=` de verdad en la dirección (no el borrador de la vista previa).
+  const conEnlace = typeof search?.[DEMO_PARAM] === "string";
+
   return useMemo(() => {
     const fromUrl = decodeDemoProfile(raw);
+    const slug = slugPublico(pathname);
+    // Lote P.5: un `?d=` (viejo) de un slug con demo registrada se completa
+    // con lo que el enlace no trae (enlaces, WhatsApp, galería propia…; ver
+    // `completarConDemoRegistrada`). Nunca en un salón real ni en la vista
+    // previa de Mi página, que tiene que enseñar el borrador tal cual.
+    const completar = Boolean(slug) && slug !== realSalonSlug && demoPorSlug(slug) !== undefined;
     if (!fromUrl) {
-      const slug = slugPublico(pathname);
       const registrada = demoPorSlug(slug);
       if (registrada && slug && slug !== realSalonSlug && stored.slug !== slug && !enlaceDemoEnPestana(slug)) {
         return perfilDeDemoRegistrada(registrada);
       }
+      // La pestaña recuerda un `?d=` de este slug y lo aplicó a la store
+      // (p. ej. en /book, si el enlace se perdió al navegar): se completa igual.
+      if (completar && enlaceDemoEnPestana(slug!)) return completarConDemoRegistrada(slug, stored);
       return stored;
     }
     // Lo que el enlace no traiga se queda en blanco, NO se hereda del salón
@@ -57,8 +68,9 @@ export function useDisplayProfile(): SalonProfile {
     // señoras salía presentándose como "barbería de toda la vida, tres
     // profesionales" y con las especialidades del salón de ejemplo: los datos
     // eran suyos y el discurso de otro, que es peor que no decir nada.
-    return { ...stored, ...blankDemoProfile(), teamHours: undefined, teamIds: undefined, ...fromUrl };
-  }, [stored, raw, pathname, realSalonSlug]);
+    const delEnlace = completar && conEnlace ? completarConDemoRegistrada(slug, fromUrl) : fromUrl;
+    return { ...stored, ...blankDemoProfile(), teamHours: undefined, teamIds: undefined, ...delEnlace };
+  }, [stored, raw, pathname, realSalonSlug, conEnlace]);
 }
 
 /**

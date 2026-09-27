@@ -134,6 +134,12 @@ describe("validarBorrador", () => {
     expect(errores[0].mensaje).toContain(".jpg");
   });
 
+  it("acepta una ruta de la propia web (/demo/…), la portada estática de una demo registrada (lote P.5)", () => {
+    expect(validarBorrador(borradorValido({ heroImage: "/demo/peluchic-galeria/portada-1600.webp" }))).toEqual([]);
+    expect(validarBorrador(borradorValido({ heroImage: "//malo.com/a.jpg" }))[0]?.campo).toBe("heroImage");
+    expect(validarBorrador(borradorValido({ heroImage: "/demo/sin-extension" }))[0]?.campo).toBe("heroImage");
+  });
+
   it("acepta la foto del proxy propio de siShow (/api/foto?…), la de las demos", () => {
     expect(validarBorrador(borradorValido({ heroImage: "/api/foto?place=ChIJc&i=0" }))).toEqual([]);
   });

@@ -89,6 +89,8 @@ type DemoProfileNegocio = Pick<
   | "galeriaPropia"
   | "descripcionesServicios"
   | "preciosLiterales"
+  // Lote P.5: lo que sale en «Lo más pedido».
+  | "destacados"
 >;
 
 /** Campos del perfil que se pueden personalizar por demo. */
@@ -98,12 +100,12 @@ export type DemoProfile = DemoProfileNegocio & DemoPersonalizacion;
  * Campos del perfil que un enlace `?d=` no trae y que, por tanto, NO puede
  * heredar del salón que hubiera antes en este navegador: el logo y todo lo
  * del lote 18 (enlaces, WhatsApp, boletín, galería propia, textos de la
- * carta). Sin blanquearlos, abrir la demo de otra peluquería después de la
+ * carta) y los destacados del lote P.5. Sin blanquearlos, abrir la demo de otra peluquería después de la
  * de PeluChic enseñaba el Instagram, el boletín y el logo de PeluChic.
  */
 export type CamposSinHeredar = Pick<
   SalonProfile,
-  "logoUrl" | "enlaces" | "whatsapp" | "boletin" | "galeriaPropia" | "descripcionesServicios" | "preciosLiterales" | "demoAbreHoy"
+  "logoUrl" | "enlaces" | "whatsapp" | "boletin" | "galeriaPropia" | "descripcionesServicios" | "preciosLiterales" | "destacados" | "demoAbreHoy"
 >;
 
 /**
@@ -155,16 +157,26 @@ const KEYS: Record<keyof DemoProfileNegocio, string> = {
   galeriaPropia: "gp",
   descripcionesServicios: "ds",
   preciosLiterales: "pl",
+  destacados: "dt",
 };
 
 /* ---------- lote P: enlaces, boletín, galería y textos de la carta ---------- */
 
 const CAMPOS_LOTE18 = new Set<keyof DemoProfileNegocio>([
-  "logoUrl", "whatsapp", "enlaces", "boletin", "galeriaPropia", "descripcionesServicios", "preciosLiterales",
+  "logoUrl", "whatsapp", "enlaces", "boletin", "galeriaPropia", "descripcionesServicios", "preciosLiterales", "destacados",
 ]);
-const CLAVES_ENLACES = { blog: "b", instagram: "i", facebook: "f", tienda: "t", web: "w" } as const;
+const CLAVES_ENLACES = { blog: "b", instagram: "i", facebook: "f", tienda: "t", web: "w", resenas: "r" } as const;
 const ID_SERVICIO = /^[a-z0-9][a-z0-9-]{0,59}$/;
 const MAX_GALERIA = 12;
+/** «Lo más pedido» enseña cuatro como mucho. */
+export const MAX_DESTACADOS = 4;
+
+/** Ids de servicio válidos y sin repetir, como mucho `MAX_DESTACADOS`, o `null` si no queda ninguno. */
+function idsDestacados(valor: unknown): string[] | null {
+  if (!Array.isArray(valor)) return null;
+  const ids = [...new Set(valor.map((v) => (typeof v === "string" ? v.trim() : "")).filter((v) => ID_SERVICIO.test(v)))].slice(0, MAX_DESTACADOS);
+  return ids.length ? ids : null;
+}
 
 /**
  * Una dirección que se puede pintar o enlazar: http(s) y, si `relativa`, una
@@ -233,6 +245,8 @@ function codificarLote18(field: keyof DemoProfileNegocio, value: unknown): unkno
       return textosPorServicio(value, 400) ?? undefined;
     case "preciosLiterales":
       return textosPorServicio(value, 80) ?? undefined;
+    case "destacados":
+      return idsDestacados(value) ?? undefined;
     default:
       return undefined;
   }
@@ -276,6 +290,8 @@ function leerLote18(field: keyof DemoProfileNegocio, value: unknown): unknown {
       return textosPorServicio(value, 400) ?? undefined;
     case "preciosLiterales":
       return textosPorServicio(value, 80) ?? undefined;
+    case "destacados":
+      return idsDestacados(value) ?? undefined;
     default:
       return undefined;
   }
@@ -343,6 +359,7 @@ export function blankDemoProfile(): DemoProfile & CamposSinHeredar {
     galeriaPropia: undefined,
     descripcionesServicios: undefined,
     preciosLiterales: undefined,
+    destacados: undefined,
     demoAbreHoy: undefined,
   };
 }

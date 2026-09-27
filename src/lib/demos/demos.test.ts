@@ -98,6 +98,7 @@ describe("perfil de PeluChic", () => {
       instagram: "https://www.instagram.com/peluchicprofesional",
       facebook: "https://www.facebook.com/peluchicprofesional/",
       tienda: "https://peluchic.online/tienda/ols/all",
+      resenas: "https://www.google.com/maps/search/?api=1&query=PeluChic&query_place_id=ChIJc_dY3q0uQg0ReeAzc1Y3irs",
     });
     // El 10 % de su web no está activo en su tienda: no se promete ninguna cifra.
     expect(PELUCHIC.boletin?.texto).not.toMatch(/\d/);

@@ -66,3 +66,72 @@ export function marcaDeDemo(slug: string): string | null {
   const demo = demoRegistrada(slug);
   return demo ? `${slug}@${demo.version}` : null;
 }
+
+/* ---------- Lote P.5: el `?d=` viejo de una demo registrada ---------- */
+
+/**
+ * Lo que un enlace `?d=` antiguo no trae y la demo registrada del mismo slug
+ * sí. El `?d=` de PeluChic con el que se enseñó la demo (antes del lote P) no
+ * lleva enlaces, WhatsApp, boletín, galería propia, textos de la carta ni
+ * destacados, y su portada es una foto de la ficha de Google.
+ */
+export const CAMPOS_QUE_COMPLETA_LA_DEMO = [
+  "enlaces",
+  "whatsapp",
+  "boletin",
+  "galeriaPropia",
+  "descripcionesServicios",
+  "preciosLiterales",
+  "destacados",
+  "heroImage",
+] as const satisfies readonly (keyof SalonProfile)[];
+
+/** Diccionarios que se completan clave a clave (manda la del enlace). */
+const POR_CLAVE = new Set<string>(["enlaces", "descripcionesServicios", "preciosLiterales"]);
+
+function vacio(v: unknown): boolean {
+  if (v === undefined || v === null) return true;
+  if (typeof v === "string") return v.trim() === "";
+  if (Array.isArray(v)) return v.length === 0;
+  if (typeof v === "object") return Object.keys(v as object).length === 0;
+  return false;
+}
+
+/** Foto servida por nuestro proxy de Google Places (`/api/foto?…`). */
+export function esFotoDeGoogle(url: string | undefined | null): boolean {
+  return typeof url === "string" && url.trim().startsWith("/api/foto?");
+}
+
+/**
+ * El perfil de un enlace `?d=` completado con la demo registrada de ese slug:
+ * cada campo de `CAMPOS_QUE_COMPLETA_LA_DEMO` que el enlace no trae (o trae
+ * vacío) sale del registro; lo que el enlace sí trae no se pisa. En
+ * `enlaces`, las descripciones y los precios literales se completa clave a
+ * clave (un enlace con su blog sigue con su blog y gana el Instagram).
+ *
+ * Una excepción, a propósito: si la portada del enlace es una foto de la
+ * ficha de Google (`/api/foto`) y la demo registrada tiene portada propia,
+ * manda la propia. Es la misma ficha que el salón ya sustituyó por su foto,
+ * Tomás quiere fuera las fotos de Google y el proxy falló (429/502) el 27-09.
+ *
+ * Sin demo registrada con ese slug, devuelve el perfil tal cual.
+ */
+export function completarConDemoRegistrada<T extends Partial<SalonProfile>>(slug: string | undefined | null, delEnlace: T): T {
+  const demo = demoPorSlug(slug);
+  if (!demo) return delEnlace;
+  const out: Record<string, unknown> = { ...delEnlace };
+  for (const campo of CAMPOS_QUE_COMPLETA_LA_DEMO) {
+    const registrado = demo[campo] as unknown;
+    if (vacio(registrado)) continue;
+    const actual = out[campo];
+    if (vacio(actual)) {
+      out[campo] = registrado;
+    } else if (POR_CLAVE.has(campo) && typeof actual === "object" && !Array.isArray(actual)) {
+      out[campo] = { ...(registrado as object), ...(actual as object) };
+    }
+  }
+  if (esFotoDeGoogle(out.heroImage as string | undefined) && demo.heroImage && !esFotoDeGoogle(demo.heroImage)) {
+    out.heroImage = demo.heroImage;
+  }
+  return out as T;
+}

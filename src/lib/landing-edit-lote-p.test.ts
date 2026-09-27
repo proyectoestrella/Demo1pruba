@@ -17,7 +17,7 @@ describe("Mi página: enlaces, WhatsApp, boletín, galería y descripciones (lot
   });
 
   it("vaciar un campo lo quita de verdad (presente y sin valor)", () => {
-    const p = perfilDesdeBorrador({ ...base(), whatsapp: "", enlaces: { blog: "", instagram: "", facebook: "", tienda: "", web: "" }, boletinTexto: "", boletinUrl: "", galeria: [] });
+    const p = perfilDesdeBorrador({ ...base(), whatsapp: "", enlaces: { blog: "", instagram: "", facebook: "", tienda: "", web: "", resenas: "" }, boletinTexto: "", boletinUrl: "", galeria: [] });
     for (const campo of ["whatsapp", "enlaces", "boletin", "galeriaPropia"] as const) {
       expect(campo in p).toBe(true);
       expect(p[campo]).toBeUndefined();

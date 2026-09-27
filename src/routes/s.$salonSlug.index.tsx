@@ -36,7 +36,7 @@ import { useMemo } from "react";
 import { isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
 import { useClientNow } from "@/lib/use-client-now";
 import { conAncho } from "@/lib/demo-photos";
-import { fotoConAnchos, fotosDeGaleria } from "@/lib/galeria-salon";
+import { fotoConAnchos, fotosDeGaleria, portadaConAnchos } from "@/lib/galeria-salon";
 import { useImagenConRespaldo } from "@/lib/imagen-rota";
 import heroImg from "@/assets/hero-salon.jpg";
 import heroSalonImg from "@/assets/gallery-salon.jpg";
@@ -52,7 +52,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { TeamShowcase } from "@/components/twentyfirst/team-showcase";
 import { cn } from "@/lib/utils";
-import { CONTENEDOR_SALON, SECCION_WEB, enlaceWhatsApp, enlacesDelSalon, listaConY, notaEs, precioDeCarta } from "@/lib/web-publica";
+import { CONTENEDOR_SALON, SECCION_WEB, enlaceWhatsApp, enlacesDelSalon, idsLoMasPedido, listaConY, notaEs, precioDeCarta, resenasDeGoogle } from "@/lib/web-publica";
 import { CartaServicios } from "@/components/web-salon/CartaServicios";
 import { NotaQueSube, TrazoTitulo } from "@/components/web-salon/Movimiento";
 import { BloqueComunidad, FUERA, IconoWhatsApp } from "@/components/web-salon/EnlacesSalon";
@@ -301,6 +301,8 @@ function SalonHome() {
     respaldoPortada?.grande ?? (tipo === "barberia" ? heroImg : heroSalonImg),
   );
   const portadaEsRespaldoPropio = !!respaldoPortada && portada.src === respaldoPortada.grande;
+  // Lote P.5: portada propia y estática a dos anchos (`…-800` / `…-1600`).
+  const portadaPropia = portadaEsRespaldoPropio ? null : portadaConAnchos(portada.src);
   // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
   // en la cadena "2" — de ahí el `String(...)` antes de comparar.
   const isV2 = useRouterState({
@@ -310,16 +312,14 @@ function SalonHome() {
   // "Keyboard shortcuts") dentro de una web en español (auditoría, hallazgo C6).
   const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(profile.address)}&output=embed&hl=es`;
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(profile.address)}`;
-  // Enlace a la ficha de Google del salón, para las reseñas reales (ver
-  // sección de Reseñas más abajo). No hay un id de ficha guardado en el
-  // perfil, así que se busca por nombre + dirección: honesto y sin inventar
-  // una URL que pueda no ser la suya.
-  const googleReviewsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${profile.name} ${profile.address}`)}`;
   // Auditoría, hallazgo C3: un salón REAL no puede enseñar reseñas
-  // inventadas con la etiqueta "Ejemplo" a su propio cliente. Las demos de
-  // venta (el resto de esta condición) siguen exactamente igual que hoy.
+  // inventadas con la etiqueta "Ejemplo" a su propio cliente. Lote P.5: con
+  // su ficha de Google (`enlaces.resenas`), tampoco una demo: enseña su nota
+  // real y «Ver reseñas en Google». Sin ficha, un salón real busca la ficha
+  // por nombre + dirección (sin inventar una URL que pueda no ser la suya) y
+  // una demo sigue con sus reseñas de ejemplo, marcadas como tal.
   const isRealSalon = useRealSalonSlug() === salonSlug;
-  const hasGoogleReviews = isRealSalon && profile.rating > 0 && profile.reviewCount > 0;
+  const resenasGoogle = resenasDeGoogle(profile, isRealSalon);
 
   // Catálogo y equipo calculados a partir del tipo deducido del enlace —no
   // del catálogo/equipo "activo" mutado en mock/salon.ts, que solo se
@@ -345,11 +345,10 @@ function SalonHome() {
 
   const activeServices = services.filter((s) => s.active !== false);
   const categoryOrder = categoryOrderOf(services);
-  // Con carta real no hay ids fijos que mapear a "destacados": se enseñan los
-  // cuatro primeros de la carta, en el orden en que se dieron.
-  const featuredIds = profile.menu?.length
-    ? activeServices.slice(0, 4).map((s) => s.id)
-    : FEATURED_IDS_BY_TYPE[tipo];
+  // Lote P.5: «Lo más pedido» son los `destacados` del salón (PeluChic: corte
+  // y peinado, color orgánico, mechas y novias). Sin ellos, con carta real,
+  // los cuatro primeros de la carta; con la de ejemplo, los del tipo.
+  const featuredIds = idsLoMasPedido(profile.destacados, activeServices, profile.menu?.length ? undefined : FEATURED_IDS_BY_TYPE[tipo]);
   const noShowFeeEur = profile.noShowFeeEur ?? 0;
   const noShowNoticeHours = profile.noShowNoticeHours ?? 2;
   // Salón con un solo profesional (caso Adam): la sección de equipo, el
@@ -413,18 +412,18 @@ function SalonHome() {
           // Portada a 800 o 1600 px según pantalla (lote 17.7): la de 1600
           // pesaba 424 KB y era el 86 % del LCP en móvil. Una foto que no es
           // del proxy (subida por el salón o de respaldo) no lleva srcSet.
-          src={portadaEsRespaldoPropio ? respaldoPortada!.src : (conAncho(portada.src, 800) ?? portada.src)}
+          src={portadaEsRespaldoPropio ? respaldoPortada!.src : (portadaPropia?.src ?? conAncho(portada.src, 800) ?? portada.src)}
           srcSet={
             portada.src.startsWith("/api/foto?")
               ? `${conAncho(portada.src, 800)} 800w, ${conAncho(portada.src, 1600)} 1600w`
               : portadaEsRespaldoPropio
                 ? respaldoPortada!.srcSet
-                : undefined
+                : portadaPropia?.srcSet
           }
           sizes="100vw"
           ref={portada.ref}
           onError={portada.onError}
-          alt={portadaEsRespaldoPropio ? respaldoPortada!.alt : `Interior de ${profile.name}`}
+          alt={portadaEsRespaldoPropio ? respaldoPortada!.alt : portadaPropia ? `Un trabajo de ${profile.name}` : `Interior de ${profile.name}`}
           className="ws-portada-foto absolute inset-0 -z-20 h-full w-full object-cover"
           width={1920}
           height={1280}
@@ -673,20 +672,20 @@ function SalonHome() {
 
       {/* Reseñas. Un salón REAL solo enseña su nota de Google (nunca reseñas
           inventadas); las demos de venta, tres de ejemplo marcadas como tal. */}
-      {isRealSalon ? (
-        hasGoogleReviews ? (
+      {resenasGoogle || isRealSalon ? (
+        resenasGoogle ? (
           <section id="resenas" className="bg-ws-caramelo-claro">
             <div className={cn(CONTENEDOR_SALON, SECCION_WEB, "text-center")}>
               <p className="ws-etiqueta">Reseñas</p>
               <h2 className="mt-2 ws-titulo text-[28px] md:text-[38px]">Lo que dicen en Google</h2>
               <TrazoTitulo className="mt-2" centrado />
               <div className="mt-6 flex items-center justify-center gap-2">
-                <Estrellas nota={profile.rating} className="[&_svg]:h-5 [&_svg]:w-5" />
-                <NotaQueSube valor={profile.rating} className="text-2xl font-extrabold tabular-nums" />
+                <Estrellas nota={resenasGoogle.nota} className="[&_svg]:h-5 [&_svg]:w-5" />
+                <NotaQueSube valor={resenasGoogle.nota} className="text-2xl font-extrabold tabular-nums" />
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">{profile.reviewCount} reseñas en Google</p>
+              <p className="mt-1 text-sm text-muted-foreground">{resenasGoogle.total} reseñas en Google</p>
               <Button asChild variant="outline" className="mt-6 h-11 rounded-full px-6">
-                <a href={googleReviewsUrl} target="_blank" rel="noreferrer">
+                <a href={resenasGoogle.url} target="_blank" rel="noreferrer">
                   Ver reseñas en Google
                 </a>
               </Button>

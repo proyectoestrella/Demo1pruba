@@ -321,7 +321,18 @@ export interface SalonProfile {
     facebook?: string;
     tienda?: string;
     web?: string;
+    /**
+     * Su ficha de Google Maps (lote P.5), para «Ver reseñas en Google». Con
+     * ella y una nota, la web enseña la nota real en vez de reseñas de ejemplo.
+     */
+    resenas?: string;
   };
+  /**
+   * Lo más representativo de la carta (lote P.5): 3 o 4 ids de servicio que
+   * salen en «Lo más pedido» de la web, en ese orden. Ausente o sin ninguno
+   * válido: los cuatro primeros de la carta.
+   */
+  destacados?: string[];
   /** WhatsApp del salón en formato internacional ("+34 666 77 67 31"). Ausente: se usa `phone`. */
   whatsapp?: string;
   /** Boletín del salón que se promociona en su web de reservas (p. ej. descuento en la tienda). */

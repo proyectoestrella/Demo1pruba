@@ -56,8 +56,8 @@ export interface BorradorLanding {
   /* ---- Lote P: lo que la web de reservas enseña además de lo de siempre ---- */
   /** WhatsApp para pedir cita («+34 666 77 67 31»). Vacío: se usa el teléfono. */
   whatsapp: string;
-  /** Direcciones completas de su web o blog, redes y tienda. Vacías: no salen. */
-  enlaces: { blog: string; instagram: string; facebook: string; tienda: string; web: string };
+  /** Direcciones completas de su web o blog, redes, tienda y ficha de Google (reseñas). Vacías: no salen. */
+  enlaces: { blog: string; instagram: string; facebook: string; tienda: string; web: string; resenas: string };
   /** Boletín: la invitación, adónde se apunta y la letra pequeña (opcional). */
   boletinTexto: string;
   boletinUrl: string;
@@ -68,8 +68,8 @@ export interface BorradorLanding {
   descripciones: Record<string, string>;
 }
 
-/** Los cinco enlaces, en el orden en que se editan. */
-export const CAMPOS_ENLACES = ["blog", "instagram", "facebook", "tienda", "web"] as const;
+/** Los seis enlaces, en el orden en que se editan (lote P.5: la ficha de Google, para las reseñas). */
+export const CAMPOS_ENLACES = ["blog", "instagram", "facebook", "tienda", "web", "resenas"] as const;
 /** Fotos propias como mucho (las que caben en la galería sin ruido). */
 export const MAX_FOTOS_GALERIA = 12;
 /** Largo máximo de la descripción de un servicio. */
@@ -137,6 +137,7 @@ export function borradorDesdePerfil(p: SalonProfile): BorradorLanding {
       facebook: p.enlaces?.facebook ?? "",
       tienda: p.enlaces?.tienda ?? "",
       web: p.enlaces?.web ?? "",
+      resenas: p.enlaces?.resenas ?? "",
     },
     boletinTexto: p.boletin?.texto ?? "",
     boletinUrl: p.boletin?.url ?? "",
@@ -182,7 +183,9 @@ export function validarBorrador(b: BorradorLanding): ErrorCampo[] {
     // La foto de las demos llega por el proxy propio (/api/foto?…): vale tal cual.
     if (/^\/api\/foto\?/.test(foto)) {
       /* foto propia de siShow */
-    } else if (!/^https?:\/\//i.test(foto)) {
+    } else if (!/^(https?:\/\/|\/(?!\/))/i.test(foto)) {
+      // Lote P.5: también una ruta de la propia web (la portada estática de
+      // una demo registrada, «/demo/…»), igual que las fotos de la galería.
       errores.push({
         campo: "heroImage",
         mensaje: "La dirección de la foto de portada tiene que empezar por http:// o https://.",
@@ -388,6 +391,7 @@ const ETIQUETA_ENLACE: Record<(typeof CAMPOS_ENLACES)[number], string> = {
   facebook: "Facebook",
   tienda: "la tienda",
   web: "tu web",
+  resenas: "tu ficha de Google",
 };
 
 /* ---------------------------------------------------------------------- */
