@@ -114,7 +114,8 @@ export function enlaceWhatsApp(p: { whatsapp?: string; phone?: string; name?: st
  * se parte.
  */
 export function precioDeCarta(s: { priceEur: number; priceText?: string }): string {
-  const literal = s.priceText?.trim();
+  // En el literal, el euro no se separa de su cifra («47,50 €» no se parte en dos líneas).
+  const literal = s.priceText?.trim().replace(/(\d) €/g, "$1\u00a0€");
   if (literal) return literal;
   const conDecimales = Math.round(s.priceEur * 100) % 100 !== 0;
   const n = s.priceEur.toLocaleString("es-ES", {

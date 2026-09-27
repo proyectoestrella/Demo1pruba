@@ -53,7 +53,8 @@ describe("enlaces del salón (lote 18.4)", () => {
 
 describe("precio de la carta (lote 18.5)", () => {
   test("el literal del salón manda; si no, el importe sin decimales de relleno", () => {
-    expect(precioDeCarta({ priceEur: 150, priceText: "desde 150 € (sin IVA)" })).toBe("desde 150 € (sin IVA)");
+    expect(precioDeCarta({ priceEur: 150, priceText: "desde 150 € (sin IVA)" })).toBe("desde 150\u00a0€ (sin IVA)");
+    expect(precioDeCarta({ priceEur: 43.5, priceText: "43,50 € / 47,50 €" })).toBe("43,50\u00a0€ / 47,50\u00a0€");
     expect(precioDeCarta({ priceEur: 25 })).toBe("25\u00a0€");
     expect(precioDeCarta({ priceEur: 28.5 })).toBe("28,50\u00a0€");
     expect(precioDeCarta({ priceEur: 1250 })).toBe("1250\u00a0€");

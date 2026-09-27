@@ -78,14 +78,19 @@ export function CartaServicios({
 
   return (
     <Tabs value={activa} onValueChange={setActiva}>
-      <TabsList aria-label="Categorías de la carta" className="border-lino bg-card p-1">
+      {/* Móvil: una fila que se desliza. Desde 768 px las pestañas bajan de
+          línea: con siete categorías, la última quedaba oculta sin pista. */}
+      <TabsList
+        aria-label="Categorías de la carta"
+        className="flex w-full gap-2 rounded-none border-0 bg-transparent p-0 md:flex-wrap md:overflow-visible"
+      >
         {grupos.map((g) => (
           <TabsTrigger
             key={g.cat}
             value={g.cat}
             className={cn(
-              "group h-11 gap-2 px-4 text-sm text-cafe-medio hover:text-foreground",
-              "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none",
+              "group h-11 gap-2 border border-lino bg-card px-4 text-sm text-cafe-medio hover:border-lino-fuerte hover:text-foreground",
+              "data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none",
             )}
           >
             {g.cat}

@@ -553,10 +553,10 @@ function SalonHome() {
                     search={(prev) => ({ ...prev, service: id })}
                     className="elevar group flex h-full flex-col sm:min-h-[132px] rounded-[20px] border border-lino bg-card p-5"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-base font-bold leading-snug text-foreground">{s.name}</h3>
-                      <span className="max-w-[50%] shrink-0 text-right text-lg font-extrabold leading-snug tabular-nums text-foreground">{precioDeCarta(s)}</span>
-                    </div>
+                    {/* Nombre arriba y precio debajo: el literal del salón
+                        («43,50 € / 47,50 €») no cabe al lado de un nombre largo. */}
+                    <h3 className="text-base font-bold leading-snug text-foreground">{s.name}</h3>
+                    <p className="mt-1 text-lg font-extrabold leading-snug tabular-nums text-foreground">{precioDeCarta(s)}</p>
                     {(profile.descripcionesServicios?.[s.id] ?? s.description)?.trim() ? (
                       <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{(profile.descripcionesServicios?.[s.id] ?? s.description).trim()}</p>
                     ) : null}
