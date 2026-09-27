@@ -139,3 +139,47 @@ export function construirEnlaceGoogleCalendar(datos: DatosCita): string {
 export function esDispositivoApple(userAgent: string): boolean {
   return /iPhone|iPad|iPod/i.test(userAgent);
 }
+
+const DIAS_SEMANA_ABREV = ["DOM", "LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB"] as const;
+
+/**
+ * Día de la semana abreviado (3 letras, mayúsculas) y número de día del mes,
+ * para pintar la baldosa del icono de calendario (lote móvil de la
+ * confirmación). Pura: construye la fecha con componentes locales enteros
+ * (año/mes/día), nunca parseando el string completo con `new Date(...)`, así
+ * no depende de la zona horaria del proceso que la ejecuta.
+ */
+export function diaBaldosaCalendario(fecha: string): { diaSemana: string; diaMes: number } {
+  const [year, month, day] = fecha.split("-").map(Number);
+  const d = new Date(year, (month || 1) - 1, day || 1);
+  return { diaSemana: DIAS_SEMANA_ABREV[d.getDay()], diaMes: day || 1 };
+}
+
+/**
+ * Clave estable para recordar, por cita concreta, si ya se cerró la hoja
+ * móvil de "añadir al calendario" de la confirmación (no debe volver a
+ * aparecer para la misma cita). Pura: solo junta los campos que ya
+ * identifican la reserva en la URL de confirmación.
+ */
+export function claveHojaCalendarioMovil(p: {
+  service: string;
+  employeeId: string;
+  date: string;
+  time: string;
+  name: string;
+}): string {
+  return [p.service, p.employeeId, p.date, p.time, p.name].join("|");
+}
+
+/**
+ * ¿Toca abrir la hoja móvil de "añadir al calendario"? Pura: recibe ya
+ * resueltos si el viewport es de móvil estrecho, si hay datos de cita que
+ * ofrecer y si esta cita concreta ya la cerró antes (no vuelve a aparecer).
+ */
+export function debeMostrarHojaCalendarioMovil(p: {
+  esMovilAngosto: boolean;
+  hayDatosCita: boolean;
+  yaCerrada: boolean;
+}): boolean {
+  return p.esMovilAngosto && p.hayDatosCita && !p.yaCerrada;
+}

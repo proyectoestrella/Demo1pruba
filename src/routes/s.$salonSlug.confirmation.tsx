@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Check, CalendarPlus, Info, Download, MapPin } from "lucide-react";
+import { Check, Info, Download, MapPin } from "lucide-react";
 import { employeesForType, servicesForType } from "@/lib/mock/salon";
 import { reglaSenal, textoSenalPublico } from "@/lib/senal";
 import { useSalonStore } from "@/lib/store";
@@ -14,12 +14,16 @@ import { Button } from "@/components/ui/button";
 import { eur } from "@/lib/copy";
 import { sumServices } from "@/lib/appointment-services";
 import {
+  claveHojaCalendarioMovil,
   construirEnlaceGoogleCalendar,
   construirIcs,
   construirIcsDataUri,
+  diaBaldosaCalendario,
   esDispositivoApple,
   type DatosCita,
 } from "@/lib/calendario";
+import { IconoCalendarioApple, IconoCalendarioGoogle } from "@/components/IconosCalendario";
+import { HojaCalendarioMovil } from "@/components/HojaCalendarioMovil";
 
 /** "45 min" / "1 h" / "1 h 30" — igual que en el asistente de reserva. */
 function formatMinutes(min: number): string {
@@ -268,31 +272,23 @@ function Confirmation() {
             {(esApple
               ? (["apple", "google"] as const)
               : (["google", "apple"] as const)
-            ).map((proveedor) =>
-              proveedor === "google" ? (
-                <Button
-                  key="google"
-                  asChild
-                  variant="outline"
-                  className="h-12 flex-1 rounded-full px-2 text-sm font-semibold"
-                >
-                  <a href={enlaceGoogle!} target="_blank" rel="noopener noreferrer">
-                    <CalendarPlus className="h-4 w-4 shrink-0" /> Google
-                  </a>
-                </Button>
+            ).map((proveedor) => {
+              const { diaSemana, diaMes } = diaBaldosaCalendario(datosCita.fecha);
+              // Enlaces sueltos (no <Button asChild>): el botón fuerza
+              // `[&_svg]:size-4` a cualquier svg descendiente por
+              // especificidad CSS, y encogería estas baldosas a 16 px.
+              const claseBoton =
+                "flex h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-input bg-card px-2 text-sm font-semibold text-foreground transition-colors hover:bg-nata focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [@media(pointer:coarse)]:min-h-11";
+              return proveedor === "google" ? (
+                <a key="google" href={enlaceGoogle!} target="_blank" rel="noopener noreferrer" className={claseBoton}>
+                  <IconoCalendarioGoogle diaMes={diaMes} className="h-7 w-7 shrink-0" /> Google Calendar
+                </a>
               ) : (
-                <Button
-                  key="apple"
-                  asChild
-                  variant="outline"
-                  className="h-12 flex-1 rounded-full px-2 text-sm font-semibold"
-                >
-                  <a href={enlaceAppleDataUri!}>
-                    <CalendarPlus className="h-4 w-4 shrink-0" /> Apple / iPhone
-                  </a>
-                </Button>
-              ),
-            )}
+                <a key="apple" href={enlaceAppleDataUri!} className={claseBoton}>
+                  <IconoCalendarioApple diaSemana={diaSemana} diaMes={diaMes} className="h-7 w-7 shrink-0" /> Calendario de Apple
+                </a>
+              );
+            })}
           </div>
           <button
             type="button"
@@ -302,6 +298,17 @@ function Confirmation() {
             <Download className="h-4 w-4" aria-hidden="true" /> Otro calendario (.ics)
           </button>
         </div>
+      )}
+
+      {datosCita && (
+        <HojaCalendarioMovil
+          datosCita={datosCita}
+          clave={claveHojaCalendarioMovil({ service: sid, employeeId, date, time, name })}
+          esApple={esApple}
+          enlaceGoogle={enlaceGoogle!}
+          enlaceAppleDataUri={enlaceAppleDataUri!}
+          dateLabel={dateLabel}
+        />
       )}
 
       <div className="mt-6 flex gap-3">
