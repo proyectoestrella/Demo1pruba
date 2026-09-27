@@ -545,6 +545,22 @@ export const useSalonStore = create<SalonState>()(
         sincronizarCita(get(), id, antes);
         return null;
       };
+      /**
+       * Lote P: la descripción de un servicio vive en el perfil
+       * (`descripcionesServicios`, por id), que es lo que lee la web de
+       * reservas y lo que guarda Supabase: la carta (`menu`) no la lleva.
+       * Editarla en Servicios la escribe también ahí. Es reflejo del cambio
+       * del servicio: no deja otra fila en el historial.
+       */
+      const sincronizarDescripcion = (id: string, texto: string) => {
+        const actuales = get().salonProfile.descripcionesServicios ?? {};
+        const limpio = texto.trim();
+        if ((actuales[id] ?? "") === limpio) return;
+        const siguiente = { ...actuales };
+        if (limpio) siguiente[id] = limpio;
+        else delete siguiente[id];
+        conRegistroEnPausa(() => get().updateSalonProfile({ descripcionesServicios: siguiente }));
+      };
       const sincronizarCarta = () => {
         if (!get().realSalonSlug) return;
         // Ya queda registrado como cambio del servicio: la carta del perfil es su reflejo.
@@ -941,6 +957,7 @@ export const useSalonStore = create<SalonState>()(
         const service: Service = { ...svc, id };
         set((s) => ({ services: [...s.services, service] }));
         sincronizarCarta();
+        if (service.description) sincronizarDescripcion(id, service.description);
         return service;
       },
       updateService: (id, patch) => {
@@ -948,6 +965,7 @@ export const useSalonStore = create<SalonState>()(
           services: s.services.map((sv) => (sv.id === id ? { ...sv, ...patch } : sv)),
         }));
         sincronizarCarta();
+        if (patch.description !== undefined) sincronizarDescripcion(id, patch.description);
       },
       deleteService: (id) => {
         set((s) => ({
@@ -964,6 +982,20 @@ export const useSalonStore = create<SalonState>()(
           : patchEntrada;
         set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } }));
         const perfil = get().salonProfile;
+        // Lote P: descripciones y precios literales de la carta, editados en
+        // Mi página, llegan a los servicios que ven el panel y el asistente.
+        if ("descripcionesServicios" in patch || "preciosLiterales" in patch) {
+          const textos = textosDeCarta(perfil);
+          set((s) => ({
+            services: s.services.map((sv) => {
+              const description = "descripcionesServicios" in patch ? (textos?.descripciones?.[sv.id] ?? "") : sv.description;
+              const priceText = "preciosLiterales" in patch ? textos?.precios?.[sv.id] : sv.priceText;
+              if (description === sv.description && priceText === sv.priceText) return sv;
+              const { priceText: _viejo, ...resto } = sv;
+              return { ...resto, description, ...(priceText ? { priceText } : {}) };
+            }),
+          }));
+        }
         setEmployeesForType(
           inferBusinessType(perfil.tagline, perfil.name),
           perfil.team,

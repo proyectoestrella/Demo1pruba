@@ -141,3 +141,40 @@ describe("semilla de PeluChic con su carta real", () => {
     }
   });
 });
+
+describe("semilla de PeluChic: nombres variados en el día", () => {
+  beforeAll(() => setSystemTime(LUNES_PRESENTACION));
+  afterAll(() => setSystemTime());
+  it("ningún nombre de pila se repite más de dos veces en un mismo día cercano", () => {
+    const { seed } = semilla("2026-09-28");
+    const porDia = new Map<string, Map<string, number>>();
+    for (const a of seed.appointments) {
+      const ms = +new Date(a.start) - +LUNES_PRESENTACION;
+      if (Math.abs(ms) > 14 * 86_400_000) continue;
+      const dia = diaDe(a);
+      const m = porDia.get(dia) ?? new Map<string, number>();
+      const n = a.clientName.split(" ")[0];
+      m.set(n, (m.get(n) ?? 0) + 1);
+      porDia.set(dia, m);
+    }
+    for (const m of porDia.values()) expect(Math.max(...m.values())).toBeLessThanOrEqual(2);
+  });
+});
+
+describe("semilla de PeluChic: cada una hace lo suyo", () => {
+  beforeAll(() => setSystemTime(LUNES_PRESENTACION));
+  afterAll(() => setSystemTime());
+  it("lo que más hace cada profesional cuadra con su especialidad, histórico incluido", () => {
+    const { seed } = semilla("2026-09-28");
+    const top = (id: string) => {
+      const m = new Map<string, number>();
+      for (const a of seed.appointments) if (a.employeeId === id) m.set(a.serviceIds[0], (m.get(a.serviceIds[0]) ?? 0) + 1);
+      return [...m.entries()].sort((x, y) => y[1] - x[1]).slice(0, 3).map(([s]) => s);
+    };
+    const colores = ["color-10-minutos", "color-organico", "bano-brillo", "barros", "mechas", "money-piece"];
+    // Sara (diego): la colorista.
+    expect(top("diego").every((s) => colores.includes(s))).toBe(true);
+    // Noelia (ruben): tratamientos y cabina, ningún color entre lo que más hace.
+    expect(top("ruben").some((s) => colores.includes(s))).toBe(false);
+  });
+});

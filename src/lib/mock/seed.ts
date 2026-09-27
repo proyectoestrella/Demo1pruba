@@ -294,33 +294,42 @@ function buildHairAppointments(
   });
   const out: Appointment[] = [];
   const historicBusy = new Map<string, Array<[number, number]>>();
-  const add = (client: Client, day: number, minute: number, employee: Employee, chosen: Service[], status: Appointment["status"]) => {
+  const add = (client: Client, day: number, minute: number, employee: Employee, chosen: Service[], status: Appointment["status"], candidatas?: Employee[]) => {
     if (day < -90) {
       const duration = chosen.reduce((sum, s) => sum + s.durationMin, 0);
       // Las visitas del TPV son dispersas, pero también caben en un horario
       // real: se busca profesional y hora libre antes de retroceder un día.
-      for (let attempts = 0; attempts < 8; attempts++) {
-        const date = new Date();
-        date.setDate(date.getDate() + day);
-        let placed = false;
-        for (const candidate of [employee, ...employees.filter((e) => e.id !== employee.id)]) {
-          const sched = candidate.schedule[date.getDay()];
-          if (!sched) continue;
-          const key = `${day}:${candidate.id}`;
-          const busy = historicBusy.get(key) ?? [];
-          for (let start = sched.start * 60; start + duration <= sched.end * 60; start += 15) {
-            if (busy.some(([from, to]) => start < to && start + duration > from)) continue;
-            busy.push([start, start + duration]);
-            historicBusy.set(key, busy);
-            employee = candidate;
-            minute = start;
-            placed = true;
-            break;
+      // Con `candidatas` (semilla con mezcla), primero solo las especialistas
+      // durante ocho días; si no hay hueco, cualquiera, como siempre.
+      const todas = [employee, ...employees.filter((e) => e.id !== employee.id)];
+      const rondas = candidatas ? [candidatas, todas] : [todas];
+      const diaInicial = day;
+      let placed = false;
+      for (const ronda of rondas) {
+        if (placed) break;
+        day = diaInicial;
+        for (let attempts = 0; attempts < 8; attempts++) {
+          const date = new Date();
+          date.setDate(date.getDate() + day);
+          for (const candidate of ronda) {
+            const sched = candidate.schedule[date.getDay()];
+            if (!sched) continue;
+            const key = `${day}:${candidate.id}`;
+            const busy = historicBusy.get(key) ?? [];
+            for (let start = sched.start * 60; start + duration <= sched.end * 60; start += 15) {
+              if (busy.some(([from, to]) => start < to && start + duration > from)) continue;
+              busy.push([start, start + duration]);
+              historicBusy.set(key, busy);
+              employee = candidate;
+              minute = start;
+              placed = true;
+              break;
+            }
+            if (placed) break;
           }
           if (placed) break;
+          day--;
         }
-        if (placed) break;
-        day--;
       }
     }
     const colorKind = chosen.some((s) => /mecha|balayage/i.test(s.name)) ? "mechas"
@@ -343,6 +352,33 @@ function buildHairAppointments(
     });
   };
 
+  // Con mezcla, el pasado importado de cada habitual va con la profesional
+  // que más hace lo suyo (el color, con la colorista): si no, «lo que más
+  // hace» de la esteticista salía «Color de cobertura» por el histórico.
+  const pesoDe = (k: number, kind: Kind) => mezcla?.porProfesional[k % Math.max(1, mezcla.porProfesional.length)]?.semana[kind] ?? 0;
+  const profesionalDe = (kind: Kind, i: number): Employee => {
+    if (!mezcla) return employees[i % employees.length];
+    let mejor = -1;
+    let peso = 0;
+    employees.forEach((_, k) => {
+      const p = pesoDe(k, kind);
+      if (p > peso) { peso = p; mejor = k; }
+    });
+    return mejor >= 0 ? employees[mejor] : employees[i % employees.length];
+  };
+  /**
+   * Con mezcla, si su especialista no tiene hueco ese día, la visita pasa a
+   * quien también lo hace a menudo (un cuarto del peso de la que más), no a
+   * la esteticista: su «lo que más hace» no se llena de tintes del histórico.
+   */
+  const candidatasDe = (kind: Kind): Employee[] | undefined => {
+    if (!mezcla) return undefined;
+    const pesos = employees.map((e, k) => ({ e, p: pesoDe(k, kind) })).sort((a, b) => b.p - a.p);
+    const tope = (pesos[0]?.p ?? 0) / 4;
+    const buenas = pesos.filter((x) => x.p > 0 && x.p >= tope).map((x) => x.e);
+    return buenas.length ? buenas : undefined;
+  };
+
   // Un pasado importado y acotado: entre tres y cinco visitas por habitual.
   // Una pequeña parte alcanza el año anterior sin fabricar otra agenda llena.
   for (const [i, habit] of habits.entries()) {
@@ -350,11 +386,11 @@ function buildHairAppointments(
     const primary = habit.servicio ?? (habit.kind === "color" ? color : habit.kind === "mechas" ? mechas : corte);
     const count = 3 + i % 3;
     for (let visit = 0; visit < count && day >= -455; visit++) {
-      const employee = employees[i % employees.length];
+      const employee = profesionalDe(habit.kind, i);
       const date = new Date();
       date.setDate(date.getDate() + day);
       if (!employee.schedule[date.getDay()]) day--;
-      add(habit.client, day, 12 * 60 + (i % 5) * 15, employee, [primary], "completed");
+      add(habit.client, day, 12 * 60 + (i % 5) * 15, employee, [primary], "completed", candidatasDe(habit.kind));
       day -= habit.cadence + Math.floor(rand() * 5) - 2;
     }
   }
@@ -435,11 +471,16 @@ function buildHairAppointments(
   const treatmentBudget = Math.max(0, 64 - events);
   let treatmentSeen = 0;
   const usedToday = new Set<string>();
+  // Con mezcla (demo registrada): nombres de pila ya vistos hoy. La semilla
+  // escoge a las habituales más «vencidas», que salen en tandas con el mismo
+  // nombre: cuatro Valentinas en la línea del día delatan la demo.
+  const nombresHoy = new Map<string, number>();
+  const pila = (c: Client) => c.name.split(" ")[0];
   let currentDay = -Infinity;
   let occasional = 520;
   let pendingHoy = 0;
   for (const slot of slots) {
-    if (slot.day !== currentDay) { usedToday.clear(); currentDay = slot.day; }
+    if (slot.day !== currentDay) { usedToday.clear(); nombresHoy.clear(); currentDay = slot.day; }
     const status = slot.day === diaSolicitudes && pendingHoy < 2 ? "pending" : slot.status;
     let client: Client | undefined;
     if (slot.kind === "ocasional") {
@@ -455,7 +496,9 @@ function buildHairAppointments(
       candidates.sort((a, b) =>
         (slot.day - b.lastDay) / b.cadence - (slot.day - a.lastDay) / a.cadence
         || a.client.id.localeCompare(b.client.id));
-      const chosen = candidates[0];
+      const chosen = mezcla
+        ? (candidates.find((h) => (nombresHoy.get(pila(h.client)) ?? 0) < 1) ?? candidates[0])
+        : candidates[0];
       if (!chosen) continue;
       client = chosen.client;
       // Un plantón no reinicia el ritmo de visitas: se le volverá a ofrecer
@@ -463,14 +506,15 @@ function buildHairAppointments(
       if (status !== "no-show" && status !== "cancelled") chosen.lastDay = slot.day;
     }
     usedToday.add(client.id);
+    nombresHoy.set(pila(client), (nombresHoy.get(pila(client)) ?? 0) + 1);
     if (status === "pending") pendingHoy++;
     add(client, slot.day, slot.minute, slot.employee, slot.services, status);
   }
   // Inactivas para la campaña: una sola visita antigua por persona.
   clients.slice(584).forEach((client, i) => {
     const day = -95 - i * 5;
-    const employee = employees[i % employees.length];
-    add(client, day, 13 * 60, employee, [i % 2 ? corte : color], "completed");
+    const employee = profesionalDe(i % 2 ? "corte" : "color", i);
+    add(client, day, 13 * 60, employee, [i % 2 ? corte : color], "completed", candidatasDe(i % 2 ? "corte" : "color"));
   });
   return out;
 }

@@ -1,6 +1,6 @@
 import type { SalonProfile } from "../mock/types";
 import type { MezclaSemilla } from "../mock/seed";
-import { MEZCLA_PELUCHIC, PELUCHIC, VERSION_PELUCHIC } from "./peluchic";
+import { MEZCLA_PELUCHIC, PELUCHIC, SERVICIOS_PELUCHIC, VERSION_PELUCHIC } from "./peluchic";
 
 /**
  * Demos registradas por slug (lote P).
@@ -23,10 +23,17 @@ export interface DemoRegistrada {
   mezcla?: MezclaSemilla;
   /** Cambia con los datos: un navegador con otra versión vuelve a cargarla. */
   version: string;
+  /** Duraciones que el salón no publica y son estimación nuestra: id → minutos estimados. */
+  estimadas?: Record<string, number>;
 }
 
 const REGISTRO: Record<string, DemoRegistrada> = {
-  peluchic: { perfil: PELUCHIC, mezcla: MEZCLA_PELUCHIC, version: VERSION_PELUCHIC },
+  peluchic: {
+    perfil: PELUCHIC,
+    mezcla: MEZCLA_PELUCHIC,
+    version: VERSION_PELUCHIC,
+    estimadas: Object.fromEntries(SERVICIOS_PELUCHIC.filter((s) => s.estimada).map((s) => [s.id, s.duracionMin])),
+  },
 };
 
 /** La demo registrada con este slug, o `undefined`. */
@@ -43,6 +50,15 @@ export function demoPorSlug(slug: string | undefined | null): SalonProfile | und
 /** Slugs con demo registrada, en orden. */
 export function slugsDeDemos(): string[] {
   return Object.keys(REGISTRO);
+}
+
+/**
+ * ¿Es la duración de este servicio la estimación que pusimos nosotros? Deja
+ * de serlo en cuanto el salón la cambia (entonces ya es suya).
+ */
+export function duracionEstimada(slug: string | undefined, serviceId: string, durationMin: number): boolean {
+  const estimada = demoRegistrada(slug)?.estimadas?.[serviceId];
+  return estimada !== undefined && estimada === durationMin;
 }
 
 /** Marca que se guarda al aplicar una demo registrada: «slug@versión». */

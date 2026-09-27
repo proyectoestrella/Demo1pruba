@@ -6,7 +6,6 @@
 import { salon } from "../mock/salon";
 import { employeesForType, servicesForType } from "../mock/salon";
 import { buildSeed } from "../mock/seed";
-import { claveDelDia } from "../dia-cerrado-panel";
 import type { SalonProfile } from "../mock/types";
 import { crearFuentesBackend, type DatosBackend } from "./fuentes-backend";
 import type { PlanSishow } from "./fuentes";
@@ -27,10 +26,8 @@ let cache: Omit<DatosBackend, "ahora" | "plan"> | null = null;
 
 export function datosPeluChic(): Omit<DatosBackend, "ahora" | "plan"> {
   if (cache) return cache;
-  // Como la demo de verdad (lote P): si hoy PeluChic cierra, abre igual con los
-  // turnos del siguiente día abierto. Sin esto, en lunes y domingo la agenda
-  // de «hoy» salía vacía y las pruebas dependían del día en que se pasaban.
-  const equipo = employeesForType("peluqueria", EQUIPO, undefined, HORARIO_PELUCHIC, undefined, claveDelDia(new Date()));
+  // Fuentes de BACKEND: el salón real, que el lunes cierra (sin `demoAbreHoy`).
+  const equipo = employeesForType("peluqueria", EQUIPO, undefined, HORARIO_PELUCHIC);
   const servicios = servicesForType("peluqueria", CARTA);
   const seed = buildSeed("peluqueria", equipo, servicios, { duracionFlexible: true });
   const perfil: SalonProfile = {

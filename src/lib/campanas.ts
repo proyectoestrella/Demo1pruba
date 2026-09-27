@@ -2,6 +2,7 @@ import { msDe } from "./instante-cita";
 import type { Appointment, Client, Employee, Service } from "./mock/types";
 import { fechaCorta } from "./copy";
 import { momentoLocal } from "./zona-horaria";
+import { boletinYTienda, coletillaInstagram, eventosDeTemporada, type CanalesSalon } from "./campanas-temporada";
 
 /**
  * Campañas de marketing calculadas a partir de los datos reales del salón:
@@ -56,6 +57,8 @@ export interface CampanasInput {
    * la tarde»). Sin ella, la hora local del dispositivo, como hasta ahora.
    */
   timeZone?: string;
+  /** Lote P: boletín, tienda e Instagram del salón. Sin ellos, las campañas de siempre. */
+  canales?: CanalesSalon;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -525,8 +528,13 @@ export function buildCampanas(input: CampanasInput): Campana[] {
     ),
     resenaTrasLaCita(input.appointments, input.clients, input.salonName, input.salonAddress, now),
     servicioQueMasDeja(input.appointments, input.clients, input.services, input.salonName, now),
+    // Lote P: su temporada de eventos y sus propios canales.
+    eventosDeTemporada(input.appointments, input.clients, input.services, input.salonName, now),
+    boletinYTienda(input.appointments, input.clients, input.salonName, input.canales, now),
   ];
-  return candidatas.filter((c): c is Campana => c !== null);
+  return candidatas
+    .filter((c): c is Campana => c !== null)
+    .map((c) => (c.id === "resena" ? { ...c, mensaje: `${c.mensaje}${coletillaInstagram(input.canales)}` } : c));
 }
 
 /** «Este mes puedes recuperar N clientes y rellenar M huecos» — los dos únicos

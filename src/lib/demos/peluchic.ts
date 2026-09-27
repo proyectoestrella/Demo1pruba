@@ -30,7 +30,7 @@ import type { MezclaSemilla } from "../mock/seed";
  */
 
 /** Sube cuando cambien estos datos: los navegadores con la demo vieja la vuelven a cargar. */
-export const VERSION_PELUCHIC = "2026-09-27.2";
+export const VERSION_PELUCHIC = "2026-09-27.4";
 
 export interface ServicioPeluChic {
   /** Id estable (sexto campo de la carta): las citas de la semilla y las descripciones cuelgan de él. */
@@ -370,5 +370,7 @@ export const PELUCHIC: SalonProfile = {
   depositBizumPhone: "666 77 67 31",
   depositAmountEur: 20,
   duracionFlexible: true,
+  // Su día va de 10 a 20: el calendario enseña de 9 a 21, sin horas muertas.
+  calendario: { desde: 9, hasta: 21 },
   plan: "todo-incluido",
 };
