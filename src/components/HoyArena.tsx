@@ -34,6 +34,7 @@ import { DuracionOtra } from "@/components/DuracionOtra";
 import { cn } from "@/lib/utils";
 import { CifraAnimada } from "@/components/CifraAnimada";
 import { ahoraDelDia, enCuanto, lineaDelDia } from "@/lib/hoy-ahora-panel";
+import { cierraEseDia, diaAbiertoMasCercano, elDia } from "@/lib/dia-cerrado-panel";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { useAplicarDesenlace } from "@/components/CitasPorResolver";
 import { DecisionDeudaDialog } from "@/components/DecisionDeudaDialog";
@@ -110,11 +111,25 @@ export function HoyArena() {
 
   const ahora = new Date();
   const hoy = useMemo(() => citasDelDiaMemo(appointments, ahora), [appointments]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Lote P: si hoy el salón cierra y no hay nada en la agenda (el lunes de
+  // PeluChic), las cifras y la línea del día miran al siguiente día abierto.
+  const horario = useSalonStore((s) => s.salonProfile.openingHours);
+  const proximoAbierto = useMemo(
+    () => (hoy.length === 0 && cierraEseDia(horario, ahora) ? diaAbiertoMasCercano(horario, ahora, 1) : null),
+    [horario, hoy.length], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const diaVista = proximoAbierto ?? ahora;
+  const citasVista = useMemo(
+    () => (proximoAbierto ? citasDelDiaMemo(appointments, proximoAbierto) : hoy),
+    [proximoAbierto, appointments, hoy],
+  );
+  /** «el martes» / «mañana», o `null` si se está viendo hoy. */
+  const cuando = proximoAbierto ? elDia(proximoAbierto, ahora) : null;
   const pendientes = appointments
     .filter((a) => a.status === "pending")
     .sort((a, b) => +new Date(a.start) - +new Date(b.start));
-  const agenda = useMemo(() => agendaDeHoy(hoy, equipo, ahora), [hoy, equipo]); // eslint-disable-line react-hooks/exhaustive-deps
-  const dineroCitas = useMemo(() => dineroDelRango(appointments, rangoDelDia(ahora), ahora), [appointments]); // eslint-disable-line react-hooks/exhaustive-deps
+  const agenda = useMemo(() => agendaDeHoy(citasVista, equipo, diaVista), [citasVista, equipo]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dineroCitas = useMemo(() => dineroDelRango(appointments, rangoDelDia(diaVista), ahora), [appointments, proximoAbierto]); // eslint-disable-line react-hooks/exhaustive-deps
   // 14b: lo cobrado de verdad (pagos apuntados; si una cita no tiene pagos, su precio si está marcada cobrada).
   const pagos = useSalonStore((s) => s.payments);
   // 14c: que los calendarios externos (Apple no avisa solo) se pongan al día al abrir Hoy.
@@ -126,16 +141,16 @@ export function HoyArena() {
   }, [cargarPagos]);
   const dinero = useMemo(() => {
     const porCita = agruparPagosPorCita(pagos);
-    const cobrado = Math.round(hoy.reduce((t, a) => t + cobradoDeCita(a.id, porCita, a.paidAt ? a.priceEur : 0), 0) * 100) / 100;
+    const cobrado = Math.round(citasVista.reduce((t, a) => t + cobradoDeCita(a.id, porCita, a.paidAt ? a.priceEur : 0), 0) * 100) / 100;
     // Lo que queda por cobrar no cuenta las propinas: son un extra, no parte del precio.
     const sinPropina = agruparPagosPorCita(pagos.filter((p) => p.concepto !== "propina"));
-    const delPrecio = Math.round(hoy.reduce((t, a) => t + cobradoDeCita(a.id, sinPropina, a.paidAt ? a.priceEur : 0), 0) * 100) / 100;
+    const delPrecio = Math.round(citasVista.reduce((t, a) => t + cobradoDeCita(a.id, sinPropina, a.paidAt ? a.priceEur : 0), 0) * 100) / 100;
     return { ...dineroCitas, cobrado, delPrecio };
-  }, [pagos, hoy, dineroCitas]);
+  }, [pagos, citasVista, dineroCitas]);
   const esDemo = useSalonStore((s) => !s.realSalonSlug);
   // Lo que vale el día (ni canceladas ni «no vino»): cobrado + lo que queda por
   // cobrar, sea futuro o ya pasado sin marcar. Así ninguna cita se pierde.
-  const valorDelDia = hoy.filter(esCobrable).reduce((s, a) => s + a.priceEur, 0);
+  const valorDelDia = citasVista.filter(esCobrable).reduce((s, a) => s + a.priceEur, 0);
   const porCobrar = Math.max(0, valorDelDia - dinero.delPrecio);
 
   // Lo de las pestañas, contado para que la pestaña diga cuánto hay dentro.
@@ -168,7 +183,10 @@ export function HoyArena() {
       {/* Saludo y, debajo, las cuatro cifras del día en tarjetas. */}
       <header className="flex flex-wrap items-end gap-x-6 gap-y-3">
         <div className="min-w-0">
-          <p className="text-[13px] font-semibold text-muted-foreground tabular-nums">{fechaDeHoy(ahora)}</p>
+          <p className="text-[13px] font-semibold text-muted-foreground tabular-nums">
+            {fechaDeHoy(ahora)}
+            {cuando && <span className="ml-2 inline-flex rounded-full bg-beige px-2.5 py-0.5 text-[12px] font-bold text-cafe-medio">Hoy cerráis</span>}
+          </p>
           <h1 className="mt-1 font-display text-[28px] leading-[1.1] font-medium tracking-[-0.02em] md:text-[34px]">
             {miembro?.displayName ? saludo(miembro.displayName, ahora.getHours()) : `${saludoPara(ahora.getHours())}, ${salonName}`}
           </h1>
@@ -182,20 +200,22 @@ export function HoyArena() {
       </header>
 
       <div data-tour="kpis" className="-mt-2 grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4 xl:group-data-[panel=abierto]/panel:grid-cols-2">
-        <TarjetaCifra icono={CalendarDays} titulo="Citas de hoy" to="/app/calendar">
+        <TarjetaCifra icono={CalendarDays} titulo={cuando ? `Citas ${cuando === "mañana" ? "de mañana" : cuando.replace(/^el /, "del ")}` : "Citas de hoy"} to="/app/calendar">
           <Cifra><CifraAnimada texto={agenda.total} /></Cifra>
           <Detalle>{soloUno ? `${agenda.ocupacionPct} % de tu jornada` : agenda.porPro.map((x) => `${x.citas} ${x.e.name}`).join(" · ")}</Detalle>
           <Barra pct={agenda.ocupacionPct} texto={`Agenda al ${agenda.ocupacionPct} %`} />
         </TarjetaCifra>
-        <TarjetaCifra icono={Clock3} titulo="Huecos libres" to="/app/calendar">
+        <TarjetaCifra icono={Clock3} titulo={cuando ? `Huecos libres ${cuando}` : "Huecos libres"} to="/app/calendar">
           <Cifra extra={agenda.minutosLibres > 0 ? `· ${duracionCorta(agenda.minutosLibres)}` : undefined}><CifraAnimada texto={agenda.huecos.length} /></Cifra>
-          <Detalle>{agenda.huecos.length ? agenda.detalleHuecos : "Hoy ya no queda ningún hueco de media hora."}</Detalle>
+          <Detalle>{agenda.huecos.length ? agenda.detalleHuecos : cuando ? "Sin huecos de media hora: agenda llena." : "Hoy ya no queda ningún hueco de media hora."}</Detalle>
         </TarjetaCifra>
         {veDinero ? (
-        <TarjetaCifra icono={Euro} titulo={dineroPropio ? "Lo tuyo de hoy" : "Ingresos de hoy"}>
+        <TarjetaCifra icono={Euro} titulo={cuando ? `${dineroPropio ? "Lo tuyo" : "Previsto"} ${cuando}` : dineroPropio ? "Lo tuyo de hoy" : "Ingresos de hoy"}>
           <Cifra><CifraAnimada texto={eurRedondo(valorDelDia)} /></Cifra>
           <Detalle>
-            {dinero.cobrado === 0 && dinero.sinCobroMarcado > 0 && !esDemo
+            {cuando
+              ? `${citasVista.filter(esCobrable).length} citas por cobrar · hoy no hay caja`
+              : dinero.cobrado === 0 && dinero.sinCobroMarcado > 0 && !esDemo
               ? "0 € cobrados · marca los cobros en el detalle de cada cita"
               : `Llevas ${eurRedondo(dinero.cobrado)} cobrados · quedan ${eurRedondo(porCobrar)} por cobrar`}
           </Detalle>
@@ -223,7 +243,7 @@ export function HoyArena() {
 
       {/* Lote 16: «Ahora», siempre a la vista: la cita en curso, la siguiente y
           la agenda del día en una línea de tiempo. */}
-      <BloqueAhora hoy={hoy} equipo={equipo} ahora={ahora} carta={carta} services={services} detalle={nombreCorto} onAbrir={setSeleccionada} />
+      <BloqueAhora hoy={citasVista} equipo={equipo} ahora={diaVista} carta={carta} services={services} detalle={nombreCorto} onAbrir={setSeleccionada} previa={cuando} />
 
       {/* El resto del día, plegado: cada bloque dice cuánto hay dentro. */}
       <Plegables
@@ -231,11 +251,11 @@ export function HoyArena() {
         items={[
           {
             id: "ahora",
-            titulo: "Todas las citas que quedan",
-            contador: hoy.filter((a) => !terminada(a, ahora)).length,
-            resumen: "Las citas que quedan hoy",
+            titulo: cuando ? `Todas las citas ${cuando === "mañana" ? "de mañana" : cuando.replace(/^el /, "del ")}` : "Todas las citas que quedan",
+            contador: citasVista.filter((a) => !terminada(a, ahora)).length,
+            resumen: cuando ? "Hoy cerráis: así viene el próximo día abierto" : "Las citas que quedan hoy",
             tour: "today-list",
-            contenido: <AhoraYSiguientes hoy={hoy} ahora={ahora} carta={carta} services={services} detalle={nombreCorto} onAbrir={setSeleccionada} />,
+            contenido: <AhoraYSiguientes hoy={citasVista} ahora={ahora} carta={carta} services={services} detalle={nombreCorto} onAbrir={setSeleccionada} previa={!!cuando} />,
           },
           {
             id: "vinieron",
@@ -288,6 +308,7 @@ function BloqueAhora({
   services,
   detalle,
   onAbrir,
+  previa = null,
 }: {
   hoy: Appointment[];
   equipo: ReturnType<typeof useEquipoVisible>;
@@ -296,6 +317,8 @@ function BloqueAhora({
   services: Parameters<typeof colorServicio>[1];
   detalle: (a: Appointment) => string;
   onAbrir: (a: Appointment) => void;
+  /** Lote P: hoy se cierra y esto es el día que viene («el martes»); `ahora` es su 00:00. */
+  previa?: string | null;
 }) {
   const { enCurso, siguiente, minutosHastaSiguiente } = ahoraDelDia(hoy, ahora);
   const linea = useMemo(() => lineaDelDia(hoy, equipo, ahora), [hoy, equipo, ahora.getHours()]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -327,24 +350,43 @@ function BloqueAhora({
       </span>
     </button>
   );
-  const sinNada = hoy.filter((a) => a.status !== "cancelled" && a.status !== "blocked").length === 0;
+  const activas = hoy.filter((a) => a.status !== "cancelled" && a.status !== "blocked");
+  const sinNada = activas.length === 0;
+  const primera = [...activas].sort((a, b) => +new Date(a.start) - +new Date(b.start))[0];
+  const porConfirmar = activas.filter((a) => a.status === "pending").length;
+  const titulo = previa ? `${previa.charAt(0).toUpperCase()}${previa.slice(1)}` : "Ahora";
   return (
     <section className={bloque} aria-labelledby="ahora-titulo">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="ahora-titulo" className={tituloBloque}>Ahora</h2>
+        <h2 id="ahora-titulo" className={tituloBloque}>
+          {titulo}
+          {previa && <span className="ml-2 text-[13px] font-semibold text-muted-foreground">Hoy cerráis: así viene el próximo día abierto</span>}
+        </h2>
         <Link to="/app/calendar" className="text-[13.5px] font-bold text-cafe-medio hover:text-foreground">Ver calendario</Link>
       </div>
       {sinNada ? (
-        <p className="mt-3 text-[14px] text-muted-foreground">Hoy no hay citas. Un buen día para poner al día la carta o avisar a quien está en la lista de espera.</p>
+        <p className="mt-3 text-[14px] text-muted-foreground">
+          {previa
+            ? `${titulo} todavía no hay citas. Un buen momento para avisar a quien está en la lista de espera.`
+            : "Hoy no hay citas. Un buen día para poner al día la carta o avisar a quien está en la lista de espera."}
+        </p>
       ) : (
         <>
           <div className="mt-3 grid gap-2.5 md:grid-cols-2">
-            {enCurso.length > 0
+            {previa ? (
+              <>
+                {primera && tarjeta(primera, `Primera cita · ${hora(primera.start)}`, false)}
+                <p className="flex items-center rounded-2xl border border-dashed border-lino-fuerte px-4 py-3 text-[14px] text-cafe-medio">
+                  {activas.length} {activas.length === 1 ? "cita" : "citas"} en la agenda
+                  {porConfirmar > 0 ? ` · ${porConfirmar} por confirmar` : ""}
+                </p>
+              </>
+            ) : enCurso.length > 0
               ? enCurso.slice(0, 2).map((a) => tarjeta(a, `En curso · hasta las ${hora(new Date(Date.parse(a.start) + a.duration * 60_000).toISOString())}`, true))
               : <p className="flex items-center rounded-2xl border border-dashed border-lino-fuerte px-4 py-3 text-[14px] text-cafe-medio">Nadie en el sillón ahora mismo.</p>}
-            {siguiente
+            {!previa && (siguiente
               ? tarjeta(siguiente, `Siguiente · ${enCuanto(minutosHastaSiguiente)}`, false)
-              : <p className="flex items-center rounded-2xl border border-dashed border-lino-fuerte px-4 py-3 text-[14px] text-cafe-medio">No queda ninguna cita más hoy.</p>}
+              : <p className="flex items-center rounded-2xl border border-dashed border-lino-fuerte px-4 py-3 text-[14px] text-cafe-medio">No queda ninguna cita más hoy.</p>)}
           </div>
           {/* Agenda del día en una línea de tiempo: una fila por profesional. */}
           <div className="mt-5 overflow-x-auto">
@@ -703,6 +745,7 @@ function AhoraYSiguientes({
   services,
   detalle,
   onAbrir,
+  previa = false,
 }: {
   hoy: Appointment[];
   ahora: Date;
@@ -710,6 +753,8 @@ function AhoraYSiguientes({
   services: Parameters<typeof colorServicio>[1];
   detalle: (a: Appointment) => string;
   onAbrir: (a: Appointment) => void;
+  /** Lote P: citas de otro día (hoy se cierra): se enseña la duración en vez de «en 40 h». */
+  previa?: boolean;
 }) {
   const [todas, setTodas] = useState(false);
   const quedan = hoy.filter((a) => !terminada(a, ahora));
@@ -741,7 +786,7 @@ function AhoraYSiguientes({
                     </span>
                   </span>
                   <span className={cn("shrink-0 text-[13px] font-bold tabular-nums", ahoraMismo ? "text-hoja-tinta" : "text-muted-foreground")}>
-                    {ahoraMismo ? "Ahora" : a.status === "pending" ? "Por confirmar" : faltaPara(a, ahora)}
+                    {ahoraMismo ? "Ahora" : a.status === "pending" ? "Por confirmar" : previa ? duracionCorta(a.duration) : faltaPara(a, ahora)}
                   </span>
                 </button>
               </li>

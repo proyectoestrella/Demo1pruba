@@ -121,6 +121,18 @@ export function diasAnteriores(pagos: Pago[], citas: Appointment[], dia: string,
   return out;
 }
 
+/**
+ * El día con el que abre la Caja (lote P): hoy, salvo que hoy todavía no haya
+ * ni un cobro —antes de abrir, o un día que el salón cierra—; entonces, el
+ * último día con cobros de las dos últimas semanas, que es el que se quiere
+ * repasar a esas horas. `desdeOtroDia` para decirlo en pantalla.
+ */
+export function diaInicialDeCaja(pagos: Pago[], citas: Appointment[], hoy: string, zona: string): { dia: string; desdeOtroDia: boolean } {
+  if (movimientosDelDia(pagos, citas, hoy, zona).length > 0) return { dia: hoy, desdeOtroDia: false };
+  const ultimo = diasAnteriores(pagos, citas, hoy, zona, 14)[0];
+  return ultimo ? { dia: ultimo.dia, desdeOtroDia: true } : { dia: hoy, desdeOtroDia: false };
+}
+
 /** Citas de `dia` que ya empezaron, se podían cobrar y siguen sin cobrar. */
 export function pendientesDeCobrar(citas: Appointment[], dia: string, zona: string, ahora: Date): Appointment[] {
   const lo = sumarDias(dia, -1);
