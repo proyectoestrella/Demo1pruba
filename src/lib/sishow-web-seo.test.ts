@@ -45,9 +45,9 @@ describe("SEO de la web oficial", () => {
   test("JSON-LD: tres ofertas en euros con el precio anual y preguntas completas", () => {
     const app = jsonLdAplicacion(NOMBRE_PLAN) as { offers: { price: string; priceCurrency: string; name: string }[] };
     expect(app.offers.map((o) => [o.name, o.price, o.priceCurrency])).toEqual([
-      ["Reservas", "36", "EUR"],
-      ["Reservas + Asistente", "42", "EUR"],
-      ["Todo incluido", "55", "EUR"],
+      ["Básico", "36", "EUR"],
+      ["Completo", "42", "EUR"],
+      ["Embajador", "55", "EUR"],
     ]);
     const faq = jsonLdPreguntas(PREGUNTAS_INICIO) as { mainEntity: unknown[] };
     expect(faq.mainEntity).toHaveLength(PREGUNTAS_INICIO.length);

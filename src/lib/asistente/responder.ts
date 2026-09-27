@@ -379,7 +379,7 @@ export function crearAsistente(fuentes: FuentesAsistente): Asistente {
     if (i.grupo === "plan") return escalarPlan(i, s.plan, s.salonNombre);
     if (i.grupo === "tecnica") return escalarTecnica(i, s.salonNombre);
 
-    // El plan Reservas no incluye el asistente: se dice, con la alternativa.
+    // El plan Básico no incluye el asistente: se dice, con la alternativa.
     if (s.plan === "reservas") return escalarPlan(POR_ID.get("plan-asistente")!, s.plan, s.salonNombre);
 
     // Entidades que faltan: se pregunta, nunca se supone.

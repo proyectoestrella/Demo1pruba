@@ -1,5 +1,5 @@
 /**
- * Recordatorio automático por email el día anterior (plan Reservas, octubre).
+ * Recordatorio automático por email el día anterior (plan Básico, octubre).
  *
  * Lo llama la ruta `/api/recordatorios` desde el cron de Vercel una vez al
  * día por la tarde. Recorre TODOS los salones reales: las citas confirmadas

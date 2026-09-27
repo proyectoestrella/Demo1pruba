@@ -95,7 +95,7 @@ export function HistorialCambios() {
   // real puede que el historial del servidor traiga más de los que esta
   // pestaña ha visto hacer.
   const idsConocidos = useMemo(() => new Set(locales.map((c) => c.id)), [locales]);
-  // Lote 13: fuera de Todo incluido, las últimas 24 h (el aviso de 10 s sigue en todos los planes).
+  // Lote 13: fuera de Completo (28-sep: bajó de Embajador), las últimas 24 h (el aviso de 10 s sigue en todos los planes).
   const completo = useTienePlan("historial-completo");
   const cambios = useMemo(() => (completo ? todos : todos.filter((c) => Date.now() - Date.parse(c.fecha) <= HORAS_HISTORIAL_ESTANDAR * 3_600_000)), [todos, completo]);
   const permisos = usePermisos();

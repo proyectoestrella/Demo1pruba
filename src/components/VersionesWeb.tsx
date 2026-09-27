@@ -37,7 +37,7 @@ export function VersionesWeb({
   onRestaurar: (version: VersionPanel) => void;
 }) {
   const { versiones: todas, cargando, error, recargar } = useVersionesPanel(slug, esReal);
-  // Lote 13: fuera de Todo incluido, las de las últimas 24 h.
+  // Lote 13: fuera de Completo (28-sep: bajó de Embajador), las de las últimas 24 h.
   const completo = useTienePlan("historial-completo");
   const versiones = completo ? todas : todas.filter((v, i) => i === 0 || Date.now() - Date.parse(v.fecha) <= HORAS_HISTORIAL_ESTANDAR * 3_600_000);
   const [abierto, setAbierto] = useState(false);

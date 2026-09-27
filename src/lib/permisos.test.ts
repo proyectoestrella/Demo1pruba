@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ACCIONES, PAGINAS, PERMISOS_DEMO, alcance, cabeRol, permisosDe, puede, rolVigente, vePagina } from "./permisos";
+import { ACCIONES, PAGINAS, PERMISOS_DEMO, alcance, cabeRol, permisosDe, puede, rolVigente, rolesPermitidosPorPlan, vePagina } from "./permisos";
 
 describe("matriz de permisos", () => {
   test("gerente: todas las páginas (salvo demos internas) y todas las acciones con alcance total", () => {
@@ -49,10 +49,18 @@ describe("matriz de permisos", () => {
     expect(PERMISOS_DEMO.rol).toBe("gerente");
   });
 
-  test("plan: fuera de Todo incluido, dos roles distintos como mucho", () => {
+  test("plan: reparto de roles del 28-sep — Básico dos, Completo tres, Embajador cuatro", () => {
+    expect(rolesPermitidosPorPlan("reservas")).toBe(2);
+    expect(rolesPermitidosPorPlan("reservas-asistente")).toBe(3);
+    expect(rolesPermitidosPorPlan("todo-incluido")).toBe(4);
+    // Básico: un tercer tipo de rol no cabe.
     expect(cabeRol("estilista", ["gerente"], "reservas")).toBe(true);
-    expect(cabeRol("recepcion", ["gerente", "estilista"], "reservas-asistente")).toBe(false);
+    expect(cabeRol("recepcion", ["gerente", "estilista"], "reservas")).toBe(false);
     expect(cabeRol("estilista", ["gerente", "estilista"], "reservas")).toBe(true);
-    expect(cabeRol("recepcion", ["gerente", "estilista"], "todo-incluido")).toBe(true);
+    // Completo: cabe un tercer tipo, pero no un cuarto.
+    expect(cabeRol("recepcion", ["gerente", "estilista"], "reservas-asistente")).toBe(true);
+    expect(cabeRol("recepcion", ["gerente", "subencargado", "estilista"], "reservas-asistente")).toBe(false);
+    // Embajador: caben los cuatro.
+    expect(cabeRol("recepcion", ["gerente", "subencargado", "estilista"], "todo-incluido")).toBe(true);
   });
 });

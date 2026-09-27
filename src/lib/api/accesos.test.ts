@@ -136,7 +136,7 @@ describe("accesos: invitar y aceptar", () => {
     expect((await invitarMiembro(maria, { email: "a@b.es", rol: "jefa" }, w.deps)).ok).toBe(false);
   });
 
-  it("plan: fuera de Todo incluido, un tercer tipo de rol se rechaza con codigo PLAN", async () => {
+  it("plan: fuera de Embajador, un tercer tipo de rol puede rechazarse con codigo PLAN", async () => {
     const w = mundo("reservas");
     expect(
       (
@@ -273,7 +273,7 @@ describe("accesos: reactivar una baja", () => {
     expect(r.ok === false && r.codigo).toBe("DATOS");
   });
 
-  it("no reactiva si el plan ya no cabe (bajó de Todo incluido)", async () => {
+  it("no reactiva si el plan ya no cabe (bajó de Embajador)", async () => {
     const w = mundo("todo-incluido");
     await invitarMiembro(
       maria,
