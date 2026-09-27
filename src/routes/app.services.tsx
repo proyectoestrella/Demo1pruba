@@ -195,17 +195,17 @@ function ServicesPage() {
                   )}
                   style={{ borderLeftColor: `var(--serv-${n}-borde)` }}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
+                    <div className="min-w-0 flex-auto">
                       <h3 className="text-base font-extrabold tracking-[-0.01em]">{s.name}</h3>
                       {s.category && !conSecciones && <p className="text-[12.5px] text-muted-foreground">{s.category}</p>}
                     </div>
                     {/* Con varios precios o un «desde», el texto tal y como lo anuncia
                         el salón; se reserva con el más bajo. */}
                     {s.priceText ? (
-                      <span className="max-w-[9.5rem] pt-0.5 text-right text-[15px] leading-snug font-extrabold tabular-nums" title={`Se reserva con ${eur(s.priceEur)}`}>{s.priceText}</span>
+                      <span className="max-w-[9.5rem] shrink-0 pt-0.5 text-right text-[15px] leading-snug font-extrabold tabular-nums" title={`Se reserva con ${eur(s.priceEur)}`}>{s.priceText}</span>
                     ) : (
-                      <span className="text-xl font-extrabold tabular-nums">{eur(s.priceEur).replace(",00", "")}</span>
+                      <span className="shrink-0 text-xl font-extrabold tabular-nums">{eur(s.priceEur).replace(",00", "")}</span>
                     )}
                     {edita && <DropdownMenu>
                       <DropdownMenuTrigger asChild>
