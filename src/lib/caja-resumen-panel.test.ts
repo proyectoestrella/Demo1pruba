@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { diasAnteriores, movimientosDelDia, pendientesDeCobrar, porHora, resumen, sumarDias, textoResumen, variacion } from "./caja-resumen-panel";
+import { diaInicialDeCaja, diasAnteriores, movimientosDelDia, pendientesDeCobrar, porHora, resumen, sumarDias, textoResumen, variacion } from "./caja-resumen-panel";
 import type { Appointment } from "./mock/types";
 import type { Pago } from "./pagos";
 
@@ -52,5 +52,21 @@ describe("caja del día (lote 16)", () => {
     expect(t).toContain("*Caja de PeluChic* · sábado, 26 de septiembre");
     expect(t).toContain("· Tarjeta: 30,00 €");
     expect(t).toContain("Sin cobrar todavía: 1 cita");
+  });
+});
+
+describe("diaInicialDeCaja (lote P)", () => {
+  const cita = (start: string, extra: Record<string, unknown> = {}) =>
+    ({ id: start, clientId: "c", clientName: "C", serviceIds: ["s"], employeeId: "e", start, duration: 30, priceEur: 20, status: "completed", ...extra }) as never;
+  test("hoy con cobros: hoy", () => {
+    const citas = [cita("2026-09-28T10:00:00+02:00", { paidAt: "2026-09-28T10:30:00+02:00", paymentMethod: "tarjeta" })];
+    expect(diaInicialDeCaja([], citas, "2026-09-28", "Europe/Madrid")).toEqual({ dia: "2026-09-28", desdeOtroDia: false });
+  });
+  test("hoy sin cobros todavía: el último día con caja", () => {
+    const citas = [cita("2026-09-26T10:00:00+02:00", { paidAt: "2026-09-26T10:30:00+02:00", paymentMethod: "efectivo" })];
+    expect(diaInicialDeCaja([], citas, "2026-09-28", "Europe/Madrid")).toEqual({ dia: "2026-09-26", desdeOtroDia: true });
+  });
+  test("sin cobros en dos semanas: hoy", () => {
+    expect(diaInicialDeCaja([], [], "2026-09-28", "Europe/Madrid")).toEqual({ dia: "2026-09-28", desdeOtroDia: false });
   });
 });

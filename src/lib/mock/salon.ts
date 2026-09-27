@@ -122,8 +122,31 @@ export function employeesForType(
   teamHours?: string[][],
   openingHours?: string[],
   teamIds?: string[],
+  demoAbreHoy?: string,
 ): Employee[] {
-  return buildEmployees(type, team, teamHours, openingHours, teamIds);
+  return buildEmployees(type, team, teamHours, openingHours, teamIds, demoAbreHoy);
+}
+
+/** «AAAA-MM-DD» de una fecha en hora local (el mismo formato que `fechaLocal`). */
+function claveLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Demo que abre hoy aunque el salón cierre (ver `SalonProfile.demoAbreHoy`):
+ * el día del perfil (0 = lunes) cuyos turnos se usan hoy, que es el siguiente
+ * día abierto. `null` si no toca: otro día, sin horario o sin ningún día abierto.
+ */
+function diaModeloDeHoy(openingHours: string[] | undefined, demoAbreHoy: string | undefined): number | null {
+  const hoy = new Date();
+  if (!demoAbreHoy || demoAbreHoy !== claveLocal(hoy) || openingHours?.length !== 7) return null;
+  const idxHoy = (hoy.getDay() + 6) % 7;
+  if (parseRanges(openingHours[idxHoy]).length > 0) return null;
+  for (let n = 1; n < 7; n++) {
+    const idx = (idxHoy + n) % 7;
+    if (parseRanges(openingHours[idx]).length > 0) return idx;
+  }
+  return null;
 }
 
 function buildEmployees(
@@ -132,7 +155,10 @@ function buildEmployees(
   teamHours?: string[][],
   openingHours?: string[],
   teamIds?: string[],
+  demoAbreHoy?: string,
 ): Employee[] {
+  const jsHoy = new Date().getDay();
+  const modeloHoy = diaModeloDeHoy(openingHours, demoAbreHoy);
   // Equipo real: define cuántos profesionales tiene el salón. Los ids,
   // colores y horarios se toman de BASE_EMPLOYEES por orden (mario, diego,
   // ruben) — solo cambian nombre y especialidad, y sobra el resto del equipo
@@ -151,7 +177,7 @@ function buildEmployees(
     const name = overrides?.[i]?.name ?? overlay.name;
     const specialty = overrides?.[i]?.specialty ?? overlay.specialty;
     const horario = Array.from({ length: 7 }, (_, jsDay) => {
-      const diaPerfil = (jsDay + 6) % 7;
+      const diaPerfil = jsDay === jsHoy && modeloHoy !== null ? modeloHoy : (jsDay + 6) % 7;
       const horarioPersonal = teamHours?.[i]?.[diaPerfil];
       const personal = horarioPersonal !== undefined
         ? parseRanges(horarioPersonal)
@@ -211,8 +237,9 @@ export function setEmployeesForType(
   teamHours?: string[][],
   openingHours?: string[],
   teamIds?: string[],
+  demoAbreHoy?: string,
 ) {
-  const next = buildEmployees(type, team, teamHours, openingHours, teamIds);
+  const next = buildEmployees(type, team, teamHours, openingHours, teamIds, demoAbreHoy);
   employees.length = 0;
   employees.push(...next);
   for (const key of Object.keys(employeeMap)) delete employeeMap[key];

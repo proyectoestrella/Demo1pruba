@@ -7,6 +7,7 @@ import { salon } from "../mock/salon";
 import type { SalonProfile } from "../mock/types";
 import { conRegistroEnPausa, useSalonStore } from "../store";
 import { useVersiones } from "../versiones-maqueta";
+import { claveDelDia } from "../dia-cerrado-panel";
 import { demoRegistrada, marcaDeDemo } from "./index";
 
 /**
@@ -20,7 +21,11 @@ import { demoRegistrada, marcaDeDemo } from "./index";
  *     la web no la borra.
  */
 
-/** Clave de localStorage con la demo registrada cargada («slug@versión»). */
+/**
+ * Clave de localStorage con la demo registrada cargada: «slug@versión@día».
+ * Lleva el día porque la agenda de una demo es relativa a hoy (y, si hoy el
+ * salón cierra, abre igual: `SalonProfile.demoAbreHoy`): la de ayer no vale.
+ */
 const CLAVE_MARCA = "sishow-demo-registrada";
 /**
  * Prefijo con el que la web pública recuerda el `?d=` de la pestaña (ver
@@ -95,6 +100,7 @@ export function cargarDemoRegistrada(slug: string, opciones: { panel?: boolean }
       smartSpread: perfil.smartSpread,
       duracionFlexible: perfil.duracionFlexible,
       mezcla: demo.mezcla,
+      abrirHoy: true,
     });
   });
   store.markDemoActive();
@@ -110,9 +116,15 @@ export function cargarDemoRegistrada(slug: string, opciones: { panel?: boolean }
       // Sin sessionStorage no hay enlace anterior que olvidar.
     }
   }
-  const marca = marcaDeDemo(slug);
+  const marca = marcaDeHoy(slug);
   if (marca) guardarMarca(marca);
   return true;
+}
+
+/** La marca que tendría hoy esta demo registrada. */
+function marcaDeHoy(slug: string): string | null {
+  const marca = marcaDeDemo(slug);
+  return marca ? `${marca}@${claveDelDia(new Date())}` : null;
 }
 
 /** ¿Guarda esta pestaña un `?d=` de este slug (la web lo recuerda para sobrevivir a una recarga)? */
@@ -133,7 +145,7 @@ export function enlaceDemoEnPestana(slug: string): boolean {
  * cargar la registrada.
  */
 export function demoRegistradaCargada(slug: string): boolean {
-  const marca = marcaDeDemo(slug);
+  const marca = marcaDeHoy(slug);
   const perfil = useSalonStore.getState().salonProfile;
   return (
     marca !== null &&
@@ -141,6 +153,36 @@ export function demoRegistradaCargada(slug: string): boolean {
     perfil.slug === slug &&
     (demoRegistrada(slug)?.perfil.descripcionesServicios === undefined || perfil.descripcionesServicios !== undefined)
   );
+}
+
+/**
+ * ¿Está este navegador enseñando la demo registrada `slug`, pero cargada otro
+ * día o con otra versión de sus datos? Solo si lo guardado sigue siendo ella
+ * (con sus textos de la carta): un `?d=` abierto encima manda y no se toca.
+ */
+export function demoRegistradaCaducada(slug: string): boolean {
+  const perfil = useSalonStore.getState().salonProfile;
+  return (
+    demoRegistrada(slug) !== undefined &&
+    perfil.slug === slug &&
+    perfil.descripcionesServicios !== undefined &&
+    Boolean(leerMarca()?.startsWith(`${slug}@`)) &&
+    !demoRegistradaCargada(slug)
+  );
+}
+
+/**
+ * El panel (`/app`) de una demo registrada cargada otro día la vuelve a
+ * cargar: «Hoy» tiene que ser hoy. Es lo que pasa si se abre `/demo/peluchic`
+ * el domingo para tenerlo listo y la presentación es el lunes.
+ */
+export function useDemoRegistradaAlDia(hayEnlaceDemo: boolean): void {
+  const slug = useSalonStore((s) => s.salonProfile.slug);
+  const esDemo = useSalonStore((s) => s.demoActive && !s.realSalonSlug);
+  useEffect(() => {
+    if (hayEnlaceDemo || !esDemo || !demoRegistradaCaducada(slug)) return;
+    cargarDemoRegistrada(slug);
+  }, [hayEnlaceDemo, esDemo, slug]);
 }
 
 /**

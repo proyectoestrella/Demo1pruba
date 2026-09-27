@@ -13,6 +13,7 @@ import {
   decodeDemoProfile,
 } from "@/lib/demo-profile";
 import { inferBusinessType } from "@/lib/business-type";
+import { useDemoRegistradaAlDia } from "@/lib/demos/aplicar";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { PanelV2Shell } from "@/components/PanelV2Shell";
@@ -122,6 +123,8 @@ function useApplyDemoFromUrl() {
       noShowFeeEur: fromUrl.noShowFeeEur,
       smartSpread: fromUrl.smartSpread,
       duracionFlexible: fromUrl.duracionFlexible,
+      // Lote P: si hoy el salón cierra, la demo abre igual (ver SalonProfile.demoAbreHoy).
+      abrirHoy: true,
     });
     markDemoActive();
   }, [demoRaw, updateSalonProfile, applyBusinessType, markDemoActive]);
@@ -176,6 +179,9 @@ function DashboardLayout() {
   // que correr para TODAS las rutas /app/*, entren o no por aquí primero.
   useSyncPanelV2FromUrl();
   useApplyDemoFromUrl();
+  // Lote P: una demo registrada cargada otro día se recarga (su «hoy» caduca).
+  const conEnlaceDemo = useRouterState({ select: (s) => typeof (s.location.search as Record<string, unknown>)?.[DEMO_PARAM] === "string" });
+  useDemoRegistradaAlDia(conEnlaceDemo);
   useTituloDelPanel();
   const slug = useSalonSlugDelPanel();
 

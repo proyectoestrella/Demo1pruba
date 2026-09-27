@@ -25,6 +25,7 @@ import { VentanaCobrar } from "@/components/VentanaCobrar";
 import type { Appointment } from "@/lib/mock/types";
 import {
   METODOS_CAJA,
+  diaInicialDeCaja,
   diasAnteriores,
   movimientosPorDia,
   pendientesDeCobrar,
@@ -60,7 +61,16 @@ const sumarDias = (clave: string, n: number) => {
  */
 function CajaDelDia() {
   const hoy = fechaLocal(new Date());
-  const [dia, setDia] = useState(hoy);
+  // Lote P: sin cobros todavía hoy (a primera hora, o un día de cierre), abre
+  // en el último día con cobros, y lo dice. Solo en demo: en un salón real
+  // los pagos del día llegan después (`cargarPagos`) y no se puede decidir
+  // aún que hoy no hay caja.
+  const [inicio] = useState(() => {
+    const st = useSalonStore.getState();
+    if (st.realSalonSlug) return { dia: hoy, desdeOtroDia: false };
+    return diaInicialDeCaja(st.payments, st.appointments, hoy, zonaDelSalon(st.salonProfile));
+  });
+  const [dia, setDia] = useState(inicio.dia);
   const pagos = useSalonStore((s) => s.payments);
   const cargarPagos = useSalonStore((s) => s.cargarPagos);
   const borrarPago = useSalonStore((s) => s.borrarPago);
@@ -149,10 +159,13 @@ function CajaDelDia() {
         </Button>
         {dia !== hoy && (
           <Button variant="ghost" onClick={() => setDia(hoy)}>
-            Volver a hoy
+            {inicio.desdeOtroDia && dia === inicio.dia ? "Ver hoy" : "Volver a hoy"}
           </Button>
         )}
       </div>
+      {inicio.desdeOtroDia && dia === inicio.dia && (
+        <p className="-mt-2 text-[13px] text-muted-foreground">Hoy todavía no hay cobros: aquí tienes el último día con caja.</p>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" className="gap-2 rounded-full font-bold" onClick={() => void copiarResumen()}>

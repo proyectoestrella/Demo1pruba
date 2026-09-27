@@ -37,6 +37,7 @@ import type { DemoProfile } from "./demo-profile";
 import type { Pago } from "./pagos";
 import type { CierreCaja } from "./api/pagos.functions";
 import { recargoActivo } from "./recargo-activo";
+import { cierraEseDia, claveDelDia } from "./dia-cerrado-panel";
 import { inferBusinessType, menuDesdeServicios, slugForId, type BusinessType } from "./business-type";
 import { solapaConAgenda } from "./solape";
 import {
@@ -314,6 +315,8 @@ interface SalonState {
       duracionFlexible?: boolean;
       /** Demos registradas (lib/demos): reparto de la semilla entre su carta real. */
       mezcla?: MezclaSemilla;
+      /** Solo demos: si hoy el salón cierra, el panel abre hoy (ver `SalonProfile.demoAbreHoy`). */
+      abrirHoy?: boolean;
     },
   ) => void;
 
@@ -967,6 +970,7 @@ export const useSalonStore = create<SalonState>()(
           perfil.teamHours,
           perfil.openingHours,
           perfil.teamIds,
+          perfil.demoAbreHoy,
         );
         // Sube el PARCHE, no el perfil entero. Antes subía
         // `get().salonProfile` completo, y eso hacía que un navegador con el
@@ -983,7 +987,16 @@ export const useSalonStore = create<SalonState>()(
         // lista de espera del panel, el diálogo de nueva cita…) los leen de
         // nuevo en el siguiente render, que llega enseguida porque el `set`
         // de abajo notifica a todo lo que esté suscrito a la store.
-        setEmployeesForType(type, overrides?.team, get().salonProfile.teamHours, get().salonProfile.openingHours, get().salonProfile.teamIds);
+        // Lote P: una DEMO que se carga el día que el salón cierra (PeluChic,
+        // lunes) abre hoy con los turnos del siguiente día abierto, para que
+        // «Hoy» tenga agenda. Solo con `abrirHoy`, que pasan las puertas de las
+        // demos; un salón real (resolverSalonReal) no lo pasa y lo borra.
+        const hoy = new Date();
+        const demoAbreHoy = overrides?.abrirHoy && cierraEseDia(get().salonProfile.openingHours, hoy) ? claveDelDia(hoy) : undefined;
+        if (get().salonProfile.demoAbreHoy !== demoAbreHoy) {
+          set((s) => ({ salonProfile: { ...s.salonProfile, demoAbreHoy } }));
+        }
+        setEmployeesForType(type, overrides?.team, get().salonProfile.teamHours, get().salonProfile.openingHours, get().salonProfile.teamIds, demoAbreHoy);
         // Descripción y precio literal de cada servicio viven en el perfil
         // (lote 18): se cuelgan de la carta al construirla.
         setServicesForType(type, overrides?.menu, textosDeCarta(get().salonProfile));
@@ -1163,12 +1176,13 @@ export const useSalonStore = create<SalonState>()(
           noShowFeeEur: profileFields.noShowFeeEur,
           smartSpread: profileFields.smartSpread,
           duracionFlexible: profileFields.duracionFlexible,
+          abrirHoy: true,
         });
       },
 
       resetSalonProfile: () => {
         set({ salonProfile: salon, demoActive: false, realSalonSlug: null });
-        get().applyBusinessType("barberia");
+        get().applyBusinessType("barberia", { abrirHoy: true });
       },
     };
     },
@@ -1318,7 +1332,7 @@ export const useSalonStore = create<SalonState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         const type = inferBusinessType(state.salonProfile?.tagline, state.salonProfile?.name);
-        setEmployeesForType(type, state.salonProfile?.team, state.salonProfile?.teamHours, state.salonProfile?.openingHours, state.salonProfile?.teamIds);
+        setEmployeesForType(type, state.salonProfile?.team, state.salonProfile?.teamHours, state.salonProfile?.openingHours, state.salonProfile?.teamIds, state.salonProfile?.demoAbreHoy);
         setServicesForType(type, state.salonProfile?.menu, state.salonProfile ? textosDeCarta(state.salonProfile) : undefined);
       },
     },
