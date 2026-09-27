@@ -135,6 +135,9 @@ function MiWeb() {
       // descripciones pueden venir de allí: la vista previa lleva las suyas.
       preciosLiterales: publicado.preciosLiterales,
       descripcionesServicios: publicado.descripcionesServicios,
+      // Lote P.5: «Lo más pedido» tampoco se edita aquí, pero la vista previa
+      // tiene que enseñar los destacados del salón, no los cuatro primeros.
+      destacados: publicado.destacados,
       ...perfilDesdeBorrador(borrador),
     }),
     [borrador, publicado],
