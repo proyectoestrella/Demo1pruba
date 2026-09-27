@@ -170,30 +170,127 @@ const COLORES_DEMO = {
   ],
 } as const;
 
+/**
+ * Tipo de hueco de la semilla de peluquería cuando el salón trae su propia
+ * carta (demo registrada, ver lib/demos). «color», «mechas» y «corte» son los
+ * de las clientas habituales, con su ritmo de visitas; cualquier otro nombre
+ * («tratamiento», «novia»…) es un servicio ocasional.
+ */
+export type TipoHueco = "color" | "mechas" | "corte" | (string & {});
+
+/**
+ * Cómo reparte la semilla las citas entre los servicios REALES de un salón.
+ * Sin ella, la semilla de peluquería usa cinco servicios buscados por nombre
+ * (un color, unas mechas, un corte, un tratamiento y un evento), que es lo
+ * que necesita una carta de seis entradas pero deja 50 servicios sin una sola
+ * cita en una carta de 60.
+ *
+ * Todo por id de servicio y con pesos relativos; lo que no exista en la carta
+ * se ignora. Determinista: misma carta y misma mezcla, mismas citas.
+ */
+export interface MezclaSemilla {
+  /** Servicios de cada tipo con su peso. */
+  servicios: Partial<Record<TipoHueco, Array<[string, number]>>>;
+  /** Peso de cada tipo por profesional (por su posición en el equipo), entre semana y en sábado. */
+  porProfesional: Array<{ semana: Partial<Record<TipoHueco, number>>; sabado?: Partial<Record<TipoHueco, number>> }>;
+  /** Servicios que se añaden a otro con cierta probabilidad («Cortar añadido» tras un color). */
+  extras?: Array<{ tras: string[]; anade: string; prob: number }>;
+  /** Tipos que son eventos de un día (novias): clienta de una sola visita. Por defecto, «evento». */
+  tiposEvento?: string[];
+}
+
+/** Elige de una lista con pesos, con un número de 0 a 1 ya sacado. */
+function elegirConPeso<T>(pares: Array<[T, number]>, r: number): T | undefined {
+  const total = pares.reduce((t, [, p]) => t + Math.max(0, p), 0);
+  if (total <= 0) return undefined;
+  let resto = r * total;
+  for (const [valor, peso] of pares) {
+    resto -= Math.max(0, peso);
+    if (resto < 0) return valor;
+  }
+  return pares[pares.length - 1]?.[0];
+}
+
+/** Primer día (desde `desde`, en la dirección de `paso`) en que esta profesional trabaja y `cabe` se cumple. */
+function diaAbierto(
+  employee: Employee,
+  desde: number,
+  paso: 1 | -1,
+  cabe: (sched: { start: number; end: number }) => boolean = () => true,
+): number {
+  for (let n = 0; n < 21; n++) {
+    const day = desde + n * paso;
+    const date = new Date();
+    date.setDate(date.getDate() + day);
+    const sched = employee.schedule[date.getDay()];
+    if (sched && cabe(sched)) return day;
+  }
+  return desde;
+}
+
+/**
+ * Días y horas de la clienta de la duración flexible (ver
+ * `seedDuracionFlexible`). Sin mezcla, lo de siempre: hace 7 días a las 12:00
+ * y una solicitud hoy a las 17:00. Con la carta de un salón real se buscan
+ * días en que ESA profesional trabaja y en que el servicio cabe en su turno:
+ * si hoy el salón cierra, la solicitud va al siguiente día abierto.
+ */
+function planDuracionFlexible(employees: Employee[], services: Service[], mezcla?: MezclaSemilla) {
+  const servicioLargo = [...services].sort((a, b) => b.durationMin - a.durationMin)[0];
+  const catalogoMin = servicioLargo?.durationMin ?? 60;
+  const realMin = Math.round((catalogoMin * DURACION_FLEXIBLE_FACTOR) / 5) * 5;
+  const emp = employees[0];
+  if (!mezcla || !emp) {
+    return { servicioLargo, catalogoMin, realMin, pasado: -DURACION_FLEXIBLE_DAYS_AGO, pendiente: 0, inicioPendienteMin: 17 * 60, trasPasadoMin: 15 * 60 };
+  }
+  const pasado = diaAbierto(emp, -DURACION_FLEXIBLE_DAYS_AGO, -1, (s) => s.end * 60 - 12 * 60 >= realMin);
+  const pendiente = diaAbierto(emp, 0, 1, (s) => (s.end - s.start) * 60 >= catalogoMin + 60);
+  const date = new Date();
+  date.setDate(date.getDate() + pendiente);
+  const sched = emp.schedule[date.getDay()] ?? { start: 10, end: 20 };
+  const inicioPendienteMin = Math.floor(Math.min(17 * 60, sched.end * 60 - catalogoMin) / 15) * 15;
+  const trasPasadoMin = Math.max(15 * 60, Math.ceil((12 * 60 + realMin) / 15) * 15);
+  return { servicioLargo, catalogoMin, realMin, pasado, pendiente, inicioPendienteMin, trasPasadoMin };
+}
+
 /** La ocupación se fija por jornada y profesional; las clientas se asignan después según su ritmo. */
 function buildHairAppointments(
   clients: Client[], employees: Employee[], services: Service[], smartSpread?: boolean, duracionFlexible?: boolean,
+  mezcla?: MezclaSemilla,
 ): Appointment[] {
   if (!employees.length || !services.length) return [];
   const rand = mulberry32(1042);
+  const porId = new Map(services.map((s) => [s.id, s]));
+  const listaDe = (tipo: TipoHueco): Array<[Service, number]> =>
+    (mezcla?.servicios[tipo] ?? [])
+      .map(([id, peso]) => [porId.get(id), peso] as const)
+      .filter((par): par is readonly [Service, number] => par[0] !== undefined)
+      .map(([s, p]) => [s, p]);
+  const primeroDe = (tipo: TipoHueco): Service | undefined => listaDe(tipo)[0]?.[0];
   const byName = (pattern: RegExp, fallback: number) =>
     services.find((service) => pattern.test(service.name)) ?? services[fallback % services.length];
-  const color = byName(/tinte|color|baño|matiz/i, 0);
-  const mechas = byName(/mecha|balayage/i, 1);
-  const corte = byName(/corte|peinado/i, 2);
-  const tratamiento = byName(/hidrataci[oó]n|tratamiento|keratina/i, 3);
-  const evento = byName(/recogido|novia|fiesta|evento/i, 4);
+  // Con mezcla, los cinco servicios «de siempre» son los de más peso de cada
+  // tipo en SU carta: sirven de respaldo cuando lo elegido no cabe.
+  const color = (mezcla && primeroDe("color")) || byName(/tinte|color|baño|matiz/i, 0);
+  const mechas = (mezcla && primeroDe("mechas")) || byName(/mecha|balayage/i, 1);
+  const corte = (mezcla && primeroDe("corte")) || byName(/corte|peinado/i, 2);
+  const tratamiento = (mezcla && primeroDe("tratamiento")) || byName(/hidrataci[oó]n|tratamiento|keratina/i, 3);
+  const evento = (mezcla && primeroDe("evento")) || byName(/recogido|novia|fiesta|evento/i, 4);
   const nextSaturday = (6 - new Date().getDay() + 7) % 7;
+  const flex = planDuracionFlexible(employees, services, mezcla);
   type Kind = "color" | "mechas" | "corte" | "ocasional";
-  type Habit = { client: Client; kind: Kind; cadence: number; lastDay: number };
-  type Slot = { day: number; minute: number; employee: Employee; services: Service[]; kind: Kind; status: Appointment["status"] };
+  type Habit = { client: Client; kind: Kind; cadence: number; lastDay: number; servicio?: Service };
+  type Slot = { day: number; minute: number; employee: Employee; services: Service[]; kind: Kind; status: Appointment["status"]; evento?: boolean };
   const habits: Habit[] = clients.slice(0, 520).map((client, i) => {
     const group = i % 20;
     const kind: Kind = group < 10 ? "color" : group < 13 ? "mechas" : "corte";
     const cadence = kind === "color" ? 28 + Math.floor(rand() * 22)
       : kind === "mechas" ? 56 + Math.floor(rand() * 22)
         : 35 + Math.floor(rand() * 36);
-    return { client, kind, cadence, lastDay: -91 - Math.floor(rand() * cadence) };
+    const habit: Habit = { client, kind, cadence, lastDay: -91 - Math.floor(rand() * cadence) };
+    // Cada habitual tiene SU servicio de siempre (su color, su corte).
+    if (mezcla) habit.servicio = elegirConPeso(listaDe(kind as TipoHueco), rand());
+    return habit;
   });
   const out: Appointment[] = [];
   const historicBusy = new Map<string, Array<[number, number]>>();
@@ -250,7 +347,7 @@ function buildHairAppointments(
   // Una pequeña parte alcanza el año anterior sin fabricar otra agenda llena.
   for (const [i, habit] of habits.entries()) {
     let day = habit.lastDay;
-    const primary = habit.kind === "color" ? color : habit.kind === "mechas" ? mechas : corte;
+    const primary = habit.servicio ?? (habit.kind === "color" ? color : habit.kind === "mechas" ? mechas : corte);
     const count = 3 + i % 3;
     for (let visit = 0; visit < count && day >= -455; visit++) {
       const employee = employees[i % employees.length];
@@ -269,24 +366,37 @@ function buildHairAppointments(
     const date = new Date();
     date.setDate(date.getDate() + day);
     const weekday = date.getDay();
-    for (const employee of employees) {
+    for (const [empIndex, employee] of employees.entries()) {
       const sched = employee.schedule[weekday];
       if (!sched) continue;
-      const flexibleDay = duracionFlexible && employee.id === employees[0].id && (day === -7 || day === 0);
+      const flexibleDay = duracionFlexible && employee.id === employees[0].id && (day === flex.pasado || day === flex.pendiente);
       const count = flexibleDay ? 4 : day >= 8 ? 1 + Math.floor(rand() * 4)
         : weekday === 2 ? 4 + Math.floor(rand() * 2)
           : weekday === 6 ? 4 + Math.floor(rand() * 3)
             : 5 + Math.floor(rand() * 3);
-      let minute = flexibleDay && day === -7 ? 15 * 60
+      let minute = flexibleDay && day === flex.pasado ? flex.trasPasadoMin
         : (smartSpread && (day === 0 || day === nextSaturday) ? Math.max(12, sched.start) : sched.start) * 60;
-      const endMinute = flexibleDay && day === 0 ? Math.min(17, sched.end) * 60 : sched.end * 60;
+      const endMinute = flexibleDay && day === flex.pendiente ? Math.min(flex.inicioPendienteMin, sched.end * 60) : sched.end * 60;
       const shortest = Math.min(...services.map((s) => s.durationMin));
+      // Pesos de esta profesional hoy (solo con mezcla).
+      const perfil = mezcla?.porProfesional[empIndex % Math.max(1, mezcla.porProfesional.length)];
+      const pesos = perfil ? (weekday === 6 ? perfil.sabado ?? perfil.semana : perfil.semana) : undefined;
       for (let n = 0; n < count; n++) {
         const roll = rand();
-        const preferred: [Kind, Service] = roll < 0.53 ? ["color", color]
-          : roll < 0.64 ? ["mechas", mechas]
-            : roll < 0.94 ? ["corte", corte]
-              : ["ocasional", rand() < 0.3 ? evento : tratamiento];
+        let preferred: [Kind, Service];
+        let esEvento = false;
+        if (pesos) {
+          const tipo = elegirConPeso(Object.entries(pesos) as Array<[TipoHueco, number]>, roll) ?? "corte";
+          const servicio = elegirConPeso(listaDe(tipo), rand()) ?? corte;
+          const kind: Kind = tipo === "color" ? "color" : tipo === "mechas" ? "mechas" : tipo === "corte" ? "corte" : "ocasional";
+          preferred = [kind, servicio];
+          esEvento = (mezcla?.tiposEvento ?? ["evento"]).includes(tipo);
+        } else {
+          preferred = roll < 0.53 ? ["color", color]
+            : roll < 0.64 ? ["mechas", mechas]
+              : roll < 0.94 ? ["corte", corte]
+                : ["ocasional", rand() < 0.3 ? evento : tratamiento];
+        }
         // Reservar tiempo para los huecos restantes evita solapamientos,
         // incluso con una carta personalizada de servicios más largos.
         const remaining = endMinute - minute - (count - n - 1) * (shortest + 5);
@@ -294,21 +404,32 @@ function buildHairAppointments(
         const [kind, service] = choices.find(([, s]) => s.durationMin <= remaining)
           ?? ["corte", [...services].sort((a, b) => a.durationMin - b.durationMin)[0]];
         if (minute + service.durationMin > endMinute) break;
-        const extra = kind === "color" && rand() < 0.18 ? corte
-          : kind === "corte" && rand() < 0.12 ? tratamiento : undefined;
+        let extra: Service | undefined;
+        if (mezcla) {
+          for (const regla of mezcla.extras ?? []) {
+            if (!regla.tras.includes(service.id)) continue;
+            if (rand() < regla.prob) { extra = porId.get(regla.anade); break; }
+          }
+        } else {
+          extra = kind === "color" && rand() < 0.18 ? corte
+            : kind === "corte" && rand() < 0.12 ? tratamiento : undefined;
+        }
         const chosen = extra && extra.id !== service.id && service.durationMin + extra.durationMin <= remaining
           ? [service, extra] : [service];
         const duration = chosen.reduce((sum, s) => sum + s.durationMin, 0);
         const status: Appointment["status"] = day < 0
           ? rand() < 0.04 ? "no-show" : "completed" : "confirmed";
-        slots.push({ day, minute, employee, services: chosen, kind, status });
+        slots.push({ day, minute, employee, services: chosen, kind, status, ...(esEvento && service === preferred[1] ? { evento: true } : {}) });
         minute += duration + (rand() < 0.4 ? 15 : 0);
       }
     }
   }
   slots.sort((a, b) => a.day - b.day || a.minute - b.minute || a.employee.id.localeCompare(b.employee.id));
-  const eventSlot = (slot: Slot) => slot.kind === "ocasional"
+  const eventSlot = (slot: Slot) => mezcla ? slot.evento === true : slot.kind === "ocasional"
     && /recogido|novia|fiesta|evento/i.test(slot.services[0].name);
+  // Las dos solicitudes sin revisar van al primer día con citas desde hoy: si
+  // hoy el salón cierra (el lunes de PeluChic), al siguiente que abre.
+  const diaSolicitudes = mezcla ? (slots.find((slot) => slot.day >= 0)?.day ?? 0) : 0;
   const events = slots.filter(eventSlot).length;
   const treatments = slots.filter((slot) => slot.kind === "ocasional" && !eventSlot(slot)).length;
   const treatmentBudget = Math.max(0, 64 - events);
@@ -319,7 +440,7 @@ function buildHairAppointments(
   let pendingHoy = 0;
   for (const slot of slots) {
     if (slot.day !== currentDay) { usedToday.clear(); currentDay = slot.day; }
-    const status = slot.day === 0 && pendingHoy < 2 ? "pending" : slot.status;
+    const status = slot.day === diaSolicitudes && pendingHoy < 2 ? "pending" : slot.status;
     let client: Client | undefined;
     if (slot.kind === "ocasional") {
       if (!eventSlot(slot)) treatmentSeen++;
@@ -584,8 +705,10 @@ function seedDuracionFlexible(
   appointments: Appointment[],
   employees: Employee[],
   services: Service[],
+  mezcla?: MezclaSemilla,
 ): { clients: Client[]; appointments: Appointment[] } {
-  const servicioLargo = [...services].sort((a, b) => b.durationMin - a.durationMin)[0];
+  const plan = planDuracionFlexible(employees, services, mezcla);
+  const servicioLargo = plan.servicioLargo;
   if (!servicioLargo || employees.length === 0) return { clients, appointments };
 
   const cliente: Client = {
@@ -595,8 +718,7 @@ function seedDuracionFlexible(
     createdAt: type === "peluqueria" ? isoAt(-200, 12) : new Date(Date.now() - 200 * 86400_000).toISOString(),
   };
 
-  const catalogoMin = servicioLargo.durationMin;
-  const realMin = Math.round((catalogoMin * DURACION_FLEXIBLE_FACTOR) / 5) * 5;
+  const { catalogoMin, realMin } = plan;
   const emp = employees[0];
 
   const citaPasada: Appointment = {
@@ -605,7 +727,7 @@ function seedDuracionFlexible(
     clientName: cliente.name,
     serviceIds: [servicioLargo.id],
     employeeId: emp.id as EmployeeId,
-    start: isoAt(-DURACION_FLEXIBLE_DAYS_AGO, 12, 0),
+    start: isoAt(plan.pasado, 12, 0),
     duration: realMin,
     priceEur: servicioLargo.priceEur,
     status: "completed",
@@ -617,7 +739,7 @@ function seedDuracionFlexible(
     clientName: cliente.name,
     serviceIds: [servicioLargo.id],
     employeeId: emp.id as EmployeeId,
-    start: isoAt(0, 17, 0),
+    start: isoAt(plan.pendiente, Math.floor(plan.inicioPendienteMin / 60), plan.inicioPendienteMin % 60),
     duration: catalogoMin,
     priceEur: servicioLargo.priceEur,
     status: "pending",
@@ -648,16 +770,19 @@ export interface DemoSeed {
  * `opts.duracionFlexible` (clave "df") añade la clienta y el par de citas de
  * `seedDuracionFlexible` para que el aviso de `duracionRecordada()` (ver
  * lib/derive.ts) salte solo en el bloque de solicitudes pendientes.
+ *
+ * `opts.mezcla` (demos registradas, ver lib/demos) reparte las citas de
+ * peluquería entre TODOS los servicios reales de la carta, con sus pesos.
  */
 export function buildSeed(
   type: BusinessType,
   employees: Employee[],
   services: Service[],
-  opts?: { noShowFeeEur?: number; smartSpread?: boolean; duracionFlexible?: boolean },
+  opts?: { noShowFeeEur?: number; smartSpread?: boolean; duracionFlexible?: boolean; mezcla?: MezclaSemilla },
 ): DemoSeed {
   const clients = buildClients(type, opts?.noShowFeeEur);
   let appointments = type === "peluqueria"
-    ? buildHairAppointments(clients, employees, services, opts?.smartSpread, opts?.duracionFlexible)
+    ? buildHairAppointments(clients, employees, services, opts?.smartSpread, opts?.duracionFlexible, opts?.mezcla)
     : buildAppointments(type, clients, employees, services, opts?.smartSpread);
   let finalClients = clients;
 
@@ -673,7 +798,7 @@ export function buildSeed(
   }
 
   if (opts?.duracionFlexible) {
-    const conFlexible = seedDuracionFlexible(type, clients, appointments, employees, services);
+    const conFlexible = seedDuracionFlexible(type, clients, appointments, employees, services, opts?.mezcla);
     finalClients = conFlexible.clients;
     appointments = conFlexible.appointments;
   }

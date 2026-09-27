@@ -239,7 +239,23 @@ function resolveMenuOverrides(menu?: string[]): MenuOverrideEntry[] | null {
  * la usan las páginas públicas para que el primer render — incluido el del
  * servidor — ya salga con la carta correcta.
  */
-export function servicesForType(type: BusinessType, menu?: string[]): Service[] {
+/**
+ * Textos de la carta que no caben en una entrada de `menu` y viven aparte en
+ * el perfil (lote 18): la descripción de cada servicio y su precio literal,
+ * por id. Opcionales: sin ellos, todo como siempre.
+ */
+export interface TextosDeCarta {
+  descripciones?: Record<string, string>;
+  precios?: Record<string, string>;
+}
+
+/** Los textos de la carta que guarda un perfil. */
+export function textosDeCarta(perfil: Pick<SalonProfile, "descripcionesServicios" | "preciosLiterales">): TextosDeCarta | undefined {
+  if (!perfil.descripcionesServicios && !perfil.preciosLiterales) return undefined;
+  return { descripciones: perfil.descripcionesServicios, precios: perfil.preciosLiterales };
+}
+
+export function servicesForType(type: BusinessType, menu?: string[], textos?: TextosDeCarta): Service[] {
   const overrides = resolveMenuOverrides(menu);
   if (!overrides) return SERVICE_CATALOG[type];
 
@@ -254,14 +270,16 @@ export function servicesForType(type: BusinessType, menu?: string[]): Service[] 
     let n = 2;
     while (usedIds.has(id)) id = `${base}-${n++}`;
     usedIds.add(id);
+    const priceText = textos?.precios?.[id]?.trim();
     return {
       id,
       name: entry.name,
-      description: "",
+      description: textos?.descripciones?.[id]?.trim() ?? "",
       durationMin: entry.durationMin,
       priceEur: entry.priceEur,
       category: entry.category ?? "Servicios",
       active: entry.active !== false,
+      ...(priceText ? { priceText } : {}),
     };
   });
 }
@@ -277,8 +295,8 @@ export const serviceMap: Record<string, Service> = Object.fromEntries(
   services.map((s) => [s.id, s]),
 );
 
-export function setServicesForType(type: BusinessType, menu?: string[]) {
-  const next = servicesForType(type, menu).map((s) => ({ ...s }));
+export function setServicesForType(type: BusinessType, menu?: string[], textos?: TextosDeCarta) {
+  const next = servicesForType(type, menu, textos).map((s) => ({ ...s }));
   services.length = 0;
   services.push(...next);
   for (const key of Object.keys(serviceMap)) delete serviceMap[key];

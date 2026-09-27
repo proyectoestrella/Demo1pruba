@@ -86,6 +86,18 @@ type DemoProfileNegocio = Pick<
 export type DemoProfile = DemoProfileNegocio & DemoPersonalizacion;
 
 /**
+ * Campos del perfil que un enlace `?d=` no trae y que, por tanto, NO puede
+ * heredar del salón que hubiera antes en este navegador: el logo y todo lo
+ * del lote 18 (enlaces, WhatsApp, boletín, galería propia, textos de la
+ * carta). Sin blanquearlos, abrir la demo de otra peluquería después de la
+ * de PeluChic enseñaba el Instagram, el boletín y el logo de PeluChic.
+ */
+export type CamposSinHeredar = Pick<
+  SalonProfile,
+  "logoUrl" | "enlaces" | "whatsapp" | "boletin" | "galeriaPropia" | "descripcionesServicios" | "preciosLiterales"
+>;
+
+/**
  * Claves abreviadas de los campos de personalización (§ arriba). Se
  * codifican/descodifican aparte de `KEYS` porque no viven en `SalonProfile` y
  * cada una necesita su propia validación.
@@ -139,7 +151,7 @@ export const DEMO_PARAM = "d";
  * una peluquería de señoras que es una "barbería de toda la vida" con "tres
  * profesionales". Un hueco no dice nada; un texto equivocado delata la demo.
  */
-export function blankDemoProfile(): DemoProfile {
+export function blankDemoProfile(): DemoProfile & CamposSinHeredar {
   return {
     name: "",
     tagline: "",
@@ -182,6 +194,14 @@ export function blankDemoProfile(): DemoProfile {
     mostrarSolicitudes: true,
     recargoRetraso: undefined,
     duracionFlexible: false,
+    // Ver `CamposSinHeredar`: presentes y vacíos para que pisen lo anterior.
+    logoUrl: undefined,
+    enlaces: undefined,
+    whatsapp: undefined,
+    boletin: undefined,
+    galeriaPropia: undefined,
+    descripcionesServicios: undefined,
+    preciosLiterales: undefined,
   };
 }
 
