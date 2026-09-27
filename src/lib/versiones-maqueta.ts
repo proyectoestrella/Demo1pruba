@@ -14,6 +14,8 @@ export const MAX_VERSIONES = 20;
 export const CAMPOS_WEB = [
   "name", "tagline", "about", "address", "phone", "instagram", "heroImage", "logoUrl",
   "rating", "reviewCount", "specialties", "openingHours", "menu", "faq", "priorityHours",
+  // Lote P.
+  "whatsapp", "enlaces", "boletin", "galeriaPropia", "descripcionesServicios",
 ] as const;
 type CampoWeb = (typeof CAMPOS_WEB)[number];
 export type WebPublicada = Partial<Pick<SalonProfile, Extract<CampoWeb, keyof SalonProfile>>> & Record<string, unknown>;
@@ -65,12 +67,25 @@ const ETIQUETA: Record<CampoWeb, string> = {
   menu: "Servicios",
   faq: "Preguntas frecuentes",
   priorityHours: "Horas preferentes",
+  whatsapp: "WhatsApp",
+  enlaces: "Blog, redes y tienda",
+  boletin: "Boletín",
+  galeriaPropia: "Galería",
+  descripcionesServicios: "Descripciones de servicios",
 };
 const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
 function texto(v: unknown): string {
   if (v === undefined || v === null || v === "") return "—";
-  if (Array.isArray(v)) return v.length ? v.join(", ") : "—";
+  if (Array.isArray(v)) return v.length ? v.map((x) => (typeof x === "object" && x !== null ? texto(x) : String(x))).join(", ") : "—";
+  if (typeof v === "object") {
+    // Lote P: enlaces, boletín, fotos y descripciones, en palabras.
+    const o = v as Record<string, unknown>;
+    if ("url" in o && "alt" in o) return String(o.alt || o.url);
+    if ("texto" in o) return String(o.texto);
+    const claves = Object.keys(o);
+    return claves.length ? claves.join(", ") : "—";
+  }
   return String(v);
 }
 const corto = (t: string, n = 60) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
@@ -98,9 +113,17 @@ export function diferenciasWeb(desde: WebPublicada, hasta: WebPublicada): Difere
       continue;
     }
     if (k === "menu" && Array.isArray(a) && Array.isArray(b)) {
-      const quitados = a.filter((x) => !b.includes(x));
-      const puestos = b.filter((x) => !a.includes(x));
+      const antes = a as string[];
+      const despues = b as string[];
+      const quitados = antes.filter((x) => !despues.includes(x));
+      const puestos = despues.filter((x) => !antes.includes(x));
       out.push({ campo: k, etiqueta: ETIQUETA[k], antes: corto(quitados.join(" · ") || "—", 90), despues: corto(puestos.join(" · ") || "—", 90) });
+      continue;
+    }
+    if ((k === "galeriaPropia" || k === "descripcionesServicios") && (a || b)) {
+      const n = (v: unknown) => (Array.isArray(v) ? v.length : v && typeof v === "object" ? Object.keys(v).length : 0);
+      const cuenta = (v: unknown) => (k === "galeriaPropia" ? `${n(v)} ${n(v) === 1 ? "foto" : "fotos"}` : `${n(v)} ${n(v) === 1 ? "descripción" : "descripciones"}`);
+      out.push({ campo: k, etiqueta: ETIQUETA[k], antes: n(a) ? cuenta(a) : "—", despues: n(b) ? cuenta(b) : "—" });
       continue;
     }
     out.push({ campo: k, etiqueta: ETIQUETA[k], antes: corto(texto(a)), despues: corto(texto(b)) });

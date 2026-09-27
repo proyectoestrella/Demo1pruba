@@ -53,7 +53,27 @@ export interface BorradorLanding {
   faq: string;
   /** Una línea por franja: "HH:mm-HH:mm". */
   priorityHours: string;
+  /* ---- Lote P: lo que la web de reservas enseña además de lo de siempre ---- */
+  /** WhatsApp para pedir cita («+34 666 77 67 31»). Vacío: se usa el teléfono. */
+  whatsapp: string;
+  /** Direcciones completas de su web o blog, redes y tienda. Vacías: no salen. */
+  enlaces: { blog: string; instagram: string; facebook: string; tienda: string; web: string };
+  /** Boletín: la invitación, adónde se apunta y la letra pequeña (opcional). */
+  boletinTexto: string;
+  boletinUrl: string;
+  boletinCondiciones: string;
+  /** Fotos propias de la galería, en orden, con su texto alternativo. */
+  galeria: Array<{ url: string; alt: string }>;
+  /** Texto corto de cada servicio, por id. */
+  descripciones: Record<string, string>;
 }
+
+/** Los cinco enlaces, en el orden en que se editan. */
+export const CAMPOS_ENLACES = ["blog", "instagram", "facebook", "tienda", "web"] as const;
+/** Fotos propias como mucho (las que caben en la galería sin ruido). */
+export const MAX_FOTOS_GALERIA = 12;
+/** Largo máximo de la descripción de un servicio. */
+export const MAX_DESCRIPCION_SERVICIO = 400;
 
 /** Un fallo concreto, con el campo al que pertenece para poder resaltarlo. */
 export interface ErrorCampo {
@@ -110,6 +130,19 @@ export function borradorDesdePerfil(p: SalonProfile): BorradorLanding {
       })
       .join("\n"),
     priorityHours: (p.priorityHours ?? []).join("\n"),
+    whatsapp: p.whatsapp ?? "",
+    enlaces: {
+      blog: p.enlaces?.blog ?? "",
+      instagram: p.enlaces?.instagram ?? "",
+      facebook: p.enlaces?.facebook ?? "",
+      tienda: p.enlaces?.tienda ?? "",
+      web: p.enlaces?.web ?? "",
+    },
+    boletinTexto: p.boletin?.texto ?? "",
+    boletinUrl: p.boletin?.url ?? "",
+    boletinCondiciones: p.boletin?.condiciones ?? "",
+    galeria: (p.galeriaPropia ?? []).map((f) => ({ url: f.url, alt: f.alt })),
+    descripciones: { ...(p.descripcionesServicios ?? {}) },
   };
 }
 
@@ -306,8 +339,56 @@ export function validarBorrador(b: BorradorLanding): ErrorCampo[] {
     }
   });
 
+  // Lote P. WhatsApp: un número de verdad, con prefijo o sin él.
+  const wa = digitos(b.whatsapp);
+  if (b.whatsapp.trim() && (wa.length < 9 || wa.length > 15)) {
+    errores.push({ campo: "whatsapp", mensaje: `«${b.whatsapp.trim()}» no parece un WhatsApp. Escríbelo como +34 612 345 678.` });
+  }
+  // Enlaces: completos, para que el botón lleve a algún sitio.
+  for (const campo of CAMPOS_ENLACES) {
+    const v = b.enlaces[campo].trim();
+    if (v && !/^https?:\/\/\S+$/i.test(v)) {
+      errores.push({ campo: "enlaces", mensaje: `El enlace de ${ETIQUETA_ENLACE[campo]} tiene que ser la dirección completa, empezando por https://.` });
+    }
+  }
+  // Boletín: la invitación y adónde se apunta van juntas.
+  const bt = b.boletinTexto.trim();
+  const bu = b.boletinUrl.trim();
+  if ((bt || bu || b.boletinCondiciones.trim()) && !bt) {
+    errores.push({ campo: "boletinTexto", mensaje: "Falta el texto del boletín: lo que verá tu clienta, por ejemplo «Suscríbete y recibe nuestras novedades»." });
+  }
+  if (bt && !/^(https?:\/\/\S+|\/(?!\/)\S*)$/i.test(bu)) {
+    errores.push({ campo: "boletinUrl", mensaje: "El boletín necesita la dirección donde apuntarse, empezando por https://." });
+  }
+  // Galería: foto de verdad y texto alternativo (lo leen los lectores de pantalla y Google).
+  if (b.galeria.length > MAX_FOTOS_GALERIA) {
+    errores.push({ campo: "galeria", mensaje: `Como mucho ${MAX_FOTOS_GALERIA} fotos en la galería. Ahora hay ${b.galeria.length}.` });
+  }
+  b.galeria.forEach((f, i) => {
+    const url = f.url.trim();
+    if (!/^(https?:\/\/\S+|\/(?!\/)\S*)$/i.test(url) || !EXT_FOTO.test(url)) {
+      errores.push({ campo: "galeria", mensaje: `Foto ${i + 1}: la dirección tiene que empezar por https:// (o /) y acabar en .jpg, .png, .webp o .avif.` });
+    }
+    if (f.alt.trim().length < 3) {
+      errores.push({ campo: "galeria", mensaje: `Foto ${i + 1}: falta el texto alternativo. Describe en una frase lo que se ve, por ejemplo «Recogido de novia con trenzas».` });
+    }
+  });
+  for (const [id, texto] of Object.entries(b.descripciones)) {
+    if (texto.trim().length > MAX_DESCRIPCION_SERVICIO) {
+      errores.push({ campo: "descripciones", mensaje: `La descripción de «${id}» pasa de ${MAX_DESCRIPCION_SERVICIO} letras: déjala en una o dos frases.` });
+    }
+  }
+
   return errores;
 }
+
+const ETIQUETA_ENLACE: Record<(typeof CAMPOS_ENLACES)[number], string> = {
+  blog: "tu blog",
+  instagram: "Instagram",
+  facebook: "Facebook",
+  tienda: "la tienda",
+  web: "tu web",
+};
 
 /* ---------------------------------------------------------------------- */
 /* Serialización                                                           */
@@ -366,6 +447,38 @@ export function perfilDesdeBorrador(b: BorradorLanding): Partial<SalonProfile> {
       .filter((r): r is NonNullable<typeof r> => r !== null)
       .slice(0, MAX_PRIORITY_RANGES)
       .map(formatPriorityRange),
+    ...camposLote18(b),
+  };
+}
+
+/**
+ * Lo del lote P, en la forma del perfil. Lo que queda vacío se devuelve como
+ * `undefined` (presente), para que borrarlo aquí lo borre de verdad. Las
+ * descripciones son la excepción: sin ninguna escrita no se tocan (una carta
+ * de ejemplo trae las suyas en cada servicio y no se deben vaciar).
+ */
+function camposLote18(b: BorradorLanding): Partial<SalonProfile> {
+  const enlaces = Object.fromEntries(
+    CAMPOS_ENLACES.map((c) => [c, b.enlaces[c].trim()] as const).filter(([, v]) => v),
+  ) as NonNullable<SalonProfile["enlaces"]>;
+  const texto = b.boletinTexto.trim();
+  const url = b.boletinUrl.trim();
+  const condiciones = b.boletinCondiciones.trim();
+  const galeria = b.galeria
+    .map((f) => ({ url: f.url.trim(), alt: f.alt.trim() }))
+    .filter((f) => f.url)
+    .slice(0, MAX_FOTOS_GALERIA);
+  const descripciones = Object.fromEntries(
+    Object.entries(b.descripciones)
+      .map(([id, t]) => [id, t.trim().slice(0, MAX_DESCRIPCION_SERVICIO)] as const)
+      .filter(([, t]) => t),
+  );
+  return {
+    whatsapp: b.whatsapp.trim() || undefined,
+    enlaces: Object.keys(enlaces).length ? enlaces : undefined,
+    boletin: texto && url ? { texto, url, ...(condiciones ? { condiciones } : {}) } : undefined,
+    galeriaPropia: galeria.length ? galeria : undefined,
+    ...(Object.keys(descripciones).length ? { descripcionesServicios: descripciones } : {}),
   };
 }
 

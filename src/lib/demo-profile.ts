@@ -3,6 +3,7 @@ import { salon as seedSalon } from "./mock/salon";
 import { DEFAULT_OPENING_HOURS } from "./opening-hours";
 import {
   MAX_MENU_ENTRIES,
+  MAX_MENU_ENTRIES_SALON,
   MAX_TEAM_ENTRIES,
   formatMenuEntry,
   formatTeamEntry,
@@ -80,6 +81,14 @@ type DemoProfileNegocio = Pick<
   | "depositDeadlineHours"
   | "bookingQuestionsEnabled"
   | "bookingQuestionsRequired"
+  // Lote P: lo que edita Mi página y enseña la vista previa.
+  | "logoUrl"
+  | "whatsapp"
+  | "enlaces"
+  | "boletin"
+  | "galeriaPropia"
+  | "descripcionesServicios"
+  | "preciosLiterales"
 >;
 
 /** Campos del perfil que se pueden personalizar por demo. */
@@ -138,7 +147,139 @@ const KEYS: Record<keyof DemoProfileNegocio, string> = {
   depositDeadlineHours: "fh",
   bookingQuestionsEnabled: "bq",
   bookingQuestionsRequired: "br",
+  // Lote P (ver `codificarLote18`/`leerLote18`).
+  logoUrl: "lg",
+  whatsapp: "wa",
+  enlaces: "en",
+  boletin: "bo",
+  galeriaPropia: "gp",
+  descripcionesServicios: "ds",
+  preciosLiterales: "pl",
 };
+
+/* ---------- lote P: enlaces, boletín, galería y textos de la carta ---------- */
+
+const CAMPOS_LOTE18 = new Set<keyof DemoProfileNegocio>([
+  "logoUrl", "whatsapp", "enlaces", "boletin", "galeriaPropia", "descripcionesServicios", "preciosLiterales",
+]);
+const CLAVES_ENLACES = { blog: "b", instagram: "i", facebook: "f", tienda: "t", web: "w" } as const;
+const ID_SERVICIO = /^[a-z0-9][a-z0-9-]{0,59}$/;
+const MAX_GALERIA = 12;
+
+/**
+ * Una dirección que se puede pintar o enlazar: http(s) y, si `relativa`, una
+ * ruta de la propia web («/demo/…»). Nada de `javascript:` ni `data:`: el
+ * enlace lo puede fabricar cualquiera y acaba en un `href`.
+ */
+export function urlSegura(valor: unknown, relativa = false): string | null {
+  if (typeof valor !== "string") return null;
+  const v = valor.trim();
+  if (!v || v.length > 500 || /\s/.test(v)) return null;
+  if (/^https?:\/\/[^/]/i.test(v)) return v;
+  if (relativa && /^\/(?!\/)/.test(v)) return v;
+  return null;
+}
+
+function textoCorto(valor: unknown, max: number): string | null {
+  if (typeof valor !== "string") return null;
+  const v = valor.trim();
+  return v ? v.slice(0, max) : null;
+}
+
+/** Diccionario «id de servicio → texto» limpio, o `null` si no queda nada. */
+function textosPorServicio(valor: unknown, max: number): Record<string, string> | null {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return null;
+  const out: Record<string, string> = {};
+  for (const [id, texto] of Object.entries(valor as Record<string, unknown>).slice(0, MAX_MENU_ENTRIES_SALON)) {
+    const t = textoCorto(texto, max);
+    if (ID_SERVICIO.test(id) && t) out[id] = t;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+/** Forma compacta de un campo del lote 18 para el enlace, o `undefined` si no hay nada que llevar. */
+function codificarLote18(field: keyof DemoProfileNegocio, value: unknown): unknown {
+  switch (field) {
+    case "logoUrl":
+      return urlSegura(value, true) ?? undefined;
+    case "whatsapp":
+      return textoCorto(value, 30) ?? undefined;
+    case "enlaces": {
+      if (!value || typeof value !== "object") return undefined;
+      const out: Record<string, string> = {};
+      for (const [campo, corta] of Object.entries(CLAVES_ENLACES)) {
+        const url = urlSegura((value as Record<string, unknown>)[campo]);
+        if (url) out[corta] = url;
+      }
+      return Object.keys(out).length ? out : undefined;
+    }
+    case "boletin": {
+      const b = value as SalonProfile["boletin"];
+      const texto = textoCorto(b?.texto, 200);
+      const url = urlSegura(b?.url, true);
+      if (!texto || !url) return undefined;
+      const condiciones = textoCorto(b?.condiciones, 300);
+      return condiciones ? { t: texto, u: url, c: condiciones } : { t: texto, u: url };
+    }
+    case "galeriaPropia": {
+      if (!Array.isArray(value)) return undefined;
+      const fotos = value
+        .map((f) => [urlSegura((f as { url?: unknown })?.url, true), textoCorto((f as { alt?: unknown })?.alt, 200) ?? ""] as const)
+        .filter(([url]) => url !== null)
+        .slice(0, MAX_GALERIA);
+      return fotos.length ? fotos : undefined;
+    }
+    case "descripcionesServicios":
+      return textosPorServicio(value, 400) ?? undefined;
+    case "preciosLiterales":
+      return textosPorServicio(value, 80) ?? undefined;
+    default:
+      return undefined;
+  }
+}
+
+/** Lo contrario de `codificarLote18`, con la misma validación: lo raro se descarta. */
+function leerLote18(field: keyof DemoProfileNegocio, value: unknown): unknown {
+  switch (field) {
+    case "logoUrl":
+      return urlSegura(value, true) ?? undefined;
+    case "whatsapp":
+      return textoCorto(value, 30) ?? undefined;
+    case "enlaces": {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+      const out: NonNullable<SalonProfile["enlaces"]> = {};
+      for (const [campo, corta] of Object.entries(CLAVES_ENLACES) as Array<[keyof typeof CLAVES_ENLACES, string]>) {
+        const url = urlSegura((value as Record<string, unknown>)[corta]);
+        if (url) out[campo] = url;
+      }
+      return Object.keys(out).length ? out : undefined;
+    }
+    case "boletin": {
+      if (!value || typeof value !== "object") return undefined;
+      const v = value as Record<string, unknown>;
+      const texto = textoCorto(v.t, 200);
+      const url = urlSegura(v.u, true);
+      if (!texto || !url) return undefined;
+      const condiciones = textoCorto(v.c, 300);
+      return condiciones ? { texto, url, condiciones } : { texto, url };
+    }
+    case "galeriaPropia": {
+      if (!Array.isArray(value)) return undefined;
+      const fotos = value
+        .filter((f): f is unknown[] => Array.isArray(f))
+        .map((f) => ({ url: urlSegura(f[0], true), alt: textoCorto(f[1], 200) ?? "" }))
+        .filter((f): f is { url: string; alt: string } => f.url !== null)
+        .slice(0, MAX_GALERIA);
+      return fotos.length ? fotos : undefined;
+    }
+    case "descripcionesServicios":
+      return textosPorServicio(value, 400) ?? undefined;
+    case "preciosLiterales":
+      return textosPorServicio(value, 80) ?? undefined;
+    default:
+      return undefined;
+  }
+}
 
 /** Nombre del search param que lleva el perfil en las rutas públicas. */
 export const DEMO_PARAM = "d";
@@ -238,12 +379,27 @@ function fromBase64Url(input: string): string {
  * campos con contenido: un perfil donde únicamente cambia el nombre produce una
  * cadena corta, y el resto de la web sigue mostrando los valores de ejemplo.
  */
-export function encodeDemoProfile(profile: Partial<DemoProfile>): string {
+export function encodeDemoProfile(
+  profile: Partial<DemoProfile>,
+  opciones: {
+    /**
+     * Carta entera (hasta 60) en vez de 12. Solo para la vista previa de Mi
+     * página, que no viaja por WhatsApp: un enlace para compartir se queda
+     * en 12 para que siga siendo pegable.
+     */
+    cartaCompleta?: boolean;
+  } = {},
+): string {
   const compact: Record<string, unknown> = {};
 
   for (const [field, short] of Object.entries(KEYS) as Array<[keyof DemoProfile, string]>) {
     const value = profile[field];
     if (value === undefined || value === null) continue;
+    if (CAMPOS_LOTE18.has(field as keyof DemoProfileNegocio)) {
+      const compacto = codificarLote18(field as keyof DemoProfileNegocio, value);
+      if (compacto !== undefined) compact[short] = compacto;
+      continue;
+    }
     if (typeof value === "string" && value.trim() === "") continue;
     if (field === "photoCount" && value === 0) continue;
     if (field === "noShowFeeEur") {
@@ -311,7 +467,7 @@ export function encodeDemoProfile(profile: Partial<DemoProfile>): string {
       const clean = value
         .map((v) => parseMenuEntry(String(v)))
         .filter((v): v is NonNullable<typeof v> => v !== null)
-        .slice(0, MAX_MENU_ENTRIES)
+        .slice(0, opciones.cartaCompleta ? MAX_MENU_ENTRIES_SALON : MAX_MENU_ENTRIES)
         .map(formatMenuEntry);
       if (clean.length === 0) continue;
       compact[short] = clean;
@@ -401,6 +557,12 @@ export function decodeDemoProfile(raw: string | undefined | null): Partial<DemoP
     const value = source[short];
     if (value === undefined) continue;
 
+    if (CAMPOS_LOTE18.has(field as keyof DemoProfileNegocio)) {
+      const leido = leerLote18(field as keyof DemoProfileNegocio, value);
+      if (leido !== undefined) (out as Record<string, unknown>)[field] = leido;
+      continue;
+    }
+
     if (field === "rating") {
       const n = Number(value);
       // Una nota fuera de escala delataría la demo — se descarta en silencio.
@@ -474,12 +636,13 @@ export function decodeDemoProfile(raw: string | undefined | null): Partial<DemoP
       const n = Number(value);
       if (Number.isFinite(n) && n >= 0 && n <= 240) out.lastSlotBufferMin = Math.round(n);
     } else if (field === "menu") {
-      // "Nombre~minutos~precio" o "...~Categoría", de 1 a 12 — el resto se corta.
+      // "Nombre~minutos~precio" o "...~Categoría". Un enlace para compartir
+      // trae como mucho 12; la vista previa de Mi página, la carta entera.
       if (Array.isArray(value)) {
         const clean = value
           .map((v) => parseMenuEntry(String(v)))
           .filter((v): v is NonNullable<typeof v> => v !== null)
-          .slice(0, MAX_MENU_ENTRIES)
+          .slice(0, MAX_MENU_ENTRIES_SALON)
           .map(formatMenuEntry);
         if (clean.length) out.menu = clean;
       }

@@ -2,6 +2,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { DEMO_PARAM, decodeDemoProfile, demoUrl, slugify } from "./demo-profile";
 import type { SalonProfile } from "./mock/types";
 import { useSalonStore } from "./store";
+import { demoRegistrada } from "./demos";
 
 /** Enlace público del salón que está abierto en el panel. */
 export function panelPublicLink(
@@ -16,6 +17,13 @@ export function panelPublicLink(
   if (fromUrl) {
     const slug = slugify(fromUrl.name ?? "") || "demo";
     return `/s/${slug}?${DEMO_PARAM}=${demoRaw}`;
+  }
+
+  // Lote P: una demo registrada tiene URL corta y carta entera: /s/<slug>.
+  // (Reconstruirla como ?d= llevaba sus 60 descripciones y pasaba del tope
+  // de tamaño de una dirección.)
+  if (demoActive && demoRegistrada(profile.slug) && profile.descripcionesServicios !== undefined) {
+    return `/s/${profile.slug}`;
   }
 
   // La navegación interna del panel quita ?d=; el perfil ya aplicado permite

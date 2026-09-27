@@ -19,14 +19,21 @@ import {
   Smartphone,
   TriangleAlert,
   ChevronDown,
+  ArrowUp,
+  ArrowDown,
+  Plus,
+  X,
 } from "lucide-react";
 import { usePanelPublicLink } from "@/lib/panel-public-link";
 
 import { useSalonStore } from "@/lib/store";
 import { useRealSalonSlug } from "@/lib/use-real-salon";
 import { saveSalonProfile } from "@/lib/api/salons.functions";
-import { DEMO_PARAM, encodeDemoProfile } from "@/lib/demo-profile";
+import { encodeDemoProfile } from "@/lib/demo-profile";
+import { guardarPrevia, huellaPrevia } from "@/lib/vista-previa";
 import {
+  CAMPOS_ENLACES,
+  MAX_FOTOS_GALERIA,
   borradorDesdePerfil,
   hayCambios,
   perfilDesdeBorrador,
@@ -43,6 +50,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { SalonProfile } from "@/lib/mock/types";
 import { useEquipo } from "@/lib/use-equipo";
+import { agruparCarta } from "@/lib/servicios-panel";
 
 export const Route = createFileRoute("/app/web")({ component: MiWeb });
 
@@ -55,6 +63,7 @@ const ESPERA_PREVIA_MS = 450;
 
 function MiWeb() {
   const salonProfile = useSalonStore((s) => s.salonProfile);
+  const services = useSalonStore((s) => s.services);
   const equipo = useEquipo();
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
   const permisosWeb = usePermisos();
@@ -122,24 +131,33 @@ function MiWeb() {
       noShowNoticeHours: publicado.noShowNoticeHours,
       smartSpread: publicado.smartSpread,
       lastSlotBufferMin: publicado.lastSlotBufferMin,
+      // Lote P: los precios literales se editan en Servicios, y las
+      // descripciones pueden venir de allí: la vista previa lleva las suyas.
+      preciosLiterales: publicado.preciosLiterales,
+      descripcionesServicios: publicado.descripcionesServicios,
       ...perfilDesdeBorrador(borrador),
     }),
     [borrador, publicado],
   );
 
-  const urlPrevia = useMemo(
-    // `previa=1`: la web lo pinta sin cargarlo en la store del panel (ver s.$salonSlug.tsx).
-    () => `/s/${slugPrevia}?${DEMO_PARAM}=${encodeDemoProfile(perfilPrevio)}&previa=1`,
-    [slugPrevia, perfilPrevio],
-  );
+  // Lote P: el borrador va por el sessionStorage de la pestaña (lib/vista-previa.ts);
+  // la dirección solo lleva su huella. `cartaCompleta`: toda la carta, no 12.
+  const rawPrevio = useMemo(() => encodeDemoProfile(perfilPrevio, { cartaCompleta: true }), [perfilPrevio]);
+  const urlPrevia = useMemo(() => `/s/${slugPrevia}?previa=${huellaPrevia(rawPrevio)}`, [slugPrevia, rawPrevio]);
 
   // Se espera a que pare de teclear antes de recargar el iframe: una recarga
   // por pulsación deja la vista previa parpadeando y no se lee nada.
-  const [urlPintada, setUrlPintada] = useState(urlPrevia);
+  const [urlPintada, setUrlPintada] = useState(() => {
+    guardarPrevia(slugPrevia, rawPrevio);
+    return urlPrevia;
+  });
   useEffect(() => {
-    const t = setTimeout(() => setUrlPintada(urlPrevia), ESPERA_PREVIA_MS);
+    const t = setTimeout(() => {
+      guardarPrevia(slugPrevia, rawPrevio);
+      setUrlPintada(urlPrevia);
+    }, ESPERA_PREVIA_MS);
     return () => clearTimeout(t);
-  }, [urlPrevia]);
+  }, [urlPrevia, slugPrevia, rawPrevio]);
   const alDia = urlPintada === urlPrevia;
 
   // Cambiar el `src` del iframe lo devuelve arriba del todo. Como es del mismo
@@ -521,9 +539,67 @@ function MiWeb() {
               tipo="tel"
             />
             <Campo
+              etiqueta="WhatsApp para pedir cita"
+              valor={borrador.whatsapp}
+              onChange={(v) => campo("whatsapp", v)}
+              errores={errorDe("whatsapp")}
+              tipo="tel"
+              pista="Con prefijo: +34 612 345 678. Vacío: el botón de WhatsApp usa el teléfono."
+            />
+            <Campo
               etiqueta="Instagram"
               valor={borrador.instagram}
               onChange={(v) => campo("instagram", v)}
+              pista="Tu usuario, como se ve: @tusalon."
+            />
+          </Bloque>
+
+          <Bloque titulo="Tu blog, redes y tienda" forzar={errores.length > 0}>
+            <p className="text-[13px] text-muted-foreground">
+              Sale un botón discreto por cada uno que rellenes. Pega la dirección completa, tal y como la ves en el navegador.
+            </p>
+            {CAMPOS_ENLACES.map((clave) => (
+              <Campo
+                key={clave}
+                etiqueta={ETIQUETA_ENLACE[clave]}
+                valor={borrador.enlaces[clave]}
+                onChange={(v) => campo("enlaces", { ...borrador.enlaces, [clave]: v })}
+                tipo="url"
+              />
+            ))}
+            <Fallos mensajes={errorDe("enlaces")} />
+          </Bloque>
+
+          <Bloque titulo="Boletín" forzar={errores.length > 0}>
+            <CampoLargo
+              etiqueta="La invitación"
+              valor={borrador.boletinTexto}
+              onChange={(v) => campo("boletinTexto", v)}
+              errores={errorDe("boletinTexto")}
+              filas={2}
+              pista="Una frase. Solo lo que sea verdad hoy: si anuncias un descuento, que esté activo en tu tienda."
+            />
+            <Campo
+              etiqueta="Dónde se apunta"
+              valor={borrador.boletinUrl}
+              onChange={(v) => campo("boletinUrl", v)}
+              errores={errorDe("boletinUrl")}
+              tipo="url"
+              pista="La página de tu web con el formulario del boletín."
+            />
+            <Campo
+              etiqueta="Letra pequeña (opcional)"
+              valor={borrador.boletinCondiciones}
+              onChange={(v) => campo("boletinCondiciones", v)}
+            />
+            <p className="text-xs text-muted-foreground">Vacío del todo: el boletín no sale en tu web.</p>
+          </Bloque>
+
+          <Bloque titulo="Galería de fotos" forzar={errores.length > 0}>
+            <EditorGaleria
+              fotos={borrador.galeria}
+              onChange={(fotos) => campo("galeria", fotos)}
+              errores={errorDe("galeria")}
             />
           </Bloque>
 
@@ -572,15 +648,30 @@ function MiWeb() {
           </Bloque>
 
           <Bloque titulo="Servicios y precios" forzar={errores.length > 0}>
-            <CampoLargo
-              etiqueta="Tu carta"
-              valor={borrador.menu}
-              onChange={(v) => campo("menu", v)}
-              errores={errorDe("menu")}
-              filas={6}
-              mono
-              pista="Un servicio por línea: Nombre | minutos | precio. Puedes añadir el grupo al final: «Corte | 30 | 15 | Cortes». Déjalo vacío para usar la carta de ejemplo."
+            <ResumenCarta services={services} />
+            <details className="group rounded-2xl border border-border bg-perla/60 px-4 py-3" open={errorDe("menu").length > 0}>
+              <summary className="cursor-pointer text-[13px] font-bold text-cafe-medio">Editar la carta como texto</summary>
+              <div className="mt-3">
+                <CampoLargo
+                  etiqueta="Tu carta"
+                  valor={borrador.menu}
+                  onChange={(v) => campo("menu", v)}
+                  errores={errorDe("menu")}
+                  filas={8}
+                  mono
+                  pista="Un servicio por línea: Nombre | minutos | precio. Puedes añadir el grupo al final: «Corte | 30 | 15 | Cortes». Déjalo vacío para usar la carta de ejemplo."
+                />
+              </div>
+            </details>
+          </Bloque>
+
+          <Bloque titulo="Descripciones de tus servicios" forzar={errores.length > 0}>
+            <EditorDescripciones
+              services={services}
+              valores={borrador.descripciones}
+              onChange={(id, texto) => campo("descripciones", { ...borrador.descripciones, [id]: texto })}
             />
+            <Fallos mensajes={errorDe("descripciones")} />
           </Bloque>
 
           <Bloque titulo="Equipo" forzar={errores.length > 0}>
@@ -641,10 +732,12 @@ function MiWeb() {
                   ))}
                 </div>
                 <Button variant="outline" size="icon" className="size-[42px]" asChild>
+                  {/* Sin «noreferrer» a propósito: la pestaña nueva (mismo origen)
+                      hereda el sessionStorage, que es donde va el borrador. */}
                   <a
                     href={urlPintada}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="opener"
                     aria-label="Abrir la vista previa en otra pestaña"
                     title="Abrir en otra pestaña"
                   >
@@ -825,6 +918,155 @@ function CampoLargo({
       />
       <Fallos mensajes={errores} />
       {pista ? <p className="text-[12.5px] text-muted-foreground">{pista}</p> : null}
+    </div>
+  );
+}
+
+const ETIQUETA_ENLACE: Record<(typeof CAMPOS_ENLACES)[number], string> = {
+  blog: "Blog",
+  instagram: "Instagram (enlace)",
+  facebook: "Facebook",
+  tienda: "Tienda online",
+  web: "Web",
+};
+
+/**
+ * Lote P: la carta de un vistazo en vez de 60 líneas de texto: cuántos
+ * servicios hay en cada sección y dónde se cambian de verdad.
+ */
+function ResumenCarta({ services }: { services: import("@/lib/mock/types").Service[] }) {
+  const grupos = agruparCarta(services);
+  if (services.length === 0) {
+    return <p className="text-[13px] text-muted-foreground">Todavía no hay servicios: añádelos en «Servicios y precios» y saldrán aquí y en tu web.</p>;
+  }
+  return (
+    <div className="space-y-3">
+      <ul className="grid gap-1.5 text-[13px] sm:grid-cols-2">
+        {grupos.map((g) => (
+          <li key={g.categoria} className="flex items-baseline justify-between gap-3 rounded-xl bg-nata/60 px-3 py-2">
+            <span className="font-bold">{g.categoria}</span>
+            <span className="shrink-0 text-cafe-suave tabular-nums">{g.servicios.length}</span>
+          </li>
+        ))}
+      </ul>
+      <Link to="/app/services" className="inline-flex h-[34px] items-center rounded-full border border-input bg-card px-[13px] text-[12.5px] font-bold hover:bg-nata">
+        Cambiar servicios, precios y duraciones
+      </Link>
+    </div>
+  );
+}
+
+/** Lote P: la descripción de cada servicio, por secciones plegadas. */
+function EditorDescripciones({
+  services,
+  valores,
+  onChange,
+}: {
+  services: import("@/lib/mock/types").Service[];
+  valores: Record<string, string>;
+  onChange: (id: string, texto: string) => void;
+}) {
+  const grupos = agruparCarta(services);
+  if (grupos.length === 0) {
+    return <p className="text-[13px] text-muted-foreground">Cuando tengas servicios, aquí escribes una o dos frases de cada uno para tu web.</p>;
+  }
+  return (
+    <div className="space-y-2">
+      <p className="text-[13px] text-muted-foreground">Una o dos frases por servicio: salen bajo su nombre en tu web. Vacío: no sale nada.</p>
+      {grupos.map((g) => {
+        const escritas = g.servicios.filter((sv) => (valores[sv.id] ?? "").trim()).length;
+        return (
+          <details key={g.categoria} className="rounded-2xl border border-border bg-card">
+            <summary className="flex cursor-pointer items-baseline justify-between gap-3 px-4 py-3 text-[13.5px] font-bold">
+              <span>{g.categoria}</span>
+              <span className="text-[12px] font-semibold text-cafe-suave tabular-nums">{escritas} de {g.servicios.length} con texto</span>
+            </summary>
+            <div className="space-y-3 px-4 pb-4">
+              {g.servicios.map((sv) => (
+                <div key={sv.id} className="space-y-1">
+                  <Label htmlFor={`desc-${sv.id}`} className="text-[12.5px] font-bold text-cafe-medio">{sv.name}</Label>
+                  <Textarea
+                    id={`desc-${sv.id}`}
+                    value={valores[sv.id] ?? ""}
+                    onChange={(e) => onChange(sv.id, e.target.value)}
+                    rows={2}
+                    placeholder={sv.description || "Qué incluye, cuánto dura el resultado…"}
+                    className="resize-y text-[13px]"
+                  />
+                </div>
+              ))}
+            </div>
+          </details>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Lote P: galería propia en orden, con su texto alternativo. Si hay fotos
+ * aquí, mandan sobre las de la ficha de Google.
+ */
+function EditorGaleria({
+  fotos,
+  onChange,
+  errores,
+}: {
+  fotos: Array<{ url: string; alt: string }>;
+  onChange: (fotos: Array<{ url: string; alt: string }>) => void;
+  errores: string[];
+}) {
+  const mover = (i: number, paso: -1 | 1) => {
+    const j = i + paso;
+    if (j < 0 || j >= fotos.length) return;
+    const nuevas = [...fotos];
+    [nuevas[i], nuevas[j]] = [nuevas[j], nuevas[i]];
+    onChange(nuevas);
+  };
+  const cambiar = (i: number, parche: Partial<{ url: string; alt: string }>) =>
+    onChange(fotos.map((f, k) => (k === i ? { ...f, ...parche } : f)));
+  return (
+    <div className="space-y-3">
+      <p className="text-[13px] text-muted-foreground">
+        {fotos.length
+          ? "En este orden salen en tu web. El texto alternativo describe cada foto para quien no la ve (y para Google)."
+          : "Sin fotos propias, tu web enseña las de tu ficha de Google. Añade las tuyas y mandan ellas."}
+      </p>
+      <ol className="space-y-2.5">
+        {fotos.map((f, i) => (
+          <li key={i} className="flex gap-3 rounded-2xl border border-border bg-card p-2.5">
+            <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-nata">
+              {f.url.trim() ? <img src={f.url.trim()} alt="" className="h-full w-full object-cover" loading="lazy" /> : <span className="text-[11px] text-cafe-suave">Sin foto</span>}
+            </span>
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <Input aria-label={`Dirección de la foto ${i + 1}`} value={f.url} onChange={(e) => cambiar(i, { url: e.target.value })} placeholder="https://… .jpg" className="h-9 text-[13px]" />
+              <Input aria-label={`Texto alternativo de la foto ${i + 1}`} value={f.alt} onChange={(e) => cambiar(i, { alt: e.target.value })} placeholder="Qué se ve: «Recogido de novia con trenzas»" className="h-9 text-[13px]" />
+            </div>
+            <div className="flex shrink-0 flex-col gap-1">
+              <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={`Subir la foto ${i + 1}`} disabled={i === 0} onClick={() => mover(i, -1)}>
+                <ArrowUp className="size-4" strokeWidth={1.6} />
+              </Button>
+              <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={`Bajar la foto ${i + 1}`} disabled={i === fotos.length - 1} onClick={() => mover(i, 1)}>
+                <ArrowDown className="size-4" strokeWidth={1.6} />
+              </Button>
+              <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={`Quitar la foto ${i + 1}`} onClick={() => onChange(fotos.filter((_, k) => k !== i))}>
+                <X className="size-4" strokeWidth={1.6} />
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-[38px] gap-1.5"
+        disabled={fotos.length >= MAX_FOTOS_GALERIA}
+        onClick={() => onChange([...fotos, { url: "", alt: "" }])}
+      >
+        <Plus className="size-4" strokeWidth={1.6} />
+        {fotos.length >= MAX_FOTOS_GALERIA ? `Máximo ${MAX_FOTOS_GALERIA} fotos` : "Añadir foto"}
+      </Button>
+      <Fallos mensajes={errores} />
     </div>
   );
 }

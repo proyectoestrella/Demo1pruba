@@ -190,3 +190,39 @@ describe("las fotos de la galería existen, en 600 y 1200 px", () => {
     }
   });
 });
+
+describe("el ?d= lleva lo del lote 18 (vista previa de Mi página)", () => {
+  it("ida y vuelta: enlaces, WhatsApp, boletín, galería, logo y textos de la carta", async () => {
+    const { encodeDemoProfile, decodeDemoProfile } = await import("../demo-profile");
+    const vuelta = decodeDemoProfile(encodeDemoProfile(PELUCHIC, { cartaCompleta: true }));
+    expect(vuelta?.menu).toHaveLength(60);
+    expect(vuelta?.enlaces).toEqual(PELUCHIC.enlaces);
+    expect(vuelta?.whatsapp).toBe(PELUCHIC.whatsapp);
+    expect(vuelta?.boletin).toEqual(PELUCHIC.boletin);
+    expect(vuelta?.galeriaPropia).toEqual(PELUCHIC.galeriaPropia);
+    expect(vuelta?.logoUrl).toBe(PELUCHIC.logoUrl);
+    expect(vuelta?.descripcionesServicios).toEqual(PELUCHIC.descripcionesServicios);
+    expect(vuelta?.preciosLiterales).toEqual(PELUCHIC.preciosLiterales);
+    // Un enlace para compartir sigue cortando la carta en 12.
+    expect(decodeDemoProfile(encodeDemoProfile(PELUCHIC))?.menu).toHaveLength(12);
+  });
+
+  it("descarta direcciones peligrosas o mal formadas", async () => {
+    const { encodeDemoProfile, decodeDemoProfile, urlSegura } = await import("../demo-profile");
+    expect(urlSegura("javascript:alert(1)")).toBeNull();
+    expect(urlSegura("data:text/html,x", true)).toBeNull();
+    expect(urlSegura("//malo.com/x.jpg", true)).toBeNull();
+    expect(urlSegura("/demo/foto.webp", true)).toBe("/demo/foto.webp");
+    expect(urlSegura("/demo/foto.webp")).toBeNull();
+    const raw = btoa(JSON.stringify({ n: "X", en: { i: "javascript:alert(1)", f: "https://facebook.com/x" }, gp: [["javascript:x", "a"], ["https://a.com/b.jpg", "b"]], bo: { t: "Hola", u: "javascript:x" } }));
+    const d = decodeDemoProfile(raw);
+    expect(d?.enlaces).toEqual({ facebook: "https://facebook.com/x" });
+    expect(d?.galeriaPropia).toEqual([{ url: "https://a.com/b.jpg", alt: "b" }]);
+    expect(d?.boletin).toBeUndefined();
+  });
+
+  it("el enlace público del panel de una demo registrada es el corto", async () => {
+    const { panelPublicLink } = await import("../panel-public-link");
+    expect(panelPublicLink(perfilDeDemoRegistrada(PELUCHIC), null, true)).toBe("/s/peluchic");
+  });
+});

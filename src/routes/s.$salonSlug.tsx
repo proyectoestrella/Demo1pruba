@@ -6,6 +6,7 @@ import { useDisplayProfile } from "@/lib/use-display-profile";
 import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "@/lib/demo-profile";
 import { demoPorSlug } from "@/lib/demos";
 import { useDemoRegistrada } from "@/lib/demos/aplicar";
+import { leerPrevia } from "@/lib/vista-previa";
 import { weekSchedule } from "@/lib/opening-hours";
 import { useBusinessType } from "@/lib/use-display-profile";
 import { BUSINESS_LABEL, inferBusinessType, professionalWord } from "@/lib/business-type";
@@ -140,7 +141,8 @@ function SalonLayout() {
         if (!esPrevia) window.sessionStorage.setItem(key, demoRawFromUrl);
         setDemoRawFromSession(demoRawFromUrl);
       } else {
-        setDemoRawFromSession(window.sessionStorage.getItem(key) ?? undefined);
+        // Vista previa de Mi página: el borrador que dejó el panel (lib/vista-previa.ts).
+        setDemoRawFromSession(esPrevia ? leerPrevia(salonSlug) : (window.sessionStorage.getItem(key) ?? undefined));
       }
     } catch {
       // Modo privado o sessionStorage bloqueado: nos quedamos solo con lo

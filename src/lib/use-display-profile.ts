@@ -6,6 +6,7 @@ import type { SalonProfile } from "./mock/types";
 import { inferBusinessType, type BusinessType } from "./business-type";
 import { demoPorSlug } from "./demos";
 import { enlaceDemoEnPestana, perfilDeDemoRegistrada } from "./demos/aplicar";
+import { leerPrevia } from "./vista-previa";
 
 /** Slug de la web pública en la ruta actual (`/s/<slug>/…`), o `null`. */
 function slugPublico(pathname: string): string | null {
@@ -33,8 +34,12 @@ export function useDisplayProfile(): SalonProfile {
     | Record<string, unknown>
     | undefined;
 
-  const raw = typeof search?.[DEMO_PARAM] === "string" ? (search[DEMO_PARAM] as string) : undefined;
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Lote P: la vista previa de Mi página (`?previa=…`) trae el borrador por
+  // sessionStorage, no en la dirección (ver lib/vista-previa.ts).
+  const raw = typeof search?.[DEMO_PARAM] === "string"
+    ? (search[DEMO_PARAM] as string)
+    : search?.previa !== undefined ? leerPrevia(slugPublico(pathname)) : undefined;
   const realSalonSlug = useSalonStore((s) => s.realSalonSlug);
 
   return useMemo(() => {
