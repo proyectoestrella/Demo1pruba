@@ -140,7 +140,9 @@ function ServicesPage() {
                 />
               </label>
               {conSecciones && (
-                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Secciones de tu carta">
+                // En el móvil, una tira que se desliza: siete secciones en fila
+                // se comían media pantalla antes del primer servicio.
+                <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0" role="group" aria-label="Secciones de tu carta">
                   {[{ categoria: null as string | null, n: services.length, etiqueta: "Todas" }, ...todas.map((g) => ({ categoria: g.categoria as string | null, n: g.servicios.length, etiqueta: g.categoria }))].map((c) => (
                     <button
                       key={c.etiqueta}
@@ -148,7 +150,7 @@ function ServicesPage() {
                       aria-pressed={seccion === c.categoria}
                       onClick={() => setSeccion(c.categoria)}
                       className={cn(
-                        "inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-bold",
+                        "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-bold whitespace-nowrap",
                         seccion === c.categoria ? "border-cafe bg-cafe text-white" : "border-border bg-card text-cafe-medio hover:bg-nata",
                       )}
                     >
