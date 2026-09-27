@@ -27,9 +27,23 @@ export interface ProveedorCorreo {
   enviar: (correo: CorreoSaliente) => Promise<void>;
 }
 
+/**
+ * Lote 17: el remitente tal cual lo espera Resend (`siShow <recordatorios@sishow.es>`
+ * o solo la dirección). Si al pegarlo en Vercel se cuelan espacios o unas
+ * comillas envolviendo TODO el valor, se quitan; unas comillas solo en el
+ * nombre (`"siShow" <…>`) son válidas y se respetan.
+ */
+export function remitenteDeCorreo(valor: string | undefined): string | undefined {
+  let v = valor?.trim();
+  if (!v) return undefined;
+  const envuelto = /^(["'])(.*)\1$/.exec(v);
+  if (envuelto && !envuelto[2].includes(envuelto[1])) v = envuelto[2].trim();
+  return v || undefined;
+}
+
 export function proveedorDeCorreo(fetchImpl: typeof fetch = fetch): ProveedorCorreo | null {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.REMINDER_FROM_EMAIL;
+  const from = remitenteDeCorreo(process.env.REMINDER_FROM_EMAIL);
   if (!apiKey || !from) return null;
   return {
     nombre: "resend",
