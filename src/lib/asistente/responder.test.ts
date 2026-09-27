@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, setSystemTime, test } from "bun:test";
 import { AHORA_CORPUS } from "./evaluar";
 import { asistentePeluChic, datosPeluChic } from "./prueba-peluchic";
 import { CORREO_SOPORTE } from "./responder";
@@ -127,12 +127,28 @@ describe("responder", () => {
     expect(l.tipo === "respuesta" && l.intencion).toBe("hueco-profesional");
   });
 
+  /**
+   * La semilla de la demo se construye con el reloj del sistema: se fija el
+   * día para que el test no dependa de cuándo se corre. Un jueves (abierto)
+   * la demo trae varias solicitudes de hoy (rama en plural); un domingo
+   * (cerrado) solo la de duración flexible (rama en singular).
+   */
+  function datosDelDia(isoLocal: string) {
+    setSystemTime(new Date(isoLocal));
+    try {
+      return datosPeluChic({ nueva: true });
+    } finally {
+      setSystemTime();
+    }
+  }
+
   test("7e-27: solicitudes con la hora pasada cuentan igual que en la tarjeta de Hoy", () => {
-    const d = datosPeluChic();
+    const d = datosDelDia("2026-09-24T09:00:00+02:00"); // jueves
     const pend = d.citas.filter((x) => x.status === "pending");
+    expect(pend.length).toBeGreaterThan(1);
     // Tarde: todas las solicitudes de la demo ya han pasado su hora.
     const tarde = new Date(Math.max(...pend.map((x) => Date.parse(x.start))) + 3_600_000);
-    const a = asistentePeluChic({ ahora: tarde }).asistente;
+    const a = asistentePeluChic({ ahora: tarde, base: d }).asistente;
     const r = a.responder("reservas nuevas esperando que las confirme");
     expect(r.tipo === "respuesta" && r.intencion).toBe("solicitudes-pendientes");
     if (r.tipo !== "respuesta") return;
@@ -141,10 +157,32 @@ describe("responder", () => {
     expect(r.acciones[0].etiqueta).toBe("Ver solicitudes");
     // Mezcla: justo después de la primera.
     const medio = new Date(Date.parse(pend.map((x) => x.start).sort()[0]) + 60_000);
-    const m = asistentePeluChic({ ahora: medio }).asistente.responder("que solicitudes tengo por confirmar");
-    if (m.tipo === "respuesta" && pend.length > 1) expect(m.texto).toMatch(new RegExp(`^Tienes \\*\\*${pend.length} por confirmar\\*\\*, \\d+ con la hora ya pasada`));
-    const p = asistentePeluChic({ ahora: tarde }).asistente.responder("que tengo pendiente");
+    const m = asistentePeluChic({ ahora: medio, base: d }).asistente.responder("que solicitudes tengo por confirmar");
+    expect(m.tipo === "respuesta" && m.texto).toMatch(new RegExp(`^Tienes \\*\\*${pend.length} por confirmar\\*\\*, \\d+ con la hora ya pasada`));
+    const p = asistentePeluChic({ ahora: tarde, base: d }).asistente.responder("que tengo pendiente");
     expect(p.tipo === "respuesta" && p.texto).toContain(`${pend.length} solicitudes por confirmar (todas con la hora ya pasada)`);
+  });
+
+  test("7e-27: en domingo (salón cerrado) cuenta igual y habla en singular si solo hay una", () => {
+    const d = datosDelDia("2026-09-27T12:00:00+02:00"); // domingo
+    const pend = d.citas.filter((x) => x.status === "pending");
+    expect(pend.length).toBeGreaterThan(0);
+    const tarde = new Date(Math.max(...pend.map((x) => Date.parse(x.start))) + 3_600_000);
+    const r = asistentePeluChic({ ahora: tarde, base: d }).asistente.responder("reservas nuevas esperando que las confirme");
+    expect(r.tipo === "respuesta" && r.intencion).toBe("solicitudes-pendientes");
+    if (r.tipo !== "respuesta") return;
+    expect(r.cifras[0].valor).toBe(pend.length);
+    expect(r.texto).toContain(
+      pend.length === 1
+        ? "ya ha pasado su hora: cámbiale la fecha o recházala"
+        : "ya han pasado su hora: cámbiales la fecha o recházalas",
+    );
+    const p = asistentePeluChic({ ahora: tarde, base: d }).asistente.responder("que tengo pendiente");
+    expect(p.tipo === "respuesta" && p.texto).toContain(
+      pend.length === 1
+        ? "1 solicitud por confirmar (con la hora ya pasada)"
+        : `${pend.length} solicitudes por confirmar (todas con la hora ya pasada)`,
+    );
   });
 
   test("fuera del dominio: sin nada del salón no adivina", () => {

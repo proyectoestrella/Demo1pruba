@@ -22,10 +22,20 @@ const CARTA = [
   "Tratamiento capilar~30~20~Peluquería",
 ];
 
-let cache: Omit<DatosBackend, "ahora" | "plan"> | null = null;
+type DatosPeluChic = Omit<DatosBackend, "ahora" | "plan">;
 
-export function datosPeluChic(): Omit<DatosBackend, "ahora" | "plan"> {
-  if (cache) return cache;
+let cache: DatosPeluChic | null = null;
+
+/**
+ * La semilla sale del reloj del sistema (`buildSeed` pone las citas de «hoy»
+ * y del sábado alrededor de `new Date()`), así que se cachea la primera.
+ * `{ nueva: true }` construye una aparte sin tocar la caché: es lo que usan
+ * los tests que fijan el reloj (`setSystemTime`) para no depender del día
+ * real (un domingo, con el salón cerrado, la demo no trae las solicitudes
+ * de hoy).
+ */
+export function datosPeluChic(opciones: { nueva?: boolean } = {}): DatosPeluChic {
+  if (cache && !opciones.nueva) return cache;
   const equipo = employeesForType("peluqueria", EQUIPO, undefined, HORARIO_PELUCHIC);
   const servicios = servicesForType("peluqueria", CARTA);
   const seed = buildSeed("peluqueria", equipo, servicios, { duracionFlexible: true });
@@ -43,12 +53,14 @@ export function datosPeluChic(): Omit<DatosBackend, "ahora" | "plan"> {
     duracionFlexible: true,
     timeZone: "Europe/Madrid",
   };
-  cache = { citas: seed.appointments, clientes: seed.clients, equipo, servicios, listaEspera: seed.waitlist, perfil, enlace: "/s/peluchic" };
-  return cache;
+  const datos: DatosPeluChic = { citas: seed.appointments, clientes: seed.clients, equipo, servicios, listaEspera: seed.waitlist, perfil, enlace: "/s/peluchic" };
+  if (!opciones.nueva) cache = datos;
+  return datos;
 }
 
-export function asistentePeluChic(opciones: { ahora?: Date; plan?: PlanSishow } = {}) {
-  const datos = { ...datosPeluChic(), ...opciones };
+export function asistentePeluChic(opciones: { ahora?: Date; plan?: PlanSishow; base?: DatosPeluChic } = {}) {
+  const { base, ...resto } = opciones;
+  const datos = { ...(base ?? datosPeluChic()), ...resto };
   const fuentes = crearFuentesBackend(datos);
   return { datos, fuentes, asistente: crearAsistente(fuentes) };
 }
