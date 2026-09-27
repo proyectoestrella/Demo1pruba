@@ -51,7 +51,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { TeamShowcase } from "@/components/twentyfirst/team-showcase";
 import { cn } from "@/lib/utils";
-import { CONTENEDOR_SALON, SECCION_WEB, listaConY, notaEs } from "@/lib/web-publica";
+import { CONTENEDOR_SALON, SECCION_WEB, enlaceWhatsApp, enlacesDelSalon, listaConY, notaEs } from "@/lib/web-publica";
+import { BloqueComunidad, FUERA, IconoWhatsApp } from "@/components/web-salon/EnlacesSalon";
 import { eur } from "@/lib/copy";
 import { faqPublica } from "@/lib/faq";
 import { reglaSenal, respuestaFaqSenal, resumenCancelacionSenal, servicioLlevaSenal, type ReglaSenal } from "@/lib/senal";
@@ -368,6 +369,9 @@ function SalonHome() {
   const totalTeamYears = employees.reduce((sum, e) => sum + e.yearsExperience, 0);
   const especialidades = listaConY(profile.specialties);
   const telefono = profile.phone.replace(/\s/g, "");
+  // Lote 18.4: WhatsApp (del perfil o, si no hay, el teléfono) y enlaces del salón.
+  const whatsappUrl = enlaceWhatsApp(profile);
+  const enlaces = enlacesDelSalon(profile);
   // Día de hoy en el cuadro de horario: solo en el cliente (ver useClientNow),
   // o el servidor en UTC marcaría otro día y la hidratación no lo corrige.
   const hoyIndice = now ? (now.getDay() + 6) % 7 : -1;
@@ -484,14 +488,32 @@ function SalonHome() {
                   </a>
                 </Button>
               ) : (
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="h-12 rounded-full border-white/60 bg-transparent px-6 text-[15px] text-white hover:bg-white/10 hover:text-white"
-                >
-                  <a href="#carta">Ver precios</a>
-                </Button>
+                <>
+                  {whatsappUrl && (
+                    <Button
+                      asChild
+                      size="lg"
+                      variant="outline"
+                      className="h-12 rounded-full border-white/60 bg-white/10 px-6 text-[15px] text-white hover:bg-white/20 hover:text-white"
+                    >
+                      <a href={whatsappUrl} {...FUERA} className="gap-2">
+                        <IconoWhatsApp className="h-4 w-4" /> WhatsApp
+                      </a>
+                    </Button>
+                  )}
+                  {/* En móvil, con WhatsApp al lado, «Ver precios» sobra: la carta llega en un gesto. */}
+                  <Button
+                    asChild
+                    size="lg"
+                    variant="outline"
+                    className={cn(
+                      "h-12 rounded-full border-white/60 bg-transparent px-6 text-[15px] text-white hover:bg-white/10 hover:text-white",
+                      whatsappUrl && "hidden sm:inline-flex",
+                    )}
+                  >
+                    <a href="#carta">Ver precios</a>
+                  </Button>
+                </>
               )}
             </div>
             {isV2 && (
@@ -754,14 +776,10 @@ function SalonHome() {
                 >
                   <Phone className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" /> {profile.phone}
                 </a>
-                {profile.instagram?.trim() ? (
-                  <a
-                    href={`https://instagram.com/${profile.instagram.replace(/^@/, "")}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex min-h-11 items-center gap-3 text-[15px] hover:text-primary"
-                  >
-                    <Instagram className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" /> {profile.instagram}
+                {enlaces.instagram ? (
+                  <a href={enlaces.instagram} {...FUERA} className="flex min-h-11 items-center gap-3 text-[15px] hover:text-primary">
+                    <Instagram className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                    {profile.instagram?.trim() || "Instagram"}
                   </a>
                 ) : null}
                 <div className="flex flex-wrap gap-2 pt-5">
@@ -775,6 +793,13 @@ function SalonHome() {
                       <Phone className="h-4 w-4" aria-hidden="true" /> Llamar
                     </a>
                   </Button>
+                  {whatsappUrl && (
+                    <Button asChild variant="outline" className="h-11 rounded-full px-5">
+                      <a href={whatsappUrl} {...FUERA} className="gap-2">
+                        <IconoWhatsApp className="h-4 w-4 text-ws-eucalipto" /> WhatsApp
+                      </a>
+                    </Button>
+                  )}
                 </div>
               </div>
             </Reveal>
@@ -804,6 +829,9 @@ function SalonHome() {
         </div>
       </section>
 
+      {/* Boletín, redes, blog y tienda (lote 18.4): solo lo que el salón tenga. */}
+      <BloqueComunidad nombre={profile.name} enlaces={enlaces} boletin={profile.boletin} />
+
       {/* Llamada final */}
       <section className="bg-ws-crema">
         <div className={cn(CONTENEDOR_SALON, SECCION_WEB, "text-center")}>
@@ -823,7 +851,7 @@ function SalonHome() {
         </div>
       </section>
 
-      <MobileBookingBar salonSlug={salonSlug} />
+      <MobileBookingBar salonSlug={salonSlug} whatsappUrl={whatsappUrl} />
     </>
   );
 }

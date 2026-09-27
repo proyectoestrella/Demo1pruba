@@ -9,12 +9,13 @@ import { useBusinessType } from "@/lib/use-display-profile";
 import { BUSINESS_LABEL, inferBusinessType, professionalWord } from "@/lib/business-type";
 import { employeesForType } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
-import { Instagram, MapPin, Phone, Lock, Menu, TriangleAlert } from "lucide-react";
+import { MapPin, Phone, Lock, Menu, ShoppingBag, TriangleAlert } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { logoDelSalon } from "@/lib/logo-salon";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { CONTENEDOR_SALON } from "@/lib/web-publica";
+import { CONTENEDOR_SALON, enlaceWhatsApp, enlacesDelSalon } from "@/lib/web-publica";
+import { EnlaceFuera, FUERA, IconoWhatsApp, RedesSalon } from "@/components/web-salon/EnlacesSalon";
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 
@@ -87,6 +88,9 @@ function SalonLayout() {
   const conEnlaceDemo = useRouterState({ select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string" });
   const logoSalon = logoDelSalon(profile, sinSalonReal || conEnlaceDemo);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Lote 18.4: blog, redes, tienda y WhatsApp salen del perfil; lo que falta no se pinta.
+  const enlaces = enlacesDelSalon(profile);
+  const whatsappUrl = enlaceWhatsApp(profile);
   const demoRawParam = useRouterState({
     select: (s) => (s.location.search as Record<string, unknown>)?.[DEMO_PARAM],
   });
@@ -290,16 +294,28 @@ function SalonLayout() {
             )}
           </div>
           {!onBooking && (
-            <nav className="hidden items-center gap-6 text-sm font-medium lg:flex" aria-label="Secciones">
+            <nav className="hidden items-center gap-5 text-sm font-medium lg:flex xl:gap-6" aria-label="Secciones">
               {NAV_LINKS.map((l) => (
                 <a
                   key={l.href}
                   href={l.href}
-                  className="relative text-cafe-medio transition-colors after:absolute after:-bottom-1 after:left-0 after:h-px after:w-0 after:bg-primary after:transition-all hover:text-foreground hover:after:w-full motion-reduce:after:transition-none"
+                  className={cn(
+                    "relative text-cafe-medio transition-colors after:absolute after:-bottom-1 after:left-0 after:h-px after:w-0 after:bg-primary after:transition-all hover:text-foreground hover:after:w-full motion-reduce:after:transition-none",
+                    // A 1024-1279 px no cabe todo en una línea: «Preguntas» queda en el menú y en la página.
+                    l.href === "#faq" && "hidden xl:inline",
+                  )}
                 >
                   {l.label}
                 </a>
               ))}
+              {enlaces.blog && (
+                <EnlaceFuera
+                  href={enlaces.blog}
+                  className="font-semibold text-ws-eucalipto transition-colors hover:text-foreground"
+                >
+                  Blog
+                </EnlaceFuera>
+              )}
             </nav>
           )}
           <div className="flex shrink-0 items-center gap-3">
@@ -308,6 +324,7 @@ function SalonLayout() {
                 pero por debajo del mínimo recomendado en móvil. */}
             {!onBooking && (
               <>
+                <RedesSalon enlaces={enlaces} nombre={profile.name} className="hidden 2xl:flex" />
                 {/* Menú móvil */}
                 <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                   <SheetTrigger asChild>
@@ -333,7 +350,30 @@ function SalonLayout() {
                           {l.label}
                         </a>
                       ))}
+                      {enlaces.blog && (
+                        <EnlaceFuera
+                          href={enlaces.blog}
+                          className="min-h-12 rounded-xl px-3 text-base font-semibold text-ws-eucalipto transition-colors hover:bg-muted"
+                        >
+                          Blog
+                        </EnlaceFuera>
+                      )}
                     </nav>
+                    {(enlaces.tienda || whatsappUrl) && (
+                      <div className="mt-4 flex flex-col gap-2 border-t border-lino px-3 pt-4">
+                        {whatsappUrl && (
+                          <a href={whatsappUrl} {...FUERA} className="flex min-h-11 items-center gap-2.5 text-[15px] font-semibold text-foreground">
+                            <IconoWhatsApp className="h-[18px] w-[18px] text-ws-eucalipto" /> WhatsApp
+                          </a>
+                        )}
+                        {enlaces.tienda && (
+                          <a href={enlaces.tienda} {...FUERA} className="flex min-h-11 items-center gap-2.5 text-[15px] font-semibold text-foreground">
+                            <ShoppingBag className="h-[18px] w-[18px] text-ws-eucalipto" aria-hidden="true" /> Tienda online
+                          </a>
+                        )}
+                      </div>
+                    )}
+                    <RedesSalon enlaces={enlaces} nombre={profile.name} className="mt-3 px-1.5" />
                   </SheetContent>
                 </Sheet>
 
@@ -361,8 +401,10 @@ function SalonLayout() {
           onBooking ? "pb-[var(--alto-barra-fija)] lg:pb-0" : "pb-[var(--alto-barra-fija)] md:pb-0",
         )}
       >
-        <div className={cn(CONTENEDOR_SALON, "grid gap-8 py-12 md:grid-cols-4 md:gap-10 md:py-14")}>
-          <div className="md:col-span-2">
+        {/* Lote 18.4: cuatro columnas desde 1024 px (salón · visítanos · horario ·
+            síguenos); «Síguenos» solo si hay algo que enlazar. */}
+        <div className={cn(CONTENEDOR_SALON, "grid gap-8 py-12 sm:grid-cols-2 md:gap-10 md:py-14 lg:grid-cols-[1.4fr_1fr_1fr_1fr]")}>
+          <div>
             <div className="flex items-center gap-2">
               {logoSalon ? (
                 <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
@@ -376,11 +418,12 @@ function SalonLayout() {
             {profile.about ? (
               <p className="mt-4 max-w-sm text-sm text-muted-foreground">{profile.about}</p>
             ) : null}
+            <RedesSalon enlaces={enlaces} nombre={profile.name} tono="oscuro" className="-ml-3 mt-3" />
           </div>
           <div>
             <p className="ws-etiqueta">Visítanos</p>
             <p className="mt-3 flex items-start gap-2 text-sm">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
               {profile.address}
             </p>
             <a
@@ -390,17 +433,12 @@ function SalonLayout() {
               <Phone className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
               {profile.phone}
             </a>
-            {profile.instagram?.trim() ? (
-              <a
-                href={`https://instagram.com/${profile.instagram.replace(/^@/, "")}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex min-h-11 items-center gap-2 text-sm hover:text-primary"
-              >
-                <Instagram className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                {profile.instagram}
+            {whatsappUrl && (
+              <a href={whatsappUrl} {...FUERA} className="flex min-h-11 items-center gap-2 text-sm hover:text-primary">
+                <IconoWhatsApp className="h-4 w-4 shrink-0 text-primary" />
+                WhatsApp
               </a>
-            ) : null}
+            )}
           </div>
           <div>
             <p className="ws-etiqueta">Horario</p>
@@ -411,6 +449,33 @@ function SalonLayout() {
               </p>
             ))}
           </div>
+          {(enlaces.blog || enlaces.instagram || enlaces.facebook || enlaces.tienda) && (
+            <div>
+              <p className="ws-etiqueta">Síguenos</p>
+              <ul className="mt-2 text-sm">
+                {enlaces.blog && (
+                  <li>
+                    <EnlaceFuera href={enlaces.blog} className="min-h-11 hover:text-primary">Blog</EnlaceFuera>
+                  </li>
+                )}
+                {enlaces.instagram && (
+                  <li>
+                    <EnlaceFuera href={enlaces.instagram} className="min-h-11 hover:text-primary">Instagram</EnlaceFuera>
+                  </li>
+                )}
+                {enlaces.facebook && (
+                  <li>
+                    <EnlaceFuera href={enlaces.facebook} className="min-h-11 hover:text-primary">Facebook</EnlaceFuera>
+                  </li>
+                )}
+                {enlaces.tienda && (
+                  <li>
+                    <EnlaceFuera href={enlaces.tienda} className="min-h-11 hover:text-primary">Tienda online</EnlaceFuera>
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
         </div>
         <div className="border-t border-lino">
           <div className={cn(CONTENEDOR_SALON, "flex flex-col gap-1 py-4 text-[13px] text-cafe-suave sm:flex-row sm:items-center sm:justify-between")}>
