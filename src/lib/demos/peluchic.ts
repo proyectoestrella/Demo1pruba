@@ -30,7 +30,7 @@ import type { MezclaSemilla } from "../mock/seed";
  */
 
 /** Sube cuando cambien estos datos: los navegadores con la demo vieja la vuelven a cargar. */
-export const VERSION_PELUCHIC = "2026-09-27.1";
+export const VERSION_PELUCHIC = "2026-09-27.2";
 
 export interface ServicioPeluChic {
   /** Id estable (sexto campo de la carta): las citas de la semilla y las descripciones cuelgan de él. */
@@ -306,8 +306,9 @@ export const PELUCHIC: SalonProfile = {
   tagline: "Peluquería y maquillaje",
   about:
     "Peluquería y maquillaje profesional en Sanchinarro, en el salón o a domicilio. Años de experiencia en teatro, televisión y publicidad: peinados y maquillaje de cámara y foco, novias, ceremonias y eventos.",
-  // Su web no publica el código postal: 28050 es el de Sanchinarro.
-  address: "C/ Princesa de Éboli 100, local 104 (entrada por el patio de c/ María Tudor 14), Sanchinarro, 28050 Madrid",
+  // Su web no publica el código postal: 28050 es el de Sanchinarro (y el de
+  // la entrega en 48 h de su tienda online).
+  address: "C/ Princesa de Éboli 100, local 104, entrada por el patio de c/ María Tudor 14, 28050 Madrid (Sanchinarro)",
   phone: "666 77 67 31",
   whatsapp: "+34 666 77 67 31",
   instagram: "@peluchicprofesional",
@@ -317,10 +318,12 @@ export const PELUCHIC: SalonProfile = {
     facebook: "https://www.facebook.com/peluchicprofesional/",
     tienda: "https://peluchic.online/tienda/ols/all",
   },
+  // Su web anuncia «un 10 % en tu primera compra», pero el cupón de su tienda
+  // está vacío (descuento 0): no se promete ninguna cifra. Es una invitación a
+  // apuntarse a sus novedades, con el texto de su propio formulario.
   boletin: {
-    texto: "Obtén un 10 % de descuento en tu primera compra al inscribirte en nuestro boletín.",
+    texto: "Suscríbete a nuestro boletín y recibe noticias sobre promociones, ofertas y eventos.",
     url: "https://peluchic.online/",
-    condiciones: "Para la primera compra, al inscribirte para recibir el boletín informativo.",
   },
   openingHours: HORARIO,
   timeZone: "Europe/Madrid",
@@ -330,12 +333,25 @@ export const PELUCHIC: SalonProfile = {
   heroImage: "/api/foto?place=ChIJc_dY3q0uQg0ReeAzc1Y3irs&i=0",
   photoCount: 10,
   galleryPhotos: ["5", "2", "7", "4", "3", "6"],
-  // Fotos que eligió Tomás de su trabajo (27/09/2026). Mandan sobre las de Google.
+  // Galería propia (manda sobre las fotos de Google, así que las tres que
+  // Tomás quería quitar —de la ficha de Google— ya no salen): las cuatro que
+  // eligió él y las mejores de su web (valoración 4-5 en imagenes.json), sin
+  // caras de niñas de comunión. Cada una tiene su versión de 600 px al lado
+  // (`-600.webp` en vez de `-1200.webp`). Carpeta `peluchic-galeria/` y no
+  // `peluchic/`: una carpeta /demo/peluchic chocaría con la ruta /demo/peluchic.
   galeriaPropia: [
-    { url: "/demo/peluchic-galeria-1.jpg", alt: "Recogido de trenzas con volumen en melena castaña, visto de espaldas" },
-    { url: "/demo/peluchic-galeria-2.jpg", alt: "Semirrecogido con trenzas y ondas en cabello rubio cobrizo, mientras se termina de peinar" },
-    { url: "/demo/peluchic-galeria-3.jpg", alt: "Recogido bajo trenzado en cabello castaño con mechas, visto de espaldas" },
-    { url: "/demo/peluchic-galeria-4.jpg", alt: "Semirrecogido con ondas y corona de flores, visto de espaldas" },
+    { url: "/demo/peluchic-galeria/recogido-ondas-trenzado-1200.webp", alt: "Recogido de ondas trenzadas en melena castaña, visto de espaldas" },
+    { url: "/demo/peluchic-galeria/semirrecogido-trenzas-en-proceso-1200.webp", alt: "Manos de la estilista terminando un semirrecogido con trenzas en cabello cobrizo" },
+    { url: "/demo/peluchic-galeria/recogido-trenzado-rubia-1200.webp", alt: "Recogido bajo trenzado en cabello rubio con mechas, visto de espaldas" },
+    { url: "/demo/peluchic-galeria/comunion-corona-flores-1200.webp", alt: "Peinado de comunión con ondas y corona de flores, visto de espaldas" },
+    { url: "/demo/peluchic-galeria/invitada-recogido-salon-1200.webp", alt: "Recogido con trenza y moño de invitada de boda, en el salón" },
+    { url: "/demo/peluchic-galeria/recogido-pelirroja-encaje-1200.webp", alt: "Recogido alto en cabello pelirrojo con blusa de encaje" },
+    { url: "/demo/peluchic-galeria/recogido-bajo-morena-1200.webp", alt: "Recogido bajo con ondas en cabello moreno, visto de espaldas" },
+    { url: "/demo/peluchic-galeria/semirrecogido-pelirroja-1200.webp", alt: "Semirrecogido con ondas en cabello pelirrojo, visto de espaldas" },
+    { url: "/demo/peluchic-galeria/recogido-lateral-rubia-1200.webp", alt: "Recogido lateral en cabello rubio, de frente" },
+    { url: "/demo/peluchic-galeria/novia-melena-suelta-1200.webp", alt: "Novia con melena suelta ondulada en un campo de lavanda" },
+    { url: "/demo/peluchic-galeria/comunion-ondas-flores-1200.webp", alt: "Peinado de comunión con ondas y flores blancas, de perfil" },
+    { url: "/demo/peluchic-galeria/recogido-bajo-rubia-1200.webp", alt: "Moño bajo pulido en cabello rubio, visto de espaldas" },
   ],
   logoUrl: "/demo/peluchic-logo.png",
   // Cuatro y sin «y» al final: la web las junta en una frase («…, color orgánico y tratamientos capilares»).

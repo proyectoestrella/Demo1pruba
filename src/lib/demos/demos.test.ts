@@ -99,10 +99,13 @@ describe("perfil de PeluChic", () => {
       facebook: "https://www.facebook.com/peluchicprofesional/",
       tienda: "https://peluchic.online/tienda/ols/all",
     });
-    expect(PELUCHIC.boletin?.texto).toContain("10 %");
+    // El 10 % de su web no está activo en su tienda: no se promete ninguna cifra.
+    expect(PELUCHIC.boletin?.texto).not.toMatch(/\d/);
+    expect(PELUCHIC.boletin?.condiciones).toBeUndefined();
     expect(PELUCHIC.logoUrl).toBe("/demo/peluchic-logo.png");
     expect(PELUCHIC.plan).toBe("todo-incluido");
-    expect(PELUCHIC.galeriaPropia?.every((f) => f.url.startsWith("/demo/") && f.alt.length > 10)).toBe(true);
+    expect(PELUCHIC.galeriaPropia?.length).toBe(12);
+    expect(PELUCHIC.galeriaPropia?.every((f) => f.url.startsWith("/demo/peluchic-galeria/") && f.alt.length > 10)).toBe(true);
   });
 
   it("sus preguntas frecuentes son válidas y caben", () => {
@@ -174,5 +177,16 @@ describe("cargar la demo registrada en la store", () => {
     expect(cargarDemoRegistrada("no-existe")).toBe(false);
     expect(useSalonStore.getState().salonProfile).toBe(antes);
     expect(demoRegistrada("no-existe")).toBeUndefined();
+  });
+});
+
+describe("las fotos de la galería existen, en 600 y 1200 px", () => {
+  it("cada foto de galeriaPropia está en public/ con su versión pequeña", async () => {
+    for (const foto of PELUCHIC.galeriaPropia ?? []) {
+      const grande = new URL(`../../../public${foto.url}`, import.meta.url);
+      const pequena = new URL(`../../../public${foto.url.replace("-1200.webp", "-600.webp")}`, import.meta.url);
+      expect(await Bun.file(grande).exists()).toBe(true);
+      expect(await Bun.file(pequena).exists()).toBe(true);
+    }
   });
 });
