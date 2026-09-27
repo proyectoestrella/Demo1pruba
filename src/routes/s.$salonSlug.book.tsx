@@ -48,7 +48,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Calendar } from "@/components/ui/calendar";
-import { CONTENEDOR_WEB } from "@/lib/web-publica";
+import { CONTENEDOR_SALON } from "@/lib/web-publica";
 import { es } from "date-fns/locale";
 import heroImg from "@/assets/hero-salon.jpg";
 import { registerBookingClient } from "@/lib/api/clients.functions";
@@ -665,7 +665,7 @@ function BookingWizard() {
     : undefined;
 
   return (
-    <section className={cn(CONTENEDOR_WEB, "pb-10 pt-8 md:pb-16 md:pt-12")}>
+    <section className={cn(CONTENEDOR_SALON, "pb-10 pt-8 md:pb-16 md:pt-12")}>
       <StepIndicator step={step} soloUno={soloUno} />
 
       {/* Mejora B1: atajo de un toque para quien ya reservó antes en este
@@ -1091,7 +1091,9 @@ function ServiceStep({
                 {cat}
               </AccordionTrigger>
               <AccordionContent>
-                <div className="space-y-2 pb-2">
+                {/* Desde 1536 px, dos columnas: con el contenedor fluido
+                    (18.1) una sola fila de 1200 px separaba nombre y precio. */}
+                <div className="grid gap-2 pb-2 2xl:grid-cols-2">
                   {items.map((s) => {
                     const label = { name: s.name, description: s.description };
                     const isSelected = selected.includes(s.id);
@@ -1682,7 +1684,7 @@ function BookingSummary({
         className="fixed inset-x-0 bottom-0 z-40 border-t border-lino bg-background/95 pt-3 backdrop-blur lg:hidden"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
       >
-        <div className={cn(CONTENEDOR_WEB, "flex items-center justify-between gap-3")}>
+        <div className={cn(CONTENEDOR_SALON, "flex items-center justify-between gap-3")}>
           <div className="min-w-0 flex-1">
             <p className="flex items-baseline gap-2">
               <span className="text-lg font-extrabold tabular-nums">{eur(total)}</span>

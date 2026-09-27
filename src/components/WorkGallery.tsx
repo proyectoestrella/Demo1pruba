@@ -3,7 +3,7 @@ import { Expand } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Reveal } from "@/components/Reveal";
 import { cn } from "@/lib/utils";
-import { CONTENEDOR_WEB, SECCION_WEB } from "@/lib/web-publica";
+import { CONTENEDOR_SALON, SECCION_WEB } from "@/lib/web-publica";
 import galleryRecorte from "@/assets/gallery-recorte.jpg";
 import galleryDegradado from "@/assets/gallery-degradado.jpg";
 import gallerySalon from "@/assets/gallery-salon.jpg";
@@ -82,7 +82,7 @@ export function WorkGallery({ photos = [], tipo }: { photos?: string[]; tipo?: s
 
   return (
     <section id="galeria" ref={seccion} className="border-t border-lino bg-card">
-      <div className={cn(CONTENEDOR_WEB, SECCION_WEB)}>
+      <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
         <Reveal className="mb-8 md:mb-10">
           <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Nuestro trabajo</p>
           <h2 className="mt-2 text-[26px] font-extrabold leading-tight tracking-tight md:text-[32px]">Galería</h2>

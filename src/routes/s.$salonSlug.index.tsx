@@ -50,7 +50,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { TeamShowcase } from "@/components/twentyfirst/team-showcase";
 import { cn } from "@/lib/utils";
-import { CONTENEDOR_WEB, SECCION_WEB, listaConY, notaEs } from "@/lib/web-publica";
+import { CONTENEDOR_SALON, SECCION_WEB, listaConY, notaEs } from "@/lib/web-publica";
 import { eur } from "@/lib/copy";
 import { faqPublica } from "@/lib/faq";
 import { reglaSenal, respuestaFaqSenal, resumenCancelacionSenal, servicioLlevaSenal, type ReglaSenal } from "@/lib/senal";
@@ -405,7 +405,7 @@ function SalonHome() {
         />
         <div className="absolute inset-0 -z-10 bg-cafe/70" aria-hidden="true" />
 
-        <div className={cn(CONTENEDOR_WEB, "flex min-h-[520px] flex-col justify-end pb-12 pt-20 md:min-h-[600px] md:justify-center md:py-24")}>
+        <div className={cn(CONTENEDOR_SALON, "flex min-h-[520px] flex-col justify-end pb-12 pt-20 md:min-h-[600px] md:justify-center md:py-24")}>
           <div className="entrada-portada max-w-2xl">
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="inline-flex h-8 items-center gap-2 rounded-full bg-white/15 px-3 font-semibold">
@@ -504,7 +504,7 @@ function SalonHome() {
       </section>
 
       {/* Servicios destacados */}
-      <section id="servicios" className={cn(CONTENEDOR_WEB, SECCION_WEB)}>
+      <section id="servicios" className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
         <SectionHeading
           eyebrow="Lo más pedido"
           title="Servicios destacados"
@@ -546,7 +546,7 @@ function SalonHome() {
 
       {/* Carta completa */}
       <section id="carta" className="border-t border-lino bg-card">
-        <div className={cn(CONTENEDOR_WEB, SECCION_WEB)}>
+        <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
           <SectionHeading
             eyebrow="Precios"
             title="Carta completa"
@@ -570,7 +570,7 @@ function SalonHome() {
                       </span>
                     </AccordionTrigger>
                     <AccordionContent className="pb-4">
-                      <ul className="grid gap-2 lg:grid-cols-2">
+                      <ul className="grid gap-2 lg:grid-cols-2 2xl:grid-cols-3">
                         {items.map((s) => (
                           <li key={s.id}>
                             <Link
@@ -606,7 +606,7 @@ function SalonHome() {
       {/* Equipo */}
       {!soloUno || soloPro ? (
         <section id="equipo" className="border-t border-lino">
-          <div className={cn(CONTENEDOR_WEB, SECCION_WEB)}>
+          <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
             <SectionHeading
               eyebrow="Equipo"
               title="Quién te va a atender"
@@ -667,7 +667,7 @@ function SalonHome() {
       {isRealSalon ? (
         hasGoogleReviews ? (
           <section id="resenas" className="border-t border-lino bg-card">
-            <div className={cn(CONTENEDOR_WEB, SECCION_WEB, "text-center")}>
+            <div className={cn(CONTENEDOR_SALON, SECCION_WEB, "text-center")}>
               <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Reseñas</p>
               <h2 className="mt-2 text-[26px] font-extrabold tracking-tight md:text-[32px]">Lo que dicen en Google</h2>
               <div className="mt-6 flex items-center justify-center gap-2">
@@ -685,7 +685,7 @@ function SalonHome() {
         ) : null
       ) : (
         <section id="resenas" className="border-t border-lino bg-card">
-          <div className={cn(CONTENEDOR_WEB, SECCION_WEB)}>
+          <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
             <Reveal className="mb-8 flex flex-wrap items-end justify-between gap-4 md:mb-10">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">Reseñas</p>
@@ -714,7 +714,7 @@ function SalonHome() {
 
       {/* Preguntas frecuentes */}
       <section id="faq" className="border-t border-lino">
-        <div className={cn(CONTENEDOR_WEB, SECCION_WEB, "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-12")}>
+        <div className={cn(CONTENEDOR_SALON, SECCION_WEB, "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-12")}>
           <SectionHeading eyebrow="Antes de venir" title="Preguntas frecuentes" className="lg:mb-0" />
           <Reveal>
             <Accordion type="single" collapsible className="divide-y divide-lino rounded-[20px] border border-lino bg-card px-4 sm:px-5">
@@ -736,7 +736,7 @@ function SalonHome() {
       {/* Ubicación y horario: sin iframe de Google Maps (se quedaba en blanco
           hasta cargar y restaba rendimiento); un botón abre la ruta. */}
       <section id="ubicacion" className="border-t border-lino bg-card">
-        <div className={cn(CONTENEDOR_WEB, SECCION_WEB)}>
+        <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
           <SectionHeading eyebrow="Ubicación y horario" title="Te esperamos aquí" />
           <div className="grid gap-3 md:grid-cols-2">
             <Reveal className="h-full">
@@ -803,7 +803,7 @@ function SalonHome() {
 
       {/* Llamada final */}
       <section className="border-t border-lino">
-        <div className={cn(CONTENEDOR_WEB, SECCION_WEB, "text-center")}>
+        <div className={cn(CONTENEDOR_SALON, SECCION_WEB, "text-center")}>
           <Reveal className="flex flex-col items-center">
             <h2 className="text-[26px] font-extrabold tracking-tight md:text-[32px]">¿Te guardamos un hueco?</h2>
             <p className="mt-2 max-w-md text-[15px] text-muted-foreground">

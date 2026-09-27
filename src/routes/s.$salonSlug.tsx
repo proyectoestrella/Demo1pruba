@@ -14,7 +14,7 @@ import { Logo } from "@/components/Logo";
 import { logoDelSalon } from "@/lib/logo-salon";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { CONTENEDOR_WEB } from "@/lib/web-publica";
+import { CONTENEDOR_SALON } from "@/lib/web-publica";
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 
@@ -214,7 +214,7 @@ function SalonLayout() {
 
   if (salonUnresolved) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center text-foreground">
+      <div className="web-salon flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center text-foreground">
         <TriangleAlert className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
         <h1 className="font-display text-2xl">No hemos podido identificar este salón</h1>
         <p className="max-w-sm text-sm text-muted-foreground">
@@ -234,9 +234,9 @@ function SalonLayout() {
     // En la home NO hace falta: su barra de «Reservar cita» ya se esconde sola
     // al llegar el pie (ver MobileBookingBar), y reservarle sitio dejaría una
     // banda negra vacía al final de la página.
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="web-salon flex min-h-screen flex-col bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
-        <div className={cn(CONTENEDOR_WEB, "flex min-h-16 items-center justify-between gap-4 py-2.5")}>
+        <div className={cn(CONTENEDOR_SALON, "flex min-h-16 items-center justify-between gap-4 py-2.5")}>
           <div className="flex min-w-0 items-center gap-3">
             <Link
               to="/s/$salonSlug"
@@ -361,7 +361,7 @@ function SalonLayout() {
           onBooking ? "pb-[var(--alto-barra-fija)] lg:pb-0" : "pb-[var(--alto-barra-fija)] md:pb-0",
         )}
       >
-        <div className={cn(CONTENEDOR_WEB, "grid gap-8 py-12 md:grid-cols-4 md:gap-10 md:py-14")}>
+        <div className={cn(CONTENEDOR_SALON, "grid gap-8 py-12 md:grid-cols-4 md:gap-10 md:py-14")}>
           <div className="md:col-span-2">
             <div className="flex items-center gap-2">
               {logoSalon ? (
@@ -413,7 +413,7 @@ function SalonLayout() {
           </div>
         </div>
         <div className="border-t border-lino">
-          <div className={cn(CONTENEDOR_WEB, "flex flex-col gap-1 py-4 text-[13px] text-cafe-suave sm:flex-row sm:items-center sm:justify-between")}>
+          <div className={cn(CONTENEDOR_SALON, "flex flex-col gap-1 py-4 text-[13px] text-cafe-suave sm:flex-row sm:items-center sm:justify-between")}>
             <p>© {profile.name} · Reservas con siShow</p>
             <Link
               to="/s/$salonSlug/privacidad"

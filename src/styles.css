@@ -4,6 +4,8 @@
 /* Tour guiado del panel (driver.js). Se reviste con los tokens del tema al
    final de este fichero, fuera de toda `@layer` — ver la nota de allí. */
 @import "driver.js/dist/driver.css";
+/* Web pública del salón (lote 18): todo con ámbito `.web-salon`. */
+@import "./web-salon.css";
 
 /*
  * Solo modo claro. La identidad «Arena» (ver DESIGN.md) es blanca en PC y en

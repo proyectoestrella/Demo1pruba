@@ -8,6 +8,14 @@
  */
 export const CONTENEDOR_WEB = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8";
 
+/**
+ * Contenedor fluido de la web del salón (lote 18.1): margen lateral
+ * `clamp(16px, 4vw, 72px)` y ancho útil de 1600 a 2048 px (ver
+ * `src/web-salon.css`). Sustituye a `CONTENEDOR_WEB` en la portada, la
+ * reserva y la confirmación, que a 1920 px dejaban un 43 % del ancho vacío.
+ */
+export const CONTENEDOR_SALON = "contenedor-salon";
+
 /** Ritmo vertical de sección, sobre la escala de 4 (56 / 80 px). */
 export const SECCION_WEB = "py-14 md:py-20";
 

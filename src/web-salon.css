@@ -1,0 +1,27 @@
+/*
+ * Web pública del salón (lote 18): estilos con ámbito de la landing, la
+ * reserva y la confirmación (`/s/<salón>`). Nada de aquí toca el panel: todo
+ * cuelga de `.web-salon`, la clase del envoltorio de `s.$salonSlug.tsx`.
+ */
+
+/* ---- Maquetación fluida (18.1) --------------------------------------------
+ * Antes: `max-w-6xl` (1152 px) para todo. A 1920 px quedaba el 43 % del ancho
+ * en bandas vacías a los lados y a 2560 px el 57 %.
+ *
+ * Ahora el contenido llega hasta el borde con un margen lateral que crece con
+ * la pantalla (16 px en móvil, 72 px desde 1800 px) y un ancho útil que no
+ * baja de 1600 px ni pasa de 2048: a 1920 px quedan 160 px por lado y a
+ * 2560 px, 256. Los fondos de sección van a sangre (la sección no lleva
+ * contenedor; lo lleva su hijo), así que esos márgenes nunca se ven como
+ * bandas de otro color.
+ * ------------------------------------------------------------------------- */
+:root {
+  --ws-gutter: clamp(16px, 4vw, 72px);
+  --ws-ancho-util: min(2048px, max(1600px, 80vw));
+}
+.contenedor-salon {
+  width: 100%;
+  max-width: calc(var(--ws-ancho-util) + 2 * var(--ws-gutter));
+  margin-inline: auto;
+  padding-inline: var(--ws-gutter);
+}
