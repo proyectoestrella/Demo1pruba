@@ -6,6 +6,7 @@ import { parseFaqEntry, MAX_FAQ_ENTRIES } from "../faq";
 import { parseRanges } from "../opening-hours";
 import { servicesForType, textosDeCarta } from "../mock/salon";
 import { useSalonStore } from "../store";
+import { useAccesosDemo } from "../accesos-maqueta";
 import { demoPorSlug, demoRegistrada, marcaDeDemo, slugsDeDemos } from "./index";
 import { cargarDemoRegistrada, demoRegistradaCargada, perfilDeDemoRegistrada } from "./aplicar";
 import { CATEGORIAS_PELUCHIC, PELUCHIC, SERVICIOS_PELUCHIC } from "./peluchic";
@@ -151,6 +152,15 @@ describe("cargar la demo registrada en la store", () => {
     expect(st.realSalonSlug).toBeNull();
     expect(st.demoActive).toBe(true);
     expect(demoRegistradaCargada("peluchic")).toBe(true);
+  });
+
+  it("la puerta /demo/<slug> entra como la gerente y en el panel de siempre", () => {
+    useAccesosDemo.setState({ verComo: "demo-diego", claveEquipo: "otra", miembros: [] });
+    useSalonStore.setState({ panelV2: true });
+    cargarDemoRegistrada("peluchic", { panel: true });
+    expect(useAccesosDemo.getState().verComo).toBeNull();
+    expect(useAccesosDemo.getState().miembros).toBeNull();
+    expect(useSalonStore.getState().panelV2).toBe(false);
   });
 
   it("un ?d= encima invalida la carga: la próxima visita sin ?d= la vuelve a cargar", () => {

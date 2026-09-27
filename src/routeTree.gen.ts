@@ -17,6 +17,7 @@ import { Route as AceptarRouteImport } from './routes/aceptar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as SSalonSlugRouteImport } from './routes/s.$salonSlug'
+import { Route as DemoSlugRouteImport } from './routes/demo.$slug'
 import { Route as AppWebRouteImport } from './routes/app.web'
 import { Route as AppWaitlistRouteImport } from './routes/app.waitlist'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
@@ -81,6 +82,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const SSalonSlugRoute = SSalonSlugRouteImport.update({
   id: '/s/$salonSlug',
   path: '/s/$salonSlug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoSlugRoute = DemoSlugRouteImport.update({
+  id: '/demo/$slug',
+  path: '/demo/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppWebRoute = AppWebRouteImport.update({
@@ -236,6 +242,7 @@ export interface FileRoutesByFullPath {
   '/app/settings': typeof AppSettingsRoute
   '/app/waitlist': typeof AppWaitlistRoute
   '/app/web': typeof AppWebRoute
+  '/demo/$slug': typeof DemoSlugRoute
   '/s/$salonSlug': typeof SSalonSlugRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/api/calendario-externo/cron': typeof ApiCalendarioExternoCronRoute
@@ -270,6 +277,7 @@ export interface FileRoutesByTo {
   '/app/settings': typeof AppSettingsRoute
   '/app/waitlist': typeof AppWaitlistRoute
   '/app/web': typeof AppWebRoute
+  '/demo/$slug': typeof DemoSlugRoute
   '/app': typeof AppIndexRoute
   '/api/calendario-externo/cron': typeof ApiCalendarioExternoCronRoute
   '/s/$salonSlug/book': typeof SSalonSlugBookRoute
@@ -305,6 +313,7 @@ export interface FileRoutesById {
   '/app/settings': typeof AppSettingsRoute
   '/app/waitlist': typeof AppWaitlistRoute
   '/app/web': typeof AppWebRoute
+  '/demo/$slug': typeof DemoSlugRoute
   '/s/$salonSlug': typeof SSalonSlugRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/api/calendario-externo/cron': typeof ApiCalendarioExternoCronRoute
@@ -342,6 +351,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/waitlist'
     | '/app/web'
+    | '/demo/$slug'
     | '/s/$salonSlug'
     | '/app/'
     | '/api/calendario-externo/cron'
@@ -376,6 +386,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/waitlist'
     | '/app/web'
+    | '/demo/$slug'
     | '/app'
     | '/api/calendario-externo/cron'
     | '/s/$salonSlug/book'
@@ -410,6 +421,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/waitlist'
     | '/app/web'
+    | '/demo/$slug'
     | '/s/$salonSlug'
     | '/app/'
     | '/api/calendario-externo/cron'
@@ -433,6 +445,7 @@ export interface RootRouteChildren {
   ApiFotoRoute: typeof ApiFotoRoute
   ApiRecordatoriosRoute: typeof ApiRecordatoriosRoute
   ApiSenalesVencidasRoute: typeof ApiSenalesVencidasRoute
+  DemoSlugRoute: typeof DemoSlugRoute
   SSalonSlugRoute: typeof SSalonSlugRouteWithChildren
   ApiCalendarioExternoCronRoute: typeof ApiCalendarioExternoCronRoute
   ApiCalendarioExternoGoogleCallbackRoute: typeof ApiCalendarioExternoGoogleCallbackRoute
@@ -495,6 +508,13 @@ declare module '@tanstack/react-router' {
       path: '/s/$salonSlug'
       fullPath: '/s/$salonSlug'
       preLoaderRoute: typeof SSalonSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/$slug': {
+      id: '/demo/$slug'
+      path: '/demo/$slug'
+      fullPath: '/demo/$slug'
+      preLoaderRoute: typeof DemoSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/web': {
@@ -742,6 +762,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiFotoRoute: ApiFotoRoute,
   ApiRecordatoriosRoute: ApiRecordatoriosRoute,
   ApiSenalesVencidasRoute: ApiSenalesVencidasRoute,
+  DemoSlugRoute: DemoSlugRoute,
   SSalonSlugRoute: SSalonSlugRouteWithChildren,
   ApiCalendarioExternoCronRoute: ApiCalendarioExternoCronRoute,
   ApiCalendarioExternoGoogleCallbackRoute:
