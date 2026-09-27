@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { categoryOrderOf } from "@/lib/business-type";
 import { toast } from "sonner";
 import { useSalonStore } from "@/lib/store";
 import type { Service } from "@/lib/mock/types";
@@ -27,6 +28,10 @@ export interface ServiceFormSheetProps {
 export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormSheetProps) {
   const addService = useSalonStore((s) => s.addService);
   const updateService = useSalonStore((s) => s.updateService);
+  const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
+  const services = useSalonStore((s) => s.services);
+  // Lote P: las secciones de SU carta, para elegir una o escribir otra.
+  const secciones = useMemo(() => categoryOrderOf(services).filter((c) => c !== "Servicios" && c !== "Otros"), [services]);
   const isEdit = !!service;
 
   const [name, setName] = useState("");
@@ -34,6 +39,8 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
   const [durationMin, setDurationMin] = useState("45");
   const [priceEur, setPriceEur] = useState("40");
   const [active, setActive] = useState(true);
+  const [category, setCategory] = useState("");
+  const [priceText, setPriceText] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -42,6 +49,8 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
     setDurationMin(String(service?.durationMin ?? 45));
     setPriceEur(String(service?.priceEur ?? 40));
     setActive(service?.active ?? true);
+    setCategory(service?.category && service.category !== "Servicios" ? service.category : "");
+    setPriceText(service?.priceText ?? "");
   }, [open, service]);
 
   function handleSubmit(e: React.FormEvent) {
@@ -51,13 +60,25 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
       return;
     }
     const duration = Number(durationMin) || 0;
-    const price = Number(priceEur) || 0;
+    const price = Number(String(priceEur).replace(",", ".")) || 0;
+    const grupo = category.trim() || undefined;
+    let id: string;
     if (isEdit && service) {
-      updateService(service.id, { name: name.trim(), description: description.trim(), durationMin: duration, priceEur: price, active });
+      id = service.id;
+      updateService(service.id, { name: name.trim(), description: description.trim(), durationMin: duration, priceEur: price, active, category: grupo ?? service.category });
       toast.success("Servicio actualizado", { description: name });
     } else {
-      addService({ name: name.trim(), description: description.trim(), durationMin: duration, priceEur: price, active });
+      id = addService({ name: name.trim(), description: description.trim(), durationMin: duration, priceEur: price, active, ...(grupo ? { category: grupo } : {}) }).id;
       toast.success("Servicio creado", { description: name });
+    }
+    // El precio «como lo anuncias» vive en el perfil (lo lee también la web).
+    const literal = priceText.trim();
+    const actuales = useSalonStore.getState().salonProfile.preciosLiterales ?? {};
+    if ((actuales[id] ?? "") !== literal) {
+      const siguiente = { ...actuales };
+      if (literal) siguiente[id] = literal;
+      else delete siguiente[id];
+      updateSalonProfile({ preciosLiterales: siguiente });
     }
     onOpenChange(false);
   }
@@ -89,8 +110,20 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="svc-price">Precio (€)</Label>
-                <Input id="svc-price" type="number" min={0} step={1} value={priceEur} onChange={(e) => setPriceEur(e.target.value)} />
+                <Input id="svc-price" type="number" min={0} step={0.5} value={priceEur} onChange={(e) => setPriceEur(e.target.value)} />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="svc-price-text">Precio como lo anuncias (opcional)</Label>
+              <Input id="svc-price-text" value={priceText} onChange={(e) => setPriceText(e.target.value)} placeholder="24 € / 28 € / 31 € · desde 150 €" />
+              <p className="text-xs text-muted-foreground">Si tiene varios precios o un «desde». Se reserva con el de arriba.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="svc-category">Sección de la carta</Label>
+              <Input id="svc-category" list="svc-secciones" value={category} onChange={(e) => setCategory(e.target.value)} placeholder={secciones[0] ?? "Cortes, Color, Tratamientos…"} />
+              <datalist id="svc-secciones">
+                {secciones.map((c) => <option key={c} value={c} />)}
+              </datalist>
             </div>
             <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
               <div>
