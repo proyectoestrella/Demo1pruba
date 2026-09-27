@@ -1,6 +1,7 @@
 import type { SVGProps } from "react";
 import { ArrowUpRight, Facebook, Instagram, Newspaper, ShoppingBag } from "lucide-react";
 import { Reveal } from "@/components/Reveal";
+import { TrazoTitulo } from "@/components/web-salon/Movimiento";
 import { cn } from "@/lib/utils";
 import { CONTENEDOR_SALON, SECCION_WEB, urlSegura, type EnlacesSalon } from "@/lib/web-publica";
 
@@ -107,6 +108,7 @@ export function BloqueComunidad({
           <h2 id="siguenos-titulo" className="mt-2 ws-titulo text-[28px] md:text-[38px]">
             Síguenos
           </h2>
+          <TrazoTitulo className="mt-2" />
         </Reveal>
         <div
           className={cn(

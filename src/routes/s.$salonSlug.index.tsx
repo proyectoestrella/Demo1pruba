@@ -54,6 +54,7 @@ import { TeamShowcase } from "@/components/twentyfirst/team-showcase";
 import { cn } from "@/lib/utils";
 import { CONTENEDOR_SALON, SECCION_WEB, enlaceWhatsApp, enlacesDelSalon, listaConY, notaEs, precioDeCarta } from "@/lib/web-publica";
 import { CartaServicios } from "@/components/web-salon/CartaServicios";
+import { NotaQueSube, TrazoTitulo } from "@/components/web-salon/Movimiento";
 import { BloqueComunidad, FUERA, IconoWhatsApp } from "@/components/web-salon/EnlacesSalon";
 import { eur } from "@/lib/copy";
 import { faqPublica } from "@/lib/faq";
@@ -268,6 +269,7 @@ function SectionHeading({
       <h2 className="mt-2 ws-titulo text-[28px] text-foreground md:text-[38px]">
         {title}
       </h2>
+      <TrazoTitulo className="mt-2" />
       {intro && <p className="mt-2 max-w-xl text-[15px] text-muted-foreground">{intro}</p>}
     </Reveal>
   );
@@ -409,7 +411,7 @@ function SalonHome() {
           ref={portada.ref}
           onError={portada.onError}
           alt={`Interior de ${profile.name}`}
-          className="absolute inset-0 -z-20 h-full w-full object-cover"
+          className="ws-portada-foto absolute inset-0 -z-20 h-full w-full object-cover"
           width={1920}
           height={1280}
           fetchPriority="high"
@@ -663,9 +665,10 @@ function SalonHome() {
             <div className={cn(CONTENEDOR_SALON, SECCION_WEB, "text-center")}>
               <p className="ws-etiqueta">Reseñas</p>
               <h2 className="mt-2 ws-titulo text-[28px] md:text-[38px]">Lo que dicen en Google</h2>
+              <TrazoTitulo className="mt-2" centrado />
               <div className="mt-6 flex items-center justify-center gap-2">
                 <Estrellas nota={profile.rating} className="[&_svg]:h-5 [&_svg]:w-5" />
-                <span className="text-2xl font-extrabold tabular-nums">{notaEs(profile.rating)}</span>
+                <NotaQueSube valor={profile.rating} className="text-2xl font-extrabold tabular-nums" />
               </div>
               <p className="mt-1 text-sm text-muted-foreground">{profile.reviewCount} reseñas en Google</p>
               <Button asChild variant="outline" className="mt-6 h-11 rounded-full px-6">
@@ -685,11 +688,12 @@ function SalonHome() {
                 <h2 className="mt-2 ws-titulo text-[28px] md:text-[38px]">
                   Lo que dicen las clientas
                 </h2>
+                <TrazoTitulo className="mt-2" />
               </div>
               {profile.rating > 0 && (
                 <div className="flex items-center gap-2 text-sm">
                   <Estrellas nota={profile.rating} />
-                  <span className="font-bold tabular-nums">{notaEs(profile.rating)}</span>
+                  <NotaQueSube valor={profile.rating} className="font-bold tabular-nums" />
                   <span className="text-muted-foreground">· {profile.reviewCount} reseñas</span>
                 </div>
               )}
@@ -805,6 +809,7 @@ function SalonHome() {
         <div className={cn(CONTENEDOR_SALON, SECCION_WEB, "text-center")}>
           <Reveal className="flex flex-col items-center">
             <h2 className="ws-titulo text-[28px] md:text-[38px]">¿Te guardamos un hueco?</h2>
+            <TrazoTitulo className="mt-2" centrado />
             <p className="mt-2 max-w-md text-[15px] text-muted-foreground">
               {soloUno
                 ? "Elige servicio y hora en menos de un minuto."

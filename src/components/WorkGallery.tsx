@@ -9,6 +9,7 @@ import {
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { ChevronLeft, ChevronRight, Expand, Pause, Play, X } from "lucide-react";
 import { Reveal } from "@/components/Reveal";
+import { TrazoTitulo } from "@/components/web-salon/Movimiento";
 import { cn } from "@/lib/utils";
 import { CONTENEDOR_SALON } from "@/lib/web-publica";
 import galleryRecorte from "@/assets/gallery-recorte.jpg";
@@ -139,6 +140,7 @@ export function WorkGallery({ fotos = [], tipo }: { fotos?: FotoGaleria[]; tipo?
             <h2 id="galeria-titulo" className="mt-2 ws-titulo text-[28px] md:text-[38px]">
               Galería
             </h2>
+            <TrazoTitulo className="mt-2" />
             <p className="mt-2 max-w-xl text-[15px] text-muted-foreground">Pulsa una foto para verla en grande.</p>
           </Reveal>
           {!menosMovimiento && (

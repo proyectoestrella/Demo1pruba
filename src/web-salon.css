@@ -180,3 +180,37 @@ body:has(.web-salon) [role="dialog"] .font-display {
   line-height: 1.12;
   letter-spacing: -0.005em;
 }
+
+/* ---- Movimiento (18.6) ----------------------------------------------------
+ * Una vez, curvas de salida, ≤ 1,6 s, y nada con «menos movimiento».
+ * ------------------------------------------------------------------------- */
+
+/* Portada: la foto se acerca un poco al cargar (solo transformación: no toca
+   el LCP ni mueve nada de sitio). */
+@keyframes ws-acercar {
+  from { transform: scale(1.06); }
+  to { transform: scale(1); }
+}
+.web-salon .ws-portada-foto {
+  animation: ws-acercar 1600ms var(--curva-salida) both;
+  transform-origin: 60% 40%;
+}
+
+/* Trazo de pincel bajo los títulos: se dibuja al entrar en pantalla. */
+.web-salon .ws-trazo path {
+  fill: none;
+  stroke: var(--ws-caramelo);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 800ms var(--curva-salida) 180ms;
+}
+.web-salon .ws-trazo[data-dibujado="false"] path {
+  stroke-dashoffset: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .web-salon .ws-portada-foto { animation: none; }
+  .web-salon .ws-trazo path { transition: none; stroke-dashoffset: 0; }
+}
