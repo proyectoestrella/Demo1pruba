@@ -45,7 +45,7 @@
     padding-inline: var(--ws-lateral);
   }
   @media (min-width: 1680px) { .ws-contenedor { max-width: 1440px; } }
-  @media (min-width: 2200px) { .ws-contenedor { max-width: 1600px; } }
+  @media (min-width: 2200px) { .ws-contenedor { max-width: 1760px; } }
 
   .ws-seccion { padding-block: clamp(4rem, 3rem + 4vw, 7.5rem); }
   .ws-seccion-s { padding-block: clamp(3rem, 2.4rem + 2.5vw, 5rem); }
@@ -59,6 +59,7 @@
     text-wrap: balance;
   }
   .ws-h1 { font-size: clamp(2.6rem, 1.55rem + 4.1vw, 5.6rem); line-height: 1.02; }
+  @media (min-width: 2200px) { .ws-h1 { font-size: 6.4rem; } .ws-h2 { font-size: 4rem; } .ws-entradilla { font-size: 1.45rem; } }
   .ws-h1-s { font-size: clamp(2.3rem, 1.6rem + 2.8vw, 4.25rem); line-height: 1.05; }
   .ws-h2 { font-size: clamp(2rem, 1.45rem + 2.2vw, 3.5rem); line-height: 1.08; }
   .ws-h3 { font-size: clamp(1.6rem, 1.3rem + 1.1vw, 2.35rem); line-height: 1.12; }

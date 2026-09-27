@@ -170,13 +170,17 @@ export function CartaColores({ className }: { className?: string }) {
   );
 }
 
+/**
+ * La ficha real y la carta de colores. Entre 1024 y 1279 px la columna no da
+ * para las dos: queda la ficha, que ya enseña el color de la clienta.
+ */
 export function VisualFichas() {
   return (
-    <Escenario className="grid items-end gap-5 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)] sm:gap-6">
-      <div className="max-h-[34rem] overflow-hidden rounded-[1.25rem] sm:max-h-[36rem]">
-        <Ventana captura="ficha" sizes="(min-width: 1024px) 330px, (min-width: 640px) 45vw, 88vw" className="rounded-[1.25rem]" />
+    <Escenario className="grid items-end gap-5 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)] sm:gap-6 lg:grid-cols-1 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)]">
+      <div className="max-h-[34rem] overflow-hidden rounded-[1.25rem] sm:max-h-[36rem] lg:mx-auto lg:max-h-[34rem] lg:max-w-[22rem] xl:max-h-[36rem] xl:max-w-none">
+        <Ventana captura="ficha" sizes="(min-width: 1024px) 352px, (min-width: 640px) 45vw, 88vw" className="rounded-[1.25rem]" />
       </div>
-      <CartaColores className="sm:mb-8" />
+      <CartaColores className="sm:mb-8 lg:hidden xl:mb-8 xl:block" />
     </Escenario>
   );
 }

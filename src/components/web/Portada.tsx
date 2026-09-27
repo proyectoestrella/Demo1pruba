@@ -63,7 +63,7 @@ function EscenaPortada() {
       />
       <Movil
         captura="movil-reserva-servicio"
-        prioridad
+        inmediata
         sizes="(min-width: 1024px) 13vw, 28vw"
         className="absolute bottom-[4%] left-0 w-[27%] sm:bottom-0"
       />

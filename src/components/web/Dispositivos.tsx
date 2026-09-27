@@ -6,15 +6,17 @@ interface PropsImagen {
   captura: NombreCaptura;
   /** Atributo `sizes`: cuánto ocupa la imagen en pantalla. */
   sizes: string;
-  /** La imagen principal de la página: sin carga diferida y con prioridad. */
+  /** La imagen principal de la página (LCP): sin carga diferida y con prioridad alta. */
   prioridad?: boolean;
+  /** Visible al cargar pero secundaria: sin carga diferida, sin quitar ancho de banda a la principal. */
+  inmediata?: boolean;
   /** Si la imagen repite lo que ya dice el texto de al lado, alt vacío. */
   decorativa?: boolean;
   className?: string;
 }
 
 /** Captura del producto con sus variantes, tamaño reservado y carga diferida. */
-export function ImagenCaptura({ captura, sizes, prioridad, decorativa, className }: PropsImagen) {
+export function ImagenCaptura({ captura, sizes, prioridad, inmediata, decorativa, className }: PropsImagen) {
   const c = CAPTURAS[captura];
   const menor = Math.min(...c.anchos);
   return (
@@ -25,7 +27,7 @@ export function ImagenCaptura({ captura, sizes, prioridad, decorativa, className
       width={c.ancho}
       height={c.alto}
       alt={decorativa ? "" : c.alt}
-      loading={prioridad ? "eager" : "lazy"}
+      loading={prioridad || inmediata ? "eager" : "lazy"}
       decoding={prioridad ? undefined : "async"}
       fetchPriority={prioridad ? "high" : "auto"}
       className={className}
