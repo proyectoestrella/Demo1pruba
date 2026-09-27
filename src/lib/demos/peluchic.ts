@@ -366,6 +366,9 @@ export const PELUCHIC: SalonProfile = {
     { url: "/demo/peluchic-galeria/recogido-bajo-rubia-1200.webp", alt: "Moño bajo pulido en cabello rubio, visto de espaldas" },
   ],
   logoUrl: "/demo/peluchic-logo.png",
+  // El logotipo real (caligrafía de PeluChic, sin fondo): blanco sobre foto y oscuro sobre claro.
+  logotipoClaroUrl: "/demo/peluchic-logotipo-blanco.png",
+  logotipoOscuroUrl: "/demo/peluchic-logotipo-oscuro.png",
   // Cuatro y sin «y» al final: la web las junta en una frase («…, color orgánico y tratamientos capilares»).
   specialties: ["novias y eventos", "maquillaje de cámara", "color orgánico", "tratamientos capilares"],
   team: EQUIPO,

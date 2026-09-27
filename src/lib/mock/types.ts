@@ -311,6 +311,14 @@ export interface SalonProfile {
   /** Logo del salón para el círculo del menú y la portada. Vacío: la inicial. */
   logoUrl?: string;
   /**
+   * Logotipo con el nombre (la caligrafía del salón), sin fondo: en letras
+   * blancas para fondos oscuros o foto (portada, pie) y en letras oscuras
+   * para fondos claros (barra). Si están, sustituyen al círculo + el nombre
+   * escrito en la web de reservas. Ausentes: todo como siempre.
+   */
+  logotipoClaroUrl?: string;
+  logotipoOscuroUrl?: string;
+  /**
    * Enlaces del salón (lote 18): su web o blog, redes y tienda online, como
    * URL completas. Ausentes: no se muestran. `instagram` (arriba) sigue siendo
    * el usuario que se enseña; aquí va la dirección a la que se salta.

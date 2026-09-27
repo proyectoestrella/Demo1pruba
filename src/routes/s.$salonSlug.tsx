@@ -14,7 +14,7 @@ import { employeesForType } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { MapPin, Phone, Lock, Menu, ShoppingBag, TriangleAlert } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import { logoDelSalon } from "@/lib/logo-salon";
+import { logoDelSalon, logotipoDelSalon } from "@/lib/logo-salon";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { CONTENEDOR_SALON, enlaceWhatsApp, enlacesDelSalon } from "@/lib/web-publica";
@@ -105,6 +105,9 @@ function SalonLayout() {
   const sinSalonReal = useSalonStore((st) => !st.realSalonSlug);
   const conEnlaceDemo = useRouterState({ select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string" });
   const logoSalon = logoDelSalon(profile, sinSalonReal || conEnlaceDemo);
+  // El logotipo real (nombre en caligrafía) sustituye al círculo + el nombre escrito.
+  const logotipoBarra = logotipoDelSalon(profile, sinSalonReal || conEnlaceDemo, "oscuro");
+  const logotipoPie = logotipoDelSalon(profile, sinSalonReal || conEnlaceDemo, "claro");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // Lote 18.4: blog, redes, tienda y WhatsApp salen del perfil; lo que falta no se pinta.
   const enlaces = enlacesDelSalon(profile);
@@ -275,7 +278,9 @@ function SalonLayout() {
               params={{ salonSlug }}
               className="flex min-h-11 min-w-0 items-center gap-2.5"
             >
-              {logoSalon ? (
+              {logotipoBarra ? (
+                <img src={logotipoBarra} alt={profile.name} width={1455} height={432} className="h-9 w-auto shrink-0 sm:h-10" />
+              ) : logoSalon ? (
                 <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
                   <img src={logoSalon} alt={`Logo de ${profile.name}`} width={36} height={36} className="h-full w-full object-cover" />
                 </span>
@@ -286,11 +291,14 @@ function SalonLayout() {
                 {/* Nombres largos ("THE BEST SHAVE & BARBER") se partían feo
                     a una línea truncada; con dos líneas dejan de cortar
                     palabras por la mitad (auditoría de UX, hallazgo C5). */}
-                <p className="line-clamp-2 font-display text-sm leading-tight sm:text-base">
-                  {profile.name}
-                </p>
+                {!logotipoBarra && (
+                  <p className="line-clamp-2 font-display text-sm leading-tight sm:text-base">
+                    {profile.name}
+                  </p>
+                )}
                 {profile.tagline ? (
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-cafe-suave">
+                  // Con el logotipo, la etiqueta solo desde 640 px: en el móvil se partía en tres líneas.
+                  <p className={cn("text-[11px] font-semibold uppercase tracking-[0.08em] text-cafe-suave", logotipoBarra && "hidden sm:block")}>
                     {profile.tagline}
                   </p>
                 ) : null}
@@ -434,14 +442,20 @@ function SalonLayout() {
         <div className={cn(CONTENEDOR_SALON, "grid gap-8 py-12 sm:grid-cols-2 md:gap-10 md:py-14 lg:grid-cols-[1.4fr_1fr_1fr_1fr]")}>
           <div>
             <div className="flex items-center gap-2">
-              {logoSalon ? (
-                <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
-                  <img src={logoSalon} alt={`Logo de ${profile.name}`} width={36} height={36} loading="lazy" decoding="async" className="h-full w-full object-cover" />
-                </span>
+              {logotipoPie ? (
+                <img src={logotipoPie} alt={profile.name} width={1455} height={432} loading="lazy" decoding="async" className="h-12 w-auto" />
               ) : (
-                <Logo label={profile.name} />
+                <>
+                  {logoSalon ? (
+                    <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
+                      <img src={logoSalon} alt={`Logo de ${profile.name}`} width={36} height={36} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                    </span>
+                  ) : (
+                    <Logo label={profile.name} />
+                  )}
+                  <span className="font-display text-lg">{profile.name}</span>
+                </>
               )}
-              <span className="font-display text-lg">{profile.name}</span>
             </div>
             {profile.about ? (
               <p className="mt-4 max-w-sm text-sm text-muted-foreground">{profile.about}</p>
