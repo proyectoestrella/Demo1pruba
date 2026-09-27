@@ -34,7 +34,8 @@ import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useMemo } from "react";
 import { isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
 import { useClientNow } from "@/lib/use-client-now";
-import { conAncho, galleryPhotosFor } from "@/lib/demo-photos";
+import { conAncho } from "@/lib/demo-photos";
+import { fotosDeGaleria } from "@/lib/galeria-salon";
 import { useImagenConRespaldo } from "@/lib/imagen-rota";
 import heroImg from "@/assets/hero-salon.jpg";
 import heroSalonImg from "@/assets/gallery-salon.jpg";
@@ -662,7 +663,7 @@ function SalonHome() {
       ) : null}
 
       {/* Galería de trabajos */}
-      <WorkGallery photos={galleryPhotosFor(profile)} tipo={profile.tagline} />
+      <WorkGallery fotos={fotosDeGaleria(profile)} tipo={profile.tagline} />
 
       {/* Reseñas. Un salón REAL solo enseña su nota de Google (nunca reseñas
           inventadas); las demos de venta, tres de ejemplo marcadas como tal. */}
