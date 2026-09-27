@@ -14,6 +14,7 @@ import {
 import {
   employeesForType,
   servicesForType,
+  textosDeCarta,
 } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
 import { recargoActivo } from "@/lib/recargo-activo";
@@ -312,7 +313,12 @@ function SalonHome() {
   // el del servidor) ya salga en el idioma correcto. Si el enlace trae carta
   // o equipo reales (profile.menu/profile.team), sustituyen al catálogo y
   // equipo de ejemplo del tipo.
-  const services = useMemo(() => servicesForType(tipo, profile.menu), [tipo, profile.menu]);
+  // Con la carta del salón llegan su descripción y su precio literal (`priceText`).
+  const services = useMemo(
+    () => servicesForType(tipo, profile.menu, textosDeCarta(profile)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tipo, profile.menu, profile.descripcionesServicios, profile.preciosLiterales],
+  );
   const serviceMap = useMemo(() => Object.fromEntries(services.map((s) => [s.id, s])), [services]);
   const employees = useMemo(() => employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds), [tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds]);
   /**

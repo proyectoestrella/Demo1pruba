@@ -3,12 +3,12 @@ import { copiasDelCarrusel, envolver, fotoConAnchos, fotosDeGaleria } from "./ga
 
 describe("galería del salón", () => {
   test("fichero propio a dos anchos: srcSet de 600 y 1200 y la grande para ampliar", () => {
-    const f = fotoConAnchos("/demo/peluchic/galeria/corona-flores-1200.webp", "Corona de flores");
-    expect(f.src).toBe("/demo/peluchic/galeria/corona-flores-600.webp");
+    const f = fotoConAnchos("/demo/peluchic-galeria/corona-flores-1200.webp", "Corona de flores");
+    expect(f.src).toBe("/demo/peluchic-galeria/corona-flores-600.webp");
     expect(f.srcSet).toBe(
-      "/demo/peluchic/galeria/corona-flores-600.webp 600w, /demo/peluchic/galeria/corona-flores-1200.webp 1200w",
+      "/demo/peluchic-galeria/corona-flores-600.webp 600w, /demo/peluchic-galeria/corona-flores-1200.webp 1200w",
     );
-    expect(f.grande).toBe("/demo/peluchic/galeria/corona-flores-1200.webp");
+    expect(f.grande).toBe("/demo/peluchic-galeria/corona-flores-1200.webp");
   });
 
   test("foto del proxy de Google: pide el ancho al proxy", () => {

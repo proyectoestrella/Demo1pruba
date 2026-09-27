@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/re
 import { useImagenConRespaldo } from "@/lib/imagen-rota";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Info, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
-import { employeesForType, servicesForType } from "@/lib/mock/salon";
+import { employeesForType, servicesForType, textosDeCarta } from "@/lib/mock/salon";
 import { importeSenal, reglaSenal, senalDeReservaNueva, servicioLlevaSenal, textoSenalPublico, type ReglaSenal } from "@/lib/senal";
 import { huecosDeProfesionales, trabajaEn } from "@/lib/horario-equipo";
 import { isoDelSalon, zonaDelSalon } from "@/lib/zona-horaria";
@@ -272,7 +272,11 @@ function BookingWizard() {
   // Preguntas del formulario: las del salón (o las de siempre), en su orden.
   // Las aplicables dependen de los servicios elegidos: se calculan más abajo.
   const preguntasSalon = useMemo(() => preguntasDelSalon(profile, tipo), [profile, tipo]);
-  const services = useMemo(() => servicesForType(tipo, profile.menu), [tipo, profile.menu]);
+  const services = useMemo(
+    () => servicesForType(tipo, profile.menu, textosDeCarta(profile)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tipo, profile.menu, profile.descripcionesServicios, profile.preciosLiterales],
+  );
   const serviceMap = useMemo(
     () => Object.fromEntries(services.map((s) => [s.id, s])) as Record<string, Service>,
     [services],
@@ -1118,7 +1122,10 @@ function ServiceStep({
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
-                          <span className="text-base font-extrabold tabular-nums">{eur(s.priceEur)}</span>
+                          {/* Lote 18.5: el precio tal y como lo publica el salón («desde…»). */}
+                          <span className="max-w-[9rem] text-right text-base font-extrabold leading-snug tabular-nums">
+                            {s.priceText?.trim() || eur(s.priceEur)}
+                          </span>
                           {isSelected && <Check className="h-4 w-4 text-primary" />}
                         </div>
                       </button>
