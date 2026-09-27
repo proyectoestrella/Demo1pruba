@@ -368,7 +368,10 @@ function Carrusel({
   vigilar: (src: string) => (img: HTMLImageElement | null) => void;
 }) {
   const pista = useRef<HTMLDivElement | null>(null);
-  const [copias, setCopias] = useState(3);
+  // Hasta que la sección está cerca solo existe la copia accesible (una fila
+  // que se desliza a mano): el resto se añade después, para no hinchar el
+  // HTML del servidor ni la hidratación con fotos repetidas.
+  const [copias, setCopias] = useState(1);
   // Estado del bucle, fuera de React: se toca en cada fotograma.
   const e = useRef({
     pos: 0,
@@ -389,28 +392,30 @@ function Carrusel({
     s.puesto = el.scrollLeft;
   }, []);
 
-  // Ancho de una serie y número de copias; se rehace al cambiar el tamaño.
+  // Ancho de una serie (la copia accesible, con su hueco final) y número de
+  // copias; se rehace al cambiar el tamaño. El bucle arranca cuando ya hay
+  // una copia a cada lado.
   useEffect(() => {
     const el = pista.current;
-    if (!el) return;
+    if (!el || !cargar) return;
     const medir = () => {
-      const a = el.querySelector<HTMLElement>('[data-copia="0"]');
       const b = el.querySelector<HTMLElement>('[data-copia="1"]');
-      if (!a || !b) return;
-      const serie = b.offsetLeft - a.offsetLeft;
+      const serie = b?.offsetWidth ?? 0;
       if (serie <= 0) return;
-      e.current.serie = serie;
       setCopias(copiasDelCarrusel(serie, el.clientWidth));
-      aplicar();
+      if (el.querySelector('[data-copia="0"]')) {
+        e.current.serie = serie;
+        aplicar();
+      }
     };
     medir();
     if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(medir);
     ro.observe(el);
-    const primera = el.querySelector('[data-copia="0"]');
-    if (primera) ro.observe(primera);
+    const accesible = el.querySelector('[data-copia="1"]');
+    if (accesible) ro.observe(accesible);
     return () => ro.disconnect();
-  }, [aplicar, fotos.length]);
+  }, [aplicar, cargar, copias, fotos.length]);
 
   // Flechas: una foto adelante o atrás, 480 ms con curva de salida.
   useEffect(() => {
@@ -565,7 +570,7 @@ function Carrusel({
         }}
         className="sin-scrollbar flex cursor-grab select-none overflow-x-auto overscroll-x-contain active:cursor-grabbing"
       >
-        {Array.from({ length: copias }, (_, c) => (
+        {(copias < 3 ? [1] : Array.from({ length: copias }, (_, c) => c)).map((c) => (
           <ul
             key={c}
             data-copia={c}

@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Clock } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Service } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import { precioDeCarta } from "@/lib/web-publica";
@@ -12,7 +11,7 @@ type ServicioCarta = Service & { priceText?: string };
  * Carta de servicios de la web del salón (lote 18.5): una pestaña por
  * categoría, precio literal del salón («desde…») y su descripción corta si la
  * hay. Cada servicio abre la reserva con él ya elegido. Con una sola
- * categoría no hay pestañas.
+ * categoría no hay pestanas.
  */
 export function CartaServicios({
   salonSlug,
@@ -30,7 +29,9 @@ export function CartaServicios({
   const grupos = categorias
     .map((cat) => ({ cat, items: servicios.filter((s) => (s.category ?? "Otros") === cat) }))
     .filter((g) => g.items.length > 0);
-  const [activa, setActiva] = useState(grupos[0]?.cat ?? "");
+  const [activa, setActiva] = useState(0);
+  const pestanas = useRef<(HTMLButtonElement | null)[]>([]);
+  const id = useId();
   if (!grupos.length) return null;
 
   const lista = (items: ServicioCarta[]) => (
@@ -76,35 +77,67 @@ export function CartaServicios({
 
   if (grupos.length === 1) return lista(grupos[0].items);
 
+  // Pestañas propias (patrón WAI-ARIA, flechas, Inicio y Fin) con UN panel
+  // que siempre existe: las de Radix desmontan los paneles ocultos y su
+  // `aria-controls` apuntaba a elementos que no estaban (Lighthouse,
+  // aria-valid-attr-value).
+  const actual = Math.min(activa, grupos.length - 1);
+  const alTeclear = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
+    const n = grupos.length;
+    const destino =
+      e.key === "ArrowRight" ? (i + 1) % n : e.key === "ArrowLeft" ? (i - 1 + n) % n : e.key === "Home" ? 0 : e.key === "End" ? n - 1 : null;
+    if (destino === null) return;
+    e.preventDefault();
+    setActiva(destino);
+    pestanas.current[destino]?.focus();
+  };
+
   return (
-    <Tabs value={activa} onValueChange={setActiva}>
-      {/* Móvil: una fila que se desliza. Desde 768 px las pestañas bajan de
+    <div>
+      {/* Móvil: una fila que se desliza. Desde 768 px las pestanas bajan de
           línea: con siete categorías, la última quedaba oculta sin pista. */}
-      <TabsList
-        aria-label="Categorías de la carta"
-        className="flex w-full gap-2 rounded-none border-0 bg-transparent p-0 md:flex-wrap md:overflow-visible"
+      <div role="tablist" aria-label="Categorías de la carta" className="sin-scrollbar flex gap-2 overflow-x-auto md:flex-wrap md:overflow-visible">
+        {grupos.map((g, i) => {
+          const sel = i === actual;
+          return (
+            <button
+              key={g.cat}
+              ref={(el) => {
+                pestanas.current[i] = el;
+              }}
+              type="button"
+              role="tab"
+              id={`${id}-pestana-${i}`}
+              aria-selected={sel}
+              aria-controls={`${id}-panel`}
+              tabIndex={sel ? 0 : -1}
+              onClick={() => setActiva(i)}
+              onKeyDown={(e) => alTeclear(e, i)}
+              className={cn(
+                "inline-flex h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                sel
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-lino bg-card text-cafe-medio hover:border-lino-fuerte hover:text-foreground",
+              )}
+            >
+              {g.cat}
+              <span className={cn("rounded-full px-1.5 text-[11px] tabular-nums", sel ? "bg-white/20" : "bg-black/5")}>
+                {g.items.length}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div
+        key={actual}
+        role="tabpanel"
+        id={`${id}-panel`}
+        aria-labelledby={`${id}-pestana-${actual}`}
+        tabIndex={0}
+        className="mt-5 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        {grupos.map((g) => (
-          <TabsTrigger
-            key={g.cat}
-            value={g.cat}
-            className={cn(
-              "group h-11 gap-2 border border-lino bg-card px-4 text-sm text-cafe-medio hover:border-lino-fuerte hover:text-foreground",
-              "data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none",
-            )}
-          >
-            {g.cat}
-            <span className="rounded-full bg-black/5 px-1.5 text-[11px] tabular-nums group-data-[state=active]:bg-white/20">
-              {g.items.length}
-            </span>
-          </TabsTrigger>
-        ))}
-      </TabsList>
-      {grupos.map((g) => (
-        <TabsContent key={g.cat} value={g.cat} className="mt-5 focus-visible:ring-offset-0">
-          {lista(g.items)}
-        </TabsContent>
-      ))}
-    </Tabs>
+        {lista(grupos[actual].items)}
+      </div>
+    </div>
   );
 }

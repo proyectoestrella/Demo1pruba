@@ -44,12 +44,17 @@ export const Route = createFileRoute("/s/$salonSlug")({
     const title = name ? `${name} — Reserva por internet` : "Reserva por internet";
     return {
       // Lote 18.2b: títulos en Playfair Display, la serif de la marca de
-      // PeluChic. Solo en la web del salón (el panel no la descarga); el
-      // origen de Google Fonts ya está preconectado desde __root.
+      // PeluChic, servida desde aquí (`public/fonts`, OFL) y declarada en
+      // `web-salon.css`. Pedirla a Google añadía una hoja que bloqueaba el
+      // primer pintado 180-250 ms en móvil; así solo se precarga el fichero
+      // (38 KB) y solo en la web del salón.
       links: [
         {
-          rel: "stylesheet",
-          href: "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&display=swap",
+          rel: "preload",
+          as: "font",
+          type: "font/woff2",
+          href: "/fonts/playfair-display-latin.woff2",
+          crossOrigin: "anonymous",
         },
       ],
       meta: [
