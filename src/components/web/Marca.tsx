@@ -1,21 +1,15 @@
 import { cn } from "@/lib/utils";
 
+/** «sí» en Manrope 800 pasado a trazos: se ve igual aunque la fuente aún no haya cargado. */
+const SI =
+  "M16 30.7Q13.35 30.7 11.73 29.5Q10.1 28.3 9.75 26.11L13.35 25.56Q13.58 26.55 14.33 27.11Q15.09 27.66 16.26 27.66Q17.22 27.66 17.74 27.29Q18.26 26.92 18.26 26.26Q18.26 25.85 18.05 25.6Q17.84 25.34 17.12 25.1Q16.4 24.85 14.88 24.45Q13.17 24.01 12.15 23.46Q11.12 22.92 10.67 22.16Q10.22 21.4 10.22 20.32Q10.22 18.98 10.9 17.98Q11.59 16.99 12.84 16.45Q14.09 15.92 15.79 15.92Q17.44 15.92 18.71 16.42Q19.98 16.93 20.77 17.86Q21.55 18.79 21.73 20.06L18.13 20.71Q18.04 19.94 17.45 19.48Q16.87 19.03 15.87 18.95Q14.9 18.88 14.31 19.21Q13.72 19.53 13.72 20.14Q13.72 20.51 13.97 20.75Q14.22 21 15.02 21.26Q15.82 21.52 17.45 21.93Q19.05 22.35 20.01 22.9Q20.98 23.45 21.42 24.22Q21.86 24.99 21.86 26.08Q21.86 28.23 20.3 29.47Q18.75 30.7 16 30.7ZM28.1 14.36H25.48L27.63 9.3H30.25ZM24.97 30.31V16.3H28.5V30.31Z";
+
 /** Símbolo de siShow: «sí» en blanco sobre un círculo moca. */
 export function SimboloSishow({ size = 36, className }: { size?: number; className?: string }) {
   return (
     <svg viewBox="0 0 40 40" width={size} height={size} className={className} aria-hidden="true">
       <circle cx="20" cy="20" r="20" fill="#7A5539" />
-      <text
-        x="20"
-        y="26.2"
-        textAnchor="middle"
-        fontFamily="Manrope, ui-sans-serif, system-ui, sans-serif"
-        fontWeight="800"
-        fontSize="17"
-        fill="#FFFFFF"
-      >
-        sí
-      </text>
+      <path fill="#FFFFFF" d={SI} />
     </svg>
   );
 }

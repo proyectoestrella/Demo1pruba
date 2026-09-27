@@ -1,6 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Scissors } from "lucide-react";
-import { PREGUNTAS_INICIO, cabezaWeb } from "@/lib/sishow-web";
+import { NOMBRE_PLAN } from "@/lib/plan";
+import {
+  PREGUNTAS_INICIO,
+  cabezaWeb,
+  jsonLdAplicacion,
+  jsonLdOrganizacion,
+  jsonLdPreguntas,
+  jsonLdSitioWeb,
+} from "@/lib/sishow-web";
 import { EsqueletoWeb } from "@/components/web/EsqueletoWeb";
 import { ESTILOS_WEB } from "@/components/web/estilos";
 import { Portada } from "@/components/web/Portada";
@@ -15,7 +23,15 @@ import { CtaFinal, Demo, Preguntas, PreciosResumen, Semana, TituloSeccion } from
  * barberías, en un segundo plano.
  */
 export const Route = createFileRoute("/")({
-  head: () => ({ ...cabezaWeb("inicio"), styles: [ESTILOS_WEB] }),
+  head: () => ({
+    ...cabezaWeb("inicio", [
+      jsonLdOrganizacion(),
+      jsonLdSitioWeb(),
+      jsonLdAplicacion(NOMBRE_PLAN),
+      jsonLdPreguntas(PREGUNTAS_INICIO),
+    ]),
+    styles: [ESTILOS_WEB],
+  }),
   component: Inicio,
 });
 

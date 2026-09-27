@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PREGUNTAS_PRECIOS, cabezaWeb } from "@/lib/sishow-web";
+import { NOMBRE_PLAN } from "@/lib/plan";
+import { PREGUNTAS_PRECIOS, cabezaWeb, jsonLdAplicacion, jsonLdPreguntas } from "@/lib/sishow-web";
 import { EsqueletoWeb } from "@/components/web/EsqueletoWeb";
 import { ESTILOS_WEB } from "@/components/web/estilos";
 import { IntroPagina } from "@/components/web/IntroPagina";
@@ -12,7 +13,10 @@ import { CtaFinal, Preguntas, TituloSeccion } from "@/components/web/Secciones";
  * Cifras de `lib/sishow-web.ts` (hoja de planes v2, aprobada el 26-sep).
  */
 export const Route = createFileRoute("/precios")({
-  head: () => ({ ...cabezaWeb("precios"), styles: [ESTILOS_WEB] }),
+  head: () => ({
+    ...cabezaWeb("precios", [jsonLdAplicacion(NOMBRE_PLAN), jsonLdPreguntas(PREGUNTAS_PRECIOS)]),
+    styles: [ESTILOS_WEB],
+  }),
   component: Precios,
 });
 

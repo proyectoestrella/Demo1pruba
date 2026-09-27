@@ -156,12 +156,172 @@ export const NAV_WEB: { ruta: "/funcionalidades" | "/precios" | "/contacto"; tex
   { ruta: "/contacto", texto: "Contacto" },
 ];
 
-/** `<head>` básico de una página de la web oficial: título y descripción. */
-export function cabezaWeb(clave: ClavePagina) {
+/** Imagen para compartir (Open Graph y Twitter), 1200×630, en `public/web/`. */
+export const IMAGEN_SOCIAL = {
+  ruta: "/web/og-sishow.jpg",
+  ancho: 1200,
+  alto: 630,
+  alt: "siShow: el panel del salón en un portátil y la web de reservas en un móvil, con el lema «Tus clientas reservan solas. Tú, a lo tuyo.»",
+};
+
+/** Color de la barra del navegador en la web oficial (crema de la cabecera). */
+export const COLOR_TEMA_WEB = "#F7F2EA";
+
+/** URL canónica de una ruta de la web oficial, siempre en sishow.es. */
+export function urlCanonica(ruta: string): string {
+  return ruta === "/" ? `${SITIO_URL}/` : `${SITIO_URL}${ruta}`;
+}
+
+type MetaWeb = Record<string, unknown>;
+type EnlaceWeb = { rel: string; href: string; type?: string; sizes?: string };
+
+/**
+ * `<head>` de una página de la web oficial: título, descripción, canónica a
+ * sishow.es, Open Graph y Twitter con imagen, iconos de siShow y los JSON-LD
+ * que se le pasen. Las metas con el mismo `name`/`property` que las del root
+ * (descripción, imagen de Lovable, color de tema, título de app «Trimly») las
+ * pisan: TanStack se queda con la de la ruta más profunda.
+ */
+export function cabezaWeb(clave: ClavePagina, jsonLd: Record<string, unknown>[] = []): { meta: MetaWeb[]; links: EnlaceWeb[] } {
   const p = PAGINAS_WEB[clave];
+  const url = urlCanonica(p.ruta);
+  const imagen = `${SITIO_URL}${IMAGEN_SOCIAL.ruta}`;
   return {
-    meta: [{ title: p.titulo }, { name: "description", content: p.descripcion }],
+    meta: [
+      { title: p.titulo },
+      { name: "description", content: p.descripcion },
+      { name: "robots", content: "index, follow" },
+      { name: "theme-color", content: COLOR_TEMA_WEB },
+      { name: "apple-mobile-web-app-title", content: "siShow" },
+      { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "siShow" },
+      { property: "og:locale", content: "es_ES" },
+      { property: "og:url", content: url },
+      { property: "og:title", content: p.titulo },
+      { property: "og:description", content: p.descripcion },
+      { property: "og:image", content: imagen },
+      { property: "og:image:width", content: String(IMAGEN_SOCIAL.ancho) },
+      { property: "og:image:height", content: String(IMAGEN_SOCIAL.alto) },
+      { property: "og:image:alt", content: IMAGEN_SOCIAL.alt },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: p.titulo },
+      { name: "twitter:description", content: p.descripcion },
+      { name: "twitter:image", content: imagen },
+      { name: "twitter:image:alt", content: IMAGEN_SOCIAL.alt },
+      ...jsonLd.map((j) => ({ "script:ld+json": j })),
+    ],
+    links: [
+      { rel: "canonical", href: url },
+      { rel: "icon", href: "/web/favicon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/web/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { rel: "apple-touch-icon", href: "/web/apple-touch-icon.png", sizes: "180x180" },
+    ],
   };
+}
+
+/* ---- Datos estructurados (JSON-LD, schema.org) ---- */
+
+export function jsonLdOrganizacion(): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": `${SITIO_URL}/#organizacion`,
+    name: "siShow",
+    url: `${SITIO_URL}/`,
+    logo: `${SITIO_URL}/web/icono-512.png`,
+    email: CORREO_SISHOW,
+    contactPoint: [{ "@type": "ContactPoint", contactType: "customer service", email: CORREO_SISHOW, availableLanguage: ["es"] }],
+  };
+}
+
+export function jsonLdSitioWeb(): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${SITIO_URL}/#web`,
+    name: "siShow",
+    url: `${SITIO_URL}/`,
+    inLanguage: "es-ES",
+    publisher: { "@id": `${SITIO_URL}/#organizacion` },
+  };
+}
+
+/**
+ * siShow como aplicación con sus tres planes como ofertas. El precio es el
+ * mensual con pago anual (el que se enseña primero); el de mes a mes va en la
+ * descripción de cada oferta.
+ */
+export function jsonLdAplicacion(nombresPlan: Record<PlanSishow, string>): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "siShow",
+    url: `${SITIO_URL}/`,
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web (navegador del móvil, la tablet o el ordenador)",
+    inLanguage: "es-ES",
+    description: PAGINAS_WEB.inicio.descripcion,
+    image: `${SITIO_URL}${IMAGEN_SOCIAL.ruta}`,
+    publisher: { "@id": `${SITIO_URL}/#organizacion` },
+    offers: (Object.keys(PRECIOS) as PlanSishow[]).map((plan) => ({
+      "@type": "Offer",
+      name: nombresPlan[plan],
+      price: String(PRECIOS[plan].anual),
+      priceCurrency: "EUR",
+      description: `${PRECIOS[plan].anual} € al mes con pago anual o ${PRECIOS[plan].mensual} € mes a mes.`,
+      url: urlCanonica("/precios"),
+      priceSpecification: {
+        "@type": "UnitPriceSpecification",
+        price: String(PRECIOS[plan].anual),
+        priceCurrency: "EUR",
+        unitText: "MONTH",
+        referenceQuantity: { "@type": "QuantitativeValue", value: 1, unitCode: "MON" },
+      },
+    })),
+  };
+}
+
+export function jsonLdPreguntas(preguntas: Pregunta[]): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: preguntas.map((p) => ({
+      "@type": "Question",
+      name: p.pregunta,
+      acceptedAnswer: { "@type": "Answer", text: p.respuesta },
+    })),
+  };
+}
+
+/* ---- robots.txt y sitemap.xml ---- */
+
+/**
+ * Rutas que no son la web oficial y no deben indexarse (panel, API, accesos,
+ * demo). `/app$` y `/app/` en vez de `/app`, que por prefijo bloquearía
+ * también `/apple-touch-icon.png`.
+ */
+export const RUTAS_NO_INDEXABLES = ["/app$", "/app/", "/api/", "/login", "/aceptar", "/rutero", "/dashboard", "/demo/"];
+
+export function robotsTxt(): string {
+  return [
+    "User-agent: *",
+    "Allow: /",
+    ...RUTAS_NO_INDEXABLES.map((r) => `Disallow: ${r}`),
+    "",
+    `Sitemap: ${SITIO_URL}/sitemap.xml`,
+    "",
+  ].join("\n");
+}
+
+/** Fecha de la última revisión de la web oficial, para el sitemap. */
+export const ULTIMA_REVISION_WEB = "2026-09-27";
+
+export function sitemapXml(): string {
+  const urls = (Object.keys(PAGINAS_WEB) as ClavePagina[]).map((c) => {
+    const prioridad = c === "inicio" ? "1.0" : c === "funcionalidades" || c === "precios" ? "0.9" : c === "contacto" ? "0.7" : "0.3";
+    return `  <url>\n    <loc>${urlCanonica(PAGINAS_WEB[c].ruta)}</loc>\n    <lastmod>${ULTIMA_REVISION_WEB}</lastmod>\n    <priority>${prioridad}</priority>\n  </url>`;
+  });
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
 }
 
 /* -------------------------------------------------------------------------

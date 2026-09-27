@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RuteroRouteImport } from './routes/rutero'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as PreciosRouteImport } from './routes/precios'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FuncionalidadesRouteImport } from './routes/funcionalidades'
@@ -49,9 +51,19 @@ import { Route as ApiCalendarioExternoCronRouteImport } from './routes/api.calen
 import { Route as ApiCalendarioExternoGoogleWebhookRouteImport } from './routes/api.calendario-externo.google.webhook'
 import { Route as ApiCalendarioExternoGoogleCallbackRouteImport } from './routes/api.calendario-externo.google.callback'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RuteroRoute = RuteroRouteImport.update({
   id: '/rutero',
   path: '/rutero',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PreciosRoute = PreciosRouteImport.update({
@@ -257,7 +269,9 @@ export interface FileRoutesByFullPath {
   '/funcionalidades': typeof FuncionalidadesRoute
   '/login': typeof LoginRoute
   '/precios': typeof PreciosRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/rutero': typeof RuteroRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
   '/api/recordatorios': typeof ApiRecordatoriosRoute
@@ -297,7 +311,9 @@ export interface FileRoutesByTo {
   '/funcionalidades': typeof FuncionalidadesRoute
   '/login': typeof LoginRoute
   '/precios': typeof PreciosRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/rutero': typeof RuteroRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
   '/api/recordatorios': typeof ApiRecordatoriosRoute
@@ -338,7 +354,9 @@ export interface FileRoutesById {
   '/funcionalidades': typeof FuncionalidadesRoute
   '/login': typeof LoginRoute
   '/precios': typeof PreciosRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/rutero': typeof RuteroRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/calendario': typeof ApiCalendarioRoute
   '/api/foto': typeof ApiFotoRoute
   '/api/recordatorios': typeof ApiRecordatoriosRoute
@@ -381,7 +399,9 @@ export interface FileRouteTypes {
     | '/funcionalidades'
     | '/login'
     | '/precios'
+    | '/robots.txt'
     | '/rutero'
+    | '/sitemap.xml'
     | '/api/calendario'
     | '/api/foto'
     | '/api/recordatorios'
@@ -421,7 +441,9 @@ export interface FileRouteTypes {
     | '/funcionalidades'
     | '/login'
     | '/precios'
+    | '/robots.txt'
     | '/rutero'
+    | '/sitemap.xml'
     | '/api/calendario'
     | '/api/foto'
     | '/api/recordatorios'
@@ -461,7 +483,9 @@ export interface FileRouteTypes {
     | '/funcionalidades'
     | '/login'
     | '/precios'
+    | '/robots.txt'
     | '/rutero'
+    | '/sitemap.xml'
     | '/api/calendario'
     | '/api/foto'
     | '/api/recordatorios'
@@ -503,7 +527,9 @@ export interface RootRouteChildren {
   FuncionalidadesRoute: typeof FuncionalidadesRoute
   LoginRoute: typeof LoginRoute
   PreciosRoute: typeof PreciosRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
   RuteroRoute: typeof RuteroRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiCalendarioRoute: typeof ApiCalendarioRoute
   ApiFotoRoute: typeof ApiFotoRoute
   ApiRecordatoriosRoute: typeof ApiRecordatoriosRoute
@@ -519,11 +545,25 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rutero': {
       id: '/rutero'
       path: '/rutero'
       fullPath: '/rutero'
       preLoaderRoute: typeof RuteroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/precios': {
@@ -860,7 +900,9 @@ const rootRouteChildren: RootRouteChildren = {
   FuncionalidadesRoute: FuncionalidadesRoute,
   LoginRoute: LoginRoute,
   PreciosRoute: PreciosRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
   RuteroRoute: RuteroRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiCalendarioRoute: ApiCalendarioRoute,
   ApiFotoRoute: ApiFotoRoute,
   ApiRecordatoriosRoute: ApiRecordatoriosRoute,
