@@ -30,7 +30,7 @@ import type { MezclaSemilla } from "../mock/seed";
  */
 
 /** Sube cuando cambien estos datos: los navegadores con la demo vieja la vuelven a cargar. */
-export const VERSION_PELUCHIC = "2026-09-27.3";
+export const VERSION_PELUCHIC = "2026-09-27.4";
 
 export interface ServicioPeluChic {
   /** Id estable (sexto campo de la carta): las citas de la semilla y las descripciones cuelgan de él. */
