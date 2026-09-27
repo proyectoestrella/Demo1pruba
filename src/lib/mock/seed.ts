@@ -435,11 +435,16 @@ function buildHairAppointments(
   const treatmentBudget = Math.max(0, 64 - events);
   let treatmentSeen = 0;
   const usedToday = new Set<string>();
+  // Con mezcla (demo registrada): nombres de pila ya vistos hoy. La semilla
+  // escoge a las habituales más «vencidas», que salen en tandas con el mismo
+  // nombre: cuatro Valentinas en la línea del día delatan la demo.
+  const nombresHoy = new Map<string, number>();
+  const pila = (c: Client) => c.name.split(" ")[0];
   let currentDay = -Infinity;
   let occasional = 520;
   let pendingHoy = 0;
   for (const slot of slots) {
-    if (slot.day !== currentDay) { usedToday.clear(); currentDay = slot.day; }
+    if (slot.day !== currentDay) { usedToday.clear(); nombresHoy.clear(); currentDay = slot.day; }
     const status = slot.day === diaSolicitudes && pendingHoy < 2 ? "pending" : slot.status;
     let client: Client | undefined;
     if (slot.kind === "ocasional") {
@@ -455,7 +460,9 @@ function buildHairAppointments(
       candidates.sort((a, b) =>
         (slot.day - b.lastDay) / b.cadence - (slot.day - a.lastDay) / a.cadence
         || a.client.id.localeCompare(b.client.id));
-      const chosen = candidates[0];
+      const chosen = mezcla
+        ? (candidates.find((h) => (nombresHoy.get(pila(h.client)) ?? 0) < 1) ?? candidates[0])
+        : candidates[0];
       if (!chosen) continue;
       client = chosen.client;
       // Un plantón no reinicia el ritmo de visitas: se le volverá a ofrecer
@@ -463,6 +470,7 @@ function buildHairAppointments(
       if (status !== "no-show" && status !== "cancelled") chosen.lastDay = slot.day;
     }
     usedToday.add(client.id);
+    nombresHoy.set(pila(client), (nombresHoy.get(pila(client)) ?? 0) + 1);
     if (status === "pending") pendingHoy++;
     add(client, slot.day, slot.minute, slot.employee, slot.services, status);
   }
