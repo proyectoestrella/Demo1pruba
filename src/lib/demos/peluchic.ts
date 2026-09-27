@@ -242,7 +242,8 @@ const PREGUNTAS = [
  */
 export const MEZCLA_PELUCHIC: MezclaSemilla = {
   servicios: {
-    color: [["color-10-minutos", 40], ["color-organico", 25], ["bano-brillo", 15], ["barros", 12], ["matiz", 8]],
+    // El matiz no va solo: sale tras unas mechas (ver `extras`).
+    color: [["color-10-minutos", 42], ["color-organico", 28], ["bano-brillo", 17], ["barros", 13]],
     mechas: [["mechas", 75], ["money-piece", 25]],
     corte: [["lavado-corte-peinar", 30], ["peinar", 30], ["lavado-corte-secar", 18], ["cortar-caballero-nino", 12], ["lavado", 6], ["ahuecador", 4]],
     tratamiento: [
@@ -260,14 +261,16 @@ export const MEZCLA_PELUCHIC: MezclaSemilla = {
       ["hidroface-basica", 14], ["masajes", 14], ["higiene-manual", 12], ["model-shape", 6], ["hidroface-iluminadora", 5],
       ["hidroface-antiedad", 5], ["radiofrecuencia-facial", 5], ["radiofrecuencia-corporal", 5], ["hidroface-reparadora", 4],
       ["hidroface-nutritivo", 4], ["hidroface-antipolucion", 3], ["hidroface-tensor", 3], ["higiene-depurativa", 3],
-      ["hidroface-equilibrante", 3], ["ritual-rosegold", 3], ["ritual-panacee", 3],
+      ["hidroface-equilibrante", 4], ["ritual-rosegold", 3], ["ritual-panacee", 3],
     ],
-    evento: [["novias", 45], ["maquillaje-correccion", 30], ["peluqueria-focos", 25]],
+    novia: [["novias", 1]],
+    camara: [["maquillaje-correccion", 55], ["peluqueria-focos", 45]],
   },
+  tiposEvento: ["novia", "camara"],
   porProfesional: [
-    // María: peinados, color y lo de cámara entre semana; el sábado, novias.
-    { semana: { corte: 38, color: 22, mechas: 5, tratamiento: 10, mirada: 8, estetica: 4, evento: 3 },
-      sabado: { corte: 45, color: 15, evento: 22, mirada: 8, tratamiento: 5 } },
+    // María: peinados, color y trabajos de cámara entre semana; el sábado, las novias.
+    { semana: { corte: 38, color: 22, mechas: 5, tratamiento: 10, mirada: 8, estetica: 4, camara: 3 },
+      sabado: { corte: 42, color: 15, novia: 24, camara: 5, mirada: 8, tratamiento: 5 } },
     // Sara: la colorista.
     { semana: { color: 48, mechas: 24, corte: 16, tratamiento: 12 },
       sabado: { color: 40, mechas: 20, corte: 35, tratamiento: 5 } },
@@ -276,8 +279,9 @@ export const MEZCLA_PELUCHIC: MezclaSemilla = {
   ],
   extras: [
     // «No incluye el peinado pero es necesario»: siempre van juntos.
-    { tras: ["nanokeratinizacion", "hyaluroplastia"], anade: "peinar", prob: 1 },
-    { tras: ["money-piece"], anade: "peinar", prob: 0.5 },
+    { tras: ["nanokeratinizacion", "hyaluroplastia", "combonano"], anade: "peinar", prob: 1 },
+    // Su precio es «con el servicio añadido a otro (color, peinar o barro)».
+    { tras: ["money-piece"], anade: "peinar", prob: 1 },
     { tras: ["mechas"], anade: "matiz", prob: 0.35 },
     { tras: ["color-10-minutos", "color-organico", "bano-brillo", "barros"], anade: "cortar-anadido", prob: 0.2 },
     // «Puedes aprovechar esta hidratación en el tiempo del color».

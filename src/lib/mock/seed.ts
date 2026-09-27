@@ -172,10 +172,11 @@ const COLORES_DEMO = {
 
 /**
  * Tipo de hueco de la semilla de peluquería cuando el salón trae su propia
- * carta (demo registrada, ver lib/demos): lo de siempre (color, mechas,
- * corte) más lo que una carta real añade.
+ * carta (demo registrada, ver lib/demos). «color», «mechas» y «corte» son los
+ * de las clientas habituales, con su ritmo de visitas; cualquier otro nombre
+ * («tratamiento», «novia»…) es un servicio ocasional.
  */
-export type TipoHueco = "color" | "mechas" | "corte" | "tratamiento" | "mirada" | "estetica" | "evento";
+export type TipoHueco = "color" | "mechas" | "corte" | (string & {});
 
 /**
  * Cómo reparte la semilla las citas entre los servicios REALES de un salón.
@@ -194,6 +195,8 @@ export interface MezclaSemilla {
   porProfesional: Array<{ semana: Partial<Record<TipoHueco, number>>; sabado?: Partial<Record<TipoHueco, number>> }>;
   /** Servicios que se añaden a otro con cierta probabilidad («Cortar añadido» tras un color). */
   extras?: Array<{ tras: string[]; anade: string; prob: number }>;
+  /** Tipos que son eventos de un día (novias): clienta de una sola visita. Por defecto, «evento». */
+  tiposEvento?: string[];
 }
 
 /** Elige de una lista con pesos, con un número de 0 a 1 ya sacado. */
@@ -385,8 +388,9 @@ function buildHairAppointments(
         if (pesos) {
           const tipo = elegirConPeso(Object.entries(pesos) as Array<[TipoHueco, number]>, roll) ?? "corte";
           const servicio = elegirConPeso(listaDe(tipo), rand()) ?? corte;
-          preferred = [tipo === "color" || tipo === "mechas" || tipo === "corte" ? tipo : "ocasional", servicio];
-          esEvento = tipo === "evento";
+          const kind: Kind = tipo === "color" ? "color" : tipo === "mechas" ? "mechas" : tipo === "corte" ? "corte" : "ocasional";
+          preferred = [kind, servicio];
+          esEvento = (mezcla?.tiposEvento ?? ["evento"]).includes(tipo);
         } else {
           preferred = roll < 0.53 ? ["color", color]
             : roll < 0.64 ? ["mechas", mechas]
