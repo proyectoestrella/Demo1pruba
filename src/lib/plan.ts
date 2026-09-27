@@ -7,10 +7,15 @@
  * Decisión de Tomás (26-sep): Todo incluido = roles más allá de gerente y
  * estilista, historial y restaurar sin límite (estándar: el aviso de 10 s y
  * las últimas 24 h), campañas ampliadas (estándar: solo la reseña de Google;
- * cumpleaños no existe todavía), analítica avanzada y exportaciones, señal con
- * liberación automática e importación asistida mensual. El asistente, desde
- * Reservas + Asistente. El resto, en Reservas. «Más profesionales» NO depende
- * del plan.
+ * cumpleaños no existe todavía), analítica avanzada, señal con liberación
+ * automática e importación asistida mensual. El asistente, desde Reservas +
+ * Asistente. El resto, en Reservas. «Más profesionales» NO depende del plan.
+ *
+ * Decisión de Tomás (27-sep), alineado con el presupuesto: exportar tus citas
+ * y tu analítica a Excel va en TODOS los planes, no solo en Todo incluido
+ * (el presupuesto que ve María ya lo incluye así). No confundir con
+ * `caja-exportar` (el fichero de cobros para la gestoría), que sigue solo en
+ * Todo incluido.
  */
 export type PlanSishow = "reservas" | "reservas-asistente" | "todo-incluido";
 
@@ -40,7 +45,7 @@ export const FUNCIONES_POR_PLAN: Record<FuncionPlan, PlanSishow> = {
   "historial-completo": "todo-incluido",
   "campanas-ampliadas": "todo-incluido",
   "analitica-avanzada": "todo-incluido",
-  exportar: "todo-incluido",
+  exportar: "reservas",
   "senal-liberacion-automatica": "todo-incluido",
   "importacion-mensual": "todo-incluido",
   // 14b: cobrar cada cita va en todos los planes; exportar y guardar el cierre, en Todo incluido.
