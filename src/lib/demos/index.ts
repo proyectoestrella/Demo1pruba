@@ -1,6 +1,6 @@
 import type { Appointment, Client, SalonProfile } from "../mock/types";
 import type { MezclaSemilla } from "../mock/seed";
-import { MEZCLA_PELUCHIC, PELUCHIC, posprocesarPeluchic, SERVICIOS_PELUCHIC, VERSION_PELUCHIC } from "./peluchic";
+import { conObservacionesPeluchic, MEZCLA_PELUCHIC, PELUCHIC, posprocesarPeluchic, SERVICIOS_PELUCHIC, VERSION_PELUCHIC } from "./peluchic";
 
 /**
  * Demos registradas por slug (lote P).
@@ -27,6 +27,8 @@ export interface DemoRegistrada {
   estimadas?: Record<string, number>;
   /** Retoque de las citas ya sembradas (p. ej. historial de color), tras `buildSeed`. */
   posprocesarCitas?: (citas: Appointment[], clients: Client[]) => Appointment[];
+  /** Retoque de las clientas ya sembradas (p. ej. observaciones), tras `posprocesarCitas`. */
+  posprocesarClientes?: (clients: Client[], citas: Appointment[]) => Client[];
 }
 
 const REGISTRO: Record<string, DemoRegistrada> = {
@@ -36,6 +38,7 @@ const REGISTRO: Record<string, DemoRegistrada> = {
     version: VERSION_PELUCHIC,
     estimadas: Object.fromEntries(SERVICIOS_PELUCHIC.filter((s) => s.estimada).map((s) => [s.id, s.duracionMin])),
     posprocesarCitas: posprocesarPeluchic,
+    posprocesarClientes: conObservacionesPeluchic,
   },
 };
 

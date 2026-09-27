@@ -595,3 +595,82 @@ export function conRespuestasReservaPeluchic(citas: Appointment[], _clients: Cli
 export function posprocesarPeluchic(citas: Appointment[], clients: Client[]): Appointment[] {
   return conRespuestasReservaPeluchic(conHistorialColorPeluchic(citas, clients), clients);
 }
+
+/**
+ * Nombre por `employeeId`, en el orden fijo de `BASE_EMPLOYEES` (mario, diego,
+ * ruben — ver mock/salon.ts) para las tres primeras plazas del equipo, que es
+ * el que ocupa PeluChic con sus tres estilistas. Solo para redactar «Siempre
+ * pide a…»: si el equipo cambiara de tamaño, sencillamente no hay nombre para
+ * esa plaza y la nota cae al resto del banco.
+ */
+const NOMBRE_POR_EMPLOYEE_ID: Record<string, string> = Object.fromEntries(
+  (["mario", "diego", "ruben"] as const).map((id, i) => [id, EQUIPO[i].split("~")[0]]),
+);
+
+interface ContextoObservacion {
+  respuestas?: BookingAnswers;
+  tieneColorAnotado: boolean;
+  horaInicio: Date;
+  nombreProfesional?: string;
+}
+
+/**
+ * Banco de observaciones de clienta (`Client.notes`): preferencias y
+ * anécdotas del salón, NUNCA datos de salud (alergias, embarazo, medicación:
+ * categoría especial del RGPD que siShow no guarda — ver `preguntaPorSalud`).
+ * Cada una solo se ofrece si `aplica` es coherente con la respuesta, el
+ * historial o la hora de la cita; las últimas son universales, para que
+ * siempre haya alguna disponible.
+ */
+const OBSERVACIONES_CANDIDATAS: ReadonlyArray<{ aplica: (c: ContextoObservacion) => boolean; texto: (c: ContextoObservacion) => string }> = [
+  { aplica: (c) => c.horaInicio.getHours() < 11, texto: () => "Prefiere primera hora de la mañana." },
+  { aplica: (c) => !!c.respuestas?.hairType?.endsWith("fino"), texto: () => "Pelo fino: secar a temperatura media." },
+  { aplica: (c) => !!c.respuestas?.hairType?.endsWith("grueso"), texto: () => "Pelo grueso: necesita más tiempo de secado." },
+  { aplica: (c) => !!c.respuestas?.hairType?.startsWith("Rizado"), texto: () => "Pelo rizado: definir sin encrespar." },
+  { aplica: (c) => c.respuestas?.hasColor === "Sí" && c.tieneColorAnotado, texto: () => "Quiere probar un tono más cálido en la próxima." },
+  { aplica: (c) => c.respuestas?.recentChemical === "No", texto: () => "Buena clienta para proponerle un tratamiento nuevo: pregúntale antes." },
+  { aplica: (c) => !!c.nombreProfesional, texto: (c) => `Siempre pide a ${c.nombreProfesional}.` },
+  { aplica: () => true, texto: () => "Viene con su hija; a veces reserva dos servicios." },
+  { aplica: () => true, texto: () => "Le vendimos el champú VitaFuerza; preguntar qué tal." },
+  { aplica: () => true, texto: () => "Prefiere que le avises por WhatsApp el día antes." },
+  { aplica: () => true, texto: () => "Cuenta que se casa el año que viene: apuntar para un recogido de novia." },
+  { aplica: () => true, texto: () => "Última vez salió muy contenta con el resultado." },
+];
+
+/**
+ * Siembra `Client.notes` (observaciones del salón, dolor nº3 de María: lo
+ * que recuerda de cada clienta y que hoy solo lleva en la cabeza) en ~50 % de
+ * las clientas con cita hoy o mañana. Coherentes con su tipo de pelo, si
+ * lleva color y su tratamiento reciente cuando aplica; nunca dato de salud.
+ * No pisa una nota ya existente (las tres de ejemplo del seed) ni toca
+ * ningún otro campo de la clienta. Determinista por el id de la clienta.
+ */
+export function conObservacionesPeluchic(clients: Client[], citas: Appointment[], ahora: Date = new Date()): Client[] {
+  const manana = new Date(ahora);
+  manana.setDate(manana.getDate() + 1);
+  const ventana = [...hojaDelDia(citas, fechaLocal(ahora)), ...hojaDelDia(citas, fechaLocal(manana))];
+
+  const primeraPorCliente = new Map<string, (typeof ventana)[number]>();
+  for (const v of ventana) {
+    if (v.cita.clientName === DURACION_FLEXIBLE_CLIENT_NAME) continue;
+    if (!primeraPorCliente.has(v.cita.clientId)) primeraPorCliente.set(v.cita.clientId, v);
+  }
+
+  const notasPorCliente = new Map<string, string>();
+  for (const [clientId, { cita, ultimoColor: ultimo }] of primeraPorCliente) {
+    const numero = Number(clientId.replace(/\D/g, "")) || 0;
+    if (numero % 2 !== 0) continue; // ~50 %: el resto se queda sin observación, como en cualquier ficha real.
+    const contexto: ContextoObservacion = {
+      respuestas: cita.bookingAnswers,
+      tieneColorAnotado: !!ultimo?.colorFormula,
+      horaInicio: new Date(cita.start),
+      nombreProfesional: NOMBRE_POR_EMPLOYEE_ID[cita.employeeId],
+    };
+    const candidatas = OBSERVACIONES_CANDIDATAS.filter((o) => o.aplica(contexto));
+    if (!candidatas.length) continue;
+    notasPorCliente.set(clientId, candidatas[numero % candidatas.length].texto(contexto));
+  }
+
+  if (!notasPorCliente.size) return clients;
+  return clients.map((c) => (c.notes ? c : notasPorCliente.has(c.id) ? { ...c, notes: notasPorCliente.get(c.id) } : c));
+}
