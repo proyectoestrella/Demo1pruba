@@ -343,6 +343,20 @@ function buildHairAppointments(
     });
   };
 
+  // Con mezcla, el pasado importado de cada habitual va con la profesional
+  // que más hace lo suyo (el color, con la colorista): si no, «lo que más
+  // hace» de la esteticista salía «Color de cobertura» por el histórico.
+  const profesionalDe = (kind: Kind, i: number): Employee => {
+    if (!mezcla) return employees[i % employees.length];
+    let mejor = -1;
+    let peso = 0;
+    employees.forEach((_, k) => {
+      const p = mezcla.porProfesional[k % Math.max(1, mezcla.porProfesional.length)]?.semana[kind] ?? 0;
+      if (p > peso) { peso = p; mejor = k; }
+    });
+    return mejor >= 0 ? employees[mejor] : employees[i % employees.length];
+  };
+
   // Un pasado importado y acotado: entre tres y cinco visitas por habitual.
   // Una pequeña parte alcanza el año anterior sin fabricar otra agenda llena.
   for (const [i, habit] of habits.entries()) {
@@ -350,7 +364,7 @@ function buildHairAppointments(
     const primary = habit.servicio ?? (habit.kind === "color" ? color : habit.kind === "mechas" ? mechas : corte);
     const count = 3 + i % 3;
     for (let visit = 0; visit < count && day >= -455; visit++) {
-      const employee = employees[i % employees.length];
+      const employee = profesionalDe(habit.kind, i);
       const date = new Date();
       date.setDate(date.getDate() + day);
       if (!employee.schedule[date.getDay()]) day--;
@@ -477,7 +491,7 @@ function buildHairAppointments(
   // Inactivas para la campaña: una sola visita antigua por persona.
   clients.slice(584).forEach((client, i) => {
     const day = -95 - i * 5;
-    const employee = employees[i % employees.length];
+    const employee = profesionalDe(i % 2 ? "corte" : "color", i);
     add(client, day, 13 * 60, employee, [i % 2 ? corte : color], "completed");
   });
   return out;

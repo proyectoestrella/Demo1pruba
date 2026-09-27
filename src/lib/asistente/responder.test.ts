@@ -137,14 +137,16 @@ describe("responder", () => {
     expect(r.tipo === "respuesta" && r.intencion).toBe("solicitudes-pendientes");
     if (r.tipo !== "respuesta") return;
     expect(r.cifras[0].valor).toBe(pend.length);
-    expect(r.texto).toContain("ya han pasado su hora: cámbiales la fecha o recházalas");
+    // Singular o plural según cuántas haya: en domingo o lunes (PeluChic cierra)
+    // la semilla deja una sola solicitud de hoy; el resto de días, varias.
+    expect(r.texto).toContain(pend.length === 1 ? "ya ha pasado su hora: cámbiale la fecha o recházala" : "ya han pasado su hora: cámbiales la fecha o recházalas");
     expect(r.acciones[0].etiqueta).toBe("Ver solicitudes");
     // Mezcla: justo después de la primera.
     const medio = new Date(Date.parse(pend.map((x) => x.start).sort()[0]) + 60_000);
     const m = asistentePeluChic({ ahora: medio }).asistente.responder("que solicitudes tengo por confirmar");
     if (m.tipo === "respuesta" && pend.length > 1) expect(m.texto).toMatch(new RegExp(`^Tienes \\*\\*${pend.length} por confirmar\\*\\*, \\d+ con la hora ya pasada`));
     const p = asistentePeluChic({ ahora: tarde }).asistente.responder("que tengo pendiente");
-    expect(p.tipo === "respuesta" && p.texto).toContain(`${pend.length} solicitudes por confirmar (todas con la hora ya pasada)`);
+    expect(p.tipo === "respuesta" && p.texto).toContain(pend.length === 1 ? "1 solicitud por confirmar (con la hora ya pasada)" : `${pend.length} solicitudes por confirmar (todas con la hora ya pasada)`);
   });
 
   test("fuera del dominio: sin nada del salón no adivina", () => {
