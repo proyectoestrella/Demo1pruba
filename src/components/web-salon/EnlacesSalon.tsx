@@ -161,7 +161,7 @@ export function BloqueComunidad({
             <Reveal delay={120} className="h-full">
               <div className="flex h-full flex-col rounded-[20px] border border-lino bg-card p-5 sm:p-6">
                 <p className="ws-etiqueta">Tienda online</p>
-                <p className="mt-2 text-[15px] text-muted-foreground">Compra online los productos de {nombre}.</p>
+                <p className="mt-2 text-[15px] text-muted-foreground">Visita la tienda online de {nombre}.</p>
                 <div className="mt-auto pt-5">
                   <a href={enlaces.tienda} {...FUERA} className={BOTON_SECUNDARIO}>
                     <ShoppingBag className="h-4 w-4 text-ws-eucalipto" aria-hidden="true" /> Tienda online

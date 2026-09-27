@@ -106,3 +106,20 @@ export function enlaceWhatsApp(p: { whatsapp?: string; phone?: string; name?: st
   if (!n) return undefined;
   return `https://wa.me/${n}?text=${encodeURIComponent(textoWhatsApp(p.name ?? ""))}`;
 }
+
+/**
+ * Precio de un servicio en la carta pública (lote 18.5): el literal del salón
+ * si lo hay («desde 150 € (sin IVA)», «43,50 € / 47,50 €»); si no, el importe
+ * sin decimales de relleno («25 €», «28,50 €»). El espacio antes del euro no
+ * se parte.
+ */
+export function precioDeCarta(s: { priceEur: number; priceText?: string }): string {
+  const literal = s.priceText?.trim();
+  if (literal) return literal;
+  const conDecimales = Math.round(s.priceEur * 100) % 100 !== 0;
+  const n = s.priceEur.toLocaleString("es-ES", {
+    minimumFractionDigits: conDecimales ? 2 : 0,
+    maximumFractionDigits: 2,
+  });
+  return `${n}\u00a0€`;
+}

@@ -51,7 +51,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { TeamShowcase } from "@/components/twentyfirst/team-showcase";
 import { cn } from "@/lib/utils";
-import { CONTENEDOR_SALON, SECCION_WEB, enlaceWhatsApp, enlacesDelSalon, listaConY, notaEs } from "@/lib/web-publica";
+import { CONTENEDOR_SALON, SECCION_WEB, enlaceWhatsApp, enlacesDelSalon, listaConY, notaEs, precioDeCarta } from "@/lib/web-publica";
+import { CartaServicios } from "@/components/web-salon/CartaServicios";
 import { BloqueComunidad, FUERA, IconoWhatsApp } from "@/components/web-salon/EnlacesSalon";
 import { eur } from "@/lib/copy";
 import { faqPublica } from "@/lib/faq";
@@ -548,10 +549,10 @@ function SalonHome() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <h3 className="text-base font-bold leading-snug text-foreground">{s.name}</h3>
-                      <span className="shrink-0 text-lg font-extrabold tabular-nums text-foreground">{eur(s.priceEur)}</span>
+                      <span className="max-w-[50%] shrink-0 text-right text-lg font-extrabold leading-snug tabular-nums text-foreground">{precioDeCarta(s)}</span>
                     </div>
-                    {s.description ? (
-                      <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{s.description}</p>
+                    {(profile.descripcionesServicios?.[s.id] ?? s.description)?.trim() ? (
+                      <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{(profile.descripcionesServicios?.[s.id] ?? s.description).trim()}</p>
                     ) : null}
                     <div className="mt-auto flex items-center justify-between gap-3 pt-4 text-sm">
                       <span className="inline-flex items-center gap-1.5 text-cafe-suave tabular-nums">
@@ -578,52 +579,13 @@ function SalonHome() {
             intro={reglaDeSenal.activa ? "Los servicios marcados «con señal» se confirman con un pequeño adelanto." : undefined}
           />
           <Reveal>
-            <Accordion
-              type="multiple"
-              defaultValue={categoryOrder.slice(0, 1)}
-              className="space-y-3"
-            >
-              {categoryOrder.map((cat) => {
-                const items = activeServices.filter((s) => (s.category ?? "Otros") === cat);
-                if (!items.length) return null;
-                return (
-                  <AccordionItem key={cat} value={cat} className="rounded-[20px] border border-lino bg-background px-4 sm:px-5">
-                    <AccordionTrigger className="min-h-14 gap-3 py-3 text-base font-bold hover:no-underline">
-                      <span className="flex-1 text-left">{cat}</span>
-                      <span className="rounded-full bg-beige px-2.5 py-0.5 text-xs font-semibold tabular-nums text-cafe-medio">
-                        {items.length} {items.length === 1 ? "servicio" : "servicios"}
-                      </span>
-                    </AccordionTrigger>
-                    <AccordionContent className="pb-4">
-                      <ul className="grid gap-2 lg:grid-cols-2 2xl:grid-cols-3">
-                        {items.map((s) => (
-                          <li key={s.id}>
-                            <Link
-                              to="/s/$salonSlug/book"
-                              params={{ salonSlug }}
-                              search={(prev) => ({ ...prev, service: s.id })}
-                              className="group flex min-h-14 items-center justify-between gap-4 rounded-xl border border-lino bg-card px-4 py-3 transition-colors hover:border-lino-fuerte hover:bg-perla"
-                            >
-                              <span className="min-w-0">
-                                <span className="block font-semibold text-foreground">{s.name}</span>
-                                <span className="block text-sm text-muted-foreground tabular-nums">
-                                  {s.durationMin} min
-                                  {servicioLlevaSenal(reglaDeSenal, s) ? " · con señal" : ""}
-                                </span>
-                              </span>
-                              <span className="flex shrink-0 items-center gap-2 font-extrabold tabular-nums text-foreground">
-                                {eur(s.priceEur)}
-                                <ChevronRight className="h-4 w-4 text-cafe-suave" aria-hidden="true" />
-                              </span>
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
+            <CartaServicios
+              salonSlug={salonSlug}
+              servicios={activeServices}
+              categorias={categoryOrder}
+              descripciones={profile.descripcionesServicios}
+              conSenal={(s) => servicioLlevaSenal(reglaDeSenal, s)}
+            />
           </Reveal>
         </div>
       </section>

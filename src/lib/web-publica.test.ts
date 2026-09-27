@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { enlaceWhatsApp, enlacesDelSalon, listaConY, notaEs, numeroWhatsApp, urlSegura } from "./web-publica";
+import { enlaceWhatsApp, enlacesDelSalon, listaConY, notaEs, numeroWhatsApp, precioDeCarta, urlSegura } from "./web-publica";
 
 describe("web pública", () => {
   test("lista con «y» antes del último", () => {
@@ -48,5 +48,15 @@ describe("enlaces del salón (lote 18.4)", () => {
     expect(decodeURIComponent(url!.split("text=")[1])).toBe("Hola, PeluChic. Os escribo desde vuestra web de reservas.");
     expect(enlaceWhatsApp({ phone: "666 77 67 31", name: "PeluChic" })?.startsWith("https://wa.me/34666776731?")).toBe(true);
     expect(enlaceWhatsApp({ name: "PeluChic" })).toBeUndefined();
+  });
+});
+
+describe("precio de la carta (lote 18.5)", () => {
+  test("el literal del salón manda; si no, el importe sin decimales de relleno", () => {
+    expect(precioDeCarta({ priceEur: 150, priceText: "desde 150 € (sin IVA)" })).toBe("desde 150 € (sin IVA)");
+    expect(precioDeCarta({ priceEur: 25 })).toBe("25\u00a0€");
+    expect(precioDeCarta({ priceEur: 28.5 })).toBe("28,50\u00a0€");
+    expect(precioDeCarta({ priceEur: 1250 })).toBe("1250\u00a0€");
+    expect(precioDeCarta({ priceEur: 20, priceText: "  " })).toBe("20\u00a0€");
   });
 });
