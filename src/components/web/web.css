@@ -1,0 +1,222 @@
+/*
+ * Web oficial de siShow (sishow.es). Estilos con ámbito: todo cuelga de
+ * `.ws`, el envoltorio de EsqueletoWeb, y no toca el panel ni la web de
+ * reservas. Parte de la identidad Arena (DESIGN.md): crema, café, moca para
+ * la acción y salvia para lo que está bien; sin negro, sin degradados de
+ * decoración y con sombras en tono café. La serif (Fraunces) pone la voz en
+ * los titulares; Manrope, todo lo demás.
+ */
+/* Todo va en la capa `components` de Tailwind: gana al preflight y pierde
+   ante las utilidades, así una clase como `px-5` puede ajustar un botón. El
+   orden de capas se repite aquí por si esta hoja llegara antes que la global. */
+@layer theme, base, components, utilities;
+
+@layer components {
+  .ws {
+    --ws-crema: #f7f2ea;
+    --ws-arena: #efe7db;
+    --ws-beige: #e9dfd1;
+    --ws-lino: #d9cbb8;
+    --ws-lino-f: #c9b8a2;
+    --ws-cafe: #3b2f2a;
+    --ws-cafe-m: #5e4f48;
+    --ws-moca: #7a5539;
+    --ws-moca-h: #684830;
+    --ws-salvia: #dce7da;
+    --ws-salvia-c: #cfdfcf;
+    --ws-hoja: #3f5a47;
+    --ws-marco: #3b2f2a;
+    --ws-sombra: 0 24px 60px rgba(59, 47, 42, 0.16);
+    --ws-sombra-s: 0 12px 32px rgba(59, 47, 42, 0.12);
+    --ws-lateral: clamp(1.25rem, 4.5vw, 3.5rem);
+    --ws-curva: cubic-bezier(0.22, 1, 0.36, 1);
+    background: var(--ws-crema);
+    color: var(--ws-cafe);
+    font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    text-rendering: optimizeLegibility;
+  }
+
+  .ws-contenedor {
+    width: 100%;
+    max-width: 1280px;
+    margin-inline: auto;
+    padding-inline: var(--ws-lateral);
+  }
+  @media (min-width: 1680px) { .ws-contenedor { max-width: 1440px; } }
+  @media (min-width: 2200px) { .ws-contenedor { max-width: 1760px; } }
+
+  .ws-seccion { padding-block: clamp(4rem, 3rem + 4vw, 7.5rem); }
+  .ws-seccion-s { padding-block: clamp(3rem, 2.4rem + 2.5vw, 5rem); }
+
+  /* ---- Tipografía ---- */
+  .ws-display {
+    font-family: "Fraunces", ui-serif, Georgia, serif;
+    font-weight: 400;
+    font-optical-sizing: auto;
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+  }
+  .ws-h1 { font-size: clamp(2.6rem, 1.55rem + 4.1vw, 5.6rem); line-height: 1.02; }
+  @media (min-width: 2200px) { .ws-h1 { font-size: 6.4rem; } .ws-h2 { font-size: 4rem; } .ws-entradilla { font-size: 1.45rem; } }
+  .ws-h1-s { font-size: clamp(2.3rem, 1.6rem + 2.8vw, 4.25rem); line-height: 1.05; }
+  .ws-h2 { font-size: clamp(2rem, 1.45rem + 2.2vw, 3.5rem); line-height: 1.08; }
+  .ws-h3 { font-size: clamp(1.6rem, 1.3rem + 1.1vw, 2.35rem); line-height: 1.12; }
+  .ws-entradilla { font-size: clamp(1.075rem, 1rem + 0.35vw, 1.3rem); line-height: 1.6; color: var(--ws-cafe-m); text-wrap: pretty; }
+  .ws-texto { color: var(--ws-cafe-m); text-wrap: pretty; }
+  .ws-cifra { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+  .ws-medida { max-width: 38rem; }
+  .ws-medida-l { max-width: 46rem; }
+
+  /* ---- Enlaces y botones ---- */
+  .ws :focus-visible { outline: 3px solid var(--ws-moca); outline-offset: 3px; border-radius: 6px; }
+  .ws-enlace { color: var(--ws-moca); font-weight: 700; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+  .ws-enlace:hover { color: var(--ws-moca-h); }
+
+  .ws-boton {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    min-height: 3rem; padding: 0.75rem 1.5rem; border-radius: 999px;
+    font-weight: 700; font-size: 1rem; line-height: 1.2; text-decoration: none; white-space: nowrap;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+    cursor: pointer;
+  }
+  .ws-boton-p { background: var(--ws-moca); color: #fff; border: 1.5px solid var(--ws-moca); }
+  .ws-boton-p:hover { background: var(--ws-moca-h); border-color: var(--ws-moca-h); }
+  .ws-boton-s { background: transparent; color: var(--ws-cafe); border: 1.5px solid var(--ws-lino-f); }
+  .ws-boton-s:hover { border-color: var(--ws-cafe); background: rgba(255, 255, 255, 0.45); }
+  .ws-boton-g { min-height: 3.5rem; padding-inline: 1.9rem; font-size: 1.05rem; }
+  .ws-boton:active { transform: translateY(1px); }
+
+  /* ---- Cabecera ---- */
+  .ws-cabecera {
+    position: sticky; top: 0; z-index: 40;
+    background: rgba(247, 242, 234, 0.92);
+    -webkit-backdrop-filter: saturate(1.2) blur(10px);
+    backdrop-filter: saturate(1.2) blur(10px);
+    border-bottom: 1px solid var(--ws-lino);
+  }
+  .ws-nav-enlace {
+    position: relative; display: inline-flex; align-items: center; min-height: 2.75rem; padding-inline: 0.25rem;
+    font-weight: 600; font-size: 0.975rem; color: var(--ws-cafe-m); text-decoration: none;
+  }
+  .ws-nav-enlace:hover { color: var(--ws-cafe); }
+  .ws-nav-enlace[aria-current="page"] { color: var(--ws-cafe); }
+  .ws-nav-enlace[aria-current="page"]::after {
+    content: ""; position: absolute; left: 0.25rem; right: 0.25rem; bottom: 0.35rem; height: 2px; border-radius: 2px; background: var(--ws-moca);
+  }
+  .ws-menu-movil { border-top: 1px solid var(--ws-lino); background: var(--ws-crema); }
+
+  /* ---- Superficies ---- */
+  .ws-banda-arena { background: var(--ws-arena); }
+  .ws-banda-beige { background: var(--ws-beige); }
+  .ws-banda-salvia { background: var(--ws-salvia); }
+  .ws-tarjeta { background: var(--ws-crema); border: 1px solid var(--ws-lino); border-radius: 1.25rem; }
+  .ws-tarjeta-arena { background: var(--ws-arena); border: 1px solid var(--ws-lino); border-radius: 1.25rem; }
+  .ws-pildora {
+    display: inline-flex; align-items: center; gap: 0.4rem; border-radius: 999px; padding: 0.3rem 0.8rem;
+    font-size: 0.875rem; font-weight: 700; line-height: 1.3;
+  }
+  .ws-pildora-salvia { background: var(--ws-salvia); color: var(--ws-hoja); }
+  .ws-pildora-beige { background: var(--ws-beige); color: var(--ws-cafe-m); }
+  .ws-pildora-borde { border: 1.5px dashed var(--ws-moca); color: var(--ws-cafe-m); background: var(--ws-crema); }
+
+  /* ---- Dispositivos ---- */
+  .ws-portatil { margin: 0; }
+  .ws-portatil-pantalla {
+    position: relative; background: var(--ws-marco);
+    padding: clamp(5px, 0.7vw, 11px) clamp(5px, 0.7vw, 11px) clamp(9px, 1.1vw, 16px);
+    border-radius: clamp(10px, 1.2vw, 18px) clamp(10px, 1.2vw, 18px) 4px 4px;
+    box-shadow: var(--ws-sombra);
+  }
+  .ws-portatil-pantalla img { display: block; width: 100%; height: auto; border-radius: 3px; background: var(--ws-arena); }
+  .ws-portatil-base {
+    position: relative; height: clamp(9px, 1.15vw, 17px); margin-inline: -5.5%;
+    background: #cdbfac; border-radius: 0 0 clamp(10px, 1.3vw, 20px) clamp(10px, 1.3vw, 20px);
+    box-shadow: 0 10px 24px rgba(59, 47, 42, 0.14);
+  }
+  .ws-portatil-base::before {
+    content: ""; position: absolute; left: 50%; top: 0; width: 15%; height: 45%; transform: translateX(-50%);
+    background: #b9a892; border-radius: 0 0 8px 8px;
+  }
+  .ws-movil { margin: 0; container-type: inline-size; }
+  /* El móvil se dibuja en proporción a su propio ancho (unidades cqw), así
+     sirve igual a 110 px en la portada de un móvil que a 320 px en escritorio. */
+  .ws-movil-marco {
+    position: relative; background: var(--ws-marco); padding: 2.4cqw;
+    border-radius: 13cqw; box-shadow: var(--ws-sombra);
+  }
+  .ws-movil-pantalla { position: relative; overflow: hidden; border-radius: 10.8cqw; background: var(--ws-arena); }
+  .ws-movil-estado {
+    display: flex; align-items: center; justify-content: space-between; height: 9.5cqw;
+    padding-inline: 8%; background: var(--ws-arena); color: var(--ws-cafe); font-size: 3.6cqw; font-weight: 700; line-height: 1;
+  }
+  .ws-movil-isla { width: 30%; height: 62%; border-radius: 999px; background: var(--ws-marco); }
+  .ws-movil-iconos { display: flex; align-items: center; gap: 0.9cqw; }
+  .ws-movil-iconos > i { display: block; width: 0.95cqw; border-radius: 0.3cqw; background: currentColor; }
+  .ws-movil-iconos > b { display: block; width: 5.4cqw; height: 2.9cqw; margin-left: 0.8cqw; border: 0.45cqw solid currentColor; border-radius: 0.9cqw; padding: 0.35cqw; }
+  .ws-movil-iconos > b::before { content: ""; display: block; width: 75%; height: 100%; border-radius: 0.3cqw; background: currentColor; }
+  @container (max-width: 150px) { .ws-movil-estado > :not(.ws-movil-isla) { visibility: hidden; } }
+  .ws-movil-pantalla img { display: block; width: 100%; height: auto; }
+  .ws-url {
+    display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 999px; padding: 0.4rem 0.85rem;
+    background: #fff; border: 1px solid var(--ws-lino); box-shadow: var(--ws-sombra-s);
+    font-size: 0.875rem; font-weight: 700; color: var(--ws-cafe); white-space: nowrap;
+  }
+  .ws-ventana { overflow: hidden; border-radius: 1.25rem; border: 1px solid var(--ws-lino); background: var(--ws-arena); box-shadow: var(--ws-sombra-s); }
+  .ws-ventana img { display: block; width: 100%; height: auto; }
+
+  /* ---- Movimiento: un solo momento al cargar y lo que responde a la mano ---- */
+  @keyframes ws-llega {
+    from { opacity: 0; transform: translateY(14px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes ws-trazo { to { stroke-dashoffset: 0; } }
+  @keyframes ws-fundido { from { opacity: 0.35; } to { opacity: 1; } }
+  .ws-llega { animation: ws-llega 460ms var(--ws-curva) 520ms both; }
+  .ws-check path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: ws-trazo 380ms var(--ws-curva) 900ms forwards; }
+  .ws-fundido { animation: ws-fundido 200ms var(--ws-curva); }
+  .ws-elevar { transition: transform 180ms var(--ws-curva), box-shadow 180ms var(--ws-curva); }
+  .ws-elevar:hover { transform: translateY(-2px); box-shadow: var(--ws-sombra-s); }
+  @media (prefers-reduced-motion: reduce) {
+    .ws *, .ws *::before, .ws *::after { animation: none !important; transition: none !important; }
+    .ws-check path { stroke-dashoffset: 0; }
+  }
+
+  /* ---- Preguntas frecuentes (details nativo, funciona sin JS) ---- */
+  .ws-pregunta { border-bottom: 1px solid var(--ws-lino); }
+  .ws-pregunta > summary {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem; cursor: pointer; list-style: none;
+    min-height: 3.5rem; padding-block: 1.1rem; font-weight: 700; font-size: clamp(1.02rem, 0.98rem + 0.2vw, 1.15rem);
+  }
+  .ws-pregunta > summary::-webkit-details-marker { display: none; }
+  .ws-pregunta > summary svg { flex-shrink: 0; transition: transform 200ms var(--ws-curva); }
+  .ws-pregunta[open] > summary svg { transform: rotate(45deg); }
+  .ws-pregunta > div { padding-bottom: 1.25rem; max-width: 46rem; }
+
+  /* ---- Tabla comparativa ---- */
+  .ws-tabla-caja { position: relative; overflow-x: auto; border: 1px solid var(--ws-lino); border-radius: 1.25rem; background: var(--ws-crema); }
+  .ws-tabla { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 0.95rem; }
+  .ws-tabla th, .ws-tabla td { padding: 0.8rem 1rem; text-align: center; border-bottom: 1px solid var(--ws-lino); vertical-align: middle; }
+  .ws-tabla th:first-child, .ws-tabla td:first-child { text-align: left; }
+  .ws-tabla thead th { background: var(--ws-arena); font-weight: 800; }
+  .ws-tabla tbody th { font-weight: 600; }
+  .ws-tabla .ws-tabla-grupo th { background: var(--ws-beige); font-weight: 800; font-size: 0.9rem; }
+  .ws-tabla tr:last-child td, .ws-tabla tr:last-child th { border-bottom: 0; }
+  .ws-tabla th:first-child { position: sticky; left: 0; z-index: 1; background: var(--ws-crema); }
+  .ws-tabla thead th:first-child { background: var(--ws-arena); }
+  .ws-tabla .ws-tabla-grupo th:first-child { background: var(--ws-beige); }
+
+  /* ---- Texto legal ---- */
+  .ws-legal h2 { font-family: "Fraunces", ui-serif, Georgia, serif; font-weight: 400; font-size: clamp(1.45rem, 1.3rem + 0.6vw, 1.85rem); line-height: 1.2; margin-top: 2.75rem; margin-bottom: 0.75rem; letter-spacing: -0.015em; }
+  .ws-legal h3 { font-weight: 800; font-size: 1.05rem; margin-top: 1.5rem; margin-bottom: 0.4rem; }
+  .ws-legal p, .ws-legal li { color: var(--ws-cafe-m); }
+  .ws-legal p + p { margin-top: 0.85rem; }
+  .ws-legal ul { list-style: disc; padding-left: 1.3rem; margin-block: 0.75rem; }
+  .ws-legal li + li { margin-top: 0.4rem; }
+  .ws-legal strong { color: var(--ws-cafe); }
+  .ws-pendiente {
+    border: 1.5px dashed var(--ws-moca); border-radius: 1rem; background: var(--ws-crema);
+    padding: 1rem 1.25rem; color: var(--ws-cafe-m); font-size: 0.95rem;
+  }
+}
