@@ -280,7 +280,7 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
           <h1 className="truncate text-[17px] leading-tight font-extrabold tracking-[-0.02em] md:text-[22px]" title={titulo}>{titulo}</h1>
           {(vista === "dia" || vista === "cronograma") && (
             <p className="text-[13.5px] text-muted-foreground tabular-nums">
-              {numCitas} citas · {huecosDia.length} huecos libres
+              {numCitas} {numCitas === 1 ? "cita" : "citas"} · {huecosDia.length} {huecosDia.length === 1 ? "hueco libre" : "huecos libres"}
               {porConfirmar > 0 && <span className="text-primary"> · {porConfirmar} por confirmar</span>}
             </p>
           )}

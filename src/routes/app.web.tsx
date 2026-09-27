@@ -51,6 +51,8 @@ import { Textarea } from "@/components/ui/textarea";
 import type { SalonProfile } from "@/lib/mock/types";
 import { useEquipo } from "@/lib/use-equipo";
 import { agruparCarta } from "@/lib/servicios-panel";
+import { demoPorSlug } from "@/lib/demos";
+import { subdominioDeSalon } from "@/lib/host";
 
 export const Route = createFileRoute("/app/web")({ component: MiWeb });
 
@@ -80,6 +82,12 @@ function MiWeb() {
     }
   };
   const slugPrevia = realSlug ?? salonProfile.slug ?? "demo";
+  // Una demo registrada (hoy, PeluChic) SÍ tiene web publicada de verdad en
+  // su subdominio: el aviso de «demo de venta, nada publicado» sería falso y
+  // alarmante si Tomás la enseña. El resto de demos (enlace `?d=`) no tienen
+  // web real y se quedan con el aviso de siempre.
+  const demoConWebReal = !esReal && Boolean(demoPorSlug(salonProfile.slug));
+  const dominioDemoReal = demoConWebReal ? subdominioDeSalon(salonProfile.slug) : null;
 
   /** Lo último que se sabe publicado: el punto al que vuelve «Descartar» y la base de «Deshacer». */
   const [publicado, setPublicado] = useState<SalonProfile>(salonProfile);
@@ -368,7 +376,19 @@ function MiWeb() {
         description="Lo que ven tus clientas cuando abren tu enlace. Cámbialo aquí y míralo al momento."
       />
 
-      {!esReal && (
+      {!esReal && demoConWebReal && (
+        <div className="flex items-start gap-2.5 rounded-2xl bg-salvia-clara px-4 py-3 text-[12.5px] text-hoja-tinta">
+          <Info className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
+          <p>
+            <strong>Vista previa de tu web{dominioDemoReal ? `: ${dominioDemoReal}` : ""}.</strong>{" "}
+            Los cambios de aquí se ven en la vista previa y en esta tablet, pero no salen a
+            internet todavía: es una demo. Cuando el salón esté dado de alta, este mismo botón
+            publica de verdad en esa dirección.
+          </p>
+        </div>
+      )}
+
+      {!esReal && !demoConWebReal && (
         <div className="flex items-start gap-2.5 rounded-2xl bg-salvia-clara px-4 py-3 text-[12.5px] text-hoja-tinta">
           <Info className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
           <p>

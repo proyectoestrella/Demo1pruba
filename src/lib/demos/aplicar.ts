@@ -102,6 +102,10 @@ export function cargarDemoRegistrada(slug: string, opciones: { panel?: boolean }
       mezcla: demo.mezcla,
       abrirHoy: true,
     });
+    if (demo.posprocesarCitas) {
+      const { appointments, clients } = useSalonStore.getState();
+      useSalonStore.setState({ appointments: demo.posprocesarCitas(appointments, clients) });
+    }
   });
   store.markDemoActive();
   // Versiones de «Mi página» de una carga anterior de esta misma demo: fuera.

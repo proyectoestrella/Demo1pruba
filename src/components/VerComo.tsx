@@ -34,7 +34,7 @@ export function VerComo({ className }: { className?: string }) {
         value={actual.userId}
         onChange={(e) => setVerComo(e.target.value)}
         aria-label="Ver el panel como"
-        className="min-w-0 flex-1 cursor-pointer rounded-full bg-transparent py-1 pr-1 text-[13px] font-bold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        className="min-w-[5rem] flex-1 cursor-pointer rounded-full bg-transparent py-1 pr-1 text-[13px] font-bold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         {activos.map((m) => (
           <option key={m.userId} value={m.userId}>
