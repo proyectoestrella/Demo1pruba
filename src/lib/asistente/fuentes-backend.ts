@@ -161,6 +161,7 @@ export function crearFuentesBackend(d: DatosBackend): FuentesAsistente {
       return {
         visitas: f.visitas.map((v) => ({ fecha: v.fecha, servicios: v.servicios, profesional: v.profesional, importe: v.importe, duracion: v.duracion })),
         ultimoColor: f.resumen.ultimoColor ?? null,
+        ultimaNotaTecnica: f.resumen.ultimaNotaTecnica ?? null,
         frecuenciaMediaDias: f.resumen.frecuenciaMediaDias ?? null,
         gastoTotal: f.resumen.gastoTotal,
         gastoUltimos12Meses: f.resumen.gastoUltimos12Meses,

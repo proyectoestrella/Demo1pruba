@@ -19,7 +19,12 @@ export const ultimaVisitaClienta: Resolutor = (c) => {
   const dia = fechaEnZona(v.fecha, c.estado.timeZone);
   const hace = Math.round((Date.parse(c.hoy) - Date.parse(dia)) / 86_400_000);
   const cuanto = hace >= 14 ? ` (hace ${hace >= 60 ? `${Math.round(hace / 7)} semanas` : `${hace} días`})` : "";
-  return respuesta(`${cl.name} vino el **${fechaLarga(dia, c.hoy)}**${cuanto}: ${v.servicios.join(" + ") || "sin servicio anotado"} con ${pila(v.profesional)}, ${euros(v.importe)}.`, {
+  // El último color no siempre es de la última visita (mechas hoy, corte la
+  // próxima): se anota aparte si lo hay, para no dar por hecho que no tiene.
+  const color = f.ultimoColor?.formula
+    ? ` Último color: **${f.ultimoColor.formula}** (${fechaLarga(fechaEnZona(f.ultimoColor.fecha, c.estado.timeZone), c.hoy)}).`
+    : "";
+  return respuesta(`${cl.name} vino el **${fechaLarga(dia, c.hoy)}**${cuanto}: ${v.servicios.join(" + ") || "sin servicio anotado"} con ${pila(v.profesional)}, ${euros(v.importe)}.${color}`, {
     cifras: [{ etiqueta: "días desde la última visita", valor: hace, unidad: "dias" }],
     acciones: [ficha(cl.id)],
   });
@@ -77,7 +82,13 @@ export const datosClienta: Resolutor = (c) => {
 export const notasClienta: Resolutor = (c) => {
   const cl = c.clienta!;
   const f = c.fuentes.fichaClienta(cl.id);
+  // `cl.notes` son las observaciones de la ficha; `f.avisos` es lo demás
+  // (bloqueo, señal, aviso de color) — nunca las observaciones otra vez: los
+  // dos adaptadores (panel y BACKEND) las dejan fuera de `avisos` a propósito.
   const notas = [cl.notes?.trim(), ...(f?.avisos ?? [])].filter((x): x is string => !!x);
+  if (f?.ultimaNotaTecnica?.texto) {
+    notas.push(`Nota técnica del ${fechaLarga(fechaEnZona(f.ultimaNotaTecnica.fecha, c.estado.timeZone), c.hoy)}: ${f.ultimaNotaTecnica.texto}`);
+  }
   if (!notas.length) return respuesta(`De ${pila(cl.name)} **no tienes nada** apuntado.`, { acciones: [ficha(cl.id)] });
   return respuesta(`De ${pila(cl.name)} tienes apuntado: «${notas.join(" · ")}».`, { acciones: [ficha(cl.id)] });
 };

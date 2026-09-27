@@ -103,6 +103,8 @@ export interface FichaA {
   /** De la más reciente a la más antigua. */
   visitas: VisitaA[];
   ultimoColor?: { formula: string; fecha: string } | null;
+  /** Nota técnica de la visita más reciente que tenga alguna (no todas la llevan). */
+  ultimaNotaTecnica?: { texto: string; fecha: string } | null;
   frecuenciaMediaDias?: number | null;
   gastoTotal: number;
   gastoUltimos12Meses: number;

@@ -76,6 +76,7 @@ export function crearFuentesPanel(
       const ficha: FichaA = {
         visitas: f.visitas.map((v) => ({ fecha: v.fecha, servicios: v.servicios, profesional: v.profesional, importe: v.importe, duracion: v.duracion })),
         ultimoColor: f.resumen.ultimoColor ?? null,
+        ultimaNotaTecnica: f.resumen.ultimaNotaTecnica ?? null,
         frecuenciaMediaDias: f.resumen.frecuenciaMediaDias ?? null,
         gastoTotal: f.resumen.gastoTotal,
         gastoUltimos12Meses: f.resumen.gastoUltimos12Meses,
@@ -83,7 +84,10 @@ export function crearFuentesPanel(
         proximaCita: proxima
           ? { fecha: proxima.start, servicios: proxima.serviceIds.map(nombreServicio), profesional: equipo().find((e) => e.id === proxima.employeeId)?.name ?? "" }
           : null,
-        avisos: f.avisos,
+        // «Observaciones: …» se queda fuera: `notasClienta` (resolutores/clientas.ts) ya
+        // lee `Client.notes` directo, y antes salía dos veces (crudo + aquí prefijado
+        // «Observaciones:»). BACKEND (fuentes-backend.ts) ya filtraba esto: aquí faltaba.
+        avisos: f.avisos.filter((a) => !a.startsWith("Observaciones:")),
         duracionRecordada: (serviceIds) => {
           const carta = serviceIds.reduce((t, id) => t + (s.services.find((x) => x.id === id)?.durationMin ?? 0), 0);
           return duracionRecordada(s.appointments, clientaId, serviceIds, carta)?.minutos ?? null;

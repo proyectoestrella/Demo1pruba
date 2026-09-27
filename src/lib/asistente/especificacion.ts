@@ -499,7 +499,11 @@ export const ESPECIFICACION: FamiliaEspecificacion[] = [
       "marta la ultima vez",
       "q se hizo paula",
       "ultima cita de cristina",
-      "historial de marta"
+      "historial de marta",
+      "que se ha hecho elena",
+      "q se ha hecho marta",
+      "que le han hecho a lucia",
+      "que se hizo elena la ultima vez"
     ],
     "modelo": "«Marta Ruiz vino el **14 de julio**: Mechas / balayage con Noelia, 80 €. [Abrir ficha]»"
   },
