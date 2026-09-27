@@ -17,6 +17,8 @@ import {
   Star,
   Users,
   ChevronDown,
+  CalendarHeart,
+  Mail,
 } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
 import { zonaDelSalon } from "@/lib/zona-horaria";
@@ -40,6 +42,8 @@ const ICONOS: Record<string, LucideIcon> = {
   "segunda-visita": Repeat,
   resena: Star,
   upsell: Sparkles,
+  "eventos-temporada": CalendarHeart,
+  "boletin-tienda": Mail,
 };
 
 /**
@@ -81,6 +85,8 @@ export function CampanasPanel() {
         salonAddress: salonProfile.address,
         // Día y franja de cada cita en la zona del salón.
         timeZone: zonaDelSalon(salonProfile),
+        // Lote P: su boletín, su tienda y su Instagram en los mensajes.
+        canales: { enlaces: salonProfile.enlaces, boletin: salonProfile.boletin },
       }),
     [listo, appointments, clients, services, employees, salonProfile],
   );

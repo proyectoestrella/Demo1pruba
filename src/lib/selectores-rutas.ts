@@ -38,12 +38,12 @@ export function citasDelDiaMemo(appts: Appointment[], dia: Date): Appointment[] 
 }
 
 const campanasMemo = memoPorDatos(
-  (appointments: CampanasInput["appointments"], clients: CampanasInput["clients"], services: CampanasInput["services"], employees: CampanasInput["employees"], salonName: string, salonAddress: string, now: Date | undefined, timeZone: string | undefined) =>
-    buildCampanas({ appointments, clients, services, employees, salonName, salonAddress, now, timeZone }),
+  (appointments: CampanasInput["appointments"], clients: CampanasInput["clients"], services: CampanasInput["services"], employees: CampanasInput["employees"], salonName: string, salonAddress: string, now: Date | undefined, timeZone: string | undefined, enlaces: NonNullable<CampanasInput["canales"]>["enlaces"], boletin: NonNullable<CampanasInput["canales"]>["boletin"]) =>
+    buildCampanas({ appointments, clients, services, employees, salonName, salonAddress, now, timeZone, canales: { enlaces, boletin } }),
 );
 /** `buildCampanas` memoizado (el objeto de entrada se desarma: cada campo cuenta por separado). */
 export function buildCampanasMemo(i: CampanasInput) {
-  return campanasMemo(i.appointments, i.clients, i.services, i.employees, i.salonName, i.salonAddress, i.now ?? new Date(), i.timeZone);
+  return campanasMemo(i.appointments, i.clients, i.services, i.employees, i.salonName, i.salonAddress, i.now ?? new Date(), i.timeZone, i.canales?.enlaces, i.canales?.boletin);
 }
 
 const fichaMemo = memoPorDatos(
