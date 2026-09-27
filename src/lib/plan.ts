@@ -7,15 +7,23 @@
  * Decisión de Tomás (26-sep): Todo incluido = roles más allá de gerente y
  * estilista, historial y restaurar sin límite (estándar: el aviso de 10 s y
  * las últimas 24 h), campañas ampliadas (estándar: solo la reseña de Google;
- * cumpleaños no existe todavía), analítica avanzada, señal con liberación
- * automática e importación asistida mensual. El asistente, desde Reservas +
- * Asistente. El resto, en Reservas. «Más profesionales» NO depende del plan.
+ * cumpleaños no existe todavía), analítica avanzada e importación asistida
+ * mensual. El asistente, desde Reservas + Asistente. El resto, en Reservas.
+ * «Más profesionales» NO depende del plan.
  *
  * Decisión de Tomás (27-sep), alineado con el presupuesto: exportar tus citas
  * y tu analítica a Excel va en TODOS los planes, no solo en Todo incluido
  * (el presupuesto que ve María ya lo incluye así). No confundir con
  * `caja-exportar` (el fichero de cobros para la gestoría), que sigue solo en
  * Todo incluido.
+ *
+ * Plan definitivo del 27-sep (`plan-final.md`): «si la señal no llega a
+ * tiempo, el hueco se libera solo» pasa a TODOS los planes — ya funciona así
+ * en el código, activado por defecto (`senal.ts`), y es justo lo que pidió
+ * María. No prometer «dominio propio» ni «segunda página de reservas» en
+ * ningún plan (no existen): son desarrollo a tu medida. Igual el WhatsApp o
+ * los recordatorios totalmente automáticos, sin que la dueña toque nada
+ * (requieren dar de alta el número en Meta): a tu medida, sin plan ni fecha.
  */
 export type PlanSishow = "reservas" | "reservas-asistente" | "todo-incluido";
 
@@ -46,7 +54,7 @@ export const FUNCIONES_POR_PLAN: Record<FuncionPlan, PlanSishow> = {
   "campanas-ampliadas": "todo-incluido",
   "analitica-avanzada": "todo-incluido",
   exportar: "reservas",
-  "senal-liberacion-automatica": "todo-incluido",
+  "senal-liberacion-automatica": "reservas",
   "importacion-mensual": "todo-incluido",
   // 14b: cobrar cada cita va en todos los planes; exportar y guardar el cierre, en Todo incluido.
   "caja-exportar": "todo-incluido",
