@@ -303,6 +303,26 @@ export interface SalonProfile {
   heroImage?: string;
   /** Logo del salón para el círculo del menú y la portada. Vacío: la inicial. */
   logoUrl?: string;
+  /**
+   * Enlaces del salón (lote 18): su web o blog, redes y tienda online, como
+   * URL completas. Ausentes: no se muestran. `instagram` (arriba) sigue siendo
+   * el usuario que se enseña; aquí va la dirección a la que se salta.
+   */
+  enlaces?: {
+    blog?: string;
+    instagram?: string;
+    facebook?: string;
+    tienda?: string;
+    web?: string;
+  };
+  /** WhatsApp del salón en formato internacional ("+34 666 77 67 31"). Ausente: se usa `phone`. */
+  whatsapp?: string;
+  /** Boletín del salón que se promociona en su web de reservas (p. ej. descuento en la tienda). */
+  boletin?: { texto: string; url: string; condiciones?: string };
+  /** Fotos propias de la galería, en orden (URL de /public o absolutas). Si hay, mandan sobre galleryPhotos. */
+  galeriaPropia?: { url: string; alt: string }[];
+  /** Texto corto de cada servicio de la carta, por id de servicio (lo que el salón cuenta en su web). */
+  descripcionesServicios?: Record<string, string>;
   /** Textos de WhatsApp de la dueña (9h). Vacío o ausente: el texto de siempre. */
   plantillas?: { recordatorio?: string; confirmacion?: string };
   /** Color elegido por la dueña (9h): servicio → 1-6 de la paleta; profesional → 1-4. */
