@@ -106,6 +106,12 @@ export function cargarDemoRegistrada(slug: string, opciones: { panel?: boolean }
       const { appointments, clients } = useSalonStore.getState();
       useSalonStore.setState({ appointments: demo.posprocesarCitas(appointments, clients) });
     }
+    if (demo.posprocesarClientes) {
+      // Después de posprocesarCitas: las observaciones pueden apoyarse en las
+      // respuestas de reserva o el historial de color ya sembrados.
+      const { appointments, clients } = useSalonStore.getState();
+      useSalonStore.setState({ clients: demo.posprocesarClientes(clients, appointments) });
+    }
   });
   store.markDemoActive();
   // Versiones de «Mi página» de una carga anterior de esta misma demo: fuera.
