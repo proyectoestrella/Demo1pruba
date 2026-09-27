@@ -36,7 +36,7 @@ import { useMemo } from "react";
 import { isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
 import { useClientNow } from "@/lib/use-client-now";
 import { conAncho } from "@/lib/demo-photos";
-import { fotosDeGaleria } from "@/lib/galeria-salon";
+import { fotoConAnchos, fotosDeGaleria } from "@/lib/galeria-salon";
 import { useImagenConRespaldo } from "@/lib/imagen-rota";
 import heroImg from "@/assets/hero-salon.jpg";
 import heroSalonImg from "@/assets/gallery-salon.jpg";
@@ -288,7 +288,19 @@ function SalonHome() {
   // de demo la trae fija (caso PeluChic, foto de Google Places servida por
   // `/api/foto`), y esa foto puede desaparecer de la ficha, o faltar la clave
   // de Google (503). Sin respaldo queda un icono de imagen rota a pantalla completa.
-  const portada = useImagenConRespaldo(profile.heroImage, tipo === "barberia" ? heroImg : heroSalonImg);
+  // Lote 18: si el salón tiene galería propia, el respaldo es SU primera
+  // foto (a 1200 px), no el interior de otro salón. Pasó el 27-09: Google
+  // devolvió 429 al proxy y la portada de PeluChic salía con una foto de
+  // ejemplo.
+  const propiaDeRespaldo = profile.galeriaPropia?.find((f) => f.url?.trim());
+  const respaldoPortada = propiaDeRespaldo
+    ? fotoConAnchos(propiaDeRespaldo.url.trim(), propiaDeRespaldo.alt)
+    : undefined;
+  const portada = useImagenConRespaldo(
+    profile.heroImage,
+    respaldoPortada?.grande ?? (tipo === "barberia" ? heroImg : heroSalonImg),
+  );
+  const portadaEsRespaldoPropio = !!respaldoPortada && portada.src === respaldoPortada.grande;
   // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
   // en la cadena "2" — de ahí el `String(...)` antes de comparar.
   const isV2 = useRouterState({
@@ -401,16 +413,18 @@ function SalonHome() {
           // Portada a 800 o 1600 px según pantalla (lote 17.7): la de 1600
           // pesaba 424 KB y era el 86 % del LCP en móvil. Una foto que no es
           // del proxy (subida por el salón o de respaldo) no lleva srcSet.
-          src={conAncho(portada.src, 800) ?? portada.src}
+          src={portadaEsRespaldoPropio ? respaldoPortada!.src : (conAncho(portada.src, 800) ?? portada.src)}
           srcSet={
             portada.src.startsWith("/api/foto?")
               ? `${conAncho(portada.src, 800)} 800w, ${conAncho(portada.src, 1600)} 1600w`
-              : undefined
+              : portadaEsRespaldoPropio
+                ? respaldoPortada!.srcSet
+                : undefined
           }
           sizes="100vw"
           ref={portada.ref}
           onError={portada.onError}
-          alt={`Interior de ${profile.name}`}
+          alt={portadaEsRespaldoPropio ? respaldoPortada!.alt : `Interior de ${profile.name}`}
           className="ws-portada-foto absolute inset-0 -z-20 h-full w-full object-cover"
           width={1920}
           height={1280}
