@@ -134,3 +134,83 @@ export function cabezaWeb(clave: ClavePagina) {
     meta: [{ title: p.titulo }, { name: "description", content: p.descripcion }],
   };
 }
+
+/* -------------------------------------------------------------------------
+ * Contenido compartido de la web oficial
+ * ---------------------------------------------------------------------- */
+
+export interface Pregunta {
+  pregunta: string;
+  respuesta: string;
+}
+
+/**
+ * Preguntas frecuentes del inicio. Cada respuesta se ciñe a lo que existe hoy
+ * en el producto (registro de versiones y hoja de planes v2 del 26-sep).
+ */
+export const PREGUNTAS_INICIO: Pregunta[] = [
+  {
+    pregunta: "¿Mis clientas tienen que descargarse algo?",
+    respuesta:
+      "No. Reservan desde tu enlace, en el navegador del móvil o del ordenador. No necesitan cuenta ni contraseña: dejan su nombre y su teléfono, y el correo si quieren.",
+  },
+  {
+    pregunta: "¿Cuánto se tarda en empezar?",
+    respuesta:
+      "Una semana. Hablamos una hora, lo montamos nosotros con tus servicios, tu equipo y tus clientas, lo repasas con nosotros y das tu enlace. Después te acompañamos por WhatsApp las dos primeras semanas.",
+  },
+  {
+    pregunta: "¿siShow cobra a mis clientas o se queda una comisión?",
+    respuesta:
+      "No. siShow no cobra nada a tus clientas ni se queda comisión por reserva: tú pagas una cuota fija al mes y ellas te pagan a ti, como siempre. Si pides señal, el Bizum llega a tu número.",
+  },
+  {
+    pregunta: "¿Funciona en el móvil y en el iPad?",
+    respuesta:
+      "Sí. siShow funciona en el navegador del móvil, de la tablet y del ordenador, y puedes añadirlo a la pantalla de inicio para abrirlo como una app más.",
+  },
+  {
+    pregunta: "¿El asistente usa inteligencia artificial?",
+    respuesta:
+      "No. Busca en tu agenda, tus fichas y tu caja y te responde con esos datos. Si algo no lo sabe, te lo dice: no se inventa nada.",
+  },
+  {
+    pregunta: "¿Los WhatsApp a mis clientas los mandáis vosotros?",
+    respuesta:
+      "Salen de tu propio WhatsApp: siShow te prepara el recordatorio, la confirmación o la petición de señal y tú lo envías con un toque. Si prefieres que se envíen solos desde tu número, lo montamos a tu medida.",
+  },
+  {
+    pregunta: "¿Qué pasa con las clientas que ya tengo?",
+    respuesta:
+      "Las traemos nosotros en la puesta en marcha. Si usas TPV 123, también su historial de ventas; si usas otro programa, lo miramos contigo.",
+  },
+  {
+    pregunta: "¿Sirve para barberías y centros de estética?",
+    respuesta:
+      "Sí. Los servicios, la duración y los precios los pones tú, así que funciona igual con cortes y arreglos de barba que con tratamientos de estética.",
+  },
+];
+
+/** La semana de puesta en marcha, paso a paso. */
+export const SEMANA_PUESTA: { cuando: string; titulo: string; texto: string }[] = [
+  { cuando: "Día 1", titulo: "Hablamos una hora", texto: "Nos cuentas tus servicios, tu equipo, tu horario y cómo quieres la señal." },
+  { cuando: "Días 2 y 3", titulo: "Lo montamos nosotros", texto: "Cargamos tu carta, el equipo y tus clientas, y dejamos lista tu web de reservas." },
+  { cuando: "Día 4", titulo: "Lo repasas", texto: "Te lo enseñamos ya hecho y cambiamos lo que no te encaje." },
+  { cuando: "Días 5 a 7", titulo: "Primeras reservas", texto: "Formación con tu equipo, compartes tu enlace y estamos pendientes de las primeras citas." },
+];
+
+/** Resumen de cada plan para el inicio: para quién es y lo principal. */
+export const RESUMEN_PLANES: Record<PlanSishow, { para: string; puntos: string[] }> = {
+  reservas: {
+    para: "Para recibir reservas por internet y ordenar la agenda del salón.",
+    puntos: ["Web de reservas con tu nombre", "Agenda del equipo", "Fichas con el color de cada clienta", "Caja y señal por Bizum"],
+  },
+  "reservas-asistente": {
+    para: "Lo mismo, y un asistente que te responde con tus datos.",
+    puntos: ["Todo lo de Reservas", "El asistente, sin inteligencia artificial", "Historial de ventas de TPV 123", "Lo que gasta cada clienta"],
+  },
+  "todo-incluido": {
+    para: "Para el salón que quiere tenerlo todo y que se lo llevemos al día.",
+    puntos: ["Todo lo de Reservas + Asistente", "Más tipos de acceso e historial completo", "Campañas, analítica completa y Excel", "Tu propio dominio y soporte prioritario"],
+  },
+};

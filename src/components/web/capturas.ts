@@ -60,7 +60,7 @@ export const CAPTURAS: Record<NombreCaptura, Captura> = {
   asistente: {
     anchos: [438, 876],
     ancho: 876,
-    alto: 1800,
+    alto: 1160,
     alt: "Asistente del salón respondiendo qué color lleva Elena Martín y cuánto se ha cobrado hoy: 320 € de 615 €.",
   },
   historial: {
