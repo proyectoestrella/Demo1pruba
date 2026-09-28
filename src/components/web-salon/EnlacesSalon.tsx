@@ -101,7 +101,7 @@ export function BloqueComunidad({
   if (!tarjetas) return null;
 
   return (
-    <section id="siguenos" aria-labelledby="siguenos-titulo" className="bg-ws-eucalipto-claro">
+    <section id="siguenos" aria-labelledby="siguenos-titulo" className="bg-ws-salvia-clara">
       <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
         <Reveal className="mb-8 md:mb-10">
           <p className="ws-etiqueta">Más de {nombre}</p>

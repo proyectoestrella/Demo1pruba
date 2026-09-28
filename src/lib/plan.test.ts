@@ -9,8 +9,21 @@ describe("plan del salón (lote 13)", () => {
     }
     expect(Object.keys(FUNCIONES_POR_PLAN)).not.toContain("mas-profesionales");
   });
-  test("decisión de Tomás (28-sep, plan-final-v2): historial completo, analítica avanzada y campañas ampliadas bajan a Completo", () => {
-    for (const f of ["historial-completo", "analitica-avanzada", "campanas-ampliadas"] as const) {
+  test("decisión de Tomás (28-sep, plan-final-v2): historial completo y analítica avanzada bajan a Completo", () => {
+    for (const f of ["historial-completo", "analitica-avanzada"] as const) {
+      expect(FUNCIONES_POR_PLAN[f]).toBe("reservas-asistente");
+      expect(tienePlan("reservas", f)).toBe(false);
+      expect(tienePlan("reservas-asistente", f)).toBe(true);
+      expect(tienePlan("todo-incluido", f)).toBe(true);
+    }
+  });
+  test("corrección de Tomás (28-sep, venta 9:30): campañas ampliadas vuelve a Embajador", () => {
+    expect(FUNCIONES_POR_PLAN["campanas-ampliadas"]).toBe("todo-incluido");
+    expect(tienePlan("reservas-asistente", "campanas-ampliadas")).toBe(false);
+    expect(tienePlan("todo-incluido", "campanas-ampliadas")).toBe(true);
+  });
+  test("corrección de Tomás (28-sep, venta 9:30): caja (exportar y cierre) baja a Completo", () => {
+    for (const f of ["caja-exportar", "caja-cierre"] as const) {
       expect(FUNCIONES_POR_PLAN[f]).toBe("reservas-asistente");
       expect(tienePlan("reservas", f)).toBe(false);
       expect(tienePlan("reservas-asistente", f)).toBe(true);

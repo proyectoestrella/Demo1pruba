@@ -731,7 +731,7 @@ function SalonHome() {
       )}
 
       {/* Preguntas frecuentes */}
-      <section id="faq" className="bg-ws-crema">
+      <section id="faq" className="bg-ws-salvia-clara">
         <div className={cn(CONTENEDOR_SALON, SECCION_WEB, "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-12")}>
           <SectionHeading eyebrow="Antes de venir" title="Preguntas frecuentes" className="lg:mb-0" />
           <Reveal>

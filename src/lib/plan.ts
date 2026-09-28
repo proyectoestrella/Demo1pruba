@@ -28,9 +28,14 @@
  * Decisión de Tomás (28-sep, `plan-final-v2.md`): los planes cambian de
  * nombre — Reservas → Básico, Reservas + Asistente → Completo, Todo
  * incluido → Embajador — sin tocar los ids internos. Y de reparto: el
- * historial completo, la analítica avanzada y las campañas ampliadas bajan
- * de Embajador a Completo (`historial-completo`, `analitica-avanzada`,
- * `campanas-ampliadas`). El resto de funciones no se mueve.
+ * historial completo y la analítica avanzada bajan de Embajador a Completo
+ * (`historial-completo`, `analitica-avanzada`). El resto de funciones no
+ * se mueve.
+ *
+ * Corrección de Tomás (28-sep, venta de las 9:30): `campanas-ampliadas`
+ * vuelve a Embajador (`todo-incluido`) — no baja a Completo. Y el cierre y
+ * la exportación de caja (`caja-cierre`, `caja-exportar`) bajan de Embajador
+ * a Completo (`reservas-asistente`): Caja entera queda en el plan Completo.
  */
 export type PlanSishow = "reservas" | "reservas-asistente" | "todo-incluido";
 
@@ -58,14 +63,14 @@ export const FUNCIONES_POR_PLAN: Record<FuncionPlan, PlanSishow> = {
   asistente: "reservas-asistente",
   "roles-ampliados": "todo-incluido",
   "historial-completo": "reservas-asistente",
-  "campanas-ampliadas": "reservas-asistente",
+  "campanas-ampliadas": "todo-incluido",
   "analitica-avanzada": "reservas-asistente",
   exportar: "reservas",
   "senal-liberacion-automatica": "reservas",
   "importacion-mensual": "todo-incluido",
-  // 14b: cobrar cada cita va en todos los planes; exportar y guardar el cierre, en Todo incluido.
-  "caja-exportar": "todo-incluido",
-  "caja-cierre": "todo-incluido",
+  // 14b: cobrar cada cita va en todos los planes; exportar y guardar el cierre, en Completo.
+  "caja-exportar": "reservas-asistente",
+  "caja-cierre": "reservas-asistente",
 };
 
 /** Qué es cada función, para la tarjeta «llega con el plan…». */
