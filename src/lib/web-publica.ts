@@ -154,8 +154,8 @@ export function idsLoMasPedido(
  *
  * - Con ficha (`enlaces.resenas`, http(s)) y nota: siempre, demo o salón real.
  *   Es la nota real del salón y sustituye a las reseñas de ejemplo.
- * - Sin ficha, solo un salón real (se busca por nombre y dirección); una demo
- *   sin ficha sigue con sus reseñas de ejemplo marcadas como tal.
+ * - Sin ficha, solo un salón real (se busca por nombre y dirección). La ruta
+ *   decide si el perfil puede enseñar cifras o reseñas de ejemplo.
  */
 export function resenasDeGoogle(
   p: { enlaces?: { resenas?: string; [otro: string]: string | undefined }; rating: number; reviewCount: number; name: string; address: string },
@@ -167,4 +167,39 @@ export function resenasDeGoogle(
   if (!esSalonReal) return null;
   const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.name} ${p.address}`)}`;
   return { url, nota: p.rating, total: p.reviewCount };
+}
+
+/** Determina qué contenido de equipo/reseñas puede mostrar la web pública. */
+export function mostrarEquipoEnWebPublica({
+  esDemo,
+  tieneEquipoPropio,
+  oculto,
+}: {
+  esDemo: boolean;
+  tieneEquipoPropio: boolean;
+  oculto: boolean;
+}): boolean {
+  return !esDemo || (tieneEquipoPropio && !oculto);
+}
+
+export type SeccionResenasPublicas = "google" | "ejemplo" | "estadisticas" | "oculta";
+
+/** Las demos enlazadas no inventan testimonios: conservan solo cifras del perfil. */
+export function seccionResenasPublicas({
+  esDemo,
+  esSalonReal,
+  tieneResenasGoogle,
+  rating,
+  reviewCount,
+}: {
+  esDemo: boolean;
+  esSalonReal: boolean;
+  tieneResenasGoogle: boolean;
+  rating: number;
+  reviewCount: number;
+}): SeccionResenasPublicas {
+  if (tieneResenasGoogle) return "google";
+  if (esDemo) return rating > 0 && reviewCount > 0 ? "estadisticas" : "oculta";
+  if (esSalonReal) return "oculta";
+  return "ejemplo";
 }

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
-import { DEMO_PARAM } from "@/lib/demo-profile";
+import { DEMO_PARAM, moduloVisible, type DemoProfile } from "@/lib/demo-profile";
 import { logoDelSalon, logotipoDelSalon } from "@/lib/logo-salon";
 import {
   ArrowRight,
@@ -52,7 +52,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { TeamShowcase } from "@/components/twentyfirst/team-showcase";
 import { cn } from "@/lib/utils";
-import { CONTENEDOR_SALON, SECCION_WEB, enlaceWhatsApp, enlacesDelSalon, idsLoMasPedido, listaConY, notaEs, precioDeCarta, resenasDeGoogle } from "@/lib/web-publica";
+import { CONTENEDOR_SALON, SECCION_WEB, enlaceWhatsApp, enlacesDelSalon, idsLoMasPedido, listaConY, mostrarEquipoEnWebPublica, notaEs, precioDeCarta, resenasDeGoogle, seccionResenasPublicas } from "@/lib/web-publica";
 import { CartaServicios } from "@/components/web-salon/CartaServicios";
 import { NotaQueSube, TrazoTitulo } from "@/components/web-salon/Movimiento";
 import { BloqueComunidad, FUERA, IconoWhatsApp } from "@/components/web-salon/EnlacesSalon";
@@ -317,10 +317,16 @@ function SalonHome() {
   // inventadas con la etiqueta "Ejemplo" a su propio cliente. Lote P.5: con
   // su ficha de Google (`enlaces.resenas`), tampoco una demo: enseña su nota
   // real y «Ver reseñas en Google». Sin ficha, un salón real busca la ficha
-  // por nombre + dirección (sin inventar una URL que pueda no ser la suya) y
-  // una demo sigue con sus reseñas de ejemplo, marcadas como tal.
+  // por nombre + dirección (sin inventar una URL que pueda no ser la suya).
   const isRealSalon = useRealSalonSlug() === salonSlug;
   const resenasGoogle = resenasDeGoogle(profile, isRealSalon);
+  const modoResenas = seccionResenasPublicas({
+    esDemo: conEnlaceDemo,
+    esSalonReal: isRealSalon,
+    tieneResenasGoogle: !!resenasGoogle,
+    rating: profile.rating,
+    reviewCount: profile.reviewCount,
+  });
 
   // Catálogo y equipo calculados a partir del tipo deducido del enlace —no
   // del catálogo/equipo "activo" mutado en mock/salon.ts, que solo se
@@ -370,9 +376,8 @@ function SalonHome() {
       return entry;
     },
   );
-  // v2: como mucho dos reseñas de ejemplo, y ya van marcadas "Ejemplo" — el
-  // cambio priorizado #9 del informe pide "copy del salón real, nunca
-  // genérico"; cinco reseñas inventadas pesan más que dos.
+  // Las reseñas de ejemplo se conservan en páginas sin enlace de demo; los
+  // enlaces ?d= solo muestran las cifras del perfil, sin testimonios inventados.
   const pro = employees[0]?.name ?? "El equipo";
   const reviews = (isV2 ? REVIEWS_BY_TYPE[tipo].slice(0, 2) : REVIEWS_BY_TYPE[tipo]).map((r) => ({
     ...r,
@@ -620,7 +625,11 @@ function SalonHome() {
       </section>
 
       {/* Equipo */}
-      {!soloUno || soloPro ? (
+      {mostrarEquipoEnWebPublica({
+        esDemo: conEnlaceDemo,
+        tieneEquipoPropio: (profile.team?.length ?? 0) > 0,
+        oculto: conEnlaceDemo && !moduloVisible(profile as Pick<DemoProfile, "modulosOcultos">, "equipo"),
+      }) && (!soloUno || soloPro) ? (
         <section id="equipo" className="bg-ws-crema">
           <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
             <SectionHeading
@@ -678,9 +687,9 @@ function SalonHome() {
       {/* Galería de trabajos */}
       <WorkGallery fotos={fotosDeGaleria(profile)} tipo={profile.tagline} />
 
-      {/* Reseñas. Un salón REAL solo enseña su nota de Google (nunca reseñas
-          inventadas); las demos de venta, tres de ejemplo marcadas como tal. */}
-      {resenasGoogle || isRealSalon ? (
+      {/* Reseñas. Las demos enlazadas muestran cifras sin testimonios si no
+          tienen reseñas de Google; páginas existentes conservan su contenido. */}
+      {modoResenas === "google" ? (
         resenasGoogle ? (
           <section id="resenas" className="bg-ws-caramelo-claro">
             <div className={cn(CONTENEDOR_SALON, SECCION_WEB, "text-center")}>
@@ -700,14 +709,14 @@ function SalonHome() {
             </div>
           </section>
         ) : null
-      ) : (
+      ) : modoResenas === "ejemplo" || modoResenas === "estadisticas" ? (
         <section id="resenas" className="bg-ws-caramelo-claro">
           <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
             <Reveal className="mb-8 flex flex-wrap items-end justify-between gap-4 md:mb-10">
               <div>
                 <p className="ws-etiqueta">Reseñas</p>
                 <h2 className="mt-2 ws-titulo text-[28px] md:text-[38px]">
-                  Lo que dicen las clientas
+                  {modoResenas === "estadisticas" ? "Valoración del salón" : "Lo que dicen las clientas"}
                 </h2>
                 <TrazoTitulo className="mt-2" />
               </div>
@@ -719,16 +728,18 @@ function SalonHome() {
                 </div>
               )}
             </Reveal>
-            <div className="grid gap-3 md:grid-cols-3">
-              {reseñasVisibles.map((r, i) => (
-                <Reveal key={r.name} delay={i * 60} className="h-full">
-                  <ReviewCard {...r} ejemplo />
-                </Reveal>
-              ))}
-            </div>
+            {modoResenas === "ejemplo" ? (
+              <div className="grid gap-3 md:grid-cols-3">
+                {reseñasVisibles.map((r, i) => (
+                  <Reveal key={r.name} delay={i * 60} className="h-full">
+                    <ReviewCard {...r} ejemplo />
+                  </Reveal>
+                ))}
+              </div>
+            ) : null}
           </div>
         </section>
-      )}
+      ) : null}
 
       {/* Preguntas frecuentes */}
       <section id="faq" className="bg-ws-salvia-clara">

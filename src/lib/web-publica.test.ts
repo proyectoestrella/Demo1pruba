@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { enlaceWhatsApp, enlacesDelSalon, listaConY, notaEs, numeroWhatsApp, precioDeCarta, urlSegura } from "./web-publica";
+import { enlaceWhatsApp, enlacesDelSalon, listaConY, mostrarEquipoEnWebPublica, notaEs, numeroWhatsApp, precioDeCarta, seccionResenasPublicas, urlSegura } from "./web-publica";
 
 describe("web pública", () => {
   test("lista con «y» antes del último", () => {
@@ -10,6 +10,29 @@ describe("web pública", () => {
   test("nota con coma decimal", () => {
     expect(notaEs(4.5)).toBe("4,5");
     expect(notaEs(5)).toBe("5");
+  });
+});
+
+describe("contenido público de demos", () => {
+  test("oculta el equipo de ejemplo si la demo oculta el módulo o no trae equipo", () => {
+    expect(mostrarEquipoEnWebPublica({ esDemo: true, tieneEquipoPropio: true, oculto: true })).toBe(false);
+    expect(mostrarEquipoEnWebPublica({ esDemo: true, tieneEquipoPropio: false, oculto: false })).toBe(false);
+  });
+
+  test("muestra el equipo propio de la demo y no cambia la web de un salón real", () => {
+    expect(mostrarEquipoEnWebPublica({ esDemo: true, tieneEquipoPropio: true, oculto: false })).toBe(true);
+    expect(mostrarEquipoEnWebPublica({ esDemo: false, tieneEquipoPropio: false, oculto: true })).toBe(true);
+  });
+
+  test("sin reseñas propias, la demo solo muestra cifras disponibles o esconde la sección", () => {
+    expect(seccionResenasPublicas({ esDemo: true, esSalonReal: false, tieneResenasGoogle: false, rating: 4.8, reviewCount: 27 })).toBe("estadisticas");
+    expect(seccionResenasPublicas({ esDemo: true, esSalonReal: false, tieneResenasGoogle: false, rating: 0, reviewCount: 0 })).toBe("oculta");
+  });
+
+  test("conserva reseñas verificables, la web real y las reseñas de las páginas sin enlace demo", () => {
+    expect(seccionResenasPublicas({ esDemo: true, esSalonReal: false, tieneResenasGoogle: true, rating: 4.8, reviewCount: 27 })).toBe("google");
+    expect(seccionResenasPublicas({ esDemo: false, esSalonReal: true, tieneResenasGoogle: false, rating: 0, reviewCount: 0 })).toBe("oculta");
+    expect(seccionResenasPublicas({ esDemo: false, esSalonReal: false, tieneResenasGoogle: false, rating: 0, reviewCount: 0 })).toBe("ejemplo");
   });
 });
 
