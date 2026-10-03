@@ -128,6 +128,24 @@ describe("la guarda está puesta en todas las funciones de servidor", () => {
     }
   });
 
+  it("una reserva pública exige el aviso de privacidad y fecha el acuse desde el servidor", () => {
+    const cuerpo = cuerpoDe("syncAppointment");
+    const rechazo = cuerpo.indexOf("!haLeidoAvisoPrivacidad(data.privacyNoticeAccepted)");
+    const escritura = cuerpo.indexOf("escribirCita(supabase, fila)");
+    expect(rechazo).toBeGreaterThan(-1);
+    expect(rechazo).toBeLessThan(escritura);
+    expect(cuerpo).toContain("privacy_notice_acknowledged_at: new Date().toISOString()");
+    expect(FUENTE).toContain(
+      'const exigirAcusePrivacidad = "privacy_notice_acknowledged_at" in fila',
+    );
+    expect(FUENTE).toContain("exigirAcusePrivacidad && faltaColumnaAcusePrivacidad(error)");
+  });
+
+  it("el servidor impide guardar perfiles por encima del plan en alta y parche", () => {
+    expect(cuerpoDe("saveSalonProfile")).toContain("perfilDentroDelTopeDeProfesionales(data.profile)");
+    expect(cuerpoDe("patchSalonProfile")).toContain('if ("team" in data.patch && !perfilDentroDelTopeDeProfesionales(fusionado))');
+  });
+
   it("una reserva de fuera no puede pisar una cita que ya existe", () => {
     const cuerpo = cuerpoDe("syncAppointment");
     expect(cuerpo).toContain("if (yaExiste)");

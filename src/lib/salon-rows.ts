@@ -58,6 +58,7 @@ export interface AppointmentRow {
    * relleno), se sigue leyendo el marcador de la nota.
    */
   booking_answers?: BookingAnswers | null;
+  privacy_notice_acknowledged_at?: string | null;
   deposit_due_at?: string | null;
   deposit_period_hours?: number | null;
   origen?: string | null;
@@ -150,6 +151,7 @@ export function rowToAppointment(row: AppointmentRow, anonimo = false): Appointm
     note: booking.note,
     // Columna nueva primero; el marcador de la nota solo si viene a null.
     bookingAnswers: anonimo ? undefined : (row.booking_answers ?? booking.answers),
+    privacyNoticeAcknowledgedAt: anonimo ? undefined : (row.privacy_notice_acknowledged_at ?? undefined),
     origen: row.origen === "tpv123" ? "tpv123" : (row.origen ? undefined : origen.origen),
     colorFormula: anonimo ? undefined : (row.color_formula ?? undefined),
     technicalNotes: anonimo ? undefined : (row.technical_notes ?? undefined),

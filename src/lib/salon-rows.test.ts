@@ -112,6 +112,12 @@ describe("rowToAppointment", () => {
     expect(a.duration).toBe(50);
   });
 
+  it("conserva el momento del aviso en el panel y lo oculta en modo anónimo", () => {
+    const acknowledgedAt = "2026-10-03T12:00:00.000Z";
+    expect(rowToAppointment({ ...fila, privacy_notice_acknowledged_at: acknowledgedAt }).privacyNoticeAcknowledgedAt).toBe(acknowledgedAt);
+    expect(rowToAppointment({ ...fila, privacy_notice_acknowledged_at: acknowledgedAt }, true).privacyNoticeAcknowledgedAt).toBeUndefined();
+  });
+
   it("un walk-in sin ficha de cliente no rompe el mapeo", () => {
     const a = rowToAppointment({ ...fila, client_id: null, client_name: "Cliente sin cita" });
     expect(a.clientId).toBe("");

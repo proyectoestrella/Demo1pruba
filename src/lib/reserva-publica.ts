@@ -18,6 +18,23 @@ export { ZONA_HORARIA_SALON, momentoLocal } from "./zona-horaria";
 export const ERROR_HUECO_OCUPADO = "RESERVA_HUECO_OCUPADO";
 export const ERROR_BLOQUEO_MANUAL = "RESERVA_BLOQUEO_MANUAL";
 export const ERROR_FUERA_HORARIO = "RESERVA_FUERA_HORARIO";
+export const ERROR_PRIVACIDAD_NO_CONFIRMADA = "RESERVA_PRIVACIDAD_NO_CONFIRMADA";
+
+/** La casilla acredita que se mostró la información; no expresa una base legal de consentimiento. */
+export function haLeidoAvisoPrivacidad(valor: unknown): valor is true {
+  return valor === true;
+}
+
+/** Identifica el esquema que impediría guardar el acuse; las reservas deben fallar cerradas. */
+export function faltaColumnaAcusePrivacidad(error: unknown): boolean {
+  return Boolean(
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.includes("privacy_notice_acknowledged_at"),
+  );
+}
 
 /** Firma de la solicitud; los ids locales temporales no cuentan como cambios. */
 export function firmaReservaPublica(
@@ -35,6 +52,8 @@ export function mensajeErrorReserva(error: unknown): string {
     return "Esa hora queda fuera del horario de la profesional, elige otra.";
   if (mensaje.includes(ERROR_BLOQUEO_MANUAL))
     return "No podemos confirmar tu reserva online; llama al salón.";
+  if (mensaje.includes(ERROR_PRIVACIDAD_NO_CONFIRMADA))
+    return "Confirma que has leído la información sobre el tratamiento de tus datos.";
   return "No hemos podido enviar tu solicitud. Tus datos siguen aquí; inténtalo de nuevo.";
 }
 

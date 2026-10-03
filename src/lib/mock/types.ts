@@ -159,6 +159,8 @@ export interface Appointment {
   note?: string;
   /** Respuestas que la clienta dio al pedir la cita. No contienen datos de salud. */
   bookingAnswers?: BookingAnswers;
+  /** Momento en que la clienta confirmó que había leído el aviso de privacidad. */
+  privacyNoticeAcknowledgedAt?: string;
   /** Fórmula y notas de esta visita; el historial de la clienta se obtiene de sus citas. */
   colorFormula?: string;
   technicalNotes?: string;
@@ -260,7 +262,7 @@ export interface SalonHours {
 
 /** Editable salon profile shown/edited in Settings. Mirrors the shape of `salon` in mock/salon.ts. */
 export interface SalonProfile {
-  /** Plan contratado (lote 13). Sin valor: «reservas-asistente» en un salón real; la demo va en «todo-incluido». */
+  /** Plan contratado (lote 13). Sin valor: «reservas» (Básico) en un salón real; la demo va en «todo-incluido». */
   plan?: "reservas" | "reservas-asistente" | "todo-incluido";
   id: string;
   slug: string;

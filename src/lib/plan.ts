@@ -9,7 +9,9 @@
  * las últimas 24 h), campañas ampliadas (estándar: solo la reseña de Google;
  * cumpleaños no existe todavía), analítica avanzada e importación asistida
  * mensual. El asistente, desde Reservas + Asistente. El resto, en Reservas.
- * «Más profesionales» NO depende del plan.
+ * El Básico admite tres profesionales y Completo hasta seis, según los
+ * planes definitivos del 28-sep. Embajador conserva el máximo técnico actual
+ * de seis mientras no se implemente el «sin límite» de su ficha comercial.
  *
  * Decisión de Tomás (27-sep), alineado con el presupuesto: exportar tus citas
  * y tu analítica a Excel va en TODOS los planes, no solo en Todo incluido
@@ -93,11 +95,29 @@ export function tienePlan(plan: PlanSishow, funcion: FuncionPlan): boolean {
   return RANGO[plan] >= RANGO[FUNCIONES_POR_PLAN[funcion]];
 }
 
-/** El plan de un salón: el guardado; sin él, «reservas-asistente» (como BACKEND) o «todo-incluido» en una demo. */
+/** Límite operativo vigente. Embajador aún conserva el máximo técnico de seis. */
+export const LIMITE_PROFESIONALES: Record<PlanSishow, number> = {
+  reservas: 3,
+  "reservas-asistente": 6,
+  "todo-incluido": 6,
+};
+
+/** El plan de un salón: el guardado; si falta, el más conservador para un salón real. */
 export function planDe(perfil: { plan?: string | null }, esDemo: boolean): PlanSishow {
   const p = perfil.plan;
   if (p === "reservas" || p === "reservas-asistente" || p === "todo-incluido") return p;
-  return esDemo ? "todo-incluido" : "reservas-asistente";
+  return esDemo ? "todo-incluido" : "reservas";
+}
+
+/** Cuenta nombres válidos sin depender de que la pantalla haya normalizado el perfil. */
+export function cantidadProfesionales(team: unknown): number {
+  if (!Array.isArray(team)) return 0;
+  return team.filter((entrada) => typeof entrada === "string" && entrada.split("~", 1)[0].trim()).length;
+}
+
+/** Evita que la UI y el servidor apliquen topes distintos al mismo perfil. */
+export function equipoCabeEnPlan(plan: PlanSishow, team: unknown): boolean {
+  return cantidadProfesionales(team) <= LIMITE_PROFESIONALES[plan];
 }
 
 /** Lo que incluye cada plan, en orden, para «Qué incluye cada plan». */

@@ -205,6 +205,8 @@ export function pushAppointment(
 /** Opciones del panel al guardar. Ver el contrato de solapes en lib/solape.ts. */
 export interface OpcionesGuardado {
   permitirSolape?: boolean;
+  /** Confirmación obligatoria de lectura en las reservas públicas. */
+  privacyNoticeAccepted?: boolean;
   /** «deshacer»: el parche deshace un cambio (auditoría en la cita, lote 9b). */
   origen?: "deshacer";
 }
@@ -260,6 +262,7 @@ function appointmentPayload(slug: string, appt: Appointment, cliente?: ClienteDe
     colorFormula: appt.colorFormula ?? null,
     technicalNotes: appt.technicalNotes ?? null,
     reminderSentAt: appt.reminderSentAt ?? null,
+    privacyNoticeAccepted: opciones.privacyNoticeAccepted === true,
   };
 }
 
@@ -297,8 +300,9 @@ export async function guardarReservaPublica(
   slug: string,
   appt: Appointment,
   cliente: ClienteDeCita,
+  privacyNoticeAccepted: boolean,
 ): Promise<void> {
-  const resultado = await syncAppointment({ data: appointmentPayload(slug, appt, cliente) });
+  const resultado = await syncAppointment({ data: appointmentPayload(slug, appt, cliente, { privacyNoticeAccepted }) });
   if (!resultado.synced) {
     throw new Error("reason" in resultado ? resultado.reason : "RESERVA_NO_GUARDADA");
   }

@@ -3,6 +3,9 @@ import {
   ERROR_BLOQUEO_MANUAL,
   ERROR_FUERA_HORARIO,
   ERROR_HUECO_OCUPADO,
+  ERROR_PRIVACIDAD_NO_CONFIRMADA,
+  faltaColumnaAcusePrivacidad,
+  haLeidoAvisoPrivacidad,
   firmaReservaPublica,
   haySolape,
   mensajeErrorReserva,
@@ -45,6 +48,19 @@ describe("errores recuperables de la reserva pública", () => {
 
   it("explica que la hora cae fuera del horario de la profesional", () => {
     expect(mensajeErrorReserva(new Error(ERROR_FUERA_HORARIO))).toContain("fuera del horario");
+  });
+
+  it("requiere confirmar la lectura del aviso y explica el rechazo del servidor", () => {
+    expect(haLeidoAvisoPrivacidad(true)).toBe(true);
+    expect(haLeidoAvisoPrivacidad(false)).toBe(false);
+    expect(haLeidoAvisoPrivacidad(undefined)).toBe(false);
+    expect(mensajeErrorReserva(new Error(ERROR_PRIVACIDAD_NO_CONFIRMADA))).toContain("Confirma que has leído");
+  });
+
+  it("detecta si falta la columna de acuse para no guardar reservas sin rastro", () => {
+    expect(faltaColumnaAcusePrivacidad({ message: "column privacy_notice_acknowledged_at does not exist" })).toBe(true);
+    expect(faltaColumnaAcusePrivacidad({ message: "column reminder_sent_at does not exist" })).toBe(false);
+    expect(faltaColumnaAcusePrivacidad(null)).toBe(false);
   });
 
   it("ante red o servidor ofrece reintentar y conserva los datos", () => {

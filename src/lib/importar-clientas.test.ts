@@ -58,14 +58,13 @@ test("visitas enlazadas y fórmula de color en observaciones", () => {
 test("importa clientas desde etiquetas de pantalla TPV 123 y minimiza sus datos", () => {
   const tabla = leerCsv("Código;Nombre;Apellidos;DNI/CIF;Email;Tel. Móvil;Tel. Fijo;Dirección;C.P.;Población;Provincia;Fecha Alta;Última Visita;Cumpleaños\n42;María;Pérez;123;mp@example.es;911 222 333;612 345 678;Calle 1;28001;Madrid;Madrid;15/02/2024;10/03/2025;01/01/1990\n");
   const previa = vistaPreviaClientas(tabla, []);
-  expect(previa.filas[0]).toMatchObject({ nombre: "María Pérez", telefono: "612345678", otroTelefono: "911222333", codigo: "42", email: "mp@example.es", fechaAlta: expect.any(String), notas: "Otro teléfono: 911222333" });
+  expect(previa.filas[0]).toEqual({ fila: 2, nombre: "María Pérez", telefono: "612345678", codigo: "42", email: "mp@example.es", estado: "nueva" });
 });
 
 test("importa clientas desde nombres de base de datos de TPV 123", () => {
   const tabla = leerCsv("codigocliente,nombre,apellidos,nif,email,telefono2,telefono1,Direccion,cp,poblacion,provincia,ingreso,ultimavisita,clientestexto3,nacimiento\n7,Lucía,Sanz,123,ls@example.es,699111222,915551111,Calle,08001,Barcelona,Barcelona,45123,45130,,32000\n");
   const previa = vistaPreviaClientas(tabla, []);
-  expect(previa.filas[0]).toMatchObject({ nombre: "Lucía Sanz", telefono: "699111222", otroTelefono: "915551111", codigo: "7", email: "ls@example.es" });
-  expect(new Date(previa.filas[0].fechaAlta!).toISOString().slice(0, 10)).toBe("2023-07-16");
+  expect(previa.filas[0]).toEqual({ fila: 2, nombre: "Lucía Sanz", telefono: "699111222", codigo: "7", email: "ls@example.es", estado: "nueva" });
 });
 
 test("agrupa el histórico plano por clienta y fecha, enlaza por código y aproxima servicios y equipo", () => {
@@ -97,28 +96,25 @@ test("detecta el mismo nombre si alguna ficha no tiene teléfono", () => {
   expect([r.nuevas, r.duplicadas]).toEqual([1, 1]);
 });
 
-test("guarda el código de TPV 123 y el cumpleaños, y no duplica al reimportar por código", () => {
+test("guarda solo el código de TPV 123 y no duplica al reimportar", () => {
   const tabla = leerCsv("codigocliente;nombre;apellidos;telefono2;ingreso;nacimiento\r\n0042;Marta;Martín;612345678;01/02/2020;04/05/1990\r\n0043;Lucía;Pérez;699888777;15/03/2021;\r\n");
   const mapa = detectarColumnas(tabla.cabeceras);
-  expect(mapa.nacimiento).toBe(5);
+  expect(mapa).toEqual({ codigo: 0, nombre: 1, apellidos: 2, telefono: 3 });
   const yaImportada: Client = { id: "c-1", name: "Marta Martín", phone: "600000000", createdAt: "2020-02-01T00:00:00.000Z", tpvCode: "0042" };
   const previa = vistaPreviaClientas(tabla, [yaImportada], mapa);
   expect(previa.filas[0]).toMatchObject({ codigo: "0042", estado: "duplicada", motivo: "Ya está importada con ese código de TPV 123" });
-  expect(previa.filas[1]).toMatchObject({ codigo: "0043", nacimiento: undefined, estado: "nueva" });
-  const sinPrevias = vistaPreviaClientas(tabla, [], mapa);
-  // Mediodía UTC, no local (ver `fechaImportada`): el mismo valor en cualquier huso.
-  expect(sinPrevias.filas[0]).toMatchObject({ codigo: "0042", nacimiento: "1990-05-04", fechaAlta: "2020-02-01T12:00:00.000Z", estado: "nueva" });
+  expect(previa.filas[1]).toMatchObject({ codigo: "0043", estado: "nueva" });
 });
 
-test("detecta la columna de cumpleaños con los nombres habituales, y es opcional", () => {
-  for (const cabecera of ["Nacimiento", "Cumpleaños", "cumpleanos", "Fecha de nacimiento", "FECHA NACIMIENTO"]) {
-    const tabla = leerCsv(`nombre;telefono;${cabecera}\r\nMarta;612345678;04/05/1990\r\n`);
-    const mapa = detectarColumnas(tabla.cabeceras);
-    expect(mapa.nacimiento).toBe(2);
-    expect(vistaPreviaClientas(tabla, [], mapa).filas[0].nacimiento).toBe("1990-05-04");
-  }
-  const sinCumple = leerCsv("nombre;telefono\r\nLucía;699888777\r\n");
-  const mapa = detectarColumnas(sinCumple.cabeceras);
-  expect(mapa.nacimiento).toBeUndefined();
-  expect(vistaPreviaClientas(sinCumple, [], mapa).filas[0]).toMatchObject({ nacimiento: undefined, estado: "nueva" });
+test("la vista previa hace dry-run y no muta las clientas existentes", () => {
+  const existentes = Object.freeze([{ id: "c-sintetica", name: "Eva QA", phone: "600111222", createdAt: "2025-01-01" }]) as unknown as Client[];
+  const csvSintetico = leerCsv("codigocliente;nombre;apellidos;telefono2;telefono1;email;observaciones\nTPV-10;Eva;QA;600 111 222;911 222 333;eva@example.test;fórmula inventada\nTPV-11;Sara;QA;699 333 444;;sara.example;dato inválido\nTPV-12;Lola;QA;622 555 666;;lola@example.test;nota sintética\n");
+  const antes = JSON.stringify(existentes);
+  const previa = vistaPreviaClientas(csvSintetico, existentes);
+  expect([previa.nuevas, previa.duplicadas, previa.errores]).toEqual([1, 1, 1]);
+  expect(previa.filas[0]).toMatchObject({ estado: "duplicada" });
+  expect(previa.filas[1]).toMatchObject({ estado: "error", motivo: "Correo no válido" });
+  expect(previa.filas[2]).toMatchObject({ estado: "nueva", telefono: "622555666" });
+  expect(previa.filas.flatMap((f) => Object.keys(f))).not.toContain("notas");
+  expect(JSON.stringify(existentes)).toBe(antes);
 });

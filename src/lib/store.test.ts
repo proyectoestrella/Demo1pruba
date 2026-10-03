@@ -1,6 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { selectDemosVisibles, useSalonStore } from "./store";
 
+it("la store real del plan Básico rechaza un cuarto perfil profesional", () => {
+  const anterior = useSalonStore.getState().salonProfile;
+  try {
+    useSalonStore.setState({
+      salonProfile: { ...anterior, slug: "peluchic", plan: "reservas", team: ["Eva", "Lola", "Mara"] },
+      realSalonSlug: "peluchic",
+    });
+    useSalonStore.getState().updateSalonProfile({ team: ["Eva", "Lola", "Mara", "Cuarta"] });
+    expect(useSalonStore.getState().salonProfile.team).toEqual(["Eva", "Lola", "Mara"]);
+  } finally {
+    useSalonStore.setState({ salonProfile: anterior, realSalonSlug: null });
+  }
+});
+
 /**
  * Reservas de la web pública nacen "pending" (ver s.$salonSlug.book.tsx) y el
  * salón las confirma o rechaza desde el panel — ver `PendingRequestsBanner`.

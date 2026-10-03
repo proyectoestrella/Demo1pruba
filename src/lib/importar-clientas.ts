@@ -1,9 +1,9 @@
 import type { Client } from "./mock/types";
 
-export type CampoCliente = "nombre" | "apellidos" | "telefono" | "telefono2" | "email" | "notas" | "codigo" | "fechaAlta" | "nacimiento";
+export type CampoCliente = "nombre" | "apellidos" | "telefono" | "telefono2" | "email" | "codigo";
 export type MapaColumnas = Partial<Record<CampoCliente, number>>;
 export interface TablaImportacion { cabeceras: string[]; filas: string[][] }
-export interface FilaClienta { fila: number; nombre: string; telefono: string; otroTelefono?: string; codigo?: string; fechaAlta?: string; nacimiento?: string; email?: string; notas?: string; estado: "nueva" | "duplicada" | "error"; motivo?: string }
+export interface FilaClienta { fila: number; nombre: string; telefono: string; codigo?: string; email?: string; estado: "nueva" | "duplicada" | "error"; motivo?: string }
 export interface VistaPrevia { filas: FilaClienta[]; nuevas: number; duplicadas: number; errores: number }
 export interface VisitaImportada { fila: number; fecha: string; cliente: Client; servicios: string[]; importe: number; profesional: string; notas?: string; colorFormula?: string }
 
@@ -51,11 +51,7 @@ const alias: Record<CampoCliente, string[]> = {
   telefono: ["telefono", "telefono2", "movil", "tel movil", "tel movil cliente", "telefono movil", "telefono movil cliente", "telf", "telf.", "numero de telefono"],
   telefono2: ["telefono1", "tel fijo", "tel fijo cliente", "telefono fijo", "telefono fijo cliente"],
   email: ["email", "e-mail", "correo", "correo electronico"],
-  notas: ["observaciones", "notas", "comentarios"],
   codigo: ["codigocliente", "codigo cliente", "codigo"],
-  fechaAlta: ["ingreso", "fecha alta", "alta"],
-  // `nacimiento` es la columna real de TPV 123 (etiqueta «Cumpleaños»).
-  nacimiento: ["nacimiento", "fecha nacimiento", "fecha de nacimiento", "cumpleanos", "cumpleaños", "cumple"],
 };
 export const claveCabecera = (s: string) => normal(s).replace(/[.:]/g, "").replace(/\s+/g, " ");
 export function detectarColumnas(cabeceras: string[]): MapaColumnas {
@@ -64,30 +60,10 @@ export function detectarColumnas(cabeceras: string[]): MapaColumnas {
     const i = cabeceras.findIndex((c) => alias[campo].includes(claveCabecera(c)));
     if (i >= 0) mapa[campo] = i;
   }
-  // telefono2 es el móvil en TPV 123; si el export trae ambas columnas,
-  // el teléfono fijo queda como secundario.
+  // En TPV 123 `telefono2` suele ser el móvil y `telefono1` el fijo. Ambos se
+  // leen solo para escoger el móvil; el número alternativo no se conserva.
   if (mapa.telefono === undefined && mapa.telefono2 !== undefined) mapa.telefono = mapa.telefono2;
   return mapa;
-}
-/** Cumpleaños como "YYYY-MM-DD" (sin hora ni zona): es una fecha del calendario, no un instante. */
-function cumpleImportado(raw: string): string | undefined {
-  const iso = fechaImportada(raw);
-  return iso ? iso.slice(0, 10) : undefined;
-}
-
-function fechaImportada(raw: string): string | undefined {
-  if (!raw.trim()) return undefined;
-  let fecha: Date;
-  if (/^\d+(?:\.\d+)?$/.test(raw.trim())) fecha = new Date(Date.UTC(1899, 11, 30) + Number(raw) * 86400000);
-  else if (/^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/.test(raw.trim())) {
-    // Mediodía UTC (no local): en un import de verdad no se sabe la hora, solo
-    // el día, y `new Date(y, m-1, d, 12)` leía esas cifras como hora LOCAL de
-    // quien ejecuta la importación — la misma fecha de alta se guardaba (y se
-    // comparaba en los tests) con hasta un día de diferencia según el huso del
-    // servidor. Con `Date.UTC` el resultado es el mismo en cualquier zona.
-    const [d, m, y] = raw.split(/[/-]/).map(Number); fecha = new Date(Date.UTC(y, m - 1, d, 12));
-  } else fecha = new Date(raw);
-  return Number.isFinite(+fecha) && +fecha <= Date.now() ? fecha.toISOString() : undefined;
 }
 export function vistaPreviaClientas(tabla: TablaImportacion, existentes: Client[], mapa: MapaColumnas = detectarColumnas(tabla.cabeceras)): VistaPrevia {
   const vistosTelefono = new Set(existentes.map((c) => normalizarTelefono(c.phone)).filter(Boolean));
@@ -102,11 +78,7 @@ export function vistaPreviaClientas(tabla: TablaImportacion, existentes: Client[
     const moviles = [celda(r, "telefono"), celda(r, "telefono2")].filter(Boolean);
     const movilRaw = moviles.find((p) => /^[67]/.test(normalizarTelefono(p))) ?? moviles[0] ?? "";
     const telefono = normalizarTelefono(movilRaw);
-    const otroRaw = moviles.find((p) => p !== movilRaw);
-    const notasEntrada = celda(r, "notas");
-    const otroTelefono = otroRaw ? normalizarTelefono(otroRaw) || otroRaw : undefined;
-    const notas = [notasEntrada, otroTelefono ? `Otro teléfono: ${otroTelefono}` : ""].filter(Boolean).join(" · ");
-    const registro: FilaClienta = { fila: index + 2, nombre, telefono, otroTelefono, codigo: celda(r, "codigo") || undefined, fechaAlta: fechaImportada(celda(r, "fechaAlta")), nacimiento: cumpleImportado(celda(r, "nacimiento")), email: celda(r, "email") || undefined, notas: notas || undefined, estado: "nueva" };
+    const registro: FilaClienta = { fila: index + 2, nombre, telefono, codigo: celda(r, "codigo") || undefined, email: celda(r, "email") || undefined, estado: "nueva" };
     if (!nombre || (moviles.length > 0 && (!telefono || telefono.length !== 9)) || (registro.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registro.email))) {
       registro.estado = "error";
       registro.motivo = !nombre ? "Falta el nombre" : moviles.length > 0 && (!telefono || telefono.length !== 9) ? "Teléfono no válido" : "Correo no válido";

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { FUNCIONES_POR_PLAN, NOMBRE_PLAN, planDe, tienePlan } from "./plan";
+import { equipoCabeEnPlan, FUNCIONES_POR_PLAN, LIMITE_PROFESIONALES, NOMBRE_PLAN, planDe, tienePlan } from "./plan";
 
 describe("plan del salón (lote 13)", () => {
   test("decisión de Tomás: el asistente desde Completo; lo demás (fuera de lo bajado el 28-sep), Embajador", () => {
@@ -50,11 +50,19 @@ describe("plan del salón (lote 13)", () => {
     expect(tienePlan("reservas-asistente", "asistente")).toBe(true);
     expect(tienePlan("todo-incluido", "asistente")).toBe(true);
   });
-  test("sin plan guardado: reservas-asistente en un salón real (como BACKEND), todo-incluido en la demo", () => {
-    expect(planDe({}, false)).toBe("reservas-asistente");
+  test("sin plan guardado: Básico en un salón real y Embajador en la demo", () => {
+    expect(planDe({}, false)).toBe("reservas");
     expect(planDe({}, true)).toBe("todo-incluido");
     expect(planDe({ plan: "reservas" }, true)).toBe("reservas");
-    expect(planDe({ plan: "raro" }, false)).toBe("reservas-asistente");
+    expect(planDe({ plan: "raro" }, false)).toBe("reservas");
+  });
+  test("el límite comercial del Básico es tres; Completo y Embajador conservan el máximo técnico de seis", () => {
+    expect(LIMITE_PROFESIONALES).toEqual({ reservas: 3, "reservas-asistente": 6, "todo-incluido": 6 });
+    expect(equipoCabeEnPlan("reservas", ["María", "Sara", "Noelia"])).toBe(true);
+    expect(equipoCabeEnPlan("reservas", ["María", "Sara", "Noelia", "Cuarta"])).toBe(false);
+    expect(equipoCabeEnPlan("reservas-asistente", ["1", "2", "3", "4", "5", "6"])).toBe(true);
+    expect(equipoCabeEnPlan("reservas-asistente", ["1", "2", "3", "4", "5", "6", "7"])).toBe(false);
+    expect(equipoCabeEnPlan("reservas", [" ", "María~Color"])).toBe(true);
   });
 });
 

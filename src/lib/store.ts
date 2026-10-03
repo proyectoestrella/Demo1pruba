@@ -40,6 +40,7 @@ import type { CierreCaja } from "./api/pagos.functions";
 import { recargoActivo } from "./recargo-activo";
 import { cierraEseDia, claveDelDia } from "./dia-cerrado-panel";
 import { inferBusinessType, menuDesdeServicios, slugForId, type BusinessType } from "./business-type";
+import { equipoCabeEnPlan, planDe } from "./plan";
 import { solapaConAgenda } from "./solape";
 import {
   aplicarSenal,
@@ -997,6 +998,14 @@ export const useSalonStore = create<SalonState>()(
         const patch = patchEntrada.calendario
           ? { ...patchEntrada, ...parcheCalendario(get().salonProfile.calendario, patchEntrada.calendario as Partial<PreferenciasCalendario>) }
           : patchEntrada;
+        const estadoActual = get();
+        // Un salón real del Básico no puede guardar un cuarto perfil desde
+        // una llamada directa a la store, aunque la pantalla ya lo impida.
+        if (
+          estadoActual.realSalonSlug &&
+          "team" in patch &&
+          !equipoCabeEnPlan(planDe(estadoActual.salonProfile, false), patch.team)
+        ) return;
         set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } }));
         const perfil = get().salonProfile;
         // Lote P: descripciones y precios literales de la carta, editados en

@@ -37,6 +37,9 @@ import {
   ERROR_BLOQUEO_MANUAL,
   ERROR_FUERA_HORARIO,
   ERROR_HUECO_OCUPADO,
+  ERROR_PRIVACIDAD_NO_CONFIRMADA,
+  faltaColumnaAcusePrivacidad,
+  haLeidoAvisoPrivacidad,
   haySolape,
   profesionalTrabaja,
 } from "../reserva-publica";
@@ -51,6 +54,7 @@ import {
   type WaitlistRow,
 } from "../salon-rows";
 import type { Appointment, Client, SalonProfile, WaitlistEntry } from "../mock/types";
+import { equipoCabeEnPlan, planDe } from "../plan";
 import { hayOcupadoExternoEnHueco, procesarCitaParaConexiones } from "../calendario-externo/calendario-externo.server";
 import { accionCalendarioDe, citaParaCalendarioDeFila, parcheAfectaCalendario } from "./cita-calendario";
 import type { CitaParaCalendario } from "../calendario-externo/tipos";
@@ -88,6 +92,7 @@ const NIVEL_SENAL = ["deposit_status", "deposit_method", "deposit_received_eur",
 /** Lote 3: lo que iba codificado en `note`. Al quitarlo, la nota vuelve a llevar los marcadores. */
 const NIVEL_LOTE3 = ["booking_answers", "deposit_due_at", "deposit_period_hours", "origen", "updated_at"];
 const NIVELES_CITA: string[][] = [
+  ["privacy_notice_acknowledged_at"],
   NIVEL_SENAL,
   NIVEL_LOTE3,
   ["reminder_sent_at"],
@@ -366,7 +371,11 @@ export const getSalonProfile = createServerFn({ method: "GET" })
  *     sí sube como excepción para que la pantalla lo cuente y no pierda nada
  *     de lo escrito.
  */
-export type MotivoNoPublicado = "sin-backend" | "falta-esquema";
+export type MotivoNoPublicado = "sin-backend" | "falta-esquema" | "limite-profesionales";
+
+function perfilDentroDelTopeDeProfesionales(profile: Record<string, unknown>): boolean {
+  return equipoCabeEnPlan(planDe({ plan: typeof profile.plan === "string" ? profile.plan : null }, false), profile.team);
+}
 
 export const saveSalonProfile = createServerFn({ method: "POST" })
   .middleware([conSesion])
@@ -378,6 +387,9 @@ export const saveSalonProfile = createServerFn({ method: "POST" })
       const quien = await exigirAcceso(data.slug);
       // Publicar el perfil entero (Mi página) es de quien puede publicar la web.
       exigirAcciones(quien, ["web.publicar"]);
+      if (!perfilDentroDelTopeDeProfesionales(data.profile)) {
+        return { synced: false as const, motivo: "limite-profesionales" as const };
+      }
       const supabase = getSupabaseServerClient();
       if (!supabase) return { synced: false as const, motivo: "sin-backend" as const };
 
@@ -528,6 +540,9 @@ export const patchSalonProfile = createServerFn({ method: "POST" })
       if (!fila) return { synced: false as const, motivo: "sin-salon" as const };
 
       const fusionado = fusionarPerfil((fila.profile ?? {}) as Record<string, unknown>, data.patch);
+      if ("team" in data.patch && !perfilDentroDelTopeDeProfesionales(fusionado)) {
+        return { synced: false as const, motivo: "limite-profesionales" as const };
+      }
 
       const { error } = await supabase
         .from("salons")
@@ -763,6 +778,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
       colorFormula: z.string().nullable().optional(),
       technicalNotes: z.string().nullable().optional(),
       reminderSentAt: z.string().nullable().optional(),
+      privacyNoticeAccepted: z.boolean().optional(),
       // Lote 3: lo que antes iba codificado dentro de `note`.
       // Respuestas del formulario de reserva `{ idDePregunta: valor }`. Llegan de
       // la web pública: claves cortas, valores acotados y como mucho 40.
@@ -800,6 +816,12 @@ export const syncAppointment = createServerFn({ method: "POST" })
      */
     const quien = await acceso(data.slug);
     const manda = tieneMando(quien);
+
+    // Una reserva pública solo se guarda después de confirmar el aviso. La
+    // marca de tiempo se genera aquí; el navegador no puede inventarla.
+    if (!manda && !haLeidoAvisoPrivacidad(data.privacyNoticeAccepted)) {
+      return { synced: false as const, reason: ERROR_PRIVACIDAD_NO_CONFIRMADA };
+    }
 
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
@@ -940,6 +962,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
       color_formula: manda ? (data.colorFormula ?? null) : null,
       technical_notes: manda ? (data.technicalNotes ?? null) : null,
       reminder_sent_at: manda ? (data.reminderSentAt ?? null) : null,
+      ...(!manda ? { privacy_notice_acknowledged_at: new Date().toISOString() } : {}),
       // Lote 3: columnas propias. Las respuestas al reservar las escribe la
       // clienta; el plazo de la señal y el origen, solo el panel.
       booking_answers: data.bookingAnswers ?? null,
@@ -1073,11 +1096,15 @@ async function escribirCita(
   fila: Record<string, unknown>,
 ): Promise<void> {
   let actual = fila;
+  const exigirAcusePrivacidad = "privacy_notice_acknowledged_at" in fila;
   for (let nivel = 0; nivel <= NIVELES_CITA.length; nivel++) {
     const { error } = await supabase
       .from("appointments")
       .upsert(actual, { onConflict: "salon_slug,local_id" });
     if (!error) return;
+    if (exigirAcusePrivacidad && faltaColumnaAcusePrivacidad(error)) {
+      throw new Error("syncAppointment: aplica supabase/pendiente.sql antes de abrir las reservas públicas.");
+    }
     if (!faltaEsquema(error) || nivel === NIVELES_CITA.length) throw new Error(`syncAppointment: ${error.message}`);
     console.warn(`syncAppointment: faltan columnas (${NIVELES_CITA[nivel].join(", ")}); aplica supabase/pendiente.sql`);
     actual = NIVELES_CITA[nivel] === NIVEL_LOTE3 ? filaSinLote3(actual) : sinCampos(actual, NIVELES_CITA[nivel]);

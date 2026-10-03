@@ -56,6 +56,8 @@ alter table appointments add column if not exists deposit_eur numeric;
 alter table appointments add column if not exists color_formula text;
 alter table appointments add column if not exists technical_notes text;
 alter table appointments add column if not exists reminder_sent_at timestamptz;
+-- Guarda cuándo se confirmó el aviso de privacidad en una nueva reserva web.
+alter table appointments add column if not exists privacy_notice_acknowledged_at timestamptz;
 
 -- 3. Caducidad y decisión del bloqueo por plantón ----------------------------
 alter table clients add column if not exists penalty_at timestamptz;

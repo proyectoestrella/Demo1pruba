@@ -124,20 +124,20 @@ describe("salon-sync con slug null (demo de venta)", () => {
 describe("salon-sync con un salón real", () => {
   it("la reserva pública espera la confirmación real", async () => {
     await expect(
-      guardarReservaPublica("the-best-shave-barber", cita, { name: "Marta", phone: "600111222" }),
+      guardarReservaPublica("the-best-shave-barber", cita, { name: "Marta", phone: "600111222" }, true),
     ).resolves.toBeUndefined();
     expect(llamadas).toEqual(["syncAppointment"]);
-    expect(argumentosCitas[0]).toMatchObject({ data: { localId: cita.id, status: "pending" } });
+    expect(argumentosCitas[0]).toMatchObject({ data: { localId: cita.id, status: "pending", privacyNoticeAccepted: true } });
   });
 
   it("un fallo de red conserva el id para reintentar sin duplicar la solicitud", async () => {
     fallarTodo = true;
     const cliente = { name: "Marta", phone: "600111222" };
-    await expect(guardarReservaPublica("the-best-shave-barber", cita, cliente)).rejects.toThrow(
+    await expect(guardarReservaPublica("the-best-shave-barber", cita, cliente, true)).rejects.toThrow(
       "red caída",
     );
     fallarTodo = false;
-    await guardarReservaPublica("the-best-shave-barber", cita, cliente);
+    await guardarReservaPublica("the-best-shave-barber", cita, cliente, true);
     expect(argumentosCitas).toHaveLength(2);
     expect(argumentosCitas[1]).toEqual(argumentosCitas[0]);
   });
@@ -145,14 +145,14 @@ describe("salon-sync con un salón real", () => {
   it("no confunde `synced: false` con una cita guardada", async () => {
     noGuardado = true;
     await expect(
-      guardarReservaPublica("the-best-shave-barber", cita, { name: "Marta", phone: "600111222" }),
+      guardarReservaPublica("the-best-shave-barber", cita, { name: "Marta", phone: "600111222" }, true),
     ).rejects.toThrow("RESERVA_NO_GUARDADA");
   });
 
   it("propaga el motivo del rechazo para mostrar el mensaje preciso", async () => {
     rechazo = "RESERVA_HUECO_OCUPADO";
     await expect(
-      guardarReservaPublica("the-best-shave-barber", cita, { name: "Marta", phone: "600111222" }),
+      guardarReservaPublica("the-best-shave-barber", cita, { name: "Marta", phone: "600111222" }, true),
     ).rejects.toThrow("RESERVA_HUECO_OCUPADO");
   });
 

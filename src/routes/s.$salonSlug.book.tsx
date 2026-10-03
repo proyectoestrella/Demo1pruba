@@ -54,7 +54,7 @@ import heroImg from "@/assets/hero-salon.jpg";
 import { registerBookingClient } from "@/lib/api/clients.functions";
 import { checkClientPenalty } from "@/lib/api/salons.functions";
 import { guardarReservaPublica } from "@/lib/salon-sync";
-import { firmaReservaPublica, mensajeErrorReserva } from "@/lib/reserva-publica";
+import { firmaReservaPublica, haLeidoAvisoPrivacidad, mensajeErrorReserva } from "@/lib/reserva-publica";
 import { reintentarSalonPublico } from "@/lib/use-real-salon";
 import { sumServices } from "@/lib/appointment-services";
 import { FluidSteps } from "@/components/twentyfirst/fluid-steps";
@@ -222,6 +222,7 @@ type WizardData = {
   email?: string;
   note?: string;
   bookingAnswers?: BookingAnswers;
+  privacyNoticeAcknowledged?: boolean;
   acceptedPolicy?: boolean;
 };
 
@@ -498,6 +499,7 @@ function BookingWizard() {
       !data.time ||
       !data.name ||
       !data.phone ||
+      !haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged) ||
       !data.acceptedPolicy ||
       faltanRespuestas.length > 0
     )
@@ -561,7 +563,7 @@ function BookingWizard() {
       setSending(true);
       setSendError(null);
       try {
-        await guardarReservaPublica(salonSlug, intentoRef.current.cita, cliente);
+        await guardarReservaPublica(salonSlug, intentoRef.current.cita, cliente, haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged));
         addSavedPublicAppointment(intentoRef.current.cita);
       } catch (error) {
         setSendError(mensajeErrorReserva(error));
@@ -626,7 +628,7 @@ function BookingWizard() {
         ? !data.employeeId
         : step === 3
           ? !data.date || !data.time
-          : !data.name || !data.phone || !data.acceptedPolicy || !!blockedClient ||
+        : !data.name || !data.phone || !haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged) || !data.acceptedPolicy || !!blockedClient ||
             faltanRespuestas.length > 0 ||
             sending || resolutionStatus === "resolviendo";
 
@@ -901,6 +903,16 @@ function BookingWizard() {
                   Tus datos los trata {profile.name} para gestionar tu cita y el historial de tus servicios.{" "}
                   <Link to="/s/$salonSlug/privacidad" params={{ salonSlug }} search={(prev) => prev} className="font-medium text-primary underline-offset-2 hover:underline">Más información</Link>
                 </p>
+
+                <label className="flex min-h-11 items-start gap-3 text-sm text-muted-foreground">
+                  <Checkbox
+                    className="mt-0.5"
+                    aria-label="He leído la información sobre el tratamiento de mis datos"
+                    checked={data.privacyNoticeAcknowledged ?? false}
+                    onCheckedChange={(v) => setData((d) => ({ ...d, privacyNoticeAcknowledged: v === true }))}
+                  />
+                  <span>He leído la información sobre el tratamiento de mis datos.</span>
+                </label>
 
                 <label className="flex items-start gap-3 text-sm text-muted-foreground">
                   <Checkbox

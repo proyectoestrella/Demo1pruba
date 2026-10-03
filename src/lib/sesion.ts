@@ -20,6 +20,8 @@ export const CLAVE_ALMACEN_SALON = "trimly-salon-store";
 /** La clave con la que Supabase guarda la sesión. Ver lib/supabase-browser.ts. */
 export const CLAVE_SESION = "sishow-sesion";
 
+type SolicitudOtp = (datos: { email: string; options: { emailRedirectTo: string } }) => Promise<{ error: { message: string } | null }>;
+
 /**
  * Borra del navegador todo lo que sea de este salón.
  *
@@ -44,13 +46,22 @@ export async function pedirEnlaceMagico(
   volverA: string,
 ): Promise<{ ok: true } | { ok: false; motivo: string }> {
   const sb = supabaseNavegador();
-  if (!sb) {
+  return pedirEnlaceMagicoConCliente(correo, volverA, sb?.auth.signInWithOtp.bind(sb.auth));
+}
+
+/** Misma ruta del enlace mágico con el envío inyectable para pruebas sin correo real. */
+export async function pedirEnlaceMagicoConCliente(
+  correo: string,
+  volverA: string,
+  solicitar?: SolicitudOtp,
+): Promise<{ ok: true } | { ok: false; motivo: string }> {
+  if (!solicitar) {
     return {
       ok: false,
       motivo: "El acceso no está configurado en esta instalación. Avisa a quien te la montó.",
     };
   }
-  const { error } = await sb.auth.signInWithOtp({
+  const { error } = await solicitar({
     email: correo.trim(),
     options: { emailRedirectTo: volverA },
   });
