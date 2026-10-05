@@ -27,7 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useSalonStore } from "@/lib/store";
 import { usePanelPublicLink } from "@/lib/panel-public-link";
-import { moduloVisible, type ModuloOcultable } from "@/lib/demo-profile";
+import { moduloVisibleEnPanel, type ModuloOcultable } from "@/lib/demo-profile";
 import { BuscadorGlobal } from "@/components/BuscadorGlobal";
 import { BotonCerrarSesion } from "@/components/BotonCerrarSesion";
 import { TOTAL_PASOS, useProgresoPrimerosPasos } from "@/components/PrimerosPasos";
@@ -122,7 +122,7 @@ export function estaActivoConHijos(item: NavItem, path: string) {
 function useGruposVisibles() {
   const modulosOcultos = useSalonStore((s) => s.salonProfile.modulosOcultos);
   const permisos = usePermisos();
-  const visible = (i: NavItem) => (!i.modulo || moduloVisible({ modulosOcultos }, i.modulo)) && veRuta(permisos, i.to);
+  const visible = (i: NavItem) => (!i.modulo || moduloVisibleEnPanel({ modulosOcultos }, i.modulo)) && veRuta(permisos, i.to);
   return GRUPOS_NAV.map((g) => ({
     ...g,
     items: g.items.filter(visible).map((i) => (i.hijos ? { ...i, hijos: i.hijos.filter(visible) } : i)),

@@ -57,3 +57,26 @@ describe("plan del salón (lote 13)", () => {
     expect(planDe({ plan: "raro" }, false)).toBe("reservas-asistente");
   });
 });
+
+import { MAX_PROFESIONALES, planParaProfesionales } from "./plan";
+import { moduloVisible, moduloVisibleEnPanel } from "./demo-profile";
+
+describe("profesionales por plan (tabla del 2-oct)", () => {
+  test("Básico 3, Completo 6, Embajador sin límite", () => {
+    expect(MAX_PROFESIONALES).toEqual({ reservas: 3, "reservas-asistente": 6, "todo-incluido": null });
+  });
+  test("el plan más barato para n profesionales", () => {
+    expect(planParaProfesionales(3)).toBe("reservas");
+    expect(planParaProfesionales(4)).toBe("reservas-asistente");
+    expect(planParaProfesionales(7)).toBe("todo-incluido");
+  });
+});
+
+describe("Equipo en el panel", () => {
+  test("mo:equipo oculta la sección pública pero no la página del panel", () => {
+    const p = { modulosOcultos: ["equipo" as const, "marketing" as const] };
+    expect(moduloVisible(p, "equipo")).toBe(false);
+    expect(moduloVisibleEnPanel(p, "equipo")).toBe(true);
+    expect(moduloVisibleEnPanel(p, "marketing")).toBe(false);
+  });
+});

@@ -6,6 +6,8 @@ import { citasDeCalendario, diasDeSemana, ocupacionDe } from "@/lib/calendario-a
 import { franjasProfesional } from "@/lib/horario-equipo";
 import { beforeLoadSiModuloVisible, useRedirigirSiModuloOculto } from "@/lib/route-guards";
 import { useEquipo } from "@/lib/use-equipo";
+import { usePlanSalon } from "@/lib/accesos-panel";
+import { MAX_PROFESIONALES, NOMBRE_PLAN, planParaProfesionales } from "@/lib/plan";
 import { useRealSalonSlug } from "@/lib/use-real-salon";
 import { useBusinessType } from "@/lib/use-display-profile";
 import { fotoDeProfesional, MAX_SALON_TEAM_ENTRIES, formatTeamEntry } from "@/lib/business-type";
@@ -14,7 +16,7 @@ import { StylistAvatar } from "@/components/StylistAvatar";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Lock, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { DAY_LABELS_ES, parseRanges } from "@/lib/opening-hours";
 import { resumenHorario } from "@/lib/horario-resumen";
@@ -51,6 +53,12 @@ function Team() {
   const carta = selectServiceMap(useSalonStore((s) => s.services));
   const esSalonReal = useRealSalonSlug() === profile.slug;
   const hoy = new Date().getDay();
+  // Profesionales por plan (3 / 6 / sin límite), sin pasar del tope técnico.
+  const plan = usePlanSalon();
+  const limitePlan = MAX_PROFESIONALES[plan];
+  const limite = Math.min(limitePlan ?? MAX_SALON_TEAM_ENTRIES, MAX_SALON_TEAM_ENTRIES);
+  const capadoPorPlan = limitePlan !== null && employees.length >= limitePlan;
+  const planSiguiente = NOMBRE_PLAN[planParaProfesionales(employees.length + 1)];
   if (!visible) return null;
 
   const guardarNombre = (indice: number, campo: "name" | "specialty", valor: string) => {
@@ -64,7 +72,7 @@ function Team() {
     update({ teamHours: horarios, teamIds: employees.map((e) => e.id) });
   };
   const añadir = () => {
-    if (employees.length >= MAX_SALON_TEAM_ENTRIES) return;
+    if (employees.length >= limite) return;
     const team = employees.map((e) => formatTeamEntry({ name: e.name, specialty: e.specialty }));
     team.push(formatTeamEntry({ name: "Nueva profesional", specialty: "" }));
     const teamIds = [...employees.map((e) => e.id), `profesional-${Date.now().toString(36)}-${employees.length + 1}`];
@@ -112,6 +120,12 @@ function Team() {
   return (
     <div className="flex flex-1 flex-col gap-5">
       <PageHeader title="Equipo" description="Cada profesional con los días y las horas en que trabaja. Los cambios se guardan solos." />
+      {limitePlan !== null && employees.length > limitePlan && (
+        <p role="note" className="flex items-start gap-2 rounded-2xl border border-lino-fuerte bg-nata/60 px-4 py-3 text-[13.5px] text-cafe-medio">
+          <Lock className="mt-0.5 size-4 shrink-0" strokeWidth={1.7} aria-hidden="true" />
+          <span>Tu plan {NOMBRE_PLAN[plan]} incluye hasta {limitePlan} profesionales y aquí hay {employees.length}. <b>Disponible en plan {NOMBRE_PLAN[planParaProfesionales(employees.length)]}</b>.</span>
+        </p>
+      )}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3 lg:group-data-[panel=abierto]/panel:grid-cols-1">
         {employees.map((e, i) => {
           const services = topServicesFor(appointments, e.id, carta);
@@ -178,11 +192,19 @@ function Team() {
             </section>
           );
         })}
-        <button type="button" disabled={employees.length >= MAX_SALON_TEAM_ENTRIES} onClick={añadir} className="flex min-h-[180px] flex-col items-center justify-center gap-2 rounded-[20px] border-[1.5px] border-dashed border-lino-fuerte bg-card text-cafe-medio hover:bg-nata disabled:cursor-not-allowed disabled:opacity-50">
-          <Plus className="size-6" strokeWidth={1.6} />
-          <b>Añadir profesional</b>
-          <span className="text-[12.5px] text-muted-foreground tabular-nums">{employees.length} de {MAX_SALON_TEAM_ENTRIES}</span>
-        </button>
+        {capadoPorPlan ? (
+          <div className="flex min-h-[180px] flex-col items-center justify-center gap-2 rounded-[20px] border-[1.5px] border-dashed border-lino-fuerte bg-nata/60 px-6 text-center text-cafe-medio" role="note">
+            <Lock className="size-5" strokeWidth={1.6} aria-hidden="true" />
+            <b>Disponible en plan {planSiguiente}</b>
+            <span className="max-w-[30ch] text-[12.5px] text-muted-foreground">Tu plan {NOMBRE_PLAN[plan]} incluye hasta {limitePlan} profesionales. Para añadir más, el plan {planSiguiente}.</span>
+          </div>
+        ) : (
+          <button type="button" disabled={employees.length >= limite} onClick={añadir} className="flex min-h-[180px] flex-col items-center justify-center gap-2 rounded-[20px] border-[1.5px] border-dashed border-lino-fuerte bg-card text-cafe-medio hover:bg-nata disabled:cursor-not-allowed disabled:opacity-50">
+            <Plus className="size-6" strokeWidth={1.6} />
+            <b>Añadir profesional</b>
+            <span className="text-[12.5px] text-muted-foreground tabular-nums">{limitePlan === null ? `${employees.length} · sin límite en tu plan` : `${employees.length} de ${limite}`}</span>
+          </button>
+        )}
       </div>
 
       <section className="flex-1 overflow-hidden rounded-[20px] border border-border bg-card">
