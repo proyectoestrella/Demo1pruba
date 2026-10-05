@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { usePanelPublicLink } from "@/lib/panel-public-link";
 import { useSalonStore } from "@/lib/store";
-import { moduloVisible, type ModuloOcultable } from "@/lib/demo-profile";
+import { moduloVisibleEnPanel, type ModuloOcultable } from "@/lib/demo-profile";
 import { Logo } from "@/components/Logo";
 import { BotonCerrarSesion } from "@/components/BotonCerrarSesion";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
@@ -110,7 +110,7 @@ export function PanelV2Shell() {
   const [assistantOpen, setAssistantOpen] = useState(false);
 
   const visible = (item: NavItem) =>
-    !item.modulo || moduloVisible({ modulosOcultos }, item.modulo);
+    !item.modulo || moduloVisibleEnPanel({ modulosOcultos }, item.modulo);
   const moreItems = MORE_ITEMS.filter(visible);
   const allSidebarItems = [...MAIN_ITEMS, ...moreItems];
 

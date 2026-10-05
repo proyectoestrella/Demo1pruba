@@ -107,3 +107,20 @@ export function incluye(plan: PlanSishow): FuncionPlan[] {
 
 /** Horas del historial fuera de Todo incluido. */
 export const HORAS_HISTORIAL_ESTANDAR = 24;
+
+/**
+ * Profesionales con agenda propia por plan (tabla de precios del 2-oct):
+ * Básico hasta 3, Completo hasta 6, Embajador sin límite (`null`). Es un
+ * límite COMERCIAL; el técnico sigue siendo `MAX_SALON_TEAM_ENTRIES` (6),
+ * así que en Embajador el panel tampoco deja pasar de 6 hoy.
+ */
+export const MAX_PROFESIONALES: Record<PlanSishow, number | null> = {
+  reservas: 3,
+  "reservas-asistente": 6,
+  "todo-incluido": null,
+};
+
+/** El plan más barato que admite `n` profesionales. */
+export function planParaProfesionales(n: number): PlanSishow {
+  return PLANES.find((p) => MAX_PROFESIONALES[p] === null || n <= (MAX_PROFESIONALES[p] as number)) ?? "todo-incluido";
+}

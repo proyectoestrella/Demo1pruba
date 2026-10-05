@@ -722,6 +722,18 @@ export function moduloVisible(
   return !(profile.modulosOcultos ?? []).includes(clave);
 }
 
+/**
+ * Lo mismo que `moduloVisible`, pero para el PANEL de la dueña: la página
+ * Equipo se ve siempre ahí (6-oct), aunque el enlace la oculte con `mo`.
+ * `mo: ["equipo"]` sigue ocultando la sección de equipo de la web pública.
+ */
+export function moduloVisibleEnPanel(
+  profile: Pick<DemoProfile, "modulosOcultos">,
+  clave: ModuloOcultable,
+): boolean {
+  return clave === "equipo" || moduloVisible(profile, clave);
+}
+
 /** Construye el enlace público completo para una demo. */
 export function demoUrl(profile: Partial<DemoProfile>, origin: string): string {
   const slug = slugify(profile.name ?? "") || "demo";

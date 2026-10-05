@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { redirect, useNavigate } from "@tanstack/react-router";
 import { useSalonStore } from "./store";
-import { moduloVisible, type ModuloOcultable } from "./demo-profile";
+import { moduloVisibleEnPanel, type ModuloOcultable } from "./demo-profile";
 
 /**
  * `beforeLoad` para una ruta que una demo puede ocultar (Equipo, Marketing,
@@ -19,7 +19,7 @@ import { moduloVisible, type ModuloOcultable } from "./demo-profile";
 export function beforeLoadSiModuloVisible(clave: ModuloOcultable) {
   return () => {
     const { modulosOcultos } = useSalonStore.getState().salonProfile;
-    if (!moduloVisible({ modulosOcultos }, clave)) {
+    if (!moduloVisibleEnPanel({ modulosOcultos }, clave)) {
       throw redirect({ to: "/app" });
     }
   };
@@ -35,7 +35,7 @@ export function beforeLoadSiModuloVisible(clave: ModuloOcultable) {
 export function useRedirigirSiModuloOculto(clave: ModuloOcultable) {
   const navigate = useNavigate();
   const modulosOcultos = useSalonStore((s) => s.salonProfile.modulosOcultos);
-  const visible = moduloVisible({ modulosOcultos }, clave);
+  const visible = moduloVisibleEnPanel({ modulosOcultos }, clave);
   useEffect(() => {
     if (!visible) navigate({ to: "/app" });
   }, [visible, navigate]);
