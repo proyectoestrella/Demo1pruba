@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { enlaceWhatsApp, enlacesDelSalon, listaConY, mostrarEquipoEnWebPublica, notaEs, numeroWhatsApp, precioDeCarta, seccionResenasPublicas, urlSegura } from "./web-publica";
+import { enlaceWhatsApp, enlacesDelSalon, experienciaEquipoEnWeb, listaConY, mostrarEquipoEnWebPublica, notaEs, numeroWhatsApp, precioDeCarta, seccionResenasPublicas, urlSegura } from "./web-publica";
 
 describe("web pública", () => {
   test("lista con «y» antes del último", () => {
@@ -22,6 +22,19 @@ describe("contenido público de demos", () => {
   test("muestra el equipo propio de la demo y no cambia la web de un salón real", () => {
     expect(mostrarEquipoEnWebPublica({ esDemo: true, tieneEquipoPropio: true, oculto: false })).toBe(true);
     expect(mostrarEquipoEnWebPublica({ esDemo: false, tieneEquipoPropio: false, oculto: true })).toBe(true);
+  });
+
+  test("un salón real no publica los años del mock, pero una demo sí", () => {
+    const equipo = [{ yearsExperience: 8 }, { yearsExperience: 6 }];
+
+    expect(experienciaEquipoEnWeb(equipo, true)).toBeNull();
+    expect(experienciaEquipoEnWeb(equipo, false)).toEqual({
+      total: "14 años de oficio entre todas",
+      porProfesional: [
+        { experiencia: "8 años de experiencia", rol: "8 años" },
+        { experiencia: "6 años de experiencia", rol: "6 años" },
+      ],
+    });
   });
 
   test("sin reseñas propias, la demo solo muestra cifras disponibles o esconde la sección", () => {

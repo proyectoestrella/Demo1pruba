@@ -52,7 +52,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { TeamShowcase } from "@/components/twentyfirst/team-showcase";
 import { cn } from "@/lib/utils";
-import { CONTENEDOR_SALON, SECCION_WEB, enlaceWhatsApp, enlacesDelSalon, idsLoMasPedido, listaConY, mostrarEquipoEnWebPublica, notaEs, precioDeCarta, resenasDeGoogle, seccionResenasPublicas } from "@/lib/web-publica";
+import { CONTENEDOR_SALON, SECCION_WEB, enlaceWhatsApp, enlacesDelSalon, experienciaEquipoEnWeb, idsLoMasPedido, listaConY, mostrarEquipoEnWebPublica, notaEs, precioDeCarta, resenasDeGoogle, seccionResenasPublicas } from "@/lib/web-publica";
 import { CartaServicios } from "@/components/web-salon/CartaServicios";
 import { NotaQueSube, TrazoTitulo } from "@/components/web-salon/Movimiento";
 import { BloqueComunidad, FUERA, IconoWhatsApp } from "@/components/web-salon/EnlacesSalon";
@@ -205,18 +205,18 @@ function ReviewCard({ name, rating, quote, ejemplo }: Review & { ejemplo: boolea
  * Presentación de un salón con un único profesional (caso Adam): sustituye a
  * `TeamShowcase`, pensada para tres fichas, que con una sola persona queda
  * descompensada. Foto grande si la hay (StylistAvatar cae sola al avatar de
- * iniciales si no), nombre, especialidad y años de experiencia en una línea.
+ * iniciales si no), nombre y especialidad; los años solo si son verificables.
  */
 function SoloProfessional({
   name,
   specialty,
-  yearsExperience,
+  experience,
   photo,
   employeeId,
 }: {
   name: string;
   specialty: string;
-  yearsExperience: number;
+  experience?: string;
   photo?: string;
   employeeId: EmployeeId;
 }) {
@@ -237,7 +237,7 @@ function SoloProfessional({
       <div>
         <p className="font-display text-2xl md:text-3xl">{name}</p>
         <p className="mt-1 text-muted-foreground">
-          {specialty} · {yearsExperience} años de experiencia
+          {specialty}{experience && ` · ${experience}`}
         </p>
         <p className="mt-3 text-sm text-muted-foreground">
           Siempre te atiende {name.split(" ")[0]}, sin cambios de última hora.
@@ -392,7 +392,7 @@ function SalonHome() {
   // iniciales (ver `fotoDeProfesional`).
   const fotoDe = (e: (typeof employees)[number]) =>
     fotoDeProfesional(e.name, e.id, e.photo, tipo, isRealSalon);
-  const totalTeamYears = employees.reduce((sum, e) => sum + e.yearsExperience, 0);
+  const experienciaEquipo = experienciaEquipoEnWeb(employees, isRealSalon);
   const especialidades = listaConY(profile.specialties);
   const telefono = profile.phone.replace(/\s/g, "");
   // Lote 18.4: WhatsApp (del perfil o, si no hay, el teléfono) y enlaces del salón.
@@ -635,14 +635,14 @@ function SalonHome() {
             <SectionHeading
               eyebrow="Equipo"
               title="Quién te va a atender"
-              intro={soloUno ? undefined : `${employees.length} ${professionalWord(tipo, true)} y ${totalTeamYears} años de oficio entre todas. Puedes elegir con quién reservar.`}
+              intro={soloUno ? undefined : `${employees.length} ${professionalWord(tipo, true)}${experienciaEquipo ? ` y ${experienciaEquipo.total}` : ""}. Puedes elegir con quién reservar.`}
             />
             {soloUno && soloPro ? (
               <Reveal>
                 <SoloProfessional
                   name={soloPro.name}
                   specialty={soloPro.specialty}
-                  yearsExperience={soloPro.yearsExperience}
+                  experience={experienciaEquipo?.porProfesional[0]?.experiencia}
                   photo={showsRealPhotos(tipo) ? fotoDe(soloPro) : undefined}
                   employeeId={soloPro.id}
                 />
@@ -662,7 +662,7 @@ function SalonHome() {
                       <span className="min-w-0">
                         <b className="block font-display text-xl font-medium">{e.name}</b>
                         <span className="block text-sm text-muted-foreground">{e.specialty}</span>
-                        <span className="block text-[13px] text-cafe-suave tabular-nums">{e.yearsExperience} años de experiencia</span>
+                        {experienciaEquipo && <span className="block text-[13px] text-cafe-suave tabular-nums">{experienciaEquipo.porProfesional[i]?.experiencia}</span>}
                       </span>
                   </Reveal>
                   </li>
@@ -671,10 +671,10 @@ function SalonHome() {
             ) : (
               <Reveal>
                 <TeamShowcase
-                  members={employees.map((e) => ({
+                  members={employees.map((e, i) => ({
                     id: e.id,
                     name: e.name,
-                    role: `${e.specialty} · ${e.yearsExperience} años`,
+                    role: experienciaEquipo ? `${e.specialty} · ${experienciaEquipo.porProfesional[i]?.rol}` : e.specialty,
                     image: fotoDe(e),
                   }))}
                 />

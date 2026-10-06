@@ -182,6 +182,25 @@ export function mostrarEquipoEnWebPublica({
   return !esDemo || (tieneEquipoPropio && !oculto);
 }
 
+/**
+ * Los años del equipo de ejemplo solo se pueden publicar en una demo. Un
+ * salón real aún no guarda esa información, así que nunca se reutilizan los
+ * 8/6/10 del mock como si fueran datos de sus profesionales.
+ */
+export function experienciaEquipoEnWeb(
+  equipo: readonly { yearsExperience: number }[],
+  esSalonReal: boolean,
+): { total: string; porProfesional: { experiencia: string; rol: string }[] } | null {
+  if (esSalonReal) return null;
+  return {
+    total: `${equipo.reduce((sum, profesional) => sum + profesional.yearsExperience, 0)} años de oficio entre todas`,
+    porProfesional: equipo.map((profesional) => ({
+      experiencia: `${profesional.yearsExperience} años de experiencia`,
+      rol: `${profesional.yearsExperience} años`,
+    })),
+  };
+}
+
 export type SeccionResenasPublicas = "google" | "ejemplo" | "estadisticas" | "oculta";
 
 /** Las demos enlazadas no inventan testimonios: conservan solo cifras del perfil. */
