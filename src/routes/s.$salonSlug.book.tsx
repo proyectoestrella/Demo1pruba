@@ -501,7 +501,7 @@ function BookingWizard() {
       !data.name ||
       !data.phone ||
       !haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged) ||
-      !data.acceptedPolicy ||
+      (conRecargo && !data.acceptedPolicy) ||
       faltanRespuestas.length > 0
     )
       return;
@@ -629,7 +629,7 @@ function BookingWizard() {
         ? !data.employeeId
         : step === 3
           ? !data.date || !data.time
-        : !data.name || !data.phone || !haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged) || !data.acceptedPolicy || !!blockedClient ||
+        : !data.name || !data.phone || !haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged) || (conRecargo && !data.acceptedPolicy) || !!blockedClient ||
             faltanRespuestas.length > 0 ||
             sending || resolutionStatus === "resolviendo";
 
@@ -910,6 +910,9 @@ function BookingWizard() {
                   <span>He leído la información sobre el tratamiento de mis datos.</span>
                 </label>
 
+                {/* La casilla de cancelación solo sale si el salón tiene una política con
+                    recargo configurada; sin ella (p. ej. plan Básico) no se pide aceptar nada. */}
+                {conRecargo && (
                 <label className="flex items-start gap-3 text-sm text-muted-foreground">
                   <Checkbox
                     className="mt-0.5"
@@ -924,6 +927,7 @@ function BookingWizard() {
                     antes de la cita.
                   </span>
                 </label>
+                )}
 
                 {conRecargo && mostrarPrecio && (
                   <p className="text-xs text-muted-foreground">
