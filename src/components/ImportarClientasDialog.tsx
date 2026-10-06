@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ImportarVentasTpv } from "@/components/ImportarVentasTpv";
-import { usePermisos } from "@/lib/accesos-panel";
+import { usePermisos, usePlanSalon } from "@/lib/accesos-panel";
 import { puede } from "@/lib/permisos";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,9 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
   const [ocupado, setOcupado] = useState(false);
   const [resumen, setResumen] = useState("");
   // 14b: las ventas de TPV 123 van a la caja; solo quien puede importar dinero.
-  const puedeVentas = puede(usePermisos(), "dinero.importar");
+  // El plan Básico («reservas») importa solo el listado de clientas, sin historial.
+  const plan = usePlanSalon();
+  const puedeVentas = puede(usePermisos(), "dinero.importar") && plan !== "reservas";
   const [pestana, setPestana] = useState<"clientas" | "ventas">("clientas");
   const previa = useMemo(() => tabla && mapa.nombre !== undefined ? vistaPreviaClientas(tabla, clientes, mapa) : null, [tabla, clientes, mapa]);
 
