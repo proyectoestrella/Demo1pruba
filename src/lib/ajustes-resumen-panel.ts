@@ -12,7 +12,7 @@ export type IdSeccionAjustes = "guia" | "agenda" | "reservas" | "mensajes" | "pl
 export const SECCIONES_AJUSTES: { id: IdSeccionAjustes; titulo: string; palabras: string }[] = [
   { id: "guia", titulo: "Guía de uso de la app", palabras: "guía uso ayuda manual tutorial cómo funciona empezar capturas" },
   { id: "agenda", titulo: "Tu agenda", palabras: "duración calendario vista semana día horas visibles primer día lunes móvil iphone google suscripción" },
-  { id: "reservas", titulo: "Reservas por internet", palabras: "preguntas reservar reparto agenda franjas web cierre últimos minutos" },
+  { id: "reservas", titulo: "Reservas por internet", palabras: "preguntas reservar reparto agenda franjas web cierre últimos minutos precio precios importe ocultar" },
   { id: "mensajes", titulo: "Mensajes de WhatsApp", palabras: "whatsapp confirmación recordatorio plantilla texto mensaje" },
   { id: "plantones", titulo: "Plantones y señal", palabras: "plantón no vino penalización recargo señal bizum fianza depósito cancelación" },
   { id: "calendarios", titulo: "Calendarios", palabras: "google apple iphone externo sincronizar ocupado" },

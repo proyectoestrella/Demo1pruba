@@ -100,6 +100,7 @@ function Settings() {
   const [questionsEnabled, setQuestionsEnabled] = useState(bookingQuestionsEnabled(salonProfile, businessType));
   const [questionsRequired, setQuestionsRequired] = useState(!!salonProfile.bookingQuestionsRequired);
   const [duracionFlexible, setDuracionFlexible] = useState(!!salonProfile.duracionFlexible);
+  const [ocultarPrecioReserva, setOcultarPrecioReserva] = useState(!!salonProfile.ocultarPrecioReserva);
 
   // Plantones — política de penalización por cancelar tarde o no presentarse.
   const [noShowEnabled, setNoShowEnabled] = useState(recargoActivo(salonProfile));
@@ -136,6 +137,7 @@ function Settings() {
     setQuestionsEnabled(bookingQuestionsEnabled(salonProfile, businessType));
     setQuestionsRequired(!!salonProfile.bookingQuestionsRequired);
     setDuracionFlexible(!!salonProfile.duracionFlexible);
+    setOcultarPrecioReserva(!!salonProfile.ocultarPrecioReserva);
   }, [salonProfile, businessType]);
 
   function handleSave(): boolean {
@@ -169,6 +171,7 @@ function Settings() {
       bookingQuestionsEnabled: questionsEnabled,
       bookingQuestionsRequired: questionsRequired,
       duracionFlexible,
+      ocultarPrecioReserva,
     });
     return true;
   }
@@ -263,6 +266,16 @@ function Settings() {
               </div>
             )}
             <AjustesPreguntas />
+          </div>
+          <div className={fila}>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="ocultar-precio-reserva" className="text-[15px] font-extrabold">No mostrar precios al reservar</Label>
+                <p className="mt-1 text-sm text-muted-foreground">La clienta verá los servicios y podrá reservar igual; el importe seguirá apareciendo en tu panel.</p>
+              </div>
+              <Switch id="ocultar-precio-reserva" checked={ocultarPrecioReserva} onCheckedChange={setOcultarPrecioReserva} />
+            </div>
+            {guardar}
           </div>
           <div className={fila}>
             <div className="flex items-center justify-between gap-4">

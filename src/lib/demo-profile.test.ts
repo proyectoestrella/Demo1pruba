@@ -174,6 +174,7 @@ describe("blankDemoProfile apaga q/w/k/u por defecto", () => {
     const blank = blankDemoProfile();
     expect(blank.noShowFeeEur).toBe(0);
     expect(blank.smartSpread).toBe(false);
+    expect(blank.ocultarPrecioReserva).toBe(false);
   });
 
   it("tampoco hereda las franjas prioritarias de una demo anterior", () => {

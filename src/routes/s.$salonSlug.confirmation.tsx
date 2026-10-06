@@ -12,6 +12,7 @@ import { DEMO_PARAM, decodeDemoProfile } from "@/lib/demo-profile";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { Button } from "@/components/ui/button";
 import { eur } from "@/lib/copy";
+import { mostrarPreciosEnReserva } from "@/lib/precio-reserva";
 import { sumServices } from "@/lib/appointment-services";
 import {
   claveHojaCalendarioMovil,
@@ -68,6 +69,7 @@ function Confirmation() {
   // si no, el perfil guardado del navegador) — así el catálogo y el equipo
   // salen bien en el primer render, sin depender de un efecto de cliente.
   const profile = useDisplayProfile();
+  const mostrarPrecio = mostrarPreciosEnReserva(profile);
   const tipo = useBusinessType();
   const serviceMap = useMemo(
     () => Object.fromEntries(servicesForType(tipo, profile.menu).map((s) => [s.id, s])),
@@ -120,7 +122,7 @@ function Confirmation() {
   const flexNota = flexible
     ? `La duración final la confirma ${profile.name || "el salón"} al aceptar tu solicitud.`
     : undefined;
-  const recargoTexto = recargoActivo(profile) && recargoRetraso ? recargoRetrasoTexto(recargoRetraso) : undefined;
+  const recargoTexto = mostrarPrecio && recargoActivo(profile) && recargoRetraso ? recargoRetrasoTexto(recargoRetraso) : undefined;
 
 
   if (!chosen.length || !employee) {
@@ -140,12 +142,12 @@ function Confirmation() {
   }
 
   // El único mensaje sobre la señal (9j): el de la regla del salón, o nada.
-  const textoSenal = textoSenalPublico(
+  const textoSenal = mostrarPrecio ? textoSenalPublico(
     reglaSenal(profile),
     { durationMin: totalMin, serviceIds: chosen.map((s) => s.id), priceEur: total },
     profile.name,
     (n) => eur(n).replace(",00", ""),
-  );
+  ) : undefined;
   const dateLabel = date
     ? new Date(`${date}T${time || "00:00"}`).toLocaleDateString("es-ES", {
         weekday: "long",
@@ -225,11 +227,11 @@ function Confirmation() {
           <Row k="Fecha" v={dateLabel} />
           <Row k="Hora" v={time || "—"} />
           <Row k={chosen.length > 1 ? "Duración total" : "Duración"} v={durationLabel} />
-          {chosen.length > 1 ? (
+          {mostrarPrecio && (chosen.length > 1 ? (
             chosen.map((s, i) => <Row key={s.id} k={serviceNames[i]} v={eur(s.priceEur)} />)
           ) : (
             <Row k="Precio del servicio" v={eur(total)} />
-          )}
+          ))}
         </div>
         {textoSenal && (
           <p className="mt-5 flex items-start gap-3 rounded-2xl border border-lino-fuerte bg-perla px-4 py-3.5 text-sm leading-relaxed text-foreground">
@@ -245,12 +247,7 @@ function Confirmation() {
           <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{recargoTexto}</p>
         )}
 
-        <div className="my-6 border-t border-dashed border-border" />
-
-        <div className="flex items-baseline justify-between">
-          <span className="text-sm text-muted-foreground">Total</span>
-          <span className="text-2xl font-extrabold tabular-nums">{eur(total)}</span>
-        </div>
+        {mostrarPrecio && <><div className="my-6 border-t border-dashed border-border" /><div className="flex items-baseline justify-between"><span className="text-sm text-muted-foreground">Total</span><span className="text-2xl font-extrabold tabular-nums">{eur(total)}</span></div></>}
 
         <div className="my-6 border-t border-dashed border-border" />
 

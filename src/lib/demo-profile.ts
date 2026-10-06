@@ -105,7 +105,7 @@ export type DemoProfile = DemoProfileNegocio & DemoPersonalizacion;
  */
 export type CamposSinHeredar = Pick<
   SalonProfile,
-  "logoUrl" | "enlaces" | "whatsapp" | "boletin" | "galeriaPropia" | "descripcionesServicios" | "preciosLiterales" | "destacados" | "demoAbreHoy"
+  "logoUrl" | "enlaces" | "whatsapp" | "boletin" | "galeriaPropia" | "descripcionesServicios" | "preciosLiterales" | "destacados" | "demoAbreHoy" | "ocultarPrecioReserva"
 >;
 
 /**
@@ -351,6 +351,7 @@ export function blankDemoProfile(): DemoProfile & CamposSinHeredar {
     mostrarSolicitudes: true,
     recargoRetraso: undefined,
     duracionFlexible: false,
+    ocultarPrecioReserva: false,
     // Ver `CamposSinHeredar`: presentes y vacíos para que pisen lo anterior.
     logoUrl: undefined,
     enlaces: undefined,

@@ -272,6 +272,8 @@ export interface SalonProfile {
   address: string;
   /** El salón fija la duración al aceptar cada solicitud. */
   duracionFlexible?: boolean;
+  /** Oculta los importes a la clienta durante la reserva pública. Ausente = se muestran como siempre. */
+  ocultarPrecioReserva?: boolean;
   /** Cómo abre el calendario del panel (ver `lib/preferencias-calendario.ts`). */
   calendario?: {
     vista?: "dia" | "tres" | "semana" | "mes" | "cronograma";

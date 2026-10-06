@@ -54,6 +54,7 @@ declare
     "menu": ["__PENDIENTE_SERVICIO_01__~30~0~__PENDIENTE_CATEGORIA_01__"],
     "preguntasReserva": [],
     "duracionFlexible": null,
+    "ocultarPrecioReserva": true,
     "depositEnabled": false,
     "noShowFeeEur": 0
   }
@@ -114,6 +115,9 @@ begin
   end if;
   if jsonb_typeof(perfil->'duracionFlexible') is distinct from 'boolean' then
     raise exception 'Confirma si la duración publicada será flexible o fija y guarda true/false.';
+  end if;
+  if jsonb_typeof(perfil->'ocultarPrecioReserva') is distinct from 'boolean' then
+    raise exception 'Confirma si los precios se muestran al reservar y guarda true/false.';
   end if;
   if coalesce(perfil#>>'{enlaces,resenas}', '') not like 'https://%' then
     raise exception 'Confirma y añade el enlace HTTPS directo para pedir una reseña en Google.';

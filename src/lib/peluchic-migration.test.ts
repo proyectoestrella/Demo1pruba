@@ -30,6 +30,12 @@ test("la semilla de PeluChic se bloquea con datos pendientes y nunca sobreescrib
   expect(semillaPeluChic).toContain("split_part(servicio.valor, '~', 4)");
 });
 
+test("el perfil de la semilla de PeluChic oculta el precio en la reserva", () => {
+  const json = semillaPeluChic.match(/perfil jsonb := \$perfil\$\s*([\s\S]*?)\s*\$perfil\$::jsonb;/)?.[1];
+  if (!json) throw new Error("No se encontró el JSON de perfil de PeluChic");
+  expect(JSON.parse(json).ocultarPrecioReserva).toBe(true);
+});
+
 test("el rollback de perfil no borra citas, clientas ni otras tablas", () => {
   expect(rollbackPeluChic).toContain("__PEGAR_AQUI_EL_JSON_COMPLETO_DEL_BACKUP_PREVIO__");
   expect(rollbackPeluChic).toContain("update salons");

@@ -3,7 +3,7 @@ import { useImagenConRespaldo } from "@/lib/imagen-rota";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Info, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType, textosDeCarta } from "@/lib/mock/salon";
-import { importeSenal, reglaSenal, senalDeReservaNueva, servicioLlevaSenal, textoSenalPublico, type ReglaSenal } from "@/lib/senal";
+import { reglaSenal, senalDeReservaNueva, servicioLlevaSenal, textoSenalPublico, type ReglaSenal } from "@/lib/senal";
 import { huecosDeProfesionales, trabajaEn } from "@/lib/horario-equipo";
 import { isoDelSalon, zonaDelSalon } from "@/lib/zona-horaria";
 import { antelacionMinima, huecoAunReservable } from "@/lib/primer-hueco";
@@ -59,6 +59,7 @@ import { reintentarSalonPublico } from "@/lib/use-real-salon";
 import { sumServices } from "@/lib/appointment-services";
 import { FluidSteps } from "@/components/twentyfirst/fluid-steps";
 import { capitalizar, eur, fechaLarga } from "@/lib/copy";
+import { mostrarPreciosEnReserva } from "@/lib/precio-reserva";
 import { DEMO_PARAM, decodeDemoProfile } from "@/lib/demo-profile";
 import {
   esSoloUnProfesional,
@@ -268,6 +269,7 @@ function BookingWizard() {
   // igual que ya hacía `useDisplayProfile` con el resto del perfil. Si el
   // enlace trae carta o equipo reales, sustituyen a los de ejemplo del tipo.
   const profile = useDisplayProfile();
+  const mostrarPrecio = mostrarPreciosEnReserva(profile);
   const conRecargo = recargoActivo(profile);
   const tipo = useBusinessType();
   // Preguntas del formulario: las del salón (o las de siempre), en su orden.
@@ -391,8 +393,7 @@ function BookingWizard() {
   // primera visita».
   const reglaSen = reglaSenal(profile);
   const reservaSenal = { serviceIds: data.serviceIds, durationMin: totalMin, priceEur: total };
-  const depositEur = importeSenal(reglaSen, reservaSenal);
-  const textoSenal = textoSenalPublico(reglaSen, reservaSenal, profile.name, eur);
+  const textoSenal = mostrarPrecio ? textoSenalPublico(reglaSen, reservaSenal, profile.name, eur) : undefined;
 
   // Mejora B1 (grounding externo, patrón Booksy): "Repetir mi última cita".
   // Se lee una sola vez al montar el wizard — si se aplica y el cliente sigue
@@ -632,7 +633,7 @@ function BookingWizard() {
             faltanRespuestas.length > 0 ||
             sending || resolutionStatus === "resolviendo";
 
-  const ctaLabel = step < 4 ? "Continuar" : `Confirmar reserva — ${eur(total)}`;
+  const ctaLabel = step < 4 ? "Continuar" : mostrarPrecio ? `Confirmar reserva — ${eur(total)}` : "Confirmar reserva";
   // En la barra fija de móvil no cabe el importe dos veces: ya se ve a la izquierda.
   const ctaLabelCorto = step < 4 ? "Continuar" : "Confirmar";
 
@@ -660,7 +661,7 @@ function BookingWizard() {
   // quepan en la agenda.
   const schedulingDurationMin = flexRange ? flexRange.hi : totalMin;
 
-  const recargoTexto = conRecargo && recargoRetraso ? recargoRetrasoTexto(recargoRetraso) : undefined;
+  const recargoTexto = mostrarPrecio && conRecargo && recargoRetraso ? recargoRetrasoTexto(recargoRetraso) : undefined;
 
   const dateLabel = data.date
     ? new Date(`${data.date}T00:00`).toLocaleDateString("es-ES", {
@@ -707,6 +708,7 @@ function BookingWizard() {
               totalMin={totalMin}
               durationLabel={durationLabel}
               flexNota={flexible ? flexNota : undefined}
+              mostrarPrecio={mostrarPrecio}
               onToggle={toggleService}
               tipo={tipo}
               services={services}
@@ -783,11 +785,7 @@ function BookingWizard() {
                     <SummaryRow label="Fecha" value={dateLabel ?? "—"} />
                     <SummaryRow label="Hora" value={data.time ?? "—"} />
                   </div>
-                  <div className="my-3 border-t border-dashed border-border" />
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-sm text-muted-foreground">Total</span>
-                    <span className="text-xl font-extrabold tabular-nums">{eur(total)}</span>
-                  </div>
+                  {mostrarPrecio && <><div className="my-3 border-t border-dashed border-border" /><div className="flex items-baseline justify-between"><span className="text-sm text-muted-foreground">Total</span><span className="text-xl font-extrabold tabular-nums">{eur(total)}</span></div></>}
                   {soloUno && employeeName && (
                     <p className="mt-1 text-xs text-muted-foreground">Te atiende {employeeName}.</p>
                   )}
@@ -831,9 +829,7 @@ function BookingWizard() {
                       </p>
                     ) : (
                       <p>
-                        Tienes pendiente una penalización de {eur(profile.noShowFeeEur ?? 0)} por una
-                        cita a la que no pudiste venir sin avisar. Abónala en {profile.name} y podrás
-                        volver a reservar.
+                        {mostrarPrecio ? <>Tienes pendiente una penalización de {eur(profile.noShowFeeEur ?? 0)} por una cita a la que no pudiste venir sin avisar. Abónala en {profile.name} y podrás volver a reservar.</> : <>Tienes pendiente una penalización por una cita a la que no pudiste venir sin avisar. Abónala en {profile.name} y podrás volver a reservar.</>}
                       </p>
                     )}
                     {profile.phone && (
@@ -929,7 +925,7 @@ function BookingWizard() {
                   </span>
                 </label>
 
-                {conRecargo && (
+                {conRecargo && mostrarPrecio && (
                   <p className="text-xs text-muted-foreground">
                     Si no puedes venir, avísanos con {profile.noShowNoticeHours ?? 2} h de
                     antelación; si no, la siguiente reserva lleva {eur(profile.noShowFeeEur ?? 0)}{" "}
@@ -972,7 +968,7 @@ function BookingWizard() {
           dateLabel={dateLabel}
           timeLabel={data.time}
           total={total}
-          depositEur={depositEur}
+          mostrarPrecio={mostrarPrecio}
           ctaLabel={ctaLabel}
           ctaDisabled={ctaDisabled}
           onCta={onCta}
@@ -988,7 +984,7 @@ function BookingWizard() {
         dateLabel={dateLabel}
         timeLabel={data.time}
         total={total}
-        depositEur={depositEur}
+        mostrarPrecio={mostrarPrecio}
         ctaLabel={ctaLabel}
         ctaLabelCorto={ctaLabelCorto}
         ctaDisabled={ctaDisabled}
@@ -1054,6 +1050,7 @@ function ServiceStep({
   totalMin,
   durationLabel,
   flexNota,
+  mostrarPrecio,
   onToggle,
   tipo,
   services,
@@ -1065,6 +1062,7 @@ function ServiceStep({
   durationLabel: string;
   /** Frase «la duración final la confirma…», solo con duración flexible. */
   flexNota?: string;
+  mostrarPrecio: boolean;
   onToggle: (id: string) => void;
   tipo: BusinessType;
   services: Service[];
@@ -1134,10 +1132,7 @@ function ServiceStep({
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
-                          {/* Lote 18.5: el precio tal y como lo publica el salón («desde…»). */}
-                          <span className="max-w-[9rem] text-right text-base font-extrabold leading-snug tabular-nums">
-                            {s.priceText?.trim() || eur(s.priceEur)}
-                          </span>
+                          {mostrarPrecio && <span className="max-w-[9rem] text-right text-base font-extrabold leading-snug tabular-nums">{s.priceText?.trim() || eur(s.priceEur)}</span>}
                           {isSelected && <Check className="h-4 w-4 text-primary" />}
                         </div>
                       </button>
@@ -1664,7 +1659,7 @@ function BookingSummary({
   dateLabel,
   timeLabel,
   total,
-  depositEur,
+  mostrarPrecio,
   ctaLabel,
   ctaLabelCorto,
   ctaDisabled,
@@ -1680,7 +1675,7 @@ function BookingSummary({
   dateLabel?: string;
   timeLabel?: string;
   total: number;
-  depositEur: number;
+  mostrarPrecio: boolean;
   ctaLabel: string;
   /** Rótulo corto para la barra fija de móvil. */
   ctaLabelCorto?: string;
@@ -1706,7 +1701,7 @@ function BookingSummary({
         <div className={cn(CONTENEDOR_SALON, "flex items-center justify-between gap-3")}>
           <div className="min-w-0 flex-1">
             <p className="flex items-baseline gap-2">
-              <span className="text-lg font-extrabold tabular-nums">{eur(total)}</span>
+              {mostrarPrecio && <span className="text-lg font-extrabold tabular-nums">{eur(total)}</span>}
               {serviceNames.length > 0 && (
                 <span className="whitespace-nowrap text-xs text-cafe-suave">{durationLabel}</span>
               )}
@@ -1775,12 +1770,7 @@ function BookingSummary({
           <SummaryRow label="Hora" value={timeLabel ?? "—"} />
         </div>
 
-        <Separator className="my-4" />
-
-        <div className="flex items-baseline justify-between">
-          <span className="text-sm text-muted-foreground">Total</span>
-          <span className="text-2xl font-extrabold tabular-nums">{eur(total)}</span>
-        </div>
+        {mostrarPrecio && <><Separator className="my-4" /><div className="flex items-baseline justify-between"><span className="text-sm text-muted-foreground">Total</span><span className="text-2xl font-extrabold tabular-nums">{eur(total)}</span></div></>}
 
         <Button
           onClick={onCta}
