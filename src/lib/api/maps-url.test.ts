@@ -108,3 +108,32 @@ describe("inferTipo", () => {
     expect(inferTipo("Zitada")).toBe("Peluquería");
   });
 });
+
+describe("parseMapsUrl · enlaces de «Cómo llegar»", () => {
+  it("saca el destino de un /maps/dir// con la dirección en el camino", () => {
+    const out = parseMapsUrl(
+      "https://www.google.com/maps/dir//C.+Isla+de+Tavira,+32,+Fuencarral-El+Pardo,+28035+Madrid/data=!4m6!4m5!1m1!4e2!1m2!1m1!1s0xd422992357df8a3:0x40288605da57184?sa=X&ved=2ahUKEwjgnonGjqqXAxU_UkEAHQi_HcIQlDt6BAgPEAA",
+    );
+    expect(out.name).toBe("C. Isla de Tavira, 32, Fuencarral-El Pardo, 28035 Madrid");
+  });
+
+  it("también con el local dentro de la dirección", () => {
+    const out = parseMapsUrl(
+      "https://www.google.com/maps/dir//C.+Isla+de+Tavira,+26,+Loc+2,+Fuencarral-El+Pardo,+28035+Madrid/data=!4m6!4m5!1m1!4e2!1m2!1m1!1s0xd4229dc39c6b053:0xf26adee4ba3f20a6?sa=X&ved=2ahUKEwik8LqajqqXAxWlVkEAHbuMFDcQlDt6BAgPEAA",
+    );
+    expect(out.name).toBe("C. Isla de Tavira, 26, Loc 2, Fuencarral-El Pardo, 28035 Madrid");
+  });
+
+  it("con origen y destino se queda con el destino", () => {
+    const out = parseMapsUrl(
+      "https://www.google.com/maps/dir/Plaza+de+Cibeles,+Madrid/Barber%C3%ADa+Pepe,+Calle+del+Pez+23/@40.42,-3.70,15z",
+    );
+    expect(out.name).toBe("Barbería Pepe, Calle del Pez 23");
+  });
+
+  it("un destino que son coordenadas se trata como coordenadas", () => {
+    const out = parseMapsUrl("https://www.google.com/maps/dir//40.4137913,-3.6944882");
+    expect(out.name).toBeUndefined();
+    expect(out.lat).toBeCloseTo(40.4137913, 5);
+  });
+});
