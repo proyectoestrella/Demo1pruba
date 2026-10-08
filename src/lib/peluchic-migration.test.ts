@@ -5,7 +5,7 @@ const [esquemaCompleto, migracionesPendientes, semillaPeluChic, rollbackPeluChic
     Bun.file(new URL("../../supabase/schema.sql", import.meta.url)).text(),
     Bun.file(new URL("../../supabase/pendiente.sql", import.meta.url)).text(),
     Bun.file(new URL("../../supabase/seed-peluchic.sql", import.meta.url)).text(),
-    Bun.file(new URL("../../supabase/rollback-peluchic.sql", import.meta.url)).text(),
+    Bun.file(new URL("../../supabase/rollback-update-peluchic.sql", import.meta.url)).text(),
     Bun.file(new URL("../../supabase/alta-primer-usuario-peluchic.sql", import.meta.url)).text(),
   ]);
 
@@ -32,7 +32,7 @@ test("el perfil de la semilla de PeluChic oculta el precio en la reserva", () =>
 });
 
 test("el rollback de perfil no borra citas, clientas ni otras tablas", () => {
-  expect(rollbackPeluChic).toContain("__PEGAR_AQUI_EL_JSON_COMPLETO_DEL_BACKUP_PREVIO__");
+  expect(rollbackPeluChic).toContain("perfil_versiones");
   expect(rollbackPeluChic).toContain("update salons");
   expect(rollbackPeluChic.toLowerCase()).not.toContain("delete from");
 });

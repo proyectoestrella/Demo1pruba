@@ -1,48 +1,80 @@
-# Alta de PeluChic · guía para Tomás
+# Puesta en marcha de PeluChic · guía para Tomás
 
-Estos ficheros son preparación local. No se han ejecutado contra Supabase ni producción.
+Los ficheros SQL están preparados y probados en un Postgres de prueba en memoria, pero **no se han ejecutado contra Supabase real**. Se pegan en el *SQL Editor* de Supabase (menú izquierdo, icono `SQL`), se pulsa **Run** y se mira el resultado.
 
-## 1. Comprobar antes de escribir
+Los ficheros `supabase/seed-peluchic.sql` y `supabase/update-peluchic.sql` los genera un script a partir de la demo (`bun scripts/generar-sql-peluchic.ts`). **No se editan a mano**: lo que ves en la demo es exactamente lo que se carga. Todos los scripts van dentro de una transacción: o se aplica todo o no se aplica nada.
 
-En el SQL Editor de Supabase, ejecutar solo esta lectura:
+**Si te sale un error rojo:** escribe `rollback;` en el editor, pulsa Run, y vuelve a pegar y ejecutar el script. No se habrá guardado nada a medias.
+
+## Paso 0 · Comprobar que Supabase está al día
+
+Pega esto y pulsa Run (solo lee):
 
 ```sql
-select slug, profile, updated_at
-from salons
-where slug = 'peluchic';
+select
+  to_regclass('public.perfil_versiones') is not null as tabla_versiones,
+  exists (select 1 from information_schema.columns where table_name='appointments' and column_name='privacy_notice_acknowledged_at') as aviso_privacidad,
+  exists (select 1 from information_schema.columns where table_name='salon_members' and column_name='employee_id') as miembro_profesional;
 ```
 
-Si no devuelve fila, usar `supabase/seed-peluchic.sql`. Si devuelve una fila, **no usar seed**: copiar el JSON del resultado a un espacio privado y usar `supabase/update-peluchic.sql`. El update también emite el perfil anterior como `RAISE NOTICE`; copiarlo antes de confirmar que todo está correcto.
+Deben salir las tres columnas en `true`. Si alguna sale `false`, abre `supabase/pendiente.sql`, pégalo entero en el editor y ejecútalo (es repetible sin riesgo), y vuelve a lanzar la comprobación. Los scripts de carga también lo comprueban y se paran con un mensaje claro si falta algo.
 
-Los dos scripts son transaccionales y terminan con una consulta de comprobación. Revisar que muestra 57 servicios y `fianza_activa = false`. El rollback del update es `supabase/rollback-update-peluchic.sql`: pegar allí exactamente el JSON del aviso de backup. El rollback no toca clientas, citas, pagos ni miembros.
+## Paso 1 · ¿Existe ya el salón?
 
-## 2. Orden de carga
+```sql
+select slug, updated_at from salons where slug = 'peluchic';
+```
 
-1. Hacer backup restaurable del proyecto y guardar privadamente el JSON previo si existe.
-2. Pegar el SQL elegido completo en SQL Editor y ejecutarlo una sola vez.
-3. Revisar carta, equipo, horarios, festivos, preguntas y precios ocultos en el panel.
-4. La hora de comer de los viernes **no está cargada**: María la crea desde `Bloquear tiempo › repetir cada semana` cuando decida hora y profesionales.
-5. La fianza está configurada pero apagada. Cuando socios/adenda lo autoricen, cambiar `"depositEnabled": false` por `true` en el perfil; mantiene 5 €/hora, 4 h y liberación manual.
+- **No sale ninguna fila:** el salón no existe. Ve al paso 2 con `seed`.
+- **Sale una fila:** ya existe. **No uses seed.** Ve al paso 2 con `update`.
 
-## 3. Alta de María
+## Paso 2 · Cargar el perfil
 
-1. Configurar la URL de retorno autorizada y pedir el enlace mágico al correo que María confirme.
-2. Esperar a que abra el enlace: primero debe existir en `auth.users`.
-3. Sustituir el correo confirmado en `supabase/alta-primer-usuario-peluchic.sql` y pegarlo en SQL Editor.
-4. Ejecutar su `SELECT` final: debe devolver una fila con rol `gerente`.
+**Si no existía → `supabase/seed-peluchic.sql`.** Pega el fichero entero, Run. Al final muestra una fila con `servicios = 57` y `fianza_activa = false`.
 
-No inventar UUID ni usar el correo de privacidad como correo de acceso sin que María lo confirme.
+**Si ya existía → `supabase/update-peluchic.sql`.** Antes de escribir guarda una copia del perfil anterior dentro de Supabase (tabla `perfil_versiones`). Ojo: **sustituye la configuración actual** (carta, equipo, horarios, preguntas, precios, textos) por la de la puesta en marcha. Úsalo solo antes de que María haya cambiado cosas desde el panel. Se puede ejecutar dos veces sin problema (la segunda no hace nada). Al final muestra 57 servicios y cuántas copias hay guardadas.
 
-## 4. Importar clientas
+**Para deshacer el update:** `supabase/rollback-update-peluchic.sql` (restaura la copia guardada por el update; descarta lo que se haya cambiado después). No hay script para deshacer un `seed`: borrar un salón arrastra datos asociados (por ejemplo la suscripción del calendario), así que no hay botón automático; si hiciera falta, se decide a mano entre los dos.
 
-Desde el panel real, abrir el importador y cargar el `.xlsx` proporcionado por María. Usar primero la vista previa; confirmar duplicados y columnas; importar solo tras su visto bueno. No añadir el archivo, datos de clientas ni capturas a este repositorio.
+## Paso 3 · Dar de alta a María
 
-## Datos aún pendientes
+1. Configura la URL de retorno autorizada y pídele el enlace mágico al correo que ella confirme.
+2. Espera a que **abra el enlace** (hasta entonces su cuenta no existe).
+3. Abre `supabase/alta-primer-usuario-peluchic.sql`, cambia **solo** `__CORREO_CONFIRMADO_POR_MARIA__` por su correo (una única vez, en la línea marcada), pega y Run.
+4. Debe salir una fila con `rol = gerente` y `employee_id = maria`. Si el correo no cambia o no existe ese usuario, el script se para con un mensaje claro.
 
-- Teléfono Bizum para la fianza (no se ha guardado); la fianza permanece desactivada.
-- Correo de acceso de María para el enlace mágico y alta de gerente.
+No uses el correo de privacidad como correo de acceso sin que María lo confirme.
+
+## Paso 4 · Comprobar la web pública
+
+Abre la ruta `/s/peluchic` del dominio donde esté desplegado siShow, en una ventana privada. Mira:
+
+- Aparecen las 7 categorías y los 57 servicios, con los precios literales (por ejemplo «24 € / 28 € / 31 €» en Peinar).
+- Aparecen el equipo (María, Anca, Patricia), el horario (martes a viernes 10–20, sábado 9–14) y las fotos.
+- **No** aparece ninguna nota ni número de reseñas (se ha dejado sin nota a propósito: ver «Pendientes»).
+- Al reservar, las preguntas de pelo y color solo salen en servicios de peluquería, y no se pide fianza.
+
+## Paso 5 · Importar clientas
+
+Desde el panel real, abre el importador y carga el `.xlsx` de María. Usa primero la vista previa; confirma duplicados y columnas; importa solo con su visto bueno. No añadas el archivo ni datos de clientas a este repositorio.
+
+## Activar la fianza (cuando los socios lo decidan)
+
+Una línea; pégala y Run. Deja 5 €/hora, 4 h y liberación manual como están:
+
+```sql
+update salons set profile = jsonb_set(profile, '{depositEnabled}', 'true'), updated_at = now() where slug = 'peluchic';
+```
+
+(Para volver a apagarla, lo mismo con `'false'`.) Cuando haya teléfono Bizum, se añade igual con `depositBizumPhone`.
+
+## Pendientes
+
+- Nota y número de reseñas de Google: no se publican porque no se han podido verificar contra su ficha. Cuando alguien lo confirme, se ponen en el perfil.
+- Teléfono Bizum para la fianza (no está guardado; la fianza está apagada).
+- Correo de acceso de María para el enlace mágico.
 - Ortografía definitiva de «Anca».
-- Hora y alcance de la comida de los viernes.
+- Hora y alcance de la comida de los viernes (no está cargada; María la crea desde `Bloquear tiempo › repetir cada semana`).
 - Decisión de socios/adenda para activar la fianza.
 - Días especiales de 2027 posteriores al 1 de enero.
-- Confirmación de la asignación de servicios por profesional durante la formación.
+- Confirmar con María la asignación de servicios por profesional durante la formación.
