@@ -47,11 +47,11 @@ export function leerCsv(texto: string): TablaImportacion {
 
 const alias: Record<CampoCliente, string[]> = {
   nombre: ["nombre", "cliente", "nombre cliente", "nombre y apellidos", "nombre completo"],
-  apellidos: ["apellidos", "apellido", "primer apellido", "apellidos cliente"],
-  telefono: ["telefono", "telefono2", "movil", "tel movil", "tel movil cliente", "telefono movil", "telefono movil cliente", "telf", "telf.", "numero de telefono"],
-  telefono2: ["telefono1", "tel fijo", "tel fijo cliente", "telefono fijo", "telefono fijo cliente"],
+  apellidos: ["apellidos", "apelidos", "apellido", "primer apellido", "apellidos cliente"],
+  telefono: ["telefono", "telefono2", "movil", "movi", "tel movil", "tel movil cliente", "telefono movil", "telefono movil cliente", "telf", "telf.", "numero de telefono"],
+  telefono2: ["telefono1", "telefono", "tel fijo", "tel fijo cliente", "telefono fijo", "telefono fijo cliente"],
   email: ["email", "e-mail", "correo", "correo electronico"],
-  codigo: ["codigocliente", "codigo cliente", "codigo"],
+  codigo: ["codigocliente", "codigo cliente", "codigo", "cod"],
 };
 export const claveCabecera = (s: string) => normal(s).replace(/[.:]/g, "").replace(/\s+/g, " ");
 export function detectarColumnas(cabeceras: string[]): MapaColumnas {
@@ -163,7 +163,7 @@ export async function leerXlsx(bytes: Uint8Array): Promise<TablaImportacion> {
 }
 export async function leerTabla(file: File): Promise<TablaImportacion> {
   const ext = file.name.toLowerCase();
-  if (ext.endsWith(".xls")) throw new Error("Ábrelo y guárdalo como .xlsx o .csv");
+  if (ext.endsWith(".xls")) throw new Error("Este .xls antiguo no se puede leer: ábrelo en Excel o LibreOffice y guárdalo como .xlsx o .csv.");
   if (ext.endsWith(".csv")) {
     const bytes = await file.arrayBuffer();
     let texto: string;

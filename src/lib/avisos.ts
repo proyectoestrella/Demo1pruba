@@ -67,11 +67,16 @@ export function mensajeDeFianza(p: PeticionDeFianza, requestedAtISO = new Date()
   return rellenarPlantillaSenal(p.plantilla, {
     nombre: p.clientName,
     salon: p.salonName,
-    importe: `${p.importeEur} €`,
+    importe: importeSenalTexto(p.importeEur),
     bizum: p.bizumPhone,
     cuando: cuandoEnPalabras(p.startISO),
     plazo: plazoDeFianzaEnPalabras(p.deadlineISO, requestedAtISO),
   });
+}
+
+/** Los medios euros de la señal se escriben como moneda española; los enteros siguen compactos. */
+function importeSenalTexto(importeEur: number): string {
+  return Number.isInteger(importeEur) ? `${importeEur} €` : `${importeEur.toFixed(2).replace(".", ",")} €`;
 }
 
 /** Enlace de WhatsApp listo para abrir con la petición de fianza dentro. */

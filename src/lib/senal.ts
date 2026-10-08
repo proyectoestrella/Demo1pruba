@@ -20,7 +20,7 @@ import { whatsappUrl } from "./campanas";
 export const VENTANAS_SENAL = [1, 2, 3, 4] as const;
 export type VentanaSenal = (typeof VENTANAS_SENAL)[number];
 
-export type ModoImporteSenal = "fijo" | "porcentaje";
+export type ModoImporteSenal = "fijo" | "porcentaje" | "hora";
 /** A qué reservas se les pide señal. */
 export type AplicaSenal = "todas" | "nuevas" | "duracion" | "servicios";
 
@@ -32,6 +32,8 @@ export interface ReglaSenal {
   importeFijoEur: number;
   /** 1-100 si `modo` es porcentaje. */
   porcentaje: number;
+  /** Euros por hora si `modo` es hora. */
+  tarifaPorHoraEur: number;
   aplicaA: AplicaSenal;
   /** Con `aplicaA = "duracion"`: minutos a partir de los cuales se pide. */
   minutosMinimos: number;
@@ -57,6 +59,7 @@ type PerfilSenal = Pick<
   | "depositDeadlineHours"
   | "depositMode"
   | "depositPercent"
+  | "depositHourlyRateEur"
   | "depositAppliesTo"
   | "depositMinMinutes"
   | "depositServiceIds"
@@ -78,9 +81,10 @@ export function reglaSenal(perfil: Partial<PerfilSenal> | null | undefined): Reg
   const porcentaje = Math.min(100, Math.max(1, Math.round(Number(p.depositPercent) || 20)));
   return {
     activa: p.depositEnabled === true,
-    modo: p.depositMode === "porcentaje" ? "porcentaje" : "fijo",
+    modo: p.depositMode === "porcentaje" || p.depositMode === "hora" ? p.depositMode : "fijo",
     importeFijoEur: Math.max(0, Number(p.depositAmountEur) || 10),
     porcentaje,
+    tarifaPorHoraEur: Math.max(0, Number(p.depositHourlyRateEur) || 5),
     aplicaA: (["todas", "nuevas", "duracion", "servicios"] as const).includes(p.depositAppliesTo as AplicaSenal)
       ? (p.depositAppliesTo as AplicaSenal)
       : "todas",
@@ -127,11 +131,16 @@ export function aplicaSenal(regla: ReglaSenal, r: ReservaParaSenal): boolean {
   }
 }
 
-/** Importe de la señal en euros (redondeado al euro). 0 = no lleva. */
+/** Importe de la señal en euros. El modo por hora sube solo al siguiente medio euro. */
 export function importeSenal(regla: ReglaSenal, r: ReservaParaSenal): number {
   if (!aplicaSenal(regla, r)) return 0;
+  if (regla.modo === "hora") {
+    const bruto = (regla.tarifaPorHoraEur * Math.max(0, r.durationMin)) / 60;
+    // Una duración de 90 min a 5 €/h ya da 7,50; no se añade otro redondeo.
+    return Math.max(0, Math.ceil((bruto - Number.EPSILON) * 2) / 2);
+  }
   const bruto = regla.modo === "porcentaje" ? (r.priceEur * regla.porcentaje) / 100 : regla.importeFijoEur;
-  // Nunca más que el propio servicio.
+  // Los modos tradicionales se mantienen en euros enteros y topados al servicio.
   return Math.max(0, Math.min(Math.round(bruto), Math.round(r.priceEur)));
 }
 
@@ -180,7 +189,11 @@ export type CitaSenal = Pick<Appointment, "serviceIds" | "duration" | "priceEur"
 /** Respuesta de la FAQ «¿Hace falta pagar por adelantado?» según la regla del salón. */
 export function respuestaFaqSenal(regla: ReglaSenal, eur: (n: number) => string): string {
   if (!regla.activa) return "No. Se paga en el salón al terminar.";
-  const cuanto = regla.modo === "porcentaje" ? `una señal del ${regla.porcentaje} % del servicio` : `una señal de ${eur(regla.importeFijoEur)}`;
+  const cuanto = regla.modo === "porcentaje"
+    ? `una señal del ${regla.porcentaje} % del servicio`
+    : regla.modo === "hora"
+      ? `una señal de ${eur(regla.tarifaPorHoraEur)} por hora de servicio`
+      : `una señal de ${eur(regla.importeFijoEur)}`;
   const aQuien =
     regla.aplicaA === "nuevas" ? "Solo en la primera visita: " :
     regla.aplicaA === "duracion" ? `Solo en los servicios de ${regla.minutosMinimos} minutos o más: ` :
@@ -386,7 +399,7 @@ export function pedirSenal(c: CitaCiclo, regla: ReglaSenal, importeEur: number, 
   if (motivoCitaCerrada(c, ahora)) return fallo("SENAL_CITA_CERRADA");
   const e = estadoSenal(c, ahora);
   if (!["no_aplica", "por_pedir", "pedida", "vencida"].includes(e)) return fallo("SENAL_ESTADO_INVALIDO");
-  const importe = c.depositEur && c.depositEur > 0 ? c.depositEur : Math.round(importeEur);
+  const importe = c.depositEur && c.depositEur > 0 ? c.depositEur : Math.round(importeEur * 100) / 100;
   if (!(importe > 0)) return fallo("SENAL_SIN_IMPORTE");
   // Reenviar mientras sigue en plazo no lo alarga: «dar más tiempo» es otra acción.
   if (e === "pedida") return ok({ depositStatus: "pedida", depositEur: importe });
@@ -564,7 +577,7 @@ export function reabrirSenal(c: CitaCiclo): ResultadoSenal {
  *  - debe más → la diferencia queda pendiente (ver `diferenciaSenal`).
  */
 export function reajustarSenal(c: CitaCiclo, nuevoDebidoEur: number, ahora: Date = new Date()): ResultadoSenal {
-  const nuevo = Math.max(0, Math.round(num(nuevoDebidoEur)));
+  const nuevo = Math.max(0, Math.round(num(nuevoDebidoEur) * 100) / 100);
   const e = estadoSenal(c, ahora);
   if (e === "no_aplica") return nuevo > 0 ? ok({ depositStatus: "por_pedir", depositEur: nuevo }) : ok({});
   if (e === "por_pedir" || e === "pedida" || e === "vencida") {

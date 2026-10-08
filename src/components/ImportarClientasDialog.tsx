@@ -72,7 +72,7 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
           <input type="file" accept=".csv,.xlsx,.xls" onChange={(e) => void cargar(e.target.files?.[0])}
             className="block w-full min-w-0 rounded border border-border p-2 text-sm font-normal" />
         </label>
-        <p className="rounded-lg bg-nata p-3 text-xs text-cafe-medio">Se guardan nombre, móvil, correo y código TPV 123. DNI, dirección, segundo teléfono, cumpleaños, visitas, fechas de alta y observaciones —incluidas fórmulas o información de salud— se descartan. El archivo se procesa en este navegador.</p>
+        <p className="rounded-lg bg-nata p-3 text-xs text-cafe-medio">Se guardan nombre, apellidos, móvil, correo y código TPV 123. Se ignoran por protección de datos: dnicif, direccion, F.Alta, Cumpleaños, Ult.Visita, recomendado. El archivo se procesa en este navegador.</p>
         {error && <p role="alert" className="text-destructive">{error}</p>}
         {tabla && <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

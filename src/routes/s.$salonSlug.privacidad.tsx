@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useDisplayProfile } from "@/lib/use-display-profile";
+import { contactoDerechosPrivacidad } from "@/lib/privacidad";
 
 export const Route = createFileRoute("/s/$salonSlug/privacidad")({ component: SalonPrivacy });
 
 function SalonPrivacy() {
   const { salonSlug } = Route.useParams();
   const profile = useDisplayProfile();
+  const contacto = contactoDerechosPrivacidad(profile);
 
   // TODO: texto de plantilla pendiente de revisión legal antes de usarlo en producción.
   return <main className="mx-auto max-w-3xl px-5 py-12 sm:py-16">
@@ -19,7 +21,7 @@ function SalonPrivacy() {
       <section><h2 className="font-semibold">Para qué usamos tus datos</h2><p>Para gestionar tus citas, ponernos en contacto contigo por ellas y conservar el historial de tus servicios.</p></section>
       <section><h2 className="font-semibold">Por qué podemos hacerlo</h2><p>Porque nos pides una cita y te prestamos el servicio.</p></section>
       <section><h2 className="font-semibold">Cuánto tiempo los guardamos</h2><p>Mientras sean necesarios para gestionar tus citas y el historial de servicios, y después durante los plazos legales que correspondan.</p></section>
-      <section><h2 className="font-semibold">Tus derechos</h2><p>Puedes pedir acceso, corrección, eliminación o portabilidad de tus datos, o limitar u oponerte a su uso. Para hacerlo, contacta con {profile.name} en {profile.address || "la dirección del salón"}{profile.phone ? ` o en el ${profile.phone}` : ""}. También puedes reclamar ante la Agencia Española de Protección de Datos.</p></section>
+      <section><h2 className="font-semibold">Tus derechos</h2><p>Puedes pedir acceso, corrección, eliminación o portabilidad de tus datos, o limitar u oponerte a su uso. Para hacerlo, contacta con {profile.name} en {profile.address || "la dirección del salón"} o en {contacto}. También puedes reclamar ante la Agencia Española de Protección de Datos.</p></section>
       <section><h2 className="font-semibold">Quién nos ayuda a gestionarlos</h2><p>siShow actúa como encargado del tratamiento y proporciona la herramienta con la que el salón organiza las citas.</p></section>
     </div>
     <Link to="/s/$salonSlug" params={{ salonSlug }} search={(prev) => prev} className="mt-10 inline-block text-sm font-medium text-primary hover:underline">Volver a la web del salón</Link>

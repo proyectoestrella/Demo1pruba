@@ -31,6 +31,7 @@ export function AjustesSenal() {
     depositMode: perfil.depositMode ?? "fijo",
     depositAmountEur: String(perfil.depositAmountEur || 10),
     depositPercent: String(perfil.depositPercent ?? 20),
+    depositHourlyRateEur: String(perfil.depositHourlyRateEur ?? 5),
     depositAppliesTo: perfil.depositAppliesTo ?? "todas",
     depositMinMinutes: String(perfil.depositMinMinutes ?? 60),
     depositServiceIds: perfil.depositServiceIds ?? [],
@@ -52,10 +53,12 @@ export function AjustesSenal() {
     const num = (t: string) => Number(t.replace(",", "."));
     const importe = num(f.depositAmountEur);
     const pct = num(f.depositPercent);
+    const porHora = num(f.depositHourlyRateEur);
     if (f.depositEnabled) {
       if (f.depositBizumPhone.replace(/\D/g, "").length < 9) return toast.error("Escribe el número de Bizum al que te pagan la señal.");
       if (f.depositMode === "fijo" && (!Number.isFinite(importe) || importe < 1 || importe > 200)) return toast.error("La señal fija tiene que estar entre 1 y 200 €.");
       if (f.depositMode === "porcentaje" && (!Number.isFinite(pct) || pct < 1 || pct > 100)) return toast.error("El porcentaje tiene que estar entre 1 y 100.");
+      if (f.depositMode === "hora" && (!Number.isFinite(porHora) || porHora <= 0 || porHora > 200)) return toast.error("La tarifa por hora tiene que estar entre 0,01 y 200 €.");
       if (f.depositAppliesTo === "servicios" && f.depositServiceIds.length === 0) return toast.error("Elige al menos un servicio que lleve señal.");
     }
     const patch: Partial<SalonProfile> = {
@@ -63,6 +66,7 @@ export function AjustesSenal() {
       depositMode: f.depositMode,
       depositAmountEur: Math.min(200, Math.max(1, Math.round(importe) || 10)),
       depositPercent: Math.min(100, Math.max(1, Math.round(pct) || 20)),
+      depositHourlyRateEur: Math.min(200, Math.max(0.01, Math.round(porHora * 100) / 100 || 5)),
       depositAppliesTo: f.depositAppliesTo,
       depositMinMinutes: Math.max(5, Math.round(num(f.depositMinMinutes)) || 60),
       depositServiceIds: f.depositServiceIds,
@@ -76,7 +80,7 @@ export function AjustesSenal() {
     guardarPerfil(patch);
   }
 
-  const regla = reglaSenal({ ...perfil, ...{ depositEnabled: f.depositEnabled, depositBizumPhone: f.depositBizumPhone, depositMode: f.depositMode, depositAmountEur: Number(f.depositAmountEur) || 10, depositPercent: Number(f.depositPercent) || 20, depositCancelHours: Number(f.depositCancelHours) || 24 } });
+  const regla = reglaSenal({ ...perfil, ...{ depositEnabled: f.depositEnabled, depositBizumPhone: f.depositBizumPhone, depositMode: f.depositMode, depositAmountEur: Number(f.depositAmountEur) || 10, depositPercent: Number(f.depositPercent) || 20, depositHourlyRateEur: Number(f.depositHourlyRateEur) || 5, depositCancelHours: Number(f.depositCancelHours) || 24 } });
   // 14a: vacía = la de siempre, que ya lleva {importe} y {bizum}.
   const faltan = marcadoresQueFaltan(plantillaSenalEfectiva(f.depositTemplate));
   const manana = new Date();
@@ -108,14 +112,19 @@ export function AjustesSenal() {
               <span className="inline-flex w-fit gap-0.5 rounded-full bg-beige p-1">
                 <button type="button" className={segmento(f.depositMode === "fijo")} onClick={() => set("depositMode", "fijo")}>Importe fijo</button>
                 <button type="button" className={segmento(f.depositMode === "porcentaje")} onClick={() => set("depositMode", "porcentaje")}>Porcentaje</button>
+                <button type="button" className={segmento(f.depositMode === "hora")} onClick={() => set("depositMode", "hora")}>Por hora de servicio</button>
               </span>
               {f.depositMode === "fijo" ? (
                 <label className="flex items-center gap-2 font-normal">
                   <input aria-label="Importe de la señal" className={cn(campo, "w-24")} inputMode="decimal" value={f.depositAmountEur} onChange={(e) => set("depositAmountEur", e.target.value)} /> €
                 </label>
-              ) : (
+              ) : f.depositMode === "porcentaje" ? (
                 <label className="flex items-center gap-2 font-normal">
                   <input aria-label="Porcentaje del servicio" className={cn(campo, "w-20")} inputMode="numeric" value={f.depositPercent} onChange={(e) => set("depositPercent", e.target.value)} /> % del precio del servicio
+                </label>
+              ) : (
+                <label className="flex items-center gap-2 font-normal">
+                  <input aria-label="Euros por hora de servicio" className={cn(campo, "w-24")} inputMode="decimal" value={f.depositHourlyRateEur} onChange={(e) => set("depositHourlyRateEur", e.target.value)} /> € por hora
                 </label>
               )}
             </div>
@@ -224,7 +233,7 @@ export function AjustesSenal() {
                 salonName: perfil.name,
                 startISO: manana.toISOString(),
                 bizumPhone: f.depositBizumPhone || "600 111 222",
-                importeEur: regla.modo === "porcentaje" ? Math.max(1, Math.round((45 * regla.porcentaje) / 100)) : regla.importeFijoEur,
+                importeEur: regla.modo === "porcentaje" ? Math.max(1, Math.round((45 * regla.porcentaje) / 100)) : regla.modo === "hora" ? Math.ceil((regla.tarifaPorHoraEur * 90 / 60) * 2) / 2 : regla.importeFijoEur,
                 deadlineISO: vence.toISOString(),
                 plantilla: plantillaSenalEfectiva(f.depositTemplate),
               })}

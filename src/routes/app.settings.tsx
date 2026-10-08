@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { AjustesMensajes } from "@/components/AjustesMensajes";
 import { AjustesColores } from "@/components/AjustesColores";
 import { AjustesSenal } from "@/components/AjustesSenal";
+import { AjustesPrivacidad } from "@/components/AjustesPrivacidad";
 import { AjustesPreguntas } from "@/components/AjustesPreguntas";
 import { AjustesDiasEspeciales } from "@/components/AjustesDiasEspeciales";
 import { GuiaAsistente } from "@/components/GuiaAsistente";
@@ -312,6 +313,7 @@ function Settings() {
               <ArrowUpRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
             </Link>
           </div>
+          <AjustesPrivacidad />
         </SeccionAjustes>
 
         <SeccionAjustes id="mensajes" oculta={!visibles.includes("mensajes")} abrir={abrir} valor={valorActual("mensajes", salonProfile)} titulo="Mensajes de WhatsApp" resumen="El texto de la confirmación y del recordatorio, a tu manera">

@@ -142,12 +142,12 @@ function Confirmation() {
   }
 
   // El único mensaje sobre la señal (9j): el de la regla del salón, o nada.
-  const textoSenal = mostrarPrecio ? textoSenalPublico(
+  const textoSenal = textoSenalPublico(
     reglaSenal(profile),
     { durationMin: totalMin, serviceIds: chosen.map((s) => s.id), priceEur: total },
     profile.name,
     (n) => eur(n).replace(",00", ""),
-  ) : undefined;
+  );
   const dateLabel = date
     ? new Date(`${date}T${time || "00:00"}`).toLocaleDateString("es-ES", {
         weekday: "long",
