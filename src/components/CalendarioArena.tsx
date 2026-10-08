@@ -8,7 +8,10 @@ import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { serviceLabelOf } from "@/lib/appointment-services";
-import { franjasProfesional } from "@/lib/horario-equipo";
+import { franjasProfesionalEnFecha } from "@/lib/horario-equipo";
+import { bloqueosComoCitas } from "@/lib/bloqueos-agenda";
+import { zonaDelSalon } from "@/lib/zona-horaria";
+import { guardarPerfil } from "@/lib/deshacer-maqueta";
 import { hora } from "@/lib/copy";
 import { indiceColorServicio, minutosAHora } from "@/lib/hoy-arena";
 import {
@@ -29,6 +32,7 @@ import type { Appointment, Employee, EmployeeId, Service } from "@/lib/mock/type
 import { cn } from "@/lib/utils";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
+import { BloquearTiempoDialog } from "@/components/BloquearTiempoDialog";
 import { IconoEstado, RejillaCalendario, colorProfesional, type ColumnaRejilla } from "@/components/RejillaCalendario";
 import { CamposPreferenciasCalendario } from "@/components/CamposPreferenciasCalendario";
 import { MAX_DIAS_ELEGIDOS, diasDesde, rangoDeDias, VISTAS_CALENDARIO, diasDeRejilla, inicioDeSemana, pasoDeVista, preferenciasDe, type PrimerDia, type VistaCalendario } from "@/lib/preferencias-calendario";
@@ -101,8 +105,10 @@ function useAhora() {
 export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: string; nueva?: boolean } } = {}) {
   const visibles = useCitasVisibles();
   const services = useSalonStore((s) => s.services);
+  const profile = useSalonStore((s) => s.salonProfile);
   const guardadas = useSalonStore((s) => s.salonProfile.calendario);
   const equipo = useEquipoVisible();
+  const zona = zonaDelSalon(profile);
   const soloUno = esSoloUnProfesional(equipo);
   const carta = useMemo(() => selectServiceMap(services), [services]);
   const ahora = useAhora();
@@ -119,7 +125,11 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
   const desdeExt = fechaISO(new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() - 7));
   const hastaExt = fechaISO(new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() + 42));
   const externos = useOcupadoExterno(desdeExt, hastaExt, equipo.map((e) => e.id));
-  const appointments = useMemo(() => (externos.length ? [...visibles, ...externos] : visibles), [visibles, externos]);
+  const bloqueos = useMemo(
+    () => bloqueosComoCitas(profile.bloqueosAgenda, desdeExt, hastaExt, zona, equipo),
+    [profile.bloqueosAgenda, desdeExt, hastaExt, zona, equipo],
+  );
+  const appointments = useMemo(() => [...visibles, ...externos, ...bloqueos], [visibles, externos, bloqueos]);
   const [vista, setVista] = useState<Vista>(inicio?.dia || citaInicial ? "dia" : pref.vista);
   /** En Semana y 3 días: «todas» o el id de una profesional. */
   const [filtroPro, setFiltroPro] = useState<string>("todas");
@@ -128,6 +138,7 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
   const [seleccionada, setSeleccionada] = useState<Appointment | null>(citaInicial);
   const [prefill, setPrefill] = useState<{ date: Date; employeeId: EmployeeId } | null>(null);
   const [nuevaAbierta, setNuevaAbierta] = useState(!!inicio?.nueva);
+  const [bloqueoAbierto, setBloqueoAbierto] = useState(false);
   /** Huecos libres y ocupación del día, plegados bajo la rejilla. */
   const [verPie, setVerPie] = useState(false);
   /** Ensancha la rejilla para enseñar las citas fuera de las horas visibles. */
@@ -207,7 +218,8 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
         })
       : diasRejilla.map((d) => {
           const hoy = mismoDia(d, ahora);
-          const cerrado = equipoFiltrado.every((e) => franjasProfesional(e, d.getDay()).length === 0);
+          const cerrado = equipoFiltrado.every((e) => franjasProfesionalEnFecha(e, fechaISO(d), profile.diasEspeciales).length === 0);
+          const especial = profile.diasEspeciales?.some((x) => x.fecha === fechaISO(d));
           return {
             clave: `${d.getTime()}`,
             dia: d,
@@ -224,7 +236,7 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
                 >
                   {d.getDate()}
                 </span>
-                {cerrado && <span className="mt-1 max-w-full truncate text-[11px] font-semibold">Cerrado</span>}
+                {cerrado ? <span className="mt-1 max-w-full truncate text-[11px] font-semibold">Cerrado</span> : especial && <span className="mt-1 max-w-full truncate text-[11px] font-semibold text-hoja-tinta">Especial</span>}
               </span>
             ),
           };
@@ -274,6 +286,9 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
           </button>
           <button type="button" onClick={() => mover(1)} aria-label="Siguiente" className="grid size-10 place-items-center rounded-full text-cafe-medio hover:bg-beige">
             <ChevronRight className="size-5" strokeWidth={1.6} />
+          </button>
+          <button type="button" onClick={() => setBloqueoAbierto(true)} className="ml-1 h-10 rounded-full border border-lino bg-card px-3 text-[13px] font-bold text-cafe-medio hover:bg-beige">
+            Bloquear tiempo
           </button>
         </div>
         <div className="order-last w-full min-w-0 lg:order-2 lg:w-auto lg:flex-1">
@@ -406,10 +421,11 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
             anchoMinimo={vista === "dia" ? 150 : diasRejilla.length <= 3 ? 96 : diasRejilla.length > 7 ? 60 : 44}
             onCita={setSeleccionada}
             onHueco={abrirHueco}
+            diasEspeciales={profile.diasEspeciales}
           />
         )}
         {vista === "mes" && (
-          <VistaMes anchor={anchor} appointments={appointments} equipo={equipo} ahora={ahora} primerDia={pref.primerDia} onDia={abrirDia} />
+          <VistaMes anchor={anchor} appointments={appointments} equipo={equipo} ahora={ahora} primerDia={pref.primerDia} onDia={abrirDia} diasEspeciales={profile.diasEspeciales} />
         )}
       </div>
 
@@ -428,8 +444,18 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
         </div>
       )}
 
-      <AppointmentDetailSheet appointment={seleccionada} open={!!seleccionada} onOpenChange={(o) => !o && setSeleccionada(null)} />
+      {seleccionada?.id.startsWith("bloqueo:") ? (
+        <div className="fixed right-4 bottom-4 z-20 rounded-2xl border border-lino bg-card p-4 shadow-lg">
+          <p className="text-sm font-bold">{seleccionada.note || "Tiempo bloqueado"}</p>
+          <button type="button" className="mt-2 text-sm font-bold text-melocoton-tinta underline" onClick={() => {
+            const id = seleccionada.id.split(":")[1];
+            guardarPerfil({ bloqueosAgenda: (profile.bloqueosAgenda ?? []).filter((b) => b.id !== id) });
+            setSeleccionada(null);
+          }}>Eliminar bloqueo</button>
+        </div>
+      ) : <AppointmentDetailSheet appointment={seleccionada} open={!!seleccionada} onOpenChange={(o) => !o && setSeleccionada(null)} />}
       {dialogoNueva}
+      <BloquearTiempoDialog open={bloqueoAbierto} onOpenChange={setBloqueoAbierto} date={anchor} equipo={equipo} />
     </div>
   );
 }
@@ -766,7 +792,7 @@ function Cronograma({
 
 /* ---------- Mes ---------- */
 
-function VistaMes({ anchor, appointments, equipo, ahora, primerDia, onDia }: { anchor: Date; appointments: Appointment[]; equipo: Employee[]; ahora: Date; primerDia: PrimerDia; onDia: (d: Date) => void }) {
+function VistaMes({ anchor, appointments, equipo, ahora, primerDia, onDia, diasEspeciales }: { anchor: Date; appointments: Appointment[]; equipo: Employee[]; ahora: Date; primerDia: PrimerDia; onDia: (d: Date) => void; diasEspeciales?: import("@/lib/mock/types").DiaEspecial[] }) {
   // Celdas desde el primer día de semana elegido: cinco o seis filas, sin
   // una última que sea entera del mes siguiente.
   const celdas = useMemo(() => {
@@ -793,7 +819,8 @@ function VistaMes({ anchor, appointments, equipo, ahora, primerDia, onDia }: { a
           const citas = citasDeCalendario(appointments, d).filter((a) => a.status !== "blocked");
           const fuera = d.getMonth() !== anchor.getMonth();
           const hoy = mismoDia(d, ahora);
-          const abre = equipo.some((e) => franjasProfesional(e, d.getDay()).length > 0);
+          const abre = equipo.some((e) => franjasProfesionalEnFecha(e, fechaISO(d), diasEspeciales).length > 0);
+          const especial = diasEspeciales?.some((x) => x.fecha === fechaISO(d));
           return (
             <button
               key={d.getTime()}
@@ -803,6 +830,7 @@ function VistaMes({ anchor, appointments, equipo, ahora, primerDia, onDia }: { a
               className={cn(
                 "flex flex-col gap-1.5 border-r border-b border-k-linea p-2 text-left text-k-tinta [&:nth-child(7n)]:border-r-0",
                 fuera ? "bg-beige/60 text-cafe-suave" : "hover:bg-k-cab",
+                especial && "bg-salvia-suave/35",
                 hoy && "bg-salvia-suave/50",
               )}
             >
@@ -831,7 +859,7 @@ function VistaMes({ anchor, appointments, equipo, ahora, primerDia, onDia }: { a
                   })}
                 </span>
               ) : (
-                <span className="mt-auto text-xs text-muted-foreground">{abre ? "" : "Cerrado"}</span>
+                <span className="mt-auto text-xs text-muted-foreground">{abre ? especial ? "Especial" : "" : "Cerrado"}</span>
               )}
             </button>
           );

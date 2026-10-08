@@ -20,8 +20,8 @@ export function useEquipo(): Employee[] {
   const profile = useSalonStore((s) => s.salonProfile);
   return useMemo(
     // `demoAbreHoy`: solo demos, abre hoy aunque el salón cierre (lote P).
-    () => employeesForType(inferBusinessType(profile.tagline, profile.name), profile.team, profile.teamHours, profile.openingHours, profile.teamIds, profile.demoAbreHoy),
-    [profile.tagline, profile.name, profile.team, profile.teamHours, profile.openingHours, profile.teamIds, profile.demoAbreHoy],
+    () => employeesForType(inferBusinessType(profile.tagline, profile.name), profile.team, profile.teamHours, profile.openingHours, profile.teamIds, profile.demoAbreHoy, profile.serviciosPorProfesional),
+    [profile.tagline, profile.name, profile.team, profile.teamHours, profile.openingHours, profile.teamIds, profile.demoAbreHoy, profile.serviciosPorProfesional],
   );
 }
 

@@ -8,9 +8,9 @@
 import type { Appointment, SalonProfile } from "./mock/types";
 import type { ClienteDeCita } from "./salon-sync";
 import { inferBusinessType } from "./business-type";
-import { trabajaEn } from "./horario-equipo";
+import { trabajaEnFecha } from "./horario-equipo";
 import { employeesForType } from "./mock/salon";
-import { ZONA_HORARIA_SALON, momentoLocal, zonaDelSalon } from "./zona-horaria";
+import { ZONA_HORARIA_SALON, fechaEnZona, momentoLocal, zonaDelSalon } from "./zona-horaria";
 
 export { ZONA_HORARIA_SALON, momentoLocal } from "./zona-horaria";
 
@@ -19,6 +19,9 @@ export const ERROR_HUECO_OCUPADO = "RESERVA_HUECO_OCUPADO";
 export const ERROR_BLOQUEO_MANUAL = "RESERVA_BLOQUEO_MANUAL";
 export const ERROR_FUERA_HORARIO = "RESERVA_FUERA_HORARIO";
 export const ERROR_PRIVACIDAD_NO_CONFIRMADA = "RESERVA_PRIVACIDAD_NO_CONFIRMADA";
+export const ERROR_RESPUESTAS_RESERVA = "RESERVA_RESPUESTAS_INVALIDAS";
+export const ERROR_SERVICIO_PROFESIONAL = "RESERVA_SERVICIO_PROFESIONAL";
+export const ERROR_BLOQUEO_AGENDA = "RESERVA_BLOQUEO_AGENDA";
 
 /** La casilla acredita que se mostró la información; no expresa una base legal de consentimiento. */
 export function haLeidoAvisoPrivacidad(valor: unknown): valor is true {
@@ -54,6 +57,12 @@ export function mensajeErrorReserva(error: unknown): string {
     return "No podemos confirmar tu reserva online; llama al salón.";
   if (mensaje.includes(ERROR_PRIVACIDAD_NO_CONFIRMADA))
     return "Confirma que has leído la información sobre el tratamiento de tus datos.";
+  if (mensaje.includes(ERROR_RESPUESTAS_RESERVA))
+    return "Revisa y completa las preguntas de la reserva.";
+  if (mensaje.includes(ERROR_SERVICIO_PROFESIONAL))
+    return "Esa profesional no realiza todos los servicios elegidos. Elige otra.";
+  if (mensaje.includes(ERROR_BLOQUEO_AGENDA))
+    return "Ese hueco no está disponible. Elige otra hora.";
   return "No hemos podido enviar tu solicitud. Tus datos siguen aquí; inténtalo de nuevo.";
 }
 
@@ -81,7 +90,7 @@ export function haySolape(
  * Un `employeeId` desconocido no trabaja nunca.
  */
 export function profesionalTrabaja(
-  perfil: Pick<SalonProfile, "name" | "tagline" | "team" | "teamHours" | "openingHours" | "teamIds" | "timeZone">,
+  perfil: Pick<SalonProfile, "name" | "tagline" | "team" | "teamHours" | "openingHours" | "teamIds" | "timeZone" | "diasEspeciales" | "serviciosPorProfesional">,
   employeeId: string,
   inicioISO: string,
   duracionMin: number,
@@ -93,9 +102,11 @@ export function profesionalTrabaja(
     perfil.teamHours,
     perfil.openingHours,
     perfil.teamIds,
+    undefined,
+    perfil.serviciosPorProfesional,
   );
   const profesional = equipo.find((e) => e.id === employeeId);
   if (!profesional) return false;
-  const { weekday, minuto } = momentoLocal(inicioISO, timeZone);
-  return trabajaEn(profesional, weekday, minuto, duracionMin);
+  const { minuto } = momentoLocal(inicioISO, timeZone);
+  return trabajaEnFecha(profesional, fechaEnZona(inicioISO, timeZone), minuto, duracionMin, perfil.diasEspeciales);
 }

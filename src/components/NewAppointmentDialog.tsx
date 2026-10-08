@@ -22,15 +22,15 @@ import { duracionRecordada } from "@/lib/derive";
 import { fichaDeClienta } from "@/lib/ficha-clienta";
 import { buscarClientas } from "@/lib/buscar-clientas";
 import { indiceColorServicio } from "@/lib/hoy-arena";
-import { trabajaEn } from "@/lib/horario-equipo";
+import { franjasProfesionalEnFecha, trabajaEnFecha } from "@/lib/horario-equipo";
+import { hayBloqueoEnHueco } from "@/lib/bloqueos-agenda";
+import { profesionalHaceServicios } from "@/lib/servicios-profesional";
 import {
   citasQueOcupan,
   clientasFrecuentes,
   diasParaElegir,
   duracionLegible,
   horaOcupada,
-  horasDeProfesional,
-  primeraLibre,
 } from "@/lib/nueva-cita";
 import { solapaConAgenda } from "@/lib/solape";
 import type { OpcionesGuardado } from "@/lib/salon-sync";
@@ -133,6 +133,8 @@ function FormularioNuevaCita({
   const services = useSalonStore((s) => s.services);
   const clients = useSalonStore((s) => s.clients);
   const appointments = useSalonStore((s) => s.appointments);
+  const profile = useSalonStore((s) => s.salonProfile);
+  const serviciosPorProfesional = profile.serviciosPorProfesional;
   const addAppointment = useSalonStore((s) => s.addAppointment);
   const zonaHoraria = useSalonStore((s) => zonaDelSalon(s.salonProfile));
   const addClient = useSalonStore((s) => s.addClient);
@@ -276,16 +278,21 @@ function FormularioNuevaCita({
   const hoy = new Date();
   const fechaElegida = new Date(`${date}T00:00:00`);
   const dias = diasParaElegir(hoy, fechaElegida);
-  const weekday = fechaElegida.getDay();
   const ocupanDia = useMemo(() => citasQueOcupan(appointments, fechaElegida), [appointments, date]); // eslint-disable-line react-hooks/exhaustive-deps
   const empleado = employees.find((e) => e.id === employeeId) ?? employees[0];
+  const servicioFueraDeEspecialidad = !otro && !!empleado && !profesionalHaceServicios(empleado.id, serviceIds, serviciosPorProfesional);
   const minutoElegido = minutosDeHora(time);
-  const horasPro = empleado ? horasDeProfesional(empleado, weekday) : [];
+  const horasPro = empleado ? franjasProfesionalEnFecha(empleado, date, profile.diasEspeciales).flatMap((f) => {
+    const horas: number[] = [];
+    for (let m = Math.ceil(f.start / 30) * 30; m + 30 <= f.end; m += 30) horas.push(m);
+    return horas;
+  }) : [];
   const horasVisibles = [...new Set([...horasPro, ...(horasPro.includes(minutoElegido) ? [] : [minutoElegido])])].sort((a, b) => a - b);
   const esPasada = (m: number) => toDateInput(hoy) === date && m < hoy.getHours() * 60 + hoy.getMinutes();
 
   function cualquieraLibre() {
-    const libre = primeraLibre(employees, ocupanDia, weekday, minutoElegido, totalMin);
+    const inicioISO = isoDelSalon(date, time, zonaHoraria);
+    const libre = employees.find((e) => trabajaEnFecha(e, date, minutoElegido, totalMin, profile.diasEspeciales) && !horaOcupada(ocupanDia, e.id, minutoElegido, totalMin) && !hayBloqueoEnHueco(profile.bloqueosAgenda, e.id, inicioISO, totalMin, zonaHoraria));
     if (libre) {
       setEmployeeId(libre.id);
       toast.success(`${libre.name} está libre a las ${time}`);
@@ -440,8 +447,9 @@ function FormularioNuevaCita({
     );
   const columna = "flex min-w-0 flex-col rounded-[20px] border border-border bg-card p-5 md:p-[22px]";
   const fechaLarga = fechaElegida.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
-  const ocupadaElegida = empleado ? horaOcupada(ocupanDia, empleado.id, minutoElegido, totalMin) : false;
-  const trabajaElegida = empleado ? trabajaEn(empleado, weekday, minutoElegido, totalMin) : true;
+  const inicioElegidoISO = isoDelSalon(date, time, zonaHoraria);
+  const ocupadaElegida = empleado ? horaOcupada(ocupanDia, empleado.id, minutoElegido, totalMin) || hayBloqueoEnHueco(profile.bloqueosAgenda, empleado.id, inicioElegidoISO, totalMin, zonaHoraria) : false;
+  const trabajaElegida = empleado ? trabajaEnFecha(empleado, date, minutoElegido, totalMin, profile.diasEspeciales) : true;
 
   return (
     <>
@@ -655,7 +663,7 @@ function FormularioNuevaCita({
 
                   {!soloUno && (
                     <>
-                      <span className={cn(etiquetaCampo, "mt-5")}>Profesional</span>
+                  <span className={cn(etiquetaCampo, "mt-5")}>Profesional</span>
                       <div className="flex flex-wrap gap-1.5">
                         {employees.map((e, i) => (
                           <button key={e.id} type="button" aria-pressed={employeeId === e.id} onClick={() => setEmployeeId(e.id)} className={opcion(employeeId === e.id)}>
@@ -671,12 +679,18 @@ function FormularioNuevaCita({
                       </div>
                     </>
                   )}
+                  {servicioFueraDeEspecialidad && (
+                    <p role="note" className="mt-2 flex gap-1.5 rounded-xl border border-melocoton-borde bg-melocoton px-3 py-2 text-[12.5px] text-melocoton-tinta">
+                      <TriangleAlert className="mt-px size-3.5 shrink-0" strokeWidth={1.6} />
+                      {empleado?.name} no tiene estos servicios asignados. Puedes guardar igualmente: desde el panel la gerente puede hacer esta excepción.
+                    </p>
+                  )}
 
                   <span className={cn(etiquetaCampo, "mt-5")}>Día</span>
                   <div className="grid grid-cols-7 gap-1.5">
                     {dias.map((d) => {
                       const on = toDateInput(d) === date;
-                      const abre = employees.some((e) => horasDeProfesional(e, d.getDay()).length > 0);
+                      const abre = employees.some((e) => franjasProfesionalEnFecha(e, toDateInput(d), profile.diasEspeciales).length > 0);
                       return (
                         <button
                           key={d.getTime()}

@@ -1029,6 +1029,7 @@ export const useSalonStore = create<SalonState>()(
           perfil.openingHours,
           perfil.teamIds,
           perfil.demoAbreHoy,
+          perfil.serviciosPorProfesional,
         );
         // Sube el PARCHE, no el perfil entero. Antes subía
         // `get().salonProfile` completo, y eso hacía que un navegador con el
@@ -1054,7 +1055,7 @@ export const useSalonStore = create<SalonState>()(
         if (get().salonProfile.demoAbreHoy !== demoAbreHoy) {
           set((s) => ({ salonProfile: { ...s.salonProfile, demoAbreHoy } }));
         }
-        setEmployeesForType(type, overrides?.team, get().salonProfile.teamHours, get().salonProfile.openingHours, get().salonProfile.teamIds, demoAbreHoy);
+        setEmployeesForType(type, overrides?.team, get().salonProfile.teamHours, get().salonProfile.openingHours, get().salonProfile.teamIds, demoAbreHoy, get().salonProfile.serviciosPorProfesional);
         // Descripción y precio literal de cada servicio viven en el perfil
         // (lote 18): se cuelgan de la carta al construirla.
         setServicesForType(type, overrides?.menu, textosDeCarta(get().salonProfile));
@@ -1390,7 +1391,7 @@ export const useSalonStore = create<SalonState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         const type = inferBusinessType(state.salonProfile?.tagline, state.salonProfile?.name);
-        setEmployeesForType(type, state.salonProfile?.team, state.salonProfile?.teamHours, state.salonProfile?.openingHours, state.salonProfile?.teamIds, state.salonProfile?.demoAbreHoy);
+        setEmployeesForType(type, state.salonProfile?.team, state.salonProfile?.teamHours, state.salonProfile?.openingHours, state.salonProfile?.teamIds, state.salonProfile?.demoAbreHoy, state.salonProfile?.serviciosPorProfesional);
         setServicesForType(type, state.salonProfile?.menu, state.salonProfile ? textosDeCarta(state.salonProfile) : undefined);
       },
     },

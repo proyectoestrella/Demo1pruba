@@ -32,12 +32,20 @@ import { parseDepositNote } from "../deposit-deadline";
 import { columnasDeParche, filaSinLote3 } from "../cita-parche";
 import { ERROR_SOLAPE_PANEL } from "../solape";
 import { reglaSenal, senalDeReservaNueva } from "../senal";
+import { inferBusinessType } from "../business-type";
+import { limpiarRespuestas, obligatoriasSinResponder, preguntasAplicables, preguntasDelSalon } from "../preguntas-reserva";
+import { profesionalHaceServicios } from "../servicios-profesional";
+import { hayBloqueoEnHueco } from "../bloqueos-agenda";
+import { zonaDelSalon } from "../zona-horaria";
 import { refSenalAplicada, type MetodoPago } from "../pagos";
 import {
   ERROR_BLOQUEO_MANUAL,
   ERROR_FUERA_HORARIO,
   ERROR_HUECO_OCUPADO,
   ERROR_PRIVACIDAD_NO_CONFIRMADA,
+  ERROR_RESPUESTAS_RESERVA,
+  ERROR_SERVICIO_PROFESIONAL,
+  ERROR_BLOQUEO_AGENDA,
   faltaColumnaAcusePrivacidad,
   haLeidoAvisoPrivacidad,
   haySolape,
@@ -866,6 +874,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
     }
     /** Perfil del salón, leído solo para las reservas de fuera (horario y señal). */
     let perfilPublico: SalonProfile | undefined;
+    let respuestasReserva: Record<string, string | undefined> | undefined;
     if (!manda) {
       // Horario por profesional (`teamHours`) y del local, leídos del perfil
       // guardado: la web pública ya no ofrece esas horas, pero el servidor no
@@ -878,8 +887,24 @@ export const syncAppointment = createServerFn({ method: "POST" })
       if (errorSalon) throw new Error(`syncAppointment (horario): ${errorSalon.message}`);
       const perfil = salonRow?.profile as SalonProfile | undefined;
       perfilPublico = perfil;
+      if (perfil && !profesionalHaceServicios(data.employeeId, data.serviceIds, perfil.serviciosPorProfesional)) {
+        return { synced: false as const, reason: ERROR_SERVICIO_PROFESIONAL };
+      }
+      if (perfil && hayBloqueoEnHueco(perfil.bloqueosAgenda, data.employeeId, data.startISO, data.durationMin, zonaDelSalon(perfil))) {
+        return { synced: false as const, reason: ERROR_BLOQUEO_AGENDA };
+      }
       if (perfil && !profesionalTrabaja(perfil, data.employeeId, data.startISO, data.durationMin)) {
         return { synced: false as const, reason: ERROR_FUERA_HORARIO };
+      }
+      if (perfil) {
+        const preguntas = preguntasAplicables(
+          preguntasDelSalon(perfil, inferBusinessType(perfil.tagline, perfil.name)),
+          data.serviceIds,
+        );
+        respuestasReserva = limpiarRespuestas(preguntas, data.bookingAnswers ?? undefined);
+        if (obligatoriasSinResponder(preguntas, respuestasReserva).length > 0) {
+          return { synced: false as const, reason: ERROR_RESPUESTAS_RESERVA };
+        }
       }
 
       if (await solapaEnServidor(supabase, data.slug, data.localId, data.employeeId, data.startISO, data.durationMin)) {
@@ -965,7 +990,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
       ...(!manda ? { privacy_notice_acknowledged_at: new Date().toISOString() } : {}),
       // Lote 3: columnas propias. Las respuestas al reservar las escribe la
       // clienta; el plazo de la señal y el origen, solo el panel.
-      booking_answers: data.bookingAnswers ?? null,
+      booking_answers: manda ? (data.bookingAnswers ?? null) : (respuestasReserva ?? null),
       deposit_due_at: manda ? (data.depositDueAt ?? null) : null,
       deposit_period_hours: manda ? (data.depositPeriodHours ?? null) : null,
       origen: manda ? (data.origen ?? "sishow") : "sishow",

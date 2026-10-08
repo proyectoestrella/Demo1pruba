@@ -3,12 +3,12 @@ import { Check, Clock3, UserX } from "lucide-react";
 import { colorElegidoProfesional } from "@/lib/colores-elegidos";
 import { hora } from "@/lib/copy";
 import { serviceLabelOf } from "@/lib/appointment-services";
-import { franjasProfesional } from "@/lib/horario-equipo";
+import { franjasProfesionalEnFecha } from "@/lib/horario-equipo";
 import { indiceColorServicio, minutosAHora } from "@/lib/hoy-arena";
 import { esBloqueExterno } from "@/lib/calendarios-panel";
 import { carrilesSolapados, citasPorDia, iniciales, minutosDe, mismoDia, pausasDe } from "@/lib/calendario-arena";
 import { toDateKey } from "@/lib/reparto";
-import type { Appointment, Employee, EmployeeId, Service } from "@/lib/mock/types";
+import type { Appointment, DiaEspecial, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 
 /**
@@ -117,6 +117,7 @@ export function RejillaCalendario({
   seleccionadaId,
   onCita,
   onHueco,
+  diasEspeciales,
 }: {
   columnas: ColumnaRejilla[];
   appointments: Appointment[];
@@ -136,6 +137,7 @@ export function RejillaCalendario({
   seleccionadaId?: string;
   onCita: (a: Appointment) => void;
   onHueco: (employeeId: EmployeeId, minuto: number, dia: Date) => void;
+  diasEspeciales?: DiaEspecial[];
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const lienzo = useRef<HTMLDivElement>(null);
@@ -250,7 +252,7 @@ export function RejillaCalendario({
         {/* Cabecera fija: esquina vacía y un encabezado por columna. */}
         <div ref={cabecera} className="sticky top-0 left-0 z-[12] border-r border-b border-k-linea-f bg-k-cab" />
         {columnas.map((c) => {
-          const cerrado = c.equipo.every((e) => franjasProfesional(e, c.dia.getDay()).length === 0);
+          const cerrado = c.equipo.every((e) => franjasProfesionalEnFecha(e, toDateKey(c.dia), diasEspeciales).length === 0);
           const Etiqueta = c.onCabecera ? "button" : "div";
           return (
             <Etiqueta
@@ -305,6 +307,7 @@ export function RejillaCalendario({
             seleccionadaId={seleccionadaId}
             onCita={onCita}
             onHueco={onHueco}
+            diasEspeciales={diasEspeciales}
           />
         ))}
       </div>
@@ -360,6 +363,7 @@ type PropsColumna = {
   seleccionadaId?: string;
   onCita: (a: Appointment) => void;
   onHueco: (employeeId: EmployeeId, minuto: number, dia: Date) => void;
+  diasEspeciales?: DiaEspecial[];
 };
 
 const ColumnaDia = memo(function ColumnaDia({
@@ -378,6 +382,7 @@ const ColumnaDia = memo(function ColumnaDia({
   seleccionadaId,
   onCita,
   onHueco,
+  diasEspeciales,
 }: PropsColumna) {
   const { dia, equipo } = columna;
   const [fantasma, setFantasma] = useState<number | null>(null);
@@ -388,11 +393,10 @@ const ColumnaDia = memo(function ColumnaDia({
     return citasDelDia.filter((a) => ids.has(a.employeeId));
   }, [citasDelDia, claveEquipo]);
   const carriles = useMemo(() => carrilesSolapados(citas), [citas]);
-  const weekday = dia.getDay();
   const esHoy = mismoDia(dia, ahora);
 
   // Lo que queda fuera del horario de todas las profesionales de la columna, sombreado.
-  const franjas = equipo.flatMap((e) => franjasProfesional(e, weekday)).sort((a, b) => a.start - b.start);
+  const franjas = equipo.flatMap((e) => franjasProfesionalEnFecha(e, toDateKey(dia), diasEspeciales)).sort((a, b) => a.start - b.start);
   const abiertas: { ini: number; fin: number }[] = [];
   for (const f of franjas) {
     const ult = abiertas[abiertas.length - 1];
@@ -403,7 +407,7 @@ const ColumnaDia = memo(function ColumnaDia({
 
   const minutoDe = (evY: number) => Math.floor((desde * 60 + (evY / px) * 60) / 15) * 15;
   const quienAtiende = (min: number): Employee | undefined =>
-    equipo.find((e) => franjasProfesional(e, weekday).some((f) => min >= f.start && min < f.end)) ?? equipo[0];
+    equipo.find((e) => franjasProfesionalEnFecha(e, toDateKey(dia), diasEspeciales).some((f) => min >= f.start && min < f.end)) ?? equipo[0];
 
   const fondo: CSSProperties = {
     height: horas * px,
@@ -440,7 +444,7 @@ const ColumnaDia = memo(function ColumnaDia({
         />
       ))}
       {equipo.length === 1 &&
-        pausasDe(equipo[0], weekday).map((p) => (
+        pausasDe(equipo[0], dia.getDay()).map((p) => (
           <div
             key={`p${p.ini}`}
             className="pointer-events-none absolute inset-x-1 grid place-items-center rounded-md border border-dashed border-lino-fuerte bg-beige/70 text-[11px] font-semibold text-cafe-suave"

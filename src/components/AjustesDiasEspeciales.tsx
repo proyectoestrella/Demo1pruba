@@ -1,0 +1,86 @@
+import { useState } from "react";
+import { CalendarPlus, Pencil, Trash2 } from "lucide-react";
+import { guardarPerfil } from "@/lib/deshacer-maqueta";
+import { useSalonStore } from "@/lib/store";
+import { useEquipo } from "@/lib/use-equipo";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import type { DiaEspecial, FranjaEspecial } from "@/lib/mock/types";
+
+const FESTIVOS_MADRID_2026 = ["2026-10-12", "2026-11-02", "2026-11-09", "2026-12-07", "2026-12-08", "2026-12-25"];
+
+function parseFranjas(value: string): FranjaEspecial[] {
+  return value.split(",").flatMap((chunk) => {
+    const m = chunk.trim().match(/^(\d{1,2}:\d{2})\s*[–—-]\s*(\d{1,2}:\d{2})$/);
+    return m ? [{ inicio: m[1].padStart(5, "0"), fin: m[2].padStart(5, "0") }] : [];
+  });
+}
+
+function textoFranjas(franjas: FranjaEspecial[] | undefined): string {
+  return (franjas ?? []).map((f) => `${f.inicio}–${f.fin}`).join(", ");
+}
+
+type Form = { fecha: string; nota: string; cerrado: boolean; franjas: string; solo: Record<string, string> };
+const vacio = (): Form => ({ fecha: "", nota: "", cerrado: false, franjas: "", solo: {} });
+
+function aForm(d?: DiaEspecial): Form {
+  return {
+    fecha: d?.fecha ?? "",
+    nota: d?.nota ?? "",
+    cerrado: !!d?.cerrado,
+    franjas: textoFranjas(d?.franjas),
+    solo: Object.fromEntries(Object.entries(d?.soloProfesionales ?? {}).map(([id, f]) => [id, textoFranjas(f)])),
+  };
+}
+
+/** Excepciones de fecha del perfil: no requieren una tabla ni una migración. */
+export function AjustesDiasEspeciales() {
+  const perfil = useSalonStore((s) => s.salonProfile);
+  const equipo = useEquipo();
+  const [form, setForm] = useState<Form>(vacio);
+  const [editando, setEditando] = useState<string | null>(null);
+  const lista = [...(perfil.diasEspeciales ?? [])].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const cambiar = (patch: Partial<Form>) => setForm((f) => ({ ...f, ...patch }));
+
+  const guardar = () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.fecha)) return;
+    const franjas = parseFranjas(form.franjas);
+    const soloProfesionales = Object.fromEntries(Object.entries(form.solo).map(([id, valor]) => [id, parseFranjas(valor)]).filter(([, rangos]) => rangos.length));
+    const siguiente: DiaEspecial = {
+      fecha: form.fecha,
+      ...(form.nota.trim() ? { nota: form.nota.trim() } : {}),
+      ...(form.cerrado ? { cerrado: true } : {}),
+      ...(!form.cerrado && franjas.length ? { franjas } : {}),
+      ...(!form.cerrado && Object.keys(soloProfesionales).length ? { soloProfesionales } : {}),
+    };
+    const anteriores = (perfil.diasEspeciales ?? []).filter((d) => d.fecha !== (editando ?? form.fecha));
+    guardarPerfil({ diasEspeciales: [...anteriores, siguiente].sort((a, b) => a.fecha.localeCompare(b.fecha)) });
+    setForm(vacio());
+    setEditando(null);
+  };
+  const editar = (d: DiaEspecial) => { setForm(aForm(d)); setEditando(d.fecha); };
+  const borrar = (fecha: string) => guardarPerfil({ diasEspeciales: (perfil.diasEspeciales ?? []).filter((d) => d.fecha !== fecha) });
+  const cargarFestivos = () => {
+    const existentes = new Set((perfil.diasEspeciales ?? []).map((d) => d.fecha));
+    const nuevos = FESTIVOS_MADRID_2026.filter((fecha) => !existentes.has(fecha)).map((fecha) => ({ fecha, cerrado: true as const, nota: "Festivo" }));
+    if (nuevos.length) guardarPerfil({ diasEspeciales: [...(perfil.diasEspeciales ?? []), ...nuevos].sort((a, b) => a.fecha.localeCompare(b.fecha)) });
+  };
+  const campo = "h-10 rounded-xl border border-input bg-blanco px-3 text-sm";
+
+  return <div className="space-y-4">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div><h3 className="text-[15px] font-extrabold">Festivos y días especiales</h3><p className="mt-1 text-sm text-muted-foreground">Un cierre o apertura por fecha manda sobre el horario semanal.</p></div>
+      <Button type="button" variant="outline" className="gap-1.5" onClick={cargarFestivos}><CalendarPlus className="size-4" /> Cargar festivos Madrid 2026</Button>
+    </div>
+    {lista.length > 0 && <ul className="divide-y rounded-2xl border border-lino">
+      {lista.map((d) => <li key={d.fecha} className="flex items-center gap-3 px-3.5 py-3 text-sm"><b className="tabular-nums">{d.fecha}</b><span className="min-w-0 flex-1 text-muted-foreground">{d.cerrado ? "Cerrado" : d.soloProfesionales ? `Solo ${Object.keys(d.soloProfesionales).length} profesional(es)` : textoFranjas(d.franjas) || "Horario habitual"}{d.nota ? ` · ${d.nota}` : ""}</span><button aria-label={`Editar ${d.fecha}`} type="button" onClick={() => editar(d)} className="p-1.5 text-cafe-medio"><Pencil className="size-4" /></button><button aria-label={`Borrar ${d.fecha}`} type="button" onClick={() => borrar(d.fecha)} className="p-1.5 text-melocoton-tinta"><Trash2 className="size-4" /></button></li>)}
+    </ul>}
+    <div className="grid gap-3 rounded-2xl bg-nata p-3.5">
+      <div className="grid gap-3 sm:grid-cols-2"><label className="grid gap-1 text-[13px] font-bold">Fecha<Input type="date" value={form.fecha} onChange={(e) => cambiar({ fecha: e.target.value })} className={campo} /></label><label className="grid gap-1 text-[13px] font-bold">Nota (opcional)<Input value={form.nota} maxLength={100} onChange={(e) => cambiar({ nota: e.target.value })} placeholder="Por ejemplo, Nochebuena" className={campo} /></label></div>
+      <div className="flex items-center justify-between gap-4"><span className="text-sm font-bold">Cerrado todo el día</span><Switch checked={form.cerrado} onCheckedChange={(cerrado) => cambiar({ cerrado })} /></div>
+      {!form.cerrado && <><label className="grid gap-1 text-[13px] font-bold">Horario especial del salón <span className="font-normal text-muted-foreground">· opcional, 10:00–15:00</span><Input value={form.franjas} onChange={(e) => cambiar({ franjas: e.target.value })} placeholder="10:00–15:00" className={campo} /></label><div><p className="text-[13px] font-bold">Solo trabajan estas profesionales <span className="font-normal text-muted-foreground">· reemplaza su semana y puede abrir un día cerrado</span></p><div className="mt-2 grid gap-2 sm:grid-cols-2">{equipo.map((e) => { const activo = e.id in form.solo; return <label key={e.id} className="flex items-center gap-2 rounded-xl border border-lino bg-card px-3 py-2"><input type="checkbox" checked={activo} onChange={(ev) => { const solo = { ...form.solo }; if (ev.target.checked) solo[e.id] = "10:00–20:00"; else delete solo[e.id]; cambiar({ solo }); }} /><span className="min-w-0 flex-1 text-sm font-bold">{e.name}</span>{activo && <input aria-label={`Horario de ${e.name}`} value={form.solo[e.id]} onChange={(ev) => cambiar({ solo: { ...form.solo, [e.id]: ev.target.value } })} className="h-8 w-28 rounded-lg border border-input px-2 text-xs" />}</label>; })}</div></div></>}
+      <div className="flex gap-2"><Button type="button" onClick={guardar} disabled={!form.fecha}>{editando ? "Guardar día" : "Añadir día"}</Button>{editando && <Button type="button" variant="ghost" onClick={() => { setForm(vacio()); setEditando(null); }}>Cancelar</Button>}</div>
+    </div>
+  </div>;
+}

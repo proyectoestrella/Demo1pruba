@@ -123,8 +123,9 @@ export function employeesForType(
   openingHours?: string[],
   teamIds?: string[],
   demoAbreHoy?: string,
+  serviciosPorProfesional?: Record<string, string[]>,
 ): Employee[] {
-  return buildEmployees(type, team, teamHours, openingHours, teamIds, demoAbreHoy);
+  return buildEmployees(type, team, teamHours, openingHours, teamIds, demoAbreHoy, serviciosPorProfesional);
 }
 
 /** «AAAA-MM-DD» de una fecha en hora local (el mismo formato que `fechaLocal`). */
@@ -156,6 +157,7 @@ function buildEmployees(
   openingHours?: string[],
   teamIds?: string[],
   demoAbreHoy?: string,
+  serviciosPorProfesional?: Record<string, string[]>,
 ): Employee[] {
   const jsHoy = new Date().getDay();
   const modeloHoy = diaModeloDeHoy(openingHours, demoAbreHoy);
@@ -203,13 +205,15 @@ function buildEmployees(
           }
         : null,
     );
+    const id = (teamIds?.[i] ?? baseEmp.id) as EmployeeId;
     return {
       ...baseEmp,
-      id: (teamIds?.[i] ?? baseEmp.id) as EmployeeId,
+      id,
       name,
       specialty,
       schedule: jornada,
       scheduleRanges: horario,
+      ...(serviciosPorProfesional?.[id]?.length ? { servicios: serviciosPorProfesional[id] } : {}),
       // Las tres fotos de stock son barberos con navaja: fuera de barbería se
       // sustituyen por un avatar de iniciales, nunca por una cara que no
       // corresponde al oficio ni al género del nombre que se está mostrando
@@ -238,8 +242,9 @@ export function setEmployeesForType(
   openingHours?: string[],
   teamIds?: string[],
   demoAbreHoy?: string,
+  serviciosPorProfesional?: Record<string, string[]>,
 ) {
-  const next = buildEmployees(type, team, teamHours, openingHours, teamIds, demoAbreHoy);
+  const next = buildEmployees(type, team, teamHours, openingHours, teamIds, demoAbreHoy, serviciosPorProfesional);
   employees.length = 0;
   employees.push(...next);
   for (const key of Object.keys(employeeMap)) delete employeeMap[key];

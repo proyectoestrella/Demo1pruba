@@ -106,3 +106,27 @@ describe("lista propia: orden, aplicables, validación y obligatorias", () => {
     expect(preguntaPorSalud("¿Qué largo de pelo tienes?")).toBe(false);
   });
 });
+
+describe("opción «Otro»", () => {
+  const lista = [
+    { id: "color", texto: "¿Llevas color?", tipo: "si_no" as const, permiteOtro: true, obligatoria: true, activa: true },
+    { id: "ocasion", texto: "Ocasión", tipo: "opcion" as const, opciones: ["Boda", "Fiesta"], permiteOtro: true, obligatoria: true, activa: true },
+  ];
+
+  it("acepta Otro solo cuando está configurado y conserva su texto", async () => {
+    const { limpiarRespuestas, obligatoriasSinResponder } = await import("./preguntas-reserva");
+    expect(limpiarRespuestas(lista, { color: "Otro", colorOtro: "Mechas vegetales", ocasion: "Otro", ocasionOtro: "Sesión de fotos" })).toEqual({
+      color: "Otro", colorOtro: "Mechas vegetales", ocasion: "Otro", ocasionOtro: "Sesión de fotos",
+    });
+    expect(obligatoriasSinResponder(lista, { color: "Otro", ocasion: "Otro" })).toEqual(["colorOtro", "ocasionOtro"]);
+    expect(limpiarRespuestas([{ ...lista[0], permiteOtro: false }], { color: "Otro", colorOtro: "x" })).toBeUndefined();
+  });
+
+  it("lo muestra como una única respuesta legible en el panel", async () => {
+    const { respuestasLegibles } = await import("./preguntas-reserva");
+    expect(respuestasLegibles({ preguntasReserva: lista }, "peluqueria", { color: "Otro", colorOtro: "Henna", ocasion: "Boda" })).toEqual([
+      { id: "color", pregunta: "¿Llevas color?", respuesta: "Otro · Henna" },
+      { id: "ocasion", pregunta: "Ocasión", respuesta: "Boda" },
+    ]);
+  });
+});

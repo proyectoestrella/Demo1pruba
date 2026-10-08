@@ -28,7 +28,7 @@ export function accionesDeParcheCita(patch: Record<string, unknown>): AccionId[]
 }
 
 const CLAVES_WEB = new Set(["name", "tagline", "about", "address", "phone", "instagram", "photoCount", "galleryPhotos", "rating", "reviewCount", "specialties", "heroImage", "faq"]);
-const CLAVES_EQUIPO = new Set(["team", "teamIds", "teamHours"]);
+const CLAVES_EQUIPO = new Set(["team", "teamIds", "teamHours", "serviciosPorProfesional"]);
 const CLAVES_CARTA = new Set(["menu"]);
 
 /** Acciones de un parche del perfil, según las claves que toca. */

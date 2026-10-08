@@ -139,15 +139,21 @@ export function AjustesPreguntas() {
                 </label>
               </div>
               {q.tipo === "opcion" && (
-                <label className="ml-7 grid gap-1 text-[12.5px] font-bold text-cafe">
-                  Opciones, separadas por comas
-                  <input
-                    className={campo}
-                    value={(q.opciones ?? []).join(", ")}
-                    onChange={(e) => cambiar(i, { opciones: e.target.value.split(",").map((o) => o.trimStart()) })}
-                    placeholder="Corto, Medio, Largo"
-                  />
-                </label>
+                <div className="ml-7 flex flex-wrap items-end gap-4">
+                  <label className="grid min-w-[220px] flex-1 gap-1 text-[12.5px] font-bold text-cafe">
+                    Opciones, separadas por comas
+                    <input
+                      className={campo}
+                      value={(q.opciones ?? []).join(", ")}
+                      onChange={(e) => cambiar(i, { opciones: e.target.value.split(",").map((o) => o.trimStart()) })}
+                      placeholder="Corto, Medio, Largo"
+                    />
+                  </label>
+                  <label className="flex h-9 items-center gap-2 text-[13px]">
+                    <input type="checkbox" className="size-4 accent-[var(--hoja)]" checked={!!q.permiteOtro} onChange={(e) => cambiar(i, { permiteOtro: e.target.checked || undefined })} />
+                    Permitir «Otro» con texto
+                  </label>
+                </div>
               )}
               {q.tipo === "si_no" && (
                 <div className="ml-7 flex flex-wrap items-end gap-2">
@@ -171,6 +177,10 @@ export function AjustesPreguntas() {
                       Obligatorio
                     </label>
                   )}
+                  <label className="flex h-9 items-center gap-2 text-[13px]">
+                    <input type="checkbox" className="size-4 accent-[var(--hoja)]" checked={!!q.permiteOtro} onChange={(e) => cambiar(i, { permiteOtro: e.target.checked || undefined })} />
+                    Añadir «Otro» con texto
+                  </label>
                 </div>
               )}
               <div className="ml-7 flex flex-wrap items-center gap-1.5 text-[12.5px]">
@@ -245,11 +255,12 @@ export function AjustesPreguntas() {
                 {q.tipo === "opcion" && (
                   <select disabled className={cn(campo, "bg-blanco")}>
                     <option>Elige una opción</option>
+                    {q.permiteOtro && <option>Otro</option>}
                   </select>
                 )}
                 {q.tipo === "si_no" && (
                   <span className="flex gap-1.5">
-                    {["Sí", "No"].map((o) => (
+                    {["Sí", "No", ...(q.permiteOtro ? ["Otro"] : [])].map((o) => (
                       <span key={o} className="inline-flex h-8 items-center rounded-full border border-lino bg-blanco px-3 text-[13px]">
                         {o}
                       </span>

@@ -51,6 +51,7 @@ function Team() {
   const employees = useEquipo();
   const tipo = useBusinessType();
   const carta = selectServiceMap(useSalonStore((s) => s.services));
+  const serviciosCarta = useSalonStore((s) => s.services).filter((s) => s.active !== false);
   const esSalonReal = useRealSalonSlug() === profile.slug;
   const hoy = new Date().getDay();
   // Profesionales por plan (3 / 6 / sin límite), sin pasar del tope técnico.
@@ -88,12 +89,21 @@ function Team() {
       teamHours: employees.filter((_, i) => i !== indice).map((_, i) => [...(profile.teamHours?.[i < indice ? i : i + 1] ?? profile.openingHours)]),
     });
   };
+  const guardarServicios = (employeeId: string, ids: string[]) => {
+    const todos = serviciosCarta.map((s) => s.id);
+    const validos = ids.filter((id) => todos.includes(id));
+    const mapa = { ...(profile.serviciosPorProfesional ?? {}) };
+    // Vacío/ausente significa «todos»: así los perfiles antiguos siguen igual
+    // y no se llena el JSON con una copia de toda la carta sin necesidad.
+    if (validos.length === todos.length) delete mapa[employeeId];
+    else mapa[employeeId] = validos;
+    update({ serviciosPorProfesional: Object.keys(mapa).length ? mapa : undefined });
+  };
 
   // «Esta semana»: citas, horas en agenda y ocupación de cada profesional.
   // Lote 16: memoizado y con las citas de cada día calculadas UNA vez (antes,
   // 7 días x cada profesional recorrían la agenda entera en cada pintado).
   const semana = diasDeSemana(new Date(), employees);
-  const servicios = useSalonStore((s) => s.services);
   const resumenSemana = useMemo(() => {
   const porDia = semana.map((d) => citasDeCalendario(appointments, d).filter((a) => a.status !== "blocked"));
   return employees.map((e) => {
@@ -113,7 +123,7 @@ function Team() {
     return { e, citas, horas: Math.round(minutos / 6) / 10, ocupacion: jornada ? Math.round((ocupacionPonderada / jornada) * 100) : 0, top: topServicesFor(appointments, e.id, carta)[0] };
   });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employees, appointments, servicios, semana[0]?.toDateString()]);
+  }, [employees, appointments, serviciosCarta, semana[0]?.toDateString()]);
   const etiqueta = "text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase";
   const selectHora = "h-9 rounded-xl border border-input bg-card px-2 text-[13px] tabular-nums";
 
@@ -129,6 +139,13 @@ function Team() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3 lg:group-data-[panel=abierto]/panel:grid-cols-1">
         {employees.map((e, i) => {
           const services = topServicesFor(appointments, e.id, carta);
+          const configurados = profile.serviciosPorProfesional?.[e.id];
+          const asignados = configurados?.length ? configurados : serviciosCarta.map((s) => s.id);
+          const porCategoria = serviciosCarta.reduce<Record<string, typeof serviciosCarta>>((out, s) => {
+            const categoria = s.category?.trim() || "Sin categoría";
+            (out[categoria] ??= []).push(s);
+            return out;
+          }, {});
           return (
             <section key={e.id} className="flex min-w-0 flex-col overflow-hidden rounded-[20px] border border-border bg-card">
               <div className="flex items-start gap-3 px-5 pt-5 pb-4" style={{ background: `var(--stylist-${["mario", "diego", "ruben"][i % 3]})` }}>
@@ -188,6 +205,26 @@ function Team() {
                 })}
               </div>
               )}
+              <div className="border-t border-border px-5 py-3.5">
+                <p className={etiqueta}>Servicios que hace</p>
+                <p className="mt-1 text-[12.5px] text-muted-foreground">Sin limitar, esta profesional puede hacer toda la carta.</p>
+                <div className="mt-2.5 space-y-2.5">
+                  {Object.entries(porCategoria).map(([categoria, lista]) => {
+                    const categoriaCompleta = lista.every((s) => asignados.includes(s.id));
+                    return <div key={categoria}>
+                      <button type="button" onClick={() => guardarServicios(e.id, categoriaCompleta ? asignados.filter((id) => !lista.some((s) => s.id === id)) : [...new Set([...asignados, ...lista.map((s) => s.id)])])} className="text-[12px] font-extrabold text-hoja-tinta underline underline-offset-2">
+                        {categoriaCompleta ? "Quitar toda la categoría" : "Marcar toda la categoría"} · {categoria}
+                      </button>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {lista.map((s) => {
+                          const marcado = asignados.includes(s.id);
+                          return <button key={s.id} type="button" aria-pressed={marcado} onClick={() => guardarServicios(e.id, marcado ? asignados.filter((id) => id !== s.id) : [...asignados, s.id])} className={cn("rounded-full border px-2.5 py-1 text-[11.5px] font-bold", marcado ? "border-salvia bg-salvia-clara text-hoja-tinta" : "border-lino text-cafe-medio")}>{s.name}</button>;
+                        })}
+                      </div>
+                    </div>;
+                  })}
+                </div>
+              </div>
               {services.length > 0 && <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-5 py-3.5"><span className="mr-1 text-[12.5px] text-muted-foreground">Lo que más hace</span>{services.slice(0, 3).map((name) => <span key={name} className="inline-flex h-6 items-center rounded-full bg-nata px-2.5 text-[12.5px] font-bold text-cafe-medio">{name}</span>)}</div>}
             </section>
           );

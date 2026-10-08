@@ -169,6 +169,9 @@ function resumenPerfil(claves: string[]): string {
   if (hay(/^(team|teamIds|teamSpecialties)$/)) return "Cambiado el equipo";
   if (hay(/^openingHours$/)) return "Cambiado el horario del salón";
   if (hay(/^teamHours$/)) return "Cambiado el horario del equipo";
+  if (hay(/^serviciosPorProfesional$/)) return "Cambiados los servicios del equipo";
+  if (hay(/^diasEspeciales$/)) return "Guardados los días especiales";
+  if (hay(/^bloqueosAgenda$/)) return "Guardado el bloqueo de agenda";
   if (hay(/^preguntas/)) return "Cambiadas las preguntas al reservar";
   if (hay(/^colores/)) return "Cambiado un color del calendario";
   if (hay(/^plantillas$/)) return "Cambiado un mensaje de WhatsApp";

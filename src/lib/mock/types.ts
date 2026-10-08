@@ -47,6 +47,8 @@ export interface Employee {
   schedule: Array<{ start: number; end: number } | null>;
   /** Franjas exactas en minutos desde medianoche; índice 0 = domingo. */
   scheduleRanges?: Array<Array<{ start: number; end: number }>>;
+  /** Servicios que hace. Vacío o ausente = todos (compatibilidad). */
+  servicios?: string[];
 }
 
 export interface Client {
@@ -233,6 +235,8 @@ export interface PreguntaReserva {
   tipo: TipoPreguntaReserva;
   /** Con `opcion`: las opciones, en orden. */
   opciones?: string[];
+  /** Añade «Otro» y exige que la clienta concrete el texto libre. */
+  permiteOtro?: boolean;
   obligatoria: boolean;
   activa: boolean;
   /** Ids de servicio a los que aplica. Vacío o ausente = a todos. */
@@ -242,6 +246,32 @@ export interface PreguntaReserva {
    * con esta clave (p. ej. «¿Cuál es tu color?» en `colorDetail`).
    */
   detalle?: { id: string; texto: string; obligatorio: boolean };
+}
+
+/** Una franja de un día especial, en hora local del salón. */
+export interface FranjaEspecial {
+  inicio: string;
+  fin: string;
+}
+
+/** Excepción de horario de una fecha concreta, guardada dentro del perfil. */
+export interface DiaEspecial {
+  fecha: string;
+  nota?: string;
+  cerrado?: true;
+  franjas?: FranjaEspecial[];
+  /** Si existe, solo estas profesionales trabajan y sus rangos sustituyen su semana. */
+  soloProfesionales?: Record<string, FranjaEspecial[]>;
+}
+
+/** Tiempo que el salón reserva para sí, sin crear una cita ni una clienta. */
+export interface BloqueoAgenda {
+  id: string;
+  profesionalId: EmployeeId | "salon";
+  inicio: string;
+  fin: string;
+  motivo?: string;
+  recurrente?: { diaSemana: number };
 }
 
 export interface WaitlistEntry {
@@ -374,6 +404,12 @@ export interface SalonProfile {
   teamIds?: string[];
   /** Horario semanal por posición del equipo; cada día conserva el formato de openingHours. */
   teamHours?: string[][];
+  /** Servicios que hace cada profesional; vacío o ausente = hace toda la carta. */
+  serviciosPorProfesional?: Record<string, string[]>;
+  /** Festivos, cierres y aperturas excepcionales por fecha. */
+  diasEspeciales?: DiaEspecial[];
+  /** Bloqueos de agenda manuales; viven en el JSON del perfil, no en una cita. */
+  bloqueosAgenda?: BloqueoAgenda[];
   /**
    * SOLO DEMOS (lote P): fecha local «AAAA-MM-DD» en que el panel de la demo
    * abre aunque el horario del salón cierre ese día, con los turnos de su

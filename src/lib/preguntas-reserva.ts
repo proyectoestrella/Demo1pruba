@@ -52,15 +52,20 @@ export function preguntasAplicables(preguntas: PreguntaReserva[], serviceIds: st
   );
 }
 
+/** Clave estable donde se guarda el texto que concreta una respuesta «Otro». */
+export function idDetalleOtro(pregunta: Pick<PreguntaReserva, "id">): string {
+  return `${pregunta.id}Otro`;
+}
+
 /** Valor válido para esa pregunta, o `undefined`. */
 function valorValido(p: PreguntaReserva, valor: string | undefined): string | undefined {
   const v = (valor ?? "").trim();
   if (!v) return undefined;
   switch (p.tipo) {
     case "si_no":
-      return v === "Sí" || v === "No" ? v : undefined;
+      return v === "Sí" || v === "No" || (p.permiteOtro && v === "Otro") ? v : undefined;
     case "opcion":
-      return p.opciones?.includes(v) ? v : undefined;
+      return p.opciones?.includes(v) || (p.permiteOtro && v === "Otro") ? v : undefined;
     case "numero": {
       const n = Number(v.replace(",", "."));
       return Number.isFinite(n) ? String(n) : undefined;
@@ -72,7 +77,8 @@ function valorValido(p: PreguntaReserva, valor: string | undefined): string | un
 
 /**
  * Deja solo las respuestas a estas preguntas, válidas por su tipo, y el
- * detalle solo si la respuesta es «Sí». `undefined` si no queda ninguna.
+ * detalle solo si la respuesta es «Sí», y el texto libre de «Otro» cuando la
+ * pregunta lo permite. `undefined` si no queda ninguna.
  */
 export function limpiarRespuestas(preguntas: PreguntaReserva[], respuestas: BookingAnswers | undefined): BookingAnswers | undefined {
   if (!respuestas) return undefined;
@@ -85,6 +91,11 @@ export function limpiarRespuestas(preguntas: PreguntaReserva[], respuestas: Book
       const d = (respuestas[p.detalle.id] ?? "").trim().slice(0, MAX_DETALLE);
       if (d) out[p.detalle.id] = d;
     }
+    if (p.permiteOtro && v === "Otro") {
+      const idOtro = idDetalleOtro(p);
+      const d = (respuestas[idOtro] ?? "").trim().slice(0, MAX_DETALLE);
+      if (d) out[idOtro] = d;
+    }
   }
   return Object.keys(out).length ? out : undefined;
 }
@@ -96,6 +107,7 @@ export function obligatoriasSinResponder(preguntas: PreguntaReserva[], respuesta
   for (const p of preguntas) {
     if (p.obligatoria && !limpias[p.id]) faltan.push(p.id);
     if (p.detalle?.obligatorio && limpias[p.id] === "Sí" && !limpias[p.detalle.id]) faltan.push(p.detalle.id);
+    if (p.permiteOtro && limpias[p.id] === "Otro" && !limpias[idDetalleOtro(p)]) faltan.push(idDetalleOtro(p));
   }
   return faltan;
 }
@@ -131,9 +143,12 @@ export function respuestasLegibles(
     if (vistas.has(p.id)) continue;
     vistas.add(p.id);
     if (p.detalle) vistas.add(p.detalle.id);
+    if (p.permiteOtro) vistas.add(idDetalleOtro(p));
     const v = (respuestas[p.id] ?? "").trim();
     if (!v) continue;
-    const detalle = p.detalle ? (respuestas[p.detalle.id] ?? "").trim() : "";
+    const detalle = v === "Otro" && p.permiteOtro
+      ? (respuestas[idDetalleOtro(p)] ?? "").trim()
+      : p.detalle ? (respuestas[p.detalle.id] ?? "").trim() : "";
     out.push({ id: p.id, pregunta: p.texto, respuesta: detalle ? `${v} · ${detalle}` : v });
   }
   for (const [id, valor] of Object.entries(respuestas)) {
@@ -145,7 +160,7 @@ export function respuestasLegibles(
 
 /** Id nuevo y estable para una pregunta que crea el salón. */
 export function idPreguntaNueva(existentes: PreguntaReserva[], ahora: number = Date.now()): string {
-  const usados = new Set(existentes.flatMap((p) => [p.id, p.detalle?.id].filter(Boolean) as string[]));
+  const usados = new Set(existentes.flatMap((p) => [p.id, p.detalle?.id, p.permiteOtro ? idDetalleOtro(p) : undefined].filter(Boolean) as string[]));
   let id = `p${ahora.toString(36)}`;
   for (let n = 2; usados.has(id); n++) id = `p${ahora.toString(36)}${n}`;
   return id;

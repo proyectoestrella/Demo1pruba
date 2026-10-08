@@ -177,6 +177,15 @@ describe("la guarda está puesta en todas las funciones de servidor", () => {
     expect(cuerpo).toContain("reason: ERROR_FUERA_HORARIO");
   });
 
+  it("la reserva pública valida especialidad, preguntas y bloqueos del perfil antes de escribir", () => {
+    const cuerpo = cuerpoDe("syncAppointment");
+    const escritura = cuerpo.indexOf("escribirCita(supabase, fila)");
+    for (const regla of ["profesionalHaceServicios", "limpiarRespuestas", "obligatoriasSinResponder", "hayBloqueoEnHueco"]) {
+      expect(cuerpo.indexOf(regla), regla).toBeGreaterThan(-1);
+      expect(cuerpo.indexOf(regla), regla).toBeLessThan(escritura);
+    }
+  });
+
   it("cada función pública lleva escrito por qué lo es", () => {
     for (const [nombre, motivo] of Object.entries(PUBLICAS_A_PROPOSITO)) {
       expect(motivo.length, `${nombre} sin motivo escrito`).toBeGreaterThan(20);

@@ -1,5 +1,6 @@
-import type { Appointment, Employee } from "./mock/types";
-import { franjasProfesional, huecosDeProfesionales, trabajaEn } from "./horario-equipo";
+import type { Appointment, BloqueoAgenda, DiaEspecial, Employee } from "./mock/types";
+import { franjasProfesional, franjasProfesionalEnFecha, huecosDeProfesionales, huecosDeProfesionalesEnFecha, trabajaEn, trabajaEnFecha } from "./horario-equipo";
+import { hayBloqueoEnHueco } from "./bloqueos-agenda";
 import { ZONA_HORARIA_SALON, isoDelSalon } from "./zona-horaria";
 
 /**
@@ -227,6 +228,8 @@ export function findNextAvailableSlot(
     now?: Date;
     /** Zona de la agenda del salón (ver lib/zona-horaria.ts). */
     timeZone?: string;
+    diasEspeciales?: DiaEspecial[];
+    bloqueosAgenda?: BloqueoAgenda[];
   } = {},
 ): NextSlot | undefined {
   const ahora = +(opts.now ?? opts.fromDate ?? new Date());
@@ -243,21 +246,20 @@ export function findNextAvailableSlot(
   for (let dayOffset = 0; dayOffset < maxDays; dayOffset++) {
     const date = new Date(start);
     date.setDate(date.getDate() + dayOffset);
-    const weekday = date.getDay();
     const dateKey = toDateKey(date);
 
-    const opens = relevantEmployees.flatMap((e) => franjasProfesional(e, weekday));
+    const opens = relevantEmployees.flatMap((e) => franjasProfesionalEnFecha(e, dateKey, opts.diasEspeciales));
     if (opens.length === 0) continue;
 
     // Cierre "de verdad": el del salón (todo el equipo), no solo el del
     // profesional elegido — igual que en DateTimeStep.
-    const salonOpens = employees.flatMap((e) => franjasProfesional(e, weekday));
+    const salonOpens = employees.flatMap((e) => franjasProfesionalEnFecha(e, dateKey, opts.diasEspeciales));
     const salonCloseMin =
       salonOpens.length > 0 ? Math.max(...salonOpens.map((o) => o.end)) : undefined;
     const closeMinOffered =
       salonCloseMin !== undefined ? offeredCloseMin(salonCloseMin, lastSlotBufferMin) : undefined;
 
-    for (const minutesOfDay of huecosDeProfesionales(relevantEmployees, weekday, durationMin)) {
+    for (const minutesOfDay of huecosDeProfesionalesEnFecha(relevantEmployees, dateKey, durationMin, opts.diasEspeciales)) {
         if (closeMinOffered !== undefined && minutesOfDay >= closeMinOffered) continue;
         const h = Math.floor(minutesOfDay / 60);
         const m = minutesOfDay % 60;
@@ -266,7 +268,7 @@ export function findNextAvailableSlot(
         // Una hora que ya ha pasado no es un hueco.
         if (Date.parse(iso) <= ahora) continue;
         const free = relevantEmployees.some(
-          (e) => !isSlotTakenLocal(appointments, e.id, iso, durationMin),
+          (e) => trabajaEnFecha(e, dateKey, minutesOfDay, durationMin, opts.diasEspeciales) && !isSlotTakenLocal(appointments, e.id, iso, durationMin) && !hayBloqueoEnHueco(opts.bloqueosAgenda, e.id, iso, durationMin, timeZone),
         );
         if (free) return { dateKey, time: timeStr };
     }

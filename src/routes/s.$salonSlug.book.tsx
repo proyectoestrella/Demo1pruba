@@ -4,12 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Info, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType, textosDeCarta } from "@/lib/mock/salon";
 import { reglaSenal, senalDeReservaNueva, servicioLlevaSenal, textoSenalPublico, type ReglaSenal } from "@/lib/senal";
-import { huecosDeProfesionales, trabajaEn } from "@/lib/horario-equipo";
+import { franjasProfesionalEnFecha, huecosDeProfesionalesEnFecha, trabajaEnFecha } from "@/lib/horario-equipo";
+import { hayBloqueoEnHueco } from "@/lib/bloqueos-agenda";
 import { isoDelSalon, zonaDelSalon } from "@/lib/zona-horaria";
 import { antelacionMinima, huecoAunReservable } from "@/lib/primer-hueco";
 import type { Appointment, BookingAnswers, Client, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { serializeBookingNote } from "@/lib/booking-answers";
-import { limpiarRespuestas, obligatoriasSinResponder, preguntasAplicables, preguntasDelSalon } from "@/lib/preguntas-reserva";
+import { idDetalleOtro, limpiarRespuestas, obligatoriasSinResponder, preguntasAplicables, preguntasDelSalon } from "@/lib/preguntas-reserva";
 import type { PreguntaReserva } from "@/lib/mock/types";
 import { useSalonStore, isSlotTaken } from "@/lib/store";
 import { duracionFlexibleActiva } from "@/lib/duracion-flexible";
@@ -22,6 +23,7 @@ import {
   type BusinessType,
 } from "@/lib/business-type";
 import { findClientByPhone, isBookingBlocked } from "@/lib/no-show";
+import { profesionalesParaServicios } from "@/lib/servicios-profesional";
 import {
   toDateKey,
   hourOccupancyPct,
@@ -119,15 +121,16 @@ function resolveEmployee(
   appointments: Appointment[],
   employees: Employee[],
   timeZone: string,
+  diasEspeciales?: import("@/lib/mock/types").DiaEspecial[],
+  bloqueosAgenda?: import("@/lib/mock/types").BloqueoAgenda[],
 ): EmployeeId {
   if (stylistChoice && stylistChoice !== "any") return stylistChoice;
-  const weekday = new Date(`${date}T00:00`).getDay();
   const [hh, mm] = time.split(":").map(Number);
   const startMin = hh * 60 + mm;
   const candidate = employees.find((e) => {
-    if (!trabajaEn(e, weekday, startMin, durationMin)) return false;
+    if (!trabajaEnFecha(e, date, startMin, durationMin, diasEspeciales)) return false;
     const startISO = isoDelSalon(date, time, timeZone);
-    return !isSlotTaken(appointments, e.id, startISO, durationMin);
+    return !isSlotTaken(appointments, e.id, startISO, durationMin) && !hayBloqueoEnHueco(bloqueosAgenda, e.id, startISO, durationMin, timeZone);
   });
   return candidate?.id ?? employees[0].id;
 }
@@ -284,7 +287,7 @@ function BookingWizard() {
     () => Object.fromEntries(services.map((s) => [s.id, s])) as Record<string, Service>,
     [services],
   );
-  const employees = useMemo(() => employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds), [tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds]);
+  const employees = useMemo(() => employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds, undefined, profile.serviciosPorProfesional), [tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds, profile.serviciosPorProfesional]);
   const employeeMap = useMemo(
     () => Object.fromEntries(employees.map((e) => [e.id, e])) as Record<string, Employee>,
     [employees],
@@ -377,6 +380,11 @@ function BookingWizard() {
     : blockedLocal;
 
   const selectedServices = data.serviceIds.map((id) => serviceMap[id]).filter(Boolean);
+  const eligibleEmployees = useMemo(
+    () => profesionalesParaServicios(employees, data.serviceIds, profile.serviciosPorProfesional),
+    [employees, data.serviceIds, profile.serviciosPorProfesional],
+  );
+  const sinProfesionalParaServicios = selectedServices.length > 0 && eligibleEmployees.length === 0;
   const serviceNames = selectedServices.map((s) => s.name);
   // Precio y duración de la cita son la suma: el hueco que se reserva y el
   // umbral del depósito miran el total, no el primer servicio.
@@ -417,6 +425,8 @@ function BookingWizard() {
     return findNextAvailableSlot(employees, appointments, repeatDuration, lastBooking.employeeId, {
       lastSlotBufferMin: profile.lastSlotBufferMin ?? 0,
       timeZone: zonaDelSalon(profile),
+      diasEspeciales: profile.diasEspeciales,
+      bloqueosAgenda: profile.bloqueosAgenda,
     });
   }, [
     repeatValid,
@@ -426,6 +436,8 @@ function BookingWizard() {
     repeatDuration,
     profile.lastSlotBufferMin,
     profile.timeZone,
+    profile.diasEspeciales,
+    profile.bloqueosAgenda,
   ]);
   const showRepeatBanner =
     step === 1 && data.serviceIds.length === 0 && repeatValid && !!repeatNextSlot && !!lastBooking;
@@ -450,16 +462,24 @@ function BookingWizard() {
   }
 
   function toggleService(id: string) {
-    setData((d) => ({
-      ...d,
-      serviceIds: d.serviceIds.includes(id)
+    setData((d) => {
+      const serviceIds = d.serviceIds.includes(id)
         ? d.serviceIds.filter((x) => x !== id)
-        : [...d.serviceIds, id],
-      // Al cambiar los servicios cambia la duración y la hora elegida puede
-      // dejar de caber: se vuelve a pedir.
-      date: undefined,
-      time: undefined,
-    }));
+        : [...d.serviceIds, id];
+      const compatibles = profesionalesParaServicios(employees, serviceIds, profile.serviciosPorProfesional);
+      return {
+        ...d,
+        serviceIds,
+        // Si la profesional elegida ya no puede realizar la combinación, se
+        // vuelve a «Cualquiera» dentro de las compatibles; nunca se arrastra
+        // una selección inválida a los huecos ni al servidor.
+        employeeId: d.employeeId !== "any" && d.employeeId && !compatibles.some((e) => e.id === d.employeeId) ? "any" : d.employeeId,
+        // Al cambiar los servicios cambia la duración y la hora elegida puede
+        // dejar de caber: se vuelve a pedir.
+        date: undefined,
+        time: undefined,
+      };
+    });
   }
 
   // Con un único profesional el paso 2 (elegir a quién) no existe: del
@@ -512,8 +532,10 @@ function BookingWizard() {
       data.time,
       schedulingDurationMin,
       appointments,
-      employees,
+      eligibleEmployees,
       zonaDelSalon(profile),
+      profile.diasEspeciales,
+      profile.bloqueosAgenda,
     );
     const startISO = isoDelSalon(data.date, data.time, zonaDelSalon(profile));
     // Una clienta que repite y teclea su teléfono (con espacios, guiones o
@@ -624,12 +646,12 @@ function BookingWizard() {
 
   const ctaDisabled =
     step === 1
-      ? selectedServices.length === 0
+      ? selectedServices.length === 0 || sinProfesionalParaServicios
       : step === 2
         ? !data.employeeId
         : step === 3
-          ? !data.date || !data.time
-        : !data.name || !data.phone || !haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged) || (conRecargo && !data.acceptedPolicy) || !!blockedClient ||
+          ? !data.date || !data.time || sinProfesionalParaServicios
+        : !data.name || !data.phone || sinProfesionalParaServicios || !haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged) || (conRecargo && !data.acceptedPolicy) || !!blockedClient ||
             faltanRespuestas.length > 0 ||
             sending || resolutionStatus === "resolviendo";
 
@@ -703,17 +725,24 @@ function BookingWizard() {
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
         <div className="min-w-0">
           {step === 1 && (
-            <ServiceStep
-              selected={data.serviceIds}
-              totalMin={totalMin}
-              durationLabel={durationLabel}
-              flexNota={flexible ? flexNota : undefined}
-              mostrarPrecio={mostrarPrecio}
-              onToggle={toggleService}
-              tipo={tipo}
-              services={services}
-              reglaSenal={reglaSen}
-            />
+            <>
+              <ServiceStep
+                selected={data.serviceIds}
+                totalMin={totalMin}
+                durationLabel={durationLabel}
+                flexNota={flexible ? flexNota : undefined}
+                mostrarPrecio={mostrarPrecio}
+                onToggle={toggleService}
+                tipo={tipo}
+                services={services}
+                reglaSenal={reglaSen}
+              />
+              {sinProfesionalParaServicios && (
+                <p role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                  No hay ninguna profesional que haga todos los servicios elegidos. Elige otra combinación o llama al salón.
+                </p>
+              )}
+            </>
           )}
 
           {!soloUno && step === 2 && (
@@ -721,7 +750,7 @@ function BookingWizard() {
               selected={data.employeeId}
               onSelect={(id) => setData((d) => ({ ...d, employeeId: id }))}
               tipo={tipo}
-              employees={employees}
+              employees={eligibleEmployees}
               esSalonReal={realSlug === salonSlug}
             />
           )}
@@ -734,7 +763,7 @@ function BookingWizard() {
               selectedDate={data.date}
               selectedTime={data.time}
               onPick={(date, time) => setData((d) => ({ ...d, date, time }))}
-              employees={employees}
+              employees={eligibleEmployees}
               smartSpread={!!profile.smartSpread}
               lastSlotBufferMin={profile.lastSlotBufferMin ?? 0}
               priorityHours={profile.priorityHours ?? []}
@@ -743,6 +772,8 @@ function BookingWizard() {
               durationLabel={durationLabel}
               flexNota={flexNota}
               recargoTexto={recargoTexto}
+              diasEspeciales={profile.diasEspeciales}
+              bloqueosAgenda={profile.bloqueosAgenda}
             />
           )}
 
@@ -1166,6 +1197,9 @@ function StylistStep({
   /** En un salón real no se enseñan las fotos de stock. Ver `fotoDeProfesional`. */
   esSalonReal: boolean;
 }) {
+  if (employees.length === 0) {
+    return <Step title={`Elige tu ${professionalWord(tipo)}`}><p role="alert" className="text-sm text-muted-foreground">No hay profesionales disponibles para todos los servicios elegidos.</p></Step>;
+  }
   return (
     <Step title={`Elige tu ${professionalWord(tipo)}`}>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -1271,11 +1305,15 @@ function DateTimeStep({
   recargoTexto,
   timeZone,
   antelacionMin,
+  diasEspeciales,
+  bloqueosAgenda,
 }: {
   /** Zona horaria de la agenda del salón (ver lib/zona-horaria.ts). */
   timeZone: string;
   /** Minutos entre «ahora» y el primer hueco ofrecido (lib/primer-hueco.ts). */
   antelacionMin: number;
+  diasEspeciales?: import("@/lib/mock/types").DiaEspecial[];
+  bloqueosAgenda?: import("@/lib/mock/types").BloqueoAgenda[];
   /** Duración con la que se busca hueco libre — con duración flexible ya es el extremo alto del rango. */
   durationMin: number;
   stylistChoice: EmployeeId | "any";
@@ -1308,8 +1346,8 @@ function DateTimeStep({
     return d;
   }, []);
 
-  function scheduleForWeekday(weekday: number) {
-    return relevantEmployees.flatMap((e) => e.scheduleRanges?.[weekday] ?? []).map((r) => ({ start: r.start / 60, end: r.end / 60 }));
+  function scheduleForDate(dateKey: string) {
+    return relevantEmployees.flatMap((e) => franjasProfesionalEnFecha(e, dateKey, diasEspeciales)).map((r) => ({ start: r.start / 60, end: r.end / 60 }));
   }
 
   /**
@@ -1317,8 +1355,8 @@ function DateTimeStep({
    * Cardedal cierra a las 20:30 lleve quien lleve la caja, y el colchón de
    * cierre (`u`) se mide contra eso. Con "any" coincide con `scheduleForWeekday`.
    */
-  function salonRangeForWeekday(weekday: number) {
-    const opens = employees.flatMap((e) => e.scheduleRanges?.[weekday] ?? []).map((r) => ({ start: r.start / 60, end: r.end / 60 }));
+  function salonRangeForDate(dateKey: string) {
+    const opens = employees.flatMap((e) => franjasProfesionalEnFecha(e, dateKey, diasEspeciales)).map((r) => ({ start: r.start / 60, end: r.end / 60 }));
     if (opens.length === 0) return null;
     return {
       openMin: Math.min(...opens.map((o) => o.start)) * 60,
@@ -1328,23 +1366,22 @@ function DateTimeStep({
 
   function isDayDisabled(date: Date) {
     if (date < today) return true;
-    const weekday = date.getDay();
-    const opens = scheduleForWeekday(weekday);
-    if (opens.length === 0) return true;
     const dateKey = toDateKey(date);
+    const opens = scheduleForDate(dateKey);
+    if (opens.length === 0) return true;
     const start = Math.min(...opens.map((o) => o.start));
     const end = Math.max(...opens.map((o) => o.end));
-    const salonRange = salonRangeForWeekday(weekday);
+    const salonRange = salonRangeForDate(dateKey);
     const closeMinOffered = salonRange
       ? offeredCloseMin(salonRange.closeMin, lastSlotBufferMin)
       : end * 60;
-    for (const minuto of huecosDeProfesionales(relevantEmployees, weekday, durationMin)) {
+    for (const minuto of huecosDeProfesionalesEnFecha(relevantEmployees, dateKey, durationMin, diasEspeciales)) {
         const h = Math.floor(minuto / 60);
         const m = minuto % 60;
         if (h * 60 + m >= closeMinOffered) continue;
         const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
         const open = relevantEmployees.some((e) => {
-          return trabajaEn(e, weekday, minuto, durationMin);
+          return trabajaEnFecha(e, dateKey, minuto, durationMin, diasEspeciales);
         });
         if (!open) continue;
         // Lote 16: un hueco de hoy que ya pasó (o está a menos de la
@@ -1353,7 +1390,7 @@ function DateTimeStep({
         if (!huecoAunReservable(dateKey, timeStr, timeZone, new Date(), antelacionMin)) continue;
         const iso = isoDelSalon(dateKey, timeStr, timeZone);
         const free = relevantEmployees.some(
-          (e) => !isSlotTaken(appointments, e.id, iso, durationMin),
+          (e) => !isSlotTaken(appointments, e.id, iso, durationMin) && !hayBloqueoEnHueco(bloqueosAgenda, e.id, iso, durationMin, timeZone),
         );
         if (free) return false;
     }
@@ -1387,20 +1424,19 @@ function DateTimeStep({
   const slots = useMemo((): PrioritySlot[] => {
     if (!activeDate) return [];
     const dateKey = toDateKey(activeDate);
-    const weekday = activeDate.getDay();
-    const opens = scheduleForWeekday(weekday);
+    const opens = scheduleForDate(dateKey);
     if (opens.length === 0) return [];
     const start = Math.min(...opens.map((o) => o.start));
     const end = Math.max(...opens.map((o) => o.end));
 
-    const salonRange = salonRangeForWeekday(weekday);
+    const salonRange = salonRangeForDate(dateKey);
     const closeMinOffered = salonRange
       ? offeredCloseMin(salonRange.closeMin, lastSlotBufferMin)
       : end * 60;
     const lastHours = salonRange ? lastOfferedHours(salonRange.openMin, closeMinOffered) : [];
 
     const out: PrioritySlot[] = [];
-    for (const minuto of huecosDeProfesionales(relevantEmployees, weekday, durationMin)) {
+    for (const minuto of huecosDeProfesionalesEnFecha(relevantEmployees, dateKey, durationMin, diasEspeciales)) {
       const h = Math.floor(minuto / 60);
       const hourOccupancy = smartSpread ? hourOccupancyPct(appointments, dateKey, h, employees) : 0;
       const busy = smartSpread && isBusyHour(h, hourOccupancy, lastHours);
@@ -1409,7 +1445,7 @@ function DateTimeStep({
         if (h * 60 + m >= closeMinOffered) continue;
         const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
         const open = relevantEmployees.some((e) => {
-          return trabajaEn(e, weekday, minuto, durationMin);
+          return trabajaEnFecha(e, dateKey, minuto, durationMin, diasEspeciales);
         });
         if (!open) continue;
         // Lote 16: un hueco de hoy que ya pasó (o está a menos de la
@@ -1418,7 +1454,7 @@ function DateTimeStep({
         if (!huecoAunReservable(dateKey, timeStr, timeZone, new Date(), antelacionMin)) continue;
         const iso = isoDelSalon(dateKey, timeStr, timeZone);
         const available = relevantEmployees.some(
-          (e) => !isSlotTaken(appointments, e.id, iso, durationMin),
+          (e) => !isSlotTaken(appointments, e.id, iso, durationMin) && !hayBloqueoEnHueco(bloqueosAgenda, e.id, iso, durationMin, timeZone),
         );
         out.push({
           time: timeStr,
@@ -1440,6 +1476,8 @@ function DateTimeStep({
     priorityHours,
     timeZone,
     antelacionMin,
+    diasEspeciales,
+    bloqueosAgenda,
   ]);
 
   const groups = useMemo(() => {
@@ -1819,7 +1857,7 @@ function PreguntaDelFormulario({
           }
         >
           <option value="">Elige una opción</option>
-          {(p.tipo === "si_no" ? ["No", "Sí"] : (p.opciones ?? [])).map((o) => (
+          {(p.tipo === "si_no" ? ["No", "Sí"] : p.opciones ?? []).concat(p.permiteOtro ? ["Otro"] : []).map((o) => (
             <option key={o} value={o}>{o}</option>
           ))}
         </select>
@@ -1841,6 +1879,16 @@ function PreguntaDelFormulario({
           maxLength={120}
           value={respuestas?.[p.detalle.id] ?? ""}
           onChange={(e) => onChange({ [p.detalle!.id]: e.target.value })}
+        />
+      )}
+      {p.permiteOtro && valor === "Otro" && (
+        <Input
+          aria-label={`Especifica: ${p.texto}`}
+          placeholder="Especifica"
+          maxLength={120}
+          required
+          value={respuestas?.[idDetalleOtro(p)] ?? ""}
+          onChange={(e) => onChange({ [idDetalleOtro(p)]: e.target.value })}
         />
       )}
     </div>

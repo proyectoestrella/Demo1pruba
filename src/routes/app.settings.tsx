@@ -13,6 +13,7 @@ import { AjustesMensajes } from "@/components/AjustesMensajes";
 import { AjustesColores } from "@/components/AjustesColores";
 import { AjustesSenal } from "@/components/AjustesSenal";
 import { AjustesPreguntas } from "@/components/AjustesPreguntas";
+import { AjustesDiasEspeciales } from "@/components/AjustesDiasEspeciales";
 import { GuiaAsistente } from "@/components/GuiaAsistente";
 import { GuiaUso } from "@/components/GuiaUso";
 import { AjustesAccesos } from "@/components/AjustesAccesos";
@@ -217,6 +218,9 @@ function Settings() {
             <h3 className="text-[15px] font-extrabold">Cómo se abre tu calendario</h3>
             <p className="-mt-2 text-sm text-muted-foreground">Se guarda al cambiarlo. También lo tienes en el engranaje del propio calendario.</p>
             <div className="max-w-md"><CamposPreferenciasCalendario /></div>
+          </div>
+          <div className={fila}>
+            <AjustesDiasEspeciales />
           </div>
           <div className={fila}>
             <div>
