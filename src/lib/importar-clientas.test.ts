@@ -67,6 +67,18 @@ test("importa clientas desde nombres de base de datos de TPV 123", () => {
   expect(previa.filas[0]).toEqual({ fila: 2, nombre: "Lucía Sanz", telefono: "699111222", codigo: "7", email: "ls@example.es", estado: "nueva" });
 });
 
+test("reconoce las cabeceras exactas de PeluChic y descarta sus columnas sensibles", () => {
+  const tabla = leerCsv("COD;Nombre;Apellidos;dnicif;direccion;F.Alta;Cumpleaños;Ult.Visita;movi;E-mail;recomendado\nPC-7;Lucía;Prueba;X;Calle inventada;01/01/2025;02/02/1990;03/03/2026;+34 612.345.678;lucia@example.test;Sí\n");
+  const previa = vistaPreviaClientas(tabla, []);
+  expect(previa.filas[0]).toEqual({ fila: 2, nombre: "Lucía Prueba", telefono: "612345678", codigo: "PC-7", email: "lucia@example.test", estado: "nueva" });
+  expect(Object.keys(previa.filas[0])).not.toEqual(expect.arrayContaining(["dnicif", "direccion", "fechaAlta", "nacimiento", "notas"]));
+});
+
+test("tolera apelidos y conserva un fijo sin confundirlo con el móvil", () => {
+  const tabla = leerCsv("cod;Nombre;apelidos;movi;telefono\n8;Eva;Prueba;912 345 678;600 111 222\n");
+  expect(vistaPreviaClientas(tabla, []).filas[0]).toMatchObject({ nombre: "Eva Prueba", telefono: "600111222", codigo: "8" });
+});
+
 test("agrupa el histórico plano por clienta y fecha, enlaza por código y aproxima servicios y equipo", () => {
   const tabla = leerCsv("Código Cliente,Cliente,Factura,Fecha,Venta,Concepto,Empleado,Precio\n42,María Pérez,F1,10/03/2025,,Corte de puntas,Ana,20\n42,María Pérez,F1,10/03/2025,,Color raíz,Ana,35\n88,Desconocida,F2,11/03/2025,,Corte,Ana,20\n");
   const maria = { ...existente, id: "maria", name: "María Pérez" };
@@ -87,7 +99,7 @@ test("agrupa el histórico de informe con cabecera de clienta y conceptos bajo e
 test("permite asignar la columna del nombre y explica el formato .xls antiguo", async () => {
   const tabla = leerCsv("Persona,Tel.\nCristina,611 222 333\n");
   expect(vistaPreviaClientas(tabla, [], { nombre: 0, telefono: 1 }).nuevas).toBe(1);
-  await expect(leerTabla(new File(["datos"], "clientes.xls"))).rejects.toThrow("Ábrelo y guárdalo como .xlsx o .csv");
+  await expect(leerTabla(new File(["datos"], "clientes.xls"))).rejects.toThrow("Excel o LibreOffice");
 });
 
 test("detecta el mismo nombre si alguna ficha no tiene teléfono", () => {
