@@ -393,7 +393,8 @@ function BookingWizard() {
   // primera visita».
   const reglaSen = reglaSenal(profile);
   const reservaSenal = { serviceIds: data.serviceIds, durationMin: totalMin, priceEur: total };
-  const textoSenal = mostrarPrecio ? textoSenalPublico(reglaSen, reservaSenal, profile.name, eur) : undefined;
+  // La señal no es el precio del servicio: se informa incluso si el salón oculta tarifas.
+  const textoSenal = textoSenalPublico(reglaSen, reservaSenal, profile.name, eur);
 
   // Mejora B1 (grounding externo, patrón Booksy): "Repetir mi última cita".
   // Se lee una sola vez al montar el wizard — si se aplica y el cliente sigue

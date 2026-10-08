@@ -270,6 +270,8 @@ export interface SalonProfile {
   tagline: string;
   about: string;
   address: string;
+  /** Correo al que las clientas pueden ejercer sus derechos de protección de datos. */
+  correoPrivacidad?: string;
   /** El salón fija la duración al aceptar cada solicitud. */
   duracionFlexible?: boolean;
   /** Oculta los importes a la clienta durante la reserva pública. Ausente = se muestran como siempre. */
@@ -441,9 +443,11 @@ export interface SalonProfile {
   depositAmountEur?: number;
   /** Horas para hacer el Bizum. María pidió de 1 a 4 (ver lib/senal.ts, VENTANAS_SENAL). */
   depositDeadlineHours?: 1 | 2 | 3 | 4 | 12 | 24;
-  /** Señal de importe fijo (`depositAmountEur`) o porcentaje del servicio (`depositPercent`). Por defecto, fijo. */
-  depositMode?: "fijo" | "porcentaje";
+  /** Señal fija, porcentaje o calculada por duración del servicio. Por defecto, fija. */
+  depositMode?: "fijo" | "porcentaje" | "hora";
   depositPercent?: number;
+  /** Euros por hora cuando `depositMode` es `hora`. */
+  depositHourlyRateEur?: number;
   /** A qué reservas se pide: todas (por defecto), solo clientas nuevas, a partir de X min, o una lista de servicios. */
   depositAppliesTo?: "todas" | "nuevas" | "duracion" | "servicios";
   depositMinMinutes?: number;

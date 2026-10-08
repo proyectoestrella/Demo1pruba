@@ -58,6 +58,7 @@ type DemoProfileNegocio = Pick<
   | "tagline"
   | "about"
   | "address"
+  | "correoPrivacidad"
   | "phone"
   | "instagram"
   | "rating"
@@ -125,6 +126,7 @@ const KEYS: Record<keyof DemoProfileNegocio, string> = {
   tagline: "t",
   about: "a",
   address: "d",
+  correoPrivacidad: "ep",
   phone: "p",
   instagram: "i",
   rating: "r",
@@ -314,6 +316,7 @@ export function blankDemoProfile(): DemoProfile & CamposSinHeredar {
     tagline: "",
     about: "",
     address: "",
+    correoPrivacidad: "",
     phone: "",
     instagram: "",
     rating: seedSalon.rating,

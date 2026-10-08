@@ -29,6 +29,12 @@ describe("una sola regla de señal por salón", () => {
     expect(importeSenal(cara, { serviceIds: ["x"], durationMin: 15, priceEur: 12 })).toBe(12);
   });
 
+  it("por hora conserva medios euros, no se topa al precio y funciona con precios ocultos", () => {
+    const r = reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 5 });
+    expect([30, 60, 90, 150, 180].map((durationMin) => importeSenal(r, { serviceIds: ["x"], durationMin, priceEur: 0 }))).toEqual([2.5, 5, 7.5, 12.5, 15]);
+    expect(textoSenalPublico(r, { serviceIds: ["x"], durationMin: 90, priceEur: 0 }, "PeluChic", (n) => `${n.toFixed(2).replace(".", ",")} €`)).toContain("7,50 €");
+  });
+
   it("a partir de X minutos, por lista de servicios y solo a clientas nuevas", () => {
     const larga = reglaSenal({ depositEnabled: true, depositAppliesTo: "duracion", depositMinMinutes: 60 });
     expect(aplicaSenal(larga, mechas)).toBe(true);
