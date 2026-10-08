@@ -16,18 +16,13 @@ test("ambos caminos DDL crean el campo de fecha del aviso de privacidad", () => 
   expect(migracionesPendientes).toContain(ddl);
 });
 
-test("la semilla de PeluChic se bloquea con datos pendientes y nunca sobreescribe", () => {
-  expect(semillaPeluChic).toContain("__PENDIENTE_");
-  expect(semillaPeluChic.indexOf("strpos(perfil::text, '__PENDIENTE_')")).toBeLessThan(
-    semillaPeluChic.indexOf("insert into salons"),
-  );
+test("la semilla de PeluChic está completa, es transaccional y nunca sobreescribe", () => {
+  expect(semillaPeluChic).not.toContain("__PENDIENTE_");
+  expect(semillaPeluChic).toContain("begin;");
+  expect(semillaPeluChic).toContain("commit;");
   expect(semillaPeluChic).toContain("on conflict (slug) do nothing");
-  expect(semillaPeluChic).toContain("perfil->>'plan' <> 'reservas'");
-  expect(semillaPeluChic).toContain(
-    "jsonb_array_length(perfil->'teamIds') <> jsonb_array_length(perfil->'team')",
-  );
-  expect(semillaPeluChic).toContain("Cada horario debe usar rangos HH:MM");
-  expect(semillaPeluChic).toContain("split_part(servicio.valor, '~', 4)");
+  expect(semillaPeluChic).toContain("jsonb_array_length(perfil->'menu') not between 1 and 60");
+  expect(semillaPeluChic).toContain("serviciosPorProfesional");
 });
 
 test("el perfil de la semilla de PeluChic oculta el precio en la reserva", () => {

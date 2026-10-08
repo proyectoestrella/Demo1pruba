@@ -1,174 +1,36 @@
--- Plantilla idempotente y deliberadamente bloqueada para el perfil real de
--- PeluChic. Completar solo después de que María confirme los campos en la
--- reunión. No lee credenciales, no toca citas ni clientas y no sobreescribe un
--- perfil previo.
--- Aplicar manualmente desde Supabase SQL Editor, nunca desde el navegador.
-
+-- Alta inicial de PeluChic (7-oct-2026). Ejecutar SOLO si no existe `peluchic`.
+-- No hay teléfono Bizum confirmado: no se guarda depositBizumPhone.
+-- Fianza pendiente de socios/adenda. Para activarla, cambiar: "depositEnabled": false por true.
+begin;
 do $alta$
 declare
   perfil jsonb := $perfil$
-  {
-    "id": "peluchic",
-    "slug": "peluchic",
-    "name": "PeluChic",
-    "plan": "reservas",
-    "tagline": "__PENDIENTE_TIPO_Y_LEMA__",
-    "about": "__PENDIENTE_TEXTO_DE_LA_WEB__",
-    "address": "__PENDIENTE_DIRECCION_PUBLICA__",
-    "phone": "__PENDIENTE_TELEFONO_PUBLICO__",
-    "whatsapp": "__PENDIENTE_WHATSAPP_O_VACIO_CONFIRMADO__",
-    "instagram": "__PENDIENTE_USUARIO_INSTAGRAM_O_VACIO_CONFIRMADO__",
-    "enlaces": {
-      "resenas": "__PENDIENTE_ENLACE_DIRECTO_A_RESEÑAS_GOOGLE__",
-      "web": "__PENDIENTE_WEB_PUBLICA_O_VACIO_CONFIRMADO__",
-      "instagram": "__PENDIENTE_ENLACE_INSTAGRAM_O_VACIO_CONFIRMADO__",
-      "facebook": "__PENDIENTE_ENLACE_FACEBOOK_O_VACIO_CONFIRMADO__"
-    },
-    "openingHours": [
-      "__PENDIENTE_LUNES__",
-      "__PENDIENTE_MARTES__",
-      "__PENDIENTE_MIERCOLES__",
-      "__PENDIENTE_JUEVES__",
-      "__PENDIENTE_VIERNES__",
-      "__PENDIENTE_SABADO__",
-      "__PENDIENTE_DOMINGO__"
-    ],
-    "timeZone": "Europe/Madrid",
-    "rating": 0,
-    "reviewCount": 0,
-    "specialties": [],
-    "logoUrl": "/demo/peluchic-logo.png",
-    "logotipoClaroUrl": "/demo/peluchic-logotipo-blanco.png",
-    "logotipoOscuroUrl": "/demo/peluchic-logotipo-oscuro.png",
-    "team": [
-      "__PENDIENTE_NOMBRE_01__~__PENDIENTE_ESPECIALIDAD_01__",
-      "__PENDIENTE_NOMBRE_02__~__PENDIENTE_ESPECIALIDAD_02__",
-      "__PENDIENTE_NOMBRE_03__~__PENDIENTE_ESPECIALIDAD_03__"
-    ],
-    "teamIds": ["peluchic-profesional-01", "peluchic-profesional-02", "peluchic-profesional-03"],
-    "teamHours": [
-      ["__PENDIENTE_LUNES_01__", "__PENDIENTE_MARTES_01__", "__PENDIENTE_MIERCOLES_01__", "__PENDIENTE_JUEVES_01__", "__PENDIENTE_VIERNES_01__", "__PENDIENTE_SABADO_01__", "__PENDIENTE_DOMINGO_01__"],
-      ["__PENDIENTE_LUNES_02__", "__PENDIENTE_MARTES_02__", "__PENDIENTE_MIERCOLES_02__", "__PENDIENTE_JUEVES_02__", "__PENDIENTE_VIERNES_02__", "__PENDIENTE_SABADO_02__", "__PENDIENTE_DOMINGO_02__"],
-      ["__PENDIENTE_LUNES_03__", "__PENDIENTE_MARTES_03__", "__PENDIENTE_MIERCOLES_03__", "__PENDIENTE_JUEVES_03__", "__PENDIENTE_VIERNES_03__", "__PENDIENTE_SABADO_03__", "__PENDIENTE_DOMINGO_03__"]
-    ],
-    "menu": ["__PENDIENTE_SERVICIO_01__~30~0~__PENDIENTE_CATEGORIA_01__"],
-    "preguntasReserva": [],
-    "duracionFlexible": null,
-    "ocultarPrecioReserva": true,
-    "depositEnabled": false,
-    "noShowFeeEur": 0
-  }
+  {"id":"peluchic","slug":"peluchic","name":"PeluChic","plan":"reservas","tagline":"Peluquería y maquillaje","about":"Peluquería y maquillaje profesional en Sanchinarro, en el salón o a domicilio. Años de experiencia en teatro, televisión y publicidad: peinados y maquillaje de cámara y foco, novias, ceremonias y eventos.","address":"C/ Princesa de Éboli 100, local 104, entrada por el patio de c/ María Tudor 14, 28050 Madrid (Sanchinarro)","phone":"666 77 67 31","whatsapp":"+34 666 77 67 31","instagram":"@peluchicprofesional","correoPrivacidad":"mariapeluchic@gmail.com","enlaces":{"web":"https://peluchic.online/","instagram":"https://www.instagram.com/peluchicprofesional","facebook":"https://www.facebook.com/peluchicprofesional/","resenas":"https://www.google.com/maps/search/?api=1&query=PeluChic&query_place_id=ChIJc_dY3q0uQg0ReeAzc1Y3irs"},"openingHours":["Cerrado","10:00–20:00","10:00–20:00","10:00–20:00","10:00–20:00","9:00–14:00","Cerrado"],"timeZone":"Europe/Madrid","team":["María~Gerente · peluquería, color y novias","Anca~Faciales y spa japonés","Patricia~Estética, masajes y cabina"],"teamIds":["maria","anca","patricia"],"teamHours":[["Cerrado","14:00–20:00","10:00–20:00","10:00–20:00","10:00–20:00","Cerrado","Cerrado"],["Cerrado","10:00–20:00","Cerrado","14:00–20:00","10:00–20:00","9:00–14:00","Cerrado"],["Cerrado","10:00–20:00","10:00–20:00","10:00–20:00","10:00–20:00","9:00–13:00","Cerrado"]],
+  "menu":[
+"Lavado personalizado~15~10~Trabajos Cotidianos Peluquería~lavado","Lavado personalizado + Corte +Secar humedad~45~28.5~Trabajos Cotidianos Peluquería~lavado-corte-secar","Lavado personalizado + Corte + Peinar~60~43.5~Trabajos Cotidianos Peluquería~lavado-corte-peinar","Peinar~40~24~Trabajos Cotidianos Peluquería~peinar","Cortar Caballero/Niño~30~19.5~Trabajos Cotidianos Peluquería~cortar-caballero-nino","Cortar Añadido a otro servicio~30~19.5~Trabajos Cotidianos Peluquería~cortar-anadido","Color de cobertura Organico~60~41.5~Trabajos Cotidianos Peluquería~color-organico","Color de cobertura en 10 minutos~50~41.5~Trabajos Cotidianos Peluquería~color-10-minutos","Baño de brillo~50~41.5~Trabajos Cotidianos Peluquería~bano-brillo","Barros tintóreos~60~65.5~Trabajos Cotidianos Peluquería~barros","Mechas*~120~46.5~Trabajos Cotidianos Peluquería~mechas","Mechas + Matiz~180~116.5~Trabajos Cotidianos Peluquería~mechas-matiz","Money piece~30~18.5~Trabajos Cotidianos Peluquería~money-piece","Matiz~40~30~Trabajos Cotidianos Peluquería~matiz","Ahuecador -Moldeados~90~45~Trabajos Cotidianos Peluquería~ahuecador",
+"OZONOTHERAPIA~60~41~Tratamientos Cuero Cabelludo~ozonoterapia","Diagnostico capilar con cámara~20~10.5~Tratamientos Cuero Cabelludo~diagnostico-camara","Dermapen capilar sesion 30´~60~55~Tratamientos Cuero Cabelludo~dermapen","Hidrobalance capilar~60~55~Tratamientos Cuero Cabelludo~hidrobalance","barros cuero cabelludo~60~65.5~Tratamientos Cuero Cabelludo~barros-cuero-cabelludo",
+"tratamiento de hidratacion intensiva~60~22.5~Tratamientos Cabello~hidratacion-intensiva","tratamiento de proteinas~60~36~Tratamientos Cabello~proteinas","tratamiento tipo bx~150~57~Tratamientos Cabello~tipo-bx","tratamiento olaplex~60~47~Tratamientos Cabello~olaplex","tratamiento olaplex Quelante~60~20~Tratamientos Cabello~olaplex-quelante","tratamiento reconstructor de rizos~60~26~Tratamientos Cabello~reconstructor-rizos","Nanokeratinizacion~60~42~Tratamientos Cabello~nanokeratinizacion","Hyaluroplastia~60~22~Tratamientos Cabello~hyaluroplastia","Combonano 4 sesiones en un mes~60~88~Tratamientos Cabello~combonano","barros Tratantes~60~75~Tratamientos Cabello~barros-tratantes","tratamiento keratina~120~101~Tratamientos Cabello~keratina","Tratamiento keratina PLUS~180~250~Tratamientos Cabello~keratina-plus","Spa japonés solo cabeza~60~71~Tratamientos Cabello~spa-japones-cabeza","Spa japonés cabeza y facial~120~135~Tratamientos Cabello~spa-japones-cabeza-facial",
+"Laminado cejas~60~28~Trabajos de la Mirada~laminado-cejas","Laminado cejas y tinte cejas~90~36~Trabajos de la Mirada~laminado-tinte-cejas","tinte de cejas~30~9~Trabajos de la Mirada~tinte-cejas","depilacion de ceja~30~12~Trabajos de la Mirada~depilacion-ceja","Linfting KOREANO pestañas~60~36~Trabajos de la Mirada~lifting-coreano","Linfting pestañas +tinte de pestañas~90~46.5~Trabajos de la Mirada~lifting-tinte","Linfting pestañas +tinte de pestañas +laminado de cejas~90~57~Trabajos de la Mirada~lifting-tinte-laminado","Linfting pestañas +tinte de pestañas +laminado de cejas+tinte de cejas~90~65~Trabajos de la Mirada~lifting-tinte-laminado-tinte","tratamiento ojos- bolsas y ojeras~60~65~Trabajos de la Mirada~ojos-bolsas-ojeras",
+"Higiene facial hidroface~60~0~Trabajos Faciales~higiene-facial-hidroface","Ritualfacial hidroface RoseGold~75~65~Trabajos Faciales~ritual-rosegold","Ritualfacial hidroface panacee~75~65~Trabajos Faciales~ritual-panacee","Ritual hidroface~90~65~Trabajos Faciales~ritual-hidroface","Tratamiento de exosomas~60~65~Trabajos Faciales~exosomas","Dermapen facial~60~65~Trabajos Faciales~dermapen-facial","tratamiento facial Radiofrecuencia-diatermia~30~35~Trabajos Faciales~radiofrecuencia-facial",
+"Masaje corporal~60~50~Trabajos Corporales~masajes","Masaje model shape~60~50~Trabajos Corporales~model-shape","tratamiento corporal Radiofrecuencia-diatermia~60~35~Trabajos Corporales~radiofrecuencia-corporal","Dermapen corporal~60~65~Trabajos Corporales~dermapen-corporal","Maquillaje de Correccion~45~65~Trabajos de Cámara y Foco~maquillaje-correccion","Peluqueria focos~45~65~Trabajos de Cámara y Foco~peluqueria-focos","Novias~90~150~Trabajos de Cámara y Foco~novias"],
+  "preciosLiterales":{"higiene-facial-hidroface":"A definir, con diagnóstico","peinar":"24 € / 28 € / 31 €","barros":"65,50 € / 72 € / 77 €","mechas":"46,50 € / 106,50 €","masajes":"50 € · bono 5: 225 € · bono 10: 400 €","model-shape":"50 € · bono 5: 225 € · bono 10: 400 €","radiofrecuencia-corporal":"30 min 35 € / 60 min 65 €"},
+  "preguntasReserva":[{"id":"hairLength","texto":"¿Qué cantidad de pelo tienes?","tipo":"opcion","opciones":["Poco","Medio","Mucho","Excesivo"],"obligatoria":false,"activa":true},{"id":"hasColor","texto":"¿Llevas color, tintes o mechas ahora?","tipo":"opcion","opciones":["Sí","No"],"permiteOtro":true,"obligatoria":false,"activa":true},{"id":"recentChemical","texto":"¿Te has hecho algún tratamiento químico en el último mes (tinte, mechas, alisado, permanente)?","tipo":"opcion","opciones":["Sí","No"],"permiteOtro":true,"obligatoria":false,"activa":true},{"id":"color-previo","texto":"¿Has venido alguna vez a aplicarte aquí el color?","tipo":"si_no","obligatoria":false,"activa":true,"servicios":["color-organico","color-10-minutos","bano-brillo","barros","mechas","mechas-matiz","money-piece","matiz"]},{"id":"tratamiento-brillo","texto":"¿En tu retoque de color, quieres aprovechar el tiempo con un tratamiento de brillo e hidratación?","tipo":"si_no","obligatoria":false,"activa":true,"servicios":["color-organico","color-10-minutos"]}],
+  "diasEspeciales":[{"fecha":"2026-10-12","cerrado":true},{"fecha":"2026-11-02","cerrado":true},{"fecha":"2026-11-09","cerrado":true},{"fecha":"2026-12-07","cerrado":true},{"fecha":"2026-12-08","cerrado":true},{"fecha":"2026-12-25","cerrado":true},{"fecha":"2027-01-01","cerrado":true},{"fecha":"2026-12-24","franjas":[{"inicio":"10:00","fin":"15:00"}]},{"fecha":"2026-12-31","franjas":[{"inicio":"10:00","fin":"15:00"}]},{"fecha":"2026-12-21","soloProfesionales":{"maria":[{"inicio":"10:00","fin":"20:00"}]}},{"fecha":"2026-12-23","soloProfesionales":{"anca":[{"inicio":"15:00","fin":"20:00"}]}}],
+  "duracionFlexible":true,"ocultarPrecioReserva":true,"depositEnabled":false,"depositMode":"hora","depositHourlyRateEur":5,"depositDeadlineHours":4,"depositAutoRelease":false,"depositAppliesTo":"todas","noShowFeeEur":0}
   $perfil$::jsonb;
-  filas_insertadas integer;
+  insertadas integer;
 begin
-  if strpos(perfil::text, '__PENDIENTE_') > 0 then
-    raise exception 'Plantilla PeluChic incompleta: sustituye todos los __PENDIENTE_* y vuelve a validar antes de aplicar.';
-  end if;
-
-  if perfil->>'slug' <> 'peluchic' or perfil->>'plan' <> 'reservas' then
-    raise exception 'La plantilla debe mantener slug peluchic y plan Básico (reservas).';
-  end if;
-  if jsonb_typeof(perfil->'openingHours') is distinct from 'array'
-     or jsonb_typeof(perfil->'team') is distinct from 'array'
-     or jsonb_typeof(perfil->'teamHours') is distinct from 'array'
-     or jsonb_typeof(perfil->'teamIds') is distinct from 'array'
-     or jsonb_typeof(perfil->'menu') is distinct from 'array' then
-    raise exception 'Horario, equipo, horarios individuales y carta deben ser listas.';
-  end if;
-  if jsonb_array_length(perfil->'openingHours') <> 7 then
-    raise exception 'openingHours debe tener siete días, lunes a domingo.';
-  end if;
-  if jsonb_array_length(perfil->'team') not between 1 and 3
-     or jsonb_array_length(perfil->'teamHours') <> jsonb_array_length(perfil->'team') then
-    raise exception 'Básico admite de una a tres profesionales y debe haber un horario individual por persona.';
-  end if;
-  if jsonb_array_length(perfil->'teamIds') <> jsonb_array_length(perfil->'team') then
-    raise exception 'Debe haber un identificador estable por cada profesional confirmada.';
-  end if;
-  if exists (
-    select 1
-    from jsonb_array_elements_text(perfil->'team') as profesional(valor)
-    where nullif(btrim(split_part(profesional.valor, '~', 1)), '') is null
-  ) then
-    raise exception 'Cada entrada del equipo necesita un nombre confirmado.';
-  end if;
-  if jsonb_array_length(perfil->'menu') not between 1 and 60 then
-    raise exception 'La carta debe llevar de uno a sesenta servicios confirmados.';
-  end if;
-  if exists (
-    select 1
-    from jsonb_array_elements_text(perfil->'menu') as servicio(valor)
-    where nullif(btrim(split_part(servicio.valor, '~', 1)), '') is null
-       or case
-            when split_part(servicio.valor, '~', 2) ~ '^[0-9]+$'
-              then split_part(servicio.valor, '~', 2)::integer not between 5 and 240
-            else true
-          end
-       or case
-            when replace(split_part(servicio.valor, '~', 3), ',', '.') ~ '^[0-9]+(\.[0-9]+)?$'
-              then replace(split_part(servicio.valor, '~', 3), ',', '.')::numeric < 0
-            else true
-          end
-       or nullif(btrim(split_part(servicio.valor, '~', 4)), '') is null
-  ) then
-    raise exception 'Cada servicio debe llevar nombre, duración de 5 a 240 minutos y precio no negativo.';
-  end if;
-  if jsonb_typeof(perfil->'duracionFlexible') is distinct from 'boolean' then
-    raise exception 'Confirma si la duración publicada será flexible o fija y guarda true/false.';
-  end if;
-  if jsonb_typeof(perfil->'ocultarPrecioReserva') is distinct from 'boolean' then
-    raise exception 'Confirma si los precios se muestran al reservar y guarda true/false.';
-  end if;
-  if coalesce(perfil#>>'{enlaces,resenas}', '') not like 'https://%' then
-    raise exception 'Confirma y añade el enlace HTTPS directo para pedir una reseña en Google.';
-  end if;
-
-  if exists (
-    select 1 from jsonb_array_elements(perfil->'teamHours') as profesional(horario)
-    where jsonb_typeof(profesional.horario) is distinct from 'array'
-  ) then
-    raise exception 'Cada profesional debe tener una lista de horarios por día.';
-  end if;
-  if exists (
-    select 1 from jsonb_array_elements(perfil->'teamHours') as profesional(horario)
-    where jsonb_array_length(profesional.horario) <> 7
-  ) then
-    raise exception 'Cada profesional debe tener siete días de horario individual.';
-  end if;
-
-  if exists (
-    select 1
-    from jsonb_array_elements_text(perfil->'openingHours') as dia(valor)
-    where nullif(btrim(dia.valor), '') is null
-       or (btrim(dia.valor) <> 'Cerrado'
-           and btrim(dia.valor) !~ '^([0-9]{1,2}:[0-5][0-9][[:space:]]*[–—-][[:space:]]*[0-9]{1,2}:[0-5][0-9])([[:space:]]*,[[:space:]]*[0-9]{1,2}:[0-5][0-9][[:space:]]*[–—-][[:space:]]*[0-9]{1,2}:[0-5][0-9])*$')
-  ) or exists (
-    select 1
-    from jsonb_array_elements(perfil->'teamHours') as profesional(horario)
-    cross join lateral jsonb_array_elements_text(profesional.horario) as dia(valor)
-    where nullif(btrim(dia.valor), '') is null
-       or (btrim(dia.valor) <> 'Cerrado'
-           and btrim(dia.valor) !~ '^([0-9]{1,2}:[0-5][0-9][[:space:]]*[–—-][[:space:]]*[0-9]{1,2}:[0-5][0-9])([[:space:]]*,[[:space:]]*[0-9]{1,2}:[0-5][0-9][[:space:]]*[–—-][[:space:]]*[0-9]{1,2}:[0-5][0-9])*$')
-  ) then
-    raise exception 'Cada horario debe usar rangos HH:MM–HH:MM separados por comas o Cerrado.';
-  end if;
-
-  insert into salons (slug, profile, updated_at)
-  values ('peluchic', perfil, now())
-  on conflict (slug) do nothing;
-  get diagnostics filas_insertadas = row_count;
-  if filas_insertadas = 0 then
-    raise exception 'Ya existe salons.slug=peluchic. No se modificó; guarda una copia y revisa el perfil antes de preparar un UPDATE.';
-  end if;
+  -- a confirmar con María en la formación: asignaciones editables por categoría/id.
+  perfil := jsonb_set(perfil, '{serviciosPorProfesional}', jsonb_build_object(
+    'maria', (select jsonb_agg(split_part(valor, '~', 5)) from jsonb_array_elements_text(perfil->'menu') valor where split_part(valor, '~', 5) not in ('exosomas','dermapen-facial','dermapen-corporal')),
+    'anca', (select jsonb_agg(split_part(valor, '~', 5)) from jsonb_array_elements_text(perfil->'menu') valor where (split_part(valor, '~', 4) = 'Trabajos Faciales' and split_part(valor, '~', 5) not in ('exosomas','dermapen-facial','dermapen-corporal')) or split_part(valor, '~', 5) in ('spa-japones-cabeza','spa-japones-cabeza-facial')),
+    'patricia', (select jsonb_agg(split_part(valor, '~', 5)) from jsonb_array_elements_text(perfil->'menu') valor where split_part(valor, '~', 4) in ('Trabajos de la Mirada','Trabajos Faciales','Trabajos Corporales') or split_part(valor, '~', 5) in ('spa-japones-cabeza','spa-japones-cabeza-facial'))));
+  perfil := jsonb_set(perfil, '{preguntasReserva}', (select jsonb_agg(case when q->>'id' in ('hairLength','hasColor','recentChemical') then q || jsonb_build_object('servicios', (select jsonb_agg(split_part(valor, '~', 5)) from jsonb_array_elements_text(perfil->'menu') valor where split_part(valor, '~', 4) in ('Trabajos Cotidianos Peluquería','Tratamientos Cuero Cabelludo','Tratamientos Cabello','Trabajos de Cámara y Foco'))) else q end) from jsonb_array_elements(perfil->'preguntasReserva') q));
+  if jsonb_array_length(perfil->'menu') not between 1 and 60 or jsonb_array_length(perfil->'team') <> 3 or jsonb_array_length(perfil->'openingHours') <> 7 then raise exception 'Perfil PeluChic inválido'; end if;
+  insert into salons (slug, profile, updated_at) values ('peluchic', perfil, now()) on conflict (slug) do nothing;
+  get diagnostics insertadas = row_count;
+  if insertadas <> 1 then raise exception 'Ya existe salons.slug=peluchic; usa update-peluchic.sql.'; end if;
 end
 $alta$;
-
--- Comprobación de salida: debe devolver una fila, plan reservas, 1-3 personas,
--- horarios con siete posiciones, carta confirmada y ningún marcador pendiente.
-select slug,
-       profile->>'plan' as plan,
-       jsonb_array_length(profile->'team') as profesionales,
-       jsonb_array_length(profile->'menu') as servicios,
-       updated_at
-from salons
-where slug = 'peluchic';
+commit;
+select slug, jsonb_array_length(profile->'menu') as servicios, profile->>'depositEnabled' as fianza_activa, updated_at from salons where slug='peluchic';

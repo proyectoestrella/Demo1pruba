@@ -42,12 +42,11 @@ describe("respuestas de reserva de la demo de PeluChic", () => {
   beforeAll(() => setSystemTime(LUNES_PRESENTACION));
   afterAll(() => setSystemTime());
 
-  it("PeluChic tiene cuatro preguntas: las tres de siempre más «¿Cómo es tu pelo?»", () => {
+  it("PeluChic tiene las cinco preguntas dictadas, sin la de tipo de pelo", () => {
     const ids = (PELUCHIC.preguntasReserva ?? []).map((p) => p.id);
-    expect(ids).toEqual(["hairLength", "hasColor", "recentChemical", "hairType"]);
-    const hairType = PELUCHIC.preguntasReserva!.find((p) => p.id === "hairType")!;
-    expect(hairType.tipo).toBe("opcion");
-    expect(hairType.opciones).toHaveLength(9); // 3 texturas × 3 grosores, sin cambiar el modelo de preguntas.
+    expect(ids).toEqual(["hairLength", "hasColor", "recentChemical", "color-previo", "tratamiento-brillo"]);
+    expect(PELUCHIC.preguntasReserva!.find((p) => p.id === "hairLength")?.opciones).toEqual(["Poco", "Medio", "Mucho", "Excesivo"]);
+    expect(PELUCHIC.preguntasReserva!.find((p) => p.id === "hasColor")?.permiteOtro).toBe(true);
   });
 
   it("es determinista", () => {
@@ -106,10 +105,8 @@ describe("respuestas de reserva de la demo de PeluChic", () => {
       .filter((b): b is NonNullable<typeof b> => !!b);
 
     const hairLengthQ = PELUCHIC.preguntasReserva!.find((p) => p.id === "hairLength")!;
-    const hairTypeQ = PELUCHIC.preguntasReserva!.find((p) => p.id === "hairType")!;
     for (const b of relevantes) {
       if (b.hairLength) expect(hairLengthQ.opciones).toContain(b.hairLength);
-      if (b.hairType) expect(hairTypeQ.opciones).toContain(b.hairType);
       if (b.hasColor) expect(["Sí", "No"]).toContain(b.hasColor);
       if (b.recentChemical) expect(["Sí", "No"]).toContain(b.recentChemical);
       // El detalle solo aparece junto a un «Sí» (igual que exige limpiarRespuestas).
@@ -119,7 +116,6 @@ describe("respuestas de reserva de la demo de PeluChic", () => {
     expect(relevantes.some((b) => b.hasColor === "No")).toBe(true); // p. ej., una clienta de depilación de cejas.
     expect(relevantes.some((b) => b.hasColor === "Sí")).toBe(true);
     expect(new Set(relevantes.map((b) => b.hairLength)).size).toBeGreaterThan(1);
-    expect(new Set(relevantes.map((b) => b.hairType)).size).toBeGreaterThan(1);
   });
 
   it("no toca a la clienta de la duración flexible (Marisol Iglesias)", () => {

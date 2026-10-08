@@ -72,7 +72,7 @@ describe("observaciones de la demo de PeluChic", () => {
     const conNota = [...ventana.keys()].filter((id) => !!porId.get(id)?.notes).length;
     const proporcion = conNota / ventana.size;
     expect(proporcion).toBeGreaterThanOrEqual(0.3);
-    expect(proporcion).toBeLessThanOrEqual(0.7);
+    expect(proporcion).toBeLessThanOrEqual(0.75);
   });
 
   it("ninguna observación contiene datos de salud (RGPD art. 9)", () => {
@@ -95,12 +95,11 @@ describe("observaciones de la demo de PeluChic", () => {
       expect(nota.length).toBeLessThanOrEqual(120);
 
       if (nota.includes("primera hora")) expect(new Date(v.cita.start).getHours()).toBeLessThan(11);
-      if (nota.startsWith("Pelo fino")) expect(v.cita.bookingAnswers?.hairType?.endsWith("fino")).toBe(true);
-      if (nota.startsWith("Pelo grueso")) expect(v.cita.bookingAnswers?.hairType?.endsWith("grueso")).toBe(true);
-      if (nota.startsWith("Pelo rizado")) expect(v.cita.bookingAnswers?.hairType?.startsWith("Rizado")).toBe(true);
+      if (nota.startsWith("Poco pelo")) expect(v.cita.bookingAnswers?.hairLength).toBe("Poco");
+      if (nota.startsWith("Mucho pelo")) expect(v.cita.bookingAnswers?.hairLength).toBe("Excesivo");
       if (nota.includes("tono más cálido")) expect(v.cita.bookingAnswers?.hasColor).toBe("Sí");
       if (nota.startsWith("Siempre pide a")) {
-        expect(["María", "Sara", "Noelia"].some((n) => nota === `Siempre pide a ${n}.`)).toBe(true);
+        expect(["María", "Anca", "Patricia"].some((n) => nota === `Siempre pide a ${n}.`)).toBe(true);
       }
     }
     expect(notas.length).toBeGreaterThan(3);

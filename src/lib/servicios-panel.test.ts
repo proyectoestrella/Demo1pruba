@@ -8,22 +8,22 @@ import { cargarDemoRegistrada } from "./demos/aplicar";
 const carta = servicesForType("peluqueria", PELUCHIC.menu, textosDeCarta(PELUCHIC));
 
 describe("la carta del panel por secciones", () => {
-  it("agrupa los 60 servicios de PeluChic en sus siete secciones, en orden", () => {
+  it("agrupa los 57 servicios de PeluChic en sus siete secciones, en orden", () => {
     const grupos = agruparCarta(carta);
     expect(grupos.map((g) => g.categoria)).toEqual([
       "Trabajos Cotidianos Peluquería", "Tratamientos Cuero Cabelludo", "Tratamientos Cabello",
       "Trabajos de la Mirada", "Trabajos Faciales", "Trabajos Corporales", "Trabajos de Cámara y Foco",
     ]);
-    expect(grupos.reduce((t, g) => t + g.servicios.length, 0)).toBe(60);
-    expect(grupos[0]).toMatchObject({ desde: 10, hasta: 65.5 });
+    expect(grupos.reduce((t, g) => t + g.servicios.length, 0)).toBe(57);
+    expect(grupos[0]).toMatchObject({ desde: 10, hasta: 116.5 });
   });
 
   it("busca sin tildes por nombre, sección o descripción", () => {
     expect(normalizar("Depilación ")).toBe("depilacion");
-    // «depilacion» encuentra los dos servicios de depilación y los laminados, que la incluyen.
+    // «depilacion» encuentra el servicio de ceja y los laminados, que la incluyen.
     const ids = agruparCarta(carta, { texto: "depilacion" }).flatMap((g) => g.servicios.map((s) => s.id));
     expect(ids).toContain("depilacion-ceja");
-    expect(ids).toContain("depilacion-limpieza-ceja");
+    expect(ids).not.toContain("depilacion-limpieza-ceja");
     expect(ids).toContain("laminado-cejas");
     expect(ids).not.toContain("tratamiento-keratina");
     expect(agruparCarta(carta, { texto: "BALAYAGE" }).flatMap((g) => g.servicios.map((s) => s.id))).toEqual(["mechas"]);

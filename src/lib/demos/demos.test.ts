@@ -35,17 +35,18 @@ describe("perfil de PeluChic", () => {
     expect(inferBusinessType(PELUCHIC.tagline, PELUCHIC.name)).toBe("peluqueria");
   });
 
-  it("lleva la carta entera de su web: 60 servicios válidos, con id estable y nombre sin cortar", () => {
-    expect(PELUCHIC.menu).toHaveLength(60);
+  it("lleva la carta aprobada: 57 servicios válidos, con id estable y nombre sin cortar", () => {
+    expect(PELUCHIC.menu).toHaveLength(57);
     const entradas = (PELUCHIC.menu ?? []).map(parseMenuEntry);
     expect(entradas.every((e) => e !== null)).toBe(true);
     expect(entradas.map((e) => e?.id)).toEqual(SERVICIOS_PELUCHIC.map((s) => s.id));
-    expect(new Set(entradas.map((e) => e?.id)).size).toBe(60);
+    expect(new Set(entradas.map((e) => e?.id)).size).toBe(57);
     // El nombre más largo de su carta (71 caracteres) llega entero.
     expect(entradas.map((e) => e?.name)).toContain(
       "Linfting pestañas +tinte de pestañas +laminado de cejas+tinte de cejas",
     );
-    expect(entradas.every((e) => e && e.priceEur > 0)).toBe(true);
+    expect(entradas.every((e) => e && e.priceEur >= 0)).toBe(true);
+    expect(entradas.find((e) => e?.id === "higiene-facial-hidroface")?.priceEur).toBe(0);
   });
 
   it("agrupa la carta en sus siete secciones, en el orden de su web", () => {
@@ -56,7 +57,7 @@ describe("perfil de PeluChic", () => {
 
   it("cada servicio tiene su descripción, y el precio literal cuando no es un importe único", () => {
     const servicios = servicesForType("peluqueria", PELUCHIC.menu, textosDeCarta(PELUCHIC));
-    expect(servicios).toHaveLength(60);
+    expect(servicios).toHaveLength(57);
     expect(servicios.every((s) => s.description.length > 0)).toBe(true);
     const peinar = servicios.find((s) => s.id === "peinar");
     expect(peinar?.priceEur).toBe(24);
@@ -71,15 +72,15 @@ describe("perfil de PeluChic", () => {
     expect(menuDesdeServicios(servicios)).toEqual(PELUCHIC.menu ?? []);
   });
 
-  it("horario de su web: cierra lunes y domingo, el sábado de 10 a 14", () => {
+  it("horario confirmado: cierra lunes y domingo, el sábado de 9 a 14", () => {
     expect(PELUCHIC.openingHours[0]).toBe("Cerrado");
-    expect(PELUCHIC.openingHours[5]).toBe("10:00–14:00");
+    expect(PELUCHIC.openingHours[5]).toBe("9:00–14:00");
     expect(PELUCHIC.openingHours[6]).toBe("Cerrado");
     for (const dia of PELUCHIC.openingHours.slice(1, 5)) expect(dia).toBe("10:00–20:00");
   });
 
   it("los turnos del equipo caben dentro del horario del salón", () => {
-    expect(PELUCHIC.team?.map((t) => parseTeamEntry(t)?.name)).toEqual(["María", "Sara", "Noelia"]);
+    expect(PELUCHIC.team?.map((t) => parseTeamEntry(t)?.name)).toEqual(["María", "Anca", "Patricia"]);
     expect(PELUCHIC.teamHours).toHaveLength(PELUCHIC.team?.length ?? 0);
     for (const turnos of PELUCHIC.teamHours ?? []) {
       turnos.forEach((turno, dia) => {
@@ -104,7 +105,7 @@ describe("perfil de PeluChic", () => {
     expect(PELUCHIC.boletin?.texto).not.toMatch(/\d/);
     expect(PELUCHIC.boletin?.condiciones).toBeUndefined();
     expect(PELUCHIC.logoUrl).toBe("/demo/peluchic-logo.png");
-    expect(PELUCHIC.plan).toBe("todo-incluido");
+    expect(PELUCHIC.plan).toBe("reservas");
     expect(PELUCHIC.galeriaPropia?.length).toBe(12);
     expect(PELUCHIC.galeriaPropia?.every((f) => f.url.startsWith("/demo/peluchic-galeria/") && f.alt.length > 10)).toBe(true);
   });
@@ -130,7 +131,7 @@ describe("un enlace ?d= no hereda nada de la demo registrada", () => {
   it("y el perfil registrado pisa lo de la demo anterior", () => {
     const perfil = perfilDeDemoRegistrada(PELUCHIC);
     expect(perfil.name).toBe("PeluChic");
-    expect(perfil.teamIds).toBeUndefined();
+    expect(perfil.teamIds).toEqual(["maria", "anca", "patricia"]);
     expect((perfil as { modulosOcultos?: string[] }).modulosOcultos).toEqual([]);
   });
 });
@@ -148,7 +149,7 @@ describe("cargar la demo registrada en la store", () => {
     const st = useSalonStore.getState();
     expect(st.salonProfile.name).toBe("PeluChic");
     expect(st.salonProfile.slug).toBe("peluchic");
-    expect(st.services).toHaveLength(60);
+    expect(st.services).toHaveLength(57);
     expect(st.services.find((s) => s.id === "mechas")?.priceText).toBe("46,50 € / 106,50 €");
     expect(st.appointments.length).toBeGreaterThan(1000);
     expect(st.payments).toEqual([]);
@@ -196,7 +197,7 @@ describe("el ?d= lleva lo del lote 18 (vista previa de Mi página)", () => {
   it("ida y vuelta: enlaces, WhatsApp, boletín, galería, logo y textos de la carta", async () => {
     const { encodeDemoProfile, decodeDemoProfile } = await import("../demo-profile");
     const vuelta = decodeDemoProfile(encodeDemoProfile(PELUCHIC, { cartaCompleta: true }));
-    expect(vuelta?.menu).toHaveLength(60);
+    expect(vuelta?.menu).toHaveLength(57);
     expect(vuelta?.enlaces).toEqual(PELUCHIC.enlaces);
     expect(vuelta?.whatsapp).toBe(PELUCHIC.whatsapp);
     expect(vuelta?.boletin).toEqual(PELUCHIC.boletin);

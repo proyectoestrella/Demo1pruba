@@ -23,7 +23,7 @@ describe("el asistente contesta con la carta real de PeluChic", () => {
   afterAll(() => setSystemTime());
 
   it("cuánto cuesta un balayage → sus mechas, con el precio como lo anuncia", () => {
-    expect(texto("cuánto cuesta un balayage")).toBe("precio-servicio · Mechas* está a **46,50 € / 106,50 €** (2 h).");
+    expect(texto("cuánto cuesta un balayage")).toBe("precio-servicio · Mechas* **46,50 € / 106,50 €** y Mechas + Matiz **116,50 €**.");
   });
 
   it("qué servicios de novia tenéis → Novias y el maquillaje que también hace novias", () => {
@@ -34,7 +34,7 @@ describe("el asistente contesta con la carta real de PeluChic", () => {
   });
 
   it("cuánto dura la keratina → la keratina, no otro tratamiento capilar", () => {
-    expect(texto("cuánto dura la keratina")).toStartWith("duracion-servicio · Según la carta, tratamiento keratina dura **2 h 30**");
+    expect(texto("cuánto dura la keratina")).toStartWith("duracion-servicio · Según la carta, tratamiento keratina dura **2 h**");
   });
 
   it("cuánto cuesta el peinado → sus dos peinados con sus precios por largo", () => {
@@ -42,16 +42,16 @@ describe("el asistente contesta con la carta real de PeluChic", () => {
   });
 
   it("cuánto cuesta la depilación de cejas → la depilación primero", () => {
-    expect(texto("cuánto cuesta la depilacion de cejas")).toStartWith("precio-servicio · depilacion de ceja **12 €**, depilacion limpieza de ceja **10 €**");
+    expect(texto("cuánto cuesta la depilacion de cejas")).toStartWith("precio-servicio · depilacion de ceja **12 €**");
   });
 
   it("cuánto cuesta la ozonoterapia → aunque su carta diga OZONOTHERAPIA", () => {
-    expect(texto("cuánto cuesta la ozonoterapia")).toBe("precio-servicio · OZONOTHERAPIA está a **41 € / 49 € / 51,50 €** (45 min).");
+    expect(texto("cuánto cuesta la ozonoterapia")).toBe("precio-servicio · OZONOTHERAPIA está a **41 € / 49 € / 51,50 €** (1 h).");
   });
 
   it("qué tratamientos capilares tengo → los capilares, no toda la carta", () => {
     const t = texto("qué tratamientos capilares tengo");
-    expect(t).toStartWith("carta · Para «tratamientos capilares» tienes **4 servicios**");
-    expect(t).toContain("SPA CAPILAR JAPONES 1 h 71 € / 2 h 135 €");
+    expect(t).toStartWith("carta · Para «tratamientos capilares» tienes **3 servicios**");
+    expect(t).toContain("Dermapen capilar sesion 30´ 55 €");
   });
 });
