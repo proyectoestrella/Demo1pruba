@@ -44,9 +44,16 @@ export interface MapsLookup {
   notice?: string;
 }
 
-/** Sigue la redirección de maps.app.goo.gl hasta la dirección larga. */
+/**
+ * Sigue la redirección de un enlace corto hasta la dirección larga.
+ *
+ * `share.google` es el acortador que usa hoy la app del móvil al compartir, y
+ * no lleva nada dentro: sin expandirlo el importador no veía ni el nombre.
+ * Acaba en una búsqueda de Google con el nombre del negocio en `q=`, que es
+ * justo la consulta que necesita Places.
+ */
 async function expandShortLink(url: string): Promise<string> {
-  if (!/goo\.gl|maps\.app/.test(url)) return url;
+  if (!/goo\.gl|maps\.app|share\.google|g\.co\//.test(url)) return url;
   // Las URLs de búsqueda no redirigen a una ficha: no hay nada que expandir.
   try {
     const res = await fetch(url, { redirect: "follow" });
@@ -60,8 +67,20 @@ async function expandShortLink(url: string): Promise<string> {
  * El nombre y las coordenadas viajan en la propia dirección:
  * `/maps/place/Barberia+Pepe/@40.41,-3.70,17z/...`
  */
-export function parseMapsUrl(url: string): { name?: string; lat?: number; lng?: number } {
-  const out: { name?: string; lat?: number; lng?: number } = {};
+export interface PistaMaps {
+  name?: string;
+  lat?: number;
+  lng?: number;
+  /**
+   * El enlace traía una dirección postal, no el nombre del negocio. Cambia la
+   * búsqueda: en un portal puede haber dos peluquerías y hay que decir cuál se
+   * ha traído en vez de dar por buena la primera que conteste Google.
+   */
+  esDireccion?: boolean;
+}
+
+export function parseMapsUrl(url: string): PistaMaps {
+  const out: PistaMaps = {};
 
   // Enlaces "de búsqueda" y "cómo llegar": el texto de la consulta va en un
   // parámetro y suele ser "Nombre, Dirección", que es la consulta ideal para
@@ -93,6 +112,40 @@ export function parseMapsUrl(url: string): { name?: string; lat?: number; lng?: 
       if (decoded && !/^[\d\s,.-]+$/.test(decoded)) out.name = decoded;
     } catch {
       /* dirección mal codificada: se ignora el nombre y se sigue */
+    }
+  }
+
+  // "Cómo llegar" sin parámetros: `/maps/dir//C. Isla de Tavira, 26, 28035
+  // Madrid/data=!4m6…`. Es lo que da Google al compartir una ruta desde el
+  // escritorio, y es el enlace que más se pega en la calle porque sale al
+  // tocar «Cómo llegar». El destino va en el propio camino, no en un
+  // parámetro: el primer hueco es el origen (vacío = «mi posición») y lo que
+  // viene después es la ficha. Con la dirección sola basta: Places devuelve
+  // el negocio que está en ese portal.
+  if (!out.name) {
+    const dir = url.match(/\/maps\/dir\/([^?#]*)/);
+    if (dir?.[1]) {
+      const destino = dir[1]
+        .split("/")
+        .map((s) => s.trim())
+        .filter((s) => s && !/^(?:data=|@|am=|!)/.test(s))
+        .pop();
+      if (destino) {
+        try {
+          const decoded = decodeURIComponent(destino.replace(/\+/g, " ")).trim();
+          // Un destino que son solo coordenadas no es un nombre: se usa como tal.
+          const soloCoords = decoded.match(/^(-?\d+\.\d+),\s*(-?\d+\.\d+)$/);
+          if (soloCoords) {
+            out.lat = Number(soloCoords[1]);
+            out.lng = Number(soloCoords[2]);
+          } else if (decoded && !/^[\d\s,.-]+$/.test(decoded)) {
+            out.name = decoded;
+            out.esDireccion = true;
+          }
+        } catch {
+          /* destino mal codificado: se ignora y se sigue con las coordenadas */
+        }
+      }
     }
   }
 
@@ -201,21 +254,32 @@ function elegirGaleria(photos: FotoPlaces[], portada: number | undefined): strin
   return out;
 }
 
-async function fromPlaces(
-  key: string,
-  hint: { name?: string; lat?: number; lng?: number },
-): Promise<MapsLookup | null> {
-  if (!hint.name) return null;
+interface PlaceResultado {
+  id?: string;
+  displayName?: { text?: string };
+  formattedAddress?: string;
+  nationalPhoneNumber?: string;
+  rating?: number;
+  userRatingCount?: number;
+  regularOpeningHours?: { weekdayDescriptions?: string[] };
+  photos?: Array<{ name?: string; widthPx?: number; heightPx?: number }>;
+}
 
-  const body: Record<string, unknown> = {
-    textQuery: hint.name,
-    languageCode: "es",
-    maxResultCount: 1,
-  };
-  if (hint.lat !== undefined && hint.lng !== undefined) {
+const CAMPOS_PLACES =
+  "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating,places.userRatingCount,places.regularOpeningHours.weekdayDescriptions,places.photos.name,places.photos.widthPx,places.photos.heightPx";
+
+/** Una búsqueda de texto en Places. Devuelve `null` si Google no responde bien. */
+async function buscarEnPlaces(
+  key: string,
+  textQuery: string,
+  bias: { lat?: number; lng?: number },
+  maxResultCount: number,
+): Promise<PlaceResultado[] | { error: number }> {
+  const body: Record<string, unknown> = { textQuery, languageCode: "es", maxResultCount };
+  if (bias.lat !== undefined && bias.lng !== undefined) {
     // Con coordenadas se acierta el local concreto y no otro del mismo nombre.
     body.locationBias = {
-      circle: { center: { latitude: hint.lat, longitude: hint.lng }, radius: 200 },
+      circle: { center: { latitude: bias.lat, longitude: bias.lng }, radius: 200 },
     };
   }
 
@@ -224,35 +288,98 @@ async function fromPlaces(
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": key,
-      "X-Goog-FieldMask":
-        "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating,places.userRatingCount,places.regularOpeningHours.weekdayDescriptions,places.photos.name,places.photos.widthPx,places.photos.heightPx",
+      "X-Goog-FieldMask": CAMPOS_PLACES,
     },
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) {
+  if (!res.ok) return { error: res.status };
+  return ((await res.json()) as { places?: PlaceResultado[] }).places ?? [];
+}
+
+/**
+ * Un resultado que no tiene ni reseñas ni fotos no es un negocio: es el portal.
+ * Google lo devuelve cuando se le pregunta por una dirección a secas, que es
+ * justo lo que trae un enlace de «Cómo llegar».
+ */
+function esSoloUnPortal(place: PlaceResultado): boolean {
+  return !place.userRatingCount && !(place.photos?.length ?? 0);
+}
+
+/** "C. Isla de Tavira, 32, Fuencarral…" → "c. isla de tavira|32". */
+function portalDe(direccion: string | undefined): string | null {
+  if (!direccion) return null;
+  const partes = direccion
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .split(",")
+    .map((p) => p.trim());
+  const numero = partes.slice(1).find((p) => /^\d+$/.test(p));
+  return partes[0] && numero ? `${partes[0]}|${numero}` : null;
+}
+
+export async function fromPlaces(key: string, hint: PistaMaps): Promise<MapsLookup | null> {
+  if (!hint.name) return null;
+
+  // Un enlace de «Cómo llegar» trae el portal, no el negocio. Preguntar por la
+  // dirección a secas no sirve: Google unas veces contesta el edificio y otras
+  // una de las peluquerías del portal, a capricho — y en la calle no se puede
+  // enseñar la demo del vecino. Se pregunta por el oficio en esa dirección, se
+  // exige que el portal coincida, y si hay más de una se dice cuál se ha traído.
+  const consulta = hint.esDireccion ? `peluquería o barbería en ${hint.name}` : hint.name;
+  const primera = await buscarEnPlaces(key, consulta, hint, hint.esDireccion ? 10 : 1);
+  if ("error" in primera) {
     return {
       source: "url",
       name: hint.name,
-      notice: `Google respondió ${res.status}. Comprueba que la clave tenga habilitada la Places API.`,
+      notice: `Google respondió ${primera.error}. Comprueba que la clave tenga habilitada la Places API.`,
     };
   }
 
-  const json = (await res.json()) as {
-    places?: Array<{
-      id?: string;
-      displayName?: { text?: string };
-      formattedAddress?: string;
-      nationalPhoneNumber?: string;
-      rating?: number;
-      userRatingCount?: number;
-      regularOpeningHours?: { weekdayDescriptions?: string[] };
-      photos?: Array<{ name?: string; widthPx?: number; heightPx?: number }>;
-    }>;
-  };
+  let place = hint.esDireccion ? undefined : primera[0];
+  let notice: string | undefined;
 
-  const place = json.places?.[0];
+  if (!place) {
+    const portalBuscado = portalDe(hint.name);
+    const enEsePortal = primera.filter(
+      (p) => portalBuscado && portalDe(p.formattedAddress) === portalBuscado,
+    );
+    if (enEsePortal.length > 0) {
+      // Gana el que tiene fotos —sin ellas la demo sale con la foto de ejemplo
+      // y no impresiona a nadie— y, a igualdad, el de más reseñas.
+      const ordenados = [...enEsePortal].sort(
+        (a, b) =>
+          (b.photos?.length ?? 0) - (a.photos?.length ?? 0) ||
+          (b.userRatingCount ?? 0) - (a.userRatingCount ?? 0),
+      );
+      place = ordenados[0];
+      // El enlace no traía el nombre: quien lo pega tiene que poder comprobar
+      // de un vistazo que el salón es el que tiene delante. Google no siempre
+      // lista los mismos vecinos, así que el aviso se da siempre, haya salido
+      // uno o varios.
+      const otros = ordenados
+        .slice(1)
+        .map((p) => p.displayName?.text)
+        .filter(Boolean)
+        .join(", ");
+      notice = otros
+        ? `Ese enlace solo traía la dirección. He traído «${place.displayName?.text}»; en ese portal también está ${otros}.`
+        : `Ese enlace solo traía la dirección: comprueba que «${place.displayName?.text}» es el salón que tienes delante.`;
+    } else if (!hint.esDireccion) {
+      place = primera[0];
+    }
+  }
+
   if (!place) return { source: "url", name: hint.name, notice: "Google no encontró ese sitio." };
+  if (esSoloUnPortal(place)) {
+    return {
+      source: "url",
+      name: hint.name,
+      notice:
+        "Ese enlace lleva la dirección pero no el negocio, y Google no encuentra ninguno en ese portal. Abre su ficha en Maps y usa «Compartir».",
+    };
+  }
 
   const portada = elegirPortada(place.photos ?? []);
   const galeria = elegirGaleria(place.photos ?? [], portada ?? undefined);
@@ -276,6 +403,7 @@ async function fromPlaces(
     openingHours: fromGoogleWeekdayDescriptions(place.regularOpeningHours?.weekdayDescriptions),
     photoCount: place.photos?.length ?? 0,
     galleryPhotos: galeria,
+    notice,
   };
 }
 
