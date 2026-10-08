@@ -1,5 +1,5 @@
 import type { DiaEspecial, Employee, FranjaEspecial } from "./mock/types";
-import { parseRanges, type Range } from "./opening-hours";
+import { parseFranjasEspeciales, type Range } from "./opening-hours";
 
 /** Franjas exactas de una profesional para un día de Date.getDay(). */
 export function franjasProfesional(employee: Employee, weekday: number) {
@@ -26,7 +26,7 @@ function interseccion(a: Range[], b: Range[]): Range[] {
 }
 
 function franjasEspeciales(franjas: FranjaEspecial[] | undefined): Range[] {
-  return (franjas ?? []).flatMap((f) => parseRanges(`${f.inicio}–${f.fin}`));
+  return (franjas ?? []).flatMap((f) => parseFranjasEspeciales(`${f.inicio}–${f.fin}`));
 }
 
 /** La fecha de agenda no depende de la zona del navegador: es AAAA-MM-DD local del salón. */

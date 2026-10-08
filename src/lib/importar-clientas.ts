@@ -48,21 +48,31 @@ export function leerCsv(texto: string): TablaImportacion {
 const alias: Record<CampoCliente, string[]> = {
   nombre: ["nombre", "cliente", "nombre cliente", "nombre y apellidos", "nombre completo"],
   apellidos: ["apellidos", "apelidos", "apellido", "primer apellido", "apellidos cliente"],
-  telefono: ["telefono", "telefono2", "movil", "movi", "tel movil", "tel movil cliente", "telefono movil", "telefono movil cliente", "telf", "telf.", "numero de telefono"],
-  telefono2: ["telefono1", "telefono", "tel fijo", "tel fijo cliente", "telefono fijo", "telefono fijo cliente"],
+  // `telefono` se resuelve expresamente en detectarColumnas: no se puede
+  // poner aquí porque una columna "Telefono" (fijo) y una "Movi" acababan
+  // apuntando ambas al fijo según el orden de este objeto.
+  telefono: ["movil", "movi", "tel movil", "tel movil cliente", "telefono movil", "telefono movil cliente", "telefono2"],
+  telefono2: ["telefono", "telefono1", "tel fijo", "tel fijo cliente", "telefono fijo", "telefono fijo cliente", "telf", "telf.", "numero de telefono"],
   email: ["email", "e-mail", "correo", "correo electronico"],
   codigo: ["codigocliente", "codigo cliente", "codigo", "cod"],
 };
 export const claveCabecera = (s: string) => normal(s).replace(/[.:]/g, "").replace(/\s+/g, " ");
 export function detectarColumnas(cabeceras: string[]): MapaColumnas {
   const mapa: MapaColumnas = {};
-  for (const campo of Object.keys(alias) as CampoCliente[]) {
+  for (const campo of ["nombre", "apellidos", "email", "codigo"] as const) {
     const i = cabeceras.findIndex((c) => alias[campo].includes(claveCabecera(c)));
     if (i >= 0) mapa[campo] = i;
   }
-  // En TPV 123 `telefono2` suele ser el móvil y `telefono1` el fijo. Ambos se
-  // leen solo para escoger el móvil; el número alternativo no se conserva.
-  if (mapa.telefono === undefined && mapa.telefono2 !== undefined) mapa.telefono = mapa.telefono2;
+  const movil = cabeceras.findIndex((c) => alias.telefono.includes(claveCabecera(c)));
+  const fijo = cabeceras.findIndex((c) => alias.telefono2.includes(claveCabecera(c)));
+  // El móvil manda como teléfono principal. Si también existe un fijo, se
+  // conserva como alternativa en OTRA columna; nunca se pisan entre sí.
+  if (movil >= 0) {
+    mapa.telefono = movil;
+    if (fijo >= 0 && fijo !== movil) mapa.telefono2 = fijo;
+  } else if (fijo >= 0) {
+    mapa.telefono = fijo;
+  }
   return mapa;
 }
 export function vistaPreviaClientas(tabla: TablaImportacion, existentes: Client[], mapa: MapaColumnas = detectarColumnas(tabla.cabeceras)): VistaPrevia {

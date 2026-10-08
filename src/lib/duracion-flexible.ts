@@ -7,6 +7,12 @@ export function duracionFlexibleActiva(
   return esReal ? !!perfil.duracionFlexible : (demo ? !!demo.duracionFlexible : !!perfil.duracionFlexible);
 }
 
+/** Extremo alto que se guarda y bloquea en agenda cuando la duración es flexible. */
+export function duracionDeAgenda(catalogMin: number, flexible: boolean): number {
+  if (!flexible) return catalogMin;
+  return Math.max(catalogMin, Math.round((catalogMin * 1.5) / 15) * 15);
+}
+
 /**
  * Lo que la dueña elige en el desplegable «Duración» del diálogo de nueva
  * cita, o `null` si no ha elegido nada válido.

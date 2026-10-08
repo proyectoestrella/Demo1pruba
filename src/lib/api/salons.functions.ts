@@ -27,6 +27,7 @@ import { tieneMando, vistaEfectiva } from "./autorizacion";
 import { conSesion } from "./sesion.middleware";
 import { getSupabaseServerClient } from "../supabase.server";
 import { fusionarPerfil } from "../perfil-parche";
+import { perfilPublico } from "../perfil-publico";
 import { isManualBlockRecord } from "../no-show";
 import { parseDepositNote } from "../deposit-deadline";
 import { columnasDeParche, filaSinLote3 } from "../cita-parche";
@@ -46,6 +47,8 @@ import {
   ERROR_RESPUESTAS_RESERVA,
   ERROR_SERVICIO_PROFESIONAL,
   ERROR_BLOQUEO_AGENDA,
+  ERROR_DATOS_RESERVA,
+  datosReservaPublicaDesdeCarta,
   faltaColumnaAcusePrivacidad,
   haLeidoAvisoPrivacidad,
   haySolape,
@@ -361,7 +364,7 @@ export const getSalonProfile = createServerFn({ method: "GET" })
     if (!row) return { profile: null };
 
     const profile = row.profile as SalonProfile;
-    return { profile: { ...profile, slug: row.slug } };
+    return { profile: perfilPublico({ ...profile, slug: row.slug }) };
   });
 
 /**
@@ -875,6 +878,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
     /** Perfil del salón, leído solo para las reservas de fuera (horario y señal). */
     let perfilPublico: SalonProfile | undefined;
     let respuestasReserva: Record<string, string | undefined> | undefined;
+    let datosRecalculados: { durationMin: number; priceEur: number } | undefined;
     if (!manda) {
       // Horario por profesional (`teamHours`) y del local, leídos del perfil
       // guardado: la web pública ya no ofrece esas horas, pero el servidor no
@@ -887,13 +891,21 @@ export const syncAppointment = createServerFn({ method: "POST" })
       if (errorSalon) throw new Error(`syncAppointment (horario): ${errorSalon.message}`);
       const perfil = salonRow?.profile as SalonProfile | undefined;
       perfilPublico = perfil;
+      datosRecalculados = perfil ? datosReservaPublicaDesdeCarta(perfil, data.serviceIds) ?? undefined : undefined;
+      if (
+        !datosRecalculados ||
+        data.durationMin !== datosRecalculados.durationMin ||
+        Math.round(data.priceEur * 100) !== Math.round(datosRecalculados.priceEur * 100)
+      ) {
+        return { synced: false as const, reason: ERROR_DATOS_RESERVA };
+      }
       if (perfil && !profesionalHaceServicios(data.employeeId, data.serviceIds, perfil.serviciosPorProfesional)) {
         return { synced: false as const, reason: ERROR_SERVICIO_PROFESIONAL };
       }
-      if (perfil && hayBloqueoEnHueco(perfil.bloqueosAgenda, data.employeeId, data.startISO, data.durationMin, zonaDelSalon(perfil))) {
+      if (perfil && hayBloqueoEnHueco(perfil.bloqueosAgenda, data.employeeId, data.startISO, datosRecalculados.durationMin, zonaDelSalon(perfil))) {
         return { synced: false as const, reason: ERROR_BLOQUEO_AGENDA };
       }
-      if (perfil && !profesionalTrabaja(perfil, data.employeeId, data.startISO, data.durationMin)) {
+      if (perfil && !profesionalTrabaja(perfil, data.employeeId, data.startISO, datosRecalculados.durationMin)) {
         return { synced: false as const, reason: ERROR_FUERA_HORARIO };
       }
       if (perfil) {
@@ -907,7 +919,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
         }
       }
 
-      if (await solapaEnServidor(supabase, data.slug, data.localId, data.employeeId, data.startISO, data.durationMin)) {
+      if (await solapaEnServidor(supabase, data.slug, data.localId, data.employeeId, data.startISO, datosRecalculados.durationMin)) {
         return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
       }
 
@@ -917,7 +929,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
       // docs/contrato-calendarios.md §5. Si la tabla aún no existe (SQL sin
       // aplicar) o falla, se abre paso: es exactamente el comportamiento de
       // antes de este lote.
-      const finExterno = new Date(Date.parse(data.startISO) + data.durationMin * 60_000).toISOString();
+      const finExterno = new Date(Date.parse(data.startISO) + datosRecalculados.durationMin * 60_000).toISOString();
       const ocupadoExterno = await hayOcupadoExternoEnHueco(data.slug, data.employeeId, data.startISO, finExterno).catch(() => false);
       if (ocupadoExterno) {
         return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
@@ -963,6 +975,8 @@ export const syncAppointment = createServerFn({ method: "POST" })
       }
     }
 
+    const durationMinGuardada = datosRecalculados?.durationMin ?? data.durationMin;
+    const priceEurGuardado = datosRecalculados?.priceEur ?? data.priceEur;
     const fila: Record<string, unknown> = {
       salon_slug: data.slug,
       local_id: data.localId,
@@ -970,8 +984,8 @@ export const syncAppointment = createServerFn({ method: "POST" })
       service_id: data.serviceIds.join(","),
       employee_id: data.employeeId,
       start_at: data.startISO,
-      duration_min: data.durationMin,
-      price_eur: data.priceEur,
+      duration_min: durationMinGuardada,
+      price_eur: priceEurGuardado,
       // Una reserva de fuera nace pendiente; el estado lo decide el salón.
       status: manda ? data.status : "pending",
       client_confirmed_at: manda ? (data.clientConfirmedAt ?? null) : null,
@@ -1012,7 +1026,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
     if (!manda && perfilPublico) {
       const senal = senalDeReservaNueva(
         reglaSenal(perfilPublico),
-        { serviceIds: data.serviceIds, durationMin: data.durationMin, priceEur: data.priceEur },
+        { serviceIds: data.serviceIds, durationMin: durationMinGuardada, priceEur: priceEurGuardado },
         data.startISO,
       );
       if (senal.depositStatus) fila.deposit_status = senal.depositStatus;
@@ -1043,7 +1057,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
       service: data.serviceIds.join(" + ") || "Cita",
       employeeId: data.employeeId,
       start: data.startISO,
-      duration: data.durationMin,
+      duration: durationMinGuardada,
       status: fila.status as string,
       note: (fila.note as string | null) ?? null,
     };

@@ -5,11 +5,14 @@
  * (`syncAppointment`) y la pantalla de reserva, así que no puede haber dos
  * criterios distintos de «este hueco está libre».
  */
-import type { Appointment, SalonProfile } from "./mock/types";
+import type { Appointment, SalonProfile, Service } from "./mock/types";
 import type { ClienteDeCita } from "./salon-sync";
 import { inferBusinessType } from "./business-type";
 import { trabajaEnFecha } from "./horario-equipo";
 import { employeesForType } from "./mock/salon";
+import { servicesForType } from "./mock/salon";
+import { sumServices } from "./appointment-services";
+import { duracionDeAgenda } from "./duracion-flexible";
 import { ZONA_HORARIA_SALON, fechaEnZona, momentoLocal, zonaDelSalon } from "./zona-horaria";
 
 export { ZONA_HORARIA_SALON, momentoLocal } from "./zona-horaria";
@@ -22,10 +25,32 @@ export const ERROR_PRIVACIDAD_NO_CONFIRMADA = "RESERVA_PRIVACIDAD_NO_CONFIRMADA"
 export const ERROR_RESPUESTAS_RESERVA = "RESERVA_RESPUESTAS_INVALIDAS";
 export const ERROR_SERVICIO_PROFESIONAL = "RESERVA_SERVICIO_PROFESIONAL";
 export const ERROR_BLOQUEO_AGENDA = "RESERVA_BLOQUEO_AGENDA";
+export const ERROR_DATOS_RESERVA = "RESERVA_DATOS_INVALIDOS";
 
 /** La casilla acredita que se mostró la información; no expresa una base legal de consentimiento. */
 export function haLeidoAvisoPrivacidad(valor: unknown): valor is true {
   return valor === true;
+}
+
+/**
+ * La única duración, precio y carta válidos para una reserva pública. El
+ * navegador manda ids, no importes de confianza: se vuelve a leer la carta
+ * del perfil que vive en el servidor. Con duración flexible devuelve el
+ * extremo alto, el mismo que se guarda y bloquea en la agenda.
+ */
+export function datosReservaPublicaDesdeCarta(
+  perfil: Pick<SalonProfile, "name" | "tagline" | "menu" | "duracionFlexible">,
+  serviceIds: string[],
+): { durationMin: number; priceEur: number } | null {
+  if (serviceIds.length === 0) return null;
+  const carta = servicesForType(inferBusinessType(perfil.tagline, perfil.name), perfil.menu);
+  const porId = new Map(carta.map((servicio) => [servicio.id, servicio]));
+  const elegidos = serviceIds.map((id) => porId.get(id));
+  if (elegidos.some((servicio) => !servicio || servicio.active === false)) return null;
+  const servicios = elegidos as Service[];
+  const { durationMin, priceEur } = sumServices(servicios);
+  if (durationMin <= 0 || !Number.isFinite(priceEur)) return null;
+  return { durationMin: duracionDeAgenda(durationMin, !!perfil.duracionFlexible), priceEur };
 }
 
 /** Identifica el esquema que impediría guardar el acuse; las reservas deben fallar cerradas. */
@@ -63,6 +88,8 @@ export function mensajeErrorReserva(error: unknown): string {
     return "Esa profesional no realiza todos los servicios elegidos. Elige otra.";
   if (mensaje.includes(ERROR_BLOQUEO_AGENDA))
     return "Ese hueco no está disponible. Elige otra hora.";
+  if (mensaje.includes(ERROR_DATOS_RESERVA))
+    return "Los servicios o su duración han cambiado. Revisa la reserva y vuelve a elegir una hora.";
   return "No hemos podido enviar tu solicitud. Tus datos siguen aquí; inténtalo de nuevo.";
 }
 

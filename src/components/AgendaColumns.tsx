@@ -7,7 +7,7 @@ import { serviceLabelOf } from "@/lib/appointment-services";
 import { capitalizar, fechaLarga } from "@/lib/copy";
 import type { Appointment, EmployeeId } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
-import { trabajaEn } from "@/lib/horario-equipo";
+import { franjasProfesionalEnFecha } from "@/lib/horario-equipo";
 import { TiraScroll } from "@/components/TiraScroll";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
@@ -40,6 +40,10 @@ function startOfWeek(anchor: Date) {
   return monday;
 }
 
+function fechaISO(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 /**
  * Agenda v2: columnas por profesional con la hora actual marcada, en vez de
  * columnas por día. Patrón de Treatwell Pro y Boulevard (ver el informe de
@@ -52,6 +56,7 @@ function startOfWeek(anchor: Date) {
 export function AgendaColumns() {
   const carta = selectServiceMap(useSalonStore((s) => s.services));
   const appointments = useSalonStore((s) => s.appointments);
+  const profile = useSalonStore((s) => s.salonProfile);
   const employees = useEquipo();
   // Con un solo profesional no hay columnas que comparar: ni selector de
   // móvil, ni cabecera con su foto encima de su propia agenda.
@@ -119,7 +124,9 @@ export function AgendaColumns() {
     return (
       <div className="relative border-l border-border/60 first:border-l-0">
         {HOURS.map((h) => {
-          const trabaja = trabajaEn(emp, anchor.getDay(), h * 60, 30);
+          const trabaja = franjasProfesionalEnFecha(emp, fechaISO(anchor), profile.diasEspeciales).some(
+            (franja) => h * 60 >= franja.start && h * 60 + 30 <= franja.end,
+          );
           return <button
             key={h}
             type="button"

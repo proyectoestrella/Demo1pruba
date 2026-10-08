@@ -13,6 +13,7 @@ import {
   formatPriorityRange,
   isPriorityTime,
   findNextAvailableSlot,
+  profesionalesDisponiblesEnHueco,
   type SpreadSlot,
 } from "./reparto";
 import type { Appointment, Employee } from "./mock/types";
@@ -302,5 +303,27 @@ describe("findNextAvailableSlot", () => {
     expect(
       findNextAvailableSlot(employees, appts, 30, "a", { fromDate, maxDays: 1 }),
     ).toBeUndefined();
+  });
+
+  it('"any" solo ofrece el hueco si una misma profesional hace todos los servicios, trabaja y está libre', () => {
+    const a = employee("a", 10, 14);
+    const b = employee("b", 10, 14);
+    const servicios = { a: ["corte"], b: ["color"] };
+
+    // Una hace el corte pero está ocupada; la otra está libre, pero no hace
+    // todos los servicios. Antes el calendario ofrecía este hueco igualmente.
+    expect(
+      profesionalesDisponiblesEnHueco({
+        employees: [a, b],
+        appointments: [appt("a", 10, 0, 30)],
+        dateKey: MONDAY,
+        startMin: 10 * 60,
+        durationMin: 30,
+        startISO: "2026-09-21T10:00:00.000Z",
+        timeZone: "UTC",
+        serviceIds: ["corte", "color"],
+        serviciosPorProfesional: servicios,
+      }),
+    ).toEqual([]);
   });
 });

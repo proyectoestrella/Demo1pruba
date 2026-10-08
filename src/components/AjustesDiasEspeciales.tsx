@@ -7,14 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import type { DiaEspecial, FranjaEspecial } from "@/lib/mock/types";
+import { validarFranjasEspeciales } from "@/lib/opening-hours";
 
 const FESTIVOS_MADRID_2026 = ["2026-10-12", "2026-11-02", "2026-11-09", "2026-12-07", "2026-12-08", "2026-12-25"];
 
 function parseFranjas(value: string): FranjaEspecial[] {
-  return value.split(",").flatMap((chunk) => {
-    const m = chunk.trim().match(/^(\d{1,2}:\d{2})\s*[–—-]\s*(\d{1,2}:\d{2})$/);
-    return m ? [{ inicio: m[1].padStart(5, "0"), fin: m[2].padStart(5, "0") }] : [];
-  });
+  return validarFranjasEspeciales(value).ranges.map((r) => ({
+    inicio: `${String(Math.floor(r.start / 60)).padStart(2, "0")}:${String(r.start % 60).padStart(2, "0")}`,
+    fin: `${String(Math.floor(r.end / 60)).padStart(2, "0")}:${String(r.end % 60).padStart(2, "0")}`,
+  }));
 }
 
 function textoFranjas(franjas: FranjaEspecial[] | undefined): string {
@@ -42,9 +43,14 @@ export function AjustesDiasEspeciales() {
   const [editando, setEditando] = useState<string | null>(null);
   const lista = [...(perfil.diasEspeciales ?? [])].sort((a, b) => a.fecha.localeCompare(b.fecha));
   const cambiar = (patch: Partial<Form>) => setForm((f) => ({ ...f, ...patch }));
+  const erroresFranjas = form.cerrado ? [] : validarFranjasEspeciales(form.franjas).errores;
+  const erroresSolo = form.cerrado
+    ? {} as Record<string, string[]>
+    : Object.fromEntries(Object.entries(form.solo).map(([id, valor]) => [id, validarFranjasEspeciales(valor).errores]));
+  const hayErrores = erroresFranjas.length > 0 || Object.values(erroresSolo).some((errores) => errores.length > 0);
 
   const guardar = () => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.fecha)) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.fecha) || hayErrores) return;
     const franjas = parseFranjas(form.franjas);
     const soloProfesionales = Object.fromEntries(Object.entries(form.solo).map(([id, valor]) => [id, parseFranjas(valor)]).filter(([, rangos]) => rangos.length));
     const siguiente: DiaEspecial = {
@@ -79,8 +85,8 @@ export function AjustesDiasEspeciales() {
     <div className="grid gap-3 rounded-2xl bg-nata p-3.5">
       <div className="grid gap-3 sm:grid-cols-2"><label className="grid gap-1 text-[13px] font-bold">Fecha<Input type="date" value={form.fecha} onChange={(e) => cambiar({ fecha: e.target.value })} className={campo} /></label><label className="grid gap-1 text-[13px] font-bold">Nota (opcional)<Input value={form.nota} maxLength={100} onChange={(e) => cambiar({ nota: e.target.value })} placeholder="Por ejemplo, Nochebuena" className={campo} /></label></div>
       <div className="flex items-center justify-between gap-4"><span className="text-sm font-bold">Cerrado todo el día</span><Switch checked={form.cerrado} onCheckedChange={(cerrado) => cambiar({ cerrado })} /></div>
-      {!form.cerrado && <><label className="grid gap-1 text-[13px] font-bold">Horario especial del salón <span className="font-normal text-muted-foreground">· opcional, 10:00–15:00</span><Input value={form.franjas} onChange={(e) => cambiar({ franjas: e.target.value })} placeholder="10:00–15:00" className={campo} /></label><div><p className="text-[13px] font-bold">Solo trabajan estas profesionales <span className="font-normal text-muted-foreground">· reemplaza su semana y puede abrir un día cerrado</span></p><div className="mt-2 grid gap-2 sm:grid-cols-2">{equipo.map((e) => { const activo = e.id in form.solo; return <label key={e.id} className="flex items-center gap-2 rounded-xl border border-lino bg-card px-3 py-2"><input type="checkbox" checked={activo} onChange={(ev) => { const solo = { ...form.solo }; if (ev.target.checked) solo[e.id] = "10:00–20:00"; else delete solo[e.id]; cambiar({ solo }); }} /><span className="min-w-0 flex-1 text-sm font-bold">{e.name}</span>{activo && <input aria-label={`Horario de ${e.name}`} value={form.solo[e.id]} onChange={(ev) => cambiar({ solo: { ...form.solo, [e.id]: ev.target.value } })} className="h-8 w-28 rounded-lg border border-input px-2 text-xs" />}</label>; })}</div></div></>}
-      <div className="flex gap-2"><Button type="button" onClick={guardar} disabled={!form.fecha}>{editando ? "Guardar día" : "Añadir día"}</Button>{editando && <Button type="button" variant="ghost" onClick={() => { setForm(vacio()); setEditando(null); }}>Cancelar</Button>}</div>
+      {!form.cerrado && <><label className="grid gap-1 text-[13px] font-bold">Horario especial del salón <span className="font-normal text-muted-foreground">· opcional, 10:00–15:00</span><Input value={form.franjas} onChange={(e) => cambiar({ franjas: e.target.value })} placeholder="10:00–15:00" className={campo} />{erroresFranjas.length > 0 && <span role="alert" className="text-xs font-medium text-destructive">Corrige las franjas: {erroresFranjas.join(", ")}. El final debe ser posterior al inicio.</span>}</label><div><p className="text-[13px] font-bold">Solo trabajan estas profesionales <span className="font-normal text-muted-foreground">· reemplaza su semana y puede abrir un día cerrado</span></p><div className="mt-2 grid gap-2 sm:grid-cols-2">{equipo.map((e) => { const activo = e.id in form.solo; const errores = erroresSolo[e.id] ?? []; return <label key={e.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-lino bg-card px-3 py-2"><input type="checkbox" checked={activo} onChange={(ev) => { const solo = { ...form.solo }; if (ev.target.checked) solo[e.id] = "10:00–20:00"; else delete solo[e.id]; cambiar({ solo }); }} /><span className="min-w-0 flex-1 text-sm font-bold">{e.name}</span>{activo && <input aria-label={`Horario de ${e.name}`} value={form.solo[e.id]} onChange={(ev) => cambiar({ solo: { ...form.solo, [e.id]: ev.target.value } })} className="h-8 w-28 rounded-lg border border-input px-2 text-xs" />}{errores.length > 0 && <span role="alert" className="w-full text-xs font-medium text-destructive">Corrige: {errores.join(", ")}.</span>}</label>; })}</div></div></>}
+      <div className="flex gap-2"><Button type="button" onClick={guardar} disabled={!form.fecha || hayErrores}>{editando ? "Guardar día" : "Añadir día"}</Button>{editando && <Button type="button" variant="ghost" onClick={() => { setForm(vacio()); setEditando(null); }}>Cancelar</Button>}</div>
     </div>
   </div>;
 }

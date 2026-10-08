@@ -2,6 +2,7 @@ import type { Appointment, BloqueoAgenda, DiaEspecial, Employee } from "./mock/t
 import { franjasProfesional, franjasProfesionalEnFecha, huecosDeProfesionales, huecosDeProfesionalesEnFecha, trabajaEn, trabajaEnFecha } from "./horario-equipo";
 import { hayBloqueoEnHueco } from "./bloqueos-agenda";
 import { ZONA_HORARIA_SALON, isoDelSalon } from "./zona-horaria";
+import { profesionalHaceServicios } from "./servicios-profesional";
 
 /**
  * Reparto de agenda ("smartSpread", clave "k" del enlace de demo — ver
@@ -204,6 +205,46 @@ export interface NextSlot {
 }
 
 /**
+ * Profesionales que pueden atender UN MISMO hueco. Esta es deliberadamente
+ * una comprobación conjunta: no basta con que A haga un servicio y B esté
+ * libre. La reserva solo existe si la misma persona hace todos los servicios,
+ * trabaja toda la franja (incluidos los días especiales) y no está ocupada ni
+ * bloqueada.
+ */
+export function profesionalesDisponiblesEnHueco({
+  employees,
+  appointments,
+  dateKey,
+  startMin,
+  durationMin,
+  startISO,
+  timeZone,
+  diasEspeciales,
+  bloqueosAgenda,
+  serviceIds = [],
+  serviciosPorProfesional,
+}: {
+  employees: Employee[];
+  appointments: Appointment[];
+  dateKey: string;
+  startMin: number;
+  durationMin: number;
+  startISO: string;
+  timeZone: string;
+  diasEspeciales?: DiaEspecial[];
+  bloqueosAgenda?: BloqueoAgenda[];
+  serviceIds?: string[];
+  serviciosPorProfesional?: Record<string, string[]>;
+}): Employee[] {
+  return employees.filter((employee) =>
+    profesionalHaceServicios(employee.id, serviceIds, serviciosPorProfesional) &&
+    trabajaEnFecha(employee, dateKey, startMin, durationMin, diasEspeciales) &&
+    !isSlotTakenLocal(appointments, employee.id, startISO, durationMin) &&
+    !hayBloqueoEnHueco(bloqueosAgenda, employee.id, startISO, durationMin, timeZone),
+  );
+}
+
+/**
  * Primer hueco libre, a partir de `fromDate` (hoy si no se indica), para un
  * profesional concreto o "any" (cualquiera del equipo). Recorre como mucho
  * `maxDays` días; `undefined` si no encuentra nada en ese horizonte (agenda
@@ -230,6 +271,8 @@ export function findNextAvailableSlot(
     timeZone?: string;
     diasEspeciales?: DiaEspecial[];
     bloqueosAgenda?: BloqueoAgenda[];
+    serviceIds?: string[];
+    serviciosPorProfesional?: Record<string, string[]>;
   } = {},
 ): NextSlot | undefined {
   const ahora = +(opts.now ?? opts.fromDate ?? new Date());
@@ -267,10 +310,19 @@ export function findNextAvailableSlot(
         const iso = isoDelSalon(dateKey, timeStr, timeZone);
         // Una hora que ya ha pasado no es un hueco.
         if (Date.parse(iso) <= ahora) continue;
-        const free = relevantEmployees.some(
-          (e) => trabajaEnFecha(e, dateKey, minutesOfDay, durationMin, opts.diasEspeciales) && !isSlotTakenLocal(appointments, e.id, iso, durationMin) && !hayBloqueoEnHueco(opts.bloqueosAgenda, e.id, iso, durationMin, timeZone),
-        );
-        if (free) return { dateKey, time: timeStr };
+        if (profesionalesDisponiblesEnHueco({
+          employees: relevantEmployees,
+          appointments,
+          dateKey,
+          startMin: minutesOfDay,
+          durationMin,
+          startISO: iso,
+          timeZone,
+          diasEspeciales: opts.diasEspeciales,
+          bloqueosAgenda: opts.bloqueosAgenda,
+          serviceIds: opts.serviceIds,
+          serviciosPorProfesional: opts.serviciosPorProfesional,
+        }).length > 0) return { dateKey, time: timeStr };
     }
   }
   return undefined;

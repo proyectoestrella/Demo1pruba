@@ -79,12 +79,18 @@ function ventana(h: number | undefined): VentanaSenal {
 export function reglaSenal(perfil: Partial<PerfilSenal> | null | undefined): ReglaSenal {
   const p = perfil ?? {};
   const porcentaje = Math.min(100, Math.max(1, Math.round(Number(p.depositPercent) || 20)));
+  const tarifaPorHora = Number(p.depositHourlyRateEur);
   return {
     activa: p.depositEnabled === true,
     modo: p.depositMode === "porcentaje" || p.depositMode === "hora" ? p.depositMode : "fijo",
     importeFijoEur: Math.max(0, Number(p.depositAmountEur) || 10),
     porcentaje,
-    tarifaPorHoraEur: Math.max(0, Number(p.depositHourlyRateEur) || 5),
+    // Ausente conserva el antiguo valor por defecto (5 €); 0 o vacío son una
+    // elección explícita de no pedir señal por hora, no un motivo para volver
+    // a inventar 5 € con `|| 5`.
+    tarifaPorHoraEur: p.depositHourlyRateEur === undefined
+      ? 5
+      : Math.max(0, Number.isFinite(tarifaPorHora) ? tarifaPorHora : 0),
     aplicaA: (["todas", "nuevas", "duracion", "servicios"] as const).includes(p.depositAppliesTo as AplicaSenal)
       ? (p.depositAppliesTo as AplicaSenal)
       : "todas",
@@ -131,13 +137,13 @@ export function aplicaSenal(regla: ReglaSenal, r: ReservaParaSenal): boolean {
   }
 }
 
-/** Importe de la señal en euros. El modo por hora sube solo al siguiente medio euro. */
+/** Importe de la señal en euros. El modo por hora se redondea hacia arriba al céntimo. */
 export function importeSenal(regla: ReglaSenal, r: ReservaParaSenal): number {
   if (!aplicaSenal(regla, r)) return 0;
   if (regla.modo === "hora") {
-    const bruto = (regla.tarifaPorHoraEur * Math.max(0, r.durationMin)) / 60;
-    // Una duración de 90 min a 5 €/h ya da 7,50; no se añade otro redondeo.
-    return Math.max(0, Math.ceil((bruto - Number.EPSILON) * 2) / 2);
+    const tarifaCents = Math.max(0, Math.round(regla.tarifaPorHoraEur * 100));
+    const minutos = Math.max(0, Math.round(r.durationMin));
+    return Math.ceil((tarifaCents * minutos) / 60) / 100;
   }
   const bruto = regla.modo === "porcentaje" ? (r.priceEur * regla.porcentaje) / 100 : regla.importeFijoEur;
   // Los modos tradicionales se mantienen en euros enteros y topados al servicio.
@@ -161,9 +167,13 @@ export function textoSenalPublico(
   r: ReservaParaSenal,
   salonName: string,
   eur: (n: number) => string,
+  opciones: { ocultarImporte?: boolean } = {},
 ): string | null {
   const importe = importeSenal(regla, r);
   if (importe <= 0) return null;
+  // En porcentaje, revelar la cifra permite reconstruir el precio que el
+  // salón decidió ocultar. Fijo y por hora no dependen de ese precio.
+  if (opciones.ocultarImporte && regla.modo === "porcentaje") return "Se pedirá una señal por Bizum.";
   const primera = regla.aplicaA === "nuevas" && r.esNueva === undefined ? "Si es tu primera visita, " : "";
   const quien = primera ? "te pediremos" : `${salonName} te pedirá`;
   const plazo = `${regla.ventanaHoras} ${regla.ventanaHoras === 1 ? "hora" : "horas"}`;

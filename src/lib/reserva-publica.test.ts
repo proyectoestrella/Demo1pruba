@@ -4,6 +4,7 @@ import {
   ERROR_FUERA_HORARIO,
   ERROR_HUECO_OCUPADO,
   ERROR_PRIVACIDAD_NO_CONFIRMADA,
+  datosReservaPublicaDesdeCarta,
   faltaColumnaAcusePrivacidad,
   haLeidoAvisoPrivacidad,
   firmaReservaPublica,
@@ -129,5 +130,23 @@ describe("horario por profesional visto desde el servidor", () => {
     void _fuera;
     expect(profesionalTrabaja(soloLocal, "diego", "2026-09-28T08:00:00.000Z", 60)).toBe(true);
     expect(profesionalTrabaja(soloLocal, "diego", "2026-09-28T13:00:00.000Z", 60)).toBe(false);
+  });
+});
+
+describe("datos de una reserva pública", () => {
+  const perfil = {
+    name: "PeluChic",
+    tagline: "Peluquería",
+    menu: ["Corte~30~20~~~corte", "Color~60~40~~~color"],
+  };
+
+  it("recalcula carta, precio y duración y guarda el extremo alto si es flexible", () => {
+    expect(datosReservaPublicaDesdeCarta(perfil, ["corte", "color"])).toEqual({ durationMin: 90, priceEur: 60 });
+    expect(datosReservaPublicaDesdeCarta({ ...perfil, duracionFlexible: true }, ["corte", "color"])).toEqual({ durationMin: 135, priceEur: 60 });
+  });
+
+  it("rechaza ids ausentes o servicios inactivos en vez de creer al navegador", () => {
+    expect(datosReservaPublicaDesdeCarta(perfil, ["inventado"])).toBeNull();
+    expect(datosReservaPublicaDesdeCarta({ ...perfil, menu: ["Corte~30~20~~off~corte"] }, ["corte"])).toBeNull();
   });
 });

@@ -4,16 +4,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Info, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType, textosDeCarta } from "@/lib/mock/salon";
 import { reglaSenal, senalDeReservaNueva, servicioLlevaSenal, textoSenalPublico, type ReglaSenal } from "@/lib/senal";
-import { franjasProfesionalEnFecha, huecosDeProfesionalesEnFecha, trabajaEnFecha } from "@/lib/horario-equipo";
-import { hayBloqueoEnHueco } from "@/lib/bloqueos-agenda";
+import { franjasProfesionalEnFecha, huecosDeProfesionalesEnFecha } from "@/lib/horario-equipo";
 import { isoDelSalon, zonaDelSalon } from "@/lib/zona-horaria";
 import { antelacionMinima, huecoAunReservable } from "@/lib/primer-hueco";
 import type { Appointment, BookingAnswers, Client, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { serializeBookingNote } from "@/lib/booking-answers";
 import { idDetalleOtro, limpiarRespuestas, obligatoriasSinResponder, preguntasAplicables, preguntasDelSalon } from "@/lib/preguntas-reserva";
 import type { PreguntaReserva } from "@/lib/mock/types";
-import { useSalonStore, isSlotTaken } from "@/lib/store";
-import { duracionFlexibleActiva } from "@/lib/duracion-flexible";
+import { useSalonStore } from "@/lib/store";
+import { duracionDeAgenda, duracionFlexibleActiva } from "@/lib/duracion-flexible";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
 import {
@@ -24,6 +23,7 @@ import {
 } from "@/lib/business-type";
 import { findClientByPhone, isBookingBlocked } from "@/lib/no-show";
 import { profesionalesParaServicios } from "@/lib/servicios-profesional";
+import { ultimaReservaEsRepetible } from "@/lib/reserva-repetida";
 import {
   toDateKey,
   hourOccupancyPct,
@@ -33,6 +33,7 @@ import {
   pickAlternativeSlots,
   isPriorityTime,
   findNextAvailableSlot,
+  profesionalesDisponiblesEnHueco,
   type SpreadSlot,
 } from "@/lib/reparto";
 import { StylistAvatar } from "@/components/StylistAvatar";
@@ -90,8 +91,7 @@ function formatMinutes(min: number): string {
  * servicio de catálogo de 90 min se enseña como "1 h 30 – 2 h 15".
  */
 function flexDurationRange(catalogMin: number): { lo: number; hi: number } {
-  const hi = Math.round((catalogMin * 1.5) / 15) * 15;
-  return { lo: catalogMin, hi: Math.max(hi, catalogMin) };
+  return { lo: catalogMin, hi: duracionDeAgenda(catalogMin, true) };
 }
 
 /** "1 minuto"/"45 minutos"/"1 hora" — para el aviso de recargo por retraso. */
@@ -123,16 +123,28 @@ function resolveEmployee(
   timeZone: string,
   diasEspeciales?: import("@/lib/mock/types").DiaEspecial[],
   bloqueosAgenda?: import("@/lib/mock/types").BloqueoAgenda[],
-): EmployeeId {
-  if (stylistChoice && stylistChoice !== "any") return stylistChoice;
+  serviceIds: string[] = [],
+  serviciosPorProfesional?: Record<string, string[]>,
+): EmployeeId | null {
   const [hh, mm] = time.split(":").map(Number);
   const startMin = hh * 60 + mm;
-  const candidate = employees.find((e) => {
-    if (!trabajaEnFecha(e, date, startMin, durationMin, diasEspeciales)) return false;
-    const startISO = isoDelSalon(date, time, timeZone);
-    return !isSlotTaken(appointments, e.id, startISO, durationMin) && !hayBloqueoEnHueco(bloqueosAgenda, e.id, startISO, durationMin, timeZone);
+  const candidates = stylistChoice && stylistChoice !== "any"
+    ? employees.filter((employee) => employee.id === stylistChoice)
+    : employees;
+  const candidate = profesionalesDisponiblesEnHueco({
+    employees: candidates,
+    appointments,
+    dateKey: date,
+    startMin,
+    durationMin,
+    startISO: isoDelSalon(date, time, timeZone),
+    timeZone,
+    diasEspeciales,
+    bloqueosAgenda,
+    serviceIds,
+    serviciosPorProfesional,
   });
-  return candidate?.id ?? employees[0].id;
+  return candidate[0]?.id ?? null;
 }
 
 /** `?service=corte` o `?service=corte,barba`: solo cuentan los ids que existen en este catálogo. */
@@ -389,6 +401,11 @@ function BookingWizard() {
   // Precio y duración de la cita son la suma: el hueco que se reserva y el
   // umbral del depósito miran el total, no el primer servicio.
   const { durationMin: totalMin, priceEur: total } = sumServices(selectedServices);
+  const flexible = duracionFlexibleDemo;
+  const flexRange = flexible ? flexDurationRange(totalMin) : null;
+  // Con duración flexible se bloquea el extremo alto: la misma cifra viaja
+  // al servidor y es la base de la señal, no solo del calendario visual.
+  const schedulingDurationMin = flexRange ? flexRange.hi : totalMin;
   const stylistChoice = data.employeeId;
   const employeeName =
     stylistChoice === "any"
@@ -400,9 +417,8 @@ function BookingWizard() {
   // no sabe si la clienta es nueva: con la regla «solo nuevas» avisa «si es tu
   // primera visita».
   const reglaSen = reglaSenal(profile);
-  const reservaSenal = { serviceIds: data.serviceIds, durationMin: totalMin, priceEur: total };
-  // La señal no es el precio del servicio: se informa incluso si el salón oculta tarifas.
-  const textoSenal = textoSenalPublico(reglaSen, reservaSenal, profile.name, eur);
+  const reservaSenal = { serviceIds: data.serviceIds, durationMin: schedulingDurationMin, priceEur: total };
+  const textoSenal = textoSenalPublico(reglaSen, reservaSenal, profile.name, eur, { ocultarImporte: !mostrarPrecio });
 
   // Mejora B1 (grounding externo, patrón Booksy): "Repetir mi última cita".
   // Se lee una sola vez al montar el wizard — si se aplica y el cliente sigue
@@ -417,9 +433,7 @@ function BookingWizard() {
   // el catálogo actual: una carta que cambió entre visitas no debe ofrecer
   // un "repetir" con un servicio que ya no se hace.
   const repeatValid =
-    !!lastBooking &&
-    repeatServices.length === lastBooking.serviceIds.length &&
-    !!employeeMap[lastBooking.employeeId];
+    ultimaReservaEsRepetible(lastBooking, serviceMap, employees.map((employee) => employee.id), profile.serviciosPorProfesional);
   const repeatDuration = repeatValid ? sumServices(repeatServices).durationMin : 0;
   const repeatNextSlot = useMemo(() => {
     if (!repeatValid || !lastBooking) return undefined;
@@ -428,6 +442,8 @@ function BookingWizard() {
       timeZone: zonaDelSalon(profile),
       diasEspeciales: profile.diasEspeciales,
       bloqueosAgenda: profile.bloqueosAgenda,
+      serviceIds: lastBooking.serviceIds,
+      serviciosPorProfesional: profile.serviciosPorProfesional,
     });
   }, [
     repeatValid,
@@ -439,6 +455,7 @@ function BookingWizard() {
     profile.timeZone,
     profile.diasEspeciales,
     profile.bloqueosAgenda,
+    profile.serviciosPorProfesional,
   ]);
   const showRepeatBanner =
     step === 1 && data.serviceIds.length === 0 && repeatValid && !!repeatNextSlot && !!lastBooking;
@@ -537,7 +554,13 @@ function BookingWizard() {
       zonaDelSalon(profile),
       profile.diasEspeciales,
       profile.bloqueosAgenda,
+      serviceIds,
+      profile.serviciosPorProfesional,
     );
+    if (!employeeId) {
+      setSendError("Esa hora ya no está disponible, elige otra.");
+      return;
+    }
     const startISO = isoDelSalon(data.date, data.time, zonaDelSalon(profile));
     // Una clienta que repite y teclea su teléfono (con espacios, guiones o
     // prefijo distintos a la vez anterior) tiene que quedar enlazada a SU
@@ -617,7 +640,7 @@ function BookingWizard() {
           serviceIds,
           employeeId,
           startISO,
-          durationMin: totalMin,
+          durationMin: schedulingDurationMin,
           priceEur: total,
           note: serializeBookingNote(data.note, limpiarRespuestas(preguntas, data.bookingAnswers)),
         },
@@ -666,12 +689,7 @@ function BookingWizard() {
   }
 
   // Duración orientativa cuando el salón decide la duración final (caso
-  // PeluChic, clave "df" del enlace de demo). El precio y el hueco que se
-  // reserva siguen calculándose sobre `totalMin`/`total`: esto es solo lo
-  // que se ENSEÑA, salvo en la búsqueda de huecos de más abajo, donde se usa
-  // el extremo alto del rango para no ofrecer horas que luego no quepan.
-  const flexible = duracionFlexibleDemo;
-  const flexRange = flexible ? flexDurationRange(totalMin) : null;
+  // PeluChic, clave "df" del enlace de demo).
   const durationLabel =
     flexRange && totalMin > 0
       ? `aprox. ${formatMinutes(flexRange.lo)} – ${formatMinutes(flexRange.hi)}`
@@ -679,11 +697,6 @@ function BookingWizard() {
   const flexNota = flexible
     ? `La duración final la confirma ${profile.name || "el salón"} al aceptar tu solicitud.`
     : undefined;
-  // Duración con la que se buscan y filtran huecos: con duración flexible se
-  // reserva el extremo alto del rango para no ofrecer citas que luego no
-  // quepan en la agenda.
-  const schedulingDurationMin = flexRange ? flexRange.hi : totalMin;
-
   const recargoTexto = mostrarPrecio && conRecargo && recargoRetraso ? recargoRetrasoTexto(recargoRetraso) : undefined;
 
   const dateLabel = data.date
@@ -775,6 +788,8 @@ function BookingWizard() {
               recargoTexto={recargoTexto}
               diasEspeciales={profile.diasEspeciales}
               bloqueosAgenda={profile.bloqueosAgenda}
+              serviceIds={data.serviceIds}
+              serviciosPorProfesional={profile.serviciosPorProfesional}
             />
           )}
 
@@ -1308,6 +1323,8 @@ function DateTimeStep({
   antelacionMin,
   diasEspeciales,
   bloqueosAgenda,
+  serviceIds,
+  serviciosPorProfesional,
 }: {
   /** Zona horaria de la agenda del salón (ver lib/zona-horaria.ts). */
   timeZone: string;
@@ -1315,6 +1332,8 @@ function DateTimeStep({
   antelacionMin: number;
   diasEspeciales?: import("@/lib/mock/types").DiaEspecial[];
   bloqueosAgenda?: import("@/lib/mock/types").BloqueoAgenda[];
+  serviceIds: string[];
+  serviciosPorProfesional?: Record<string, string[]>;
   /** Duración con la que se busca hueco libre — con duración flexible ya es el extremo alto del rango. */
   durationMin: number;
   stylistChoice: EmployeeId | "any";
@@ -1381,19 +1400,24 @@ function DateTimeStep({
         const m = minuto % 60;
         if (h * 60 + m >= closeMinOffered) continue;
         const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-        const open = relevantEmployees.some((e) => {
-          return trabajaEnFecha(e, dateKey, minuto, durationMin, diasEspeciales);
-        });
-        if (!open) continue;
         // Lote 16: un hueco de hoy que ya pasó (o está a menos de la
         // antelación) no se ofrece; sin esto, un sábado a las 19:05 salía
         // «Lo antes posible: hoy a las 12:30».
         if (!huecoAunReservable(dateKey, timeStr, timeZone, new Date(), antelacionMin)) continue;
         const iso = isoDelSalon(dateKey, timeStr, timeZone);
-        const free = relevantEmployees.some(
-          (e) => !isSlotTaken(appointments, e.id, iso, durationMin) && !hayBloqueoEnHueco(bloqueosAgenda, e.id, iso, durationMin, timeZone),
-        );
-        if (free) return false;
+        if (profesionalesDisponiblesEnHueco({
+          employees: relevantEmployees,
+          appointments,
+          dateKey,
+          startMin: minuto,
+          durationMin,
+          startISO: iso,
+          timeZone,
+          diasEspeciales,
+          bloqueosAgenda,
+          serviceIds,
+          serviciosPorProfesional,
+        }).length > 0) return false;
     }
     return true;
   }
@@ -1445,18 +1469,24 @@ function DateTimeStep({
         // "No ofrecer los últimos X minutos": el hueco ni se lista.
         if (h * 60 + m >= closeMinOffered) continue;
         const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-        const open = relevantEmployees.some((e) => {
-          return trabajaEnFecha(e, dateKey, minuto, durationMin, diasEspeciales);
-        });
-        if (!open) continue;
         // Lote 16: un hueco de hoy que ya pasó (o está a menos de la
         // antelación) no se ofrece; sin esto, un sábado a las 19:05 salía
         // «Lo antes posible: hoy a las 12:30».
         if (!huecoAunReservable(dateKey, timeStr, timeZone, new Date(), antelacionMin)) continue;
         const iso = isoDelSalon(dateKey, timeStr, timeZone);
-        const available = relevantEmployees.some(
-          (e) => !isSlotTaken(appointments, e.id, iso, durationMin) && !hayBloqueoEnHueco(bloqueosAgenda, e.id, iso, durationMin, timeZone),
-        );
+        const available = profesionalesDisponiblesEnHueco({
+          employees: relevantEmployees,
+          appointments,
+          dateKey,
+          startMin: minuto,
+          durationMin,
+          startISO: iso,
+          timeZone,
+          diasEspeciales,
+          bloqueosAgenda,
+          serviceIds,
+          serviciosPorProfesional,
+        }).length > 0;
         out.push({
           time: timeStr,
           available,
@@ -1479,6 +1509,8 @@ function DateTimeStep({
     antelacionMin,
     diasEspeciales,
     bloqueosAgenda,
+    serviceIds,
+    serviciosPorProfesional,
   ]);
 
   const groups = useMemo(() => {

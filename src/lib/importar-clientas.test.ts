@@ -79,6 +79,26 @@ test("tolera apelidos y conserva un fijo sin confundirlo con el móvil", () => {
   expect(vistaPreviaClientas(tabla, []).filas[0]).toMatchObject({ nombre: "Eva Prueba", telefono: "600111222", codigo: "8" });
 });
 
+test("móvil y fijo ocupan columnas distintas, con prioridad del móvil", () => {
+  expect(detectarColumnas(["Nombre", "Apelidos", "Telefono", "Movi"])).toMatchObject({
+    nombre: 0,
+    apellidos: 1,
+    telefono: 3,
+    telefono2: 2,
+  });
+
+  // Las once cabeceras exportadas por TPV 123 de PeluChic: el móvil no puede
+  // fundirse con el fijo ni depender del orden en que se recorren los alias.
+  expect(detectarColumnas(["COD", "Nombre", "Apellidos", "dnicif", "direccion", "F.Alta", "Cumpleaños", "Ult.Visita", "Telefono", "movi", "E-mail"])).toEqual({
+    codigo: 0,
+    nombre: 1,
+    apellidos: 2,
+    telefono: 9,
+    telefono2: 8,
+    email: 10,
+  });
+});
+
 test("agrupa el histórico plano por clienta y fecha, enlaza por código y aproxima servicios y equipo", () => {
   const tabla = leerCsv("Código Cliente,Cliente,Factura,Fecha,Venta,Concepto,Empleado,Precio\n42,María Pérez,F1,10/03/2025,,Corte de puntas,Ana,20\n42,María Pérez,F1,10/03/2025,,Color raíz,Ana,35\n88,Desconocida,F2,11/03/2025,,Corte,Ana,20\n");
   const maria = { ...existente, id: "maria", name: "María Pérez" };

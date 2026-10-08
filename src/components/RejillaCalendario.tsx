@@ -341,6 +341,7 @@ function mismaColumna(a: PropsColumna, b: PropsColumna): boolean {
     a.services === b.services &&
     a.onCita === b.onCita &&
     a.onHueco === b.onHueco &&
+    a.diasEspeciales === b.diasEspeciales &&
     sel(a) === sel(b) &&
     (!esHoy || (mismoDia(a.ahora, b.ahora) && minutosDe(a.ahora) === minutosDe(b.ahora))) &&
     mismoDia(a.columna.dia, a.ahora) === esHoy

@@ -25,6 +25,7 @@ import { indiceColorServicio } from "@/lib/hoy-arena";
 import { franjasProfesionalEnFecha, trabajaEnFecha } from "@/lib/horario-equipo";
 import { hayBloqueoEnHueco } from "@/lib/bloqueos-agenda";
 import { profesionalHaceServicios } from "@/lib/servicios-profesional";
+import { profesionalesDisponiblesEnHueco } from "@/lib/reparto";
 import {
   citasQueOcupan,
   clientasFrecuentes,
@@ -292,7 +293,24 @@ function FormularioNuevaCita({
 
   function cualquieraLibre() {
     const inicioISO = isoDelSalon(date, time, zonaHoraria);
-    const libre = employees.find((e) => trabajaEnFecha(e, date, minutoElegido, totalMin, profile.diasEspeciales) && !horaOcupada(ocupanDia, e.id, minutoElegido, totalMin) && !hayBloqueoEnHueco(profile.bloqueosAgenda, e.id, inicioISO, totalMin, zonaHoraria));
+    // «Cualquiera libre» respeta la especialidad; escoger manualmente otra
+    // persona sigue permitido a la gerente y mantiene su aviso existente.
+    const candidatas = otro
+      ? employees
+      : employees.filter((e) => profesionalHaceServicios(e.id, serviceIds, serviciosPorProfesional));
+    const libre = profesionalesDisponiblesEnHueco({
+      employees: candidatas,
+      appointments,
+      dateKey: date,
+      startMin: minutoElegido,
+      durationMin: totalMin,
+      startISO: inicioISO,
+      timeZone: zonaHoraria,
+      diasEspeciales: profile.diasEspeciales,
+      bloqueosAgenda: profile.bloqueosAgenda,
+      serviceIds: otro ? [] : serviceIds,
+      serviciosPorProfesional,
+    })[0];
     if (libre) {
       setEmployeeId(libre.id);
       toast.success(`${libre.name} está libre a las ${time}`);

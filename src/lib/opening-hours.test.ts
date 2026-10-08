@@ -4,6 +4,7 @@ import {
   fromGoogleWeekdayDescriptions,
   isOpenNow,
   normalizeDay,
+  validarFranjasEspeciales,
   parseRanges,
   todayOpenInfo,
   weekSchedule,
@@ -26,6 +27,15 @@ describe("parseRanges", () => {
     expect(parseRanges("Cerrado")).toEqual([]);
     expect(parseRanges("Abierto las 24 horas")).toEqual([]);
     expect(parseRanges(undefined)).toEqual([]);
+  });
+});
+
+describe("franjas de días especiales", () => {
+  it("señala cada tramo ilegible o degenerado en vez de abrirlo o descartarlo en silencio", () => {
+    expect(validarFranjasEspeciales("10:00–15:00, 16:00–16:00, esto no es una hora, 22:00–02:00")).toEqual({
+      ranges: [{ start: 600, end: 900 }],
+      errores: ["16:00–16:00", "esto no es una hora", "22:00–02:00"],
+    });
   });
 });
 

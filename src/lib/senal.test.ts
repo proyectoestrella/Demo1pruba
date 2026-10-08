@@ -35,6 +35,14 @@ describe("una sola regla de señal por salón", () => {
     expect(textoSenalPublico(r, { serviceIds: ["x"], durationMin: 90, priceEur: 0 }, "PeluChic", (n) => `${n.toFixed(2).replace(".", ",")} €`)).toContain("7,50 €");
   });
 
+  it("por hora redondea en céntimos, sin inventar 5 € si la tarifa es cero", () => {
+    const cinco = reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 5 });
+    expect(importeSenal(cinco, { serviceIds: ["x"], durationMin: 90, priceEur: 100 })).toBe(7.5);
+    expect(importeSenal(cinco, { serviceIds: ["x"], durationMin: 50, priceEur: 100 })).toBe(4.17);
+    expect(reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 0 }).tarifaPorHoraEur).toBe(0);
+    expect(importeSenal(reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 0 }), { serviceIds: ["x"], durationMin: 90, priceEur: 100 })).toBe(0);
+  });
+
   it("a partir de X minutos, por lista de servicios y solo a clientas nuevas", () => {
     const larga = reglaSenal({ depositEnabled: true, depositAppliesTo: "duracion", depositMinMinutes: 60 });
     expect(aplicaSenal(larga, mechas)).toBe(true);
@@ -104,6 +112,12 @@ describe("un solo mensaje para la clienta", () => {
     expect(textoSenalPublico(sinLiberacion, corte, "PeluChic", eur)).not.toContain("se anula");
     expect(respuestaFaqSenal(conLiberacion, eur)).toContain("Si no llega a tiempo, la cita se anula y el hueco queda libre.");
     expect(respuestaFaqSenal(sinLiberacion, eur)).not.toContain("se anula");
+  });
+
+  it("con precios ocultos no revela el importe de una señal porcentual", () => {
+    const r = reglaSenal({ depositEnabled: true, depositMode: "porcentaje", depositPercent: 25 });
+    expect(textoSenalPublico(r, mechas, "PeluChic", eur, { ocultarImporte: true })).toBe("Se pedirá una señal por Bizum.");
+    expect(textoSenalPublico(r, mechas, "PeluChic", eur, { ocultarImporte: false })).toContain("20 €");
   });
 });
 

@@ -41,7 +41,7 @@ export interface Range {
 }
 
 /** "10:00–13:30, 17:00–20:00" → franjas en minutos. Cualquier cosa rara → sin franjas. */
-export function parseRanges(day: string | undefined): Range[] {
+export function parseRanges(day: string | undefined, { permitirNoche = true }: { permitirNoche?: boolean } = {}): Range[] {
   if (!day) return [];
   const out: Range[] = [];
   for (const chunk of day.split(",")) {
@@ -50,11 +50,36 @@ export function parseRanges(day: string | undefined): Range[] {
     if (!m) continue;
     const start = Number(m[1]) * 60 + Number(m[2]);
     let end = Number(m[3]) * 60 + Number(m[4]);
+    if (Number(m[1]) > 23 || Number(m[2]) > 59 || Number(m[3]) > 23 || Number(m[4]) > 59) continue;
     // "22:00–02:00" cierra pasada la medianoche.
-    if (end <= start) end += 24 * 60;
+    if (end < start && permitirNoche) end += 24 * 60;
+    else if (end <= start) continue;
     if (start >= 0 && end > start) out.push({ start, end });
   }
   return out;
+}
+
+/** Los días especiales son una fecha concreta: no se permite que crucen medianoche. */
+export function parseFranjasEspeciales(day: string | undefined): Range[] {
+  return parseRanges(day, { permitirNoche: false });
+}
+
+/**
+ * Parseo estricto para el formulario de días especiales. A diferencia del
+ * horario semanal, no borra en silencio un trozo que la dueña escribió mal:
+ * devuelve exactamente los trozos a corregir para poder bloquear el guardado.
+ */
+export function validarFranjasEspeciales(day: string | undefined): { ranges: Range[]; errores: string[] } {
+  if (!day?.trim()) return { ranges: [], errores: [] };
+  const chunks = day.split(",").map((chunk) => chunk.trim()).filter(Boolean);
+  const ranges: Range[] = [];
+  const errores: string[] = [];
+  for (const chunk of chunks) {
+    const parsed = parseFranjasEspeciales(chunk);
+    if (parsed.length === 1) ranges.push(parsed[0]);
+    else errores.push(chunk);
+  }
+  return { ranges, errores };
 }
 
 const fmt = (min: number) => {

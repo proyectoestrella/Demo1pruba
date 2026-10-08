@@ -49,4 +49,13 @@ describe("días especiales", () => {
     expect(trabajaEnFecha(equipo[1], "2026-12-23", 900, 60, especiales)).toBe(true);
     expect(trabajaEnFecha(equipo[1], "2026-12-23", 870, 30, especiales)).toBe(false);
   });
+
+  it("una franja especial degenerada o mal escrita no abre 24 horas", () => {
+    const especiales = [
+      { fecha: "2026-12-22", franjas: [{ inicio: "10:00", fin: "10:00" }] },
+      { fecha: "2026-12-23", soloProfesionales: { maria: [{ inicio: "mal", fin: "15:00" }] } },
+    ];
+    expect(franjasProfesionalEnFecha(equipo[0], "2026-12-22", especiales)).toEqual([]);
+    expect(franjasProfesionalEnFecha(equipo[0], "2026-12-23", especiales)).toEqual([]);
+  });
 });

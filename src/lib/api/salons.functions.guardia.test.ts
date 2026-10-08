@@ -221,6 +221,24 @@ describe("señal: la reserva pública no la decide el navegador", () => {
     expect(cuerpo.slice(i - 200, i)).toContain("!manda && perfilPublico");
     expect(i).toBeLessThan(cuerpo.indexOf("escribirCita(supabase, fila)"));
   });
+
+  it("una reserva pública recalcula carta, duración y precio antes de revisar huecos o escribir", () => {
+    const cuerpo = cuerpoDe("syncAppointment");
+    const recalculo = cuerpo.indexOf("datosReservaPublicaDesdeCarta(perfil, data.serviceIds)");
+    const bloqueo = cuerpo.indexOf("hayBloqueoEnHueco(perfil.bloqueosAgenda");
+    const escritura = cuerpo.indexOf("escribirCita(supabase, fila)");
+    expect(recalculo).toBeGreaterThan(-1);
+    expect(recalculo).toBeLessThan(bloqueo);
+    expect(recalculo).toBeLessThan(escritura);
+    expect(cuerpo).toContain("reason: ERROR_DATOS_RESERVA");
+    expect(cuerpo).toContain("duration_min: durationMinGuardada");
+    expect(cuerpo).toContain("price_eur: priceEurGuardado");
+  });
+
+  it("la ficha pública pasa por la proyección que elimina notas internas", () => {
+    const cuerpo = cuerpoDe("getSalonProfile");
+    expect(cuerpo).toContain("perfilPublico({ ...profile, slug: row.slug })");
+  });
 });
 
 describe("lote 13: calendarios externos en syncAppointment", () => {
