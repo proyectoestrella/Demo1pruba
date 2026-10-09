@@ -137,13 +137,15 @@ export function aplicaSenal(regla: ReglaSenal, r: ReservaParaSenal): boolean {
   }
 }
 
-/** Importe de la señal en euros. El modo por hora se redondea hacia arriba al céntimo. */
+/** Importe de la señal en euros. El modo por hora se redondea al euro más cercano. */
 export function importeSenal(regla: ReglaSenal, r: ReservaParaSenal): number {
   if (!aplicaSenal(regla, r)) return 0;
   if (regla.modo === "hora") {
-    const tarifaCents = Math.max(0, Math.round(regla.tarifaPorHoraEur * 100));
-    const minutos = Math.max(0, Math.round(r.durationMin));
-    return Math.ceil((tarifaCents * minutos) / 60) / 100;
+    const tarifaCents = Math.max(0, Math.round(Number.isFinite(regla.tarifaPorHoraEur) ? regla.tarifaPorHoraEur * 100 : 0));
+    const minutos = Math.max(0, Math.round(Number.isFinite(r.durationMin) ? r.durationMin : 0));
+    // Todo se calcula como entero: se suma medio divisor (3.000 céntimo-minutos)
+    // antes de dividir por 60 * 100, así 0,50 € sube al euro siguiente.
+    return Number((BigInt(tarifaCents) * BigInt(minutos) + 3_000n) / 6_000n);
   }
   const bruto = regla.modo === "porcentaje" ? (r.priceEur * regla.porcentaje) / 100 : regla.importeFijoEur;
   // Los modos tradicionales se mantienen en euros enteros y topados al servicio.

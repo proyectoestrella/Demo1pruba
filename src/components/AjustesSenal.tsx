@@ -8,6 +8,7 @@ import { mensajeDeFianza } from "@/lib/avisos";
 import {
   MARCADORES_SENAL,
   PLANTILLA_SENAL_POR_DEFECTO,
+  importeSenal,
   marcadoresQueFaltan,
   reglaSenal,
   resumenCancelacionSenal,
@@ -233,7 +234,7 @@ export function AjustesSenal() {
                 salonName: perfil.name,
                 startISO: manana.toISOString(),
                 bizumPhone: f.depositBizumPhone || "600 111 222",
-                importeEur: regla.modo === "porcentaje" ? Math.max(1, Math.round((45 * regla.porcentaje) / 100)) : regla.modo === "hora" ? Math.ceil((regla.tarifaPorHoraEur * 90 / 60) * 2) / 2 : regla.importeFijoEur,
+                importeEur: regla.modo === "porcentaje" ? Math.max(1, Math.round((45 * regla.porcentaje) / 100)) : regla.modo === "hora" ? importeSenal({ ...regla, aplicaA: "todas" }, { serviceIds: [], durationMin: 90, priceEur: 45 }) : regla.importeFijoEur,
                 deadlineISO: vence.toISOString(),
                 plantilla: plantillaSenalEfectiva(f.depositTemplate),
               })}

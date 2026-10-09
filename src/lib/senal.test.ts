@@ -29,16 +29,16 @@ describe("una sola regla de señal por salón", () => {
     expect(importeSenal(cara, { serviceIds: ["x"], durationMin: 15, priceEur: 12 })).toBe(12);
   });
 
-  it("por hora conserva medios euros, no se topa al precio y funciona con precios ocultos", () => {
+  it("por hora redondea al euro, no se topa al precio y funciona con precios ocultos", () => {
     const r = reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 5 });
-    expect([30, 60, 90, 150, 180].map((durationMin) => importeSenal(r, { serviceIds: ["x"], durationMin, priceEur: 0 }))).toEqual([2.5, 5, 7.5, 12.5, 15]);
-    expect(textoSenalPublico(r, { serviceIds: ["x"], durationMin: 90, priceEur: 0 }, "PeluChic", (n) => `${n.toFixed(2).replace(".", ",")} €`)).toContain("7,50 €");
+    expect([30, 60, 90, 150, 180].map((durationMin) => importeSenal(r, { serviceIds: ["x"], durationMin, priceEur: 0 }))).toEqual([3, 5, 8, 13, 15]);
+    expect(textoSenalPublico(r, { serviceIds: ["x"], durationMin: 90, priceEur: 0 }, "PeluChic", (n) => `${n.toFixed(2).replace(".", ",")} €`)).toContain("8,00 €");
   });
 
-  it("por hora redondea en céntimos, sin inventar 5 € si la tarifa es cero", () => {
+  it("por hora redondea al euro más cercano, sin inventar 5 € si la tarifa es cero", () => {
     const cinco = reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 5 });
-    expect(importeSenal(cinco, { serviceIds: ["x"], durationMin: 90, priceEur: 100 })).toBe(7.5);
-    expect(importeSenal(cinco, { serviceIds: ["x"], durationMin: 50, priceEur: 100 })).toBe(4.17);
+    expect(importeSenal(cinco, { serviceIds: ["x"], durationMin: 90, priceEur: 100 })).toBe(8);
+    expect(importeSenal(cinco, { serviceIds: ["x"], durationMin: 50, priceEur: 100 })).toBe(4);
     expect(reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 0 }).tarifaPorHoraEur).toBe(0);
     expect(importeSenal(reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 0 }), { serviceIds: ["x"], durationMin: 90, priceEur: 100 })).toBe(0);
   });
