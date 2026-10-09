@@ -234,14 +234,22 @@ const IDS_ESTETICA = SERVICIOS_PELUCHIC
 const IDS_SPA_JAPONES = ["spa-japones-cabeza", "spa-japones-cabeza-facial"];
 const IDS_EXCLUSIVOS_PATRICIA = ["exosomas", "dermapen-facial", "dermapen-corporal"];
 
-// a confirmar con María en la formación
+// María, 7-oct: «todas hacemos todo»; solo acotó la estética. A confirmar con ella en la formación.
 const SERVICIOS_POR_PROFESIONAL = {
-  // María hace peluquería y cualquier servicio que no sea exclusivo de Patricia.
+  // María: todo salvo lo exclusivo de Patricia.
   maria: SERVICIOS_PELUCHIC.filter((s) => !IDS_EXCLUSIVOS_PATRICIA.includes(s.id)).map((s) => s.id),
-  // Anca: faciales y ambos spa japonés.
-  anca: [...SERVICIOS_PELUCHIC.filter((s) => s.categoria === FACIALES && !IDS_EXCLUSIVOS_PATRICIA.includes(s.id)).map((s) => s.id), ...IDS_SPA_JAPONES],
-  // Patricia: estética (mirada, facial y corporal), masajes y los dos spa japoneses.
-  patricia: [...new Set([...IDS_ESTETICA, ...IDS_SPA_JAPONES])],
+  // Anca: peluquería, trabajos de la mirada, faciales y ambos spa japonés (sin corporales ni masajes).
+  anca: [
+    ...new Set([
+      ...IDS_PELUQUERIA,
+      ...SERVICIOS_PELUCHIC
+        .filter((s) => (s.categoria === MIRADA || s.categoria === FACIALES) && !IDS_EXCLUSIVOS_PATRICIA.includes(s.id))
+        .map((s) => s.id),
+      ...IDS_SPA_JAPONES,
+    ]),
+  ],
+  // Patricia: peluquería, toda la estética (mirada, facial y corporal, con masajes y los exclusivos) y los dos spa japoneses.
+  patricia: [...new Set([...IDS_PELUQUERIA, ...IDS_ESTETICA, ...IDS_SPA_JAPONES])],
 } satisfies Record<string, string[]>;
 
 const DIAS_ESPECIALES_PELUCHIC: DiaEspecial[] = [
