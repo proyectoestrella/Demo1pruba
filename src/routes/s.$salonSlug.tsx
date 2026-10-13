@@ -307,7 +307,7 @@ function SalonLayout() {
             {/* v2: entra directo al panel, sin pasar por /login — es el botón que
                 ayer no respondió en el iPad durante la demo. v1 sigue yendo a
                 /login exactamente igual que siempre. */}
-            {publicV2 ? (
+            {publicV2 || conEnlaceDemo ? (
               <a
                 // El slug viaja al panel (`?s=`) para que un salón real pueda
                 // entrar a SU agenda desde un móvil recién estrenado, sin nada
@@ -386,6 +386,14 @@ function SalonLayout() {
                           {l.label}
                         </a>
                       ))}
+                      {(publicV2 || conEnlaceDemo) && (
+                        <a
+                          href={`/app?v=2&acceso=demo&s=${encodeURIComponent(salonSlug)}`}
+                          className="mt-3 flex min-h-12 items-center gap-2 rounded-xl border border-lino-fuerte bg-card px-3 text-base font-semibold text-foreground transition-colors hover:bg-muted"
+                        >
+                          <Lock className="h-4 w-4" aria-hidden="true" /> Panel del salón (agenda)
+                        </a>
+                      )}
                       {enlaces.blog && (
                         <EnlaceFuera
                           href={enlaces.blog}
