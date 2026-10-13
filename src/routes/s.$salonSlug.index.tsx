@@ -33,7 +33,7 @@ import { StylistAvatar } from "@/components/StylistAvatar";
 import type { EmployeeId } from "@/lib/mock/types";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useMemo } from "react";
-import { isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
+import { DEFAULT_OPENING_HOURS, isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
 import { useClientNow } from "@/lib/use-client-now";
 import { conAncho } from "@/lib/demo-photos";
 import { fotoConAnchos, fotosDeGaleria, portadaConAnchos } from "@/lib/galeria-salon";
@@ -304,6 +304,8 @@ function SalonHome() {
   const portadaEsRespaldoPropio = !!respaldoPortada && portada.src === respaldoPortada.grande;
   // Lote P.5: portada propia y estática a dos anchos (`…-800` / `…-1600`).
   const portadaPropia = portadaEsRespaldoPropio ? null : portadaConAnchos(portada.src);
+  // En una demo enlazada no se enseña una portada de ejemplo: sin foto del local, fondo liso.
+  const portadaDeEjemplo = conEnlaceDemo && !portadaEsRespaldoPropio && portada.src !== profile.heroImage;
   // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
   // en la cadena "2" — de ahí el `String(...)` antes de comparar.
   const isV2 = useRouterState({
@@ -387,6 +389,8 @@ function SalonHome() {
   const now = useClientNow();
   const openNow = now ? isOpenNow(profile.openingHours, now) : false;
   const estadoHoy = now ? todayOpenInfo(profile.openingHours, now) : "Horario";
+  // Una demo enlazada sin horario propio no dice «Abierto · cierra a las…» con el horario de ejemplo.
+  const horarioDeEjemplo = conEnlaceDemo && JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS);
   // Las fotos del equipo: la de stock solo en una DEMO de barbería. En un
   // salón real no se enseña la cara de un desconocido como si fuera suya —
   // iniciales (ver `fotoDeProfesional`).
@@ -411,8 +415,8 @@ function SalonHome() {
        * 17; con el 60 % y la especialidad en moca se quedaba en 1,15:1).
        * Entrada única de 520 ms desde opacidad 0,4, sin rebotes ni bucles.
        * ---------------------------------------------------------------- */}
-      <section className="relative isolate overflow-hidden text-white">
-        <img
+      <section className="relative isolate overflow-hidden bg-cafe text-white">
+        {!portadaDeEjemplo && <img
           // Sin foto propia, o si la propia no carga, se usa una de ejemplo
           // acorde al tipo de negocio (ver useImagenConRespaldo).
           // Portada a 800 o 1600 px según pantalla (lote 17.7): la de 1600
@@ -435,19 +439,21 @@ function SalonHome() {
           height={1280}
           fetchPriority="high"
           decoding="async"
-        />
+        />}
         <div className="absolute inset-0 -z-10 bg-cafe/70" aria-hidden="true" />
 
         <div className={cn(CONTENEDOR_SALON, "flex min-h-[520px] flex-col justify-end pb-12 pt-20 md:min-h-[600px] md:justify-center md:py-24")}>
           <div className="entrada-portada max-w-2xl">
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="inline-flex h-8 items-center gap-2 rounded-full bg-white/15 px-3 font-semibold">
-                <span
-                  className={cn("size-2 rounded-full", openNow ? "bg-salvia" : "bg-white/60")}
-                  aria-hidden="true"
-                />
-                {estadoHoy}
-              </span>
+              {!horarioDeEjemplo && (
+                <span className="inline-flex h-8 items-center gap-2 rounded-full bg-white/15 px-3 font-semibold">
+                  <span
+                    className={cn("size-2 rounded-full", openNow ? "bg-salvia" : "bg-white/60")}
+                    aria-hidden="true"
+                  />
+                  {estadoHoy}
+                </span>
+              )}
               {profile.rating > 0 && (
                 <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-white/15 px-3">
                   <Star className="h-3.5 w-3.5 fill-white text-white" aria-hidden="true" />
@@ -685,7 +691,7 @@ function SalonHome() {
       ) : null}
 
       {/* Galería de trabajos */}
-      <WorkGallery fotos={fotosDeGaleria(profile)} tipo={profile.tagline} />
+      <WorkGallery fotos={fotosDeGaleria(profile)} tipo={profile.tagline} sinRelleno={conEnlaceDemo} />
 
       {/* Reseñas. Las demos enlazadas muestran cifras sin testimonios si no
           tienen reseñas de Google; páginas existentes conservan su contenido. */}
@@ -774,12 +780,14 @@ function SalonHome() {
                   <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
                   <span>{profile.address}</span>
                 </p>
+                {telefono && (
                 <a
                   href={`tel:${telefono}`}
                   className="mt-2 flex min-h-11 items-center gap-3 text-[15px] font-semibold tabular-nums hover:text-primary"
                 >
                   <Phone className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" /> {profile.phone}
                 </a>
+                )}
                 {enlaces.instagram ? (
                   <a href={enlaces.instagram} {...FUERA} className="flex min-h-11 items-center gap-3 text-[15px] hover:text-primary">
                     <Instagram className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
@@ -792,11 +800,11 @@ function SalonHome() {
                       <Navigation className="h-4 w-4" aria-hidden="true" /> Cómo llegar
                     </a>
                   </Button>
-                  <Button asChild variant="outline" className="h-11 rounded-full px-5">
+                  {telefono && <Button asChild variant="outline" className="h-11 rounded-full px-5">
                     <a href={`tel:${telefono}`} className="gap-2">
                       <Phone className="h-4 w-4" aria-hidden="true" /> Llamar
                     </a>
-                  </Button>
+                  </Button>}
                   {whatsappUrl && (
                     <Button asChild variant="outline" className="h-11 rounded-full px-5">
                       <a href={whatsappUrl} {...FUERA} className="gap-2">
@@ -807,6 +815,7 @@ function SalonHome() {
                 </div>
               </div>
             </Reveal>
+            {!horarioDeEjemplo && (
             <Reveal delay={60} className="h-full">
               <div className="h-full rounded-[20px] border border-lino bg-background p-5 sm:p-6">
                 <p className="ws-etiqueta mb-2">Horario</p>
@@ -829,6 +838,7 @@ function SalonHome() {
                 </ul>
               </div>
             </Reveal>
+            )}
           </div>
         </div>
       </section>

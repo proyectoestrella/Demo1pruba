@@ -90,10 +90,11 @@ const BOTON_CONTROL =
  * fuera del orden de tabulación. Las fotos se piden al acercarse la sección (600 px antes): así no
  * le quitan ancho de banda a la portada (LCP, lote 17).
  */
-export function WorkGallery({ fotos = [], tipo }: { fotos?: FotoGaleria[]; tipo?: string }) {
+export function WorkGallery({ fotos = [], tipo, sinRelleno = false }: { fotos?: FotoGaleria[]; tipo?: string; sinRelleno?: boolean }) {
   const { rotas, marcar, vigilar } = useImagenesRotas();
   const propias = fotos.filter((f) => !rotas.has(f.src));
-  const faltan = Math.max(0, MINIMO - propias.length);
+  // En una demo enlazada nunca se enseñan fotos que no sean del propio local.
+  const faltan = sinRelleno ? 0 : Math.max(0, MINIMO - propias.length);
   const images = [...propias, ...relleno(tipo).slice(0, faltan)];
   const menosMovimiento = useMenosMovimiento();
 
@@ -131,6 +132,7 @@ export function WorkGallery({ fotos = [], tipo }: { fotos?: FotoGaleria[]; tipo?
   const irA = (i: number) => setAbierta(((i % n) + n) % n);
   const actual = abierta !== null ? images[abierta] : null;
 
+  if (n === 0) return null;
   return (
     <section id="galeria" ref={seccion} aria-labelledby="galeria-titulo" className="bg-ws-salvia-clara">
       <div className={cn(CONTENEDOR_SALON, "pt-14 md:pt-20")}>

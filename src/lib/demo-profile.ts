@@ -316,8 +316,9 @@ export function blankDemoProfile(): DemoProfile & CamposSinHeredar {
     address: "",
     phone: "",
     instagram: "",
-    rating: seedSalon.rating,
-    reviewCount: seedSalon.reviewCount,
+    // Sin nota real no se enseña ninguna: la del salón de ejemplo sería inventada.
+    rating: 0,
+    reviewCount: 0,
     specialties: [],
     heroImage: "",
     openingHours: [...DEFAULT_OPENING_HOURS],

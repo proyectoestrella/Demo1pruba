@@ -7,7 +7,7 @@ import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "@/lib/demo-prof
 import { demoPorSlug } from "@/lib/demos";
 import { useDemoRegistrada } from "@/lib/demos/aplicar";
 import { leerPrevia } from "@/lib/vista-previa";
-import { weekSchedule } from "@/lib/opening-hours";
+import { DEFAULT_OPENING_HOURS, weekSchedule } from "@/lib/opening-hours";
 import { useBusinessType } from "@/lib/use-display-profile";
 import { BUSINESS_LABEL, inferBusinessType, professionalWord } from "@/lib/business-type";
 import { employeesForType } from "@/lib/mock/salon";
@@ -468,6 +468,7 @@ function SalonLayout() {
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
               {profile.address}
             </p>
+            {profile.phone.trim() && (
             <a
               href={`tel:${profile.phone.replace(/\s/g, "")}`}
               className="mt-1 flex min-h-11 items-center gap-2 text-sm tabular-nums hover:text-primary"
@@ -475,6 +476,7 @@ function SalonLayout() {
               <Phone className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
               {profile.phone}
             </a>
+            )}
             {whatsappUrl && (
               <a href={whatsappUrl} {...FUERA} className="flex min-h-11 items-center gap-2 text-sm hover:text-primary">
                 <IconoWhatsApp className="h-4 w-4 shrink-0 text-primary" />
@@ -482,6 +484,7 @@ function SalonLayout() {
               </a>
             )}
           </div>
+          {!(conEnlaceDemo && JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS)) && (
           <div>
             <p className="ws-etiqueta">Horario</p>
             {weekSchedule(profile.openingHours).map((d) => (
@@ -491,6 +494,7 @@ function SalonLayout() {
               </p>
             ))}
           </div>
+          )}
           {(enlaces.blog || enlaces.instagram || enlaces.facebook || enlaces.tienda) && (
             <div>
               <p className="ws-etiqueta">Síguenos</p>
