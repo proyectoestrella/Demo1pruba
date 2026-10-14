@@ -5,6 +5,7 @@ import { useSalonStore } from "@/lib/store";
 import { useCitasVisibles, usePermisos } from "@/lib/accesos-panel";
 import { puede } from "@/lib/permisos";
 import { recargoActivo } from "@/lib/recargo-activo";
+import { usaTpv123 } from "@/lib/plan-basico";
 import { clientFrequency } from "@/lib/derive";
 import { buscarClientas } from "@/lib/buscar-clientas";
 import { useEquipo } from "@/lib/use-equipo";
@@ -92,6 +93,7 @@ function Clients() {
   const services = useSalonStore((s) => s.services);
   const equipo = useEquipo();
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
+  const origenTpv123 = useSalonStore((s) => usaTpv123(s.salonProfile));
   const conRecargo = recargoActivo({ noShowFeeEur });
   const [selected, setSelected] = useState<Client | null>(null);
   const [importarAbierto, setImportarAbierto] = useState(false);
@@ -258,7 +260,7 @@ function Clients() {
         </div>
         {puede(permisos, "clienta.importar") && <Button type="button" variant="outline" className="md:ml-auto" onClick={() => setImportarAbierto(true)}>
           <Download className="size-[18px]" strokeWidth={1.6} />
-          Importar desde TPV 123
+          {origenTpv123 ? "Importar desde TPV 123" : "Importar clientas"}
         </Button>}
       </div>
 
@@ -292,7 +294,7 @@ function Clients() {
       </div>
 
       {filtroEfectivo === "color" && (
-        <p className="-mt-2 text-[12.5px] text-muted-foreground">Citadas en los próximos 14 días y sin ningún color anotado: ábrelas y añade su fórmula de TPV 123 antes de que lleguen.</p>
+        <p className="-mt-2 text-[12.5px] text-muted-foreground">Citadas en los próximos 14 días y sin ningún color anotado: ábrelas y añade su fórmula{origenTpv123 ? " de TPV 123" : ""} antes de que lleguen.</p>
       )}
 
       {rows.length === 0 ? (

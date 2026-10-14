@@ -2,7 +2,9 @@ import { describe, expect, it } from "bun:test";
 
 import { trabajaEnFecha } from "../horario-equipo";
 import { employeesForType } from "../mock/salon";
+import { profesionalesDisponiblesEnHueco } from "../reparto";
 import { importeSenal, reglaSenal } from "../senal";
+import { isoDelSalon } from "../zona-horaria";
 import { PELUCHIC } from "./peluchic";
 
 const equipo = employeesForType(
@@ -40,5 +42,24 @@ describe("configuración real de PeluChic · 7-oct-2026", () => {
   it("la fianza activa da 8 € para 90 minutos", () => {
     const regla = reglaSenal(PELUCHIC);
     expect(importeSenal(regla, { serviceIds: ["ritual-hidroface"], durationMin: 90, priceEur: 65 })).toBe(8);
+  });
+
+  it("reserva pública no ofrece la comida provisional de los viernes", () => {
+    const viernes = "2026-10-23";
+    const disponibles = profesionalesDisponiblesEnHueco({
+      employees: equipo,
+      appointments: [],
+      dateKey: viernes,
+      startMin: 14 * 60,
+      durationMin: 30,
+      startISO: isoDelSalon(viernes, "14:00"),
+      timeZone: "Europe/Madrid",
+      diasEspeciales: PELUCHIC.diasEspeciales,
+      bloqueosAgenda: PELUCHIC.bloqueosAgenda,
+      serviceIds: ["peinar"],
+      serviciosPorProfesional: PELUCHIC.serviciosPorProfesional,
+    });
+    expect(disponibles).toEqual([]);
+    expect(PELUCHIC.bloqueosAgenda?.every((b) => b.motivo?.includes("hora de ejemplo hasta que María confirme"))).toBe(true);
   });
 });

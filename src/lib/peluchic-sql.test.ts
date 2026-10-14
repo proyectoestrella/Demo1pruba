@@ -37,6 +37,8 @@ describe("SQL de PeluChic generado desde la demo", () => {
     expect(p.depositHourlyRateEur).toBe(5);
     expect(p.depositDeadlineHours).toBe(4);
     expect(p.depositAutoRelease).toBe(false);
+    expect(p.bloqueosAgenda).toHaveLength(3);
+    expect(p.bloqueosAgenda.map((b: { profesionalId: string }) => b.profesionalId)).toEqual(["maria", "anca", "patricia"]);
     expect(JSON.stringify(p.diasEspeciales)).not.toContain("nota");
   });
 

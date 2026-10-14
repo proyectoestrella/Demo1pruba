@@ -3,6 +3,7 @@ import { formatMenuEntry } from "../business-type";
 import { DURACION_FLEXIBLE_CLIENT_NAME, sembrarCobros, type MezclaSemilla } from "../mock/seed";
 import { ultimoColor } from "../colores";
 import { fechaLocal, hojaDelDia } from "../hoja-del-dia";
+import { isoDelSalon } from "../zona-horaria";
 
 /**
  * PeluChic (Sanchinarro, Madrid) — la demo registrada para la presentación a
@@ -32,7 +33,7 @@ import { fechaLocal, hojaDelDia } from "../hoja-del-dia";
  */
 
 /** Sube cuando cambien estos datos: los navegadores con la demo vieja la vuelven a cargar. */
-export const VERSION_PELUCHIC = "2026-10-07.1";
+export const VERSION_PELUCHIC = "2026-10-14.1";
 
 export interface ServicioPeluChic {
   /** Id estable (sexto campo de la carta): las citas de la semilla y las descripciones cuelgan de él. */
@@ -213,15 +214,26 @@ const EQUIPO = [
  */
 const HORARIO = ["Cerrado", "10:00–20:00", "10:00–20:00", "10:00–20:00", "10:00–20:00", "9:00–14:00", "Cerrado"];
 
-/**
- * Turnos confirmados. El viernes no incluye un bloqueo de comida: María lo
- * crea desde «Bloquear tiempo › repetir cada semana» cuando confirme la hora.
- */
+/** Turnos confirmados. */
 const TURNOS = [
   ["Cerrado", "14:00–20:00", "10:00–20:00", "10:00–20:00", "10:00–20:00", "Cerrado", "Cerrado"],
   ["Cerrado", "10:00–20:00", "Cerrado", "14:00–20:00", "10:00–20:00", "9:00–14:00", "Cerrado"],
   ["Cerrado", "10:00–20:00", "10:00–20:00", "10:00–20:00", "10:00–20:00", "9:00–13:00", "Cerrado"],
 ];
+
+/**
+ * Comida semanal provisional: ejemplo hasta que María confirme la hora.
+ * Se repite los viernes para las tres profesionales y se guarda en el perfil,
+ * de modo que también la reserva pública descarta esa franja.
+ */
+const BLOQUEOS_COMIDA_PROVISIONALES = (["maria", "anca", "patricia"] as const).map((profesionalId) => ({
+  id: `comida-viernes-${profesionalId}`,
+  profesionalId,
+  inicio: isoDelSalon("2026-10-16", "14:00"),
+  fin: isoDelSalon("2026-10-16", "15:00"),
+  recurrente: { diaSemana: 5 },
+  motivo: "Comida · hora de ejemplo hasta que María confirme",
+}));
 
 const CATEGORIAS_PELUQUERIA: CategoriaPeluChic[] = [COTIDIANOS, CUERO, CABELLO, CAMARA];
 const CATEGORIAS_ESTETICA: CategoriaPeluChic[] = [MIRADA, FACIALES, CORPORALES];
@@ -432,6 +444,7 @@ export const PELUCHIC: SalonProfile = {
   teamIds: ["maria", "anca", "patricia"],
   teamHours: TURNOS,
   serviciosPorProfesional: SERVICIOS_POR_PROFESIONAL,
+  bloqueosAgenda: BLOQUEOS_COMIDA_PROVISIONALES,
   diasEspeciales: DIAS_ESPECIALES_PELUCHIC,
   menu: carta(),
   descripcionesServicios: Object.fromEntries(SERVICIOS_PELUCHIC.map((s) => [s.id, s.descripcion])),

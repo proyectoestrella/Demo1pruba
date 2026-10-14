@@ -91,8 +91,8 @@ export function FichaCompleta({ ficha, onAddColor, antesDelHistorial, origenTpv1
 
     {antesDelHistorial}
 
-    <EtiquetaFicha>Historial</EtiquetaFicha>
-    {visitas.length === 0 ? <p className="text-[12.5px] text-muted-foreground">Aún no hay visitas completadas.</p> :
+    {visitas.length > 0 && <>
+      <EtiquetaFicha>Historial</EtiquetaFicha>
       <ol className="relative ml-1.5 space-y-3 border-l-2 border-lino pl-5">
         {visitas.map((v) => <li key={v.id} className="relative before:absolute before:top-1 before:-left-[27px] before:size-3 before:rounded-full before:border-2 before:border-salvia before:bg-card">
           <div className="flex items-start justify-between gap-2">
@@ -109,7 +109,8 @@ export function FichaCompleta({ ficha, onAddColor, antesDelHistorial, origenTpv1
           {v.technicalNotes && <p className="mt-1 rounded-xl bg-nata px-2.5 py-1.5 text-[12.5px] text-cafe-medio">{v.technicalNotes}</p>}
           <BookingAnswersSummary answers={v.bookingAnswers} />
         </li>)}
-      </ol>}
+      </ol>
+    </>}
   </section>;
 }
 

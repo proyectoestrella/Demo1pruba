@@ -45,7 +45,7 @@ const APARTADOS: Apartado[] = [
     intro: "Cuando una clienta reserva desde tu web, no entra sola en tu agenda: te espera a que la confirmes.",
     pasos: [
       { texto: "En «Hoy», la solicitud sale en «Esto te espera».", src: "/guia/confirmar-1-lista.webp", alt: "Bloque Esto te espera con tres solicitudes y su botón Confirmar", w: 968, h: 312, marcador: { top: "30%", left: "89%" } },
-      { texto: "Se abre su ficha: revisa la duración y la señal, y confirma.", src: "/guia/confirmar-2-ventana.webp", alt: "Ventana para confirmar la cita de Nuria García Díaz, con el botón Confirmar cita", w: 892, h: 490, marcador: { top: "80%", left: "18%" } },
+      { texto: "Se abre su ficha: revisa la duración y la fianza, y confirma.", src: "/guia/confirmar-2-ventana.webp", alt: "Ventana para confirmar la cita de Nuria García Díaz, con el botón Confirmar cita", w: 892, h: 490, marcador: { top: "80%", left: "18%" } },
       { texto: "En el móvil se abre igual, a pantalla completa.", src: "/guia/movil-3-confirmar-ventana.webp", alt: "Ventana de confirmar cita en el móvil", w: 390, h: 844 },
     ],
   },
