@@ -63,7 +63,32 @@ type Dispositivo = keyof typeof ANCHOS;
 /** Milisegundos de calma antes de volver a pintar la vista previa mientras se teclea. */
 const ESPERA_PREVIA_MS = 450;
 
+/**
+ * La store del panel y el historial de versiones se restauran desde el
+ * navegador. El servidor no conoce ni ese estado ni el borrador de la vista
+ * previa que vive en `sessionStorage`, por lo que no se pueden usar para el
+ * primer árbol. Primero se pinta este estado estable; después de hidratar se
+ * monta el editor y ya puede leer las copias locales.
+ */
 function MiWeb() {
+  const [clienteHidratado, setClienteHidratado] = useState(false);
+
+  useEffect(() => setClienteHidratado(true), []);
+
+  if (!clienteHidratado) {
+    return (
+      <div className="flex flex-1 items-center justify-center py-16" aria-live="polite">
+        <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
+        <span className="sr-only">Preparando Mi página</span>
+      </div>
+    );
+  }
+
+  return <MiWebHidratada />;
+}
+
+/** El editor solo se monta después de que el navegador haya hidratado la ruta. */
+function MiWebHidratada() {
   const salonProfile = useSalonStore((s) => s.salonProfile);
   const services = useSalonStore((s) => s.services);
   const equipo = useEquipo();
@@ -158,11 +183,18 @@ function MiWeb() {
 
   // Se espera a que pare de teclear antes de recargar el iframe: una recarga
   // por pulsación deja la vista previa parpadeando y no se lee nada.
-  const [urlPintada, setUrlPintada] = useState(() => {
-    guardarPrevia(slugPrevia, rawPrevio);
-    return urlPrevia;
-  });
+  const [urlPintada, setUrlPintada] = useState<string | null>(null);
+  const primeraPrevia = useRef(true);
   useEffect(() => {
+    // Antes de crear el iframe hay que dejar el borrador en sessionStorage.
+    // Hacerlo en el inicializador de estado mezclaba una escritura del
+    // navegador con el primer render del servidor.
+    if (primeraPrevia.current) {
+      primeraPrevia.current = false;
+      guardarPrevia(slugPrevia, rawPrevio);
+      setUrlPintada(urlPrevia);
+      return;
+    }
     const t = setTimeout(() => {
       guardarPrevia(slugPrevia, rawPrevio);
       setUrlPintada(urlPrevia);
@@ -758,7 +790,7 @@ function MiWeb() {
                   {/* Sin «noreferrer» a propósito: la pestaña nueva (mismo origen)
                       hereda el sessionStorage, que es donde va el borrador. */}
                   <a
-                    href={urlPintada}
+                    href={urlPintada ?? urlPrevia}
                     target="_blank"
                     rel="opener"
                     aria-label="Abrir la vista previa en otra pestaña"
@@ -771,14 +803,20 @@ function MiWeb() {
             </div>
 
             <Marco ancho={ANCHOS[dispositivo]}>
-              <iframe
-                ref={iframeRef}
-                key={dispositivo}
-                src={urlPintada}
-                onLoad={alCargarPrevia}
-                title="Vista previa de tu web"
-                className="h-full w-full border-0 bg-background"
-              />
+              {urlPintada ? (
+                <iframe
+                  ref={iframeRef}
+                  key={dispositivo}
+                  src={urlPintada}
+                  onLoad={alCargarPrevia}
+                  title="Vista previa de tu web"
+                  className="h-full w-full border-0 bg-background"
+                />
+              ) : (
+                <div className="grid h-full w-full place-items-center bg-background text-[12.5px] text-muted-foreground">
+                  Preparando la vista previa…
+                </div>
+              )}
             </Marco>
 
             <p className="mt-2 text-center text-[12.5px] text-muted-foreground">
