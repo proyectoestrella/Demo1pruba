@@ -492,7 +492,7 @@ function SalonLayout() {
               </a>
             )}
           </div>
-          {!(conEnlaceDemo && JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS)) && (
+          {!((conEnlaceDemo || realSlug === salonSlug) && JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS)) && (
           <div>
             <p className="ws-etiqueta">Horario</p>
             {weekSchedule(profile.openingHours).map((d) => (

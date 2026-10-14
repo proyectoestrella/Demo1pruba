@@ -286,6 +286,7 @@ function SalonHome() {
   const logoPortada = logoDelSalon(profile, sinSalonReal || conEnlaceDemo);
   const logotipoPortada = logotipoDelSalon(profile, sinSalonReal || conEnlaceDemo, "claro");
   const tipo = useBusinessType();
+  const isRealSalon = useRealSalonSlug() === salonSlug;
   // Una portada propia puede dejar de cargar sin que nadie lo sepa: el enlace
   // de demo la trae fija (caso PeluChic, foto de Google Places servida por
   // `/api/foto`), y esa foto puede desaparecer de la ficha, o faltar la clave
@@ -305,8 +306,10 @@ function SalonHome() {
   const portadaEsRespaldoPropio = !!respaldoPortada && portada.src === respaldoPortada.grande;
   // Lote P.5: portada propia y estática a dos anchos (`…-800` / `…-1600`).
   const portadaPropia = portadaEsRespaldoPropio ? null : portadaConAnchos(portada.src);
-  // En una demo enlazada no se enseña una portada de ejemplo: sin foto del local, fondo liso.
-  const portadaDeEjemplo = conEnlaceDemo && !portadaEsRespaldoPropio && portada.src !== profile.heroImage;
+  // Ni una demo enlazada ni un salón real se anuncian con una foto de stock:
+  // si no hay foto del local (o se ha roto), queda el fondo liso.
+  const portadaDeEjemplo =
+    (conEnlaceDemo || isRealSalon) && !portadaEsRespaldoPropio && portada.src !== profile.heroImage;
   const [portadaLista, setPortadaLista] = useState(false);
   // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
   // en la cadena "2" — de ahí el `String(...)` antes de comparar.
@@ -322,7 +325,6 @@ function SalonHome() {
   // su ficha de Google (`enlaces.resenas`), tampoco una demo: enseña su nota
   // real y «Ver reseñas en Google». Sin ficha, un salón real busca la ficha
   // por nombre + dirección (sin inventar una URL que pueda no ser la suya).
-  const isRealSalon = useRealSalonSlug() === salonSlug;
   const resenasGoogle = resenasDeGoogle(profile, isRealSalon);
   const modoResenas = seccionResenasPublicas({
     esDemo: conEnlaceDemo,
@@ -391,8 +393,10 @@ function SalonHome() {
   const now = useClientNow();
   const openNow = now ? isOpenNow(profile.openingHours, now) : false;
   const estadoHoy = now ? todayOpenInfo(profile.openingHours, now) : "Horario";
-  // Una demo enlazada sin horario propio no dice «Abierto · cierra a las…» con el horario de ejemplo.
-  const horarioDeEjemplo = conEnlaceDemo && JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS);
+  // Ni una demo enlazada ni un salón real sin horario propio dicen «Abierto
+  // · cierra a las…» con el horario estático de ejemplo.
+  const horarioDeEjemplo =
+    (conEnlaceDemo || isRealSalon) && JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS);
   // Las fotos del equipo: la de stock solo en una DEMO de barbería. En un
   // salón real no se enseña la cara de un desconocido como si fuera suya —
   // iniciales (ver `fotoDeProfesional`).
@@ -705,7 +709,7 @@ function SalonHome() {
       ) : null}
 
       {/* Galería de trabajos */}
-      <WorkGallery fotos={fotosDeGaleria(profile)} tipo={profile.tagline} sinRelleno={conEnlaceDemo} />
+      <WorkGallery fotos={fotosDeGaleria(profile)} tipo={profile.tagline} sinRelleno={conEnlaceDemo || isRealSalon} />
 
       {/* Reseñas. Las demos enlazadas muestran cifras sin testimonios si no
           tienen reseñas de Google; páginas existentes conservan su contenido. */}

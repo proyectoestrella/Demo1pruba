@@ -1020,6 +1020,7 @@ function BookingWizard() {
           timeLabel={data.time}
           total={total}
           mostrarPrecio={mostrarPrecio}
+          esSalonReal={realSlug === salonSlug}
           ctaLabel={ctaLabel}
           ctaDisabled={ctaDisabled}
           onCta={onCta}
@@ -1036,6 +1037,7 @@ function BookingWizard() {
         timeLabel={data.time}
         total={total}
         mostrarPrecio={mostrarPrecio}
+        esSalonReal={realSlug === salonSlug}
         ctaLabel={ctaLabel}
         ctaLabelCorto={ctaLabelCorto}
         ctaDisabled={ctaDisabled}
@@ -1735,6 +1737,7 @@ function BookingSummary({
   timeLabel,
   total,
   mostrarPrecio,
+  esSalonReal,
   ctaLabel,
   ctaLabelCorto,
   ctaDisabled,
@@ -1751,6 +1754,7 @@ function BookingSummary({
   timeLabel?: string;
   total: number;
   mostrarPrecio: boolean;
+  esSalonReal: boolean;
   ctaLabel: string;
   /** Rótulo corto para la barra fija de móvil. */
   ctaLabelCorto?: string;
@@ -1764,6 +1768,9 @@ function BookingSummary({
   // foto propia puede dejar de cargar con el tiempo (404 de Google, ficha
   // cambiada…) aunque el enlace de la demo no haya cambiado.
   const foto = useImagenConRespaldo(profile.heroImage, heroImg);
+  // Un salón real nunca toma el icono del resumen de la foto de stock: si
+  // falta su imagen, basta su nombre hasta que la suba.
+  const fotoDeEjemplo = esSalonReal && foto.src !== profile.heroImage;
   if (variant === "bar") {
     // Lote 17: una línea para el importe y la duración, otra para los
     // servicios, y un botón corto («Confirmar»): antes el botón con el
@@ -1802,15 +1809,17 @@ function BookingSummary({
     <aside className="hidden lg:block">
       <div className="sticky top-24 rounded-[20px] border border-lino bg-card p-6">
         <div className="mb-4 flex items-center gap-3">
-          <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg">
-            <img
-              src={foto.src}
-              ref={foto.ref}
-              onError={foto.onError}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          </div>
+          {!fotoDeEjemplo && (
+            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg">
+              <img
+                src={foto.src}
+                ref={foto.ref}
+                onError={foto.onError}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            </div>
+          )}
           <div className="min-w-0">
             <p className="truncate font-display text-base">{salonName}</p>
             <p className="text-xs text-muted-foreground">Resumen de tu reserva</p>
