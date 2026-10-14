@@ -37,8 +37,8 @@ describe("configuración real de PeluChic · 7-oct-2026", () => {
     expect(equipo.filter((e) => trabaja(e.id, "2026-10-17", 13 * 60 + 30)).map((e) => e.id)).toEqual(["anca"]);
   });
 
-  it("la fianza configurada da 8 € para 90 minutos al activarla", () => {
-    const regla = reglaSenal({ ...PELUCHIC, depositEnabled: true });
+  it("la fianza activa da 8 € para 90 minutos", () => {
+    const regla = reglaSenal(PELUCHIC);
     expect(importeSenal(regla, { serviceIds: ["ritual-hidroface"], durationMin: 90, priceEur: 65 })).toBe(8);
   });
 });

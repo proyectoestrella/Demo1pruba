@@ -180,6 +180,9 @@ export function textoSenalPublico(
   const quien = primera ? "te pediremos" : `${salonName} te pedirá`;
   const plazo = `${regla.ventanaHoras} ${regla.ventanaHoras === 1 ? "hora" : "horas"}`;
   const aviso = avisoLiberacionAutomatica(regla);
+  if (regla.modo === "hora" && !regla.automatica) {
+    return `${primera}${quien} una fianza por Bizum de ${eur(importe)} (${eur(regla.tarifaPorHoraEur)} por hora de servicio). Tras confirmar la solicitud, tendrás ${plazo} para pagarla; la dueña marcará el pago cuando lo reciba.${aviso}`;
+  }
   if (regla.automatica && regla.bizumTelefono) {
     return `${primera}${primera ? "" : "Para confirmar la cita, "}haz un Bizum de ${eur(importe)} al ${regla.bizumTelefono} en las próximas ${plazo}. Se descuenta del precio; si cancelas con más de ${regla.horasCancelacion} h, te la devolvemos.${aviso}`;
   }
@@ -211,6 +214,9 @@ export function respuestaFaqSenal(regla: ReglaSenal, eur: (n: number) => string)
     regla.aplicaA === "duracion" ? `Solo en los servicios de ${regla.minutosMinimos} minutos o más: ` :
     regla.aplicaA === "servicios" ? "Solo en algunos servicios (lo verás al reservar): " : "";
   const pedimos = aQuien ? "pedimos" : "Pedimos";
+  if (regla.modo === "hora" && !regla.automatica) {
+    return `${aQuien}${pedimos} ${cuanto} por Bizum. Al confirmar la solicitud tendrás ${regla.ventanaHoras} ${regla.ventanaHoras === 1 ? "hora" : "horas"} para hacerlo y la dueña marcará el pago cuando lo reciba.${avisoLiberacionAutomatica(regla)}`;
+  }
   return `${aQuien}${pedimos} ${cuanto} por Bizum, con ${regla.ventanaHoras} ${regla.ventanaHoras === 1 ? "hora" : "horas"} para hacerlo. Se descuenta del precio; si cancelas con más de ${regla.horasCancelacion} h de antelación, te la devolvemos.${avisoLiberacionAutomatica(regla)}`;
 }
 

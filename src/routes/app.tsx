@@ -24,7 +24,9 @@ import { BarraInferior, CabeceraArena, MenuLateral, TODOS_LOS_ITEMS, estaActivo 
 import { FranjaVerComo } from "@/components/VerComo";
 import { SinPermiso } from "@/components/SinPermiso";
 import { instalarAtajoDeshacer, instalarRegistro } from "@/lib/deshacer-maqueta";
-import { usePermisos, veRuta } from "@/lib/accesos-panel";
+import { usePermisos, usePlanSalon, veRuta } from "@/lib/accesos-panel";
+import { rutaSoloCompleto } from "@/lib/plan-basico";
+import { IncluidoEnPlanCompleto } from "@/components/IncluidoEnPlanCompleto";
 import { useHayPanelLateral } from "@/lib/panel-lateral";
 import { cn } from "@/lib/utils";
 import {
@@ -202,9 +204,10 @@ function PanelAutorizado({ slug }: { slug?: string }) {
   const realSlug = useSalonStore((s) => s.realSalonSlug);
   const refresco = usePanelRefresh(realSlug);
   const panelV2 = usePanelV2();
+  const plan = usePlanSalon();
 
   return <>
-    {panelV2 ? <PanelV2Shell /> : <DashboardLayoutV1 />}
+    {panelV2 && plan !== "reservas" ? <PanelV2Shell /> : <DashboardLayoutV1 />}
     {refresco && <span className="indicador-refresco fixed bottom-3 right-3 z-10 rounded-full border border-border bg-background/90 px-2 py-1 text-[10px] text-muted-foreground shadow-sm max-lg:bottom-20">{refresco}</span>}
   </>;
 }
@@ -232,7 +235,9 @@ function DashboardLayoutV1() {
   const conPanel = useHayPanelLateral();
   // Lote 11: una sección que el rol no ve se sustituye por «Esta parte la lleva…».
   const permisos = usePermisos();
+  const plan = usePlanSalon();
   const permitida = veRuta(permisos, path);
+  const fueraDelBasico = plan === "reservas" && rutaSoloCompleto(path);
   const seccion = TODOS_LOS_ITEMS.find((i) => estaActivo(i, path))?.label ?? "esta sección";
   // Colores elegidos por la dueña en Ajustes (9h): se sincronizan antes de pintar.
   const coloresServicio = useSalonStore((s) => s.salonProfile.coloresServicio);
@@ -270,7 +275,7 @@ function DashboardLayoutV1() {
               (180 ms). Con la Web Animations API y sin `key`: remontar el
               contenedor en cada ruta costaba el doble de tiempo al navegar. */}
           <div ref={contenedorRuta} className="flex min-w-0 flex-1 flex-col">
-            {permitida ? <Outlet /> : <SinPermiso seccion={seccion} />}
+            {fueraDelBasico ? <IncluidoEnPlanCompleto /> : permitida ? <Outlet /> : <SinPermiso seccion={seccion} />}
           </div>
         </main>
       </div>
@@ -279,7 +284,7 @@ function DashboardLayoutV1() {
 
       <NewAppointmentDialog open={newApptOpen} onOpenChange={setNewApptOpen} />
 
-      <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
+      {plan !== "reservas" && <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
         <SheetContent
           side="right"
           panel="asistente"
@@ -294,7 +299,7 @@ function DashboardLayoutV1() {
           </SheetHeader>
           <AssistantPanel className="flex-1" />
         </SheetContent>
-      </Sheet>
+      </Sheet>}
     </div>
   );
 }

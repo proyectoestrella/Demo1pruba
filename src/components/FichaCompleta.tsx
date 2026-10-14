@@ -25,7 +25,7 @@ export interface DatosColorTPV { fecha: string; producto: string; cantidad: stri
  * tiempo. `antesDelHistorial` es el hueco para lo que el panel pone entre
  * medias (próximas citas, observaciones, deuda).
  */
-export function FichaCompleta({ ficha, onAddColor, antesDelHistorial }: { ficha: Ficha; onAddColor?: (datos: DatosColorTPV) => void; antesDelHistorial?: ReactNode }) {
+export function FichaCompleta({ ficha, onAddColor, antesDelHistorial, origenTpv123 = false }: { ficha: Ficha; onAddColor?: (datos: DatosColorTPV) => void; antesDelHistorial?: ReactNode; origenTpv123?: boolean }) {
   const { resumen, avisos, visitas } = ficha;
   const [formularioColor, setFormularioColor] = useState(false);
   const [mensajeColor, setMensajeColor] = useState("");
@@ -47,7 +47,7 @@ export function FichaCompleta({ ficha, onAddColor, antesDelHistorial }: { ficha:
       <span className="text-taupe" aria-hidden="true">·</span>
       <Cifra valor={frecuencia} etiqueta="de frecuencia" />
       <span className="text-taupe" aria-hidden="true">·</span>
-      <Cifra valor={eur(resumen.gastoTotal).replace(",00", "")} etiqueta="de gasto orientativo" />
+      <Cifra valor={eur(resumen.gastoTotal).replace(",00", "")} etiqueta="de gasto acumulado" />
       <span className="text-taupe" aria-hidden="true">·</span>
       <Cifra valor={fechaCorta(resumen.ultimaVisita)} etiqueta="última visita" delante />
     </p>
@@ -69,15 +69,15 @@ export function FichaCompleta({ ficha, onAddColor, antesDelHistorial }: { ficha:
       <span><b className="block text-sm">{resumen.ultimoColor.formula}</b>{fecha(resumen.ultimoColor.fecha)}</span>
     </div> : <div className="rounded-2xl border-[1.5px] border-dashed border-lino-fuerte px-4 py-3 text-center text-[12.5px] text-muted-foreground">
       <b className="block text-sm text-foreground">Aún no hay fórmula</b>
-      Añádela desde el TPV y la tendrás a mano la próxima vez.
+      Anótala tras el servicio y la tendrás a mano la próxima vez.
     </div>}
     {onAddColor && <div className="mt-2" data-vaul-no-drag>
       <Button type="button" variant="outline" onClick={() => { setFormularioColor((v) => !v); setMensajeColor(""); }} className="h-[42px] w-full gap-2">
         <Droplet className="size-[18px]" strokeWidth={1.6} />
-        {formularioColor ? "Cerrar" : "Añadir color de TPV 123"}
+        {formularioColor ? "Cerrar" : origenTpv123 ? "Añadir color de TPV 123" : "Añadir color"}
       </Button>
       {formularioColor && <div className="mt-3 space-y-3 rounded-2xl border border-border bg-perla p-4">
-        <p className="text-[12.5px] text-muted-foreground">Copia aquí el color que consultas en TPV 123.</p>
+        <p className="text-[12.5px] text-muted-foreground">Anota aquí el color usado en el servicio.</p>
         <label className="block space-y-1 text-[12.5px] font-bold text-cafe-medio">Fecha<Input type="date" max={new Date().toLocaleDateString("sv-SE")} value={color.fecha} onChange={(e) => setColor({ ...color, fecha: e.target.value })} className="min-h-11 font-normal" /></label>
         <label className="block space-y-1 text-[12.5px] font-bold text-cafe-medio">Producto o tinte<Input value={color.producto} onChange={(e) => setColor({ ...color, producto: e.target.value })} placeholder="7.1 + 8.0" className="min-h-11 font-normal" /></label>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
+import { usaTpv123 } from "@/lib/plan-basico";
 import { fichaDeClienta } from "@/lib/ficha-clienta";
 import { EtiquetaFicha, FichaCompleta, type DatosColorTPV } from "@/components/FichaCompleta";
 import { recargoActivo } from "@/lib/recargo-activo";
@@ -48,6 +49,7 @@ export function ClientHistorySheet({
   onOpenChange,
 }: ClientHistorySheetProps) {
   const appointments = useSalonStore((s) => s.appointments);
+  const origenTpv123 = useSalonStore((s) => usaTpv123(s.salonProfile));
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
   const equipo = useEquipo();
@@ -235,10 +237,10 @@ export function ClientHistorySheet({
 
       </div>
 
-      <FichaCompleta ficha={ficha} onAddColor={(datos: DatosColorTPV) => {
+      <FichaCompleta ficha={ficha} origenTpv123={origenTpv123} onAddColor={(datos: DatosColorTPV) => {
         const formula = [datos.producto.trim(), datos.cantidad.trim(), datos.raiz.trim() && `${datos.raiz.trim()} raíz`, datos.medios.trim() && `medios ${datos.medios.trim()}`, datos.puntas.trim() && `puntas ${datos.puntas.trim()}`, datos.tiempo.trim()].filter(Boolean).join(", ");
         const fecha = new Date(`${datos.fecha}T12:00:00`).toISOString();
-        addAppointment({ clientId: client.id, clientName: client.name, serviceIds: [], employeeId: equipo[0]?.id ?? "mario", start: fecha, duration: 0, priceEur: 0, status: "completed", origen: "tpv123", colorFormula: formula, technicalNotes: datos.notas.trim() || undefined }, { name: client.name, phone: client.phone, email: client.email });
+        addAppointment({ clientId: client.id, clientName: client.name, serviceIds: [], employeeId: equipo[0]?.id ?? "mario", start: fecha, duration: 0, priceEur: 0, status: "completed", origen: origenTpv123 ? "tpv123" : "sishow", colorFormula: formula, technicalNotes: datos.notas.trim() || undefined }, { name: client.name, phone: client.phone, email: client.email });
       }} antesDelHistorial={<>
 
       {/* Próximas citas */}

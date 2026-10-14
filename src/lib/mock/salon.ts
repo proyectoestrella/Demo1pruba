@@ -124,8 +124,9 @@ export function employeesForType(
   teamIds?: string[],
   demoAbreHoy?: string,
   serviciosPorProfesional?: Record<string, string[]>,
+  teamExperience?: number[],
 ): Employee[] {
-  return buildEmployees(type, team, teamHours, openingHours, teamIds, demoAbreHoy, serviciosPorProfesional);
+  return buildEmployees(type, team, teamHours, openingHours, teamIds, demoAbreHoy, serviciosPorProfesional, teamExperience);
 }
 
 /** «AAAA-MM-DD» de una fecha en hora local (el mismo formato que `fechaLocal`). */
@@ -158,6 +159,7 @@ function buildEmployees(
   teamIds?: string[],
   demoAbreHoy?: string,
   serviciosPorProfesional?: Record<string, string[]>,
+  teamExperience?: number[],
 ): Employee[] {
   const jsHoy = new Date().getDay();
   const modeloHoy = diaModeloDeHoy(openingHours, demoAbreHoy);
@@ -208,6 +210,7 @@ function buildEmployees(
     const id = (teamIds?.[i] ?? baseEmp.id) as EmployeeId;
     return {
       ...baseEmp,
+      ...(teamExperience?.[i] !== undefined ? { yearsExperience: Math.max(0, Math.round(teamExperience[i]!)) } : {}),
       id,
       name,
       specialty,

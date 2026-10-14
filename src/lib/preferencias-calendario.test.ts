@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { diasDeRejilla, horasDeRejilla, inicioDeSemana, pasoDeVista, preferenciasDe, tramosDeCitas, citasFueraDeHoras, rangoDeDias, diasDesde } from "./preferencias-calendario";
+import { diasDeRejilla, horasDeRejilla, inicioDeSemana, pasoDeVista, preferenciasDe, tramosDeCitas, citasFueraDeHoras, rangoDeDias, diasDesde, vistaInicialCalendario } from "./preferencias-calendario";
 import type { Appointment } from "./mock/types";
 
 const d = (s: string) => new Date(s + "T00:00:00");
@@ -15,6 +15,11 @@ describe("preferencias del calendario", () => {
     expect(preferenciasDe({ vista: "agenda" }).vista).toBe("semana");
     expect(preferenciasDe({ desde: 20, hasta: 10 })).toMatchObject({ desde: 20, hasta: 22 });
     expect(preferenciasDe({ desde: -3, hasta: 40 })).toMatchObject({ desde: 0, hasta: 24 });
+  });
+  test("en móvil no abre la semana ilegible y conserva la elección útil", () => {
+    expect(vistaInicialCalendario("semana", true)).toBe("dia");
+    expect(vistaInicialCalendario("tres", true)).toBe("tres");
+    expect(vistaInicialCalendario("semana", false)).toBe("semana");
   });
 });
 

@@ -191,7 +191,7 @@ export function experienciaEquipoEnWeb(
   equipo: readonly { yearsExperience: number }[],
   esSalonReal: boolean,
 ): { total: string; porProfesional: { experiencia: string; rol: string }[] } | null {
-  if (esSalonReal) return null;
+  if (esSalonReal || equipo.some((profesional) => profesional.yearsExperience <= 0)) return null;
   return {
     total: `${equipo.reduce((sum, profesional) => sum + profesional.yearsExperience, 0)} años de oficio entre todas`,
     porProfesional: equipo.map((profesional) => ({

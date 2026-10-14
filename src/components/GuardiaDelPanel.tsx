@@ -24,15 +24,19 @@
  * comodidad; la seguridad está detrás.
  */
 import { useEffect, useState, type ReactNode } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 
 import { accesoPanel } from "@/lib/acceso-actual-panel";
+import { DEMO_PARAM, decodeDemoProfile } from "@/lib/demo-profile";
+import { DemoLoadingScreen } from "@/components/DemoLoadingScreen";
 
 type Estado = "comprobando" | "adelante" | "fuera";
 
 export function GuardiaDelPanel({ slug, children }: { slug?: string; children: ReactNode }) {
   const navigate = useNavigate();
+  const demoRaw = useRouterState({ select: (s) => (s.location.search as Record<string, unknown>)?.[DEMO_PARAM] });
+  const demo = decodeDemoProfile(typeof demoRaw === "string" ? demoRaw : undefined);
   // Empieza SIEMPRE comprobando, también al pintar la página en el servidor.
   // Así no existe ni un instante en el que el panel esté en pantalla sin que
   // se haya comprobado nada.
@@ -71,6 +75,12 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
   }, [estado, navigate]);
 
   if (estado === "adelante") return <>{children}</>;
+
+  // El panel abierto desde una demo usa exactamente la misma bienvenida que
+  // la web pública: no revela el armazón genérico mientras se resuelve.
+  if (demo) {
+    return <DemoLoadingScreen conEnlaceDemo nombre={demo.name ?? "Tu salón"} logoUrl={null} portadaLista={false} tienePortada />;
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background px-6 text-center">

@@ -10,8 +10,8 @@ const PASOS = [
   { titulo: "Tu carta", detalle: "Servicios, duración y precio", to: "/app/services" as const },
   { titulo: "Tu equipo", detalle: "Profesionales y horario de cada una", to: "/app/employees" as const },
   { titulo: "Horario del salón y tu web", detalle: "Cuándo abres y qué verán tus clientas", to: "/app/web" as const },
-  { titulo: "Fianza y preguntas al reservar", detalle: "Decide qué necesitas saber antes de confirmar", to: "/app/settings" as const },
-  { titulo: "Traer tus clientas de TPV 123", detalle: "Importa tu cartera desde Clientas", to: "/app/clients" as const },
+  { titulo: "Fianza por hora de servicio y preguntas al reservar", detalle: "Decide qué necesitas saber antes de confirmar", to: "/app/settings" as const },
+  { titulo: "Importar clientas", detalle: "Importa tu cartera desde Clientas", to: "/app/clients" as const },
 ] as const;
 
 /** Seis pasos en total: los cinco de arriba más «compartir el enlace». */

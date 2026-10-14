@@ -269,7 +269,7 @@ const DIAS_ESPECIALES_PELUCHIC: DiaEspecial[] = [
 /** Lo que su web dice de las citas y lo que no cabe en la carta, en su voz. */
 const PREGUNTAS = [
   "¿Cómo pido cita?~Solo atendemos con cita previa. Puedes reservar aquí mismo o escribirnos por WhatsApp al 666 77 67 31.",
-  "¿Hay que dejar fianza?~La fianza está pendiente de activación; el salón confirma cada reserva.",
+  "¿Hay que dejar fianza?~Sí. Es de 5 € por cada hora de servicio (se calcula según la duración). Al confirmar tu solicitud tendrás 4 horas para pagarla por Bizum y la dueña marcará el pago al recibirlo.",
   "¿Y si encuentro la puerta cerrada?~Será que estamos atendiendo a domicilio o en otro trabajo de exterior. Escríbenos por WhatsApp y te contestamos.",
   "¿Venís a domicilio?~Sí, con desplazamiento nacional e internacional desde nuestro estudio de Madrid. El coste del desplazamiento va por kilometraje: pregúntanos por WhatsApp.",
   "¿Hacéis novias y eventos?~Sí: peluquería y maquillaje de novia, ceremonias y eventos, desde 150 € (sin IVA). Escríbenos y te contamos.",
@@ -427,6 +427,8 @@ export const PELUCHIC: SalonProfile = {
   // Cuatro y sin «y» al final: la web las junta en una frase («…, color orgánico y tratamientos capilares»).
   specialties: ["novias y eventos", "maquillaje de cámara", "color orgánico", "tratamientos capilares"],
   team: EQUIPO,
+  // No se confirmaron años de oficio: se guardan vacíos y la web no inventa el bloque.
+  teamExperience: [0, 0, 0],
   teamIds: ["maria", "anca", "patricia"],
   teamHours: TURNOS,
   serviciosPorProfesional: SERVICIOS_POR_PROFESIONAL,
@@ -438,14 +440,16 @@ export const PELUCHIC: SalonProfile = {
   ),
   faq: PREGUNTAS,
   preguntasReserva: PREGUNTAS_RESERVA_PELUCHIC,
-  // Pendiente de decisión de los socios y de la adenda: no activar aún.
-  // Para activarla basta cambiar `depositEnabled: true` cuando se confirme.
-  depositEnabled: false,
+  // Extra incluido para PeluChic (decisión 14-oct): se calcula por duración,
+  // se paga por Bizum y María confirma a mano que ha llegado.
+  depositEnabled: true,
   depositMode: "hora",
   depositHourlyRateEur: 5,
   depositDeadlineHours: 4,
+  depositAuto: false,
   depositAutoRelease: false,
   depositAppliesTo: "todas",
+  clientImportOrigin: "tpv123",
   duracionFlexible: true,
   ocultarPrecioReserva: true,
   // Su día va de 10 a 20: el calendario enseña de 9 a 21, sin horas muertas.

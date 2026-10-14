@@ -5,6 +5,7 @@ import { puede } from "@/lib/permisos";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useSalonStore } from "@/lib/store";
+import { usaTpv123 } from "@/lib/plan-basico";
 import { detectarColumnas, leerTabla, vistaPreviaClientas, type CampoCliente, type MapaColumnas, type TablaImportacion } from "@/lib/importar-clientas";
 import type { Client } from "@/lib/mock/types";
 
@@ -15,6 +16,8 @@ const campos: { key: CampoCliente; label: string }[] = [
 ];
 
 export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const origen = useSalonStore((s) => s.salonProfile.clientImportOrigin);
+  const esTpv123 = usaTpv123({ clientImportOrigin: origen });
   const clientes = useSalonStore((s) => s.clients);
   const addClient = useSalonStore((s) => s.addClient);
   const [tabla, setTabla] = useState<TablaImportacion | null>(null);
@@ -54,7 +57,7 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
   return <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent className="max-h-[90dvh] w-[calc(100vw-1rem)] max-w-2xl overflow-y-auto p-4 sm:p-6">
       <DialogHeader>
-        <DialogTitle>Importar desde TPV 123</DialogTitle>
+        <DialogTitle>{esTpv123 ? "Importar desde TPV 123" : "Importar clientas"}</DialogTitle>
         <DialogDescription>Trae la lista de clientas. La vista previa valida filas y duplicados antes de guardar; no se sube ningún archivo.</DialogDescription>
       </DialogHeader>
       {puedeVentas && (
@@ -72,7 +75,7 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
           <input type="file" accept=".csv,.xlsx,.xls" onChange={(e) => void cargar(e.target.files?.[0])}
             className="block w-full min-w-0 rounded border border-border p-2 text-sm font-normal" />
         </label>
-        <p className="rounded-lg bg-nata p-3 text-xs text-cafe-medio">Se guardan nombre, apellidos, móvil, correo y código TPV 123. Se ignoran por protección de datos: dnicif, direccion, F.Alta, Cumpleaños, Ult.Visita, recomendado. El archivo se procesa en este navegador.</p>
+        <p className="rounded-lg bg-nata p-3 text-xs text-cafe-medio">Se guardan nombre, apellidos, móvil y correo{esTpv123 ? " y código TPV 123" : ""}. Se ignoran por protección de datos: dnicif, direccion, F.Alta, Cumpleaños, Ult.Visita, recomendado. El archivo se procesa en este navegador.</p>
         {error && <p role="alert" className="text-destructive">{error}</p>}
         {tabla && <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -96,7 +99,7 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
         </>}
         {resumen && <p role="status" className="rounded bg-primary/10 p-3">{resumen}</p>}
         <details className="rounded border border-border p-3 text-muted-foreground">
-          <summary className="cursor-pointer font-medium">Cómo sacar los Excel de TPV 123</summary>
+          <summary className="cursor-pointer font-medium">{esTpv123 ? "Cómo sacar los Excel de TPV 123" : "Consejo para preparar el archivo"}</summary>
           <div className="mt-2 space-y-2">
             <p><strong>Clientas:</strong> Listados › Listados generales › Clientes › flecha verde.</p>
           </div>

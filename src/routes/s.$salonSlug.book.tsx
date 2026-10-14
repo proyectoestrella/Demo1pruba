@@ -708,7 +708,7 @@ function BookingWizard() {
     : undefined;
 
   return (
-    <section className={cn(CONTENEDOR_SALON, "pb-10 pt-8 md:pb-16 md:pt-12")}>
+    <section className={cn(CONTENEDOR_SALON, "pb-10 pt-8 md:pb-16 md:pt-12", step === 4 && "pb-28")}>
       <StepIndicator step={step} soloUno={soloUno} />
 
       {/* Mejora B1: atajo de un toque para quien ya reservó antes en este
@@ -1181,7 +1181,7 @@ function ServiceStep({
                           <p className="font-medium">{label.name}</p>
                           <p className="text-sm text-muted-foreground">
                             {s.durationMin} min
-                            {servicioLlevaSenal(reglaSenalSalon, s) ? " · con señal" : ""}
+                            {servicioLlevaSenal(reglaSenalSalon, s) ? " · con fianza" : ""}
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">

@@ -148,7 +148,9 @@ export function clientFrequency(appts: Appointment[], clientId: string, now: Dat
   const own = appts
     .filter((a) => a.clientId === clientId && a.status !== "cancelled")
     .sort((a, b) => msDe(a) - msDe(b));
-  const totalSpent = own.filter((a) => a.status !== "no-show").reduce((s, a) => s + a.priceEur, 0);
+  // Igual que la ficha: solo servicios ya completados, nunca citas futuras
+  // ni pendientes que aún no son gasto real de la clienta.
+  const totalSpent = own.filter((a) => a.status === "completed").reduce((s, a) => s + a.priceEur, 0);
   const fav: Record<string, number> = {};
   own.forEach((a) => a.serviceIds.forEach((id) => (fav[id] = (fav[id] ?? 0) + 1)));
   const favoriteService = Object.entries(fav).sort((a, b) => b[1] - a[1])[0]?.[0];

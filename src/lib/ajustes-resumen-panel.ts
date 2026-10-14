@@ -14,7 +14,7 @@ export const SECCIONES_AJUSTES: { id: IdSeccionAjustes; titulo: string; palabras
   { id: "agenda", titulo: "Tu agenda", palabras: "duración calendario vista semana día horas visibles primer día lunes móvil iphone google suscripción" },
   { id: "reservas", titulo: "Reservas por internet", palabras: "preguntas reservar reparto agenda franjas web cierre últimos minutos precio precios importe ocultar" },
   { id: "mensajes", titulo: "Mensajes de WhatsApp", palabras: "whatsapp confirmación recordatorio plantilla texto mensaje" },
-  { id: "plantones", titulo: "Plantones y señal", palabras: "plantón no vino penalización recargo señal bizum fianza depósito cancelación" },
+  { id: "plantones", titulo: "Plantones y fianza por hora de servicio", palabras: "plantón no vino penalización recargo señal bizum fianza depósito cancelación" },
   { id: "calendarios", titulo: "Calendarios", palabras: "google apple iphone externo sincronizar ocupado" },
   { id: "historial", titulo: "Historial de cambios", palabras: "historial deshacer quién cambió auditoría" },
   { id: "accesos", titulo: "Accesos", palabras: "accesos roles usuarios equipo invitar permisos contraseña" },
@@ -52,7 +52,7 @@ export function valorActual(id: IdSeccionAjustes, p: SalonProfile): string {
     case "plantones": {
       const r = reglaSenal(p);
       const plantones = recargoActivo(p) ? `Plantón ${p.noShowFeeEur} €` : "Sin penalización";
-      const senal = r.activa ? (r.modo === "porcentaje" ? `señal ${r.porcentaje} %` : `señal ${r.importeFijoEur} €`) : "sin señal";
+      const senal = r.activa ? (r.modo === "hora" ? `fianza ${r.tarifaPorHoraEur} €/h` : r.modo === "porcentaje" ? `fianza ${r.porcentaje} %` : `fianza ${r.importeFijoEur} €`) : "sin fianza";
       return `${plantones} · ${senal}`;
     }
     case "colores": {

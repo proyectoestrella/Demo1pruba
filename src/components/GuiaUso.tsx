@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { usePlanSalon } from "@/lib/accesos-panel";
 
 /**
  * «Guía de uso de la app» (Ajustes): un tutorial visual que se lee en la
@@ -153,6 +154,8 @@ function anchoTope(p: Paso): number {
 }
 
 export function GuiaUso() {
+  const plan = usePlanSalon();
+  const apartados = plan === "reservas" ? APARTADOS.filter((a) => !["senal", "caja", "asistente"].includes(a.id)) : APARTADOS;
   const [ampliada, setAmpliada] = useState<Paso | null>(null);
   return (
     <div className="space-y-6">
@@ -162,7 +165,7 @@ export function GuiaUso() {
 
       <nav aria-label="Índice de la guía" className="rounded-2xl border border-lino bg-nata p-3.5">
         <ol className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-          {APARTADOS.map((a, i) => (
+          {apartados.map((a, i) => (
             <li key={a.id}>
               <a
                 href={`#guia-${a.id}`}
@@ -176,7 +179,7 @@ export function GuiaUso() {
       </nav>
 
       <div className="space-y-9">
-        {APARTADOS.map((a, i) => (
+        {apartados.map((a, i) => (
           <section key={a.id} id={`guia-${a.id}`} className="scroll-mt-24 space-y-3">
             <h3 className="text-[16px] font-extrabold tracking-[-0.01em]">
               {i + 1}. {a.titulo}

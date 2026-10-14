@@ -183,7 +183,7 @@ function Settings() {
 
   return (
     <div className="flex flex-1 flex-col gap-5">
-      <PageHeader title="Ajustes" description="Cómo funciona tu salón: agenda, reservas, mensajes, plantones, señal y colores." />
+      <PageHeader title="Ajustes" description="Cómo funciona tu salón: agenda, reservas, mensajes, plantones, fianza y colores." />
       <PrimerosPasos enAjustes />
 
       <div className="grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start">
@@ -320,7 +320,7 @@ function Settings() {
           <AjustesMensajes />
         </SeccionAjustes>
 
-        <SeccionAjustes id="plantones" oculta={!visibles.includes("plantones")} abrir={abrir} valor={valorActual("plantones", salonProfile)} titulo="Plantones y señal" resumen="Penalización por no venir y la regla de la señal">
+        <SeccionAjustes id="plantones" oculta={!visibles.includes("plantones")} abrir={abrir} valor={valorActual("plantones", salonProfile)} titulo="Plantones y fianza por hora de servicio" resumen="Penalización por no venir y la regla de la fianza">
           <div className={fila}>
             <div className="flex items-center justify-between gap-4">
               <div>

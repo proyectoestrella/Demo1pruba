@@ -35,6 +35,16 @@ describe("una sola regla de señal por salón", () => {
     expect(textoSenalPublico(r, { serviceIds: ["x"], durationMin: 90, priceEur: 0 }, "PeluChic", (n) => `${n.toFixed(2).replace(".", ",")} €`)).toContain("8,00 €");
   });
 
+  it("la fianza manual por hora explica importe, Bizum, plazo y confirmación manual", () => {
+    const r = reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 5, depositDeadlineHours: 4, depositAuto: false, depositAutoRelease: false });
+    const texto = textoSenalPublico(r, { serviceIds: ["x"], durationMin: 90, priceEur: 0 }, "PeluChic", eur)!;
+    expect(texto).toContain("8 €");
+    expect(texto).toContain("5 € por hora de servicio");
+    expect(texto).toContain("4 horas");
+    expect(texto).toContain("la dueña marcará el pago");
+    expect(texto).not.toContain("libre");
+  });
+
   it("por hora redondea al euro más cercano, sin inventar 5 € si la tarifa es cero", () => {
     const cinco = reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 5 });
     expect(importeSenal(cinco, { serviceIds: ["x"], durationMin: 90, priceEur: 100 })).toBe(8);

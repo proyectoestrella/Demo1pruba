@@ -19,7 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 /**
- * Ajustes › Señal (9j, Método A): UNA sola regla por salón, con los campos
+ * Ajustes › Fianza (9j, Método A): UNA sola regla por salón, con los campos
  * del contrato de BACKEND. siShow no cobra ni comprueba pagos: la clienta
  * hace el Bizum al salón y la dueña marca que ha llegado.
  */
@@ -96,13 +96,13 @@ export function AjustesSenal() {
     <div className="space-y-5 border-t border-lino pt-5">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-[15px] font-extrabold">Señal</p>
+          <p className="text-[15px] font-extrabold">Fianza por hora de servicio</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Una sola regla para todo el salón. La clienta hace el Bizum a tu número y tú marcas que ha llegado:{" "}
             <strong>siShow no cobra ni comprueba ningún pago.</strong>
           </p>
         </div>
-        <Switch aria-label="Pedir señal" checked={f.depositEnabled} onCheckedChange={(v) => set("depositEnabled", v)} />
+        <Switch aria-label="Pedir fianza" checked={f.depositEnabled} onCheckedChange={(v) => set("depositEnabled", v)} />
       </div>
 
       {f.depositEnabled && (
@@ -193,13 +193,13 @@ export function AjustesSenal() {
           <div className="space-y-3">
             <Interruptor
               titulo="Pedirla sola al reservar por la web"
-              texto="La reserva ya nace con la señal pedida y la web enseña tu Bizum. Si lo apagas, se la pides tú por WhatsApp desde la cita."
+              texto="La reserva ya nace con la fianza pedida y la web enseña tu Bizum. Si lo apagas, se la pides tú por WhatsApp desde la cita."
               valor={f.depositAuto}
               onCambio={(v) => set("depositAuto", v)}
             />
             <Interruptor
-              titulo="Liberar el hueco sola si vence"
-              texto="Viene encendida. Cuando falte 1 hora para que venza, en Hoy › Avisos tienes un botón para escribirle por WhatsApp «te quedan X min». Si vence sin recibirla, la cita se cancela y el hueco queda libre. Si lo apagas, se te avisa en Hoy y decides tú."
+              titulo="Liberar el hueco al marcarlo tú"
+              texto="Con esta opción apagada, si vence se te avisa en Hoy y decides tú cuándo liberar el hueco. siShow no cancela ni libera nada automáticamente."
               valor={f.depositAutoRelease}
               onCambio={(v) => set("depositAutoRelease", v)}
             />
@@ -248,7 +248,7 @@ export function AjustesSenal() {
         </>
       )}
       <div className="flex justify-end">
-        <Button onClick={guardar}>Guardar la señal</Button>
+        <Button onClick={guardar}>Guardar la fianza</Button>
       </div>
     </div>
   );

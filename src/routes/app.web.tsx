@@ -381,7 +381,7 @@ function MiWeb() {
           <Info className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
           <p>
             <strong>Vista previa de tu web{dominioDemoReal ? `: ${dominioDemoReal}` : ""}.</strong>{" "}
-            Los cambios de aquí se ven en la vista previa y en esta tablet, pero no salen a
+            Los cambios de aquí se ven en la vista previa y en este dispositivo, pero no salen a
             internet todavía: es una demo. Cuando el salón esté dado de alta, este mismo botón
             publica de verdad en esa dirección.
           </p>
@@ -393,7 +393,7 @@ function MiWeb() {
           <Info className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
           <p>
             <strong>Esto es una demo de venta.</strong> Aquí no hay ninguna web publicada que
-            actualizar: los cambios se ven en la vista previa y en esta tablet, pero no salen a
+            actualizar: los cambios se ven en la vista previa y en este dispositivo, pero no salen a
             internet. Cuando el salón esté dado de alta, este mismo botón publica de verdad.
           </p>
         </div>

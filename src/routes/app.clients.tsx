@@ -305,7 +305,7 @@ function Clients() {
             <EmptyState
               icon={Users}
               title="Todavía no tienes clientas"
-              description="Aquí irá apareciendo cada persona que reserve contigo: su teléfono, lo que suele pedir y cuándo vino por última vez. La ficha se crea sola con la primera cita, o tráelas todas desde TPV 123."
+              description="Aquí irá apareciendo cada persona que reserve contigo: su teléfono, lo que suele pedir y cuándo vino por última vez. La ficha se crea sola con la primera cita, o impórtalas desde un archivo."
             />
           ) : (
             <EmptyState
@@ -328,7 +328,7 @@ function Clients() {
                   <TableHead className="group-data-[panel=abierto]/panel:hidden">Frecuencia</TableHead>
                   <TableHead className="hidden xl:table-cell xl:group-data-[panel=abierto]/panel:hidden">Servicio habitual</TableHead>
                   <TableHead className="group-data-[panel=abierto]/panel:hidden">Próxima cita</TableHead>
-                  <TableHead className="text-right @max-[600px]:hidden">Gasto orient.</TableHead>
+                  <TableHead className="text-right @max-[600px]:hidden">Gasto acumulado</TableHead>
                   <TableHead>Estado</TableHead>
                 </TableRow>
               </TableHeader>

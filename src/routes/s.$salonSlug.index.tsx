@@ -354,7 +354,7 @@ function SalonHome() {
     [tipo, profile.menu, profile.descripcionesServicios, profile.preciosLiterales],
   );
   const serviceMap = useMemo(() => Object.fromEntries(services.map((s) => [s.id, s])), [services]);
-  const employees = useMemo(() => employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds), [tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds]);
+  const employees = useMemo(() => employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds, undefined, undefined, profile.teamExperience), [tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds, profile.teamExperience]);
   /**
    * Adam es el único barbero de su barbería. Con un solo profesional, la
    * sección "Equipo" no cuenta nada (una ficha suelta de la persona que ya
@@ -641,7 +641,7 @@ function SalonHome() {
           <SectionHeading
             eyebrow="Precios"
             title="Carta completa"
-            intro={reglaDeSenal.activa ? "Los servicios marcados «con señal» se confirman con un pequeño adelanto." : undefined}
+            intro={reglaDeSenal.activa ? "La fianza se calcula según la duración del servicio y se confirma por Bizum." : undefined}
           />
           <Reveal>
             <CartaServicios

@@ -33,6 +33,11 @@ export const PRIMEROS_DIAS: { id: PrimerDia; label: string }[] = [
 
 export const PREFERENCIAS_POR_DEFECTO: PreferenciasCalendario = { vista: "semana", primerDia: 1, desde: 8, hasta: 21 };
 
+/** En una pantalla estrecha la semana no cabe: la primera apertura usa Día. */
+export function vistaInicialCalendario(vistaGuardada: VistaCalendario, movilAngosto: boolean): VistaCalendario {
+  return movilAngosto && vistaGuardada === "semana" ? "dia" : vistaGuardada;
+}
+
 /**
  * Completa y sanea lo guardado: horas enteras entre 0 y 24, `hasta` > `desde`
  * con al menos dos horas visibles. Un valor ausente, `null`, vacío o que no

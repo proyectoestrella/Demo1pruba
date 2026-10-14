@@ -82,7 +82,7 @@ export function generarSeed(): string {
 -- Alta inicial de PeluChic. Úsalo SOLO si el salón aún no existe: si ya existe,
 -- aborta con un mensaje y no cambia nada (para eso está update-peluchic.sql).
 -- Antes comprueba que se aplicó supabase/pendiente.sql.
--- La fianza queda apagada (depositEnabled=false) hasta que lo decidan los socios.
+-- La fianza por hora está activa: 5 €/h, 4 h de plazo, Bizum marcado a mano.
 -- Todo va en una transacción: si algo falla, no se guarda nada. Si sale un
 -- error, ejecuta \`rollback;\` y vuelve a pulsar Run.
 begin;

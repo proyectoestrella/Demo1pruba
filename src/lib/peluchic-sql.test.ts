@@ -32,7 +32,11 @@ describe("SQL de PeluChic generado desde la demo", () => {
     expect(p.rating).toBe(0);
     expect(p.reviewCount).toBe(0);
     expect(p.photoCount).toBeUndefined();
-    expect(p.depositEnabled).toBe(false);
+    expect(p.depositEnabled).toBe(true);
+    expect(p.depositMode).toBe("hora");
+    expect(p.depositHourlyRateEur).toBe(5);
+    expect(p.depositDeadlineHours).toBe(4);
+    expect(p.depositAutoRelease).toBe(false);
     expect(JSON.stringify(p.diasEspeciales)).not.toContain("nota");
   });
 

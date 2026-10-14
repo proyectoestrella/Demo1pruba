@@ -402,6 +402,8 @@ export interface SalonProfile {
    * de ejemplo de tres profesionales de siempre (`EMPLOYEE_OVERLAY`).
    */
   team?: string[];
+  /** Años confirmados por profesional; vacío o 0 significa que no se publican. */
+  teamExperience?: number[];
   /** Identificadores estables alineados con team, para conservar las citas al renombrar o quitar a alguien. */
   teamIds?: string[];
   /** Horario semanal por posición del equipo; cada día conserva el formato de openingHours. */
@@ -496,6 +498,8 @@ export interface SalonProfile {
   depositCancelHours?: number;
   /** Plantilla del WhatsApp de la señal. Ver `mensajeSenal` en lib/senal.ts. */
   depositTemplate?: string;
+  /** Procedencia confirmada de las fichas importadas; evita prometer TPV 123 a quien no lo usa. */
+  clientImportOrigin?: "tpv123";
   /** Ausente: se decide por el tipo de negocio. */
   bookingQuestionsEnabled?: boolean;
   bookingQuestionsRequired?: boolean;
