@@ -20,6 +20,8 @@ import { ChevronDown, Lock, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { DAY_LABELS_ES, parseRanges } from "@/lib/opening-hours";
 import { resumenHorario } from "@/lib/horario-resumen";
+import { mapaServiciosTrasGuardar } from "@/lib/servicios-profesional";
+import { EditorServiciosProfesional } from "@/components/EditorServiciosProfesional";
 
 export const Route = createFileRoute("/app/employees")({
   beforeLoad: beforeLoadSiModuloVisible("equipo"),
@@ -90,14 +92,8 @@ function Team() {
     });
   };
   const guardarServicios = (employeeId: string, ids: string[]) => {
-    const todos = serviciosCarta.map((s) => s.id);
-    const validos = ids.filter((id) => todos.includes(id));
-    const mapa = { ...(profile.serviciosPorProfesional ?? {}) };
-    // Vacío/ausente significa «todos»: así los perfiles antiguos siguen igual
-    // y no se llena el JSON con una copia de toda la carta sin necesidad.
-    if (validos.length === todos.length) delete mapa[employeeId];
-    else mapa[employeeId] = validos;
-    update({ serviciosPorProfesional: Object.keys(mapa).length ? mapa : undefined });
+    // Vacío/ausente significa «todos»: ver `mapaServiciosTrasGuardar`.
+    update({ serviciosPorProfesional: mapaServiciosTrasGuardar(profile.serviciosPorProfesional, employeeId, ids, serviciosCarta.map((s) => s.id)) });
   };
 
   // «Esta semana»: citas, horas en agenda y ocupación de cada profesional.
@@ -129,7 +125,7 @@ function Team() {
 
   return (
     <div className="flex flex-1 flex-col gap-5">
-      <PageHeader title="Equipo" description="Cada profesional con los días y las horas en que trabaja. Los cambios se guardan solos." />
+      <PageHeader title="Equipo" description="Cada profesional con su horario y los servicios que hace." />
       {limitePlan !== null && employees.length > limitePlan && (
         <p role="note" className="flex items-start gap-2 rounded-2xl border border-lino-fuerte bg-nata/60 px-4 py-3 text-[13.5px] text-cafe-medio">
           <Lock className="mt-0.5 size-4 shrink-0" strokeWidth={1.7} aria-hidden="true" />
@@ -138,14 +134,8 @@ function Team() {
       )}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3 lg:group-data-[panel=abierto]/panel:grid-cols-1">
         {employees.map((e, i) => {
-          const services = topServicesFor(appointments, e.id, carta);
           const configurados = profile.serviciosPorProfesional?.[e.id];
           const asignados = configurados?.length ? configurados : serviciosCarta.map((s) => s.id);
-          const porCategoria = serviciosCarta.reduce<Record<string, typeof serviciosCarta>>((out, s) => {
-            const categoria = s.category?.trim() || "Sin categoría";
-            (out[categoria] ??= []).push(s);
-            return out;
-          }, {});
           return (
             <section key={e.id} className="flex min-w-0 flex-col overflow-hidden rounded-[20px] border border-border bg-card">
               <div className="flex items-start gap-3 px-5 pt-5 pb-4" style={{ background: `var(--stylist-${["mario", "diego", "ruben"][i % 3]})` }}>
@@ -205,27 +195,13 @@ function Team() {
                 })}
               </div>
               )}
-              <div className="border-t border-border px-5 py-3.5">
-                <p className={etiqueta}>Servicios que hace</p>
-                <p className="mt-1 text-[12.5px] text-muted-foreground">Sin limitar, esta profesional puede hacer toda la carta.</p>
-                <div className="mt-2.5 space-y-2.5">
-                  {Object.entries(porCategoria).map(([categoria, lista]) => {
-                    const categoriaCompleta = lista.every((s) => asignados.includes(s.id));
-                    return <div key={categoria}>
-                      <button type="button" onClick={() => guardarServicios(e.id, categoriaCompleta ? asignados.filter((id) => !lista.some((s) => s.id === id)) : [...new Set([...asignados, ...lista.map((s) => s.id)])])} className="text-[12px] font-extrabold text-hoja-tinta underline underline-offset-2">
-                        {categoriaCompleta ? "Quitar toda la categoría" : "Marcar toda la categoría"} · {categoria}
-                      </button>
-                      <div className="mt-1 flex flex-wrap gap-1.5">
-                        {lista.map((s) => {
-                          const marcado = asignados.includes(s.id);
-                          return <button key={s.id} type="button" aria-pressed={marcado} onClick={() => guardarServicios(e.id, marcado ? asignados.filter((id) => id !== s.id) : [...asignados, s.id])} className={cn("rounded-full border px-2.5 py-1 text-[11.5px] font-bold", marcado ? "border-salvia bg-salvia-clara text-hoja-tinta" : "border-lino text-cafe-medio")}>{s.name}</button>;
-                        })}
-                      </div>
-                    </div>;
-                  })}
-                </div>
-              </div>
-              {services.length > 0 && <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-5 py-3.5"><span className="mr-1 text-[12.5px] text-muted-foreground">Lo que más hace</span>{services.slice(0, 3).map((name) => <span key={name} className="inline-flex h-6 items-center rounded-full bg-nata px-2.5 text-[12.5px] font-bold text-cafe-medio">{name}</span>)}</div>}
+              <EditorServiciosProfesional
+                empleado={{ id: e.id, name: e.name }}
+                carta={serviciosCarta}
+                asignados={asignados}
+                citas={appointments}
+                onGuardar={(ids) => guardarServicios(e.id, ids)}
+              />
             </section>
           );
         })}
