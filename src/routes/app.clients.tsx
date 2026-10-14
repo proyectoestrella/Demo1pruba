@@ -1,6 +1,6 @@
 import { fichaDeClientaMemo } from "@/lib/selectores-rutas";
 import { useFichas } from "@/lib/use-fichas";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { useCitasVisibles, usePermisos } from "@/lib/accesos-panel";
@@ -49,6 +49,15 @@ const TAG_CONFIG: Record<ClientTag, { label: string; className: string }> = {
   inactivo: { label: "Inactiva", className: "bg-arena text-cafe-medio" },
   activo: { label: "Activa", className: "bg-nata text-cafe-medio" },
 };
+
+/** Triángulo de aviso (el color nunca va solo). */
+function IconoAviso() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 3 2.5 20h19L12 3Z" /><path d="M12 10v4M12 17.5v.01" />
+    </svg>
+  );
+}
 
 const chip = "inline-flex h-6 items-center gap-1 rounded-full px-2.5 text-[12.5px] font-bold whitespace-nowrap";
 
@@ -221,20 +230,20 @@ function Clients() {
   const estado = (c: Row & { tag: ClientTag }) => {
     const hoy = citaDeHoy.get(c.id);
     const sem = semanasSinVenir(c);
-    return (
-      <div className="flex flex-wrap gap-1">
-        {hoy && <span className={cn(chip, "bg-salvia-clara text-hoja-tinta tabular-nums")}>Hoy {hora(hoy.start)}</span>}
-        {colorPendiente.has(c.id) && <span className={cn(chip, "bg-melocoton text-melocoton-tinta")}>Color pendiente</span>}
-        {conRecargo && (c.penaltyEur ?? 0) > 0 && (
-          <span className={cn(chip, "bg-melocoton text-melocoton-tinta")}>Debe {eur(c.penaltyEur!)}</span>
-        )}
-        {!hoy && c.tag === "inactivo" && sem !== null ? (
-          <span className={cn(chip, "bg-arena text-cafe-medio tabular-nums")}>{sem} sem. sin venir</span>
-        ) : (
-          !hoy && <TagPill tag={c.tag} />
-        )}
-      </div>
-    );
+    // Un solo chip por fila: el más relevante. El resto vive en la ficha.
+    let chipFila: ReactNode = null;
+    if (conRecargo && (c.penaltyEur ?? 0) > 0) {
+      chipFila = <span className={cn(chip, "bg-melocoton text-melocoton-tinta")}><IconoAviso />Debe {eur(c.penaltyEur!)}</span>;
+    } else if (hoy) {
+      chipFila = <span className={cn(chip, "bg-salvia-clara text-hoja-tinta tabular-nums")}>Hoy {hora(hoy.start)}</span>;
+    } else if (colorPendiente.has(c.id)) {
+      chipFila = <span className={cn(chip, "bg-melocoton text-melocoton-tinta")}><IconoAviso />Color pendiente</span>;
+    } else if (c.tag === "inactivo" && sem !== null) {
+      chipFila = <span className={cn(chip, "bg-arena text-cafe-medio tabular-nums")}>{sem} sem. sin venir</span>;
+    } else if (c.tag === "nuevo") {
+      chipFila = <TagPill tag={c.tag} />;
+    }
+    return chipFila ?? <span className="text-cafe-suave" aria-hidden>·</span>;
   };
 
   return (
