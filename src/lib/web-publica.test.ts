@@ -37,9 +37,9 @@ describe("contenido público de demos", () => {
     });
   });
 
-  test("sin reseñas propias, la demo solo muestra cifras disponibles o esconde la sección", () => {
-    expect(seccionResenasPublicas({ esDemo: true, esSalonReal: false, tieneResenasGoogle: false, rating: 4.8, reviewCount: 27 })).toBe("estadisticas");
-    expect(seccionResenasPublicas({ esDemo: true, esSalonReal: false, tieneResenasGoogle: false, rating: 0, reviewCount: 0 })).toBe("oculta");
+  test("sin reseñas propias, la demo enseña reseñas de ejemplo (decisión 13-oct)", () => {
+    expect(seccionResenasPublicas({ esDemo: true, esSalonReal: false, tieneResenasGoogle: false, rating: 4.8, reviewCount: 27 })).toBe("ejemplo");
+    expect(seccionResenasPublicas({ esDemo: true, esSalonReal: false, tieneResenasGoogle: false, rating: 0, reviewCount: 0 })).toBe("ejemplo");
   });
 
   test("conserva reseñas verificables, la web real y las reseñas de las páginas sin enlace demo", () => {

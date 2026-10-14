@@ -218,7 +218,8 @@ export function seccionResenasPublicas({
   reviewCount: number;
 }): SeccionResenasPublicas {
   if (tieneResenasGoogle) return "google";
-  if (esDemo) return rating > 0 && reviewCount > 0 ? "estadisticas" : "oculta";
+  // Demo: reseñas de ejemplo (decisión de Tomás 13-oct), con la nota real si la hay.
+  if (esDemo) return "ejemplo";
   if (esSalonReal) return "oculta";
   return "ejemplo";
 }

@@ -7,7 +7,7 @@ import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "@/lib/demo-prof
 import { demoPorSlug } from "@/lib/demos";
 import { useDemoRegistrada } from "@/lib/demos/aplicar";
 import { leerPrevia } from "@/lib/vista-previa";
-import { weekSchedule } from "@/lib/opening-hours";
+import { DEFAULT_OPENING_HOURS, weekSchedule } from "@/lib/opening-hours";
 import { useBusinessType } from "@/lib/use-display-profile";
 import { BUSINESS_LABEL, inferBusinessType, professionalWord } from "@/lib/business-type";
 import { employeesForType } from "@/lib/mock/salon";
@@ -307,7 +307,7 @@ function SalonLayout() {
             {/* v2: entra directo al panel, sin pasar por /login — es el botón que
                 ayer no respondió en el iPad durante la demo. v1 sigue yendo a
                 /login exactamente igual que siempre. */}
-            {publicV2 ? (
+            {publicV2 || conEnlaceDemo ? (
               <a
                 // El slug viaja al panel (`?s=`) para que un salón real pueda
                 // entrar a SU agenda desde un móvil recién estrenado, sin nada
@@ -386,6 +386,14 @@ function SalonLayout() {
                           {l.label}
                         </a>
                       ))}
+                      {(publicV2 || conEnlaceDemo) && (
+                        <a
+                          href={`/app?v=2&acceso=demo&s=${encodeURIComponent(salonSlug)}`}
+                          className="mt-3 flex min-h-12 items-center gap-2 rounded-xl border border-lino-fuerte bg-card px-3 text-base font-semibold text-foreground transition-colors hover:bg-muted"
+                        >
+                          <Lock className="h-4 w-4" aria-hidden="true" /> Panel del salón (agenda)
+                        </a>
+                      )}
                       {enlaces.blog && (
                         <EnlaceFuera
                           href={enlaces.blog}
@@ -468,6 +476,7 @@ function SalonLayout() {
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
               {profile.address}
             </p>
+            {profile.phone.trim() && (
             <a
               href={`tel:${profile.phone.replace(/\s/g, "")}`}
               className="mt-1 flex min-h-11 items-center gap-2 text-sm tabular-nums hover:text-primary"
@@ -475,6 +484,7 @@ function SalonLayout() {
               <Phone className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
               {profile.phone}
             </a>
+            )}
             {whatsappUrl && (
               <a href={whatsappUrl} {...FUERA} className="flex min-h-11 items-center gap-2 text-sm hover:text-primary">
                 <IconoWhatsApp className="h-4 w-4 shrink-0 text-primary" />
@@ -482,6 +492,7 @@ function SalonLayout() {
               </a>
             )}
           </div>
+          {!(conEnlaceDemo && JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS)) && (
           <div>
             <p className="ws-etiqueta">Horario</p>
             {weekSchedule(profile.openingHours).map((d) => (
@@ -491,6 +502,7 @@ function SalonLayout() {
               </p>
             ))}
           </div>
+          )}
           {(enlaces.blog || enlaces.instagram || enlaces.facebook || enlaces.tienda) && (
             <div>
               <p className="ws-etiqueta">Síguenos</p>
