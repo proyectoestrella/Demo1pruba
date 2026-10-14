@@ -23,6 +23,7 @@
  * comprobar quién llama, cada una por su cuenta. Esta pantalla es la
  * comodidad; la seguridad está detrás.
  */
+import { IconoSiShow } from "@/components/MarcaSiShow";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
@@ -91,6 +92,7 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background px-6 text-center">
+      <IconoSiShow size={64} />
       <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       <p className="text-sm text-muted-foreground">
         {estado === "fuera" ? "Llevándote a la pantalla de acceso…" : "Comprobando tu acceso…"}

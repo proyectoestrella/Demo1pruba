@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { usePanelPublicLink } from "@/lib/panel-public-link";
 import { useSalonStore } from "@/lib/store";
 import { moduloVisibleEnPanel, type ModuloOcultable } from "@/lib/demo-profile";
-import { Logo } from "@/components/Logo";
+import { IconoSiShow } from "@/components/MarcaSiShow";
 import { BotonCerrarSesion } from "@/components/BotonCerrarSesion";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { BuscadorGlobal } from "@/components/BuscadorGlobal";
@@ -123,7 +123,7 @@ export function PanelV2Shell() {
       {/* Sidebar estrecha — de iPad (≥1024px) para arriba. */}
       <aside className="hidden w-20 shrink-0 flex-col items-center border-r border-sidebar-border bg-sidebar py-4 text-sidebar-foreground lg:flex">
         <Link to="/app" className="mb-6 flex items-center justify-center" title={salonName}>
-          <Logo />
+          <IconoSiShow size={36} />
         </Link>
         <nav className="flex flex-1 flex-col items-center gap-1">
           {allSidebarItems.map((item) => {

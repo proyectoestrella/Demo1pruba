@@ -33,6 +33,7 @@ import { BotonCerrarSesion } from "@/components/BotonCerrarSesion";
 import { TOTAL_PASOS, useProgresoPrimerosPasos } from "@/components/PrimerosPasos";
 import { Button } from "@/components/ui/button";
 import { AvatarSalon } from "@/components/AvatarSalon";
+import { IconoSiShow, LetrasSiShow } from "@/components/MarcaSiShow";
 import { VerComo } from "@/components/VerComo";
 import { AjustesCalendarios } from "@/components/AjustesCalendarios";
 import { API_CALENDARIOS, alcanceCalendario, useCalendariosActivos } from "@/lib/calendarios-panel";
@@ -175,10 +176,12 @@ function Marca({ compacta = false }: { compacta?: boolean }) {
       <span className="min-w-0 leading-tight">
         <strong className={cn("block truncate", compacta ? "text-sm font-extrabold" : "text-[15px]")}>{name}</strong>
         {!compacta && (
-          <span className="block truncate text-xs text-muted-foreground">
-            siShow{ciudad ? ` · ${ciudad}` : ""}
+          <span className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+            <LetrasSiShow className="h-3.5" />
+            {ciudad ? `· ${ciudad}` : ""}
           </span>
         )}
+        {compacta && <LetrasSiShow className="mt-0.5 h-3" />}
       </span>
     </Link>
   );
@@ -489,7 +492,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
           </SheetTrigger>
           <SheetContent side="bottom" className="rounded-t-3xl">
             <SheetHeader>
-              <SheetTitle>Más</SheetTitle>
+              <SheetTitle className="flex items-center gap-2"><IconoSiShow size={24} />Más</SheetTitle>
               <SheetDescription className="sr-only">Resto de apartados del panel</SheetDescription>
             </SheetHeader>
             <div className="space-y-3 px-4 pb-3">

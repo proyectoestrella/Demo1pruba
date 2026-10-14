@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { aceptarInvitacionAlSalon } from "@/lib/api/accesos.functions";
 import { MailCheck } from "lucide-react";
-import { Logo } from "@/components/Logo";
+import { IconoSiShow } from "@/components/MarcaSiShow";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -46,7 +46,7 @@ function Aceptar() {
     <main className="grid min-h-screen place-items-center bg-background px-4">
       <div className="w-full max-w-sm rounded-3xl border border-lino bg-card px-6 py-8 text-center">
         <div className="flex justify-center">
-          <Logo />
+          <IconoSiShow size={44} />
         </div>
         <span className="mx-auto mt-6 grid size-12 place-items-center rounded-full bg-salvia-suave text-hoja-tinta">
           <MailCheck className="size-5" strokeWidth={1.7} aria-hidden="true" />

@@ -6,7 +6,7 @@ import { useSalonStore } from "@/lib/store";
 import { useSesion, pedirEnlaceMagico } from "@/lib/sesion";
 import { esSalonRealPublico } from "@/lib/api/salons.functions";
 import { BUSINESS_LABEL, inferBusinessType, professionalWord } from "@/lib/business-type";
-import { Logo } from "@/components/Logo";
+import { IconoSiShow } from "@/components/MarcaSiShow";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -102,7 +102,7 @@ function LoginPage() {
       <header className="border-b border-border/60">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
           <Link to="/s/$salonSlug" params={{ salonSlug: salon.slug }} className="flex items-center gap-2">
-            <Logo />
+            <IconoSiShow size={36} />
             <div className="leading-tight">
               <p className="font-display text-base">{salonName}</p>
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
