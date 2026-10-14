@@ -1,4 +1,5 @@
 import { fichaDeClientaMemo } from "@/lib/selectores-rutas";
+import { useFichas } from "@/lib/use-fichas";
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
@@ -12,8 +13,7 @@ import { useEquipo } from "@/lib/use-equipo";
 import { toDateKey } from "@/lib/reparto";
 import type { Appointment, Client } from "@/lib/mock/types";
 import { EmptyState } from "@/components/EmptyState";
-import { ClientAvatar } from "@/components/ClientAvatar";
-import { ClientHistorySheet } from "@/components/ClientHistorySheet";
+import { AvatarClienta } from "@/components/Avatar";
 import { ImportarClientasDialog } from "@/components/ImportarClientasDialog";
 import { Button } from "@/components/ui/button";
 import { RecargosPendientes } from "@/components/RecargosPendientes";
@@ -95,7 +95,8 @@ function Clients() {
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const origenTpv123 = useSalonStore((s) => usaTpv123(s.salonProfile));
   const conRecargo = recargoActivo({ noShowFeeEur });
-  const [selected, setSelected] = useState<Client | null>(null);
+  const { abrirClienta } = useFichas();
+  const setSelected = (c: Client | null) => { if (c) abrirClienta(c.id); };
   const [importarAbierto, setImportarAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<Filtro>(todasLasClientas ? "todos" : "hoy");
@@ -339,7 +340,7 @@ function Clients() {
                   <TableRow key={c.id} className="cursor-pointer" onClick={() => setSelected(c)}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <ClientAvatar name={c.name} size="sm" />
+                        <AvatarClienta id={c.id} nombre={c.name} size="sm" />
                         <div className="min-w-0 leading-tight">
                           <b className="block truncate">{c.name}</b>
                           <span className="text-[12.5px] text-muted-foreground tabular-nums">{c.phone}</span>
@@ -368,7 +369,7 @@ function Clients() {
                 onClick={() => setSelected(c)}
                 className="flex w-full items-center gap-3 border-t border-border px-4 py-3 text-left first:border-t-0"
               >
-                <ClientAvatar name={c.name} size="md" />
+                <AvatarClienta id={c.id} nombre={c.name} size="md" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <b className="truncate">{c.name}</b>
@@ -402,7 +403,7 @@ function Clients() {
             {otrasDelSalon.map((c) => (
               <li key={c.id}>
                 <button type="button" onClick={() => setSelected(c)} className="flex w-full items-center gap-3 py-2 text-left hover:text-foreground">
-                  <ClientAvatar name={c.name} size="md" />
+                  <AvatarClienta id={c.id} nombre={c.name} size="md" />
                   <span className="min-w-0 flex-1 truncate font-semibold">{c.name}</span>
                   <span className="text-[12.5px] text-muted-foreground tabular-nums">{c.phone}</span>
                 </button>
@@ -412,11 +413,6 @@ function Clients() {
         </section>
       )}
 
-      <ClientHistorySheet
-        client={selected}
-        open={!!selected}
-        onOpenChange={(o) => !o && setSelected(null)}
-      />
       <ImportarClientasDialog open={importarAbierto} onOpenChange={setImportarAbierto} />
     </div>
   );

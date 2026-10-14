@@ -17,6 +17,8 @@ export const Route = createFileRoute("/app/calendar")({
  */
 function CalendarRoute() {
   const inicio = Route.useSearch();
-  // La clave remonta el calendario si el asistente pide otro día u otra cita estando ya aquí.
-  return <CalendarioArena key={`${inicio.dia ?? ""}|${inicio.cita ?? ""}|${inicio.nueva ?? ""}`} inicio={inicio} />;
+  // La clave remonta el calendario si el asistente pide otro día estando ya aquí.
+  // `?cita=` ya NO entra en la clave: abrir una cita desde el propio calendario
+  // cambia la URL (ficha global) y no debe reiniciar la vista.
+  return <CalendarioArena key={`${inicio.dia ?? ""}|${inicio.nueva ?? ""}`} inicio={inicio} />;
 }

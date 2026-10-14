@@ -1,4 +1,5 @@
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
+import { EnlaceClienta } from "@/components/EnlaceClienta";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
@@ -170,7 +171,7 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
                 className="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-bold">{a.clientName}</p>
+                  <p className="truncate font-bold"><EnlaceClienta clientId={a.clientId}>{a.clientName}</EnlaceClienta></p>
                   <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                     <StylistDot employeeId={a.employeeId} className="size-2" />
                     {serviceLabelOf(a, serviceMap)} ·{" "}
@@ -222,7 +223,7 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
           return (
             <div key={a.id} className="flex flex-col gap-3 px-5 py-4">
               <div className="min-w-0">
-                <p className="truncate font-bold">{a.clientName}</p>
+                <p className="truncate font-bold"><EnlaceClienta clientId={a.clientId}>{a.clientName}</EnlaceClienta></p>
                 <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                   {!soloUno && <StylistDot employeeId={a.employeeId} className="size-2" />}
                   {serviceLabelOf(a, serviceMap)} ·{" "}

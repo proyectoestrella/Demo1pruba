@@ -1,4 +1,5 @@
 import { tituloCalendario } from "@/lib/calendario-titulo-panel";
+import { useFichas } from "@/lib/use-fichas";
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
 import { useOcupadoExterno, useSincronizarCalendarios } from "@/lib/calendarios-panel";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -139,7 +140,17 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
   const [filtroPro, setFiltroPro] = useState<string>("todas");
   const [rango, setRango] = useRangoDeSesion();
   const [rangoAbierto, setRangoAbierto] = useState(false);
-  const [seleccionada, setSeleccionada] = useState<Appointment | null>(citaInicial);
+  // Las citas de verdad se abren en la ficha global (?cita=); aquí solo quedan
+  // los bloqueos y lo que viene de calendarios externos, que no tienen ficha.
+  const { abrirCita, ficha } = useFichas();
+  const [seleccionada, setSeleccionada] = useState<Appointment | null>(null);
+  const elegirCita = (a: Appointment) => {
+    if (visibles.some((v) => v.id === a.id)) {
+      setSeleccionada(null);
+      abrirCita(a.id);
+    } else setSeleccionada(a);
+  };
+  const resaltadaId = ficha?.tipo === "cita" ? ficha.id : seleccionada?.id;
   const [prefill, setPrefill] = useState<{ date: Date; employeeId: EmployeeId } | null>(null);
   const [nuevaAbierta, setNuevaAbierta] = useState(!!inicio?.nueva);
   const [bloqueoAbierto, setBloqueoAbierto] = useState(false);
@@ -407,7 +418,7 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
       {/* Caja del calendario: la vista, con scroll interno. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[20px] border border-lino-fuerte bg-card">
         {vista === "cronograma" && (
-          <Cronograma dia={anchor} citas={citasDia} equipo={equipo} ahora={ahora} carta={carta} services={services} irAAhora={irAAhora} seleccionadaId={seleccionada?.id} onCita={setSeleccionada} onHueco={abrirHueco} />
+          <Cronograma dia={anchor} citas={citasDia} equipo={equipo} ahora={ahora} carta={carta} services={services} irAAhora={irAAhora} seleccionadaId={resaltadaId} onCita={elegirCita} onHueco={abrirHueco} />
         )}
         {esRejilla && (
           <RejillaCalendario
@@ -421,9 +432,9 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
             carta={carta}
             services={services}
             colorPor={vista !== "dia" && filtroPro === "todas" && !soloUno ? "profesional" : "servicio"}
-            seleccionadaId={seleccionada?.id}
+            seleccionadaId={resaltadaId}
             anchoMinimo={vista === "dia" ? 150 : diasRejilla.length <= 3 ? 96 : diasRejilla.length > 7 ? 60 : 44}
-            onCita={setSeleccionada}
+            onCita={elegirCita}
             onHueco={abrirHueco}
             diasEspeciales={profile.diasEspeciales}
           />
@@ -457,7 +468,7 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
             setSeleccionada(null);
           }}>Eliminar bloqueo</button>
         </div>
-      ) : <AppointmentDetailSheet appointment={seleccionada} open={!!seleccionada} onOpenChange={(o) => !o && setSeleccionada(null)} />}
+      ) : seleccionada ? <AppointmentDetailSheet appointment={seleccionada} open onOpenChange={(o) => !o && setSeleccionada(null)} /> : null}
       {dialogoNueva}
       <BloquearTiempoDialog open={bloqueoAbierto} onOpenChange={setBloqueoAbierto} date={anchor} equipo={equipo} />
     </div>

@@ -12,7 +12,7 @@ import { useRealSalonSlug } from "@/lib/use-real-salon";
 import { useBusinessType } from "@/lib/use-display-profile";
 import { fotoDeProfesional, MAX_SALON_TEAM_ENTRIES, formatTeamEntry } from "@/lib/business-type";
 import { PageHeader } from "@/components/PageHeader";
-import { StylistAvatar } from "@/components/StylistAvatar";
+import { EditarAvatar } from "@/components/EditarAvatar";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -139,7 +139,7 @@ function Team() {
           return (
             <section key={e.id} className="flex min-w-0 flex-col overflow-hidden rounded-[20px] border border-border bg-card">
               <div className="flex items-start gap-3 px-5 pt-5 pb-4" style={{ background: `var(--stylist-${["mario", "diego", "ruben"][i % 3]})` }}>
-                <span className="shrink-0 rounded-full bg-card p-1 shadow-[var(--sombra-tarjeta)]"><StylistAvatar name={e.name} employeeId={e.id} photo={fotoDeProfesional(e.name, e.id, e.photo, tipo, esSalonReal)} size="lg" /></span>
+                <span className="shrink-0 rounded-full bg-card p-1 shadow-[var(--sombra-tarjeta)]"><EditarAvatar tipo="profesional" id={e.id} nombre={e.name} foto={fotoDeProfesional(e.name, e.id, e.photo, tipo, esSalonReal)} size="xl" /></span>
                 <div className="grid min-w-0 flex-1 gap-1.5">
                   <label className="sr-only" htmlFor={`nombre-${i}`}>Nombre</label>
                   <input id={`nombre-${i}`} value={e.name} maxLength={50} onChange={(ev) => guardarNombre(i, "name", ev.target.value)} className="h-9 w-full rounded-lg bg-transparent px-1 font-display text-[22px] font-medium outline-none focus:bg-card/70" />

@@ -1,4 +1,5 @@
 import { citasDelDiaMemo } from "@/lib/selectores-rutas";
+import { useFichas } from "@/lib/use-fichas";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -35,7 +36,6 @@ import { cn } from "@/lib/utils";
 import { CifraAnimada } from "@/components/CifraAnimada";
 import { ahoraDelDia, enCuanto, lineaDelDia } from "@/lib/hoy-ahora-panel";
 import { cierraEseDia, diaAbiertoMasCercano, elDia } from "@/lib/dia-cerrado-panel";
-import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { useAplicarDesenlace } from "@/components/CitasPorResolver";
 import { DecisionDeudaDialog } from "@/components/DecisionDeudaDialog";
 import { AvisoDeudasHoy } from "@/components/DeudaCliente";
@@ -107,7 +107,8 @@ export function HoyArena() {
   const equipo = useEquipoVisible();
   const soloUno = esSoloUnProfesional(equipo);
   const carta = selectServiceMap(services);
-  const [seleccionada, setSeleccionada] = useState<Appointment | null>(null);
+  const { abrirCita } = useFichas();
+  const setSeleccionada = (a: Appointment | null) => { if (a) abrirCita(a.id); };
 
   const ahora = new Date();
   const hoy = useMemo(() => citasDelDiaMemo(appointments, ahora), [appointments]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -289,11 +290,6 @@ export function HoyArena() {
         ]}
       />
 
-      <AppointmentDetailSheet
-        appointment={seleccionada}
-        open={!!seleccionada}
-        onOpenChange={(o) => !o && setSeleccionada(null)}
-      />
     </div>
   );
 }

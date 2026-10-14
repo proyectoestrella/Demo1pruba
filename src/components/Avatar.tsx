@@ -94,5 +94,8 @@ export function AvatarProfesional({ id, nombre, foto, size, colorVar, className 
   const elegido = useSalonStore((s) => s.salonProfile.avataresEquipo?.[id]);
   const variable = colorVar ?? employeeMap[id]?.colorVar;
   const aro = variable ? (variable.startsWith("--") ? variable : `--${variable}`) : undefined;
-  return <Avatar nombre={nombre} id={id} foto={foto} elegido={elegido} size={size} aro={aro} className={className} />;
+  // Hoy no hay subida de fotos de personas: la única «foto» del equipo es la de
+  // stock de las demos de barbería. Un avatar elegido a propósito gana a esa foto
+  // (cuando exista la subida real, la foto subida mandará: ver lib/avatar.ts).
+  return <Avatar nombre={nombre} id={id} foto={elegido ? undefined : foto} elegido={elegido} size={size} aro={aro} className={className} />;
 }

@@ -10,6 +10,7 @@
  * los datos del salón en este navegador. Las acciones son semánticas; aquí
  * se traducen a rutas del panel.
  */
+import { useFichas } from "@/lib/use-fichas";
 import { LlegaConPlan } from "@/components/LlegaConPlan";
 import { useTienePlan } from "@/lib/accesos-panel";
 import { planDe } from "@/lib/plan";
@@ -29,7 +30,6 @@ import { filtrarCitas, useMiEmployeeId, usePermisos } from "@/lib/accesos-panel"
 import { alcance, puede, type Permisos } from "@/lib/permisos";
 import { POR_ID } from "@/lib/asistente/intenciones";
 import { useAccesosDemo } from "@/lib/accesos-maqueta";
-import { ClientHistorySheet } from "@/components/ClientHistorySheet";
 import { cn } from "@/lib/utils";
 
 type Mensaje = { id: number; de: "yo"; texto: string } | { id: number; de: "asistente"; r: RespuestaAsistente };
@@ -86,8 +86,7 @@ function PanelDelAsistente({ className }: { className?: string }) {
     return guiaAsistente(4).filter((t) => (t.id !== "marketing" || puede(permisosTemas, "marketing.usar")) && (t.id !== "dinero" || veDinero) && (t.id !== "configuracion" || puede(permisosTemas, "salon.editar")));
   }, [permisosTemas]);
   const [tema, setTema] = useState(temas[0]?.id ?? "hoy");
-  const [fichaId, setFichaId] = useState<string | null>(null);
-  const clienta = useSalonStore((s) => s.clients.find((c) => c.id === fichaId) ?? null);
+  const { abrirClienta } = useFichas();
   const final = useRef<HTMLDivElement>(null);
 
   // El equipo cambia poco; la store se lee en cada pregunta y así ve la cita creada hace un segundo.
@@ -170,7 +169,7 @@ function PanelDelAsistente({ className }: { className?: string }) {
     const s = useSalonStore.getState();
     switch (a.tipo) {
       case "abrir-ficha":
-        if (a.clientaId) setFichaId(a.clientaId);
+        if (a.clientaId) abrirClienta(a.clientaId);
         return;
       case "ver-hoja": {
         const manana = new Date();
@@ -293,7 +292,6 @@ function PanelDelAsistente({ className }: { className?: string }) {
         </button>
       </form>
 
-      <ClientHistorySheet client={clienta} open={!!clienta} onOpenChange={(open) => !open && setFichaId(null)} />
     </div>
   );
 }

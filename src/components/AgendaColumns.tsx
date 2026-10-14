@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useFichas } from "@/lib/use-fichas";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
@@ -9,8 +10,7 @@ import type { Appointment, EmployeeId } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import { franjasProfesionalEnFecha } from "@/lib/horario-equipo";
 import { TiraScroll } from "@/components/TiraScroll";
-import { StylistAvatar } from "@/components/StylistAvatar";
-import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
+import { AvatarProfesional } from "@/components/Avatar";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -73,7 +73,8 @@ export function AgendaColumns() {
       actual && employees.some((e) => e.id === actual) ? actual : employees[0]?.id,
     );
   }, [employees]);
-  const [selected, setSelected] = useState<Appointment | null>(null);
+  const { abrirCita } = useFichas();
+  const setSelected = (a: Appointment | null) => { if (a) abrirCita(a.id); };
   const [slotPrefill, setSlotPrefill] = useState<{ date: Date; employeeId: EmployeeId } | null>(
     null,
   );
@@ -264,7 +265,7 @@ export function AgendaColumns() {
               key={e.id}
               className="flex flex-col items-center gap-1.5 border-l border-border/60 px-2 py-3"
             >
-              <StylistAvatar name={e.name} employeeId={e.id} size="sm" />
+              <AvatarProfesional id={e.id} nombre={e.name} size="sm" />
               <span className="truncate text-xs font-medium">{e.name}</span>
             </div>
           ))}
@@ -303,11 +304,6 @@ export function AgendaColumns() {
         </div>
       </div>
 
-      <AppointmentDetailSheet
-        appointment={selected}
-        open={!!selected}
-        onOpenChange={(o) => !o && setSelected(null)}
-      />
       <NewAppointmentDialog
         open={newApptOpen}
         onOpenChange={(o) => {

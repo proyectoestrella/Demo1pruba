@@ -111,6 +111,7 @@
   --color-salvia: var(--salvia);
   --color-hoja: var(--hoja);
   --color-hoja-tinta: var(--hoja-tinta);
+  --color-terracota: var(--terracota);
   --color-melocoton: var(--melocoton);
   --color-miel: var(--miel);
   --color-miel-borde: var(--miel-borde);
@@ -181,6 +182,8 @@
   --salvia: #9FB8A3;
   --hoja: #4F6F58;
   --hoja-tinta: #3F5A47;
+  /* Terracota de la marca siShow: solo acento («ahora», destacados). La acción sigue siendo moca fuerte. */
+  --terracota: #A44C20;
   --melocoton: #F1D9C8;
   /* Pastel miel: lo que está pendiente de la dueña en Hoy (café 10,4:1). */
   --miel: #F3E6C4;

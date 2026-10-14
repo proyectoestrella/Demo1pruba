@@ -4,6 +4,7 @@ import { BookingAnswersSummary } from "./BookingAnswersSummary";
 import { eur } from "@/lib/copy";
 import type { fichaDeClienta } from "@/lib/ficha-clienta";
 import { Button } from "@/components/ui/button";
+import { Desplegable } from "@/components/Desplegable";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -25,7 +26,7 @@ export interface DatosColorTPV { fecha: string; producto: string; cantidad: stri
  * tiempo. `antesDelHistorial` es el hueco para lo que el panel pone entre
  * medias (próximas citas, observaciones, deuda).
  */
-export function FichaCompleta({ ficha, onAddColor, antesDelHistorial, origenTpv123 = false }: { ficha: Ficha; onAddColor?: (datos: DatosColorTPV) => void; antesDelHistorial?: ReactNode; origenTpv123?: boolean }) {
+export function FichaCompleta({ ficha, onAddColor, antesDelHistorial, origenTpv123 = false, onAbrirCita }: { ficha: Ficha; onAddColor?: (datos: DatosColorTPV) => void; antesDelHistorial?: ReactNode; origenTpv123?: boolean; onAbrirCita?: (id: string) => void }) {
   const { resumen, avisos, visitas } = ficha;
   const [formularioColor, setFormularioColor] = useState(false);
   const [mensajeColor, setMensajeColor] = useState("");
@@ -51,12 +52,14 @@ export function FichaCompleta({ ficha, onAddColor, antesDelHistorial, origenTpv1
       <span className="text-taupe" aria-hidden="true">·</span>
       <Cifra valor={fechaCorta(resumen.ultimaVisita)} etiqueta="última visita" delante />
     </p>
-    <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12.5px]">
-      <Dato etiqueta="Servicio habitual" valor={resumen.servicioHabitual ?? "—"} />
-      <Dato etiqueta="Profesional habitual" valor={resumen.profesionalHabitual ?? "—"} />
-      <Dato etiqueta="Primera visita" valor={fecha(resumen.primeraVisita)} />
-      <Dato etiqueta="Últimos 12 meses" valor={eur(resumen.gastoUltimos12Meses)} />
-    </dl>
+    <Desplegable titulo="Hábitos y gasto" resumen={`${resumen.servicioHabitual ?? "Sin servicio habitual"} · ${resumen.profesionalHabitual ?? "sin profesional habitual"}`} className="mt-1">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12.5px]">
+        <Dato etiqueta="Servicio habitual" valor={resumen.servicioHabitual ?? "—"} />
+        <Dato etiqueta="Profesional habitual" valor={resumen.profesionalHabitual ?? "—"} />
+        <Dato etiqueta="Primera visita" valor={fecha(resumen.primeraVisita)} />
+        <Dato etiqueta="Últimos 12 meses" valor={eur(resumen.gastoUltimos12Meses)} />
+      </dl>
+    </Desplegable>
 
     {avisos.length > 0 && <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-melocoton-borde bg-melocoton px-3.5 py-3 text-[12.5px] text-melocoton-tinta">
       <TriangleAlert className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
@@ -95,7 +98,7 @@ export function FichaCompleta({ ficha, onAddColor, antesDelHistorial, origenTpv1
       <EtiquetaFicha>Historial</EtiquetaFicha>
       <ol className="relative ml-1.5 space-y-3 border-l-2 border-lino pl-5">
         {visitas.map((v) => <li key={v.id} className="relative before:absolute before:top-1 before:-left-[27px] before:size-3 before:rounded-full before:border-2 before:border-salvia before:bg-card">
-          <div className="flex items-start justify-between gap-2">
+          <button type="button" disabled={!onAbrirCita} onClick={() => onAbrirCita?.(v.id)} aria-label={`Abrir la cita del ${fecha(v.fecha)}`} className="-mx-2 flex w-[calc(100%+1rem)] items-start justify-between gap-2 rounded-xl px-2 py-1 text-left enabled:hover:bg-nata focus-visible:outline-2 focus-visible:outline-primary">
             <div className="min-w-0">
               <p className="text-[12.5px] font-bold text-muted-foreground tabular-nums">
                 {fecha(v.fecha)} · {v.profesional}
@@ -104,7 +107,7 @@ export function FichaCompleta({ ficha, onAddColor, antesDelHistorial, origenTpv1
               <p className="font-bold">{v.servicios.length ? v.servicios.join(" + ") : "Color anotado"}</p>
             </div>
             {v.importe > 0 && <span className="shrink-0 font-bold tabular-nums">{eur(v.importe).replace(",00", "")}</span>}
-          </div>
+          </button>
           {v.colorFormula && <p className="mt-1.5 flex gap-1.5 rounded-xl bg-salvia-clara px-2.5 py-1.5 text-[12.5px] text-hoja-tinta"><Droplet className="mt-px size-3.5 shrink-0" strokeWidth={1.6} />{v.colorFormula}</p>}
           {v.technicalNotes && <p className="mt-1 rounded-xl bg-nata px-2.5 py-1.5 text-[12.5px] text-cafe-medio">{v.technicalNotes}</p>}
           <BookingAnswersSummary answers={v.bookingAnswers} />

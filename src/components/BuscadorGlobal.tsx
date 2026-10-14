@@ -4,8 +4,8 @@ import { useSalonStore } from "@/lib/store";
 import { buscarClientas } from "@/lib/buscar-clientas";
 import { fichaDeClienta } from "@/lib/ficha-clienta";
 import { useEquipo } from "@/lib/use-equipo";
-import type { Client } from "@/lib/mock/types";
-import { ClientHistorySheet } from "./ClientHistorySheet";
+import { useFichas } from "@/lib/use-fichas";
+import { AvatarClienta } from "./Avatar";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
@@ -16,7 +16,7 @@ export function BuscadorGlobal({ variante = "icono" }: {
 }) {
   const [open, setOpen] = useState(false);
   const [texto, setTexto] = useState("");
-  const [clienta, setClienta] = useState<Client | null>(null);
+  const { abrirClienta } = useFichas();
   const input = useRef<HTMLInputElement>(null);
   const clientes = useSalonStore((s) => s.clients);
   const citas = useSalonStore((s) => s.appointments);
@@ -72,15 +72,17 @@ export function BuscadorGlobal({ variante = "icono" }: {
         <div className="max-h-[55dvh] overflow-y-auto overscroll-contain px-2 pb-3">
           {resultados.length === 0 ? <p className="p-4 text-sm text-muted-foreground">No hay clientas que coincidan.</p> : resultados.map((c) => {
             const ficha = fichaDeClienta(c.id, { citas, clientes, servicios, equipo, ahora: new Date() });
-            return <button key={c.id} type="button" className="flex min-h-16 w-full flex-col justify-center rounded-lg px-3 py-2 text-left hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary" onClick={() => { setOpen(false); setClienta(c); }}>
-              <span className="font-medium">{c.name}</span>
-              <span className="text-xs text-muted-foreground">{c.phone} · Última visita: {ficha.resumen.ultimaVisita ? new Date(ficha.resumen.ultimaVisita).toLocaleDateString("es-ES") : "—"}</span>
-              {ficha.resumen.ultimoColor && <span className="line-clamp-1 text-xs text-primary">Color: {ficha.resumen.ultimoColor.formula}</span>}
+            return <button key={c.id} type="button" className="flex min-h-16 w-full items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary" onClick={() => { setOpen(false); abrirClienta(c.id); }}>
+              <AvatarClienta id={c.id} nombre={c.name} size="md" />
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate font-medium">{c.name}</span>
+                <span className="text-xs text-muted-foreground">{c.phone} · Última visita: {ficha.resumen.ultimaVisita ? new Date(ficha.resumen.ultimaVisita).toLocaleDateString("es-ES") : "—"}</span>
+                {ficha.resumen.ultimoColor && <span className="line-clamp-1 text-xs text-primary">Color: {ficha.resumen.ultimoColor.formula}</span>}
+              </span>
             </button>;
           })}
         </div>
       </DialogContent>
     </Dialog>
-    <ClientHistorySheet client={clienta} open={!!clienta} onOpenChange={(value) => !value && setClienta(null)} />
   </>;
 }

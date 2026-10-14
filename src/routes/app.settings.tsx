@@ -1,5 +1,6 @@
 import { guardarPerfil } from "@/lib/deshacer-maqueta";
 import { CamposPreferenciasCalendario } from "@/components/CamposPreferenciasCalendario";
+import { AjustesFichas } from "@/components/AjustesFichas";
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -219,6 +220,11 @@ function Settings() {
             <h3 className="text-[15px] font-extrabold">Cómo se abre tu calendario</h3>
             <p className="-mt-2 text-sm text-muted-foreground">Se guarda al cambiarlo. También lo tienes en el engranaje del propio calendario.</p>
             <div className="max-w-md"><CamposPreferenciasCalendario /></div>
+          </div>
+          <div className={fila}>
+            <h3 className="text-[15px] font-extrabold">Cómo se abren las fichas</h3>
+            <p className="-mt-2 text-sm text-muted-foreground">En ordenador. Se guarda en este navegador.</p>
+            <AjustesFichas />
           </div>
           <div className={fila}>
             <AjustesDiasEspeciales />

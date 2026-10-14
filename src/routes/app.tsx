@@ -19,6 +19,7 @@ import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { PanelV2Shell } from "@/components/PanelV2Shell";
 import { GuardiaDelPanel } from "@/components/GuardiaDelPanel";
+import { FichasGlobales } from "@/components/FichasGlobales";
 import { accesoPanel } from "@/lib/acceso-actual-panel";
 import { hasSeenTour, startTour } from "@/lib/tour";
 import { BarraInferior, CabeceraArena, MenuLateral, TODOS_LOS_ITEMS, estaActivo } from "@/components/ArenaShell";
@@ -225,6 +226,7 @@ function PanelAutorizado({ slug }: { slug?: string }) {
 
   return <>
     {panelV2 && plan !== "reservas" ? <PanelV2Shell /> : <DashboardLayoutV1 />}
+    <FichasGlobales />
     {refresco && <span className="indicador-refresco fixed bottom-3 right-3 z-10 rounded-full border border-border bg-background/90 px-2 py-1 text-[10px] text-muted-foreground shadow-sm max-lg:bottom-20">{refresco}</span>}
   </>;
 }

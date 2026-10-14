@@ -6,7 +6,7 @@ import { serviceLabelOf } from "@/lib/appointment-services";
 import { eur } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 import type { Client } from "@/lib/mock/types";
-import { ClientAvatar } from "@/components/ClientAvatar";
+import { AvatarClienta } from "@/components/Avatar";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { CircleCheck, HandHeart, Wallet, CalendarClock } from "lucide-react";
@@ -90,7 +90,7 @@ export function RecargosPendientes({ clientId, title, className }: RecargosPendi
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <ClientAvatar name={client.name} size="md" />
+                  <AvatarClienta id={client.id} nombre={client.name} size="md" />
                   <div className="min-w-0">
                     <p className="truncate font-medium">{client.name}</p>
                     <p className="text-sm text-muted-foreground">

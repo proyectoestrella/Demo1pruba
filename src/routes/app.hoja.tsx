@@ -1,4 +1,5 @@
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
+import { useFichas } from "@/lib/use-fichas";
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Printer, TriangleAlert } from "lucide-react";
@@ -12,8 +13,6 @@ import { hojaDelDia, fechaLocal, vistaHoja } from "@/lib/hoja-del-dia";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
 import { Button } from "@/components/ui/button";
-import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
-import { ClientHistorySheet } from "@/components/ClientHistorySheet";
 import { fichaDeClienta } from "@/lib/ficha-clienta";
 import type { Appointment, Client } from "@/lib/mock/types";
 import { franjasProfesional } from "@/lib/horario-equipo";
@@ -33,8 +32,8 @@ function HojaDelDia() {
   const { dia } = Route.useSearch();
   const navigate = useNavigate({ from: "/app/hoja" });
   const manana = dia === "manana";
-  const [selected, setSelected] = useState<Appointment | null>(null);
-  const [fichaAbierta, setFichaAbierta] = useState<Client | null>(null);
+  const { abrirCita, abrirClienta } = useFichas();
+  const setSelected = (a: Appointment | null) => { if (a) abrirCita(a.id); };
   const fecha = new Date();
   if (manana) fecha.setDate(fecha.getDate() + 1);
   const hoja = hojaDelDia(citas, fechaLocal(fecha));
@@ -121,12 +120,10 @@ function HojaDelDia() {
             {ficha.avisos.length > 0 && <div className="flex gap-1.5 rounded-xl bg-melocoton px-2.5 py-1.5 text-melocoton-tinta"><TriangleAlert className="mt-px size-3.5 shrink-0" strokeWidth={1.6} /><div>{ficha.avisos.map((a) => <p key={a}>{a}</p>)}</div></div>}
             </div>
           </button>
-          <Button type="button" variant="outline" size="sm" className="hoja-ficha col-start-2 mt-2 justify-self-start lg:col-start-3" onClick={() => setFichaAbierta(clientes.find((c) => c.id === cita.clientId) ?? null)}>Ficha completa</Button>
+          <Button type="button" variant="outline" size="sm" className="hoja-ficha col-start-2 mt-2 justify-self-start lg:col-start-3" onClick={() => abrirClienta(cita.clientId)}>Ficha completa</Button>
         </div>;
       })}</div>
     </section>;
     })}
-    <AppointmentDetailSheet appointment={selected} open={!!selected} onOpenChange={(open) => !open && setSelected(null)} />
-    <ClientHistorySheet client={fichaAbierta} open={!!fichaAbierta} onOpenChange={(open) => !open && setFichaAbierta(null)} />
   </div>;
 }

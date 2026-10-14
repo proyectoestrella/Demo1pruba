@@ -1,4 +1,6 @@
 import { BotonConPlan } from "@/components/BotonConPlan";
+import { useFichas } from "@/lib/use-fichas";
+import { EnlaceClienta } from "@/components/EnlaceClienta";
 import { usePermisos } from "@/lib/accesos-panel";
 import { alcance, puede } from "@/lib/permisos";
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
@@ -21,7 +23,6 @@ import { PageHeader } from "@/components/PageHeader";
 import { StylistDot } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
-import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
 import { CitasPorResolver } from "@/components/CitasPorResolver";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
@@ -139,7 +140,8 @@ function Appointments() {
   // Un solo profesional: sin filtro ni columna "por profesional".
   const soloUno = esSoloUnProfesional(employees);
   const [busqueda, setBusqueda] = useState("");
-  const [selected, setSelected] = useState<Appointment | null>(null);
+  const { abrirCita, abrirClienta } = useFichas();
+  const setSelected = (a: Appointment | null) => { if (a) abrirCita(a.id); };
   const [newApptOpen, setNewApptOpen] = useState(false);
   /** Filas a la vista: de 20 en 20; vuelve a 20 al filtrar o buscar. */
   const [cuantas, setCuantas] = useState(20);
@@ -288,7 +290,7 @@ function Appointments() {
                       </TableCell>
                       <TableCell className="font-bold">
                         <span className="inline-flex flex-wrap items-center gap-2">
-                          {a.clientName}
+                          <EnlaceClienta clientId={a.clientId} className="font-bold">{a.clientName}</EnlaceClienta>
                           {conRecargo && <DeudaBadge clientId={a.clientId} clients={clients} />}
                         </span>
                       </TableCell>
@@ -366,7 +368,7 @@ function Appointments() {
                           minute: "2-digit",
                         })}
                       </p>
-                      <p className="mt-1 truncate font-bold">{a.clientName}</p>
+                      <p className="mt-1 truncate font-bold"><EnlaceClienta clientId={a.clientId}>{a.clientName}</EnlaceClienta></p>
                       {conRecargo && <DeudaBadge clientId={a.clientId} clients={clients} className="mt-1" />}
                     </div>
                     <div onClick={(evt) => evt.stopPropagation()}>
@@ -439,11 +441,6 @@ function Appointments() {
         </>
       )}
 
-      <AppointmentDetailSheet
-        appointment={selected}
-        open={!!selected}
-        onOpenChange={(o) => !o && setSelected(null)}
-      />
       <NewAppointmentDialog open={newApptOpen} onOpenChange={setNewApptOpen} />
 
     </div>

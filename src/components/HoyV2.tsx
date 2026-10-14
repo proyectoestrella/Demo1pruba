@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useFichas } from "@/lib/use-fichas";
 import { Link } from "@tanstack/react-router";
 import {
   Calendar,
@@ -29,8 +30,6 @@ import { PAYMENT_METHOD_LABELS, type Appointment } from "@/lib/mock/types";
 import { StylistDot } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
-import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
-import { ClientHistorySheet } from "@/components/ClientHistorySheet";
 import type { Client } from "@/lib/mock/types";
 import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
 import { ExpiredDepositsNotice } from "@/components/ExpiredDepositsNotice";
@@ -71,8 +70,8 @@ export function HoyV2() {
   const mostrarSolicitudes = useSalonStore((s) => s.salonProfile.mostrarSolicitudes ?? true);
   const smartSpread = useSalonStore((s) => s.salonProfile.smartSpread ?? false);
   const lastSlotBufferMin = useSalonStore((s) => s.salonProfile.lastSlotBufferMin ?? 0);
-  const [selected, setSelected] = useState<Appointment | null>(null);
-  const [fichaAbierta, setFichaAbierta] = useState<Client | null>(null);
+  const { abrirCita, abrirClienta } = useFichas();
+  const setSelected = (a: Appointment | null) => { if (a) abrirCita(a.id); };
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [phoneApptOpen, setPhoneApptOpen] = useState(false);
   const greeting = greetingForHour(new Date().getHours());
@@ -391,7 +390,7 @@ export function HoyV2() {
                     <StatusBadge status={a.status} className="shrink-0" />
                   )}
                 </button>
-                <button type="button" className="mr-3 min-h-11 shrink-0 rounded-md px-2 text-xs font-medium text-primary hover:bg-primary/10" onClick={() => setFichaAbierta(clients.find((c) => c.id === a.clientId) ?? null)}>Ficha</button>
+                <button type="button" className="mr-3 min-h-11 shrink-0 rounded-md px-2 text-xs font-medium text-primary hover:bg-primary/10" onClick={() => abrirClienta(a.clientId)}>Ficha</button>
                 </div>
               );
             })}
@@ -399,12 +398,6 @@ export function HoyV2() {
         )}
       </div>
 
-      <AppointmentDetailSheet
-        appointment={selected}
-        open={!!selected}
-        onOpenChange={(o) => !o && setSelected(null)}
-      />
-      <ClientHistorySheet client={fichaAbierta} open={!!fichaAbierta} onOpenChange={(o) => !o && setFichaAbierta(null)} />
       <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
       {/* `allowChaining`: los sábados de Cardedal son 60 llamadas seguidas. */}
       <NewAppointmentDialog open={phoneApptOpen} onOpenChange={setPhoneApptOpen} allowChaining />

@@ -7,7 +7,7 @@ import { employeesForType } from "@/lib/mock/salon";
 import { fotoDeProfesional, professionalWord } from "@/lib/business-type";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import type { EmployeeId } from "@/lib/mock/types";
-import { StylistAvatar } from "@/components/StylistAvatar";
+import { AvatarProfesional } from "@/components/Avatar";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -159,10 +159,10 @@ export function WalkInDialog({ open, onOpenChange }: WalkInDialogProps) {
                             : "border-border/60 hover:border-primary/40",
                         )}
                       >
-                        <StylistAvatar
-                          name={e.name}
-                          employeeId={e.id}
-                          photo={fotoDeProfesional(e.name, e.id, e.photo, tipo, esSalonReal)}
+                        <AvatarProfesional
+                          id={e.id}
+                          nombre={e.name}
+                          foto={fotoDeProfesional(e.name, e.id, e.photo, tipo, esSalonReal)}
                           size="sm"
                         />
                         {e.name}
