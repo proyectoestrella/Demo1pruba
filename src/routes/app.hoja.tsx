@@ -1,3 +1,4 @@
+import { tinteProfesional } from "@/lib/colores-elegidos";
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
 import { useFichas } from "@/lib/use-fichas";
 import { useState } from "react";
@@ -95,7 +96,7 @@ function HojaDelDia() {
       const jornadas = franjasProfesional(profesional, fecha.getDay()).map((r) => `${hhmm(r.start)}–${hhmm(r.end)}`);
       return <section key={profesional.id} className="hoja-grupo overflow-hidden rounded-[20px] border border-border bg-card">
       <h2 className="flex flex-wrap items-center gap-2.5 border-b border-border bg-perla px-5 py-3">
-        <span className="grid size-8 place-items-center rounded-full text-xs font-extrabold" style={{ background: `var(--stylist-${["mario", "diego", "ruben"][gi % 3]})` }} aria-hidden="true">{profesional.name.slice(0, 2).toUpperCase()}</span>
+        <span className="grid size-8 place-items-center rounded-full text-xs font-extrabold" style={{ background: tinteProfesional(gi) }} aria-hidden="true">{profesional.name.slice(0, 2).toUpperCase()}</span>
         <span className="text-base font-extrabold">{profesional.name}</span>
         <span className="inline-flex h-6 items-center rounded-full bg-nata px-2.5 text-[12.5px] font-bold text-cafe-medio tabular-nums">{visitas.length} {visitas.length === 1 ? "cita" : "citas"} · {jornadas.length ? jornadas.join(", ") : "No trabaja"}</span>
       </h2>

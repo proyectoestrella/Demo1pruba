@@ -163,8 +163,7 @@ export function AgendaColumns() {
               onClick={() => setSelected(a)}
               className={cn(
                 "absolute left-1 right-1 overflow-hidden rounded-lg border-l-[3px] px-2 py-1 text-left text-[11px] shadow-sm transition-transform hover:-translate-y-0.5 hover:shadow-md",
-                isNoShow && "border-dashed opacity-70",
-                isCompleted && "opacity-80",
+                isNoShow && "border-dashed line-through decoration-cafe/60",
                 started && a.status === "confirmed" && "ring-1 ring-primary/40",
               )}
               style={{

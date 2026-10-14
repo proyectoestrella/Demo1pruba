@@ -202,7 +202,7 @@
   /* Estructura del calendario: tinta azulada, líneas frías, «ahora» añil. */
   --k-tinta: #1F2633;
   --k-tinta2: #4A5363;
-  --k-gris: #7B8494;
+  --k-gris: #5A6372;
   --k-linea: #E3D8C9;
   --k-linea-media: #EAE1D5;
   --k-linea-f: #CDBFAC;
@@ -211,19 +211,28 @@
   --k-ahora: #C0503A;
   /* Horas en que no trabaja nadie de la columna: rayado muy suave. */
   --k-cerrado: rgba(122, 96, 72, 0.07);
-  /* Profesionales en la rejilla «Todas»: pasteles distintos entre sí. */
-  --pro-1: #F2D8C6;
-  --pro-2: #D5E4D2;
-  --pro-3: #E3DAEE;
-  --pro-4: #D6E4EF;
+  /* Profesionales (guía de diseño del panel, §2): hasta 7 hues, cada uno con tinte
+     de fondo (texto SIEMPRE café encima, ≥ 11:1) y borde saturado de 4 px (≥ 3:1
+     contra la página). La terracota no se asigna a nadie: es de acción y «ahora». */
+  --pro-1: #F6DDE3; --pro-1-borde: #B24A63; /* rosa viejo */
+  --pro-2: #DDEBDD; --pro-2-borde: #4F7A5A; /* salvia */
+  --pro-3: #EEDDEA; --pro-3-borde: #8A4A78; /* ciruela */
+  --pro-4: #DCE8F2; --pro-4-borde: #3F6C94; /* azul pizarra */
+  --pro-5: #F5E8C4; --pro-5-borde: #8F6A0E; /* ocre */
+  --pro-6: #D6ECEB; --pro-6-borde: #2F7F80; /* verde azulado */
+  --pro-7: #E6E1DA; --pro-7-borde: #5D5750; /* grafito */
   --k-libre: #F1FAF6;
   --k-libre-b: #8CCFB2;
   --k-libre-t: #23694E;
   --k-vino: #2F7A5B;
   /* Barras de ocupación por profesional (vista Mes y pie): el tono fuerte de --pro-N. */
-  --k-pro-1: #C98A62;
-  --k-pro-2: #6E9A73;
-  --k-pro-3: #9784BF;
+  --k-pro-1: var(--pro-1-borde);
+  --k-pro-2: var(--pro-2-borde);
+  --k-pro-3: var(--pro-3-borde);
+  --k-pro-4: var(--pro-4-borde);
+  --k-pro-5: var(--pro-5-borde);
+  --k-pro-6: var(--pro-6-borde);
+  --k-pro-7: var(--pro-7-borde);
 
   /* ---- Roles de shadcn, resueltos sobre esa paleta ---- */
   --background: var(--pagina);
@@ -260,9 +269,9 @@
   --ring: var(--moca);
 
   /* Profesionales: pasteles con texto café (StylistAvatar ya no usa texto blanco). */
-  --stylist-mario: #EDE2D6;
-  --stylist-diego: #DDE8DD;
-  --stylist-ruben: #F1E4CF;
+  --stylist-mario: var(--pro-1);
+  --stylist-diego: var(--pro-2);
+  --stylist-ruben: var(--pro-5);
   --stylist-1: var(--serv-1);
   --stylist-2: var(--serv-2);
   --stylist-3: var(--serv-3);

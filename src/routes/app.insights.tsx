@@ -1,3 +1,4 @@
+import { tinteProfesional } from "@/lib/colores-elegidos";
 import { aiInsightsMemo, barrasDelPeriodoMemo, nuevasYRecurrentesMemo, ocupacionPorProfesionalMemo, serviciosDelRangoMemo } from "@/lib/selectores-rutas";
 import { useTienePlan } from "@/lib/accesos-panel";
 import { LlegaConPlan } from "@/components/LlegaConPlan";
@@ -92,7 +93,7 @@ clientas: nuevasYRecurrentesMemo(appointments, r),
   <div key={e.id}>
     <div className="mb-1 flex items-baseline justify-between text-sm">
 <span className="flex items-center gap-2 font-bold">
-  <span className="grid size-6 place-items-center rounded-full text-[10px] font-extrabold" style={{ background: `var(--stylist-${["mario", "diego", "ruben"][i % 3]})` }}>{e.name[0]}</span>
+  <span className="grid size-6 place-items-center rounded-full text-[10px] font-extrabold" style={{ background: tinteProfesional(i, e.id) }}>{e.name[0]}</span>
   {e.name}
 </span>
 <span className="text-muted-foreground tabular-nums"><b className="text-foreground">{pct} %</b> · {citas} citas</span>

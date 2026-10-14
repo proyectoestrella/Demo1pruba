@@ -1,3 +1,4 @@
+import { tinteProfesional } from "@/lib/colores-elegidos";
 import { isoDelSalon, zonaDelSalon } from "@/lib/zona-horaria";
 import { avisar } from "@/lib/deshacer-maqueta";
 import { useEquipoParaDarCita } from "@/lib/accesos-panel";
@@ -685,7 +686,7 @@ function FormularioNuevaCita({
                       <div className="flex flex-wrap gap-1.5">
                         {employees.map((e, i) => (
                           <button key={e.id} type="button" aria-pressed={employeeId === e.id} onClick={() => setEmployeeId(e.id)} className={opcion(employeeId === e.id)}>
-                            <span className="grid size-6 place-items-center rounded-full text-[10px] font-extrabold text-cafe" style={{ background: `var(--stylist-${["mario", "diego", "ruben"][i % 3]})` }} aria-hidden="true">
+                            <span className="grid size-6 place-items-center rounded-full text-[10px] font-extrabold text-cafe" style={{ background: tinteProfesional(i) }} aria-hidden="true">
                               {e.name[0]}
                             </span>
                             {e.name}

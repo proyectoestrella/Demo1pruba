@@ -1,3 +1,4 @@
+import { bordeProfesional, tinteProfesional } from "@/lib/colores-elegidos";
 import { tituloCalendario } from "@/lib/calendario-titulo-panel";
 import { useFichas } from "@/lib/use-fichas";
 import { AvatarProfesional } from "@/components/Avatar";
@@ -85,9 +86,9 @@ const DCORTO = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 const capital = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 /** Pasteles de profesional para los avatares (taupe, salvia, nata tostada). */
-const colorPro = (i: number) => `var(--stylist-${["mario", "diego", "ruben"][i % 3]})`;
+const colorPro = (i: number) => tinteProfesional(i);
 /** Color de la barra de ocupación de la profesional, por orden del equipo. */
-const barraPro = (i: number) => `var(--k-pro-${(i % 3) + 1})`;
+const barraPro = (i: number) => bordeProfesional(i);
 
 type AbrirHueco = (employeeId: EmployeeId, minuto: number, dia: Date) => void;
 
@@ -577,17 +578,18 @@ function BloqueCita({
       title={`${a.clientName} · ${nombreServicio} · ${hora(a.start)}–${minutosAHora(ini + a.duration)}${pendiente ? " · por confirmar" : ""}`}
       className={cn(
         "absolute flex flex-col overflow-hidden text-left leading-[1.28] text-k-tinta hover:shadow-[0_3px_10px_rgba(59,47,42,0.16)] [&>*]:shrink-0",
-        "rounded-[5px] border border-cafe transition-shadow duration-150",
+        "rounded-[6px] border border-cafe/25 transition-shadow duration-150",
         variante === "semana" ? "px-1.5 py-[5px] text-[11.5px]" : "px-2.5 py-2 text-[13px]",
         variante !== "crono" && corta && "py-[3px]",
         variante === "crono" && corta && "px-[7px] py-[7px]",
         pendiente && "border-dashed",
-        noVino && "opacity-55 line-through",
+        noVino && "line-through decoration-cafe/60",
         seleccionada && "z-[6] ring-2 ring-primary ring-offset-1 ring-offset-card",
       )}
       style={{
         ...style,
         background: pendiente ? "var(--superficie)" : `var(--serv-${n})`,
+        borderLeft: `4px ${pendiente ? "dashed" : "solid"} var(--serv-${n}-borde)`,
       }}
     >
       <IconoEstado status={a.status} className="top-1.5 right-1.5" />

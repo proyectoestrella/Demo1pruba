@@ -1,6 +1,6 @@
 import { memo, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Check, Clock3, UserX } from "lucide-react";
-import { colorElegidoProfesional } from "@/lib/colores-elegidos";
+import { tinteProfesional } from "@/lib/colores-elegidos";
 import { hora } from "@/lib/copy";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { franjasProfesionalEnFecha } from "@/lib/horario-equipo";
@@ -100,7 +100,7 @@ export type ColumnaRejilla = {
 };
 
 /** Pasteles por profesional cuando la rejilla junta a todo el equipo. */
-export const colorProfesional = (i: number, id?: string) => `var(--pro-${colorElegidoProfesional(id) ?? (i % 4) + 1})`;
+export const colorProfesional = (i: number, id?: string) => tinteProfesional(i, id);
 
 export function RejillaCalendario({
   columnas,
@@ -570,15 +570,16 @@ export function CitaRejilla({
       aria-pressed={seleccionada}
       title={`${a.clientName} · ${nombreServicio} · ${hora(a.start)}–${minutosAHora(ini + a.duration)}${pro ? ` · ${pro}` : ""}${pendiente ? " · por confirmar" : ""}${vino ? " · vino" : ""}${noVino ? " · no vino" : ""}`}
       className={cn(
-        "@container absolute z-[4] flex flex-col overflow-hidden rounded-[5px] border border-cafe text-left text-[12px] leading-[1.25] text-cafe transition-shadow duration-150 hover:z-[7] hover:shadow-[0_3px_10px_rgba(59,47,42,0.16)] focus-visible:z-[7] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
+        "@container absolute z-[4] flex flex-col overflow-hidden rounded-[6px] border border-cafe/25 text-left text-[12px] leading-[1.25] text-cafe transition-shadow duration-150 hover:z-[7] hover:shadow-[0_3px_10px_rgba(59,47,42,0.16)] focus-visible:z-[7] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
         compacta ? "px-[3px] py-0.5 text-[10.5px]" : estrecha ? "px-1 py-0.5 text-[11px]" : dosLineas ? "px-1.5 py-1" : "flex-row items-center gap-1.5 px-1.5 py-0",
         pendiente && "border-dashed",
-        noVino && "opacity-60",
+        noVino && "line-through decoration-cafe/60",
         seleccionada && "z-[8] ring-2 ring-primary ring-offset-1 ring-offset-card",
         // Sitio para el icono de estado, que no tape la hora.
         conIcono && !compacta && a.status !== "confirmed" && a.status !== "blocked" && "pr-5",
       )}
-      style={{ ...style, background: pendiente ? "var(--superficie)" : (fondo ?? `var(--serv-${n})`) }}
+      // Barra izquierda de 4 px con el borde saturado del mismo color (--pro-N-borde / --serv-N-borde).
+      style={{ ...style, background: pendiente ? "var(--superficie)" : (fondo ?? `var(--serv-${n})`), borderLeft: `4px ${pendiente ? "dashed" : "solid"} ${fondo ? fondo.replace(")", "-borde)") : `var(--serv-${n}-borde)`}` }}
     >
       {/* En carriles de menos de 20 px de texto (la semana en el móvil) no cabe ni una
           letra: solo el bloque de color; al pulsarlo sale el detalle. */}

@@ -1,3 +1,4 @@
+import { tinteProfesional, bordeProfesional } from "@/lib/colores-elegidos";
 import { guardarPerfil } from "@/lib/deshacer-maqueta";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
@@ -138,7 +139,7 @@ function Team() {
           const asignados = configurados?.length ? configurados : serviciosCarta.map((s) => s.id);
           return (
             <section key={e.id} className="flex min-w-0 flex-col overflow-hidden rounded-[20px] border border-border bg-card">
-              <div className="flex items-start gap-3 px-5 pt-5 pb-4" style={{ background: `var(--stylist-${["mario", "diego", "ruben"][i % 3]})` }}>
+              <div className="flex items-start gap-3 px-5 pt-5 pb-4" style={{ background: tinteProfesional(i, e.id) }}>
                 <span className="shrink-0 rounded-full bg-card p-1 shadow-[var(--sombra-tarjeta)]"><EditarAvatar tipo="profesional" id={e.id} nombre={e.name} foto={fotoDeProfesional(e.name, e.id, e.photo, tipo, esSalonReal)} size="xl" /></span>
                 <div className="grid min-w-0 flex-1 gap-1.5">
                   <label className="sr-only" htmlFor={`nombre-${i}`}>Nombre</label>
@@ -231,10 +232,10 @@ function Team() {
             <tbody>
               {resumenSemana.map(({ e, citas, horas: h, ocupacion, top }, i) => (
                 <tr key={e.id} className="border-t border-border">
-                  <td className="px-5 py-3"><span className="flex items-center gap-2.5"><span className="grid size-7 place-items-center rounded-full text-[11px] font-extrabold" style={{ background: `var(--stylist-${["mario", "diego", "ruben"][i % 3]})` }}>{e.name[0]}</span><b>{e.name}</b></span></td>
+                  <td className="px-5 py-3"><span className="flex items-center gap-2.5"><span className="grid size-7 place-items-center rounded-full text-[11px] font-extrabold" style={{ background: tinteProfesional(i, e.id) }}>{e.name[0]}</span><b>{e.name}</b></span></td>
                   <td className="px-5 py-3 font-bold tabular-nums">{citas}</td>
                   <td className="px-5 py-3 tabular-nums">{String(h).replace(".", ",")} h</td>
-                  <td className="px-5 py-3"><span className="flex items-center gap-2.5"><span className="flex h-1.5 w-28 overflow-hidden rounded-full bg-nata"><i className="block" style={{ width: `${ocupacion}%`, background: `var(--k-pro-${(i % 3) + 1})` }} /></span><b className="tabular-nums">{ocupacion} %</b></span></td>
+                  <td className="px-5 py-3"><span className="flex items-center gap-2.5"><span className="flex h-1.5 w-28 overflow-hidden rounded-full bg-nata"><i className="block" style={{ width: `${ocupacion}%`, background: bordeProfesional(i, e.id) }} /></span><b className="tabular-nums">{ocupacion} %</b></span></td>
                   <td className="px-5 py-3 text-muted-foreground">{top ?? "—"}</td>
                 </tr>
               ))}

@@ -2,7 +2,7 @@ import { guardarPerfil } from "@/lib/deshacer-maqueta";
 import { useSalonStore } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
 import { indiceColorServicio } from "@/lib/hoy-arena";
-import { colorElegidoProfesional } from "@/lib/colores-elegidos";
+import { indiceColorProfesional, PROFESIONAL_COLORES } from "@/lib/colores-elegidos";
 import { cn } from "@/lib/utils";
 
 /**
@@ -54,12 +54,12 @@ export function AjustesColores() {
         <p className="-mt-2 text-sm text-muted-foreground">Se ven en la Semana del calendario con «Todas».</p>
         <ul className="space-y-2.5">
           {equipo.map((e, i) => {
-            const actual = colorElegidoProfesional(e.id) ?? (i % 4) + 1;
+            const actual = indiceColorProfesional(i, e.id);
             return (
               <li key={e.id} className="flex flex-wrap items-center gap-3">
                 <span className="min-w-[160px] flex-1 text-[14px] font-semibold">{e.name}</span>
                 <span role="radiogroup" aria-label={`Color de ${e.name}`} className="flex gap-1.5">
-                  {[1, 2, 3, 4].map((n) => (
+                  {Array.from({ length: PROFESIONAL_COLORES }, (_, k) => k + 1).map((n) => (
                     <button
                       key={n}
                       type="button"
