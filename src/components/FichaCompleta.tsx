@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { useState, type ReactNode } from "react";
 import { Droplet, TriangleAlert } from "lucide-react";
 import { BookingAnswersSummary } from "./BookingAnswersSummary";
@@ -70,12 +71,9 @@ export function FichaCompleta({ ficha, onAddColor, antesDelHistorial, origenTpv1
     {resumen.ultimoColor ? <div className="flex gap-2 rounded-xl bg-salvia-clara px-3 py-2.5 text-[12.5px] text-hoja-tinta">
       <Droplet className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
       <span><b className="block text-sm">{resumen.ultimoColor.formula}</b>{fecha(resumen.ultimoColor.fecha)}</span>
-    </div> : <div className="rounded-2xl border-[1.5px] border-dashed border-lino-fuerte px-4 py-3 text-center text-[12.5px] text-muted-foreground">
-      <b className="block text-sm text-foreground">Aún no hay fórmula</b>
-      Anótala tras el servicio y la tendrás a mano la próxima vez.
-    </div>}
+    </div> : <p className="text-[13px] text-muted-foreground">Sin fórmula anotada todavía.</p>}
     {onAddColor && <div className="mt-2" data-vaul-no-drag>
-      <Button type="button" variant="outline" onClick={() => { setFormularioColor((v) => !v); setMensajeColor(""); }} className="h-[42px] w-full gap-2">
+      <Button type="button" variant={resumen.ultimoColor ? "outline" : "ghost"} onClick={() => { setFormularioColor((v) => !v); setMensajeColor(""); }} className={cn("gap-2", resumen.ultimoColor ? "h-[42px] w-full" : "-ml-3 h-9")}>
         <Droplet className="size-[18px]" strokeWidth={1.6} />
         {formularioColor ? "Cerrar" : origenTpv123 ? "Añadir color de TPV 123" : "Añadir color"}
       </Button>

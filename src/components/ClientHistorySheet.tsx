@@ -224,9 +224,7 @@ export function ClientHistorySheet({
             <span className="tabular-nums">{textoHoy}</span>
           </button>
         ) : (
-          <p className="rounded-2xl border-[1.5px] border-dashed border-lino-fuerte px-4 py-3 text-[13px] text-muted-foreground">
-            Sin cita próxima. Dale una con «Nueva cita».
-          </p>
+          <p className="text-[13px] text-muted-foreground">Sin cita próxima.</p>
         )}
       </div>
 

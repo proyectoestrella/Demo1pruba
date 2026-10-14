@@ -138,7 +138,7 @@ function Team() {
           const configurados = profile.serviciosPorProfesional?.[e.id];
           const asignados = configurados?.length ? configurados : serviciosCarta.map((s) => s.id);
           return (
-            <section key={e.id} className="flex min-w-0 flex-col overflow-hidden rounded-[20px] border border-border bg-card">
+            <section key={e.id} className="flex min-w-0 flex-col overflow-hidden rounded-[20px] border border-border bg-card" style={{ borderLeft: `4px solid ${bordeProfesional(i, e.id)}` }}>
               <div className="flex items-start gap-3 px-5 pt-5 pb-4" style={{ background: tinteProfesional(i, e.id) }}>
                 <span className="shrink-0 rounded-full bg-card p-1 shadow-[var(--sombra-tarjeta)]"><EditarAvatar tipo="profesional" id={e.id} nombre={e.name} foto={fotoDeProfesional(e.name, e.id, e.photo, tipo, esSalonReal)} size="xl" /></span>
                 <div className="grid min-w-0 flex-1 gap-1.5">
