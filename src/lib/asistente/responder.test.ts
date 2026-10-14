@@ -242,10 +242,10 @@ describe("responder", () => {
     expect(r.contacto.cierre).toContain("activarlo");
   });
 
-  test("más profesionales depende del plan (28-sep, plan-final-v2): Básico sube a Completo; Completo y Embajador ya lo tienen", () => {
+  test("más profesionales depende del plan (28-sep, plan-final-v2): Básico sube a Estándar; Estándar y Embajador ya lo tienen", () => {
     const esperado: Record<"reservas" | "reservas-asistente" | "todo-incluido", string> = {
-      reservas: "llega con el plan **Completo**",
-      "reservas-asistente": "ya entra en tu plan (**Completo**)",
+      reservas: "llega con el plan **Estándar**",
+      "reservas-asistente": "ya entra en tu plan (**Estándar**)",
       "todo-incluido": "ya entra en tu plan (**Embajador**)",
     };
     for (const plan of ["reservas", "reservas-asistente", "todo-incluido"] as const) {
@@ -265,7 +265,7 @@ describe("responder", () => {
     expect(r.tipo === "escalar" && r.texto).toContain("siShow no lo hace");
   });
 
-  test("plan Básico: las preguntas de negocio remiten a Completo", () => {
+  test("plan Básico: las preguntas de negocio remiten a Estándar", () => {
     const r = nuevo("reservas").responder("cuantas citas tengo hoy");
     expect(r.tipo === "escalar" && r.intencion).toBe("plan-asistente");
   });

@@ -238,13 +238,13 @@ const FUNCION_DE: Record<string, FuncionPlan> = {
  * Lo que la tabla de planes contradice del documento (`preguntas-universo.md`,
  * 25-sep): el documento sigue con los nombres y el reparto de antes de la
  * decisión de Tomás del 28-sep (`plan-final-v2.md`) — Reservas → Básico,
- * Reservas + Asistente → Completo, Todo incluido → Embajador, y «más
- * profesionales» vuelve a depender del plan (Básico hasta 3, Completo hasta
+ * Reservas + Asistente → Estándar, Todo incluido → Embajador, y «más
+ * profesionales» vuelve a depender del plan (Básico hasta 3, Estándar hasta
  * 6, Embajador sin límite).
  */
 const CORRIGE_PLAN: Record<string, Partial<FamiliaEspecificacion>> = {
   "plan-asistente": {
-    plan: "Completo",
+    plan: "Estándar",
     alternativa: "En Básico el asistente no está incluido; la ficha y el buscador sí (guía §4)",
   },
   "plan-importar-mensual": {
@@ -255,12 +255,12 @@ const CORRIGE_PLAN: Record<string, Partial<FamiliaEspecificacion>> = {
     plan: "Embajador (por confirmar)",
   },
   // Sin nota: así «ya entra en tu plan» sale también en Embajador, no solo en
-  // Completo (con una nota, `escalarPlan` siempre lo trata como «te falta»,
+  // Estándar (con una nota, `escalarPlan` siempre lo trata como «te falta»,
   // aunque el salón ya esté en el plan de más arriba).
   "plan-mas-profesionales": {
-    plan: "Completo",
-    alternativa: "Añádela desde Equipo con «Añadir profesional»: Básico llega hasta 3 profesionales, Completo hasta 6 y Embajador sin límite (guía §6 Equipo)",
-    mensaje: "Hola, soy María de PeluChic. Vamos a ser 4 en el equipo y me gustaría pasar al plan Completo. ¿Qué tengo que hacer?",
+    plan: "Estándar",
+    alternativa: "Añádela desde Equipo con «Añadir profesional»: Básico llega hasta 3 profesionales, Estándar hasta 6 y Embajador sin límite (guía §6 Equipo)",
+    mensaje: "Hola, soy María de PeluChic. Vamos a ser 4 en el equipo y me gustaría pasar al plan Estándar. ¿Qué tengo que hacer?",
   },
 };
 
@@ -271,7 +271,7 @@ function planMinimoDe(id: string, texto?: string): PlanSishow | null | undefined
   const t = normalizar(texto);
   if (t.startsWith("ningun")) return null;
   if (t.includes("embajador")) return "todo-incluido";
-  if (t.includes("completo")) return "reservas-asistente";
+  if (t.includes("estandar") || t.includes("completo")) return "reservas-asistente";
   return "reservas";
 }
 

@@ -1,15 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { equipoCabeEnPlan, FUNCIONES_POR_PLAN, LIMITE_PROFESIONALES, NOMBRE_PLAN, planDe, tienePlan } from "./plan";
+import { equipoCabeEnPlan, FUNCIONES_POR_PLAN, LIMITE_PROFESIONALES, NOMBRE_PLAN, planDe, tienePlan, muestraConmutadorDePlan } from "./plan";
 
 describe("plan del salón (lote 13)", () => {
-  test("decisión de Tomás: el asistente desde Completo; lo demás (fuera de lo bajado el 28-sep), Embajador", () => {
+  test("decisión de Tomás: el asistente desde Estándar; lo demás (fuera de lo bajado el 28-sep), Embajador", () => {
     expect(FUNCIONES_POR_PLAN.asistente).toBe("reservas-asistente");
     for (const f of ["roles-ampliados", "importacion-mensual"] as const) {
       expect(FUNCIONES_POR_PLAN[f]).toBe("todo-incluido");
     }
     expect(Object.keys(FUNCIONES_POR_PLAN)).not.toContain("mas-profesionales");
   });
-  test("decisión de Tomás (28-sep, plan-final-v2): historial completo y analítica avanzada bajan a Completo", () => {
+  test("decisión de Tomás (28-sep, plan-final-v2): historial completo y analítica avanzada bajan a Estándar", () => {
     for (const f of ["historial-completo", "analitica-avanzada"] as const) {
       expect(FUNCIONES_POR_PLAN[f]).toBe("reservas-asistente");
       expect(tienePlan("reservas", f)).toBe(false);
@@ -22,7 +22,7 @@ describe("plan del salón (lote 13)", () => {
     expect(tienePlan("reservas-asistente", "campanas-ampliadas")).toBe(false);
     expect(tienePlan("todo-incluido", "campanas-ampliadas")).toBe(true);
   });
-  test("corrección de Tomás (28-sep, venta 9:30): caja (exportar y cierre) baja a Completo", () => {
+  test("corrección de Tomás (28-sep, venta 9:30): caja (exportar y cierre) baja a Estándar", () => {
     for (const f of ["caja-exportar", "caja-cierre"] as const) {
       expect(FUNCIONES_POR_PLAN[f]).toBe("reservas-asistente");
       expect(tienePlan("reservas", f)).toBe(false);
@@ -30,9 +30,9 @@ describe("plan del salón (lote 13)", () => {
       expect(tienePlan("todo-incluido", f)).toBe(true);
     }
   });
-  test("los nombres de los planes son Básico, Completo y Embajador (28-sep)", () => {
+  test("los nombres de los planes son Básico, Estándar y Embajador (28-sep)", () => {
     expect(NOMBRE_PLAN.reservas).toBe("Básico");
-    expect(NOMBRE_PLAN["reservas-asistente"]).toBe("Completo");
+    expect(NOMBRE_PLAN["reservas-asistente"]).toBe("Estándar");
     expect(NOMBRE_PLAN["todo-incluido"]).toBe("Embajador");
   });
   test("decisión de Tomás (27-sep), alineado con el presupuesto: exportar citas/analítica a Excel va en todos los planes", () => {
@@ -56,7 +56,7 @@ describe("plan del salón (lote 13)", () => {
     expect(planDe({ plan: "reservas" }, true)).toBe("reservas");
     expect(planDe({ plan: "raro" }, false)).toBe("reservas");
   });
-  test("el límite comercial del Básico es tres; Completo y Embajador conservan el máximo técnico de seis", () => {
+  test("el límite comercial del Básico es tres; Estándar y Embajador conservan el máximo técnico de seis", () => {
     expect(LIMITE_PROFESIONALES).toEqual({ reservas: 3, "reservas-asistente": 6, "todo-incluido": 6 });
     expect(equipoCabeEnPlan("reservas", ["María", "Sara", "Noelia"])).toBe(true);
     expect(equipoCabeEnPlan("reservas", ["María", "Sara", "Noelia", "Cuarta"])).toBe(false);
@@ -70,7 +70,7 @@ import { MAX_PROFESIONALES, planParaProfesionales } from "./plan";
 import { moduloVisible, moduloVisibleEnPanel } from "./demo-profile";
 
 describe("profesionales por plan (tabla del 2-oct)", () => {
-  test("Básico 3, Completo 6, Embajador sin límite", () => {
+  test("Básico 3, Estándar 6, Embajador sin límite", () => {
     expect(MAX_PROFESIONALES).toEqual({ reservas: 3, "reservas-asistente": 6, "todo-incluido": null });
   });
   test("el plan más barato para n profesionales", () => {
@@ -86,5 +86,20 @@ describe("Equipo en el panel", () => {
     expect(moduloVisible(p, "equipo")).toBe(false);
     expect(moduloVisibleEnPanel(p, "equipo")).toBe(true);
     expect(moduloVisibleEnPanel(p, "marketing")).toBe(false);
+  });
+});
+
+describe("etiquetas de plan y conmutador", () => {
+  test("el plan intermedio se llama Estándar y no queda ningún «Completo»", () => {
+    expect(NOMBRE_PLAN["reservas-asistente"]).toBe("Estándar");
+    expect(Object.values(NOMBRE_PLAN)).toEqual(["Básico", "Estándar", "Embajador"]);
+  });
+  test("el conmutador de plan solo sale en una demo ya identificada, nunca en un salón real", () => {
+    const demo = { realSalonSlug: null, slug: "kireya", resolucion: { slug: "kireya", status: "demo" } };
+    expect(muestraConmutadorDePlan(demo)).toBe(true);
+    expect(muestraConmutadorDePlan({ ...demo, realSalonSlug: "peluchic" })).toBe(false);
+    expect(muestraConmutadorDePlan({ ...demo, resolucion: { slug: "kireya", status: "resolviendo" } })).toBe(false);
+    expect(muestraConmutadorDePlan({ ...demo, resolucion: { slug: "peluchic", status: "real" } })).toBe(false);
+    expect(muestraConmutadorDePlan({ ...demo, resolucion: null })).toBe(false);
   });
 });

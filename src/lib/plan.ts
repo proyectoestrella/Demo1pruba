@@ -9,7 +9,7 @@
  * las últimas 24 h), campañas ampliadas (estándar: solo la reseña de Google;
  * cumpleaños no existe todavía), analítica avanzada e importación asistida
  * mensual. El asistente, desde Reservas + Asistente. El resto, en Reservas.
- * El Básico admite tres profesionales y Completo hasta seis, según los
+ * El Básico admite tres profesionales y Estándar hasta seis, según los
  * planes definitivos del 28-sep. Embajador conserva el máximo técnico actual
  * de seis mientras no se implemente el «sin límite» de su ficha comercial.
  *
@@ -28,16 +28,16 @@
  * (requieren dar de alta el número en Meta): a tu medida, sin plan ni fecha.
  *
  * Decisión de Tomás (28-sep, `plan-final-v2.md`): los planes cambian de
- * nombre — Reservas → Básico, Reservas + Asistente → Completo, Todo
+ * nombre — Reservas → Básico, Reservas + Asistente → Estándar, Todo
  * incluido → Embajador — sin tocar los ids internos. Y de reparto: el
- * historial completo y la analítica avanzada bajan de Embajador a Completo
+ * historial completo y la analítica avanzada bajan de Embajador a Estándar
  * (`historial-completo`, `analitica-avanzada`). El resto de funciones no
  * se mueve.
  *
  * Corrección de Tomás (28-sep, venta de las 9:30): `campanas-ampliadas`
- * vuelve a Embajador (`todo-incluido`) — no baja a Completo. Y el cierre y
+ * vuelve a Embajador (`todo-incluido`) — no baja a Estándar. Y el cierre y
  * la exportación de caja (`caja-cierre`, `caja-exportar`) bajan de Embajador
- * a Completo (`reservas-asistente`): Caja entera queda en el plan Completo.
+ * a Estándar (`reservas-asistente`): Caja entera queda en el plan Estándar.
  */
 export type PlanSishow = "reservas" | "reservas-asistente" | "todo-incluido";
 
@@ -45,7 +45,7 @@ export const PLANES: readonly PlanSishow[] = ["reservas", "reservas-asistente", 
 
 export const NOMBRE_PLAN: Record<PlanSishow, string> = {
   reservas: "Básico",
-  "reservas-asistente": "Completo",
+  "reservas-asistente": "Estándar",
   "todo-incluido": "Embajador",
 };
 
@@ -70,7 +70,7 @@ export const FUNCIONES_POR_PLAN: Record<FuncionPlan, PlanSishow> = {
   exportar: "reservas",
   "senal-liberacion-automatica": "reservas",
   "importacion-mensual": "todo-incluido",
-  // 14b: cobrar cada cita va en todos los planes; exportar y guardar el cierre, en Completo.
+  // 14b: cobrar cada cita va en todos los planes; exportar y guardar el cierre, en Estándar.
   "caja-exportar": "reservas-asistente",
   "caja-cierre": "reservas-asistente",
 };
@@ -130,7 +130,7 @@ export const HORAS_HISTORIAL_ESTANDAR = 24;
 
 /**
  * Profesionales con agenda propia por plan (tabla de precios del 2-oct):
- * Básico hasta 3, Completo hasta 6, Embajador sin límite (`null`). Es un
+ * Básico hasta 3, Estándar hasta 6, Embajador sin límite (`null`). Es un
  * límite COMERCIAL; el técnico sigue siendo `MAX_SALON_TEAM_ENTRIES` (6),
  * así que en Embajador el panel tampoco deja pasar de 6 hoy.
  */
@@ -143,4 +143,18 @@ export const MAX_PROFESIONALES: Record<PlanSishow, number | null> = {
 /** El plan más barato que admite `n` profesionales. */
 export function planParaProfesionales(n: number): PlanSishow {
   return PLANES.find((p) => MAX_PROFESIONALES[p] === null || n <= (MAX_PROFESIONALES[p] as number)) ?? "todo-incluido";
+}
+
+/**
+ * ¿Se enseña el conmutador de plan «Básico / Estándar / Embajador»? Solo en una
+ * demo de venta ya identificada como tal: nunca en un salón real, ni mientras
+ * aún se está comprobando si lo es (así no parpadea en el panel de un salón de pago).
+ */
+export function muestraConmutadorDePlan(estado: {
+  realSalonSlug: string | null;
+  slug: string;
+  resolucion: { slug: string; status: string } | null;
+}): boolean {
+  if (estado.realSalonSlug) return false;
+  return !!estado.resolucion && estado.resolucion.slug === estado.slug && estado.resolucion.status === "demo";
 }

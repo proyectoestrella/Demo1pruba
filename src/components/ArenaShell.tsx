@@ -34,7 +34,7 @@ import { TOTAL_PASOS, useProgresoPrimerosPasos } from "@/components/PrimerosPaso
 import { Button } from "@/components/ui/button";
 import { AvatarSalon } from "@/components/AvatarSalon";
 import { IconoSiShow, LetrasSiShow } from "@/components/MarcaSiShow";
-import { VerComo } from "@/components/VerComo";
+import { VerComo, PlanContratado } from "@/components/VerComo";
 import { AjustesCalendarios } from "@/components/AjustesCalendarios";
 import { API_CALENDARIOS, alcanceCalendario, useCalendariosActivos } from "@/lib/calendarios-panel";
 import { useCitasVisibles, useEsDemo, useMiembroActual, usePermisos, usePlanSalon, veRuta } from "@/lib/accesos-panel";
@@ -348,6 +348,7 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
         <VerComo className="hidden xl:flex xl:group-data-[panel=abierto]/panel:hidden" />
+        <PlanContratado className="hidden xl:inline-flex xl:group-data-[panel=abierto]/panel:hidden" />
         {plan !== "reservas" && <Button
           data-tour="assistant"
           variant="outline"
@@ -498,6 +499,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
             <div className="space-y-3 px-4 pb-3">
               <BloqueUsuario />
               {esDemo && <VerComo className="flex w-full" />}
+              <PlanContratado />
             </div>
             <div className="grid grid-cols-3 gap-2 px-4 pb-6">
               {restantes.map((item) => {

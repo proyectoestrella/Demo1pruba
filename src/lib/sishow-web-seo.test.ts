@@ -46,7 +46,7 @@ describe("SEO de la web oficial", () => {
     const app = jsonLdAplicacion(NOMBRE_PLAN) as { offers: { price: string; priceCurrency: string; name: string }[] };
     expect(app.offers.map((o) => [o.name, o.price, o.priceCurrency])).toEqual([
       ["Básico", "36", "EUR"],
-      ["Completo", "42", "EUR"],
+      ["Estándar", "42", "EUR"],
       ["Embajador", "55", "EUR"],
     ]);
     const faq = jsonLdPreguntas(PREGUNTAS_INICIO) as { mainEntity: unknown[] };

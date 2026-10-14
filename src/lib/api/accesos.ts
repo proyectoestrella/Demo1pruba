@@ -11,10 +11,10 @@ export const DIAS_CADUCIDAD_INVITACION = 7;
 
 const NUM_EN_LETRA: Record<number, string> = { 2: "dos", 3: "tres", 4: "cuatro" };
 
-/** El motivo cuando un tipo de rol no cabe en el plan (28-sep: Básico dos, Completo tres, Embajador cuatro). */
+/** El motivo cuando un tipo de rol no cabe en el plan (28-sep: Básico dos, Estándar tres, Embajador cuatro). */
 function motivoLimiteRoles(plan: string | null | undefined): string {
   const n = rolesPermitidosPorPlan(plan);
-  const siguiente = n >= 3 ? "Embajador" : "Completo";
+  const siguiente = n >= 3 ? "Embajador" : "Estándar";
   return `Tu plan permite ${NUM_EN_LETRA[n] ?? n} tipos de acceso. Para más, el plan ${siguiente}.`;
 }
 

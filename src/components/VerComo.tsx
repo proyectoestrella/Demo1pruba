@@ -1,7 +1,7 @@
 import { Eye } from "lucide-react";
 import { useAccesosDemo, NOMBRE_ROL } from "@/lib/accesos-maqueta";
 import { useEsDemo, useMiembroActual, usePlanSalon } from "@/lib/accesos-panel";
-import { NOMBRE_PLAN, PLANES, type PlanSishow } from "@/lib/plan";
+import { NOMBRE_PLAN, PLANES, muestraConmutadorDePlan, type PlanSishow } from "@/lib/plan";
 import { useSalonStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +16,7 @@ export function VerComo({ className }: { className?: string }) {
   const setVerComo = useAccesosDemo((s) => s.setVerComo);
   const actual = useMiembroActual();
   const plan = usePlanSalon();
+  const conmutador = useSalonStore((s) => muestraConmutadorDePlan({ realSalonSlug: s.realSalonSlug, slug: s.salonProfile.slug, resolucion: s.publicBookingResolution }));
   if (!esDemo || !miembros || !actual) return null;
   const activos = miembros.filter((m) => m.estado === "activa");
   // Lote 13: en la demo también se elige el plan, para enseñar lo que abre cada uno.
@@ -42,8 +43,8 @@ export function VerComo({ className }: { className?: string }) {
           </option>
         ))}
       </select>
-      <span className="h-5 w-px shrink-0 bg-salvia" aria-hidden="true" />
-      <select
+      {conmutador && <span className="h-5 w-px shrink-0 bg-salvia" aria-hidden="true" />}
+      {conmutador && <select
         value={plan}
         onChange={(e) => cambiarPlan(e.target.value as PlanSishow)}
         aria-label="Plan de la demo"
@@ -54,8 +55,20 @@ export function VerComo({ className }: { className?: string }) {
             {NOMBRE_PLAN[p]}
           </option>
         ))}
-      </select>
+      </select>}
     </label>
+  );
+}
+
+/** Plan contratado, solo informativo: lo que ve un salón real en lugar del conmutador de las demos. */
+export function PlanContratado({ className }: { className?: string }) {
+  const real = useSalonStore((s) => !!s.realSalonSlug);
+  const plan = usePlanSalon();
+  if (!real) return null;
+  return (
+    <span className={cn("inline-flex h-[34px] items-center rounded-full bg-salvia-suave px-3 text-[13px] font-bold text-hoja-tinta", className)} title="El plan que tienes contratado">
+      Plan {NOMBRE_PLAN[plan]}
+    </span>
   );
 }
 
