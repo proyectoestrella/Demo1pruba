@@ -63,6 +63,7 @@ import { sumServices } from "@/lib/appointment-services";
 import { FluidSteps } from "@/components/twentyfirst/fluid-steps";
 import { capitalizar, eur, fechaLarga } from "@/lib/copy";
 import { mostrarPreciosEnReserva } from "@/lib/precio-reserva";
+import { estadoInicialReservaPublica } from "@/lib/hidratacion";
 import { DEMO_PARAM, decodeDemoProfile } from "@/lib/demo-profile";
 import {
   esSoloUnProfesional,
@@ -253,6 +254,11 @@ function BookingWizard() {
   const isV2 = useRouterState({
     select: (s) => String((s.location.search as Record<string, unknown>)?.v) === "2",
   });
+  // La resolución del salón se guarda en el navegador. Durante el primer
+  // render debe usarse el mismo estado que tuvo el servidor y solo después de
+  // hidratar se puede leer el resultado local (demo/real/fallo).
+  const [clienteHidratado, setClienteHidratado] = useState(false);
+  useEffect(() => setClienteHidratado(true), []);
 
   // `recargoRetraso`/`duracionFlexible` son personalización de demo pura
   // (no viven en `SalonProfile`, ver demo-profile.ts), así que no salen de
@@ -272,7 +278,8 @@ function BookingWizard() {
   const storedRecargoRetraso = useSalonStore((s) => s.salonProfile.recargoRetraso);
   const storedDuracionFlexible = useSalonStore((s) => s.salonProfile.duracionFlexible);
   const recargoRetraso = demoPersonalizacion?.recargoRetraso ?? storedRecargoRetraso;
-  const realSalonSlug = useSalonStore((s) => s.realSalonSlug);
+  const realSalonSlugGuardado = useSalonStore((s) => s.realSalonSlug);
+  const realSalonSlug = clienteHidratado ? realSalonSlugGuardado : null;
   const duracionFlexibleDemo = duracionFlexibleActiva(
     { duracionFlexible: storedDuracionFlexible }, demoPersonalizacion, realSalonSlug === salonSlug,
   );
@@ -343,7 +350,9 @@ function BookingWizard() {
   // el servidor ha guardado la cita, y mientras no se sepa si el slug es real
   // o demo no se envía nada. Ver `resolverSalonReal` y `guardarReservaPublica`.
   const resolution = useSalonStore((s) => s.publicBookingResolution);
-  const resolutionStatus = resolution?.slug === salonSlug ? resolution.status : "resolviendo";
+  const resolutionStatus = clienteHidratado && resolution?.slug === salonSlug
+    ? resolution.status
+    : estadoInicialReservaPublica();
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const sendingRef = useRef(false);
@@ -363,7 +372,7 @@ function BookingWizard() {
   // de quien reserva: la comprobación la hace el servidor y solo devuelve el
   // importe, nunca la lista de clientes del salón. Va con retardo porque se
   // dispara mientras se teclea el teléfono.
-  const realSlug = useSalonStore((s) => s.realSalonSlug);
+  const realSlug = realSalonSlug;
   const [penalizedRemote, setPenalizedRemote] = useState<Client | null>(null);
   useEffect(() => {
     if (!realSlug) {

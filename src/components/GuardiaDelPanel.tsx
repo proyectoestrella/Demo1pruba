@@ -33,6 +33,15 @@ import { DemoLoadingScreen } from "@/components/DemoLoadingScreen";
 
 type Estado = "comprobando" | "adelante" | "fuera";
 
+/**
+ * El HTML del servidor no comparte la caché de acceso del navegador. Por eso
+ * el primer render debe ser siempre el mismo en ambos lados; la caché se
+ * consulta después, dentro del efecto que resuelve el acceso.
+ */
+export function estadoInicialGuardia(): Estado {
+  return "comprobando";
+}
+
 export function GuardiaDelPanel({ slug, children }: { slug?: string; children: ReactNode }) {
   const navigate = useNavigate();
   const demoRaw = useRouterState({ select: (s) => (s.location.search as Record<string, unknown>)?.[DEMO_PARAM] });
@@ -40,12 +49,10 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
   // Empieza SIEMPRE comprobando, también al pintar la página en el servidor.
   // Así no existe ni un instante en el que el panel esté en pantalla sin que
   // se haya comprobado nada.
-  // Lote 16: si el `beforeLoad` ya lo comprobó, se reutiliza sin esperar.
-  const [estado, setEstado] = useState<Estado>(() => {
-    const ya = slug ? accesoPanel.guardado(slug) : undefined;
-    if (!ya) return "comprobando";
-    return !ya.real || ya.permitido ? "adelante" : "fuera";
-  });
+  // La caché de `beforeLoad` se reutiliza en el efecto mediante `obtener`,
+  // pero nunca durante el render: en SSR estaría vacía y React recibiría un
+  // árbol inicial distinto al del navegador.
+  const [estado, setEstado] = useState<Estado>(estadoInicialGuardia);
 
   useEffect(() => {
     // Sin salón no hay nada que proteger: es el panel de ejemplo de siempre.
