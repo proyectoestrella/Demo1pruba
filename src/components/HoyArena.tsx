@@ -567,8 +567,7 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
           {pendientes.length}
         </span>
       </div>
-      <p className="mt-1 text-[14px] text-muted-foreground">Al confirmarla queda en tu agenda. El aviso a la clienta lo mandas tú por WhatsApp desde su ficha, con un toque.</p>
-      <ul className="mt-5 divide-y divide-salvia/70">
+      <ul className="mt-4 divide-y divide-salvia/70">
         {visibles.map((a) => {
           const catalogoMin = a.serviceIds.reduce((sum, id) => sum + (serviceMap[id]?.durationMin ?? 0), 0);
           const recordada = duracionRecordada(appointments, a.clientId, a.serviceIds, catalogoMin);
@@ -589,7 +588,7 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
                     {emp && !soloUno ? ` · ${emp.name}` : ""}
                   </span>
                 </button>
-                <Button onClick={() => confirmar(a, elegida)} className="flex-1 tabular-nums sm:flex-none">
+                <Button variant={visibles.length === 1 ? "default" : "outline"} onClick={() => confirmar(a, elegida)} className="flex-1 tabular-nums sm:flex-none" title="Al confirmarla queda en tu agenda. El aviso a la clienta lo mandas tú por WhatsApp desde su ficha.">
                   Confirmar · {duracionCorta(elegida)}
                 </Button>
                 <BotonMas etiqueta={`Más opciones para ${a.clientName}`}>

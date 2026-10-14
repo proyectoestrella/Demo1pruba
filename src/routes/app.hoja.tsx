@@ -109,10 +109,10 @@ function HojaDelDia() {
             <time className="pt-px font-extrabold tabular-nums">{new Date(cita.start).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</time>
             <div className="min-w-0"><p className="font-bold hover:text-primary">{cita.clientName}</p><p className="text-[12.5px] text-muted-foreground">{serviceLabelOf(cita, carta)} · {cita.duration} min</p></div>
             <div className="col-start-2 space-y-1 text-[12.5px] lg:col-start-3">
-              <p className={cn("rounded-xl px-2.5 py-1.5", ultimoColor?.colorFormula ? "bg-salvia-clara text-hoja-tinta" : "bg-nata text-cafe-medio")}><b>Color:</b> {ultimoColor?.colorFormula ?? "Sin color anotado"}</p>
+              {ultimoColor?.colorFormula ? <p className="rounded-xl bg-salvia-clara px-2.5 py-1.5 text-hoja-tinta"><b>Color:</b> {ultimoColor.colorFormula}</p> : <p className="px-2.5 text-muted-foreground">Sin color anotado</p>}
               {ultimoColor?.technicalNotes && <p className="px-2.5"><b>Notas técnicas:</b> {ultimoColor.technicalNotes}</p>}
               <BookingAnswersSummary answers={cita.bookingAnswers} />
-              <p className="px-2.5 text-muted-foreground">Señal: {cita.depositReceivedAt ? "recibida" : cita.depositRequestedAt ? "pedida, pendiente" : "sin pedir"}</p>
+              {(cita.depositReceivedAt || cita.depositRequestedAt) && <p className="px-2.5 text-muted-foreground">Señal: {cita.depositReceivedAt ? "recibida" : "pedida, pendiente"}</p>}
             </div>
             <div className="col-start-2 space-y-1 text-[12.5px] lg:col-start-4">
             {anteriores.length > 0 && <div><b className="text-muted-foreground">Visitas anteriores</b>

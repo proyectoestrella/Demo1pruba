@@ -1,3 +1,4 @@
+import { bordeProfesional } from "@/lib/colores-elegidos";
 import { BotonConPlan } from "@/components/BotonConPlan";
 import { useFichas } from "@/lib/use-fichas";
 import { EnlaceClienta } from "@/components/EnlaceClienta";
@@ -64,7 +65,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarX, MoreHorizontal, Plus, Search } from "lucide-react";
+import { CalendarX, MoreHorizontal, Search } from "lucide-react";
 
 export const Route = createFileRoute("/app/appointments")({
   component: Appointments,
@@ -189,9 +190,6 @@ function Appointments() {
               services={services}
               employees={employees}
             /></BotonConPlan>}
-            <Button size="sm" className="hidden gap-1.5 md:inline-flex" onClick={() => setNewApptOpen(true)}>
-              <Plus className="h-4 w-4" /> Nueva cita
-            </Button>
           </>
         }
       />
@@ -298,12 +296,12 @@ function Appointments() {
                       {!soloUno && (
                         <TableCell className="@max-[680px]:hidden">
                           <span className="inline-flex items-center gap-1.5">
-                            {!soloUno && <StylistDot employeeId={a.employeeId} />}
+                            <i className="size-2.5 shrink-0 rounded-full" style={{ background: bordeProfesional(Math.max(0, employees.findIndex((x) => x.id === a.employeeId)), a.employeeId) }} aria-hidden="true" />
                             {e.name}
                           </span>
                         </TableCell>
                       )}
-                      {veDinero && <TableCell className="text-right font-bold tabular-nums @max-[440px]:hidden">{eur(a.priceEur)}</TableCell>}
+                      {veDinero && <TableCell className="whitespace-nowrap text-right font-bold tabular-nums @max-[440px]:hidden">{eur(a.priceEur)}</TableCell>}
                       <TableCell>
                         <StatusBadge status={a.status} />
                         {conRecargo && <RecargoChip appointment={a} client={clientById.get(a.clientId)} />}

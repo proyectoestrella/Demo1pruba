@@ -149,7 +149,7 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
                   pending.length === 1 ? "solicitud pendiente" : "solicitudes pendientes"
                 } de confirmar`}
           </h2>
-          {duracionFlexible && (
+          {duracionFlexible && abierto && (
             <p className="text-[12.5px] text-muted-foreground">
               Ajusta la duración de cada una antes de aceptarla: la decides tú, no la clienta.
             </p>

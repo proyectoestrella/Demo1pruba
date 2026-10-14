@@ -40,7 +40,7 @@ export function PrimerosPasos({ enAjustes = false }: { enAjustes?: boolean }) {
   const profile = useSalonStore((s) => s.salonProfile);
   const update = useSalonStore((s) => s.updateSalonProfile);
   const demoActive = useSalonStore((s) => s.demoActive);
-  const [abierto, setAbierto] = useState(enAjustes || !demoActive);
+  const [abierto, setAbierto] = useState(!enAjustes && !demoActive);
   const { automáticos, marcados, progreso, oculto } = useProgresoPrimerosPasos();
 
   if (enAjustes && oculto) return <Button variant="outline" className="gap-2" onClick={() => update({ setupChecklistHidden: false })}><Eye className="size-4" />Volver a ver los primeros pasos</Button>;
