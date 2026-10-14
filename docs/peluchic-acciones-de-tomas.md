@@ -67,7 +67,7 @@ PeluChic sale con una fianza de 5 €/hora de servicio, plazo de 4 h y liberaci�
 - Nota y número de reseñas de Google: no se publican porque no se han podido verificar contra su ficha. Cuando alguien lo confirme, se ponen en el perfil.
 - Teléfono Bizum para la fianza (no está guardado; María lo comunica al confirmar).
 - Correo de acceso de María para el enlace mágico.
-- Ortografía definitiva de «Anca».
+- Ortografía de «Anca»: confirmada el 14-oct (Anca).
 - Hora y alcance de la comida de los viernes (no está cargada; María la crea desde `Bloquear tiempo › repetir cada semana`).
 - Días especiales de 2027 posteriores al 1 de enero.
 - Confirmar con María la asignación de servicios por profesional durante la formación.

@@ -201,7 +201,7 @@ export const SERVICIOS_PELUCHIC: ServicioPeluChic[] = [
     descripcion: "Consultar información: escríbenos por WhatsApp y te contamos." },
 ];
 
-/** Equipo real dictado el 7-oct-2026; ortografía de Anca pendiente de confirmar. */
+/** Equipo real dictado el 7-oct-2026; «Anca», confirmado por Tomás el 14-oct. */
 const EQUIPO = [
   "María~Gerente · peluquería, color y novias",
   "Anca~Faciales y spa japonés",
