@@ -5,6 +5,7 @@ import { sincronizarColores } from "@/lib/colores-elegidos";
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { useRealSalon } from "@/lib/use-real-salon";
+import { aplicarPrecedenciaDeEnlace } from "@/lib/precedencia-enlace-panel-store";
 import { usePanelRefresh } from "@/lib/use-panel-refresh";
 import { useSyncPanelV2FromUrl, usePanelV2 } from "@/lib/use-panel-v2";
 import {
@@ -56,6 +57,8 @@ export const Route = createFileRoute("/app")({
    */
   beforeLoad: async ({ location }) => {
     if (typeof window === "undefined") return;
+    // La URL manda sobre lo guardado: un ?s= de otro salón descarta la demo anterior.
+    aplicarPrecedenciaDeEnlace(location.search as Record<string, unknown>);
     const desdeUrl = (location.search as Record<string, unknown>)?.s;
     const slug =
       typeof desdeUrl === "string" && desdeUrl
@@ -171,6 +174,19 @@ function useTituloDelPanel() {
   }, [salonName]);
 }
 
+/**
+ * `beforeLoad` no corre al hidratar una carga directa de la URL, así que la
+ * precedencia «la URL manda sobre lo guardado» se aplica también aquí, antes
+ * de pintar y antes de que el panel se monte (la puerta aún está comprobando).
+ */
+function useAplicarPrecedenciaDelEnlace() {
+  const s = useRouterState({ select: (st) => (st.location.search as Record<string, unknown>)?.s });
+  const d = useRouterState({ select: (st) => (st.location.search as Record<string, unknown>)?.[DEMO_PARAM] });
+  useLayoutEffect(() => {
+    aplicarPrecedenciaDeEnlace({ s, d });
+  }, [s, d]);
+}
+
 function DashboardLayout() {
   // Lote 12: cada acción reversible deja un cambio con «Deshacer» (y Ctrl+Z).
   useEffect(() => {
@@ -180,6 +196,7 @@ function DashboardLayout() {
   // Sincroniza `?v=2`/`?v=1` con la preferencia guardada del panel — tiene
   // que correr para TODAS las rutas /app/*, entren o no por aquí primero.
   useSyncPanelV2FromUrl();
+  useAplicarPrecedenciaDelEnlace();
   useApplyDemoFromUrl();
   // Lote P: una demo registrada cargada otro día se recarga (su «hoy» caduca).
   const conEnlaceDemo = useRouterState({ select: (s) => typeof (s.location.search as Record<string, unknown>)?.[DEMO_PARAM] === "string" });
