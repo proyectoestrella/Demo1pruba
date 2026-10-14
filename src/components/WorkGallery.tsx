@@ -129,6 +129,9 @@ export function WorkGallery({ fotos = [], tipo, sinRelleno = false }: { fotos?: 
   const mover = useRef<(dir: 1 | -1) => void>(() => {});
 
   const n = images.length;
+  // Una o dos fotos propias tienen suficiente presencia como rejilla. Repetirlas
+  // en un bucle infinito hacía más evidente que faltaban, en vez de cuidarlas.
+  const rejillaCorta = n <= 2;
   const irA = (i: number) => setAbierta(((i % n) + n) % n);
   const actual = abierta !== null ? images[abierta] : null;
 
@@ -145,7 +148,7 @@ export function WorkGallery({ fotos = [], tipo, sinRelleno = false }: { fotos?: 
             <TrazoTitulo className="mt-2" />
             <p className="mt-2 max-w-xl text-[15px] text-muted-foreground">Pulsa una foto para verla en grande.</p>
           </Reveal>
-          {!menosMovimiento && (
+          {!menosMovimiento && !rejillaCorta && (
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -172,9 +175,13 @@ export function WorkGallery({ fotos = [], tipo, sinRelleno = false }: { fotos?: 
         </div>
       </div>
 
-      {menosMovimiento ? (
+      {menosMovimiento || rejillaCorta ? (
         <div className={cn(CONTENEDOR_SALON, "pb-14 md:pb-20")}>
-          <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4">
+          <ul className={cn(
+            "grid gap-3 md:gap-4",
+            rejillaCorta ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-2 md:grid-cols-3 xl:grid-cols-4",
+            rejillaCorta && n === 1 && "max-w-2xl",
+          )}>
             {images.map((img, i) => (
               <li key={img.src}>
                 <Miniatura
@@ -183,8 +190,8 @@ export function WorkGallery({ fotos = [], tipo, sinRelleno = false }: { fotos?: 
                   onAbrir={() => setAbierta(i)}
                   onError={() => marcar(img.src)}
                   vigilar={vigilar(img.src)}
-                  sizes="(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 50vw"
-                  className="aspect-[4/5] w-full"
+                  sizes={rejillaCorta ? "(min-width: 640px) 50vw, 100vw" : "(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 50vw"}
+                  className={cn("w-full", rejillaCorta && n === 1 ? "aspect-[16/10]" : "aspect-[4/5]")}
                 />
               </li>
             ))}
