@@ -169,7 +169,7 @@ function Team() {
                       ))}
                   </span>
                 </span>
-                <span className="shrink-0 text-[13px] font-bold text-cafe-medio">{horarioAbierto.includes(i) ? "Cerrar" : "Editar"}</span>
+                <span className="hidden shrink-0 text-[13px] font-bold text-cafe-medio sm:inline">{horarioAbierto.includes(i) ? "Cerrar" : "Editar"}</span>
                 <ChevronDown className={cn("size-5 shrink-0 text-cafe-medio transition-transform", horarioAbierto.includes(i) && "rotate-180")} strokeWidth={1.6} aria-hidden="true" />
               </button>
               {horarioAbierto.includes(i) && (
