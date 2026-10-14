@@ -104,6 +104,10 @@ function SalonLayout() {
   // Logo del salón en la barra y el pie; en demo, el de la lista de demos (ver logo-salon.ts).
   const sinSalonReal = useSalonStore((st) => !st.realSalonSlug);
   const conEnlaceDemo = useRouterState({ select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string" });
+  const resolucionPublica = useSalonStore((s) =>
+    s.publicBookingResolution?.slug === salonSlug ? s.publicBookingResolution.status : "resolviendo",
+  );
+  const protegerContenidoReal = !conEnlaceDemo && resolucionPublica !== "demo";
   const logoSalon = logoDelSalon(profile, sinSalonReal || conEnlaceDemo);
   // El logotipo real (nombre en caligrafía) sustituye al círculo + el nombre escrito.
   const logotipoBarra = logotipoDelSalon(profile, sinSalonReal || conEnlaceDemo, "oscuro");
@@ -492,7 +496,7 @@ function SalonLayout() {
               </a>
             )}
           </div>
-          {!((conEnlaceDemo || realSlug === salonSlug) && JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS)) && (
+          {!((conEnlaceDemo || protegerContenidoReal) && JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS)) && (
           <div>
             <p className="ws-etiqueta">Horario</p>
             {weekSchedule(profile.openingHours).map((d) => (

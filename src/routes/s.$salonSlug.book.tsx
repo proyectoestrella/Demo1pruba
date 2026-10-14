@@ -765,7 +765,7 @@ function BookingWizard() {
               onSelect={(id) => setData((d) => ({ ...d, employeeId: id }))}
               tipo={tipo}
               employees={eligibleEmployees}
-              esSalonReal={realSlug === salonSlug}
+              esSalonReal={realSlug === salonSlug || (!demoParamRaw && resolutionStatus !== "demo")}
             />
           )}
 
@@ -1020,7 +1020,7 @@ function BookingWizard() {
           timeLabel={data.time}
           total={total}
           mostrarPrecio={mostrarPrecio}
-          esSalonReal={realSlug === salonSlug}
+          esSalonReal={realSlug === salonSlug || (!demoParamRaw && resolutionStatus !== "demo")}
           ctaLabel={ctaLabel}
           ctaDisabled={ctaDisabled}
           onCta={onCta}
@@ -1037,7 +1037,7 @@ function BookingWizard() {
         timeLabel={data.time}
         total={total}
         mostrarPrecio={mostrarPrecio}
-        esSalonReal={realSlug === salonSlug}
+        esSalonReal={realSlug === salonSlug || (!demoParamRaw && resolutionStatus !== "demo")}
         ctaLabel={ctaLabel}
         ctaLabelCorto={ctaLabelCorto}
         ctaDisabled={ctaDisabled}

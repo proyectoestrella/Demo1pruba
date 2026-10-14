@@ -283,10 +283,17 @@ function SalonHome() {
   // lista estática de demos; un salón real, solo el que haya guardado.
   const sinSalonReal = useSalonStore((s) => !s.realSalonSlug);
   const conEnlaceDemo = useRouterState({ select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string" });
+  const resolucionPublica = useSalonStore((s) =>
+    s.publicBookingResolution?.slug === salonSlug ? s.publicBookingResolution.status : "resolviendo",
+  );
   const logoPortada = logoDelSalon(profile, sinSalonReal || conEnlaceDemo);
   const logotipoPortada = logotipoDelSalon(profile, sinSalonReal || conEnlaceDemo, "claro");
   const tipo = useBusinessType();
   const isRealSalon = useRealSalonSlug() === salonSlug;
+  // Antes de que Supabase confirme «demo», una URL corta sin `?d=` puede ser
+  // un salón real. Se protege desde el primer pintado: una demo registrada
+  // recupera su relleno en cuanto el resolvedor devuelve «demo».
+  const protegerContenidoReal = !conEnlaceDemo && resolucionPublica !== "demo";
   // Una portada propia puede dejar de cargar sin que nadie lo sepa: el enlace
   // de demo la trae fija (caso PeluChic, foto de Google Places servida por
   // `/api/foto`), y esa foto puede desaparecer de la ficha, o faltar la clave
@@ -309,7 +316,7 @@ function SalonHome() {
   // Ni una demo enlazada ni un salón real se anuncian con una foto de stock:
   // si no hay foto del local (o se ha roto), queda el fondo liso.
   const portadaDeEjemplo =
-    (conEnlaceDemo || isRealSalon) && !portadaEsRespaldoPropio && portada.src !== profile.heroImage;
+    (conEnlaceDemo || protegerContenidoReal) && !portadaEsRespaldoPropio && portada.src !== profile.heroImage;
   const [portadaLista, setPortadaLista] = useState(false);
   // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
   // en la cadena "2" — de ahí el `String(...)` antes de comparar.
@@ -328,7 +335,7 @@ function SalonHome() {
   const resenasGoogle = resenasDeGoogle(profile, isRealSalon);
   const modoResenas = seccionResenasPublicas({
     esDemo: conEnlaceDemo,
-    esSalonReal: isRealSalon,
+    esSalonReal: protegerContenidoReal,
     tieneResenasGoogle: !!resenasGoogle,
     rating: profile.rating,
     reviewCount: profile.reviewCount,
@@ -396,13 +403,13 @@ function SalonHome() {
   // Ni una demo enlazada ni un salón real sin horario propio dicen «Abierto
   // · cierra a las…» con el horario estático de ejemplo.
   const horarioDeEjemplo =
-    (conEnlaceDemo || isRealSalon) && JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS);
+    (conEnlaceDemo || protegerContenidoReal) && JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS);
   // Las fotos del equipo: la de stock solo en una DEMO de barbería. En un
   // salón real no se enseña la cara de un desconocido como si fuera suya —
   // iniciales (ver `fotoDeProfesional`).
   const fotoDe = (e: (typeof employees)[number]) =>
-    fotoDeProfesional(e.name, e.id, e.photo, tipo, isRealSalon);
-  const experienciaEquipo = experienciaEquipoEnWeb(employees, isRealSalon);
+    fotoDeProfesional(e.name, e.id, e.photo, tipo, protegerContenidoReal);
+  const experienciaEquipo = experienciaEquipoEnWeb(employees, protegerContenidoReal);
   const especialidades = listaConY(profile.specialties);
   const telefono = profile.phone.replace(/\s/g, "");
   // Lote 18.4: WhatsApp (del perfil o, si no hay, el teléfono) y enlaces del salón.
@@ -709,7 +716,7 @@ function SalonHome() {
       ) : null}
 
       {/* Galería de trabajos */}
-      <WorkGallery fotos={fotosDeGaleria(profile)} tipo={profile.tagline} sinRelleno={conEnlaceDemo || isRealSalon} />
+      <WorkGallery fotos={fotosDeGaleria(profile)} tipo={profile.tagline} sinRelleno={conEnlaceDemo || protegerContenidoReal} />
 
       {/* Reseñas. Las demos enlazadas muestran cifras sin testimonios si no
           tienen reseñas de Google; páginas existentes conservan su contenido. */}
