@@ -205,6 +205,7 @@ const NOMBRE_CAMPO: Record<string, string> = {
   lastSlotBufferMin: "el margen de la última hora", priorityHours: "las horas prioritarias", smartSpread: "el reparto de agenda",
   depositTemplate: "el mensaje de la señal", plantillas: "los mensajes de WhatsApp",
   coloresServicio: "los colores del calendario", coloresProfesional: "los colores del calendario",
+  avataresClientas: "el avatar de una clienta", avataresEquipo: "el avatar de una profesional",
   logoUrl: "el logo", plan: "el plan", calendario: "las preferencias del calendario",
 };
 export function resumenCampoPerfil(clave: string): string {
