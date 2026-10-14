@@ -755,7 +755,7 @@ function SalonHome() {
                 <div className="flex items-center gap-2 text-sm">
                   <Estrellas nota={profile.rating} />
                   <NotaQueSube valor={profile.rating} className="font-bold tabular-nums" />
-                  <span className="text-muted-foreground">· {profile.reviewCount} reseñas</span>
+                  {profile.reviewCount > 0 && <span className="text-muted-foreground">· {profile.reviewCount} reseñas</span>}
                 </div>
               )}
             </Reveal>
