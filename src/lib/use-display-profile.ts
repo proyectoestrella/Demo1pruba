@@ -1,5 +1,5 @@
 import { useRouterState } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "./demo-profile";
 import { useSalonStore } from "./store";
 import type { SalonProfile } from "./mock/types";
@@ -35,11 +35,29 @@ export function useDisplayProfile(): SalonProfile {
     | undefined;
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const previa = search?.previa;
+  const esPrevia = previa !== undefined;
+  const slug = slugPublico(pathname);
+  const clavePrevia = esPrevia ? `${slug ?? ""}:${String(previa)}` : null;
   // Lote P: la vista previa de Mi página (`?previa=…`) trae el borrador por
-  // sessionStorage, no en la dirección (ver lib/vista-previa.ts).
+  // sessionStorage, no en la dirección (ver lib/vista-previa.ts). Esa lectura
+  // ocurre DESPUÉS de hidratar: en el servidor no hay sessionStorage y, si el
+  // cliente lo leyera ya en su primer render, cada sección que depende del
+  // perfil podría nacer con un árbol distinto al HTML del servidor.
+  const [previaLeida, setPreviaLeida] = useState<{ clave: string | null; raw: string | undefined }>({
+    clave: null,
+    raw: undefined,
+  });
+  useEffect(() => {
+    if (!clavePrevia) {
+      setPreviaLeida((actual) => actual.clave === null ? actual : { clave: null, raw: undefined });
+      return;
+    }
+    setPreviaLeida({ clave: clavePrevia, raw: leerPrevia(slug) });
+  }, [clavePrevia, slug]);
   const raw = typeof search?.[DEMO_PARAM] === "string"
     ? (search[DEMO_PARAM] as string)
-    : search?.previa !== undefined ? leerPrevia(slugPublico(pathname)) : undefined;
+    : clavePrevia === previaLeida.clave ? previaLeida.raw : undefined;
   const realSalonSlug = useSalonStore((s) => s.realSalonSlug);
 
   // `?d=` de verdad en la dirección (no el borrador de la vista previa).
@@ -47,7 +65,6 @@ export function useDisplayProfile(): SalonProfile {
 
   return useMemo(() => {
     const fromUrl = decodeDemoProfile(raw);
-    const slug = slugPublico(pathname);
     // Lote P.5: un `?d=` (viejo) de un slug con demo registrada se completa
     // con lo que el enlace no trae (enlaces, WhatsApp, galería propia…; ver
     // `completarConDemoRegistrada`). Nunca en un salón real ni en la vista
@@ -70,7 +87,7 @@ export function useDisplayProfile(): SalonProfile {
     // eran suyos y el discurso de otro, que es peor que no decir nada.
     const delEnlace = completar && conEnlace ? completarConDemoRegistrada(slug, fromUrl) : fromUrl;
     return { ...stored, ...blankDemoProfile(), teamHours: undefined, teamIds: undefined, ...delEnlace };
-  }, [stored, raw, pathname, realSalonSlug, conEnlace]);
+  }, [stored, raw, slug, realSalonSlug, conEnlace]);
 }
 
 /**

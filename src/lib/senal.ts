@@ -51,6 +51,13 @@ export interface ReglaSenal {
   plantilla: string;
 }
 
+/** Texto bajo la carta pública cuando el salón pide fianza. */
+export function introCartaSenal(regla: Pick<ReglaSenal, "activa">): string | undefined {
+  return regla.activa
+    ? "La fianza se calcula según la duración del servicio y se confirma por Bizum."
+    : undefined;
+}
+
 type PerfilSenal = Pick<
   SalonProfile,
   | "depositEnabled"

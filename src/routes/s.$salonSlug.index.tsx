@@ -59,7 +59,7 @@ import { NotaQueSube, TrazoTitulo } from "@/components/web-salon/Movimiento";
 import { BloqueComunidad, FUERA, IconoWhatsApp } from "@/components/web-salon/EnlacesSalon";
 import { eur } from "@/lib/copy";
 import { faqPublica } from "@/lib/faq";
-import { reglaSenal, respuestaFaqSenal, resumenCancelacionSenal, servicioLlevaSenal, type ReglaSenal } from "@/lib/senal";
+import { introCartaSenal, reglaSenal, respuestaFaqSenal, resumenCancelacionSenal, servicioLlevaSenal, type ReglaSenal } from "@/lib/senal";
 
 export const Route = createFileRoute("/s/$salonSlug/")({
   component: SalonHome,
@@ -641,7 +641,7 @@ function SalonHome() {
           <SectionHeading
             eyebrow="Precios"
             title="Carta completa"
-            intro={reglaDeSenal.activa ? "La fianza se calcula según la duración del servicio y se confirma por Bizum." : undefined}
+            intro={introCartaSenal(reglaDeSenal)}
           />
           <Reveal>
             <CartaServicios

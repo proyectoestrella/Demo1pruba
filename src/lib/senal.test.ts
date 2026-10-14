@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { aplicaSenal, importeSenal, resumenCancelacionSenal, marcadoresQueFaltan, PLANTILLA_SENAL_POR_DEFECTO, reglaSenal, rellenarPlantillaSenal, respuestaFaqSenal, servicioLlevaSenal, textoSenalPublico } from "./senal";
+import { aplicaSenal, importeSenal, introCartaSenal, resumenCancelacionSenal, marcadoresQueFaltan, PLANTILLA_SENAL_POR_DEFECTO, reglaSenal, rellenarPlantillaSenal, respuestaFaqSenal, servicioLlevaSenal, textoSenalPublico } from "./senal";
 import { mensajeDeFianza } from "./avisos";
 
 const eur = (n: number) => `${n} €`;
@@ -7,6 +7,13 @@ const mechas = { serviceIds: ["mechas"], durationMin: 120, priceEur: 80 };
 const corte = { serviceIds: ["corte"], durationMin: 45, priceEur: 25 };
 
 describe("una sola regla de señal por salón", () => {
+  it("decide de forma determinista el texto bajo la carta", () => {
+    expect(introCartaSenal({ activa: false })).toBeUndefined();
+    expect(introCartaSenal({ activa: true })).toBe(
+      "La fianza se calcula según la duración del servicio y se confirma por Bizum.",
+    );
+  });
+
   it("sin configurar no hay señal: ni el antiguo «depósito del 20 %» de más de 90 min", () => {
     const r = reglaSenal({});
     expect(r.activa).toBe(false);
