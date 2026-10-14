@@ -64,10 +64,16 @@ PeluChic sale con una fianza de 5 €/hora de servicio, plazo de 4 h y liberaci�
 
 ## Pendientes
 
-- Nota y número de reseñas de Google: no se publican porque no se han podido verificar contra su ficha. Cuando alguien lo confirme, se ponen en el perfil.
-- Teléfono Bizum para la fianza (no está guardado; María lo comunica al confirmar).
-- Correo de acceso de María para el enlace mágico.
-- Ortografía de «Anca»: confirmada el 14-oct (Anca).
-- Hora y alcance de la comida de los viernes (no está cargada; María la crea desde `Bloquear tiempo › repetir cada semana`).
-- Días especiales de 2027 posteriores al 1 de enero.
+Actualizado el 14-oct-2026.
+
+- Comida del viernes: provisional de 14:00 a 15:00; se edita desde `Bloquear tiempo` (repetir cada semana) cuando María confirme la hora.
+- Bizum de la fianza: 666 77 67 31, a confirmar con María.
+- Ortografía de «Anca»: confirmada (14-oct).
+- Festivos y días especiales de 2027: pendientes de María.
+- Correos de acceso (enlace mágico): se piden en la formación; antes, probar con una cuenta de prueba nuestra.
+- Nota y número de reseñas de Google: no se publican hasta verificarlos contra su ficha.
 - Confirmar con María la asignación de servicios por profesional durante la formación.
+
+## Novedades de producto del 14-oct-2026 (vista previa, sin push)
+
+Agenda con vistas y color; logo oficial; fichas de clienta y de cita con modal centrado y «anclar»; 48 avatares Open Peeps (CC0); Equipo con edición de servicios en lote; «Estándar» en lugar de «Completo»; paleta de 7 tintes con contraste AA; menos ruido en Hoy, Citas, Hoja del día y Ajustes; plan Básico sin módulos fuera del Anexo I. Abiertos: color de acción moca o terracota, «Pendiente de ti» en miel, elección de color por la dueña, subida de foto de personas.
