@@ -38,6 +38,26 @@ export function vistaInicialCalendario(vistaGuardada: VistaCalendario, movilAngo
   return movilAngosto && vistaGuardada === "semana" ? "dia" : vistaGuardada;
 }
 
+const CLAVE_VISTA_ELEGIDA = "sishow-calendario-vista-elegida";
+
+/** La vista que la dueña eligió a mano en este dispositivo, si la hay (gana a la inicial de móvil). */
+export function vistaElegidaGuardada(almacen: Pick<Storage, "getItem"> | undefined = typeof localStorage === "undefined" ? undefined : localStorage): VistaCalendario | null {
+  try {
+    const v = almacen?.getItem(CLAVE_VISTA_ELEGIDA);
+    return VISTAS_CALENDARIO.some((x) => x.id === v) ? (v as VistaCalendario) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function recordarVistaElegida(vista: VistaCalendario, almacen: Pick<Storage, "setItem"> | undefined = typeof localStorage === "undefined" ? undefined : localStorage) {
+  try {
+    almacen?.setItem(CLAVE_VISTA_ELEGIDA, vista);
+  } catch {
+    /* sin almacenamiento: no se recuerda */
+  }
+}
+
 /**
  * Completa y sanea lo guardado: horas enteras entre 0 y 24, `hasta` > `desde`
  * con al menos dos horas visibles. Un valor ausente, `null`, vacío o que no

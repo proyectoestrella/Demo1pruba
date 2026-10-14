@@ -37,10 +37,9 @@ function useRawVParam(): string | undefined {
  */
 export function usePanelV2(): boolean {
   const rawV = useRawVParam();
-  const stored = useSalonStore((s) => s.panelV2);
-  if (rawV === "2") return true;
-  if (rawV === "1") return false;
-  return stored;
+  // Solo manda la URL: lo guardado ya no activa el panel v2, porque un `?v=2`
+  // viejo (enlaces, PWA instalada) dejaba el panel sin vistas ni color.
+  return rawV === "2";
 }
 
 /**

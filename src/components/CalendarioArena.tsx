@@ -35,7 +35,7 @@ import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { BloquearTiempoDialog } from "@/components/BloquearTiempoDialog";
 import { IconoEstado, RejillaCalendario, colorProfesional, type ColumnaRejilla } from "@/components/RejillaCalendario";
 import { CamposPreferenciasCalendario } from "@/components/CamposPreferenciasCalendario";
-import { MAX_DIAS_ELEGIDOS, diasDesde, rangoDeDias, VISTAS_CALENDARIO, diasDeRejilla, inicioDeSemana, pasoDeVista, preferenciasDe, vistaInicialCalendario, type PrimerDia, type VistaCalendario } from "@/lib/preferencias-calendario";
+import { MAX_DIAS_ELEGIDOS, diasDesde, rangoDeDias, VISTAS_CALENDARIO, diasDeRejilla, inicioDeSemana, pasoDeVista, preferenciasDe, vistaInicialCalendario, vistaElegidaGuardada, recordarVistaElegida, type PrimerDia, type VistaCalendario } from "@/lib/preferencias-calendario";
 
 /**
  * Calendario con la identidad «Arena» (DESIGN.md), calcado del prototipo v2:
@@ -130,10 +130,10 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
     [profile.bloqueosAgenda, desdeExt, hastaExt, zona, equipo],
   );
   const appointments = useMemo(() => [...visibles, ...externos, ...bloqueos], [visibles, externos, bloqueos]);
-  const [vista, setVista] = useState<Vista>(() => inicio?.dia || citaInicial ? "dia" : vistaInicialCalendario(pref.vista, typeof window !== "undefined" && window.innerWidth < 640));
+  const [vista, setVista] = useState<Vista>(() => inicio?.dia || citaInicial ? "dia" : (typeof window !== "undefined" ? vistaElegidaGuardada() : null) ?? vistaInicialCalendario(pref.vista, typeof window !== "undefined" && window.innerWidth < 640));
   const elegirVista = (siguiente: VistaCalendario) => {
     setVista(siguiente);
-    guardarPerfil({ calendario: { ...pref, vista: siguiente } });
+    recordarVistaElegida(siguiente);
   };
   /** En Semana y 3 días: «todas» o el id de una profesional. */
   const [filtroPro, setFiltroPro] = useState<string>("todas");

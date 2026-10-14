@@ -317,7 +317,7 @@ function SalonLayout() {
                 // entrar a SU agenda desde un móvil recién estrenado, sin nada
                 // guardado. Para una demo de venta el parámetro no existe en
                 // `salons` y el panel se comporta exactamente como siempre.
-                href={`/app?v=2&acceso=demo&s=${encodeURIComponent(salonSlug)}`}
+                href={`/app?acceso=demo&s=${encodeURIComponent(salonSlug)}`}
                 className="ml-1 hidden h-9 items-center gap-1.5 rounded-full border border-lino-fuerte bg-card px-3 text-xs font-medium text-cafe-medio hover:bg-beige sm:inline-flex"
               >
                 <Lock className="h-3 w-3" />
@@ -392,7 +392,7 @@ function SalonLayout() {
                       ))}
                       {(publicV2 || conEnlaceDemo) && (
                         <a
-                          href={`/app?v=2&acceso=demo&s=${encodeURIComponent(salonSlug)}`}
+                          href={`/app?acceso=demo&s=${encodeURIComponent(salonSlug)}`}
                           className="mt-3 flex min-h-12 items-center gap-2 rounded-xl border border-lino-fuerte bg-card px-3 text-base font-semibold text-foreground transition-colors hover:bg-muted"
                         >
                           <Lock className="h-4 w-4" aria-hidden="true" /> Panel del salón (agenda)

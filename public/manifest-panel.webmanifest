@@ -1,7 +1,7 @@
 {
   "name": "siShow · Panel",
   "short_name": "Panel",
-  "start_url": "/app?v=2",
+  "start_url": "/app",
   "scope": "/app",
   "display": "standalone",
   "orientation": "any",

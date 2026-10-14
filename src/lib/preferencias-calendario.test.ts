@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { diasDeRejilla, horasDeRejilla, inicioDeSemana, pasoDeVista, preferenciasDe, tramosDeCitas, citasFueraDeHoras, rangoDeDias, diasDesde, vistaInicialCalendario } from "./preferencias-calendario";
+import { diasDeRejilla, horasDeRejilla, inicioDeSemana, pasoDeVista, preferenciasDe, tramosDeCitas, citasFueraDeHoras, rangoDeDias, diasDesde, vistaInicialCalendario, vistaElegidaGuardada, recordarVistaElegida } from "./preferencias-calendario";
 import type { Appointment } from "./mock/types";
 
 const d = (s: string) => new Date(s + "T00:00:00");
@@ -20,6 +20,15 @@ describe("preferencias del calendario", () => {
     expect(vistaInicialCalendario("semana", true)).toBe("dia");
     expect(vistaInicialCalendario("tres", true)).toBe("tres");
     expect(vistaInicialCalendario("semana", false)).toBe("semana");
+  });
+  test("la vista elegida a mano se recuerda y una inválida se ignora", () => {
+    const m = new Map<string, string>();
+    const almacen = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+    expect(vistaElegidaGuardada(almacen)).toBeNull();
+    recordarVistaElegida("semana", almacen);
+    expect(vistaElegidaGuardada(almacen)).toBe("semana");
+    m.set("sishow-calendario-vista-elegida", "otra");
+    expect(vistaElegidaGuardada(almacen)).toBeNull();
   });
 });
 

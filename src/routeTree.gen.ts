@@ -9,92 +9,52 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as RuteroRouteImport } from './routes/rutero'
-import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
-import { Route as PreciosRouteImport } from './routes/precios'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as FuncionalidadesRouteImport } from './routes/funcionalidades'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as ContactoRouteImport } from './routes/contacto'
-import { Route as AppRouteImport } from './routes/app'
-import { Route as AceptarRouteImport } from './routes/aceptar'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppIndexRouteImport } from './routes/app.index'
-import { Route as SSalonSlugRouteImport } from './routes/s.$salonSlug'
-import { Route as LegalPrivacidadRouteImport } from './routes/legal.privacidad'
-import { Route as LegalCookiesRouteImport } from './routes/legal.cookies'
-import { Route as LegalAvisoLegalRouteImport } from './routes/legal.aviso-legal'
-import { Route as DemoSlugRouteImport } from './routes/demo.$slug'
-import { Route as AppWebRouteImport } from './routes/app.web'
-import { Route as AppWaitlistRouteImport } from './routes/app.waitlist'
-import { Route as AppSettingsRouteImport } from './routes/app.settings'
-import { Route as AppServicesRouteImport } from './routes/app.services'
-import { Route as AppMarketingRouteImport } from './routes/app.marketing'
-import { Route as AppInsightsRouteImport } from './routes/app.insights'
-import { Route as AppHojaRouteImport } from './routes/app.hoja'
-import { Route as AppEmployeesRouteImport } from './routes/app.employees'
-import { Route as AppDemosRouteImport } from './routes/app.demos'
-import { Route as AppClientsRouteImport } from './routes/app.clients'
-import { Route as AppCalendarRouteImport } from './routes/app.calendar'
-import { Route as AppCajaRouteImport } from './routes/app.caja'
-import { Route as AppAppointmentsRouteImport } from './routes/app.appointments'
-import { Route as ApiSenalesVencidasRouteImport } from './routes/api.senales-vencidas'
-import { Route as ApiRecordatoriosRouteImport } from './routes/api.recordatorios'
-import { Route as ApiFotoRouteImport } from './routes/api.foto'
+import { Route as AceptarRouteImport } from './routes/aceptar'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as ContactoRouteImport } from './routes/contacto'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as FuncionalidadesRouteImport } from './routes/funcionalidades'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as PreciosRouteImport } from './routes/precios'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
+import { Route as RuteroRouteImport } from './routes/rutero'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ApiCalendarioRouteImport } from './routes/api.calendario'
-import { Route as SSalonSlugIndexRouteImport } from './routes/s.$salonSlug.index'
-import { Route as SSalonSlugPrivacidadRouteImport } from './routes/s.$salonSlug.privacidad'
-import { Route as SSalonSlugDosierRouteImport } from './routes/s.$salonSlug.dosier'
-import { Route as SSalonSlugConfirmationRouteImport } from './routes/s.$salonSlug.confirmation'
-import { Route as SSalonSlugBookRouteImport } from './routes/s.$salonSlug.book'
+import { Route as ApiFotoRouteImport } from './routes/api.foto'
+import { Route as ApiRecordatoriosRouteImport } from './routes/api.recordatorios'
+import { Route as ApiSenalesVencidasRouteImport } from './routes/api.senales-vencidas'
+import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppAppointmentsRouteImport } from './routes/app.appointments'
+import { Route as AppCajaRouteImport } from './routes/app.caja'
+import { Route as AppCalendarRouteImport } from './routes/app.calendar'
+import { Route as AppClientsRouteImport } from './routes/app.clients'
+import { Route as AppDemosRouteImport } from './routes/app.demos'
+import { Route as AppEmployeesRouteImport } from './routes/app.employees'
+import { Route as AppHojaRouteImport } from './routes/app.hoja'
+import { Route as AppInsightsRouteImport } from './routes/app.insights'
+import { Route as AppMarketingRouteImport } from './routes/app.marketing'
+import { Route as AppServicesRouteImport } from './routes/app.services'
+import { Route as AppSettingsRouteImport } from './routes/app.settings'
+import { Route as AppWaitlistRouteImport } from './routes/app.waitlist'
+import { Route as AppWebRouteImport } from './routes/app.web'
+import { Route as DemoSlugRouteImport } from './routes/demo.$slug'
+import { Route as LegalAvisoLegalRouteImport } from './routes/legal.aviso-legal'
+import { Route as LegalCookiesRouteImport } from './routes/legal.cookies'
+import { Route as LegalPrivacidadRouteImport } from './routes/legal.privacidad'
+import { Route as SSalonSlugRouteImport } from './routes/s.$salonSlug'
 import { Route as ApiCalendarioExternoCronRouteImport } from './routes/api.calendario-externo.cron'
-import { Route as ApiCalendarioExternoGoogleWebhookRouteImport } from './routes/api.calendario-externo.google.webhook'
+import { Route as SSalonSlugIndexRouteImport } from './routes/s.$salonSlug.index'
+import { Route as SSalonSlugBookRouteImport } from './routes/s.$salonSlug.book'
+import { Route as SSalonSlugConfirmationRouteImport } from './routes/s.$salonSlug.confirmation'
+import { Route as SSalonSlugDosierRouteImport } from './routes/s.$salonSlug.dosier'
+import { Route as SSalonSlugPrivacidadRouteImport } from './routes/s.$salonSlug.privacidad'
 import { Route as ApiCalendarioExternoGoogleCallbackRouteImport } from './routes/api.calendario-externo.google.callback'
+import { Route as ApiCalendarioExternoGoogleWebhookRouteImport } from './routes/api.calendario-externo.google.webhook'
 
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RuteroRoute = RuteroRouteImport.update({
-  id: '/rutero',
-  path: '/rutero',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
-  id: '/robots.txt',
-  path: '/robots.txt',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreciosRoute = PreciosRouteImport.update({
-  id: '/precios',
-  path: '/precios',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FuncionalidadesRoute = FuncionalidadesRouteImport.update({
-  id: '/funcionalidades',
-  path: '/funcionalidades',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContactoRoute = ContactoRouteImport.update({
-  id: '/contacto',
-  path: '/contacto',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppRoute = AppRouteImport.update({
-  id: '/app',
-  path: '/app',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AceptarRoute = AceptarRouteImport.update({
@@ -102,119 +62,49 @@ const AceptarRoute = AceptarRouteImport.update({
   path: '/aceptar',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppIndexRoute = AppIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppRoute,
-} as any)
-const SSalonSlugRoute = SSalonSlugRouteImport.update({
-  id: '/s/$salonSlug',
-  path: '/s/$salonSlug',
+const ContactoRoute = ContactoRouteImport.update({
+  id: '/contacto',
+  path: '/contacto',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LegalPrivacidadRoute = LegalPrivacidadRouteImport.update({
-  id: '/legal/privacidad',
-  path: '/legal/privacidad',
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LegalCookiesRoute = LegalCookiesRouteImport.update({
-  id: '/legal/cookies',
-  path: '/legal/cookies',
+const FuncionalidadesRoute = FuncionalidadesRouteImport.update({
+  id: '/funcionalidades',
+  path: '/funcionalidades',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LegalAvisoLegalRoute = LegalAvisoLegalRouteImport.update({
-  id: '/legal/aviso-legal',
-  path: '/legal/aviso-legal',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DemoSlugRoute = DemoSlugRouteImport.update({
-  id: '/demo/$slug',
-  path: '/demo/$slug',
+const PreciosRoute = PreciosRouteImport.update({
+  id: '/precios',
+  path: '/precios',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppWebRoute = AppWebRouteImport.update({
-  id: '/web',
-  path: '/web',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppWaitlistRoute = AppWaitlistRouteImport.update({
-  id: '/waitlist',
-  path: '/waitlist',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppServicesRoute = AppServicesRouteImport.update({
-  id: '/services',
-  path: '/services',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppMarketingRoute = AppMarketingRouteImport.update({
-  id: '/marketing',
-  path: '/marketing',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppInsightsRoute = AppInsightsRouteImport.update({
-  id: '/insights',
-  path: '/insights',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppHojaRoute = AppHojaRouteImport.update({
-  id: '/hoja',
-  path: '/hoja',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppEmployeesRoute = AppEmployeesRouteImport.update({
-  id: '/employees',
-  path: '/employees',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDemosRoute = AppDemosRouteImport.update({
-  id: '/demos',
-  path: '/demos',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppClientsRoute = AppClientsRouteImport.update({
-  id: '/clients',
-  path: '/clients',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCalendarRoute = AppCalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCajaRoute = AppCajaRouteImport.update({
-  id: '/caja',
-  path: '/caja',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
-  id: '/appointments',
-  path: '/appointments',
-  getParentRoute: () => AppRoute,
-} as any)
-const ApiSenalesVencidasRoute = ApiSenalesVencidasRouteImport.update({
-  id: '/api/senales-vencidas',
-  path: '/api/senales-vencidas',
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiRecordatoriosRoute = ApiRecordatoriosRouteImport.update({
-  id: '/api/recordatorios',
-  path: '/api/recordatorios',
+const RuteroRoute = RuteroRouteImport.update({
+  id: '/rutero',
+  path: '/rutero',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiFotoRoute = ApiFotoRouteImport.update({
-  id: '/api/foto',
-  path: '/api/foto',
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCalendarioRoute = ApiCalendarioRouteImport.update({
@@ -222,30 +112,115 @@ const ApiCalendarioRoute = ApiCalendarioRouteImport.update({
   path: '/api/calendario',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SSalonSlugIndexRoute = SSalonSlugIndexRouteImport.update({
+const ApiFotoRoute = ApiFotoRouteImport.update({
+  id: '/api/foto',
+  path: '/api/foto',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRecordatoriosRoute = ApiRecordatoriosRouteImport.update({
+  id: '/api/recordatorios',
+  path: '/api/recordatorios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSenalesVencidasRoute = ApiSenalesVencidasRouteImport.update({
+  id: '/api/senales-vencidas',
+  path: '/api/senales-vencidas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => SSalonSlugRoute,
+  getParentRoute: () => AppRoute,
 } as any)
-const SSalonSlugPrivacidadRoute = SSalonSlugPrivacidadRouteImport.update({
-  id: '/privacidad',
-  path: '/privacidad',
-  getParentRoute: () => SSalonSlugRoute,
+const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
+  id: '/appointments',
+  path: '/appointments',
+  getParentRoute: () => AppRoute,
 } as any)
-const SSalonSlugDosierRoute = SSalonSlugDosierRouteImport.update({
-  id: '/dosier',
-  path: '/dosier',
-  getParentRoute: () => SSalonSlugRoute,
+const AppCajaRoute = AppCajaRouteImport.update({
+  id: '/caja',
+  path: '/caja',
+  getParentRoute: () => AppRoute,
 } as any)
-const SSalonSlugConfirmationRoute = SSalonSlugConfirmationRouteImport.update({
-  id: '/confirmation',
-  path: '/confirmation',
-  getParentRoute: () => SSalonSlugRoute,
+const AppCalendarRoute = AppCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => AppRoute,
 } as any)
-const SSalonSlugBookRoute = SSalonSlugBookRouteImport.update({
-  id: '/book',
-  path: '/book',
-  getParentRoute: () => SSalonSlugRoute,
+const AppClientsRoute = AppClientsRouteImport.update({
+  id: '/clients',
+  path: '/clients',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDemosRoute = AppDemosRouteImport.update({
+  id: '/demos',
+  path: '/demos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEmployeesRoute = AppEmployeesRouteImport.update({
+  id: '/employees',
+  path: '/employees',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppHojaRoute = AppHojaRouteImport.update({
+  id: '/hoja',
+  path: '/hoja',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInsightsRoute = AppInsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMarketingRoute = AppMarketingRouteImport.update({
+  id: '/marketing',
+  path: '/marketing',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppServicesRoute = AppServicesRouteImport.update({
+  id: '/services',
+  path: '/services',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWaitlistRoute = AppWaitlistRouteImport.update({
+  id: '/waitlist',
+  path: '/waitlist',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWebRoute = AppWebRouteImport.update({
+  id: '/web',
+  path: '/web',
+  getParentRoute: () => AppRoute,
+} as any)
+const DemoSlugRoute = DemoSlugRouteImport.update({
+  id: '/demo/$slug',
+  path: '/demo/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalAvisoLegalRoute = LegalAvisoLegalRouteImport.update({
+  id: '/legal/aviso-legal',
+  path: '/legal/aviso-legal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalCookiesRoute = LegalCookiesRouteImport.update({
+  id: '/legal/cookies',
+  path: '/legal/cookies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalPrivacidadRoute = LegalPrivacidadRouteImport.update({
+  id: '/legal/privacidad',
+  path: '/legal/privacidad',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SSalonSlugRoute = SSalonSlugRouteImport.update({
+  id: '/s/$salonSlug',
+  path: '/s/$salonSlug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCalendarioExternoCronRoute =
   ApiCalendarioExternoCronRouteImport.update({
@@ -253,16 +228,41 @@ const ApiCalendarioExternoCronRoute =
     path: '/api/calendario-externo/cron',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiCalendarioExternoGoogleWebhookRoute =
-  ApiCalendarioExternoGoogleWebhookRouteImport.update({
-    id: '/api/calendario-externo/google/webhook',
-    path: '/api/calendario-externo/google/webhook',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const SSalonSlugIndexRoute = SSalonSlugIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SSalonSlugRoute,
+} as any)
+const SSalonSlugBookRoute = SSalonSlugBookRouteImport.update({
+  id: '/book',
+  path: '/book',
+  getParentRoute: () => SSalonSlugRoute,
+} as any)
+const SSalonSlugConfirmationRoute = SSalonSlugConfirmationRouteImport.update({
+  id: '/confirmation',
+  path: '/confirmation',
+  getParentRoute: () => SSalonSlugRoute,
+} as any)
+const SSalonSlugDosierRoute = SSalonSlugDosierRouteImport.update({
+  id: '/dosier',
+  path: '/dosier',
+  getParentRoute: () => SSalonSlugRoute,
+} as any)
+const SSalonSlugPrivacidadRoute = SSalonSlugPrivacidadRouteImport.update({
+  id: '/privacidad',
+  path: '/privacidad',
+  getParentRoute: () => SSalonSlugRoute,
+} as any)
 const ApiCalendarioExternoGoogleCallbackRoute =
   ApiCalendarioExternoGoogleCallbackRouteImport.update({
     id: '/api/calendario-externo/google/callback',
     path: '/api/calendario-externo/google/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiCalendarioExternoGoogleWebhookRoute =
+  ApiCalendarioExternoGoogleWebhookRouteImport.update({
+    id: '/api/calendario-externo/google/webhook',
+    path: '/api/calendario-externo/google/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -558,67 +558,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rutero': {
-      id: '/rutero'
-      path: '/rutero'
-      fullPath: '/rutero'
-      preLoaderRoute: typeof RuteroRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/robots.txt': {
-      id: '/robots.txt'
-      path: '/robots.txt'
-      fullPath: '/robots.txt'
-      preLoaderRoute: typeof RobotsDottxtRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/precios': {
-      id: '/precios'
-      path: '/precios'
-      fullPath: '/precios'
-      preLoaderRoute: typeof PreciosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/funcionalidades': {
-      id: '/funcionalidades'
-      path: '/funcionalidades'
-      fullPath: '/funcionalidades'
-      preLoaderRoute: typeof FuncionalidadesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contacto': {
-      id: '/contacto'
-      path: '/contacto'
-      fullPath: '/contacto'
-      preLoaderRoute: typeof ContactoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app': {
-      id: '/app'
-      path: '/app'
-      fullPath: '/app'
-      preLoaderRoute: typeof AppRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/aceptar': {
@@ -628,165 +572,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AceptarRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/app/': {
-      id: '/app/'
-      path: '/'
-      fullPath: '/app/'
-      preLoaderRoute: typeof AppIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/s/$salonSlug': {
-      id: '/s/$salonSlug'
-      path: '/s/$salonSlug'
-      fullPath: '/s/$salonSlug'
-      preLoaderRoute: typeof SSalonSlugRouteImport
+    '/contacto': {
+      id: '/contacto'
+      path: '/contacto'
+      fullPath: '/contacto'
+      preLoaderRoute: typeof ContactoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/legal/privacidad': {
-      id: '/legal/privacidad'
-      path: '/legal/privacidad'
-      fullPath: '/legal/privacidad'
-      preLoaderRoute: typeof LegalPrivacidadRouteImport
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/legal/cookies': {
-      id: '/legal/cookies'
-      path: '/legal/cookies'
-      fullPath: '/legal/cookies'
-      preLoaderRoute: typeof LegalCookiesRouteImport
+    '/funcionalidades': {
+      id: '/funcionalidades'
+      path: '/funcionalidades'
+      fullPath: '/funcionalidades'
+      preLoaderRoute: typeof FuncionalidadesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/legal/aviso-legal': {
-      id: '/legal/aviso-legal'
-      path: '/legal/aviso-legal'
-      fullPath: '/legal/aviso-legal'
-      preLoaderRoute: typeof LegalAvisoLegalRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/demo/$slug': {
-      id: '/demo/$slug'
-      path: '/demo/$slug'
-      fullPath: '/demo/$slug'
-      preLoaderRoute: typeof DemoSlugRouteImport
+    '/precios': {
+      id: '/precios'
+      path: '/precios'
+      fullPath: '/precios'
+      preLoaderRoute: typeof PreciosRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/app/web': {
-      id: '/app/web'
-      path: '/web'
-      fullPath: '/app/web'
-      preLoaderRoute: typeof AppWebRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/waitlist': {
-      id: '/app/waitlist'
-      path: '/waitlist'
-      fullPath: '/app/waitlist'
-      preLoaderRoute: typeof AppWaitlistRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/settings': {
-      id: '/app/settings'
-      path: '/settings'
-      fullPath: '/app/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/services': {
-      id: '/app/services'
-      path: '/services'
-      fullPath: '/app/services'
-      preLoaderRoute: typeof AppServicesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/marketing': {
-      id: '/app/marketing'
-      path: '/marketing'
-      fullPath: '/app/marketing'
-      preLoaderRoute: typeof AppMarketingRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/insights': {
-      id: '/app/insights'
-      path: '/insights'
-      fullPath: '/app/insights'
-      preLoaderRoute: typeof AppInsightsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/hoja': {
-      id: '/app/hoja'
-      path: '/hoja'
-      fullPath: '/app/hoja'
-      preLoaderRoute: typeof AppHojaRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/employees': {
-      id: '/app/employees'
-      path: '/employees'
-      fullPath: '/app/employees'
-      preLoaderRoute: typeof AppEmployeesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/demos': {
-      id: '/app/demos'
-      path: '/demos'
-      fullPath: '/app/demos'
-      preLoaderRoute: typeof AppDemosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/clients': {
-      id: '/app/clients'
-      path: '/clients'
-      fullPath: '/app/clients'
-      preLoaderRoute: typeof AppClientsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/calendar': {
-      id: '/app/calendar'
-      path: '/calendar'
-      fullPath: '/app/calendar'
-      preLoaderRoute: typeof AppCalendarRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/caja': {
-      id: '/app/caja'
-      path: '/caja'
-      fullPath: '/app/caja'
-      preLoaderRoute: typeof AppCajaRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/appointments': {
-      id: '/app/appointments'
-      path: '/appointments'
-      fullPath: '/app/appointments'
-      preLoaderRoute: typeof AppAppointmentsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/api/senales-vencidas': {
-      id: '/api/senales-vencidas'
-      path: '/api/senales-vencidas'
-      fullPath: '/api/senales-vencidas'
-      preLoaderRoute: typeof ApiSenalesVencidasRouteImport
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/recordatorios': {
-      id: '/api/recordatorios'
-      path: '/api/recordatorios'
-      fullPath: '/api/recordatorios'
-      preLoaderRoute: typeof ApiRecordatoriosRouteImport
+    '/rutero': {
+      id: '/rutero'
+      path: '/rutero'
+      fullPath: '/rutero'
+      preLoaderRoute: typeof RuteroRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/foto': {
-      id: '/api/foto'
-      path: '/api/foto'
-      fullPath: '/api/foto'
-      preLoaderRoute: typeof ApiFotoRouteImport
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/calendario': {
@@ -796,32 +642,172 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCalendarioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/foto': {
+      id: '/api/foto'
+      path: '/api/foto'
+      fullPath: '/api/foto'
+      preLoaderRoute: typeof ApiFotoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/recordatorios': {
+      id: '/api/recordatorios'
+      path: '/api/recordatorios'
+      fullPath: '/api/recordatorios'
+      preLoaderRoute: typeof ApiRecordatoriosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/senales-vencidas': {
+      id: '/api/senales-vencidas'
+      path: '/api/senales-vencidas'
+      fullPath: '/api/senales-vencidas'
+      preLoaderRoute: typeof ApiSenalesVencidasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/appointments': {
+      id: '/app/appointments'
+      path: '/appointments'
+      fullPath: '/app/appointments'
+      preLoaderRoute: typeof AppAppointmentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/caja': {
+      id: '/app/caja'
+      path: '/caja'
+      fullPath: '/app/caja'
+      preLoaderRoute: typeof AppCajaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/calendar': {
+      id: '/app/calendar'
+      path: '/calendar'
+      fullPath: '/app/calendar'
+      preLoaderRoute: typeof AppCalendarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/clients': {
+      id: '/app/clients'
+      path: '/clients'
+      fullPath: '/app/clients'
+      preLoaderRoute: typeof AppClientsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/demos': {
+      id: '/app/demos'
+      path: '/demos'
+      fullPath: '/app/demos'
+      preLoaderRoute: typeof AppDemosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/employees': {
+      id: '/app/employees'
+      path: '/employees'
+      fullPath: '/app/employees'
+      preLoaderRoute: typeof AppEmployeesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/hoja': {
+      id: '/app/hoja'
+      path: '/hoja'
+      fullPath: '/app/hoja'
+      preLoaderRoute: typeof AppHojaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/insights': {
+      id: '/app/insights'
+      path: '/insights'
+      fullPath: '/app/insights'
+      preLoaderRoute: typeof AppInsightsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/marketing': {
+      id: '/app/marketing'
+      path: '/marketing'
+      fullPath: '/app/marketing'
+      preLoaderRoute: typeof AppMarketingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/services': {
+      id: '/app/services'
+      path: '/services'
+      fullPath: '/app/services'
+      preLoaderRoute: typeof AppServicesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/waitlist': {
+      id: '/app/waitlist'
+      path: '/waitlist'
+      fullPath: '/app/waitlist'
+      preLoaderRoute: typeof AppWaitlistRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/web': {
+      id: '/app/web'
+      path: '/web'
+      fullPath: '/app/web'
+      preLoaderRoute: typeof AppWebRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/demo/$slug': {
+      id: '/demo/$slug'
+      path: '/demo/$slug'
+      fullPath: '/demo/$slug'
+      preLoaderRoute: typeof DemoSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/aviso-legal': {
+      id: '/legal/aviso-legal'
+      path: '/legal/aviso-legal'
+      fullPath: '/legal/aviso-legal'
+      preLoaderRoute: typeof LegalAvisoLegalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/cookies': {
+      id: '/legal/cookies'
+      path: '/legal/cookies'
+      fullPath: '/legal/cookies'
+      preLoaderRoute: typeof LegalCookiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/privacidad': {
+      id: '/legal/privacidad'
+      path: '/legal/privacidad'
+      fullPath: '/legal/privacidad'
+      preLoaderRoute: typeof LegalPrivacidadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/s/$salonSlug': {
+      id: '/s/$salonSlug'
+      path: '/s/$salonSlug'
+      fullPath: '/s/$salonSlug'
+      preLoaderRoute: typeof SSalonSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/calendario-externo/cron': {
+      id: '/api/calendario-externo/cron'
+      path: '/api/calendario-externo/cron'
+      fullPath: '/api/calendario-externo/cron'
+      preLoaderRoute: typeof ApiCalendarioExternoCronRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/s/$salonSlug/': {
       id: '/s/$salonSlug/'
       path: '/'
       fullPath: '/s/$salonSlug/'
       preLoaderRoute: typeof SSalonSlugIndexRouteImport
-      parentRoute: typeof SSalonSlugRoute
-    }
-    '/s/$salonSlug/privacidad': {
-      id: '/s/$salonSlug/privacidad'
-      path: '/privacidad'
-      fullPath: '/s/$salonSlug/privacidad'
-      preLoaderRoute: typeof SSalonSlugPrivacidadRouteImport
-      parentRoute: typeof SSalonSlugRoute
-    }
-    '/s/$salonSlug/dosier': {
-      id: '/s/$salonSlug/dosier'
-      path: '/dosier'
-      fullPath: '/s/$salonSlug/dosier'
-      preLoaderRoute: typeof SSalonSlugDosierRouteImport
-      parentRoute: typeof SSalonSlugRoute
-    }
-    '/s/$salonSlug/confirmation': {
-      id: '/s/$salonSlug/confirmation'
-      path: '/confirmation'
-      fullPath: '/s/$salonSlug/confirmation'
-      preLoaderRoute: typeof SSalonSlugConfirmationRouteImport
       parentRoute: typeof SSalonSlugRoute
     }
     '/s/$salonSlug/book': {
@@ -831,11 +817,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSalonSlugBookRouteImport
       parentRoute: typeof SSalonSlugRoute
     }
-    '/api/calendario-externo/cron': {
-      id: '/api/calendario-externo/cron'
-      path: '/api/calendario-externo/cron'
-      fullPath: '/api/calendario-externo/cron'
-      preLoaderRoute: typeof ApiCalendarioExternoCronRouteImport
+    '/s/$salonSlug/confirmation': {
+      id: '/s/$salonSlug/confirmation'
+      path: '/confirmation'
+      fullPath: '/s/$salonSlug/confirmation'
+      preLoaderRoute: typeof SSalonSlugConfirmationRouteImport
+      parentRoute: typeof SSalonSlugRoute
+    }
+    '/s/$salonSlug/dosier': {
+      id: '/s/$salonSlug/dosier'
+      path: '/dosier'
+      fullPath: '/s/$salonSlug/dosier'
+      preLoaderRoute: typeof SSalonSlugDosierRouteImport
+      parentRoute: typeof SSalonSlugRoute
+    }
+    '/s/$salonSlug/privacidad': {
+      id: '/s/$salonSlug/privacidad'
+      path: '/privacidad'
+      fullPath: '/s/$salonSlug/privacidad'
+      preLoaderRoute: typeof SSalonSlugPrivacidadRouteImport
+      parentRoute: typeof SSalonSlugRoute
+    }
+    '/api/calendario-externo/google/callback': {
+      id: '/api/calendario-externo/google/callback'
+      path: '/api/calendario-externo/google/callback'
+      fullPath: '/api/calendario-externo/google/callback'
+      preLoaderRoute: typeof ApiCalendarioExternoGoogleCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/calendario-externo/google/webhook': {
@@ -843,13 +850,6 @@ declare module '@tanstack/react-router' {
       path: '/api/calendario-externo/google/webhook'
       fullPath: '/api/calendario-externo/google/webhook'
       preLoaderRoute: typeof ApiCalendarioExternoGoogleWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/calendario-externo/google/callback': {
-      id: '/api/calendario-externo/google/callback'
-      path: '/api/calendario-externo/google/callback'
-      fullPath: '/api/calendario-externo/google/callback'
-      preLoaderRoute: typeof ApiCalendarioExternoGoogleCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
