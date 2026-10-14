@@ -266,9 +266,9 @@ function SalonLayout() {
     // lo que hubiera debajo. La clase se apaga sola a partir de 1024 px, que
     // es donde esa barra desaparece.
     //
-    // En la home NO hace falta: su barra de «Reservar cita» ya se esconde sola
-    // al llegar el pie (ver MobileBookingBar), y reservarle sitio dejaría una
-    // banda negra vacía al final de la página.
+    // En la home el hueco se reserva dentro de `main`, de modo que la barra de
+    // «Reservar cita» no cubre el final de ninguna sección; el pie mantiene el
+    // suyo para que también sus enlaces queden siempre por encima de la barra.
     <div className="web-salon flex min-h-screen flex-col bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
         <div className={cn(CONTENEDOR_SALON, "flex min-h-16 items-center justify-between gap-4 py-2.5")}>
@@ -282,7 +282,7 @@ function SalonLayout() {
                 <img src={logotipoBarra} alt={profile.name} width={1455} height={432} className="h-9 w-auto shrink-0 sm:h-10" />
               ) : logoSalon ? (
                 <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
-                  <img src={logoSalon} alt={`Logo de ${profile.name}`} width={36} height={36} className="h-full w-full object-cover" />
+                  <img src={logoSalon} alt={`Logo de ${profile.name}`} width={36} height={36} className="h-full w-full object-contain p-0.5" />
                 </span>
               ) : (
                 <Logo label={profile.name} />
@@ -432,7 +432,7 @@ function SalonLayout() {
         </div>
       </header>
 
-      <main className="flex-1">
+      <main className={cn("flex-1", !onBooking && "pb-[calc(var(--alto-barra-fija)+1rem)] md:pb-0")}>
         <Outlet />
       </main>
 

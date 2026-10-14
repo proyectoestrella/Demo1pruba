@@ -32,7 +32,7 @@ import {
 import { StylistAvatar } from "@/components/StylistAvatar";
 import type { EmployeeId } from "@/lib/mock/types";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { DEFAULT_OPENING_HOURS, isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
 import { useClientNow } from "@/lib/use-client-now";
 import { conAncho } from "@/lib/demo-photos";
@@ -42,6 +42,7 @@ import heroImg from "@/assets/hero-salon.jpg";
 import heroSalonImg from "@/assets/gallery-salon.jpg";
 import { WorkGallery } from "@/components/WorkGallery";
 import { MobileBookingBar } from "@/components/MobileBookingBar";
+import { DemoLoadingScreen } from "@/components/DemoLoadingScreen";
 import { Reveal } from "@/components/Reveal";
 import {
   Accordion,
@@ -306,6 +307,7 @@ function SalonHome() {
   const portadaPropia = portadaEsRespaldoPropio ? null : portadaConAnchos(portada.src);
   // En una demo enlazada no se enseña una portada de ejemplo: sin foto del local, fondo liso.
   const portadaDeEjemplo = conEnlaceDemo && !portadaEsRespaldoPropio && portada.src !== profile.heroImage;
+  const [portadaLista, setPortadaLista] = useState(false);
   // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
   // en la cadena "2" — de ahí el `String(...)` antes de comparar.
   const isV2 = useRouterState({
@@ -409,6 +411,14 @@ function SalonHome() {
 
   return (
     <>
+      <DemoLoadingScreen
+        key={`${salonSlug}-${profile.name}`}
+        conEnlaceDemo={conEnlaceDemo}
+        nombre={profile.name}
+        logoUrl={logoPortada}
+        portadaLista={portadaLista}
+        tienePortada={!portadaDeEjemplo}
+      />
       {/* ------------------------------------------------------------------
        * Portada. Foto a sangre con velo café al 70 %: el texto blanco más
        * pequeño da ≥ 4,5:1 incluso sobre la zona más clara de la foto (lote
@@ -432,7 +442,11 @@ function SalonHome() {
           }
           sizes="100vw"
           ref={portada.ref}
-          onError={portada.onError}
+          onLoad={() => setPortadaLista(true)}
+          onError={() => {
+            portada.onError();
+            setPortadaLista(true);
+          }}
           alt={portadaEsRespaldoPropio ? respaldoPortada!.alt : portadaPropia ? `Un trabajo de ${profile.name}` : `Interior de ${profile.name}`}
           className="ws-portada-foto absolute inset-0 -z-20 h-full w-full object-cover"
           width={1920}
@@ -440,13 +454,13 @@ function SalonHome() {
           fetchPriority="high"
           decoding="async"
         />}
-        <div className="absolute inset-0 -z-10 bg-cafe/70" aria-hidden="true" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-cafe/90 via-cafe/60 to-cafe/25" aria-hidden="true" />
 
         <div className={cn(CONTENEDOR_SALON, "flex min-h-[520px] flex-col justify-end pb-12 pt-20 md:min-h-[600px] md:justify-center md:py-24")}>
           <div className="entrada-portada max-w-2xl">
             <div className="flex flex-wrap items-center gap-2 text-sm">
               {!horarioDeEjemplo && (
-                <span className="inline-flex h-8 items-center gap-2 rounded-full bg-white/15 px-3 font-semibold">
+                <span className="inline-flex h-8 items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 text-[13px] font-medium backdrop-blur-sm">
                   <span
                     className={cn("size-2 rounded-full", openNow ? "bg-salvia" : "bg-white/60")}
                     aria-hidden="true"
@@ -455,7 +469,7 @@ function SalonHome() {
                 </span>
               )}
               {profile.rating > 0 && (
-                <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-white/15 px-3">
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 text-[13px] backdrop-blur-sm">
                   <Star className="h-3.5 w-3.5 fill-white text-white" aria-hidden="true" />
                   <span className="font-semibold tabular-nums">{notaEs(profile.rating)}</span>
                   {profile.reviewCount > 0 && (
@@ -473,19 +487,19 @@ function SalonHome() {
             ) : (
             <div className="mt-6 flex items-center gap-4">
                 {logoPortada && (
-                  <span className="block size-16 shrink-0 overflow-hidden rounded-full border border-white/50 bg-white md:size-[72px]">
+                    <span className="block size-16 shrink-0 overflow-hidden rounded-2xl border border-white/50 bg-white p-1 shadow-lg md:size-[72px]">
                     <img
                       src={logoPortada}
                       alt={`Logo de ${profile.name}`}
                       width={72}
                       height={72}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain"
                     />
                   </span>
                 )}
                 <h1
                   className={cn(
-                    "font-display font-medium leading-[1.05] text-balance",
+                    "break-words font-display font-medium leading-[1.02] tracking-[-0.025em] text-balance",
                     // El tamaño baja con la longitud del nombre para no partirlo.
                     profile.name.length > 28
                       ? "text-3xl sm:text-4xl md:text-5xl"
@@ -585,12 +599,12 @@ function SalonHome() {
                     to="/s/$salonSlug/book"
                     params={{ salonSlug }}
                     search={(prev) => ({ ...prev, service: id })}
-                    className="elevar group flex h-full flex-col sm:min-h-[132px] rounded-[20px] border border-lino bg-card p-5"
+                    className="elevar group flex h-full min-w-0 flex-col rounded-[20px] border border-lino bg-card p-5 shadow-[0_4px_16px_rgba(59,47,42,0.055)] sm:min-h-[148px]"
                   >
-                    {/* Nombre arriba y precio debajo: el literal del salón
-                        («43,50 € / 47,50 €») no cabe al lado de un nombre largo. */}
-                    <h3 className="text-base font-bold leading-snug text-foreground">{s.name}</h3>
-                    <p className="mt-1 text-lg font-extrabold leading-snug tabular-nums text-foreground">{precioDeCarta(s)}</p>
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <h3 className="min-w-0 break-words text-base font-bold leading-snug text-foreground">{s.name}</h3>
+                      <p className="max-w-[45%] shrink-0 break-words text-right text-lg font-extrabold leading-snug tabular-nums text-foreground">{precioDeCarta(s)}</p>
+                    </div>
                     {(profile.descripcionesServicios?.[s.id] ?? s.description)?.trim() ? (
                       <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{(profile.descripcionesServicios?.[s.id] ?? s.description).trim()}</p>
                     ) : null}
