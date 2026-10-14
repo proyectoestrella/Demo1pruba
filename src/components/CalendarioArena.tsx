@@ -1,5 +1,6 @@
 import { tituloCalendario } from "@/lib/calendario-titulo-panel";
 import { useFichas } from "@/lib/use-fichas";
+import { AvatarProfesional } from "@/components/Avatar";
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
 import { useOcupadoExterno, useSincronizarCalendarios } from "@/lib/calendarios-panel";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -635,9 +636,7 @@ function BloqueHueco({ style, tramo, onClick }: { style: CSSProperties; tramo: T
 
 function AvatarPro({ e, i, size = 40 }: { e: Employee; i: number; size?: number }) {
   return (
-    <span className="grid shrink-0 place-items-center rounded-full font-extrabold text-cafe" style={{ width: size, height: size, fontSize: size >= 40 ? 13 : 11, background: colorPro(i) }}>
-      {iniciales(e.name)}
-    </span>
+    <AvatarProfesional id={e.id} nombre={e.name} size={size} aroColor={colorPro(i)} />
   );
 }
 

@@ -37,7 +37,7 @@ export function SelectorAvatar({ abierto, onOpenChange, nombre, id, actual, onEl
         <div
           role="radiogroup"
           aria-label="Avatares disponibles"
-          className="grid min-h-0 flex-1 grid-cols-4 gap-2.5 overflow-y-auto px-5 pb-2 sm:grid-cols-6"
+          className="grid min-h-0 flex-1 grid-cols-4 gap-2.5 auto-rows-max content-start overflow-y-auto px-5 pt-1 pb-3 sm:grid-cols-6"
         >
           {Array.from({ length: TOTAL_AVATARES }, (_, i) => {
             const activo = elegido === i;
@@ -51,11 +51,11 @@ export function SelectorAvatar({ abierto, onOpenChange, nombre, id, actual, onEl
                 data-curado={i}
                 onClick={() => onElegir(elegirAvatar(i))}
                 className={cn(
-                  "relative aspect-square cursor-pointer overflow-hidden rounded-full border-2 transition-transform hover:scale-[1.04] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                  "relative block w-full cursor-pointer overflow-hidden rounded-full border-2 transition-transform hover:scale-[1.04] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                   activo ? "border-moca-fuerte" : "border-transparent",
                 )}
               >
-                <img src={uriDeCurado(i)} alt="" draggable={false} className="h-full w-full" loading="lazy" />
+                <img src={uriDeCurado(i)} alt="" draggable={false} className="block aspect-square w-full" loading="lazy" />
                 {activo && (
                   <span className="absolute right-0.5 bottom-0.5 grid size-5 place-items-center rounded-full bg-moca-fuerte text-white" aria-hidden="true">
                     <Check className="size-3" strokeWidth={3} />

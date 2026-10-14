@@ -27,9 +27,11 @@ export interface AvatarProps {
   foto?: string | null;
   /** Avatar elegido y guardado (`AvatarElegido`). */
   elegido?: unknown;
-  size?: AvatarSize;
+  size?: AvatarSize | number;
   /** Variable CSS de un color para el aro (profesionales). */
   aro?: string;
+  /** Un color ya resuelto para el aro (cuando no hay variable). */
+  aroColor?: string;
   className?: string;
   /** Si el nombre ya está escrito al lado, el avatar es decorativo (por defecto). */
   decorativo?: boolean;
@@ -40,8 +42,8 @@ export interface AvatarProps {
  * Prioridad: foto > avatar elegido > avatar por defecto según el id > iniciales.
  * Se dibuja en el navegador, sin red.
  */
-export function Avatar({ nombre, id, foto, elegido, size = "md", aro, className, decorativo = true }: AvatarProps) {
-  const t = TAMANOS[size];
+export function Avatar({ nombre, id, foto, elegido, size = "md", aro, aroColor, className, decorativo = true }: AvatarProps) {
+  const t = typeof size === "number" ? { px: size, texto: size >= 40 ? "text-sm" : "text-[11px]" } : TAMANOS[size];
   const [fotoRota, setFotoRota] = useState<string | null>(null);
   let r = resolverAvatar({ id, foto: foto && foto !== fotoRota ? foto : undefined, elegido });
   let uri: string | undefined;
@@ -52,8 +54,8 @@ export function Avatar({ nombre, id, foto, elegido, size = "md", aro, className,
       r = { origen: "iniciales" };
     }
   }
-  const caja = cn("relative shrink-0 overflow-hidden rounded-full select-none", className);
-  const estilo = { width: t.px, height: t.px, ...(aro ? { boxShadow: `0 0 0 2px var(${aro})` } : {}) };
+  const caja = cn("relative block shrink-0 overflow-hidden rounded-full select-none", className);
+  const estilo = { width: t.px, height: t.px, ...(aro || aroColor ? { boxShadow: `0 0 0 2px ${aro ? `var(${aro})` : aroColor}` } : {}) };
   const accesible = decorativo ? { "aria-hidden": true as const } : { role: "img" as const, "aria-label": nombre };
 
   if (r.origen === "foto") {
@@ -73,7 +75,7 @@ export function Avatar({ nombre, id, foto, elegido, size = "md", aro, className,
   const color = PALETA[hashTexto(id ?? nombre) % PALETA.length];
   return (
     <span
-      className={cn(caja, "flex items-center justify-center font-extrabold text-cafe", t.texto)}
+      className={cn(caja, "!flex items-center justify-center font-extrabold text-cafe", t.texto)}
       style={{ ...estilo, backgroundColor: `var(${color})` }}
       {...accesible}
       data-avatar="iniciales"
@@ -90,12 +92,12 @@ export function AvatarClienta({ id, nombre, foto, size, className }: { id?: stri
 }
 
 /** Avatar de una profesional del panel, con el aro de su color. */
-export function AvatarProfesional({ id, nombre, foto, size, colorVar, className }: { id: string; nombre: string; foto?: string | null; size?: AvatarSize; colorVar?: string; className?: string }) {
+export function AvatarProfesional({ id, nombre, foto, size, colorVar, aroColor, className }: { id: string; nombre: string; foto?: string | null; size?: AvatarSize | number; colorVar?: string; aroColor?: string; className?: string }) {
   const elegido = useSalonStore((s) => s.salonProfile.avataresEquipo?.[id]);
   const variable = colorVar ?? employeeMap[id]?.colorVar;
   const aro = variable ? (variable.startsWith("--") ? variable : `--${variable}`) : undefined;
   // Hoy no hay subida de fotos de personas: la única «foto» del equipo es la de
   // stock de las demos de barbería. Un avatar elegido a propósito gana a esa foto
   // (cuando exista la subida real, la foto subida mandará: ver lib/avatar.ts).
-  return <Avatar nombre={nombre} id={id} foto={elegido ? undefined : foto} elegido={elegido} size={size} aro={aro} className={className} />;
+  return <Avatar nombre={nombre} id={id} foto={elegido ? undefined : foto} elegido={elegido} size={size} aro={aroColor ? undefined : aro} aroColor={aroColor} className={className} />;
 }

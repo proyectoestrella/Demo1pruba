@@ -31,6 +31,11 @@ describe("guardas de escritura por rol", () => {
     for (const k of ["menu", "team", "about", "depositEnabled"]) expect(() => exigirAcciones(noelia, accionesDeParchePerfil([k]))).toThrow(PermisoDenegado);
   });
 
+  it("los avatares: el de una clienta pide editar clientas; el del equipo, editar equipo", () => {
+    expect(accionesDeParchePerfil(["avataresClientas"])).toEqual(["clienta.editar"]);
+    expect(accionesDeParchePerfil(["avataresEquipo"])).toEqual(["equipo.editar"]);
+  });
+
   it("la demo pasa todas las guardas", () => {
     expect(() => exigirAcciones({ tipo: "demo" }, ["datos.borrar", "web.publicar"])).not.toThrow();
   });
