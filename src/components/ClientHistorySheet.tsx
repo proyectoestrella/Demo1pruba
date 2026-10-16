@@ -259,7 +259,7 @@ export function ClientHistorySheet({
       )}
       </div>
 
-      <FichaCompleta ficha={ficha} origenTpv123={origenTpv123} onAbrirCita={abrirCita} onAddColor={(datos: DatosColorTPV) => {
+      <FichaCompleta ficha={ficha} client={client} origenTpv123={origenTpv123} onAbrirCita={abrirCita} onAddColor={(datos: DatosColorTPV) => {
         const formula = [datos.producto.trim(), datos.cantidad.trim(), datos.raiz.trim() && `${datos.raiz.trim()} raíz`, datos.medios.trim() && `medios ${datos.medios.trim()}`, datos.puntas.trim() && `puntas ${datos.puntas.trim()}`, datos.tiempo.trim()].filter(Boolean).join(", ");
         const fecha = new Date(`${datos.fecha}T12:00:00`).toISOString();
         addAppointment({ clientId: client.id, clientName: client.name, serviceIds: [], employeeId: equipo[0]?.id ?? "mario", start: fecha, duration: 0, priceEur: 0, status: "completed", origen: origenTpv123 ? "tpv123" : "sishow", colorFormula: formula, technicalNotes: datos.notas.trim() || undefined }, { name: client.name, phone: client.phone, email: client.email });

@@ -3,11 +3,12 @@ import { useState, type ReactNode } from "react";
 import { Droplet, TriangleAlert } from "lucide-react";
 import { BookingAnswersSummary } from "./BookingAnswersSummary";
 import { eur } from "@/lib/copy";
-import type { fichaDeClienta } from "@/lib/ficha-clienta";
+import { ultimaVisitaParaFicha, type fichaDeClienta } from "@/lib/ficha-clienta";
 import { Button } from "@/components/ui/button";
 import { Desplegable } from "@/components/Desplegable";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import type { Client } from "@/lib/mock/types";
 
 type Ficha = ReturnType<typeof fichaDeClienta>;
 const fecha = (iso?: string) => iso ? new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }) : "—";
@@ -27,7 +28,7 @@ export interface DatosColorTPV { fecha: string; producto: string; cantidad: stri
  * tiempo. `antesDelHistorial` es el hueco para lo que el panel pone entre
  * medias (próximas citas, observaciones, deuda).
  */
-export function FichaCompleta({ ficha, onAddColor, antesDelHistorial, origenTpv123 = false, onAbrirCita }: { ficha: Ficha; onAddColor?: (datos: DatosColorTPV) => void; antesDelHistorial?: ReactNode; origenTpv123?: boolean; onAbrirCita?: (id: string) => void }) {
+export function FichaCompleta({ ficha, client, onAddColor, antesDelHistorial, origenTpv123 = false, onAbrirCita }: { ficha: Ficha; client?: Client; onAddColor?: (datos: DatosColorTPV) => void; antesDelHistorial?: ReactNode; origenTpv123?: boolean; onAbrirCita?: (id: string) => void }) {
   const { resumen, avisos, visitas } = ficha;
   const [formularioColor, setFormularioColor] = useState(false);
   const [mensajeColor, setMensajeColor] = useState("");
@@ -41,6 +42,12 @@ export function FichaCompleta({ ficha, onAddColor, antesDelHistorial, origenTpv1
   const frecuencia = resumen.frecuenciaMediaDias === undefined
     ? "—"
     : resumen.frecuenciaMediaDias < 14 ? `${resumen.frecuenciaMediaDias} días` : `${Math.round(resumen.frecuenciaMediaDias / 7)} sem.`;
+  // La agenda propia siempre es la fuente de verdad. El dato de TPV 123 solo
+  // rellena el hueco de una ficha recién importada, sin inventar una cita.
+  const ultimaVisitaMostrada = ultimaVisitaParaFicha(resumen.ultimaVisita, client?.tpvLastVisit);
+  const ultimaVisita = ultimaVisitaMostrada.fecha;
+  const ultimaVisitaEsTpv = ultimaVisitaMostrada.segunTpv;
+  const tieneDatosImportados = !!client && !!(client.birthday || client.address || client.taxId || client.tpvAltaDate || ultimaVisitaEsTpv);
 
   return <section aria-label="Ficha completa">
     {/* Cuatro cifras en una línea de texto, como en Hoy: no se cortan en el móvil. */}
@@ -51,7 +58,7 @@ export function FichaCompleta({ ficha, onAddColor, antesDelHistorial, origenTpv1
       <span className="text-taupe" aria-hidden="true">·</span>
       <Cifra valor={eur(resumen.gastoTotal).replace(",00", "")} etiqueta="de gasto acumulado" />
       <span className="text-taupe" aria-hidden="true">·</span>
-      <Cifra valor={fechaCorta(resumen.ultimaVisita)} etiqueta="última visita" delante />
+      <Cifra valor={fechaCorta(ultimaVisita)} etiqueta={ultimaVisitaEsTpv ? "última visita según TPV 123" : "última visita"} delante />
     </p>
     <Desplegable titulo="Hábitos y gasto" resumen={`${resumen.servicioHabitual ?? "Sin servicio habitual"} · ${resumen.profesionalHabitual ?? "sin profesional habitual"}`} className="mt-1">
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12.5px]">
@@ -61,6 +68,17 @@ export function FichaCompleta({ ficha, onAddColor, antesDelHistorial, origenTpv1
         <Dato etiqueta="Últimos 12 meses" valor={eur(resumen.gastoUltimos12Meses)} />
       </dl>
     </Desplegable>
+
+    {tieneDatosImportados && <Desplegable titulo="Datos de la ficha" resumen={client?.address ?? (client?.tpvAltaDate ? `Cliente desde ${fecha(client.tpvAltaDate)}` : "Datos importados de TPV 123")} className="mt-1">
+      <dl className="grid grid-cols-1 gap-x-4 gap-y-1.5 text-[12.5px] sm:grid-cols-2">
+        {client?.birthday && <Dato etiqueta="Cumpleaños" valor={fecha(client.birthday)} />}
+        {client?.address && <Dato etiqueta="Dirección" valor={client.address} />}
+        {client?.tpvAltaDate && <Dato etiqueta="Cliente desde" valor={fecha(client.tpvAltaDate)} />}
+        {ultimaVisitaEsTpv && <Dato etiqueta="Última visita" valor={`${fecha(client?.tpvLastVisit)} · según TPV 123`} />}
+        {/* Dato fiscal: intencionadamente solo llega a este componente de ficha. */}
+        {client?.taxId && <Dato etiqueta="DNI/CIF" valor={client.taxId} />}
+      </dl>
+    </Desplegable>}
 
     {avisos.length > 0 && <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-melocoton-borde bg-melocoton px-3.5 py-3 text-[12.5px] text-melocoton-tinta">
       <TriangleAlert className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />

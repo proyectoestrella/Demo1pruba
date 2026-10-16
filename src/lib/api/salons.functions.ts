@@ -111,6 +111,7 @@ const NIVELES_CITA: string[][] = [
   ["payment_method", "paid_at", "deposit_requested_at", "deposit_received_at", "deposit_eur"],
 ];
 const NIVELES_CLIENTE: string[][] = [
+  ["address", "tax_id", "tpv_alta", "tpv_last_visit"],
   ["manual_block", "tpv_code", "birthday", "updated_at"],
   ["penalty_at", "penalty_keep", "penalty_block"],
 ];
@@ -129,8 +130,8 @@ const CAMPOS_NUEVOS_CITA = NIVELES_CITA[4];
 const CAMPOS_TECNICOS_CITA = NIVELES_CITA[3];
 const CAMPOS_RECORDATORIO_CITA = NIVELES_CITA[2];
 const CAMPOS_LOTE3_CITA = NIVEL_LOTE3;
-const CAMPOS_NUEVOS_CLIENTE = NIVELES_CLIENTE[1];
-const CAMPOS_LOTE3_CLIENTE = NIVELES_CLIENTE[0];
+const CAMPOS_NUEVOS_CLIENTE = NIVELES_CLIENTE[2];
+const CAMPOS_LOTE3_CLIENTE = NIVELES_CLIENTE[1];
 
 /**
  * ¿Ha fallado esto porque una columna o una tabla todavía no existen?
@@ -1278,28 +1279,97 @@ export const deleteAppointment = createServerFn({ method: "POST" })
 /* Clientes y política de plantón                                          */
 /* ---------------------------------------------------------------------- */
 
+type FilaFichaExistente = Record<string, unknown>;
+
+/** Lee una ficha con degradado de columnas, igual que la carga inicial. */
+async function buscarFichaParaGuardar(
+  consulta: (columnas: string) => PromiseLike<{ data: FilaFichaExistente | null; error: { code?: string; message: string } | null }>,
+): Promise<FilaFichaExistente | null> {
+  for (const columnas of selectsPorNivel(CLIENT_COLS_BASE, NIVELES_CLIENTE)) {
+    const { data, error } = await consulta(columnas);
+    if (!error) return data;
+    if (!faltaEsquema(error)) throw new Error(`saveClient: ${error.message}`);
+  }
+  // Una instalación que aún no tiene tpv_code no puede localizar por código,
+  // pero aún puede hacerlo por teléfono y guardar el resto de la ficha.
+  return null;
+}
+
+function faltaValor(valor: unknown): boolean {
+  return valor === null || valor === undefined || (typeof valor === "string" && !valor.trim());
+}
+
+/**
+ * Completa una ficha existente sin sustituir ningún dato previo. Este paso en
+ * servidor es importante además de la precaución de la interfaz: dos equipos
+ * pueden reimportar el mismo Excel o tener una ficha antigua en caché.
+ */
+function completarFilaExistente(
+  previa: FilaFichaExistente,
+  data: {
+    email?: string; notes?: string; tpvCode?: string; birthday?: string; address?: string;
+    taxId?: string; tpvAltaDate?: string; tpvLastVisit?: string;
+  },
+): Record<string, unknown> {
+  const completar = (columna: string, valor: string | undefined) =>
+    valor && faltaValor(previa[columna]) ? { [columna]: valor } : {};
+  return {
+    ...completar("email", data.email),
+    ...completar("notes", data.notes),
+    ...completar("tpv_code", data.tpvCode),
+    ...completar("birthday", data.birthday),
+    ...completar("address", data.address),
+    ...completar("tax_id", data.taxId),
+    ...completar("tpv_alta", data.tpvAltaDate),
+    ...completar("tpv_last_visit", data.tpvLastVisit),
+  };
+}
+
 /** Alta directa de una ficha, también cuando aún no tiene ninguna cita. */
 export const saveClient = createServerFn({ method: "POST" })
   .middleware([conSesion])
   .inputValidator(z.object({ slug, name: z.string().min(1), phone: z.string(), email: z.string().email().optional(), notes: z.string().optional(), createdAt: z.string().datetime().optional(),
-    tpvCode: z.string().max(40).optional(), birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }))
+    tpvCode: z.string().max(40).optional(), birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    address: z.string().max(300).optional(), taxId: z.string().max(32).optional(),
+    tpvAltaDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), tpvLastVisit: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }))
   .handler(async ({ data }) => {
     exigirAcciones(await exigirAcceso(data.slug), ["clienta.crear"]);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
     const key = phoneKey(data.phone);
-    if (!key) {
-      const { data: previa, error: buscarError } = await supabase.from("clients").select("id")
-        .eq("salon_slug", data.slug).is("phone", null).eq("name", data.name).maybeSingle();
-      if (buscarError) throw new Error(`saveClient: ${buscarError.message}`);
-      if (previa) return { synced: true as const };
+    let previa: FilaFichaExistente | null = null;
+    if (data.tpvCode) {
+      previa = await buscarFichaParaGuardar((columnas) => supabase.from("clients").select(columnas)
+        .eq("salon_slug", data.slug).eq("tpv_code", data.tpvCode).maybeSingle());
     }
-    // tpv_code y birthday solo si vienen: un alta a mano no debe borrar lo importado.
+    if (!previa && key) {
+      previa = await buscarFichaParaGuardar((columnas) => supabase.from("clients").select(columnas)
+        .eq("salon_slug", data.slug).eq("phone_key", key).maybeSingle());
+    }
+    if (!previa && !key) {
+      previa = await buscarFichaParaGuardar((columnas) => supabase.from("clients").select(columnas)
+        .eq("salon_slug", data.slug).is("phone", null).eq("name", data.name).maybeSingle());
+    }
+    if (previa) {
+      const parche = completarFilaExistente(previa, data);
+      if (Object.keys(parche).length) {
+        await escribirFicha(supabase, "saveClient", (fila) => supabase.from("clients").update(fila).eq("id", previa!.id as string), parche);
+      }
+      return { synced: true as const };
+    }
+    // Los campos opcionales solo viajan cuando existen: un alta a mano no
+    // puede borrar lo que trajera TPV 123 en una ficha ya guardada.
     let fila: Record<string, unknown> = { salon_slug: data.slug, name: data.name, phone: data.phone || null,
-      phone_key: key || null, email: data.email ?? null, notes: data.notes ?? null,
+      phone_key: key || null,
+      ...(data.email !== undefined ? { email: data.email } : {}),
+      ...(data.notes !== undefined ? { notes: data.notes } : {}),
       ...(data.createdAt ? { created_at: data.createdAt } : {}),
       ...(data.tpvCode ? { tpv_code: data.tpvCode } : {}),
-      ...(data.birthday ? { birthday: data.birthday } : {}) };
+      ...(data.birthday ? { birthday: data.birthday } : {}),
+      ...(data.address ? { address: data.address } : {}),
+      ...(data.taxId ? { tax_id: data.taxId } : {}),
+      ...(data.tpvAltaDate ? { tpv_alta: data.tpvAltaDate } : {}),
+      ...(data.tpvLastVisit ? { tpv_last_visit: data.tpvLastVisit } : {}) };
     // Baja de nivel de esquema si producción aún no tiene alguna columna
     // (ver NIVELES_CLIENTE): la ficha se guarda sin ese dato antes que no
     // guardarse.

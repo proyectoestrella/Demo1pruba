@@ -65,6 +65,14 @@ export interface Client {
   tpvCode?: string;
   /** Cumpleaños "YYYY-MM-DD", si el salón lo conoce. */
   birthday?: string;
+  /** Dirección importada de TPV 123; se muestra solo dentro de la ficha. */
+  address?: string;
+  /** DNI/NIE/CIF para facturación; nunca se usa en listados, búsquedas o mensajes. */
+  taxId?: string;
+  /** Fecha de alta que constaba en TPV 123, distinta de cuándo se creó esta ficha en siShow. */
+  tpvAltaDate?: string;
+  /** Última visita conocida por TPV 123; la agenda de siShow tiene prioridad si existe. */
+  tpvLastVisit?: string;
   /**
    * Política de plantón (ver `SalonProfile.noShowFeeEur`): importe pendiente
    * de cobrar, en euros. `undefined` o 0 = no debe nada. El dueño decide si

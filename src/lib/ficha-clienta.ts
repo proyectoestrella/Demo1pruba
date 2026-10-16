@@ -28,6 +28,12 @@ export interface VisitaFicha {
   origen: "sishow" | "tpv123";
 }
 
+/** La agenda propia manda; TPV 123 solo cubre una ficha sin citas en siShow. */
+export function ultimaVisitaParaFicha(ultimaDeLaApp: string | undefined, ultimaDeTpv: string | undefined): { fecha?: string; segunTpv: boolean } {
+  if (ultimaDeLaApp) return { fecha: ultimaDeLaApp, segunTpv: false };
+  return ultimaDeTpv ? { fecha: ultimaDeTpv, segunTpv: true } : { segunTpv: false };
+}
+
 function habitual<T>(valores: T[]): T | undefined {
   const cuentas = new Map<T, number>();
   for (const valor of valores) cuentas.set(valor, (cuentas.get(valor) ?? 0) + 1);

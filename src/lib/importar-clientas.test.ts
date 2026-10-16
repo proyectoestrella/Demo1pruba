@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { deflateRawSync } from "node:zlib";
-import { detectarColumnas, importarVisitas, leerCsv, leerTabla, leerXlsx, normalizarTelefono, vistaPreviaClientas } from "./importar-clientas";
+import { completarDatosTpvCliente, detectarColumnas, importarVisitas, leerCsv, leerTabla, leerXlsx, normalizarDniCif, normalizarFechaTpv, normalizarTelefono, vistaPreviaClientas } from "./importar-clientas";
 import type { Client } from "./mock/types";
 
 const existente: Client = { id: "c1", name: "Marta Martín", phone: "612345678", createdAt: "2020-01-01" };
@@ -55,23 +57,31 @@ test("visitas enlazadas y fórmula de color en observaciones", () => {
   expect(r.visitas[0].notas).toBe("7/1 con 20 vol");
 });
 
-test("importa clientas desde etiquetas de pantalla TPV 123 y minimiza sus datos", () => {
+test("importa los datos útiles desde etiquetas de pantalla TPV 123", () => {
   const tabla = leerCsv("Código;Nombre;Apellidos;DNI/CIF;Email;Tel. Móvil;Tel. Fijo;Dirección;C.P.;Población;Provincia;Fecha Alta;Última Visita;Cumpleaños\n42;María;Pérez;123;mp@example.es;911 222 333;612 345 678;Calle 1;28001;Madrid;Madrid;15/02/2024;10/03/2025;01/01/1990\n");
   const previa = vistaPreviaClientas(tabla, []);
-  expect(previa.filas[0]).toEqual({ fila: 2, nombre: "María Pérez", telefono: "612345678", codigo: "42", email: "mp@example.es", estado: "nueva" });
+  expect(previa.filas[0]).toMatchObject({
+    fila: 2, nombre: "María Pérez", telefono: "612345678", codigo: "42", email: "mp@example.es", estado: "nueva",
+    taxId: "123", address: "Calle 1", tpvAltaDate: "2024-02-15", tpvLastVisit: "2025-03-10", birthday: "1990-01-01",
+  });
+  expect(previa.avisosDniCif).toBe(1);
 });
 
 test("importa clientas desde nombres de base de datos de TPV 123", () => {
   const tabla = leerCsv("codigocliente,nombre,apellidos,nif,email,telefono2,telefono1,Direccion,cp,poblacion,provincia,ingreso,ultimavisita,clientestexto3,nacimiento\n7,Lucía,Sanz,123,ls@example.es,699111222,915551111,Calle,08001,Barcelona,Barcelona,45123,45130,,32000\n");
   const previa = vistaPreviaClientas(tabla, []);
-  expect(previa.filas[0]).toEqual({ fila: 2, nombre: "Lucía Sanz", telefono: "699111222", codigo: "7", email: "ls@example.es", estado: "nueva" });
+  expect(previa.filas[0]).toMatchObject({ fila: 2, nombre: "Lucía Sanz", telefono: "699111222", codigo: "7", email: "ls@example.es", address: "Calle", taxId: "123", estado: "nueva" });
+  expect(previa.avisosDniCif).toBe(1);
 });
 
-test("reconoce las cabeceras exactas de PeluChic y descarta sus columnas sensibles", () => {
+test("reconoce las cabeceras exactas de PeluChic y conserva los datos aprobados", () => {
   const tabla = leerCsv("COD;Nombre;Apellidos;dnicif;direccion;F.Alta;Cumpleaños;Ult.Visita;movi;E-mail;recomendado\nPC-7;Lucía;Prueba;X;Calle inventada;01/01/2025;02/02/1990;03/03/2026;+34 612.345.678;lucia@example.test;Sí\n");
   const previa = vistaPreviaClientas(tabla, []);
-  expect(previa.filas[0]).toEqual({ fila: 2, nombre: "Lucía Prueba", telefono: "612345678", codigo: "PC-7", email: "lucia@example.test", estado: "nueva" });
-  expect(Object.keys(previa.filas[0])).not.toEqual(expect.arrayContaining(["dnicif", "direccion", "fechaAlta", "nacimiento", "notas"]));
+  expect(previa.filas[0]).toMatchObject({
+    fila: 2, nombre: "Lucía Prueba", telefono: "612345678", codigo: "PC-7", email: "lucia@example.test", estado: "nueva",
+    taxId: "X", address: "Calle inventada", tpvAltaDate: "2025-01-01", birthday: "1990-02-02", tpvLastVisit: "2026-03-03",
+  });
+  expect(previa.filas[0]?.avisos).toContain("DNI/CIF con formato desconocido");
 });
 
 test("tolera apelidos y conserva un fijo sin confundirlo con el móvil", () => {
@@ -93,6 +103,11 @@ test("móvil y fijo ocupan columnas distintas, con prioridad del móvil", () => 
     codigo: 0,
     nombre: 1,
     apellidos: 2,
+    dni: 3,
+    direccion: 4,
+    alta: 5,
+    cumple: 6,
+    ultimaVisita: 7,
     telefono: 9,
     telefono2: 8,
     email: 10,
@@ -136,6 +151,45 @@ test("guarda solo el código de TPV 123 y no duplica al reimportar", () => {
   const previa = vistaPreviaClientas(tabla, [yaImportada], mapa);
   expect(previa.filas[0]).toMatchObject({ codigo: "0042", estado: "duplicada", motivo: "Ya está importada con ese código de TPV 123" });
   expect(previa.filas[1]).toMatchObject({ codigo: "0043", estado: "nueva" });
+});
+
+test("normaliza fechas de TPV 123 y deja vacías las que no se pueden guardar", () => {
+  expect(normalizarFechaTpv("05/11/1985", true)).toBe("1985-11-05");
+  expect(normalizarFechaTpv("05-11-1985", true)).toBe("1985-11-05");
+  expect(normalizarFechaTpv("1985-11-05 13:40", true)).toBe("1985-11-05");
+  expect(normalizarFechaTpv("45123")).toBe("2023-07-16");
+  expect(normalizarFechaTpv("05/11", true)).toBeUndefined();
+  expect(normalizarFechaTpv("05/11/1885", true)).toBe("1885-11-05");
+  expect(normalizarFechaTpv("05/11/2099", true)).toBe("2099-11-05");
+  expect(normalizarFechaTpv("no es una fecha")).toBeUndefined();
+});
+
+test("DNI/CIF vacío no se guarda y un formato desconocido solo avisa", () => {
+  expect(normalizarDniCif("")).toBeUndefined();
+  expect(normalizarDniCif("  - ")).toBeUndefined();
+  expect(normalizarDniCif(" x123 4567l ")).toBe("X1234567L");
+  const previa = vistaPreviaClientas(leerCsv("Nombre;Móvil;DNI/CIF\nNora;600111222;abc\nNoa;600111223;-\n"), []);
+  expect(previa.filas[0]).toMatchObject({ taxId: "ABC", estado: "nueva" });
+  expect(previa.filas[1]?.taxId).toBeUndefined();
+  expect(previa.avisosDniCif).toBe(1);
+});
+
+test("una reimportación completa solo los datos TPV que faltan", () => {
+  const existenteConDatos: Client = {
+    id: "c-datos", name: "Marta Martín", phone: "600111222", createdAt: "2020-01-01", tpvCode: "PC-1",
+    address: "Calle ya guardada", taxId: "12345678Z", birthday: "1980-01-01",
+  };
+  const fila = vistaPreviaClientas(leerCsv("COD;Nombre;movi;direccion;dnicif;F.Alta;Cumpleaños;Ult.Visita\nPC-1;Marta Martín;600111222;Calle nueva;87654321X;01/02/2020;02/03/1990;04/05/2025\n"), [existenteConDatos]).filas[0]!;
+  expect(fila.estado).toBe("duplicada");
+  expect(completarDatosTpvCliente(existenteConDatos, fila)).toEqual({ tpvAltaDate: "2020-02-01", tpvLastVisit: "2025-05-04" });
+});
+
+test("el CSV ficticio completo de PeluChic pasa por la vista previa", () => {
+  const csv = readFileSync(join(import.meta.dir, "__fixtures__", "peluchic-clientas-tpv123.csv"), "utf8");
+  const previa = vistaPreviaClientas(leerCsv(csv), []);
+  expect([previa.nuevas, previa.errores]).toEqual([4, 0]);
+  expect([previa.conCumpleanos, previa.conDireccion, previa.conDniCif, previa.conFechaAlta, previa.conUltimaVisita]).toEqual([3, 4, 3, 3, 3]);
+  expect(previa.avisosFecha).toBe(3);
 });
 
 test("la vista previa hace dry-run y no muta las clientas existentes", () => {

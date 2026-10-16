@@ -1,0 +1,5 @@
+COD;Nombre;Apellidos;dnicif;direccion;F.Alta;Cumpleaños;Ult.Visita;Telefono;movi;E-mail
+PC-001;Alba;Ficticia;12345678z;Calle de Prueba 1;15/02/2020;05/11/1985;2026-03-01;910 000 001;612 000 001;alba.ficticia@example.test
+PC-002;Bruna;Muestra;X1234567L;Avenida Ensayo 2;45123;12-08-1992;45130;910 000 002;613 000 002;bruna.muestra@example.test
+PC-003;Carla;Demo;;Plaza de Datos 3;2021-04-09;1994-01-25;15/04/2026;910 000 003;614 000 003;carla.demo@example.test
+PC-004;Dalia;Ensayo;A1234567B;Calle de Prueba 4;fecha mala;05/11;visita mala;910 000 004;615 000 004;dalia.ensayo@example.test

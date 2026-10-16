@@ -1,10 +1,37 @@
 import type { Client } from "./mock/types";
 
-export type CampoCliente = "nombre" | "apellidos" | "telefono" | "telefono2" | "email" | "codigo";
+export type CampoCliente = "nombre" | "apellidos" | "telefono" | "telefono2" | "email" | "codigo" | "direccion" | "dni" | "alta" | "cumple" | "ultimaVisita";
 export type MapaColumnas = Partial<Record<CampoCliente, number>>;
 export interface TablaImportacion { cabeceras: string[]; filas: string[][] }
-export interface FilaClienta { fila: number; nombre: string; telefono: string; codigo?: string; email?: string; estado: "nueva" | "duplicada" | "error"; motivo?: string }
-export interface VistaPrevia { filas: FilaClienta[]; nuevas: number; duplicadas: number; errores: number }
+export interface FilaClienta {
+  fila: number;
+  nombre: string;
+  telefono: string;
+  codigo?: string;
+  email?: string;
+  address?: string;
+  taxId?: string;
+  tpvAltaDate?: string;
+  birthday?: string;
+  tpvLastVisit?: string;
+  /** Avisos que no impiden importar la fila (p. ej. una fecha ilegible). */
+  avisos?: string[];
+  estado: "nueva" | "duplicada" | "error";
+  motivo?: string;
+}
+export interface VistaPrevia {
+  filas: FilaClienta[];
+  nuevas: number;
+  duplicadas: number;
+  errores: number;
+  conCumpleanos: number;
+  conDireccion: number;
+  conDniCif: number;
+  conFechaAlta: number;
+  conUltimaVisita: number;
+  avisosFecha: number;
+  avisosDniCif: number;
+}
 export interface VisitaImportada { fila: number; fecha: string; cliente: Client; servicios: string[]; importe: number; profesional: string; notas?: string; colorFormula?: string }
 
 const normal = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES").trim();
@@ -55,16 +82,22 @@ const alias: Record<CampoCliente, string[]> = {
   telefono2: ["telefono", "telefono1", "tel fijo", "tel fijo cliente", "telefono fijo", "telefono fijo cliente", "telf", "telf.", "numero de telefono"],
   email: ["email", "e-mail", "correo", "correo electronico"],
   codigo: ["codigocliente", "codigo cliente", "codigo", "cod"],
+  direccion: ["direccion", "dirección", "domicilio"],
+  dni: ["dnicif", "dni", "nif", "cif", "dni/cif"],
+  alta: ["f.alta", "fecha alta", "fecha de alta"],
+  cumple: ["cumpleaños", "cumpleanos", "fecha nacimiento", "f.nacimiento"],
+  ultimaVisita: ["ult.visita", "ultima visita", "última visita"],
 };
 export const claveCabecera = (s: string) => normal(s).replace(/[.:]/g, "").replace(/\s+/g, " ");
 export function detectarColumnas(cabeceras: string[]): MapaColumnas {
   const mapa: MapaColumnas = {};
-  for (const campo of ["nombre", "apellidos", "email", "codigo"] as const) {
-    const i = cabeceras.findIndex((c) => alias[campo].includes(claveCabecera(c)));
+  const indice = (opciones: string[]) => cabeceras.findIndex((c) => opciones.some((alias) => claveCabecera(alias) === claveCabecera(c)));
+  for (const campo of ["nombre", "apellidos", "email", "codigo", "direccion", "dni", "alta", "cumple", "ultimaVisita"] as const) {
+    const i = indice(alias[campo]);
     if (i >= 0) mapa[campo] = i;
   }
-  const movil = cabeceras.findIndex((c) => alias.telefono.includes(claveCabecera(c)));
-  const fijo = cabeceras.findIndex((c) => alias.telefono2.includes(claveCabecera(c)));
+  const movil = indice(alias.telefono);
+  const fijo = indice(alias.telefono2);
   // El móvil manda como teléfono principal. Si también existe un fijo, se
   // conserva como alternativa en OTRA columna; nunca se pisan entre sí.
   if (movil >= 0) {
@@ -75,6 +108,71 @@ export function detectarColumnas(cabeceras: string[]): MapaColumnas {
   }
   return mapa;
 }
+
+function fechaUtc(year: number, month: number, day: number): string | undefined {
+  const fecha = new Date(Date.UTC(year, month - 1, day, 12));
+  if (fecha.getUTCFullYear() !== year || fecha.getUTCMonth() !== month - 1 || fecha.getUTCDate() !== day) return undefined;
+  return fecha.toISOString().slice(0, 10);
+}
+
+/**
+ * Convierte las fechas que exporta TPV 123 a la forma de las columnas `date`.
+ * No delegamos los formatos europeos en `new Date`: en un navegador en-US
+ * "05/11/1985" puede acabar siendo 11 de mayo en lugar de 5 de noviembre.
+ */
+export function normalizarFechaTpv(valor: string, esCumpleanos = false): string | undefined {
+  const raw = valor.trim();
+  if (!raw) return undefined;
+  let fecha: string | undefined;
+  const europea = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:[T\s].*)?$/);
+  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/);
+  if (europea) fecha = fechaUtc(Number(europea[3]), Number(europea[2]), Number(europea[1]));
+  else if (iso) fecha = fechaUtc(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+  else if (/^\d+(?:[.,]\d+)?$/.test(raw)) {
+    // Excel cuenta desde el 30/12/1899 para conservar su histórico error de
+    // bisiesto. El valor decimal es la hora: una columna `date` no la guarda.
+    const serie = Number(raw.replace(",", "."));
+    if (Number.isFinite(serie) && serie >= 0) {
+      const d = new Date(Date.UTC(1899, 11, 30, 12) + Math.floor(serie) * 86_400_000);
+      fecha = d.toISOString().slice(0, 10);
+    }
+  }
+  if (!fecha) return undefined;
+  // Un cumpleaños parcial no llega hasta aquí: no cabe en una columna `date`
+  // sin inventarle un año. Si el TPV sí trae un año extraño (1885 o futuro),
+  // se conserva tal cual: cambiarlo para que parezca razonable sería inventar.
+  void esCumpleanos;
+  return fecha;
+}
+
+/** DNI/CIF tal como se recibió, salvo espacios y minúsculas. */
+export function normalizarDniCif(valor: string): string | undefined {
+  const limpio = valor.trim().replace(/\s+/g, "").toLocaleUpperCase("es-ES");
+  return !limpio || limpio === "0" || limpio === "-" ? undefined : limpio;
+}
+
+/** Forma orientativa, deliberadamente sin comprobar el dígito de control. */
+export function tieneFormaDniCif(valor: string): boolean {
+  const sinSeparadores = valor.replace(/[.-]/g, "");
+  return /^\d{8}[A-Z]$/.test(sinSeparadores)
+    || /^[XYZ]\d{7}[A-Z]$/.test(sinSeparadores)
+    || /^[ABCDEFGHJKLMNPQRSUVW]\d{7}[0-9A-J]$/.test(sinSeparadores);
+}
+
+/** Campos TPV que se pueden completar en una ficha sin reemplazar los suyos. */
+export function completarDatosTpvCliente(cliente: Client, fila: FilaClienta): Partial<Client> {
+  const completar = <K extends keyof Client>(key: K, value: Client[K] | undefined): Partial<Client> =>
+    (cliente[key] === undefined || cliente[key] === "") && value ? { [key]: value } as Partial<Client> : {};
+  return {
+    ...completar("tpvCode", fila.codigo),
+    ...completar("birthday", fila.birthday),
+    ...completar("address", fila.address),
+    ...completar("taxId", fila.taxId),
+    ...completar("tpvAltaDate", fila.tpvAltaDate),
+    ...completar("tpvLastVisit", fila.tpvLastVisit),
+  };
+}
+
 export function vistaPreviaClientas(tabla: TablaImportacion, existentes: Client[], mapa: MapaColumnas = detectarColumnas(tabla.cabeceras)): VistaPrevia {
   const vistosTelefono = new Set(existentes.map((c) => normalizarTelefono(c.phone)).filter(Boolean));
   const vistosNombres = new Set(existentes.map((c) => claveNombre(c.name)));
@@ -88,7 +186,33 @@ export function vistaPreviaClientas(tabla: TablaImportacion, existentes: Client[
     const moviles = [celda(r, "telefono"), celda(r, "telefono2")].filter(Boolean);
     const movilRaw = moviles.find((p) => /^[67]/.test(normalizarTelefono(p))) ?? moviles[0] ?? "";
     const telefono = normalizarTelefono(movilRaw);
-    const registro: FilaClienta = { fila: index + 2, nombre, telefono, codigo: celda(r, "codigo") || undefined, email: celda(r, "email") || undefined, estado: "nueva" };
+    const avisos: string[] = [];
+    const fecha = (campo: "alta" | "cumple" | "ultimaVisita", etiqueta: string, esCumpleanos = false) => {
+      const raw = celda(r, campo);
+      const normalizada = normalizarFechaTpv(raw, esCumpleanos);
+      if (raw && !normalizada) avisos.push(`${etiqueta} no se ha podido leer`);
+      return normalizada;
+    };
+    const taxId = normalizarDniCif(celda(r, "dni"));
+    if (taxId && !tieneFormaDniCif(taxId)) avisos.push("DNI/CIF con formato desconocido");
+    const address = celda(r, "direccion") || undefined;
+    const tpvAltaDate = fecha("alta", "Fecha de alta");
+    const birthday = fecha("cumple", "Cumpleaños", true);
+    const tpvLastVisit = fecha("ultimaVisita", "Última visita");
+    const registro: FilaClienta = {
+      fila: index + 2,
+      nombre,
+      telefono,
+      codigo: celda(r, "codigo") || undefined,
+      email: celda(r, "email") || undefined,
+      ...(address ? { address } : {}),
+      ...(taxId ? { taxId } : {}),
+      ...(tpvAltaDate ? { tpvAltaDate } : {}),
+      ...(birthday ? { birthday } : {}),
+      ...(tpvLastVisit ? { tpvLastVisit } : {}),
+      ...(avisos.length ? { avisos } : {}),
+      estado: "nueva",
+    };
     if (!nombre || (moviles.length > 0 && (!telefono || telefono.length !== 9)) || (registro.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registro.email))) {
       registro.estado = "error";
       registro.motivo = !nombre ? "Falta el nombre" : moviles.length > 0 && (!telefono || telefono.length !== 9) ? "Teléfono no válido" : "Correo no válido";
@@ -107,7 +231,19 @@ export function vistaPreviaClientas(tabla: TablaImportacion, existentes: Client[
     }
     filas.push(registro);
   });
-  return { filas, nuevas: filas.filter((r) => r.estado === "nueva").length, duplicadas: filas.filter((r) => r.estado === "duplicada").length, errores: filas.filter((r) => r.estado === "error").length };
+  return {
+    filas,
+    nuevas: filas.filter((r) => r.estado === "nueva").length,
+    duplicadas: filas.filter((r) => r.estado === "duplicada").length,
+    errores: filas.filter((r) => r.estado === "error").length,
+    conCumpleanos: filas.filter((r) => !!r.birthday).length,
+    conDireccion: filas.filter((r) => !!r.address).length,
+    conDniCif: filas.filter((r) => !!r.taxId).length,
+    conFechaAlta: filas.filter((r) => !!r.tpvAltaDate).length,
+    conUltimaVisita: filas.filter((r) => !!r.tpvLastVisit).length,
+    avisosFecha: filas.reduce((n, r) => n + (r.avisos?.filter((a) => a !== "DNI/CIF con formato desconocido").length ?? 0), 0),
+    avisosDniCif: filas.filter((r) => r.avisos?.includes("DNI/CIF con formato desconocido")).length,
+  };
 }
 
 function xmlText(s: string): string {

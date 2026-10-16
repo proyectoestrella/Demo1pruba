@@ -845,11 +845,18 @@ export const useSalonStore = create<SalonState>()(
         set((s) => ({
           clients: s.clients.map((c) => (c.id === id ? { ...c, ...patch } : c)),
         }));
+        const clienteActualizada = get().clients.find((c) => c.id === id);
         if ("notes" in patch) {
           pushClientNotes(
             get().realSalonSlug,
-            get().clients.find((c) => c.id === id),
+            clienteActualizada,
           );
+        }
+        // Los datos traídos de TPV 123 se completan sobre una ficha existente
+        // al reimportar. A diferencia de las notas (que tienen su endpoint de
+        // parche), necesitan subir la ficha completa para persistir también.
+        if (["tpvCode", "birthday", "address", "taxId", "tpvAltaDate", "tpvLastVisit"].some((campo) => campo in patch) && clienteActualizada) {
+          pushClient(get().realSalonSlug, clienteActualizada);
         }
       },
       deleteClient: (id) =>

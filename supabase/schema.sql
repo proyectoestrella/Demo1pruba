@@ -357,6 +357,13 @@ alter table clients add column if not exists tpv_code text;
 alter table clients add column if not exists birthday date;
 create index if not exists clients_salon_tpv_code_idx on clients (salon_slug, tpv_code);
 
+-- Datos útiles de TPV 123 para la ficha y la futura facturación. El DNI/CIF
+-- no se expone en listados ni exportaciones: solo se guarda en esta ficha.
+alter table clients add column if not exists address text;
+alter table clients add column if not exists tax_id text;
+alter table clients add column if not exists tpv_alta date;
+alter table clients add column if not exists tpv_last_visit date;
+
 -- `updated_at` como DATO, no como cerrojo: el panel escribe parches por
 -- campos (ver syncAppointmentPatch) y el último en tocar un campo gana. La
 -- columna sirve para saber cuándo cambió una fila y para depurar.

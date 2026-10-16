@@ -228,11 +228,17 @@ describe("lote 3 — columna propia primero, marcador de la nota si viene a null
     expect(rowToAppointment({ ...conNota, deposit_due_at: "2026-09-25T14:00:00.000Z", deposit_period_hours: 4 })).toMatchObject({ depositDueAt: "2026-09-25T14:00:00.000Z", depositPeriodHours: 4 });
   });
 
-  it("ficha: manual_block propio o JSON en penalty_note; tpv_code y birthday", () => {
+  it("ficha: manual_block propio o JSON en penalty_note; datos de TPV 123", () => {
     const fila = { id: "c1", name: "Ana", phone: "600111222", email: null, notes: null, penalty_eur: null, penalty_note: null, created_at: "2026-01-01T00:00:00.000Z" };
     expect(rowToClient(fila).manualBlock).toBe(false);
     expect(rowToClient({ ...fila, manual_block: true }).manualBlock).toBe(true);
     expect(rowToClient({ ...fila, penalty_eur: 0, penalty_note: `${MANUAL_BLOCK_NOTE}|{"note":null}` }).manualBlock).toBe(true);
-    expect(rowToClient({ ...fila, tpv_code: "0042", birthday: "1990-05-04" })).toMatchObject({ tpvCode: "0042", birthday: "1990-05-04" });
+    expect(rowToClient({
+      ...fila, tpv_code: "0042", birthday: "1990-05-04", address: "Calle de prueba 1", tax_id: "12345678Z",
+      tpv_alta: "2020-01-02", tpv_last_visit: "2026-03-04",
+    })).toMatchObject({
+      tpvCode: "0042", birthday: "1990-05-04", address: "Calle de prueba 1", taxId: "12345678Z",
+      tpvAltaDate: "2020-01-02", tpvLastVisit: "2026-03-04",
+    });
   });
 });

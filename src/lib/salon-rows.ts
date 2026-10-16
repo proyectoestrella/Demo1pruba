@@ -93,6 +93,10 @@ export interface ClientRow {
   manual_block?: boolean | null;
   tpv_code?: string | null;
   birthday?: string | null;
+  address?: string | null;
+  tax_id?: string | null;
+  tpv_alta?: string | null;
+  tpv_last_visit?: string | null;
   updated_at?: string | null;
 }
 
@@ -213,6 +217,10 @@ export function rowToClient(row: ClientRow): Client {
     manualBlock: row.manual_block === true || bloqueoEnNota,
     tpvCode: row.tpv_code ?? undefined,
     birthday: row.birthday ?? undefined,
+    address: row.address ?? undefined,
+    taxId: row.tax_id ?? undefined,
+    tpvAltaDate: row.tpv_alta ?? undefined,
+    tpvLastVisit: row.tpv_last_visit ?? undefined,
     penaltyEur: penalty > 0 ? penalty : undefined,
     penaltyNote: previo ? previo.note : row.penalty_note ?? undefined,
     penaltyAt: row.penalty_at ?? undefined,

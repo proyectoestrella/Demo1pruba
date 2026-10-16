@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { fichaDeClienta } from "./ficha-clienta";
+import { fichaDeClienta, ultimaVisitaParaFicha } from "./ficha-clienta";
 import type { Appointment, Client, Employee, Service } from "./mock/types";
 
 const clienta: Client = { id: "c1", name: "Marta Martín", phone: "600 123 456", createdAt: "2025-01-01" };
@@ -12,6 +12,11 @@ const cita = (id: string, start: string, patch: Partial<Appointment> = {}): Appo
 const base = { clientes: [clienta], servicios: [servicio], equipo: [profesional], ahora: new Date("2026-09-24T12:00:00Z") };
 
 describe("fichaDeClienta", () => {
+  it("solo muestra la última visita de TPV 123 cuando la agenda propia no tiene una", () => {
+    expect(ultimaVisitaParaFicha("2026-08-01T10:00:00Z", "2025-05-04")).toEqual({ fecha: "2026-08-01T10:00:00Z", segunTpv: false });
+    expect(ultimaVisitaParaFicha(undefined, "2025-05-04")).toEqual({ fecha: "2025-05-04", segunTpv: true });
+  });
+
   it("ordena solo visitas completadas y calcula el resumen orientativo", () => {
     const ficha = fichaDeClienta("c1", { ...base, citas: [
       cita("antigua", "2025-10-01T10:00:00Z", { origen: "tpv123", colorFormula: "7.1" }),

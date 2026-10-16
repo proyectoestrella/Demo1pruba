@@ -30,4 +30,9 @@ describe("buscarClientas", () => {
     expect(buscarClientas("miércoles", { clientes, citas }).map((c) => c.id)).toEqual(["marta"]);
     expect(buscarClientas("example.com", { clientes, citas }).map((c) => c.id)).toEqual(["marta"]);
   });
+
+  it("no busca por el DNI/CIF, que solo se consulta dentro de la ficha", () => {
+    const conDatoFiscal = [cliente("fiscal", "Alba Prueba", { taxId: "12345678Z" })];
+    expect(buscarClientas("12345678Z", { clientes: conDatoFiscal, citas: [] })).toEqual([]);
+  });
 });

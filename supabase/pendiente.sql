@@ -136,6 +136,15 @@ alter table clients add column if not exists tpv_code text;
 alter table clients add column if not exists birthday date;
 create index if not exists clients_salon_tpv_code_idx on clients (salon_slug, tpv_code);
 
+-- 9b. TPV 123: datos de ficha y facturación (17/10) ------------------------
+-- Pegar este bloque en el editor SQL antes de importar datos nuevos. Es
+-- idempotente: volver a ejecutarlo no altera las fichas existentes.
+-- El DNI/CIF queda restringido a la ficha de la clienta en la aplicación.
+alter table clients add column if not exists address text;
+alter table clients add column if not exists tax_id text;
+alter table clients add column if not exists tpv_alta date;
+alter table clients add column if not exists tpv_last_visit date;
+
 alter table appointments add column if not exists updated_at timestamptz not null default now();
 alter table clients add column if not exists updated_at timestamptz not null default now();
 

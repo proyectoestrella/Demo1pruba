@@ -6,20 +6,36 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { useSalonStore } from "@/lib/store";
 import { usaTpv123 } from "@/lib/plan-basico";
-import { detectarColumnas, leerTabla, vistaPreviaClientas, type CampoCliente, type MapaColumnas, type TablaImportacion } from "@/lib/importar-clientas";
+import { claveNombre, completarDatosTpvCliente, detectarColumnas, leerTabla, normalizarTelefono, vistaPreviaClientas, type CampoCliente, type FilaClienta, type MapaColumnas, type TablaImportacion } from "@/lib/importar-clientas";
 import type { Client } from "@/lib/mock/types";
 
 const campos: { key: CampoCliente; label: string }[] = [
   { key: "nombre", label: "Nombre" }, { key: "apellidos", label: "Apellidos" },
   { key: "telefono", label: "Teléfono móvil" }, { key: "telefono2", label: "Otro teléfono (solo para detectar el móvil)" },
   { key: "email", label: "Correo" }, { key: "codigo", label: "Código TPV 123" },
+  { key: "cumple", label: "Cumpleaños" }, { key: "direccion", label: "Dirección" },
+  { key: "dni", label: "DNI/CIF (solo ficha)" }, { key: "alta", label: "Fecha de alta" }, { key: "ultimaVisita", label: "Última visita" },
 ];
+
+function fichaExistente(fila: FilaClienta, clientes: Client[]): Client | undefined {
+  if (fila.codigo) {
+    const porCodigo = clientes.find((c) => c.tpvCode === fila.codigo);
+    if (porCodigo) return porCodigo;
+  }
+  const telefono = normalizarTelefono(fila.telefono);
+  if (telefono) {
+    const porTelefono = clientes.find((c) => normalizarTelefono(c.phone) === telefono);
+    if (porTelefono) return porTelefono;
+  }
+  return clientes.find((c) => claveNombre(c.name) === claveNombre(fila.nombre));
+}
 
 export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const origen = useSalonStore((s) => s.salonProfile.clientImportOrigin);
   const esTpv123 = usaTpv123({ clientImportOrigin: origen });
   const clientes = useSalonStore((s) => s.clients);
   const addClient = useSalonStore((s) => s.addClient);
+  const updateClient = useSalonStore((s) => s.updateClient);
   const [tabla, setTabla] = useState<TablaImportacion | null>(null);
   const [mapa, setMapa] = useState<MapaColumnas>({});
   const [error, setError] = useState("");
@@ -31,6 +47,11 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
   const puedeVentas = puede(usePermisos(), "dinero.importar") && plan !== "reservas";
   const [pestana, setPestana] = useState<"clientas" | "ventas">("clientas");
   const previa = useMemo(() => tabla && mapa.nombre !== undefined ? vistaPreviaClientas(tabla, clientes, mapa) : null, [tabla, clientes, mapa]);
+  const fichasACompletar = useMemo(() => previa?.filas.filter((fila) => {
+    if (fila.estado !== "duplicada") return false;
+    const existente = fichaExistente(fila, clientes);
+    return !!existente && Object.keys(completarDatosTpvCliente(existente, fila)).length > 0;
+  }).length ?? 0, [previa, clientes]);
 
   async function cargar(file: File | undefined) {
     if (!file) return;
@@ -47,10 +68,24 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
   function importar() {
     if (!previa || !tabla || mapa.nombre === undefined) return;
     const nuevas: Client[] = [];
+    let completadas = 0;
     for (const fila of previa.filas.filter((f) => f.estado === "nueva")) {
-      nuevas.push(addClient({ name: fila.nombre, phone: fila.telefono, email: fila.email, tpvCode: fila.codigo }));
+      nuevas.push(addClient({
+        name: fila.nombre, phone: fila.telefono, email: fila.email, tpvCode: fila.codigo,
+        birthday: fila.birthday, address: fila.address, taxId: fila.taxId,
+        tpvAltaDate: fila.tpvAltaDate, tpvLastVisit: fila.tpvLastVisit,
+      }));
     }
-    setResumen(`Importadas ${nuevas.length} clientas. ${previa.duplicadas} duplicadas y ${previa.errores} filas con errores.`);
+    for (const fila of previa.filas.filter((f) => f.estado === "duplicada")) {
+      const existente = fichaExistente(fila, clientes);
+      if (!existente) continue;
+      const faltantes = completarDatosTpvCliente(existente, fila);
+      if (Object.keys(faltantes).length) {
+        updateClient(existente.id, faltantes);
+        completadas++;
+      }
+    }
+    setResumen(`Importadas ${nuevas.length} clientas${completadas ? ` y completadas ${completadas} fichas que ya existían` : ""}. ${previa.duplicadas} duplicadas y ${previa.errores} filas con errores.`);
     setTabla(null); setMapa({});
   }
 
@@ -75,7 +110,7 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
           <input type="file" accept=".csv,.xlsx,.xls" onChange={(e) => void cargar(e.target.files?.[0])}
             className="block w-full min-w-0 rounded border border-border p-2 text-sm font-normal" />
         </label>
-        <p className="rounded-lg bg-nata p-3 text-xs text-cafe-medio">Se guardan nombre, apellidos, móvil y correo{esTpv123 ? " y código TPV 123" : ""}. Se ignoran por protección de datos: dnicif, direccion, F.Alta, Cumpleaños, Ult.Visita, recomendado. El archivo se procesa en este navegador.</p>
+        <p className="rounded-lg bg-nata p-3 text-xs text-cafe-medio">Se guardan nombre, apellidos, móvil y correo{esTpv123 ? ", código TPV 123, cumpleaños, dirección, DNI/CIF, fecha de alta y última visita" : ""}. El DNI/CIF solo se ve dentro de la ficha y sirve para futuras facturas. Se ignoran las demás columnas; el archivo se procesa en este navegador.</p>
         {error && <p role="alert" className="text-destructive">{error}</p>}
         {tabla && <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -90,11 +125,15 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
           </div>
           {mapa.nombre === undefined ? <p role="alert">Elige qué columna contiene el nombre para ver la vista previa.</p> : previa && <>
             <p className="font-medium">Vista previa de simulación: {previa.nuevas} nuevas · {previa.duplicadas} duplicadas · {previa.errores} con errores. Nada se guarda hasta pulsar «Importar».</p>
+            {fichasACompletar > 0 && <p className="text-xs text-muted-foreground">Además, se completarán {fichasACompletar} {fichasACompletar === 1 ? "ficha que ya existe" : "fichas que ya existen"}, sin cambiar los datos que ya tienen.</p>}
+            <p className="text-xs text-muted-foreground">Con datos TPV: {previa.conCumpleanos} cumpleaños · {previa.conDireccion} direcciones · {previa.conDniCif} DNI/CIF · {previa.conFechaAlta} fechas de alta · {previa.conUltimaVisita} últimas visitas.</p>
+            {previa.avisosFecha > 0 && <p role="status" className="text-xs text-melocoton-tinta">{previa.avisosFecha} {previa.avisosFecha === 1 ? "fecha no se ha podido leer" : "fechas no se han podido leer"}; esas casillas se dejarán vacías.</p>}
+            {previa.avisosDniCif > 0 && <p role="status" className="text-xs text-melocoton-tinta">{previa.avisosDniCif} {previa.avisosDniCif === 1 ? "DNI/CIF tiene" : "DNI/CIF tienen"} un formato poco habitual; se guardará tal como viene.</p>}
             {previa.duplicadas > 0 && <p className="break-words text-muted-foreground">Duplicadas: {previa.filas.filter((f) => f.estado === "duplicada").map((f) => f.nombre).join(", ")}</p>}
             <div className="max-h-64 space-y-1 overflow-y-auto rounded border border-border p-2">
-              {previa.filas.slice(0, 10).map((f) => <p key={f.fila} className="break-words">{f.fila}. {f.nombre || "Sin nombre"} · {f.telefono || "sin teléfono"} · {f.estado === "nueva" ? "Nueva" : f.estado === "duplicada" ? "Duplicada" : `Error: ${f.motivo}`}</p>)}
+              {previa.filas.slice(0, 10).map((f) => <p key={f.fila} className="break-words">{f.fila}. {f.nombre || "Sin nombre"} · {f.telefono || "sin teléfono"} · {f.estado === "nueva" ? "Nueva" : f.estado === "duplicada" ? "Duplicada" : `Error: ${f.motivo}`}{f.avisos?.length ? ` · ${f.avisos.join("; ")}` : ""}</p>)}
             </div>
-            <Button onClick={importar} disabled={ocupado || !previa.nuevas} className="w-full sm:w-auto">Importar {previa.nuevas} clientas</Button>
+            <Button onClick={importar} disabled={ocupado || (!previa.nuevas && !fichasACompletar)} className="w-full sm:w-auto">{previa.nuevas ? `Importar ${previa.nuevas} clientas` : `Completar ${fichasACompletar} ${fichasACompletar === 1 ? "ficha" : "fichas"}`}</Button>
           </>}
         </>}
         {resumen && <p role="status" className="rounded bg-primary/10 p-3">{resumen}</p>}
