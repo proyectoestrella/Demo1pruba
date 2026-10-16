@@ -3,7 +3,7 @@ import { useImagenConRespaldo } from "@/lib/imagen-rota";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Info, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType, textosDeCarta } from "@/lib/mock/salon";
-import { reglaSenal, senalDeReservaNueva, servicioLlevaSenal, textoSenalPublico, type ReglaSenal } from "@/lib/senal";
+import { duracionCartaParaSenal, reglaSenal, senalDeReservaNueva, servicioLlevaSenal, textoSenalPublico, type ReglaSenal } from "@/lib/senal";
 import { franjasProfesionalEnFecha, huecosDeProfesionalesEnFecha } from "@/lib/horario-equipo";
 import { isoDelSalon, zonaDelSalon } from "@/lib/zona-horaria";
 import { antelacionMinima, huecoAunReservable } from "@/lib/primer-hueco";
@@ -407,13 +407,13 @@ function BookingWizard() {
   );
   const sinProfesionalParaServicios = selectedServices.length > 0 && eligibleEmployees.length === 0;
   const serviceNames = selectedServices.map((s) => s.name);
-  // Precio y duración de la cita son la suma: el hueco que se reserva y el
-  // umbral del depósito miran el total, no el primer servicio.
+  // Precio y duración de carta son la suma de los servicios elegidos. El
+  // hueco puede reservar más tiempo si la duración es flexible; la fianza no.
   const { durationMin: totalMin, priceEur: total } = sumServices(selectedServices);
   const flexible = duracionFlexibleDemo;
   const flexRange = flexible ? flexDurationRange(totalMin) : null;
-  // Con duración flexible se bloquea el extremo alto: la misma cifra viaja
-  // al servidor y es la base de la señal, no solo del calendario visual.
+  // Con duración flexible se bloquea el extremo alto: esa cifra es solo para
+  // agenda y calendario; la señal siempre se ata a la duración de carta.
   const schedulingDurationMin = flexRange ? flexRange.hi : totalMin;
   const stylistChoice = data.employeeId;
   const employeeName =
@@ -426,7 +426,11 @@ function BookingWizard() {
   // no sabe si la clienta es nueva: con la regla «solo nuevas» avisa «si es tu
   // primera visita».
   const reglaSen = reglaSenal(profile);
-  const reservaSenal = { serviceIds: data.serviceIds, durationMin: schedulingDurationMin, priceEur: total };
+  const reservaSenal = {
+    serviceIds: data.serviceIds,
+    durationMin: duracionCartaParaSenal(data.serviceIds, serviceMap, schedulingDurationMin),
+    priceEur: total,
+  };
   const textoSenal = textoSenalPublico(reglaSen, reservaSenal, profile.name, eur, { ocultarImporte: !mostrarPrecio });
 
   // Mejora B1 (grounding externo, patrón Booksy): "Repetir mi última cita".
@@ -668,8 +672,8 @@ function BookingWizard() {
         date: data.date,
         time: data.time,
         name: data.name,
-        // La confirmación debe explicar la misma fianza que se calculó al
-        // reservar: con duración flexible es la que bloqueó el hueco.
+        // El calendario conserva la duración bloqueada; la confirmación
+        // deriva la fianza de la carta a partir de los servicios.
         duration: schedulingDurationMin,
         // Sin esto la confirmación pierde la personalización de esta demo
         // (recargo por retraso, duración flexible, equipo…): el tipo de

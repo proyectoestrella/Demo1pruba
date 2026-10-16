@@ -12,7 +12,7 @@
  */
 import { whatsappUrl } from "./campanas";
 import { ZONA_HORARIA_SALON, fechaEnZona } from "./zona-horaria";
-import { rellenarPlantillaSenal } from "./senal";
+import { importeSenalTexto, rellenarPlantillaSenal } from "./senal";
 
 /** Todo lo que se dice por WhatsApp o por email se dice en la hora del salón, corra donde corra. */
 const TZ = { timeZone: ZONA_HORARIA_SALON } as const;
@@ -74,11 +74,6 @@ export function mensajeDeFianza(p: PeticionDeFianza, requestedAtISO = new Date()
   });
 }
 
-/** Los medios euros de la señal se escriben como moneda española; los enteros siguen compactos. */
-function importeSenalTexto(importeEur: number): string {
-  return Number.isInteger(importeEur) ? `${importeEur} €` : `${importeEur.toFixed(2).replace(".", ",")} €`;
-}
-
 /** Enlace de WhatsApp listo para abrir con la petición de fianza dentro. */
 export function enlaceDeFianza(telefono: string, p: PeticionDeFianza, requestedAtISO?: string): string {
   return whatsappUrl(telefono, mensajeDeFianza(p, requestedAtISO));
@@ -130,7 +125,7 @@ export function mensajeRecordatorio(a: RecordatorioDeCita): string {
     ? ` antes del ${new Date(senal.deadlineISO).toLocaleDateString("es-ES", { ...TZ, day: "numeric", month: "long" })} a las ${horaEnPalabras(senal.deadlineISO)}`
     : "";
   return `Hola ${a.clientName}, te recordamos tu cita en ${a.salonName} ${cuandoEnPalabras(a.startISO)} para ${a.servicio}. Te esperamos en ${a.direccion}.` +
-    (senal ? ` Si aún no lo has hecho, puedes enviarnos la señal de ${senal.importeEur} € por Bizum al ${senal.bizumPhone}${plazo}. ¡Gracias!` : " ¡Hasta pronto!");
+    (senal ? ` Si aún no lo has hecho, puedes enviarnos la señal de ${importeSenalTexto(senal.importeEur)} por Bizum al ${senal.bizumPhone}${plazo}. ¡Gracias!` : " ¡Hasta pronto!");
 }
 
 export function enlaceRecordatorio(telefono: string, a: RecordatorioDeCita): string {

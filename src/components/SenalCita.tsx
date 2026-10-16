@@ -3,10 +3,12 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useSalonStore } from "@/lib/store";
 import { enlaceDeFianza } from "@/lib/avisos";
-import { eur, hora } from "@/lib/copy";
+import { hora } from "@/lib/copy";
 import {
   estadoSenal,
+  duracionCartaParaSenal,
   importeSenal,
+  importeSenalTexto,
   mensajeErrorSenal,
   prepararPeticionSenal,
   puedePedirSenal,
@@ -49,12 +51,19 @@ const METODOS: { id: MetodoSenal; texto: string }[] = [
 export function SenalCita({ cita, compacta = false }: { cita: Appointment; compacta?: boolean }) {
   const perfil = useSalonStore((s) => s.salonProfile);
   const clients = useSalonStore((s) => s.clients);
+  const services = useSalonStore((s) => s.services);
   const markDepositRequested = useSalonStore((s) => s.markDepositRequested);
   const recibirSenal = useSalonStore((s) => s.recibirSenal);
   const deshacerSenalRecibida = useSalonStore((s) => s.deshacerSenalRecibida);
   const darMasTiempoSenal = useSalonStore((s) => s.darMasTiempoSenal);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const regla = reglaSenal(perfil);
+  const serviceMap = Object.fromEntries(services.map((service) => [service.id, service]));
+  const reservaSenal = {
+    serviceIds: cita.serviceIds,
+    durationMin: duracionCartaParaSenal(cita.serviceIds, serviceMap, cita.duration),
+    priceEur: cita.priceEur,
+  };
   const estado = estadoSenal(cita, new Date());
   const [preguntaEnvio, setPreguntaEnvio] = useState<{ importeEur: number; requestedAtISO: string } | null>(null);
   const [recibiendo, setRecibiendo] = useState(false);
@@ -77,7 +86,7 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
     const importeDeEstaCita =
       cita.depositEur && cita.depositEur > 0
         ? cita.depositEur
-        : importeSenal(regla, { serviceIds: cita.serviceIds, durationMin: cita.duration, priceEur: cita.priceEur }) || regla.importeFijoEur;
+        : importeSenal(regla, reservaSenal) || regla.importeFijoEur;
     const telefono = clients.find((c) => c.id === cita.clientId)?.phone;
     if (!telefono) return toast.error("Esta clienta no tiene teléfono al que escribir.");
     const requestedAt = new Date().toISOString();
@@ -104,11 +113,11 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
   const vence = cita.depositDueAt ? `antes de las ${hora(cita.depositDueAt)}${new Date(cita.depositDueAt).toDateString() === new Date().toDateString() ? "" : ` del ${new Date(cita.depositDueAt).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}`}` : "";
   const detalle: Partial<Record<EstadoSenal, string>> = {
     no_aplica: "Tu regla no la pide para esta cita. Puedes pedirla igualmente.",
-    por_pedir: `Tu regla pide una señal de ${eur(cita.depositEur ?? importeSenal(regla, { serviceIds: cita.serviceIds, durationMin: cita.duration, priceEur: cita.priceEur }))}.`,
+    por_pedir: `Tu regla pide una señal de ${importeSenalTexto(cita.depositEur ?? importeSenal(regla, reservaSenal))}.`,
     // 14a: lo mismo que dice Ajustes › Señal (recordatorio a 1 h desde Hoy y liberación al vencer).
-    pedida: `${eur(cita.depositEur ?? 0)} ${vence}. Márcala cuando la veas en tu banco. ${regla.liberacionAutomatica ? "Si no llega a tiempo, el hueco se libera solo; a 1 h de vencer, en Hoy › Avisos puedes recordárselo." : "Si no llega a tiempo, te avisamos en Hoy y decides tú."}`,
-    vencida: `Pasó el plazo sin recibir ${eur(cita.depositEur ?? 0)}. Tú decides: más tiempo o liberar el hueco.`,
-    recibida: `${eur(cita.depositReceivedEur ?? cita.depositEur ?? 0)} por ${METODOS.find((m) => m.id === cita.depositMethod)?.texto.toLowerCase() ?? "bizum"}. Se descuenta sola al cobrar.`,
+    pedida: `${importeSenalTexto(cita.depositEur ?? 0)} ${vence}. Márcala cuando la veas en tu banco. ${regla.liberacionAutomatica ? "Si no llega a tiempo, el hueco se libera solo; a 1 h de vencer, en Hoy › Avisos puedes recordárselo." : "Si no llega a tiempo, te avisamos en Hoy y decides tú."}`,
+    vencida: `Pasó el plazo sin recibir ${importeSenalTexto(cita.depositEur ?? 0)}. Tú decides: más tiempo o liberar el hueco.`,
+    recibida: `${importeSenalTexto(cita.depositReceivedEur ?? cita.depositEur ?? 0)} por ${METODOS.find((m) => m.id === cita.depositMethod)?.texto.toLowerCase() ?? "bizum"}. Se descuenta sola al cobrar.`,
   };
   const btn = "h-8 rounded-full px-3 text-[12.5px]";
 

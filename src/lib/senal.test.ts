@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { aplicaSenal, importeSenal, introCartaSenal, resumenCancelacionSenal, marcadoresQueFaltan, PLANTILLA_SENAL_POR_DEFECTO, reglaSenal, rellenarPlantillaSenal, respuestaFaqSenal, servicioLlevaSenal, textoSenalPublico } from "./senal";
+import { aplicaSenal, duracionCartaParaSenal, importeSenal, importeSenalTexto, introCartaSenal, resumenCancelacionSenal, marcadoresQueFaltan, PLANTILLA_SENAL_POR_DEFECTO, reglaSenal, rellenarPlantillaSenal, respuestaFaqSenal, servicioLlevaSenal, textoSenalPublico } from "./senal";
 import { mensajeDeFianza } from "./avisos";
 
 const eur = (n: number) => `${n} €`;
@@ -7,6 +7,27 @@ const mechas = { serviceIds: ["mechas"], durationMin: 120, priceEur: 80 };
 const corte = { serviceIds: ["corte"], durationMin: 45, priceEur: 25 };
 
 describe("una sola regla de señal por salón", () => {
+  it("calcula la fianza por la duración de carta y solo cae a la cita si no puede reconocerla", () => {
+    const carta = {
+      peinar: { durationMin: 40 },
+      lavado: { durationMin: 15 },
+      color: { durationMin: 45 },
+      corte: { durationMin: 30 },
+    };
+    const r = reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 5 });
+    const importeDe = (serviceIds: string[], durationMin: number) => importeSenal(r, {
+      serviceIds,
+      durationMin: duracionCartaParaSenal(serviceIds, carta, durationMin),
+      priceEur: 0,
+    });
+
+    expect(importeDe(["peinar"], 60)).toBe(3); // 40 min de carta, no la hora bloqueada
+    expect(importeDe(["lavado"], 60)).toBe(1);
+    expect(importeDe(["color", "corte"], 120)).toBe(6); // 45 + 30 = 75 min
+    expect(importeDe(["otro"], 60)).toBe(5);
+    expect(importeDe([], 45)).toBe(4);
+  });
+
   it("decide de forma determinista el texto bajo la carta", () => {
     expect(introCartaSenal({ activa: false })).toBeUndefined();
     expect(introCartaSenal({ activa: true })).toBe(
@@ -39,7 +60,9 @@ describe("una sola regla de señal por salón", () => {
   it("por hora redondea cada medio euro hacia arriba, no se topa al precio y funciona con precios ocultos", () => {
     const r = reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 5 });
     expect([15, 30, 45, 60, 90, 150, 180].map((durationMin) => importeSenal(r, { serviceIds: ["x"], durationMin, priceEur: 0 }))).toEqual([1, 3, 4, 5, 8, 13, 15]);
-    expect(textoSenalPublico(r, { serviceIds: ["x"], durationMin: 90, priceEur: 0 }, "PeluChic", (n) => `${n.toFixed(2).replace(".", ",")} €`)).toContain("8,00 €");
+    const texto = textoSenalPublico(r, { serviceIds: ["x"], durationMin: 90, priceEur: 0 }, "PeluChic", (n) => `${n.toFixed(2).replace(".", ",")} €`)!;
+    expect(texto).toContain("8 €");
+    expect(texto).not.toContain(",00 €");
   });
 
   it("la fianza manual por hora explica importe, Bizum, plazo y confirmación manual", () => {
@@ -111,6 +134,16 @@ describe("una sola regla de señal por salón", () => {
 });
 
 describe("un solo mensaje para la clienta", () => {
+  it("quita los ceros de relleno en todos los importes de señal", () => {
+    const conDecimales = (n: number) => `${n.toFixed(2).replace(".", ",")} €`;
+    const r = reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 5 });
+    expect(textoSenalPublico(r, { serviceIds: ["x"], durationMin: 60, priceEur: 0 }, "PeluChic", conDecimales)).not.toContain(",00 €");
+    expect(respuestaFaqSenal(r, conDecimales)).toContain("5 € por hora de servicio");
+    expect(resumenCancelacionSenal(reglaSenal({ depositEnabled: true, depositAmountEur: 5 }), conDecimales)).toContain("5 €");
+    expect(importeSenalTexto(28.5)).toBe("28,50 €");
+    expect(importeSenalTexto(5)).toBe("5 €");
+  });
+
   it("pedida por WhatsApp: importe, plazo, que se descuenta y cuándo se devuelve", () => {
     const r = reglaSenal({ depositEnabled: true, depositAmountEur: 20, depositDeadlineHours: 2, depositCancelHours: 24 });
     const t = textoSenalPublico(r, corte, "PeluChic", eur)!;

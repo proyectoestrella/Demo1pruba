@@ -32,8 +32,9 @@ import { isManualBlockRecord } from "../no-show";
 import { parseDepositNote } from "../deposit-deadline";
 import { columnasDeParche, filaSinLote3 } from "../cita-parche";
 import { ERROR_SOLAPE_PANEL } from "../solape";
-import { reglaSenal, senalDeReservaNueva } from "../senal";
+import { duracionCartaParaSenal, reglaSenal, senalDeReservaNueva } from "../senal";
 import { inferBusinessType } from "../business-type";
+import { servicesForType } from "../mock/salon";
 import { limpiarRespuestas, obligatoriasSinResponder, preguntasAplicables, preguntasDelSalon } from "../preguntas-reserva";
 import { profesionalHaceServicios } from "../servicios-profesional";
 import { hayBloqueoEnHueco } from "../bloqueos-agenda";
@@ -1025,9 +1026,21 @@ export const syncAppointment = createServerFn({ method: "POST" })
     // salón (importe, y si es automática, pedida con su plazo). Lo que mande
     // el navegador sobre la señal se ignora siempre.
     if (!manda && perfilPublico) {
+      const carta = servicesForType(
+        inferBusinessType(perfilPublico.tagline, perfilPublico.name),
+        perfilPublico.menu,
+      );
       const senal = senalDeReservaNueva(
         reglaSenal(perfilPublico),
-        { serviceIds: data.serviceIds, durationMin: durationMinGuardada, priceEur: priceEurGuardado },
+        {
+          serviceIds: data.serviceIds,
+          durationMin: duracionCartaParaSenal(
+            data.serviceIds,
+            Object.fromEntries(carta.map((servicio) => [servicio.id, servicio])),
+            durationMinGuardada,
+          ),
+          priceEur: priceEurGuardado,
+        },
         data.startISO,
       );
       if (senal.depositStatus) fila.deposit_status = senal.depositStatus;

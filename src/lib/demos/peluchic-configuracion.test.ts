@@ -1,9 +1,10 @@
 import { describe, expect, it } from "bun:test";
 
 import { trabajaEnFecha } from "../horario-equipo";
-import { employeesForType } from "../mock/salon";
+import { employeesForType, servicesForType, textosDeCarta } from "../mock/salon";
 import { profesionalesDisponiblesEnHueco } from "../reparto";
-import { importeSenal, reglaSenal } from "../senal";
+import { duracionCartaParaSenal, importeSenal, reglaSenal } from "../senal";
+import { duracionDeAgenda } from "../duracion-flexible";
 import { isoDelSalon } from "../zona-horaria";
 import { PELUCHIC } from "./peluchic";
 
@@ -42,6 +43,18 @@ describe("configuración real de PeluChic · 7-oct-2026", () => {
   it("la fianza activa da 8 € para 90 minutos", () => {
     const regla = reglaSenal(PELUCHIC);
     expect(importeSenal(regla, { serviceIds: ["ritual-hidroface"], durationMin: 90, priceEur: 65 })).toBe(8);
+  });
+
+  it("con duración flexible, Peinar bloquea 60 min pero la fianza usa sus 40 min de carta", () => {
+    const carta = servicesForType("peluqueria", PELUCHIC.menu, textosDeCarta(PELUCHIC));
+    const porId = Object.fromEntries(carta.map((servicio) => [servicio.id, servicio]));
+    const duracionAgenda = duracionDeAgenda(porId.peinar.durationMin, PELUCHIC.duracionFlexible);
+    const duracionSenal = duracionCartaParaSenal(["peinar"], porId, duracionAgenda);
+
+    expect(PELUCHIC.duracionFlexible).toBe(true);
+    expect(duracionAgenda).toBe(60);
+    expect(duracionSenal).toBe(40);
+    expect(importeSenal(reglaSenal(PELUCHIC), { serviceIds: ["peinar"], durationMin: duracionSenal, priceEur: porId.peinar.priceEur })).toBe(3);
   });
 
   it("reserva pública no ofrece la comida provisional de los viernes", () => {

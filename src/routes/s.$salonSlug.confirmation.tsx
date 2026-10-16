@@ -2,7 +2,7 @@ import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Check, Info, Download, MapPin } from "lucide-react";
 import { employeesForType, servicesForType } from "@/lib/mock/salon";
-import { reglaSenal, textoSenalPublico } from "@/lib/senal";
+import { duracionCartaParaSenal, reglaSenal, textoSenalPublico } from "@/lib/senal";
 import { useSalonStore } from "@/lib/store";
 import { duracionFlexibleActiva } from "@/lib/duracion-flexible";
 import { recargoActivo } from "@/lib/recargo-activo";
@@ -83,9 +83,9 @@ function Confirmation() {
   const soloUno = esSoloUnProfesional(equipo);
   const employeeMap = useMemo(() => Object.fromEntries(equipo.map((e) => [e.id, e])), [equipo]);
   // `service` trae uno o varios ids separados por comas, tal y como los deja el wizard.
-  const chosen = sid
-    .split(",")
-    .map((id) => serviceMap[id.trim()])
+  const serviceIds = sid.split(",").map((id) => id.trim()).filter(Boolean);
+  const chosen = serviceIds
+    .map((id) => serviceMap[id])
     .filter(Boolean);
   const serviceNames = chosen.map((s) => s.name);
   const { durationMin: totalMin, priceEur: total } = sumServices(chosen);
@@ -150,9 +150,13 @@ function Confirmation() {
   // El único mensaje sobre la señal (9j): el de la regla del salón, o nada.
   const textoSenal = textoSenalPublico(
     reglaSenal(profile),
-    { durationMin: durationReserva, serviceIds: chosen.map((s) => s.id), priceEur: total },
+    {
+      serviceIds,
+      durationMin: duracionCartaParaSenal(serviceIds, serviceMap, durationReserva),
+      priceEur: total,
+    },
     profile.name,
-    (n) => eur(n).replace(",00", ""),
+    eur,
   );
   const dateLabel = date
     ? new Date(`${date}T${time || "00:00"}`).toLocaleDateString("es-ES", {

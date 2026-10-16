@@ -355,6 +355,23 @@ describe("señal: reajuste al cambiar servicio u hora", () => {
     expect(cita(a.id)).toMatchObject({ depositStatus: "devuelta", depositEur: 0, depositRefundedEur: 20 });
   });
 
+  it("cambiar solo la duración bloqueada no recalcula una fianza ya creada", () => {
+    useSalonStore.getState().updateSalonProfile({
+      depositEnabled: true,
+      depositMode: "hora",
+      depositHourlyRateEur: 5,
+      depositAppliesTo: "todas",
+    });
+    const a = nueva();
+    useSalonStore.getState().recibirSenal(a.id, { metodo: "bizum" });
+    const importeAntes = cita(a.id).depositEur;
+
+    useSalonStore.getState().updateAppointment(a.id, { duration: 180 });
+
+    expect(cita(a.id).duration).toBe(180);
+    expect(cita(a.id).depositEur).toBe(importeAntes);
+  });
+
   it("adelantar la cita recorta el plazo de la señal pedida", () => {
     useSalonStore.getState().updateSalonProfile({ depositEnabled: true, depositMode: "fijo", depositAmountEur: 20, depositAppliesTo: "todas", depositDeadlineHours: 4 });
     const a = nueva();

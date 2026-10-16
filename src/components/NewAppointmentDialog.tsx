@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DuracionOtra } from "@/components/DuracionOtra";
 import { cn } from "@/lib/utils";
-import { idServicioLibre, serviceLabelOf, sumServices } from "@/lib/appointment-services";
+import { idServicioLibre, serviceLabelOf, sumServices, textoPrecioServicio, textoTotalServicios } from "@/lib/appointment-services";
 import { eur, hora } from "@/lib/copy";
 import { duracionRecordada } from "@/lib/derive";
 import { duracionElegida } from "@/lib/duracion-flexible";
@@ -635,7 +635,7 @@ function FormularioNuevaCita({
                       return (
                         <button key={s.id} type="button" aria-pressed={on} onClick={() => toggleService(s.id)} className={opcion(on)}>
                           <i className="size-2.5 rounded-[4px]" style={{ background: `var(--serv-${indiceColorServicio(s.id, services)}-borde)` }} aria-hidden="true" />
-                          {s.name} · {eur(s.priceEur).replace(",00", "")}
+                          {s.name} · {textoPrecioServicio(s, eur)}
                         </button>
                       );
                     })}
@@ -834,7 +834,7 @@ function FormularioNuevaCita({
                   {hayServicioElegido ? (
                     <div className="mt-4 flex items-baseline justify-between">
                       <span className="text-muted-foreground">Precio</span>
-                      <span className="text-[28px] font-extrabold tabular-nums">{eur(total).replace(",00", "")}</span>
+                      <span className="text-[28px] font-extrabold tabular-nums">{otro ? eur(total).replace(",00", "") : textoTotalServicios(chosen, total, eur)}</span>
                     </div>
                   ) : (
                     <p className="mt-4 rounded-2xl bg-nata px-3.5 py-3 text-[12.5px] font-bold text-cafe-medio">
@@ -865,7 +865,7 @@ function FormularioNuevaCita({
               <div className="fixed inset-x-0 bottom-0 z-10 flex items-center gap-3 border-t border-border bg-card px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom,0px))] lg:hidden">
                 {hayServicioElegido ? (
                   <span className="min-w-0 flex-1 leading-tight">
-                    <b className="block text-xl tabular-nums">{eur(total).replace(",00", "")}</b>
+                    <b className="block text-xl tabular-nums">{otro ? eur(total).replace(",00", "") : textoTotalServicios(chosen, total, eur)}</b>
                     <span className="block truncate text-[12.5px] text-muted-foreground tabular-nums">{time} · {duracionLegible(totalMin)}{soloUno ? "" : ` · ${empleado?.name ?? ""}`}</span>
                   </span>
                 ) : (

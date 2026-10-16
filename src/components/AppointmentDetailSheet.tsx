@@ -18,6 +18,7 @@ import { historialDeFallos } from "@/lib/plantones";
 import { necesitaDesenlace, type Desenlace } from "@/lib/deuda";
 import { PAYMENT_METHODS } from "@/lib/caja";
 import { eur } from "@/lib/copy";
+import { importeSenalTexto } from "@/lib/senal";
 import {
   PAYMENT_METHOD_LABELS,
   type Appointment,
@@ -444,7 +445,7 @@ export function AppointmentDetailSheet({
                           {pagosCita.map((p) => (
                             <li key={p.id} className="flex justify-between gap-2">
                               <span>{p.concepto === "senal" ? "Señal" : p.concepto === "propina" ? "Propina" : "Servicio"} · {PAYMENT_METHOD_LABELS[p.metodo].toLowerCase()}</span>
-                              <b>{p.importeEur.toLocaleString("es-ES", { maximumFractionDigits: 2 })} €</b>
+                              <b>{p.concepto === "senal" ? importeSenalTexto(p.importeEur) : `${p.importeEur.toLocaleString("es-ES", { maximumFractionDigits: 2 })} €`}</b>
                             </li>
                           ))}
                         </ul>

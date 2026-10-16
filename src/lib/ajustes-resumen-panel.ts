@@ -4,7 +4,7 @@
  */
 import type { SalonProfile } from "./mock/types";
 import { preferenciasDe, VISTAS_CALENDARIO } from "./preferencias-calendario";
-import { reglaSenal } from "./senal";
+import { importeSenalTexto, reglaSenal } from "./senal";
 import { recargoActivo } from "./recargo-activo";
 
 export type IdSeccionAjustes = "guia" | "agenda" | "reservas" | "mensajes" | "plantones" | "calendarios" | "historial" | "accesos" | "asistente" | "colores";
@@ -52,7 +52,8 @@ export function valorActual(id: IdSeccionAjustes, p: SalonProfile): string {
     case "plantones": {
       const r = reglaSenal(p);
       const plantones = recargoActivo(p) ? `Plantón ${p.noShowFeeEur} €` : "Sin penalización";
-      const senal = r.activa ? (r.modo === "hora" ? `fianza ${r.tarifaPorHoraEur} €/h` : r.modo === "porcentaje" ? `fianza ${r.porcentaje} %` : `fianza ${r.importeFijoEur} €`) : "sin fianza";
+      const importeSinSimbolo = (importe: number) => importeSenalTexto(importe).replace(" €", "");
+      const senal = r.activa ? (r.modo === "hora" ? `fianza ${importeSinSimbolo(r.tarifaPorHoraEur)} €/h` : r.modo === "porcentaje" ? `fianza ${r.porcentaje} %` : `fianza ${importeSenalTexto(r.importeFijoEur)}`) : "sin fianza";
       return `${plantones} · ${senal}`;
     }
     case "colores": {

@@ -1,4 +1,5 @@
 import { cuandoEnPalabras, horaEnPalabras, mensajeRecordatorio, type RecordatorioDeCita } from "./avisos";
+import { importeSenalTexto } from "./senal";
 
 /**
  * Textos de WhatsApp que la dueña puede escribir a su manera (lote 9h). Si
@@ -55,7 +56,7 @@ export function mensajeRecordatorioDe(plantilla: string | undefined, r: Recordat
   const plazo = s.deadlineISO
     ? ` antes del ${new Date(s.deadlineISO).toLocaleDateString("es-ES", { day: "numeric", month: "long" })} a las ${horaEnPalabras(s.deadlineISO)}`
     : "";
-  return `${base} Si aún no lo has hecho, puedes enviarnos la señal de ${s.importeEur} € por Bizum al ${s.bizumPhone}${plazo}.`;
+  return `${base} Si aún no lo has hecho, puedes enviarnos la señal de ${importeSenalTexto(s.importeEur)} por Bizum al ${s.bizumPhone}${plazo}.`;
 }
 
 export function mensajeConfirmacionDe(plantilla: string | undefined, d: DatosMensaje): string {

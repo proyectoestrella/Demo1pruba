@@ -46,3 +46,27 @@ export function sumServices(list: Service[]) {
     priceEur: list.reduce((s, sv) => s + sv.priceEur, 0),
   };
 }
+
+/**
+ * Precio de un servicio en Nueva cita. Un literal sin importe no se disfraza
+ * como «0 €»; los precios numéricos conservan el formato compacto de siempre.
+ */
+export function textoPrecioServicio(
+  servicio: Pick<Service, "priceEur" | "priceText">,
+  eur: (importe: number) => string,
+): string {
+  return servicio.priceEur === 0 && servicio.priceText?.trim()
+    ? servicio.priceText.trim()
+    : eur(servicio.priceEur).replace(",00", "");
+}
+
+/** Un total con algún servicio pendiente de diagnóstico no promete una cifra. */
+export function textoTotalServicios(
+  servicios: Array<Pick<Service, "priceEur" | "priceText">>,
+  totalEur: number,
+  eur: (importe: number) => string,
+): string {
+  return servicios.some((servicio) => servicio.priceEur === 0 && servicio.priceText?.trim())
+    ? "A definir"
+    : eur(totalEur).replace(",00", "");
+}

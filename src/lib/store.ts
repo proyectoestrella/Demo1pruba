@@ -47,6 +47,7 @@ import {
   confirmarDevolucion,
   darMasTiempo,
   deshacerRecibida,
+  duracionCartaParaSenal,
   desaplicarSenal,
   importeSenal,
   moverSenal,
@@ -641,12 +642,16 @@ export const useSalonStore = create<SalonState>()(
           if (r?.ok) senalPatch = r.patch;
         }
         // Cambia el servicio o el precio: se recalcula lo debido (solo si la
-        // cita ya gestiona señal). Cambia la hora: el plazo no pasa de ella.
+        // cita ya gestiona señal). Cambiar solo la duración de agenda no toca
+        // una fianza, que se calcula por la carta elegida. Cambia la hora: el
+        // plazo no pasa de ella.
         if (previa && previa.depositStatus && previa.depositStatus !== "anulada" &&
-            (patch.serviceIds || patch.priceEur !== undefined || patch.duration !== undefined)) {
+            (patch.serviceIds || patch.priceEur !== undefined)) {
           const siguiente = { ...previa, ...patch, ...senalPatch };
           const debido = importeSenal(reglaSenal(get().salonProfile), {
-            serviceIds: siguiente.serviceIds, durationMin: siguiente.duration, priceEur: siguiente.priceEur,
+            serviceIds: siguiente.serviceIds,
+            durationMin: duracionCartaParaSenal(siguiente.serviceIds, selectServiceMap(get().services), siguiente.duration),
+            priceEur: siguiente.priceEur,
           });
           const r = reajustarSenal(siguiente, debido);
           if (r.ok) senalPatch = { ...senalPatch, ...r.patch };
@@ -750,7 +755,12 @@ export const useSalonStore = create<SalonState>()(
       pedirSenal: (id) => {
         const regla = reglaSenal(get().salonProfile);
         return aplicarSenalA(id, (c) =>
-          pedirSenal(c, regla, importeSenal(regla, { serviceIds: c.serviceIds, durationMin: c.duration, priceEur: c.priceEur, esNueva: undefined })),
+          pedirSenal(c, regla, importeSenal(regla, {
+            serviceIds: c.serviceIds,
+            durationMin: duracionCartaParaSenal(c.serviceIds, selectServiceMap(get().services), c.duration),
+            priceEur: c.priceEur,
+            esNueva: undefined,
+          })),
         );
       },
       recibirSenal: (id, datos) => {
@@ -763,7 +773,11 @@ export const useSalonStore = create<SalonState>()(
               datos.importeEur ??
               (c.depositEur && c.depositEur > 0
                 ? c.depositEur
-                : importeSenal(regla, { serviceIds: c.serviceIds, durationMin: c.duration, priceEur: c.priceEur }) || regla.importeFijoEur),
+                : importeSenal(regla, {
+                  serviceIds: c.serviceIds,
+                  durationMin: duracionCartaParaSenal(c.serviceIds, selectServiceMap(get().services), c.duration),
+                  priceEur: c.priceEur,
+                }) || regla.importeFijoEur),
           }),
         );
       },

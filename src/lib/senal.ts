@@ -125,6 +125,50 @@ export interface ReservaParaSenal {
   esNueva?: boolean;
 }
 
+/** Lo mínimo que una entrada de la carta aporta al cálculo de la fianza. */
+export interface ServicioDeCartaParaSenal {
+  durationMin: number;
+}
+
+/**
+ * Duración de la carta que fija una fianza.
+ *
+ * La agenda puede bloquear más tiempo —por ejemplo, el extremo alto de una
+ * duración flexible—, pero eso no encarece una fianza ya ligada al servicio
+ * elegido. Si la cita no conserva ids o alguno ya no está en la carta (como
+ * «Otro…»), se mantiene la duración que tiene guardada la cita.
+ */
+export function duracionCartaParaSenal(
+  serviceIds: readonly string[] | undefined,
+  catalogo: Record<string, ServicioDeCartaParaSenal | undefined>,
+  duracionDeLaCita: number,
+): number {
+  const alternativa = Number.isFinite(duracionDeLaCita) ? Math.max(0, Math.round(duracionDeLaCita)) : 0;
+  if (!serviceIds?.length) return alternativa;
+
+  let total = 0;
+  for (const id of serviceIds) {
+    const servicio = catalogo[id];
+    if (!servicio || !Number.isFinite(servicio.durationMin) || servicio.durationMin < 0) return alternativa;
+    total += Math.round(servicio.durationMin);
+  }
+  return total;
+}
+
+/** Importe de señal sin ceros de relleno: «5 €», «28,50 €». */
+export function importeSenalTexto(importeEur: number): string {
+  const importe = Math.round((Number.isFinite(importeEur) ? importeEur : 0) * 100) / 100;
+  return `${importe.toLocaleString("es-ES", {
+    minimumFractionDigits: Number.isInteger(importe) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })} €`;
+}
+
+/** Conserva el formato que recibe cada vista, eliminando solo los «,00» superfluos. */
+function importeSenalFormateado(importeEur: number, eur: (n: number) => string): string {
+  return eur(importeEur).replace(/([,.])00(?=\s*€)/, "");
+}
+
 /**
  * ¿Lleva señal esta reserva? Con `aplicaA = "nuevas"` y sin saber si es nueva
  * (la web pública no ve las fichas), responde que sí: es la web quien avisa
@@ -180,6 +224,7 @@ export function textoSenalPublico(
 ): string | null {
   const importe = importeSenal(regla, r);
   if (importe <= 0) return null;
+  const textoImporte = (n: number) => importeSenalFormateado(n, eur);
   // En porcentaje, revelar la cifra permite reconstruir el precio que el
   // salón decidió ocultar. Fijo y por hora no dependen de ese precio.
   if (opciones.ocultarImporte && regla.modo === "porcentaje") return "Se pedirá una señal por Bizum.";
@@ -188,12 +233,12 @@ export function textoSenalPublico(
   const plazo = `${regla.ventanaHoras} ${regla.ventanaHoras === 1 ? "hora" : "horas"}`;
   const aviso = avisoLiberacionAutomatica(regla);
   if (regla.modo === "hora" && !regla.automatica) {
-    return `${primera}${quien} una fianza por Bizum de ${eur(importe)} (${eur(regla.tarifaPorHoraEur)} por hora de servicio). La dueña confirma la solicitud y entonces el hueco queda reservado; tendrás ${plazo} para pagarla y la dueña marcará el pago cuando lo reciba.${aviso}`;
+    return `${primera}${quien} una fianza por Bizum de ${textoImporte(importe)} (${textoImporte(regla.tarifaPorHoraEur)} por hora de servicio). La dueña confirma la solicitud y entonces el hueco queda reservado; tendrás ${plazo} para pagarla y la dueña marcará el pago cuando lo reciba.${aviso}`;
   }
   if (regla.automatica && regla.bizumTelefono) {
-    return `${primera}${primera ? "" : "Para confirmar la cita, "}haz un Bizum de ${eur(importe)} al ${regla.bizumTelefono} en las próximas ${plazo}. Se descuenta del precio; si cancelas con más de ${regla.horasCancelacion} h, te la devolvemos.${aviso}`;
+    return `${primera}${primera ? "" : "Para confirmar la cita, "}haz un Bizum de ${textoImporte(importe)} al ${regla.bizumTelefono} en las próximas ${plazo}. Se descuenta del precio; si cancelas con más de ${regla.horasCancelacion} h, te la devolvemos.${aviso}`;
   }
-  return `${primera}${quien} por WhatsApp una señal de ${eur(importe)} por Bizum para confirmar la cita (tendrás ${plazo}). Se descuenta del precio; si cancelas con más de ${regla.horasCancelacion} h, te la devolvemos.${aviso}`;
+  return `${primera}${quien} por WhatsApp una señal de ${textoImporte(importe)} por Bizum para confirmar la cita (tendrás ${plazo}). Se descuenta del precio; si cancelas con más de ${regla.horasCancelacion} h, te la devolvemos.${aviso}`;
 }
 
 /**
@@ -211,11 +256,12 @@ export type CitaSenal = Pick<Appointment, "serviceIds" | "duration" | "priceEur"
 /** Respuesta de la FAQ «¿Hace falta pagar por adelantado?» según la regla del salón. */
 export function respuestaFaqSenal(regla: ReglaSenal, eur: (n: number) => string): string {
   if (!regla.activa) return "No. Se paga en el salón al terminar.";
+  const textoImporte = (n: number) => importeSenalFormateado(n, eur);
   const cuanto = regla.modo === "porcentaje"
     ? `una señal del ${regla.porcentaje} % del servicio`
     : regla.modo === "hora"
-      ? `una señal de ${eur(regla.tarifaPorHoraEur)} por hora de servicio`
-      : `una señal de ${eur(regla.importeFijoEur)}`;
+      ? `una señal de ${textoImporte(regla.tarifaPorHoraEur)} por hora de servicio`
+      : `una señal de ${textoImporte(regla.importeFijoEur)}`;
   const aQuien =
     regla.aplicaA === "nuevas" ? "Solo en la primera visita: " :
     regla.aplicaA === "duracion" ? `Solo en los servicios de ${regla.minutosMinimos} minutos o más: ` :
@@ -681,7 +727,7 @@ export function resumenCancelacionSenal(regla: ReglaSenal, eur: (n: number) => s
   const h = regla.horasCancelacion;
   const hasta = h % 24 === 0 && h > 0 ? `Hasta ${h / 24 === 1 ? "24 horas" : `${h / 24} días`} antes` : `Hasta ${h} h antes`;
   if (!regla.activa) return `${hasta}, sin coste y sin dar explicaciones.`;
-  const cuanto = regla.modo === "porcentaje" ? `una señal del ${regla.porcentaje} %` : `una señal de ${eur(regla.importeFijoEur)}`;
+  const cuanto = regla.modo === "porcentaje" ? `una señal del ${regla.porcentaje} %` : `una señal de ${importeSenalFormateado(regla.importeFijoEur, eur)}`;
   return `${hasta}, sin coste. Para confirmar la cita se pide ${cuanto} por Bizum que se descuenta del servicio.`;
 }
 
@@ -751,6 +797,6 @@ export function recordatorioSenal(
   if (msRestantes <= 0 || msRestantes > HORA) return null;
   const minutosRestantes = Math.max(1, Math.round(msRestantes / 60_000));
   const importe = num(c.depositEur);
-  const texto = `Hola, soy ${salon.name}. Te quedan ${minutosRestantes} min para hacer el Bizum de ${importe} € al ${regla.bizumTelefono} y confirmar tu cita. ¡Gracias!`;
+  const texto = `Hola, soy ${salon.name}. Te quedan ${minutosRestantes} min para hacer el Bizum de ${importeSenalTexto(importe)} al ${regla.bizumTelefono} y confirmar tu cita. ¡Gracias!`;
   return { texto, enlace: whatsappUrl(c.clientPhone, texto), minutosRestantes };
 }

@@ -13,6 +13,7 @@ import { generarCsvGestoria } from "@/lib/api/pagos.functions";
 import { leerEuros } from "@/lib/cobro-panel";
 import { fechaLocal } from "@/lib/hoja-del-dia";
 import { zonaDelSalon } from "@/lib/zona-horaria";
+import { importeSenalTexto } from "@/lib/senal";
 import { PageHeader } from "@/components/PageHeader";
 import { LlegaConPlan } from "@/components/LlegaConPlan";
 import { BotonConPlan } from "@/components/BotonConPlan";
@@ -239,7 +240,7 @@ function CajaDelDia() {
                       {m.pago?.origen === "tpv123" ? " · importado de TPV 123" : ""}
                     </span>
                   </span>
-                  <b className="tabular-nums">{eur(m.importeEur)}</b>
+                  <b className="tabular-nums">{m.pago?.concepto === "senal" ? importeSenalTexto(m.importeEur) : eur(m.importeEur)}</b>
                   {m.pago && puede(permisos, "dinero.crear") && m.pago.concepto !== "senal" && (
                     <button type="button" onClick={() => borrarPago(m.pago!.id)} aria-label={`Borrar el cobro de ${m.clienta}`} className="grid size-8 place-items-center rounded-full text-cafe-medio hover:bg-beige">
                       <Trash2 className="size-4" strokeWidth={1.7} />
@@ -378,4 +379,3 @@ function Comparacion({ etiqueta, ahora, antes }: { etiqueta: string; ahora: numb
     </span>
   );
 }
-

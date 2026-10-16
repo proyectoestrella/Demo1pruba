@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { serviceLabelOf } from "./appointment-services";
+import { serviceLabelOf, textoPrecioServicio, textoTotalServicios } from "./appointment-services";
 
 describe("serviceLabelOf", () => {
   it("con la carta viva del panel dice el nombre actual; sin ella cae al catálogo de ejemplo", () => {
@@ -20,5 +20,21 @@ describeLibre("servicio libre de una cita («Otro…»)", () => {
     expectLibre(nombreServicioLibre(id)).toBe("Recogido trenza y flores");
     expectLibre(nombreServicioLibre("svc-1")).toBeNull();
     expectLibre(etiquetaDe({ serviceIds: [id] }, {})).toBe("Recogido trenza y flores");
+  });
+});
+
+const eur = (importe: number) => `${importe.toFixed(2).replace(".", ",")} €`;
+
+describe("precios de Nueva cita", () => {
+  it("muestra el literal cuando un servicio sin precio necesita diagnóstico", () => {
+    const aDefinir = { priceEur: 0, priceText: "A definir, con diagnóstico" };
+    expect(textoPrecioServicio(aDefinir, eur)).toBe("A definir, con diagnóstico");
+    expect(textoTotalServicios([aDefinir], 0, eur)).toBe("A definir");
+  });
+
+  it("mantiene el precio numérico en los servicios normales", () => {
+    const normal = { priceEur: 28.5, priceText: "28,50 € / 35 €" };
+    expect(textoPrecioServicio(normal, eur)).toBe("28,50 €");
+    expect(textoTotalServicios([normal], 28.5, eur)).toBe("28,50 €");
   });
 });

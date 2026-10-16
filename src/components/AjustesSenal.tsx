@@ -8,6 +8,7 @@ import { mensajeDeFianza } from "@/lib/avisos";
 import {
   MARCADORES_SENAL,
   PLANTILLA_SENAL_POR_DEFECTO,
+  duracionCartaParaSenal,
   importeSenal,
   marcadoresQueFaltan,
   reglaSenal,
@@ -88,6 +89,9 @@ export function AjustesSenal() {
   manana.setDate(manana.getDate() + 1);
   manana.setHours(12, 0, 0, 0);
   const vence = new Date(Date.now() + Number(f.depositDeadlineHours) * 3_600_000);
+  // El simulador no elige servicios: representa una cita de 90 min y usa el
+  // mismo respaldo que una cita sin ids de carta.
+  const duracionSimulada = duracionCartaParaSenal([], {}, 90);
   const campo = "h-10 rounded-xl border border-input bg-blanco px-3 text-[14px]";
   const etiqueta = "grid gap-1.5 text-[13px] font-bold text-cafe";
   const segmento = (activo: boolean) => cn("h-9 rounded-full px-3.5 text-[13px] font-bold", activo ? "bg-card text-foreground shadow-[0_1px_3px_rgba(59,47,42,0.14)]" : "text-cafe-medio");
@@ -234,7 +238,7 @@ export function AjustesSenal() {
                 salonName: perfil.name,
                 startISO: manana.toISOString(),
                 bizumPhone: f.depositBizumPhone || "600 111 222",
-                importeEur: regla.modo === "porcentaje" ? Math.max(1, Math.round((45 * regla.porcentaje) / 100)) : regla.modo === "hora" ? importeSenal({ ...regla, aplicaA: "todas" }, { serviceIds: [], durationMin: 90, priceEur: 45 }) : regla.importeFijoEur,
+                importeEur: regla.modo === "porcentaje" ? Math.max(1, Math.round((45 * regla.porcentaje) / 100)) : regla.modo === "hora" ? importeSenal({ ...regla, aplicaA: "todas" }, { serviceIds: [], durationMin: duracionSimulada, priceEur: 45 }) : regla.importeFijoEur,
                 deadlineISO: vence.toISOString(),
                 plantilla: plantillaSenalEfectiva(f.depositTemplate),
               })}
