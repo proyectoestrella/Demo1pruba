@@ -243,7 +243,7 @@ function Clients() {
     } else if (c.tag === "nuevo") {
       chipFila = <TagPill tag={c.tag} />;
     }
-    return chipFila ?? <span className="text-cafe-suave" aria-hidden>·</span>;
+    return chipFila;
   };
 
   return (
@@ -371,26 +371,29 @@ function Clients() {
 
           {/* Móvil: tarjetas */}
           <div className="overflow-hidden rounded-[20px] border border-border bg-card md:hidden">
-            {rows.slice(0, cuantas).map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setSelected(c)}
-                className="flex w-full items-center gap-3 border-t border-border px-4 py-3 text-left first:border-t-0"
-              >
-                <AvatarClienta id={c.id} nombre={c.name} size="md" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <b className="truncate">{c.name}</b>
-                    <span className="shrink-0 font-bold tabular-nums">{eurRedondo(c.totalSpent)}</span>
+            {rows.slice(0, cuantas).map((c) => {
+              const estadoClienta = estado(c);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setSelected(c)}
+                  className="flex w-full items-center gap-3 border-t border-border px-4 py-3 text-left first:border-t-0"
+                >
+                  <AvatarClienta id={c.id} nombre={c.name} size="md" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <b className="truncate">{c.name}</b>
+                      <span className="shrink-0 font-bold tabular-nums">{eurRedondo(c.totalSpent)}</span>
+                    </div>
+                    <p className="truncate text-[12.5px] text-muted-foreground tabular-nums">
+                      {c.pastVisits} {c.pastVisits === 1 ? "visita" : "visitas"} · última {fechaCortaSinAnio(c.lastVisit)} · {frecuencia(c.id)}
+                    </p>
+                    {estadoClienta && <div className="mt-1.5">{estadoClienta}</div>}
                   </div>
-                  <p className="truncate text-[12.5px] text-muted-foreground tabular-nums">
-                    {c.pastVisits} {c.pastVisits === 1 ? "visita" : "visitas"} · última {fechaCortaSinAnio(c.lastVisit)} · {frecuencia(c.id)}
-                  </p>
-                  <div className="mt-1.5">{estado(c)}</div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
           {rows.length > cuantas && (
             <button

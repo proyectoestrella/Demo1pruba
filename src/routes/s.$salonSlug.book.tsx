@@ -668,6 +668,9 @@ function BookingWizard() {
         date: data.date,
         time: data.time,
         name: data.name,
+        // La confirmación debe explicar la misma fianza que se calculó al
+        // reservar: con duración flexible es la que bloqueó el hueco.
+        duration: schedulingDurationMin,
         // Sin esto la confirmación pierde la personalización de esta demo
         // (recargo por retraso, duración flexible, equipo…): el tipo de
         // negocio y el perfil que pinta esa página vuelven a los de

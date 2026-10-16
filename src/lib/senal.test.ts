@@ -36,9 +36,9 @@ describe("una sola regla de señal por salón", () => {
     expect(importeSenal(cara, { serviceIds: ["x"], durationMin: 15, priceEur: 12 })).toBe(12);
   });
 
-  it("por hora redondea al euro, no se topa al precio y funciona con precios ocultos", () => {
+  it("por hora redondea cada medio euro hacia arriba, no se topa al precio y funciona con precios ocultos", () => {
     const r = reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 5 });
-    expect([30, 60, 90, 150, 180].map((durationMin) => importeSenal(r, { serviceIds: ["x"], durationMin, priceEur: 0 }))).toEqual([3, 5, 8, 13, 15]);
+    expect([15, 30, 45, 60, 90, 150, 180].map((durationMin) => importeSenal(r, { serviceIds: ["x"], durationMin, priceEur: 0 }))).toEqual([1, 3, 4, 5, 8, 13, 15]);
     expect(textoSenalPublico(r, { serviceIds: ["x"], durationMin: 90, priceEur: 0 }, "PeluChic", (n) => `${n.toFixed(2).replace(".", ",")} €`)).toContain("8,00 €");
   });
 
@@ -58,6 +58,21 @@ describe("una sola regla de señal por salón", () => {
     expect(importeSenal(cinco, { serviceIds: ["x"], durationMin: 50, priceEur: 100 })).toBe(4);
     expect(reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 0 }).tarifaPorHoraEur).toBe(0);
     expect(importeSenal(reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 0 }), { serviceIds: ["x"], durationMin: 90, priceEur: 100 })).toBe(0);
+  });
+
+  it("la reserva pública cambia la fianza al cambiar servicios o su duración efectiva", () => {
+    const r = reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 5 });
+    const importeVisible = (durationMin: number) => textoSenalPublico(
+      r,
+      { serviceIds: ["servicio"], durationMin, priceEur: 0 },
+      "PeluChic",
+      eur,
+      { ocultarImporte: true },
+    );
+    expect(importeVisible(60)).toContain("5 €");
+    expect(importeVisible(90)).toContain("8 €");
+    // Duración flexible/manual: se muestra lo que se reservó, no el catálogo.
+    expect(importeVisible(150)).toContain("13 €");
   });
 
   it("a partir de X minutos, por lista de servicios y solo a clientas nuevas", () => {

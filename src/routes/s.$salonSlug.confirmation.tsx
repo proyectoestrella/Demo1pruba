@@ -57,13 +57,16 @@ export const Route = createFileRoute("/s/$salonSlug/confirmation")({
     date: String(search.date ?? ""),
     time: String(search.time ?? ""),
     name: String(search.name ?? ""),
+    duration: Number.isFinite(Number(search.duration)) && Number(search.duration) > 0
+      ? Math.round(Number(search.duration))
+      : undefined,
   }),
   component: Confirmation,
 });
 
 function Confirmation() {
   const { salonSlug } = Route.useParams();
-  const { service: sid, employeeId, date, time, name } = Route.useSearch();
+  const { service: sid, employeeId, date, time, name, duration } = Route.useSearch();
   // El tipo se deduce del mismo enlace de demo que ya venía leyendo la
   // cabecera (useDisplayProfile lee el `?d=` de la URL actual si lo hay, y
   // si no, el perfil guardado del navegador) — así el catálogo y el equipo
@@ -86,6 +89,9 @@ function Confirmation() {
     .filter(Boolean);
   const serviceNames = chosen.map((s) => s.name);
   const { durationMin: totalMin, priceEur: total } = sumServices(chosen);
+  // La reserva lleva la duración exacta con la que se bloqueó el hueco. Si se
+  // abre una confirmación antigua sin ese dato, conserva el catálogo.
+  const durationReserva = duration ?? totalMin;
   const employee = employeeMap[employeeId];
   // Solo para ordenar los dos botones de calendario: en iPhone/iPad, Apple
   // primero; en el resto (Android incluido), Google primero. Los dos se ven
@@ -144,7 +150,7 @@ function Confirmation() {
   // El único mensaje sobre la señal (9j): el de la regla del salón, o nada.
   const textoSenal = textoSenalPublico(
     reglaSenal(profile),
-    { durationMin: totalMin, serviceIds: chosen.map((s) => s.id), priceEur: total },
+    { durationMin: durationReserva, serviceIds: chosen.map((s) => s.id), priceEur: total },
     profile.name,
     (n) => eur(n).replace(",00", ""),
   );
@@ -161,7 +167,7 @@ function Confirmation() {
       ? {
           fecha: date,
           hora: time,
-          duracionMin: totalMin,
+          duracionMin: durationReserva,
           servicio: serviceNames.join(" + "),
           salon: profile.name,
           direccion: profile.address,

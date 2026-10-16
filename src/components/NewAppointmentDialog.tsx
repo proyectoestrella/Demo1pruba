@@ -863,11 +863,15 @@ function FormularioNuevaCita({
               </div>
               {/* Móvil: el precio y «Guardar cita» siempre a mano, abajo. */}
               <div className="fixed inset-x-0 bottom-0 z-10 flex items-center gap-3 border-t border-border bg-card px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom,0px))] lg:hidden">
-                <span className="min-w-0 flex-1 leading-tight">
-                  <b className="block text-xl tabular-nums">{eur(total).replace(",00", "")}</b>
-                  <span className="block truncate text-[12.5px] text-muted-foreground tabular-nums">{time} · {duracionLegible(totalMin)}{soloUno ? "" : ` · ${empleado?.name ?? ""}`}</span>
-                </span>
-                <Button type="submit" className="h-12 px-6 text-base">Guardar cita</Button>
+                {hayServicioElegido ? (
+                  <span className="min-w-0 flex-1 leading-tight">
+                    <b className="block text-xl tabular-nums">{eur(total).replace(",00", "")}</b>
+                    <span className="block truncate text-[12.5px] text-muted-foreground tabular-nums">{time} · {duracionLegible(totalMin)}{soloUno ? "" : ` · ${empleado?.name ?? ""}`}</span>
+                  </span>
+                ) : (
+                  <span className="min-w-0 flex-1 text-[12.5px] font-bold text-muted-foreground">Elige un servicio para guardar.</span>
+                )}
+                <Button type="submit" disabled={!hayServicioElegido} className="h-12 px-6 text-base">Guardar cita</Button>
               </div>
             </form>
           </DialogPrimitive.Content>
