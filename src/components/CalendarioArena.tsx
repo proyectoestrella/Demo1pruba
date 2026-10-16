@@ -253,7 +253,7 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
                 >
                   {d.getDate()}
                 </span>
-                {cerrado ? <span className="mt-1 max-w-full truncate text-[11px] font-semibold">Cerrado</span> : especial && <span className="mt-1 max-w-full truncate text-[11px] font-semibold text-hoja-tinta">Especial</span>}
+                {cerrado ? <span className="mt-1 text-[11px] font-semibold" role="img" aria-label="Cerrado">—</span> : especial && <span className="mt-1 max-w-full truncate text-[11px] font-semibold text-hoja-tinta">Especial</span>}
               </span>
             ),
           };

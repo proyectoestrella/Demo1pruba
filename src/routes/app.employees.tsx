@@ -137,6 +137,7 @@ function Team() {
         {employees.map((e, i) => {
           const configurados = profile.serviciosPorProfesional?.[e.id];
           const asignados = configurados?.length ? configurados : serviciosCarta.map((s) => s.id);
+          const tramosResumen = resumenHorario(DAY_LABELS_ES.map((_, d) => profile.teamHours?.[i]?.[d] ?? profile.openingHours[d] ?? "Cerrado")).split(" · ");
           return (
             <section key={e.id} className="flex min-w-0 flex-col overflow-hidden rounded-[20px] border border-border bg-card" style={{ borderLeft: `4px solid ${bordeProfesional(i, e.id)}` }}>
               <div className="flex items-start gap-3 px-5 pt-5 pb-4" style={{ background: tinteProfesional(i, e.id) }}>
@@ -159,14 +160,12 @@ function Team() {
                 <span className="min-w-0 flex-1">
                   <span className={cn(etiqueta, "block")}>Horario</span>
                   <span className="flex flex-wrap text-[14px] font-semibold text-cafe tabular-nums">
-                    {resumenHorario(DAY_LABELS_ES.map((_, d) => profile.teamHours?.[i]?.[d] ?? profile.openingHours[d] ?? "Cerrado"))
-                      .split(" · ")
-                      .map((t, k) => (
+                    {tramosResumen.map((t, k) => (
                         <span key={t} className="whitespace-nowrap">
-                          {k > 0 && <span className="px-1.5 text-taupe">·</span>}
                           {t}
+                          {k < tramosResumen.length - 1 && <span className="px-1.5 text-taupe">·</span>}
                         </span>
-                      ))}
+                    ))}
                   </span>
                 </span>
                 <span className="hidden shrink-0 text-[13px] font-bold text-cafe-medio sm:inline">{horarioAbierto.includes(i) ? "Cerrar" : "Editar"}</span>
