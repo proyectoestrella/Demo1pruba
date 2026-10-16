@@ -13,19 +13,24 @@ export function duracionDeAgenda(catalogMin: number, flexible: boolean): number 
   return Math.max(catalogMin, Math.round((catalogMin * 1.5) / 15) * 15);
 }
 
-/**
- * Lo que la dueña elige en el desplegable «Duración» del diálogo de nueva
- * cita, o `null` si no ha elegido nada válido.
- *
- * Hace falta porque el desplegable (Radix Select) avisa con una cadena vacía
- * cuando su valor deja de corresponder a una opción: al desmarcar el único
- * servicio la duración de catálogo pasa a 0, no hay opción «0» y llega un
- * `onValueChange("")`. Antes eso se convertía en `Number("") === 0` y la
- * cita se creaba con 0 minutos, es decir, sin ocupar hueco en la agenda.
- * Reproducido el 26/09/2026 en la demo PeluChic (también en la rama
- * congelada): desmarcar «Corte y peinado» y volver a marcarlo.
- */
-export function duracionElegida(valor: string | null | undefined): number | null {
+/** Convierte una duración elegida en minutos utilizables o devuelve `null`. */
+export function duracionElegida(valor: string | number | null | undefined): number | null {
   const n = Number(valor);
-  return valor !== "" && valor != null && Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+  const minutos = Math.round(n);
+  return valor !== "" && valor != null && Number.isFinite(n) && minutos > 0 ? minutos : null;
+}
+
+/**
+ * Ejecuta un cambio de duración únicamente si el valor elegido es utilizable.
+ * Devuelve si se llegó a aplicar, para que esta guardia se pueda probar sin
+ * montar el selector de la cita.
+ */
+export function cambiarDuracionElegida(
+  valor: string | number | null | undefined,
+  actualizar: (minutos: number) => void,
+): boolean {
+  const minutos = duracionElegida(valor);
+  if (minutos === null) return false;
+  actualizar(minutos);
+  return true;
 }

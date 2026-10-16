@@ -1,6 +1,7 @@
 import { VentanaCobrar } from "@/components/VentanaCobrar";
 import { importeACobrar } from "@/lib/cobro-panel";
 import { avisar, marcarAvisoDeCita } from "@/lib/deshacer-maqueta";
+import { cambiarDuracionElegida } from "@/lib/duracion-flexible";
 import { useEffect, useState } from "react";
 import { SenalCita } from "@/components/SenalCita";
 import { VentanaConfirmar } from "@/components/VentanaConfirmar";
@@ -187,9 +188,9 @@ export function AppointmentDetailSheet({
       ? [...DURATION_OPTIONS_MIN, appointment.duration].sort((a, b) => a - b)
       : DURATION_OPTIONS_MIN;
 
-  function handleDurationChange(minutes: number) {
+  function handleDurationChange(valor: string) {
     if (!appointment) return;
-    updateAppointment(appointment.id, { duration: minutes });
+    cambiarDuracionElegida(valor, (duration) => updateAppointment(appointment.id, { duration }));
   }
 
   function handleTimeChange(time: string) {
@@ -407,7 +408,7 @@ export function AppointmentDetailSheet({
                     className="bg-card"
                   />
                   <div className="grid grid-cols-2 gap-2">
-                    <Select value={String(appointment.duration)} onValueChange={(v) => handleDurationChange(Number(v))}>
+                    <Select value={String(appointment.duration)} onValueChange={handleDurationChange}>
                       <SelectTrigger aria-label="Duración de la cita" className="bg-card">
                         <SelectValue />
                       </SelectTrigger>

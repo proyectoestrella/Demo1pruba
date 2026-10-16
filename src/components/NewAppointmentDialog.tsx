@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { idServicioLibre, serviceLabelOf, sumServices } from "@/lib/appointment-services";
 import { eur, hora } from "@/lib/copy";
 import { duracionRecordada } from "@/lib/derive";
+import { duracionElegida } from "@/lib/duracion-flexible";
 import { fichaDeClienta } from "@/lib/ficha-clienta";
 import { buscarClientas } from "@/lib/buscar-clientas";
 import { indiceColorServicio } from "@/lib/hoy-arena";
@@ -232,6 +233,7 @@ function FormularioNuevaCita({
     catalogoMin,
   );
   const totalMin = duracionManual ?? recordada?.minutos ?? catalogoMin;
+  const hayServicioElegido = !!otro || chosen.length > 0;
   // Duraciones a elegir: las de siempre más la del catálogo y la recordada.
   const opcionesDuracion = [
     ...new Set([30, 40, 45, 60, 90, 120, catalogoMin, totalMin].filter((n) => n > 0)),
@@ -341,6 +343,10 @@ function FormularioNuevaCita({
       }
     } else if (!chosen.length) {
       toast.error("Elige al menos un servicio");
+      return false;
+    }
+    if (duracionElegida(totalMin) === null) {
+      toast.error("Elige una duración válida para la cita");
       return false;
     }
     if (!date || !time) {
@@ -815,8 +821,9 @@ function FormularioNuevaCita({
                       ["Servicio", otro ? otro.nombre.trim() || "Otro, sin nombre" : chosen.length ? serviceLabelOf({ serviceIds }, serviceMap) : "Sin elegir"],
                       ...(soloUno ? [] : [["Con", empleado?.name ?? "—"]]),
                       ["Día", fechaLarga],
-                      ["Hora", `${time}–${horaDeMinutos(minutoElegido + totalMin)}`],
-                      ["Duración", duracionLegible(totalMin)],
+                      ...(hayServicioElegido
+                        ? [["Hora", `${time}–${horaDeMinutos(minutoElegido + totalMin)}`], ["Duración", duracionLegible(totalMin)]]
+                        : []),
                     ].map(([k, v]) => (
                       <div key={k} className="flex justify-between gap-3 border-b border-border py-2.5">
                         <dt className="text-muted-foreground">{k}</dt>
@@ -824,21 +831,27 @@ function FormularioNuevaCita({
                       </div>
                     ))}
                   </dl>
-                  <div className="mt-4 flex items-baseline justify-between">
-                    <span className="text-muted-foreground">Precio</span>
-                    <span className="text-[28px] font-extrabold tabular-nums">{eur(total).replace(",00", "")}</span>
-                  </div>
+                  {hayServicioElegido ? (
+                    <div className="mt-4 flex items-baseline justify-between">
+                      <span className="text-muted-foreground">Precio</span>
+                      <span className="text-[28px] font-extrabold tabular-nums">{eur(total).replace(",00", "")}</span>
+                    </div>
+                  ) : (
+                    <p className="mt-4 rounded-2xl bg-nata px-3.5 py-3 text-[12.5px] font-bold text-cafe-medio">
+                      Elige un servicio para ver la duración y el precio.
+                    </p>
+                  )}
                   <p className="mt-3 flex gap-2 rounded-2xl bg-salvia-clara px-3.5 py-3 text-[12.5px] text-hoja-tinta">
                     <MessageCircle className="mt-px size-[15px] shrink-0" strokeWidth={1.6} />
                     Queda confirmada en tu agenda al guardar. Si quieres avisarla, hazlo por WhatsApp desde su ficha.
                   </p>
                   <div className="mt-auto flex flex-col gap-2 pt-5">
-                    <Button type="submit" className="h-[54px] w-full text-base">
+                    <Button type="submit" disabled={!hayServicioElegido} className="h-[54px] w-full text-base">
                       <Check className="size-5" strokeWidth={1.8} />
                       Guardar cita
                     </Button>
                     {allowChaining && (
-                      <Button type="button" variant="outline" className="h-[42px] w-full" onClick={() => handleSubmit(true)}>
+                      <Button type="button" variant="outline" disabled={!hayServicioElegido} className="h-[42px] w-full" onClick={() => handleSubmit(true)}>
                         Guardar y crear otra
                       </Button>
                     )}
