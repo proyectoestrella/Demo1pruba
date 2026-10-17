@@ -15,7 +15,7 @@ import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { deudaDe } from "@/lib/deuda";
 import { recargoActivo } from "@/lib/recargo-activo";
-import { eur } from "@/lib/copy";
+import { eur, fechaHoraCitaMovil } from "@/lib/copy";
 import { Badge } from "@/components/ui/badge";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import type { Appointment, AppointmentStatus, Client } from "@/lib/mock/types";
@@ -359,12 +359,9 @@ function Appointments() {
                   onClick={() => setSelected(a)}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="leading-none font-extrabold tabular-nums">
-                        {new Date(a.start).toLocaleTimeString("es", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                    <div className="min-w-0 flex-1">
+                      <p className="whitespace-nowrap leading-none font-extrabold tabular-nums">
+                        {fechaHoraCitaMovil(a.start)}
                       </p>
                       <p className="mt-1 truncate font-bold"><EnlaceClienta clientId={a.clientId}>{a.clientName}</EnlaceClienta></p>
                       {conRecargo && <DeudaBadge clientId={a.clientId} clients={clients} className="mt-1" />}

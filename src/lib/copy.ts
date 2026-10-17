@@ -34,6 +34,8 @@ export const pct = (n: number) => `${Math.round(n)} %`;
 const FMT_HORA = new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit", hour12: false });
 const FMT_CORTA = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" });
 const FMT_LARGA = new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long" });
+const FMT_CITA_MOVIL = new Intl.DateTimeFormat("es-ES", { weekday: "short", day: "numeric", month: "short" });
+const FMT_CITA_MOVIL_CON_ANIO = new Intl.DateTimeFormat("es-ES", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 const formatear = (f: Intl.DateTimeFormat, iso: string | number | Date) => {
   const d = new Date(iso);
   return Number.isFinite(d.getTime()) ? f.format(d) : "—";
@@ -47,6 +49,17 @@ export const fechaCorta = (iso: string | number | Date) => formatear(FMT_CORTA, 
 
 /** Fecha larga sin año: "domingo, 20 de septiembre". */
 export const fechaLarga = (iso: string | number | Date) => formatear(FMT_LARGA, iso);
+
+/** Fecha y hora compactas para una cita en una lista: "sáb 17 oct · 12:30". */
+export const fechaHoraCitaMovil = (iso: string | number | Date, ahora = new Date()) => {
+  const fecha = new Date(iso);
+  if (!Number.isFinite(fecha.getTime())) return "—";
+  const incluyeAnio = fecha.getFullYear() !== ahora.getFullYear();
+  // es-ES separa el día abreviado con una coma; en una tarjeta compacta el punto medio
+  // entre fecha y hora ya hace de separador y evita una puntuación innecesaria.
+  const dia = (incluyeAnio ? FMT_CITA_MOVIL_CON_ANIO : FMT_CITA_MOVIL).format(fecha).replace(",", "");
+  return `${dia} · ${FMT_HORA.format(fecha)}`;
+};
 
 /**
  * Primera letra en mayúscula y el resto tal cual. En español solo va en
