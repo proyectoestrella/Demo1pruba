@@ -83,7 +83,7 @@ export function DemoLoadingScreen({
       <div className="flex max-w-[min(100%,22rem)] flex-col items-center text-center">
         {logoUrl ? (
           <span className="grid size-28 place-items-center overflow-hidden rounded-[28px] border border-lino bg-white p-2 shadow-[0_12px_32px_rgba(59,47,42,0.12)] sm:size-30">
-            <img src={logoUrl} alt="" className="h-full w-full object-contain" />
+            <img src={logoUrl} alt="" width={120} height={120} className="h-full w-full object-contain" />
           </span>
         ) : (
           <span className="grid size-28 place-items-center rounded-full bg-primary font-display text-4xl font-semibold text-primary-foreground shadow-[0_12px_32px_rgba(59,47,42,0.16)] sm:size-30">

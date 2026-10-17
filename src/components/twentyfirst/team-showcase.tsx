@@ -110,6 +110,8 @@ function PhotoCard({
         src={member.image}
         alt={`${member.name}, ${member.role}`}
         loading="lazy"
+        width={172}
+        height={182}
         className="h-full w-full object-cover transition-[filter] duration-500 motion-reduce:transition-none"
         style={{
           // Los avatares de relleno (iniciales en pastel) no se apagan: en gris

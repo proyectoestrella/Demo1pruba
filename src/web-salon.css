@@ -160,6 +160,20 @@ body:has(.web-salon) {
   color: var(--ws-salvia);
 }
 
+/* Un logotipo propio no garantiza medidas conocidas. La relación de aspecto
+ * de PeluChic reserva la caja mientras llega la imagen y `auto` adopta la del
+ * fichero real al cargarlo. En el pie es un bloque de alto fijo: si cambia su
+ * ancho no refluye ninguna de las filas de las demás columnas. */
+.web-salon .ws-logotipo {
+  aspect-ratio: auto 1455 / 432;
+  object-fit: contain;
+}
+.web-salon .ws-logotipo-pie {
+  display: block;
+  height: 3rem;
+  max-width: 100%;
+}
+
 /* ---- Tipografía de la marca (18.2b) ---------------------------------------
  * Los títulos de su web van en Playfair Display: aquí también, para los
  * títulos de sección (`.ws-titulo`) y lo que ya era serif (`.font-display`:

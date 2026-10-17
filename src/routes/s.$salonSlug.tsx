@@ -283,7 +283,7 @@ function SalonLayout() {
               className="flex min-h-11 min-w-0 items-center gap-2.5"
             >
               {logotipoBarra ? (
-                <img src={logotipoBarra} alt={profile.name} width={1455} height={432} className="h-9 w-auto shrink-0 sm:h-10" />
+                <img src={logotipoBarra} alt={profile.name} width={1455} height={432} className="ws-logotipo h-9 w-auto shrink-0 sm:h-10" />
               ) : logoSalon ? (
                 <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
                   <img src={logoSalon} alt={`Logo de ${profile.name}`} width={36} height={36} className="h-full w-full object-contain p-0.5" />
@@ -455,7 +455,15 @@ function SalonLayout() {
           <div>
             <div className="flex items-center gap-2">
               {logotipoPie ? (
-                <img src={logotipoPie} alt={profile.name} width={1455} height={432} loading="lazy" decoding="async" className="h-12 w-auto" />
+                <img
+                  src={logotipoPie}
+                  alt={profile.name}
+                  width={1455}
+                  height={432}
+                  loading="lazy"
+                  decoding="async"
+                  className="ws-logotipo ws-logotipo-pie h-12 w-auto"
+                />
               ) : (
                 <>
                   {logoSalon ? (

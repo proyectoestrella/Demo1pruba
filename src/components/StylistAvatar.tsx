@@ -11,6 +11,13 @@ const AVATAR_SIZE_CLASSES: Record<StylistAvatarSize, string> = {
   xl: "size-32 text-2xl",
 };
 
+const AVATAR_SIZE_PIXELS: Record<StylistAvatarSize, number> = {
+  sm: 32,
+  md: 44,
+  lg: 56,
+  xl: 128,
+};
+
 /** Fallback color token used when neither `colorVar` nor a resolvable `employeeId` is given. */
 const FALLBACK_COLOR_VAR = "--stylist-ruben";
 
@@ -72,6 +79,7 @@ export function StylistAvatar({
   className,
 }: StylistAvatarProps) {
   const cssVar = resolveColorVar(colorVar, employeeId);
+  const pixels = AVATAR_SIZE_PIXELS[size];
 
   if (photo) {
     return (
@@ -84,7 +92,7 @@ export function StylistAvatar({
         style={{ borderColor: `var(${cssVar})` }}
         title={name}
       >
-        <img src={photo} alt={name} className="h-full w-full object-cover" />
+        <img src={photo} alt={name} width={pixels} height={pixels} className="h-full w-full object-cover" />
       </div>
     );
   }

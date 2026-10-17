@@ -493,7 +493,7 @@ function SalonHome() {
             {logotipoPortada ? (
               // El logotipo real, en blanco sobre la foto: es el título de la página.
               <h1 className="mt-6">
-                <img src={logotipoPortada} alt={profile.name} width={1455} height={432} className="h-auto w-[min(88vw,420px)] drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)] md:w-[480px]" />
+                <img src={logotipoPortada} alt={profile.name} width={1455} height={432} className="ws-logotipo h-auto w-[min(88vw,420px)] drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)] md:w-[480px]" />
               </h1>
             ) : (
             <div className="mt-6 flex items-center gap-4">

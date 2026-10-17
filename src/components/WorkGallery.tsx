@@ -297,6 +297,8 @@ function FotoAmpliada({
         srcSet={foto.srcSet}
         sizes="(min-width: 1024px) 1024px, 100vw"
         alt={foto.alt}
+        width={1200}
+        height={900}
         className="max-h-[calc(100dvh-10rem)] w-auto max-w-full rounded-[16px] object-contain"
         draggable={false}
       />
