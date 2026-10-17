@@ -4,7 +4,7 @@ import { restaurarVersionReal, type VersionPanel } from "@/lib/versiones-panel";
 import { conCambio, guardarPerfil } from "@/lib/deshacer-maqueta";
 import { miembroAhora, usePermisos } from "@/lib/accesos-panel";
 import { puede } from "@/lib/permisos";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { usePlegado } from "@/lib/use-plegado";
 import { AvatarSalon } from "@/components/AvatarSalon";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -938,10 +938,12 @@ function Campo({
   tipo?: string;
   maxLength?: number;
 }) {
+  const id = useId();
   return (
     <div className="space-y-1.5">
-      <Label className="text-[12.5px] font-bold text-cafe-medio">{etiqueta}</Label>
+      <Label htmlFor={id} className="text-[12.5px] font-bold text-cafe-medio">{etiqueta}</Label>
       <Input
+        id={id}
         type={tipo}
         value={valor}
         maxLength={maxLength}
@@ -972,10 +974,12 @@ function CampoLargo({
   filas?: number;
   mono?: boolean;
 }) {
+  const id = useId();
   return (
     <div className="space-y-1.5">
-      <Label className="text-[12.5px] font-bold text-cafe-medio">{etiqueta}</Label>
+      <Label htmlFor={id} className="text-[12.5px] font-bold text-cafe-medio">{etiqueta}</Label>
       <Textarea
+        id={id}
         value={valor}
         onChange={(e) => onChange(e.target.value)}
         rows={filas}

@@ -93,4 +93,35 @@ describe("regresión de nombres accesibles", () => {
     const buscador = fuentes.find(({ ruta }) => ruta.endsWith("BuscadorGlobal.tsx"))?.codigo;
     expect(buscador).toContain('aria-label="Buscar clienta por nombre o teléfono"');
   });
+
+  test("los campos reutilizables del panel conectan cada Label visible con su control", () => {
+    const miPagina = fuentes.find(({ ruta }) => ruta.endsWith("app.web.tsx"))?.codigo ?? "";
+    const ajustes = fuentes.find(({ ruta }) => ruta.endsWith("app.settings.tsx"))?.codigo ?? "";
+
+    for (const [codigo, componente] of [[miPagina, "Campo"], [miPagina, "CampoLargo"], [ajustes, "Field"]] as const) {
+      const inicio = codigo.indexOf(`function ${componente}(`);
+      expect(inicio, `${componente} debe seguir siendo un campo reutilizable`).toBeGreaterThanOrEqual(0);
+      const cuerpo = codigo.slice(inicio, codigo.indexOf("\nfunction ", inicio + 1) || undefined);
+      expect(cuerpo).toContain("useId()");
+      expect(cuerpo).toContain("htmlFor={id}");
+      expect(cuerpo).toMatch(/<(?:Input|Textarea)\s+id=\{id\}/);
+    }
+  });
+
+  test("los filtros de clientas no declaran pestañas sin panel asociado", () => {
+    const clientas = fuentes.find(({ ruta }) => ruta.endsWith("app.clients.tsx"))?.codigo ?? "";
+    expect(clientas).not.toContain("TabsTrigger");
+    expect(clientas).toContain('role="group" aria-label="Filtrar clientas"');
+    expect(clientas).toContain("aria-pressed={filtroEfectivo === id}");
+  });
+
+  test("las zonas táctiles pequeñas conservan un mínimo sin solaparse", () => {
+    const hoy = fuentes.find(({ ruta }) => ruta.endsWith("HoyArena.tsx"))?.codigo ?? "";
+    const calendario = fuentes.find(({ ruta }) => ruta.endsWith("CalendarioArena.tsx"))?.codigo ?? "";
+    expect(hoy).toContain("min-w-[600px]");
+    expect(hoy).toContain("min-w-6");
+    expect(calendario).toContain('aria-label="Colores del calendario"');
+    expect(calendario).toContain("anchoMinimoMovil={anchoMinimoSemanaMovil}");
+    expect(calendario).toContain("return Math.max(44, maxCarriles * 28)");
+  });
 });

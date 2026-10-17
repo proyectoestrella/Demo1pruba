@@ -386,7 +386,9 @@ function BloqueAhora({
           </div>
           {/* Agenda del día en una línea de tiempo: una fila por profesional. */}
           <div className="mt-5 overflow-x-auto">
-            <div className="min-w-[520px] pr-3">
+            {/* 600 px deja al tramo mínimo de 5 % al menos 24 px: los botones
+                consecutivos conservan su propio hueco táctil al desplazarse. */}
+            <div className="min-w-[600px] pr-3">
               <div className="relative ml-16 h-4 text-[11px] text-muted-foreground tabular-nums">
                 {horas.map((h) => (
                   <span key={h} className="absolute -translate-x-1/2" style={{ left: pct(h) }}>{h / 60}</span>
@@ -405,7 +407,7 @@ function BloqueAhora({
                           title={`${hora(t.cita.start)} · ${t.cita.clientName} · ${serviceLabelOf(t.cita, carta)}`}
                           aria-label={`${hora(t.cita.start)}, ${t.cita.clientName}`}
                           className={cn(
-                            "barra-rellena absolute top-0.5 bottom-0.5 overflow-hidden rounded-md border border-[rgba(59,47,42,0.25)] px-1 text-left text-[10.5px] leading-6 font-bold whitespace-nowrap text-[#1F2633] hover:brightness-95",
+                            "barra-rellena absolute top-0.5 bottom-0.5 min-w-6 overflow-hidden rounded-md border border-[rgba(59,47,42,0.25)] px-1 text-left text-[10.5px] leading-6 font-bold whitespace-nowrap text-[#1F2633] hover:brightness-95",
                             t.cita.status === "pending" && "border-dashed bg-card",
                           )}
                           style={{ left: pct(t.ini), width: `calc(${((t.fin - t.ini) / total) * 100}% - 2px)`, background: t.cita.status === "pending" ? undefined : colorServicio(t.cita.serviceIds[0], services).replace("-borde)", ")"), borderLeft: `3px solid ${colorServicio(t.cita.serviceIds[0], services)}`, animationDelay: `${i * 25}ms` }}

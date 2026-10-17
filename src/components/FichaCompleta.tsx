@@ -15,8 +15,8 @@ const fecha = (iso?: string) => iso ? new Date(iso).toLocaleDateString("es-ES", 
 const fechaCorta = (iso?: string) => iso ? new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "") : "—";
 
 /** Etiqueta de sección de la ficha: 11 px, mayúsculas, la única permitida. */
-export function EtiquetaFicha({ children }: { children: ReactNode }) {
-  return <p className="mt-5 mb-2 text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase">{children}</p>;
+export function EtiquetaFicha({ children, id }: { children: ReactNode; id?: string }) {
+  return <p id={id} className="mt-5 mb-2 text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase">{children}</p>;
 }
 
 /** Cuaderno técnico de la clienta, con la fórmula a la vista en cada visita. */

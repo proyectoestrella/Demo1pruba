@@ -114,6 +114,7 @@ export function RejillaCalendario({
   services,
   colorPor,
   anchoMinimo,
+  anchoMinimoMovil = anchoMinimo,
   seleccionadaId,
   onCita,
   onHueco,
@@ -133,6 +134,8 @@ export function RejillaCalendario({
   services: Service[];
   colorPor: "servicio" | "profesional";
   anchoMinimo: number;
+  /** En móvil puede crecer para preservar áreas táctiles en carriles solapados. */
+  anchoMinimoMovil?: number;
   /** La cita abierta en el detalle: lleva anillo. */
   seleccionadaId?: string;
   onCita: (a: Appointment) => void;
@@ -248,7 +251,15 @@ export function RejillaCalendario({
 
   return (
     <div ref={ref} className="relative min-h-0 flex-1 overflow-auto overscroll-contain [scrollbar-gutter:stable]">
-      <div ref={lienzo} className="grid" style={{ gridTemplateColumns: `52px repeat(${columnas.length}, minmax(${anchoMinimo}px, 1fr))` }}>
+      <div
+        ref={lienzo}
+        className="grid [--ancho-columna:var(--ancho-escritorio)] max-sm:[--ancho-columna:var(--ancho-movil)]"
+        style={{
+          "--ancho-escritorio": `${anchoMinimo}px`,
+          "--ancho-movil": `${anchoMinimoMovil}px`,
+          gridTemplateColumns: `52px repeat(${columnas.length}, minmax(var(--ancho-columna), 1fr))`,
+        } as CSSProperties}
+      >
         {/* Cabecera fija: esquina vacía y un encabezado por columna. */}
         <div ref={cabecera} className="sticky top-0 left-0 z-[12] border-r border-b border-k-linea-f bg-k-cab" />
         {columnas.map((c) => {

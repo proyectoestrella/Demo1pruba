@@ -267,8 +267,9 @@ export function ClientHistorySheet({
 
       {/* Observaciones */}
       <div>
-        <EtiquetaFicha>Notas y preferencias</EtiquetaFicha>
+        <EtiquetaFicha id="notas-clienta">Notas y preferencias</EtiquetaFicha>
         <Textarea
+          aria-labelledby="notas-clienta"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           onBlur={saveNotes}

@@ -212,6 +212,23 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
   // Columnas de la rejilla: en Día, una por profesional; en 3 días y Semana,
   // una por día con todo el equipo o con la profesional elegida.
   const equipoFiltrado = filtroPro === "todas" ? equipo : equipo.filter((e) => e.id === filtroPro);
+  // En móvil Semana es un resumen que ya se desplaza horizontalmente. Cada
+  // carril de citas conserva 24 px de área táctil, aun cuando haya solapes.
+  const anchoMinimoSemanaMovil = useMemo(() => {
+    if (vista !== "semana") return 44;
+    const ids = new Set(equipoFiltrado.map((e) => e.id));
+    const maxCarriles = Math.max(
+      1,
+      ...diasRejilla.map((dia) =>
+        Math.max(
+          1,
+          ...[...carrilesSolapados(citasDeCalendario(appointments, dia).filter((cita) => ids.has(cita.employeeId))).values()].map(({ total }) => total),
+        ),
+      ),
+    );
+    // Los 4 px que separan los carriles se suman a sus 24 px tocables.
+    return Math.max(44, maxCarriles * 28);
+  }, [appointments, diasRejilla, equipoFiltrado, vista]);
   const columnas: ColumnaRejilla[] =
     vista === "dia"
       ? equipo.map((e, i) => {
@@ -320,7 +337,7 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
         <div className="ml-auto flex shrink-0 items-center gap-1 lg:order-3">
           <Popover>
             <PopoverTrigger asChild>
-              <button type="button" className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-bold text-cafe-medio hover:bg-beige">
+              <button type="button" aria-label="Colores del calendario" className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-bold text-cafe-medio hover:bg-beige">
                 <Palette className="size-[18px]" strokeWidth={1.6} />
                 <span className="hidden sm:inline">Colores</span>
               </button>
@@ -436,6 +453,7 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
             colorPor={vista !== "dia" && filtroPro === "todas" && !soloUno ? "profesional" : "servicio"}
             seleccionadaId={resaltadaId}
             anchoMinimo={vista === "dia" ? 150 : diasRejilla.length <= 3 ? 96 : diasRejilla.length > 7 ? 60 : 44}
+            anchoMinimoMovil={anchoMinimoSemanaMovil}
             onCita={elegirCita}
             onHueco={abrirHueco}
             diasEspeciales={profile.diasEspeciales}

@@ -25,7 +25,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { eur, eurRedondo, hora } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 import { Users, Search, Download } from "lucide-react";
@@ -280,17 +279,30 @@ function Clients() {
       {conRecargo && <RecargosPendientes title="Recargos pendientes" />}
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <Tabs value={filtroEfectivo} onValueChange={(v) => setFiltro(v as Filtro)} className="sin-scrollbar min-w-0 max-w-full overflow-x-auto [mask-image:linear-gradient(to_right,black_88%,transparent)] lg:[mask-image:none]">
-          <TabsList>
-            <TabsTrigger value="todos">Todas</TabsTrigger>
-            <TabsTrigger value="hoy">Vienen hoy <span className="ml-1 tabular-nums text-muted-foreground">{citaDeHoy.size}</span></TabsTrigger>
-            <TabsTrigger value="nuevo">Nuevas</TabsTrigger>
-            <TabsTrigger value="habitual">Habituales</TabsTrigger>
-            <TabsTrigger value="inactivo">Inactivas</TabsTrigger>
-            <TabsTrigger value="color">Color pendiente <span className="ml-1 tabular-nums text-muted-foreground">{proximasSinColor.length}</span></TabsTrigger>
-            {hayPenalizados && <TabsTrigger value="penalizado">Me deben</TabsTrigger>}
-          </TabsList>
-        </Tabs>
+        <div className="sin-scrollbar flex min-w-0 max-w-full gap-1 overflow-x-auto [mask-image:linear-gradient(to_right,black_88%,transparent)] lg:[mask-image:none]" role="group" aria-label="Filtrar clientas">
+          {[
+            { id: "todos", etiqueta: "Todas" },
+            { id: "hoy", etiqueta: <>Vienen hoy <span className="ml-1 tabular-nums text-muted-foreground">{citaDeHoy.size}</span></> },
+            { id: "nuevo", etiqueta: "Nuevas" },
+            { id: "habitual", etiqueta: "Habituales" },
+            { id: "inactivo", etiqueta: "Inactivas" },
+            { id: "color", etiqueta: <>Color pendiente <span className="ml-1 tabular-nums text-muted-foreground">{proximasSinColor.length}</span></> },
+            ...(hayPenalizados ? [{ id: "penalizado", etiqueta: "Me deben" }] : []),
+          ].map(({ id, etiqueta }) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={filtroEfectivo === id}
+              onClick={() => setFiltro(id as Filtro)}
+              className={cn(
+                "h-9 shrink-0 rounded-full px-3 text-[13px] font-bold whitespace-nowrap",
+                filtroEfectivo === id ? "bg-cafe text-white shadow-sm" : "bg-beige text-cafe-medio hover:bg-nata",
+              )}
+            >
+              {etiqueta}
+            </button>
+          ))}
+        </div>
         <label className="flex h-[42px] items-center gap-2 rounded-full border border-input bg-card px-3.5 text-muted-foreground lg:ml-auto lg:w-[340px]">
           <Search className="size-[18px] shrink-0" strokeWidth={1.6} />
           <input

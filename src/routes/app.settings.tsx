@@ -1,7 +1,7 @@
 import { guardarPerfil } from "@/lib/deshacer-maqueta";
 import { CamposPreferenciasCalendario } from "@/components/CamposPreferenciasCalendario";
 import { AjustesFichas } from "@/components/AjustesFichas";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ArrowUpRight, ChevronDown, Search } from "lucide-react";
@@ -478,10 +478,11 @@ function Field({
   onChange: (v: string) => void;
   hint?: string;
 }) {
+  const id = useId();
   return (
     <div className="space-y-1.5">
-      <Label className="text-[12.5px] font-bold text-cafe-medio">{label}</Label>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} />
+      <Label htmlFor={id} className="text-[12.5px] font-bold text-cafe-medio">{label}</Label>
+      <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} />
       {hint ? <p className="text-[12.5px] text-muted-foreground">{hint}</p> : null}
     </div>
   );
