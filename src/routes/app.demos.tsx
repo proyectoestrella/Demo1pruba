@@ -600,6 +600,7 @@ function Demos() {
                 Penalización por plantón
               </Label>
               <Switch
+                aria-label="Activar penalización por plantón"
                 checked={draft.noShowEnabled}
                 onCheckedChange={(v) => field("noShowEnabled", v)}
               />
@@ -625,7 +626,7 @@ function Demos() {
               <Label className="text-xs uppercase tracking-widest text-muted-foreground">
                 Hora sugerida (reparto de agenda)
               </Label>
-              <Switch checked={draft.smartSpread} onCheckedChange={(v) => field("smartSpread", v)} />
+              <Switch aria-label="Activar reparto de agenda" checked={draft.smartSpread} onCheckedChange={(v) => field("smartSpread", v)} />
             </div>
             {draft.smartSpread && (
               <DraftField
@@ -678,6 +679,7 @@ function Demos() {
                 Mostrar solicitudes pendientes de confirmar
               </Label>
               <Switch
+                aria-label="Mostrar solicitudes pendientes de confirmar"
                 checked={draft.mostrarSolicitudes}
                 onCheckedChange={(v) => field("mostrarSolicitudes", v)}
               />
@@ -688,6 +690,7 @@ function Demos() {
                 La duración final la decide el salón
               </Label>
               <Switch
+                aria-label="La duración final la decide el salón"
                 checked={draft.duracionFlexible}
                 onCheckedChange={(v) => field("duracionFlexible", v)}
               />
@@ -698,6 +701,7 @@ function Demos() {
                 Aviso de recargo por retraso
               </Label>
               <Switch
+                aria-label="Activar aviso de recargo por retraso"
                 checked={draft.recargoRetrasoEnabled}
                 onCheckedChange={(v) => field("recargoRetrasoEnabled", v)}
               />

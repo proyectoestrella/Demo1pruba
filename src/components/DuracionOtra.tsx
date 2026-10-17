@@ -80,6 +80,7 @@ export function DuracionOtra({
       <label className="inline-flex items-center gap-1 text-[13px] text-cafe-medio">
         <span className="sr-only">Horas</span>
         <select
+          aria-label="Horas"
           className={selector}
           value={horas}
           onChange={(e) => {
@@ -96,7 +97,7 @@ export function DuracionOtra({
       </label>
       <label className="inline-flex items-center gap-1 text-[13px] text-cafe-medio">
         <span className="sr-only">Minutos</span>
-        <select className={selector} value={mins} onChange={(e) => elegir(horas * 60 + Number(e.target.value))} disabled={horas === 8}>
+        <select aria-label="Minutos" className={selector} value={mins} onChange={(e) => elegir(horas * 60 + Number(e.target.value))} disabled={horas === 8}>
           {Array.from({ length: 12 }, (_, i) => i * 5)
             .filter((m) => !(horas === 0 && m === 0))
             .map((m) => (

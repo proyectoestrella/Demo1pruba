@@ -212,7 +212,7 @@ function Settings() {
                 <Label htmlFor="duracion-flexible" className="text-[15px] font-extrabold">La duración de cada cita la decido yo al aceptarla</Label>
                 <p className="mt-1 text-sm text-muted-foreground">La web muestra una duración orientativa. Cuando llegue la solicitud, podrás fijar los minutos antes de confirmarla.</p>
               </div>
-              <Switch id="duracion-flexible" checked={duracionFlexible} onCheckedChange={setDuracionFlexible} />
+              <Switch id="duracion-flexible" aria-label="La duración de cada cita la decido yo al aceptarla" checked={duracionFlexible} onCheckedChange={setDuracionFlexible} />
             </div>
             {guardar}
           </div>
@@ -238,7 +238,7 @@ function Settings() {
               {calendarError && <p className="text-sm text-melocoton-tinta">No se pudo cargar el enlace. Comprueba que el calendario esté activado en el servidor y vuelve a abrir Ajustes.</p>}
               {calendarToken && <>
                 <label className="block space-y-1 text-sm"><span>Calendario</span>
-                  <select value={profesional} onChange={(e) => setProfesional(e.target.value)} className="flex h-10 w-full rounded-xl border border-input bg-blanco px-3 text-sm">
+                  <select aria-label="Calendario" value={profesional} onChange={(e) => setProfesional(e.target.value)} className="flex h-10 w-full rounded-xl border border-input bg-blanco px-3 text-sm">
                     <option value="">Todo el salón</option>
                     {equipo.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
@@ -284,7 +284,7 @@ function Settings() {
                 <Label htmlFor="ocultar-precio-reserva" className="text-[15px] font-extrabold">No mostrar precios al reservar</Label>
                 <p className="mt-1 text-sm text-muted-foreground">La clienta verá los servicios y podrá reservar igual; el importe seguirá apareciendo en tu panel.</p>
               </div>
-              <Switch id="ocultar-precio-reserva" checked={ocultarPrecioReserva} onCheckedChange={setOcultarPrecioReserva} />
+              <Switch id="ocultar-precio-reserva" aria-label="No mostrar precios al reservar" checked={ocultarPrecioReserva} onCheckedChange={setOcultarPrecioReserva} />
             </div>
             {guardar}
           </div>
@@ -297,7 +297,7 @@ function Settings() {
                   o las últimas horas del día). Nunca le impide elegir la suya.
                 </p>
               </div>
-              <Switch checked={smartSpreadEnabled} onCheckedChange={setSmartSpreadEnabled} />
+              <Switch aria-label="Activar reparto de agenda" checked={smartSpreadEnabled} onCheckedChange={setSmartSpreadEnabled} />
             </div>
             {smartSpreadEnabled && (
               <Field label="No ofrecer los últimos (min)" value={lastSlotBufferMin} onChange={setLastSlotBufferMin} hint="Minutos antes del cierre que dejan de ofertarse. De 0 a 240." />
@@ -336,7 +336,7 @@ function Settings() {
                   reservar. Tú decides en cada caso si la aplicas o la perdonas.
                 </p>
               </div>
-              <Switch checked={noShowEnabled} onCheckedChange={setNoShowEnabled} />
+              <Switch aria-label="Activar penalización por plantón" checked={noShowEnabled} onCheckedChange={setNoShowEnabled} />
             </div>
             {noShowEnabled && (
               <div className="grid gap-4 sm:grid-cols-2">

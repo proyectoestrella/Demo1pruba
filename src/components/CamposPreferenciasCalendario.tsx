@@ -18,7 +18,7 @@ export function CamposPreferenciasCalendario() {
     <div className="grid gap-4">
       <label>
         <span className={etiqueta}>Vista predeterminada</span>
-        <select className={campo} value={pref.vista} onChange={(e) => guardar({ vista: e.target.value as VistaCalendario })}>
+        <select aria-label="Vista predeterminada" className={campo} value={pref.vista} onChange={(e) => guardar({ vista: e.target.value as VistaCalendario })}>
           {VISTAS_CALENDARIO.map((v) => (
             <option key={v.id} value={v.id}>
               {v.label}
@@ -28,7 +28,7 @@ export function CamposPreferenciasCalendario() {
       </label>
       <label>
         <span className={etiqueta}>Primer día de la semana</span>
-        <select className={campo} value={pref.primerDia} onChange={(e) => guardar({ primerDia: Number(e.target.value) as PrimerDia })}>
+        <select aria-label="Primer día de la semana" className={campo} value={pref.primerDia} onChange={(e) => guardar({ primerDia: Number(e.target.value) as PrimerDia })}>
           {PRIMEROS_DIAS.map((d) => (
             <option key={d.id} value={d.id}>
               {d.label}

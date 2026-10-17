@@ -121,7 +121,7 @@ export function AjustesPreguntas() {
               <div className="ml-7 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px]">
                 <label className="flex items-center gap-2">
                   Tipo
-                  <select className={campo} value={q.tipo} onChange={(e) => cambiar(i, { tipo: e.target.value as TipoPreguntaReserva })}>
+                  <select aria-label={`Tipo de pregunta ${i + 1}`} className={campo} value={q.tipo} onChange={(e) => cambiar(i, { tipo: e.target.value as TipoPreguntaReserva })}>
                     {TIPOS.map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.texto}
@@ -253,7 +253,7 @@ export function AjustesPreguntas() {
                 {q.tipo === "texto" && <input disabled className={cn(campo, "bg-blanco")} placeholder="Su respuesta" />}
                 {q.tipo === "numero" && <input disabled className={cn(campo, "w-28 bg-blanco")} placeholder="0" />}
                 {q.tipo === "opcion" && (
-                  <select disabled className={cn(campo, "bg-blanco")}>
+                  <select aria-label={q.texto || "Pregunta sin texto"} disabled className={cn(campo, "bg-blanco")}>
                     <option>Elige una opción</option>
                     {q.permiteOtro && <option>Otro</option>}
                   </select>

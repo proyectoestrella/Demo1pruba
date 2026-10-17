@@ -116,7 +116,7 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {campos.map((campo) => <label key={campo.key} className="space-y-1 text-xs">
               <span>{campo.label}</span>
-              <select value={mapa[campo.key] ?? ""} onChange={(e) => setMapa((m) => ({ ...m, [campo.key]: e.target.value === "" ? undefined : Number(e.target.value) }))}
+              <select aria-label={campo.label} value={mapa[campo.key] ?? ""} onChange={(e) => setMapa((m) => ({ ...m, [campo.key]: e.target.value === "" ? undefined : Number(e.target.value) }))}
                 className="w-full min-w-0 rounded border border-border bg-background p-2 text-sm">
                 <option value="">Sin columna</option>
                 {tabla.cabeceras.map((h, i) => <option key={i} value={i}>{h || `Columna ${i + 1}`}</option>)}

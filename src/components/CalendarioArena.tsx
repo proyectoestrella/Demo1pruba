@@ -368,6 +368,7 @@ export function CalendarioArena({ inicio }: { inicio?: { dia?: string; cita?: st
             <label className="relative">
               <span className="sr-only">Profesional</span>
               <select
+                aria-label="Filtrar agenda por profesional"
                 value={filtroPro}
                 onChange={(ev) => setFiltroPro(ev.target.value)}
                 className="h-10 appearance-none rounded-full border border-lino bg-card pr-9 pl-4 text-[13px] font-bold text-cafe hover:bg-beige"

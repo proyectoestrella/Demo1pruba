@@ -67,6 +67,26 @@ describe("regresión de nombres accesibles", () => {
     expect(sinEtiqueta).toEqual([]);
   });
 
+  test("cada Switch de la interfaz tiene un nombre accesible explícito", () => {
+    const sinEtiqueta = fuentes.filter(({ ruta }) => !ruta.endsWith("components/ui/switch.tsx")).flatMap(({ ruta, codigo }) =>
+      etiquetasDeApertura(codigo, "Switch")
+        .filter((etiqueta) => !/\baria-label\s*=|\baria-labelledby\s*=/.test(etiqueta))
+        .map(() => ruta),
+    );
+
+    expect(sinEtiqueta).toEqual([]);
+  });
+
+  test("cada select nativo de la interfaz tiene un nombre accesible explícito", () => {
+    const sinEtiqueta = fuentes.flatMap(({ ruta, codigo }) =>
+      etiquetasDeApertura(codigo, "select")
+        .filter((etiqueta) => !/\baria-label\s*=|\baria-labelledby\s*=/.test(etiqueta))
+        .map(() => ruta),
+    );
+
+    expect(sinEtiqueta).toEqual([]);
+  });
+
   test("cada botón de solo icono de la interfaz tiene una etiqueta", () => {
     const sinEtiqueta = fuentes.flatMap(({ ruta, codigo }) =>
       etiquetasDeApertura(codigo, "Button")

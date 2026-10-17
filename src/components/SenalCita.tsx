@@ -156,7 +156,7 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
           </label>
           <label className="grid gap-1 text-[12px] font-bold text-cafe">
             Cómo llegó
-            <select value={metodo} onChange={(e) => setMetodo(e.target.value as MetodoSenal)} className="h-9 rounded-xl border border-input bg-blanco px-2.5 text-[13px]">
+            <select aria-label="Cómo llegó la fianza" value={metodo} onChange={(e) => setMetodo(e.target.value as MetodoSenal)} className="h-9 rounded-xl border border-input bg-blanco px-2.5 text-[13px]">
               {METODOS.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.texto}

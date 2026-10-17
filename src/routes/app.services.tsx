@@ -246,6 +246,7 @@ function ServicesPage() {
                     <label className="flex items-center gap-2 text-[12.5px] font-bold text-cafe-medio">
                       {s.active === false ? "Oculto" : "Se puede reservar"}
                       {edita && <Switch
+                        aria-label={`Permitir reservas para ${s.name}`}
                         checked={s.active !== false}
                         onCheckedChange={(checked) => {
                           updateService(s.id, { active: checked });

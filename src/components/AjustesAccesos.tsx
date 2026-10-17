@@ -432,6 +432,7 @@ function HojaInvitar({
                   ¿Quién es en tu equipo?{rol === "gerente" ? " (si también atiende)" : ""}
                 </span>
                 <select
+                  aria-label="Profesional del equipo"
                   value={employeeId ?? ""}
                   onChange={(e) => setEmployeeId(e.target.value || null)}
                   className="h-10 w-full rounded-xl border border-input bg-blanco px-3 text-[14px]"

@@ -130,7 +130,7 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
                 <p className="text-sm font-medium">Activo</p>
                 <p className="text-xs text-muted-foreground">Visible para reservar en la web pública.</p>
               </div>
-              <Switch checked={active} onCheckedChange={setActive} />
+              <Switch aria-label="Servicio activo" checked={active} onCheckedChange={setActive} />
             </div>
           </div>
 

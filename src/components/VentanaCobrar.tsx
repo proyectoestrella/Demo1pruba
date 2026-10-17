@@ -127,7 +127,7 @@ export function VentanaCobrar({ cita, abierta, onCerrar }: { cita: Appointment; 
             </label>
             <label className="space-y-1 text-[13px] font-bold">
               Cobra
-              <select value={cobradoPor} onChange={(e) => setCobradoPor(e.target.value)} className="h-9 w-full rounded-md border border-input bg-blanco px-2 text-[14px] font-normal">
+              <select aria-label="Quién cobra" value={cobradoPor} onChange={(e) => setCobradoPor(e.target.value)} className="h-9 w-full rounded-md border border-input bg-blanco px-2 text-[14px] font-normal">
                 {equipo.map((e) => (
                   <option key={e.id} value={e.id}>
                     {e.name}

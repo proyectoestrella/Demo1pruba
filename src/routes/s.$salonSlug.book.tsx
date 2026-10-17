@@ -1910,6 +1910,7 @@ function PreguntaDelFormulario({
       {p.tipo === "opcion" || p.tipo === "si_no" ? (
         <select
           id={id}
+          aria-label={etiqueta}
           className={claseSelect}
           value={valor}
           onChange={(e) =>

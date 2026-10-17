@@ -30,7 +30,7 @@ function FilaFicha({ tipo, titulo, ayuda }: (typeof FILAS)[number]) {
         <Label htmlFor={`ficha-centrada-${tipo}`} className="text-[14px] font-bold">{titulo}</Label>
         <p className="mt-0.5 text-[13px] text-muted-foreground">{ayuda}</p>
       </div>
-      <Switch id={`ficha-centrada-${tipo}`} checked={modo === "centrada"} onCheckedChange={(v) => fijarModoFicha(tipo, v ? "centrada" : "lateral")} />
+      <Switch id={`ficha-centrada-${tipo}`} aria-label={titulo} checked={modo === "centrada"} onCheckedChange={(v) => fijarModoFicha(tipo, v ? "centrada" : "lateral")} />
     </div>
   );
 }

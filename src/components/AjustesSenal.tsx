@@ -135,13 +135,13 @@ export function AjustesSenal() {
             </div>
             <label className={etiqueta}>
               Número de Bizum
-              <input className={campo} inputMode="tel" value={f.depositBizumPhone} onChange={(e) => set("depositBizumPhone", e.target.value)} placeholder="600 111 222" />
+              <input aria-label="Número de Bizum" className={campo} inputMode="tel" value={f.depositBizumPhone} onChange={(e) => set("depositBizumPhone", e.target.value)} placeholder="600 111 222" />
             </label>
           </div>
 
           <div className={etiqueta}>
             A quién se la pides
-            <select className={campo} value={f.depositAppliesTo} onChange={(e) => set("depositAppliesTo", e.target.value as typeof f.depositAppliesTo)}>
+            <select aria-label="A quién se pide la fianza" className={campo} value={f.depositAppliesTo} onChange={(e) => set("depositAppliesTo", e.target.value as typeof f.depositAppliesTo)}>
               <option value="todas">A todas las reservas</option>
               <option value="nuevas">Solo a clientas nuevas</option>
               <option value="duracion">A los servicios largos</option>
@@ -176,7 +176,7 @@ export function AjustesSenal() {
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={etiqueta}>
               Plazo para hacer el Bizum
-              <select className={campo} value={f.depositDeadlineHours} onChange={(e) => set("depositDeadlineHours", e.target.value)}>
+              <select aria-label="Plazo para hacer el Bizum" className={campo} value={f.depositDeadlineHours} onChange={(e) => set("depositDeadlineHours", e.target.value)}>
                 {[1, 2, 3, 4].map((h) => (
                   <option key={h} value={h}>
                     {h} {h === 1 ? "hora" : "horas"}
