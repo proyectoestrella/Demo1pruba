@@ -5,7 +5,7 @@ import { EnlaceClienta } from "@/components/EnlaceClienta";
 import { usePermisos } from "@/lib/accesos-panel";
 import { alcance, puede } from "@/lib/permisos";
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
@@ -14,6 +14,7 @@ import { employeeMap } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { deudaDe } from "@/lib/deuda";
+import { esCitaProxima, ordenarCitasProximasPrimero } from "@/lib/orden-citas";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { eur, fechaHoraCitaMovil } from "@/lib/copy";
 import { Badge } from "@/components/ui/badge";
@@ -152,25 +153,22 @@ function Appointments() {
   // El recorte va al final: si se aplicara antes, buscar solo miraría dentro de
   // las 60 citas más recientes.
   const termino = busqueda.trim().toLowerCase();
-  // Lote 16: ordenadas UNA vez por lista de citas (antes, en cada pintado, con
-  // dos `new Date` por comparación sobre ~3.300 citas).
-  const recientesPrimero = useMemo(
-    () =>
-      appointments
-        .map((a) => [+new Date(a.start), a] as const)
-        .sort((x, y) => y[0] - x[0])
-        .map(([, a]) => a),
-    [appointments],
-  );
+  // Próximas primero y, debajo, historial reciente. El recorte posterior no
+  // puede esconder las próximas detrás de un historial largo.
+  const ahora = new Date();
+  const citasOrdenadas = ordenarCitasProximasPrimero(appointments, ahora);
   const filtered = useMemo(
     () =>
-      recientesPrimero
+      citasOrdenadas
         .filter((a) => (status === "all" ? true : a.status === status))
         .filter((a) => (emp === "all" ? true : a.employeeId === emp))
         .filter((a) => (termino === "" ? true : a.clientName.toLowerCase().includes(termino)))
         .slice(0, 60),
-    [recientesPrimero, status, emp, termino],
+    [citasOrdenadas, status, emp, termino],
   );
+  const citasVisibles = filtered.slice(0, cuantas);
+  const indiceAnteriores = citasVisibles.findIndex((a) => !esCitaProxima(a, ahora));
+  const columnasTabla = 5 + (soloUno ? 0 : 1) + (veDinero ? 1 : 0);
 
   function handleStatusChange(a: Appointment, next: AppointmentStatus) {
     // Lote 12: el aviso con «Deshacer» lo pone el registro de cambios.
@@ -270,78 +268,86 @@ function Appointments() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.slice(0, cuantas).map((a) => {
+                {citasVisibles.map((a, indice) => {
                   const e = employeeMap[a.employeeId];
                   return (
-                    <TableRow
-                      key={a.id}
-                      className="cursor-pointer"
-                      onClick={() => setSelected(a)}
-                    >
-                      <TableCell className="whitespace-nowrap tabular-nums @max-[440px]:whitespace-normal">
-                        {new Date(a.start).toLocaleString("es", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </TableCell>
-                      <TableCell className="font-bold">
-                        <span className="inline-flex flex-wrap items-center gap-2">
-                          <EnlaceClienta clientId={a.clientId} className="font-bold">{a.clientName}</EnlaceClienta>
-                          {conRecargo && <DeudaBadge clientId={a.clientId} clients={clients} />}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground @max-[560px]:hidden">{serviceLabelOf(a, carta)}</TableCell>
-                      {!soloUno && (
-                        <TableCell className="@max-[680px]:hidden">
-                          <span className="inline-flex items-center gap-1.5">
-                            <i className="size-2.5 shrink-0 rounded-full" style={{ background: bordeProfesional(Math.max(0, employees.findIndex((x) => x.id === a.employeeId)), a.employeeId) }} aria-hidden="true" />
-                            {e.name}
+                    <Fragment key={a.id}>
+                      {indice === indiceAnteriores && (
+                        <TableRow className="bg-nata hover:bg-nata">
+                          <TableCell colSpan={columnasTabla} className="py-2 text-xs font-extrabold tracking-[0.06em] text-cafe-medio uppercase">
+                            Anteriores
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      <TableRow
+                        className="cursor-pointer"
+                        onClick={() => setSelected(a)}
+                      >
+                        <TableCell className="whitespace-nowrap tabular-nums @max-[440px]:whitespace-normal">
+                          {new Date(a.start).toLocaleString("es", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </TableCell>
+                        <TableCell className="font-bold">
+                          <span className="inline-flex flex-wrap items-center gap-2">
+                            <EnlaceClienta clientId={a.clientId} className="font-bold">{a.clientName}</EnlaceClienta>
+                            {conRecargo && <DeudaBadge clientId={a.clientId} clients={clients} />}
                           </span>
                         </TableCell>
-                      )}
-                      {veDinero && <TableCell className="whitespace-nowrap text-right font-bold tabular-nums @max-[440px]:hidden">{eur(a.priceEur)}</TableCell>}
-                      <TableCell>
-                        <StatusBadge status={a.status} />
-                        {conRecargo && <RecargoChip appointment={a} client={clientById.get(a.clientId)} />}
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="size-8">
-                              <MoreHorizontal className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setSelected(a)}>
-                              Ver detalle
-                            </DropdownMenuItem>
-                            <DropdownMenuSub>
-                              <DropdownMenuSubTrigger>Cambiar estado</DropdownMenuSubTrigger>
-                              <DropdownMenuSubContent>
-                                {STATUS_OPTIONS.map((c) => (
-                                  <DropdownMenuItem
-                                    key={c.value}
-                                    onClick={() => handleStatusChange(a, c.value)}
-                                  >
-                                    {c.label}
-                                  </DropdownMenuItem>
-                                ))}
-                              </DropdownMenuSubContent>
-                            </DropdownMenuSub>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              disabled={a.status === "cancelled"}
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => cancelAppointment(a.id)}
-                            >
-                              Cancelar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
+                        <TableCell className="text-muted-foreground @max-[560px]:hidden">{serviceLabelOf(a, carta)}</TableCell>
+                        {!soloUno && (
+                          <TableCell className="@max-[680px]:hidden">
+                            <span className="inline-flex items-center gap-1.5">
+                              <i className="size-2.5 shrink-0 rounded-full" style={{ background: bordeProfesional(Math.max(0, employees.findIndex((x) => x.id === a.employeeId)), a.employeeId) }} aria-hidden="true" />
+                              {e.name}
+                            </span>
+                          </TableCell>
+                        )}
+                        {veDinero && <TableCell className="whitespace-nowrap text-right font-bold tabular-nums @max-[440px]:hidden">{eur(a.priceEur)}</TableCell>}
+                        <TableCell>
+                          <StatusBadge status={a.status} />
+                          {conRecargo && <RecargoChip appointment={a} client={clientById.get(a.clientId)} />}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="size-8">
+                                <MoreHorizontal className="size-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setSelected(a)}>
+                                Ver detalle
+                              </DropdownMenuItem>
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>Cambiar estado</DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent>
+                                  {STATUS_OPTIONS.map((c) => (
+                                    <DropdownMenuItem
+                                      key={c.value}
+                                      onClick={() => handleStatusChange(a, c.value)}
+                                    >
+                                      {c.label}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                disabled={a.status === "cancelled"}
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => cancelAppointment(a.id)}
+                              >
+                                Cancelar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    </Fragment>
                   );
                 })}
               </TableBody>
@@ -350,14 +356,19 @@ function Appointments() {
 
           {/* Mobile: stacked cards, never a horizontal-scroll table */}
           <div className="overflow-hidden rounded-[20px] border border-border bg-card md:hidden">
-            {filtered.slice(0, cuantas).map((a) => {
+            {citasVisibles.map((a, indice) => {
               const e = employeeMap[a.employeeId];
               return (
-                <div
-                  key={a.id}
-                  className="border-t border-border px-4 py-3 first:border-t-0"
-                  onClick={() => setSelected(a)}
-                >
+                <Fragment key={a.id}>
+                  {indice === indiceAnteriores && (
+                    <p className="border-y border-border bg-nata px-4 py-2 text-xs font-extrabold tracking-[0.06em] text-cafe-medio uppercase">
+                      Anteriores
+                    </p>
+                  )}
+                  <div
+                    className="border-t border-border px-4 py-3 first:border-t-0"
+                    onClick={() => setSelected(a)}
+                  >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="whitespace-nowrap leading-none font-extrabold tabular-nums">
@@ -419,7 +430,8 @@ function Appointments() {
                     <StatusBadge status={a.status} />
                     {conRecargo && <RecargoChip appointment={a} client={clientById.get(a.clientId)} />}
                   </div>
-                </div>
+                  </div>
+                </Fragment>
               );
             })}
           </div>

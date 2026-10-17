@@ -2,6 +2,36 @@ import type { Appointment, Client, Employee } from "./mock/types";
 import { franjasProfesional, trabajaEn } from "./horario-equipo";
 import { toDateKey } from "./reparto";
 
+export type DecisionGuardadoCita = {
+  aviso: string | null;
+  etiqueta: "Guardar cita" | "Guardar igualmente";
+};
+
+/** El guardado especial se permite, pero deja claro por qué requiere atención. */
+export function decisionGuardadoCita({
+  ocupada,
+  trabaja,
+  profesional = "Esta profesional",
+}: {
+  ocupada: boolean;
+  trabaja: boolean;
+  profesional?: string;
+}): DecisionGuardadoCita {
+  if (ocupada) {
+    return {
+      aviso: `${profesional} ya tiene una cita a esa hora. Puedes guardarla igualmente.`,
+      etiqueta: "Guardar igualmente",
+    };
+  }
+  if (!trabaja) {
+    return {
+      aviso: `${profesional} no trabaja a esa hora. Puedes guardarla igualmente.`,
+      etiqueta: "Guardar igualmente",
+    };
+  }
+  return { aviso: null, etiqueta: "Guardar cita" };
+}
+
 /**
  * Cálculos puros de la capa «Nueva cita» (identidad «Arena»): qué horas se
  * ofrecen, cuáles están ocupadas, quién está libre, qué días se enseñan y

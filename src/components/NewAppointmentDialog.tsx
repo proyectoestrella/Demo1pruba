@@ -31,6 +31,7 @@ import { profesionalesDisponiblesEnHueco } from "@/lib/reparto";
 import {
   citasQueOcupan,
   clientasFrecuentes,
+  decisionGuardadoCita,
   diasParaElegir,
   duracionLegible,
   horaOcupada,
@@ -475,6 +476,11 @@ function FormularioNuevaCita({
   const inicioElegidoISO = isoDelSalon(date, time, zonaHoraria);
   const ocupadaElegida = empleado ? horaOcupada(ocupanDia, empleado.id, minutoElegido, totalMin) || hayBloqueoEnHueco(profile.bloqueosAgenda, empleado.id, inicioElegidoISO, totalMin, zonaHoraria) : false;
   const trabajaElegida = empleado ? trabajaEnFecha(empleado, date, minutoElegido, totalMin, profile.diasEspeciales) : true;
+  const decisionGuardado = decisionGuardadoCita({
+    ocupada: ocupadaElegida,
+    trabaja: trabajaElegida,
+    profesional: empleado?.name,
+  });
 
   return (
     <>
@@ -775,12 +781,10 @@ function FormularioNuevaCita({
                     Otra hora
                     <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-9 w-auto" aria-label="Escribir otra hora" />
                   </label>
-                  {(ocupadaElegida || !trabajaElegida) && (
+                  {decisionGuardado.aviso && (
                     <p className="mt-2 flex items-start gap-1.5 text-[12.5px] text-melocoton-tinta">
                       <TriangleAlert className="mt-px size-3.5 shrink-0" strokeWidth={1.6} />
-                      {ocupadaElegida
-                        ? `${empleado?.name} ya tiene una cita a esa hora. Puedes guardarla igual: te preguntaremos antes.`
-                        : `${empleado?.name} no trabaja a esa hora.`}
+                      {decisionGuardado.aviso}
                     </p>
                   )}
 
@@ -845,10 +849,16 @@ function FormularioNuevaCita({
                     <MessageCircle className="mt-px size-[15px] shrink-0" strokeWidth={1.6} />
                     Queda confirmada en tu agenda al guardar. Si quieres avisarla, hazlo por WhatsApp desde su ficha.
                   </p>
+                  {decisionGuardado.aviso && (
+                    <p className="mt-3 flex gap-2 rounded-2xl bg-melocoton px-3.5 py-3 text-[12.5px] text-melocoton-tinta">
+                      <TriangleAlert className="mt-px size-[15px] shrink-0" strokeWidth={1.6} />
+                      {decisionGuardado.aviso}
+                    </p>
+                  )}
                   <div className="mt-auto flex flex-col gap-2 pt-5">
                     <Button type="submit" disabled={!hayServicioElegido} className="h-[54px] w-full text-base">
                       <Check className="size-5" strokeWidth={1.8} />
-                      Guardar cita
+                      {decisionGuardado.etiqueta}
                     </Button>
                     {allowChaining && (
                       <Button type="button" variant="outline" disabled={!hayServicioElegido} className="h-[42px] w-full" onClick={() => handleSubmit(true)}>
@@ -871,7 +881,7 @@ function FormularioNuevaCita({
                 ) : (
                   <span className="min-w-0 flex-1 text-[12.5px] font-bold text-muted-foreground">Elige un servicio para guardar.</span>
                 )}
-                <Button type="submit" disabled={!hayServicioElegido} className="h-12 px-6 text-base">Guardar cita</Button>
+                <Button type="submit" disabled={!hayServicioElegido} className="h-12 px-6 text-base">{decisionGuardado.etiqueta}</Button>
               </div>
             </form>
           </DialogPrimitive.Content>

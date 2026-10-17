@@ -3,6 +3,7 @@ import type { Appointment, Client, Employee } from "./mock/types";
 import {
   citasQueOcupan,
   clientasFrecuentes,
+  decisionGuardadoCita,
   diasParaElegir,
   duracionLegible,
   horaOcupada,
@@ -76,6 +77,29 @@ describe("días y clientas", () => {
     expect(duracionLegible(45)).toBe("45 min");
     expect(duracionLegible(85)).toBe("1 h 25");
     expect(duracionLegible(120)).toBe("2 h");
+  });
+});
+
+describe("guardado con aviso", () => {
+  test("pide confirmación consciente cuando la hora está ocupada", () => {
+    expect(decisionGuardadoCita({ ocupada: true, trabaja: true, profesional: "María" })).toEqual({
+      aviso: "María ya tiene una cita a esa hora. Puedes guardarla igualmente.",
+      etiqueta: "Guardar igualmente",
+    });
+  });
+
+  test("pide confirmación consciente cuando la profesional no trabaja", () => {
+    expect(decisionGuardadoCita({ ocupada: false, trabaja: false, profesional: "María" })).toEqual({
+      aviso: "María no trabaja a esa hora. Puedes guardarla igualmente.",
+      etiqueta: "Guardar igualmente",
+    });
+  });
+
+  test("mantiene el texto normal si no hay aviso", () => {
+    expect(decisionGuardadoCita({ ocupada: false, trabaja: true, profesional: "María" })).toEqual({
+      aviso: null,
+      etiqueta: "Guardar cita",
+    });
   });
 });
 
