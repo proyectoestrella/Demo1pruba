@@ -124,9 +124,16 @@ export function normalizarFechaTpv(valor: string, esCumpleanos = false): string 
   const raw = valor.trim();
   if (!raw) return undefined;
   let fecha: string | undefined;
-  const europea = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:[T\s].*)?$/);
+  const europea = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})(?:[T\s].*)?$/);
   const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/);
-  if (europea) fecha = fechaUtc(Number(europea[3]), Number(europea[2]), Number(europea[1]));
+  if (europea) {
+    // TPV 123 también exporta años abreviados. Seguimos el pivote habitual:
+    // 00–69 pertenecen a 2000–2069 y 70–99 a 1970–1999; así no se inventa
+    // una fecha distinta al reimportar historiales antiguos.
+    const anoCrudo = Number(europea[3]);
+    const ano = europea[3].length === 2 ? (anoCrudo >= 70 ? 1900 : 2000) + anoCrudo : anoCrudo;
+    fecha = fechaUtc(ano, Number(europea[2]), Number(europea[1]));
+  }
   else if (iso) fecha = fechaUtc(Number(iso[1]), Number(iso[2]), Number(iso[3]));
   else if (/^\d+(?:[.,]\d+)?$/.test(raw)) {
     // Excel cuenta desde el 30/12/1899 para conservar su histórico error de

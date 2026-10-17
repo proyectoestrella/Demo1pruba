@@ -157,7 +157,7 @@ export function duracionCartaParaSenal(
 
 /** Importe de señal sin ceros de relleno: «5 €», «28,50 €». */
 export function importeSenalTexto(importeEur: number): string {
-  const importe = Math.round((Number.isFinite(importeEur) ? importeEur : 0) * 100) / 100;
+  const importe = Math.max(0, Math.round((Number.isFinite(importeEur) ? importeEur : 0) * 100) / 100);
   return `${importe.toLocaleString("es-ES", {
     minimumFractionDigits: Number.isInteger(importe) ? 0 : 2,
     maximumFractionDigits: 2,
@@ -166,7 +166,8 @@ export function importeSenalTexto(importeEur: number): string {
 
 /** Conserva el formato que recibe cada vista, eliminando solo los «,00» superfluos. */
 function importeSenalFormateado(importeEur: number, eur: (n: number) => string): string {
-  return eur(importeEur).replace(/([,.])00(?=\s*€)/, "");
+  const importeSeguro = Number.isFinite(importeEur) ? Math.max(0, importeEur) : 0;
+  return eur(importeSeguro).replace(/([,.])00(?=\s*€)/, "");
 }
 
 /**
@@ -198,9 +199,16 @@ export function importeSenal(regla: ReglaSenal, r: ReservaParaSenal): number {
     // antes de dividir por 60 * 100, así 0,50 € sube al euro siguiente.
     return Number((BigInt(tarifaCents) * BigInt(minutos) + 3_000n) / 6_000n);
   }
-  const bruto = regla.modo === "porcentaje" ? (r.priceEur * regla.porcentaje) / 100 : regla.importeFijoEur;
+  // Los datos que vienen de una cita antigua o de una importación no tienen
+  // por qué ser números utilizables. Una fianza nunca debe acabar enseñando
+  // «NaN €» ni convertirse en un importe negativo.
+  const precio = Number.isFinite(r.priceEur) ? Math.max(0, r.priceEur) : 0;
+  const porcentaje = Number.isFinite(regla.porcentaje) ? Math.max(0, regla.porcentaje) : 0;
+  const fijo = Number.isFinite(regla.importeFijoEur) ? Math.max(0, regla.importeFijoEur) : 0;
+  const bruto = regla.modo === "porcentaje" ? (precio * porcentaje) / 100 : fijo;
   // Los modos tradicionales se mantienen en euros enteros y topados al servicio.
-  return Math.max(0, Math.min(Math.round(bruto), Math.round(r.priceEur)));
+  const importe = Math.round(bruto);
+  return Number.isFinite(importe) ? Math.max(0, Math.min(importe, Math.round(precio))) : 0;
 }
 
 /** ¿Algún servicio de la carta llevaría señal por sí solo? Para la etiqueta «con señal» de la carta. */

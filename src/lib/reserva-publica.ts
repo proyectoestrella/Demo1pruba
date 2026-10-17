@@ -26,10 +26,17 @@ export const ERROR_RESPUESTAS_RESERVA = "RESERVA_RESPUESTAS_INVALIDAS";
 export const ERROR_SERVICIO_PROFESIONAL = "RESERVA_SERVICIO_PROFESIONAL";
 export const ERROR_BLOQUEO_AGENDA = "RESERVA_BLOQUEO_AGENDA";
 export const ERROR_DATOS_RESERVA = "RESERVA_DATOS_INVALIDOS";
+export const ERROR_RESERVA_PASADA = "RESERVA_PASADA";
 
 /** La casilla acredita que se mostró la información; no expresa una base legal de consentimiento. */
 export function haLeidoAvisoPrivacidad(valor: unknown): valor is true {
   return valor === true;
+}
+
+/** Una reserva pública solo puede crear una cita futura con un instante válido. */
+export function inicioReservaPublicaEsFuturo(inicioISO: string, ahora = new Date()): boolean {
+  const inicio = Date.parse(inicioISO);
+  return Number.isFinite(inicio) && inicio > ahora.getTime();
 }
 
 /**
@@ -90,6 +97,8 @@ export function mensajeErrorReserva(error: unknown): string {
     return "Ese hueco no está disponible. Elige otra hora.";
   if (mensaje.includes(ERROR_DATOS_RESERVA))
     return "Los servicios o su duración han cambiado. Revisa la reserva y vuelve a elegir una hora.";
+  if (mensaje.includes(ERROR_RESERVA_PASADA))
+    return "Esa hora ya ha pasado. Elige otra hora disponible.";
   return "No hemos podido enviar tu solicitud. Tus datos siguen aquí; inténtalo de nuevo.";
 }
 

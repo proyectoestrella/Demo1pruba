@@ -49,10 +49,12 @@ import {
   ERROR_SERVICIO_PROFESIONAL,
   ERROR_BLOQUEO_AGENDA,
   ERROR_DATOS_RESERVA,
+  ERROR_RESERVA_PASADA,
   datosReservaPublicaDesdeCarta,
   faltaColumnaAcusePrivacidad,
   haLeidoAvisoPrivacidad,
   haySolape,
+  inicioReservaPublicaEsFuturo,
   profesionalTrabaja,
 } from "../reserva-publica";
 import {
@@ -834,6 +836,9 @@ export const syncAppointment = createServerFn({ method: "POST" })
     // marca de tiempo se genera aquí; el navegador no puede inventarla.
     if (!manda && !haLeidoAvisoPrivacidad(data.privacyNoticeAccepted)) {
       return { synced: false as const, reason: ERROR_PRIVACIDAD_NO_CONFIRMADA };
+    }
+    if (!manda && !inicioReservaPublicaEsFuturo(data.startISO)) {
+      return { synced: false as const, reason: ERROR_RESERVA_PASADA };
     }
 
     const supabase = getSupabaseServerClient();
