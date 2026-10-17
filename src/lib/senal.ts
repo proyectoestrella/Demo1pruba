@@ -233,7 +233,10 @@ export function textoSenalPublico(
   const plazo = `${regla.ventanaHoras} ${regla.ventanaHoras === 1 ? "hora" : "horas"}`;
   const aviso = avisoLiberacionAutomatica(regla);
   if (regla.modo === "hora" && !regla.automatica) {
-    return `${primera}${quien} una fianza por Bizum de ${textoImporte(importe)} (${textoImporte(regla.tarifaPorHoraEur)} por hora de servicio). La dueña confirma la solicitud y entonces el hueco queda reservado; tendrás ${plazo} para pagarla y la dueña marcará el pago cuando lo reciba.${aviso}`;
+    const pago = regla.bizumTelefono
+      ? `para pagarla haciendo un Bizum al ${regla.bizumTelefono}, y`
+      : "para pagarla y";
+    return `${primera}${quien} una fianza por Bizum de ${textoImporte(importe)} (${textoImporte(regla.tarifaPorHoraEur)} por hora de servicio). La dueña confirma la solicitud y entonces el hueco queda reservado; tendrás ${plazo} ${pago} la dueña marcará el pago cuando lo reciba.${aviso}`;
   }
   if (regla.automatica && regla.bizumTelefono) {
     return `${primera}${primera ? "" : "Para confirmar la cita, "}haz un Bizum de ${textoImporte(importe)} al ${regla.bizumTelefono} en las próximas ${plazo}. Se descuenta del precio; si cancelas con más de ${regla.horasCancelacion} h, te la devolvemos.${aviso}`;

@@ -38,6 +38,7 @@ export function perfilProduccion(): Record<string, unknown> {
     reviewCount: _reviewCount,
     photoCount: _photoCount,
     galleryPhotos: _galleryPhotos,
+    depositBizumPhone: _depositBizumPhone,
     ...resto
   } = PELUCHIC as unknown as Record<string, unknown> & { diasEspeciales?: Array<Record<string, unknown>> };
   const diasEspeciales = (PELUCHIC.diasEspeciales ?? []).map((d) => {

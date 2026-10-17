@@ -65,14 +65,24 @@ describe("una sola regla de señal por salón", () => {
     expect(texto).not.toContain(",00 €");
   });
 
-  it("la fianza manual por hora explica importe, Bizum, plazo y confirmación manual", () => {
+  it("la fianza manual por hora sin teléfono conserva el texto actual", () => {
     const r = reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 5, depositDeadlineHours: 4, depositAuto: false, depositAutoRelease: false });
     const texto = textoSenalPublico(r, { serviceIds: ["x"], durationMin: 90, priceEur: 0 }, "PeluChic", eur)!;
-    expect(texto).toContain("8 €");
-    expect(texto).toContain("5 € por hora de servicio");
-    expect(texto).toContain("4 horas");
-    expect(texto).toContain("la dueña marcará el pago");
-    expect(texto).not.toContain("libre");
+    expect(texto).toBe("PeluChic te pedirá una fianza por Bizum de 8 € (5 € por hora de servicio). La dueña confirma la solicitud y entonces el hueco queda reservado; tendrás 4 horas para pagarla y la dueña marcará el pago cuando lo reciba.");
+  });
+
+  it("la fianza manual por hora muestra el Bizum configurado, el importe y el plazo", () => {
+    const r = reglaSenal({
+      depositEnabled: true,
+      depositMode: "hora",
+      depositHourlyRateEur: 5,
+      depositDeadlineHours: 4,
+      depositAuto: false,
+      depositAutoRelease: false,
+      depositBizumPhone: "600 000 000",
+    });
+    const texto = textoSenalPublico(r, { serviceIds: ["x"], durationMin: 30, priceEur: 0 }, "PeluChic", eur)!;
+    expect(texto).toBe("PeluChic te pedirá una fianza por Bizum de 3 € (5 € por hora de servicio). La dueña confirma la solicitud y entonces el hueco queda reservado; tendrás 4 horas para pagarla haciendo un Bizum al 600 000 000, y la dueña marcará el pago cuando lo reciba.");
   });
 
   it("por hora redondea al euro más cercano, sin inventar 5 € si la tarifa es cero", () => {
