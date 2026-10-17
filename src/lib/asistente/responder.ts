@@ -186,7 +186,7 @@ function salonDe(texto: string, salon: string): string {
 
 /** Qué hace cada función de plan, para la línea «Si te referías a…». */
 const QUE_ES_PLAN: Record<string, string> = {
-  "plan-mas-profesionales": "tener más de 3 profesionales",
+  "plan-mas-profesionales": "tener más de 6 profesionales",
   "plan-segunda-pagina": "una segunda página de reservas",
   "plan-dominio-propio": "reservar con tu propio dominio",
   "plan-informe-mensual": "recibir el informe del mes por correo",
@@ -477,4 +477,3 @@ export function crearAsistente(fuentes: FuentesAsistente): Asistente {
     },
   };
 }
-

@@ -58,6 +58,7 @@ type DemoProfileNegocio = Pick<
   | "tagline"
   | "about"
   | "address"
+  | "nifResponsable"
   | "correoPrivacidad"
   | "phone"
   | "instagram"
@@ -106,7 +107,7 @@ export type DemoProfile = DemoProfileNegocio & DemoPersonalizacion;
  */
 export type CamposSinHeredar = Pick<
   SalonProfile,
-  "logoUrl" | "enlaces" | "whatsapp" | "boletin" | "galeriaPropia" | "descripcionesServicios" | "preciosLiterales" | "destacados" | "demoAbreHoy" | "ocultarPrecioReserva"
+  "logoUrl" | "enlaces" | "whatsapp" | "boletin" | "galeriaPropia" | "descripcionesServicios" | "preciosLiterales" | "destacados" | "demoAbreHoy" | "ocultarPrecioReserva" | "nifResponsable"
 >;
 
 /**
@@ -126,6 +127,7 @@ const KEYS: Record<keyof DemoProfileNegocio, string> = {
   tagline: "t",
   about: "a",
   address: "d",
+  nifResponsable: "nr",
   correoPrivacidad: "ep",
   phone: "p",
   instagram: "i",
@@ -357,6 +359,7 @@ export function blankDemoProfile(): DemoProfile & CamposSinHeredar {
     duracionFlexible: false,
     ocultarPrecioReserva: false,
     // Ver `CamposSinHeredar`: presentes y vacíos para que pisen lo anterior.
+    nifResponsable: undefined,
     logoUrl: undefined,
     enlaces: undefined,
     whatsapp: undefined,
@@ -585,7 +588,10 @@ export function decodeDemoProfile(raw: string | undefined | null): Partial<DemoP
       continue;
     }
 
-    if (field === "rating") {
+    if (field === "nifResponsable") {
+      const nif = String(value).replace(/\s/g, "").toLocaleUpperCase("es-ES").slice(0, 20);
+      if (nif) out.nifResponsable = nif;
+    } else if (field === "rating") {
       const n = Number(value);
       // Una nota fuera de escala delataría la demo — se descarta en silencio.
       if (Number.isFinite(n) && n >= 0 && n <= 5) out.rating = n;

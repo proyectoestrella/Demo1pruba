@@ -58,6 +58,10 @@ describe("borradorDesdePerfil", () => {
     const b = borradorDesdePerfil({ ...PERFIL_BASE, openingHours: ["10:00–20:00"] });
     expect(b.openingHours).toHaveLength(7);
   });
+
+  it("lleva el NIF/CIF del responsable a su caja", () => {
+    expect(borradorDesdePerfil({ ...PERFIL_BASE, nifResponsable: "NIF-PRUEBA" }).nifResponsable).toBe("NIF-PRUEBA");
+  });
 });
 
 describe("validarBorrador", () => {
@@ -83,6 +87,10 @@ describe("validarBorrador", () => {
 
   it("deja el teléfono vacío pasar: es opcional", () => {
     expect(validarBorrador(borradorValido({ phone: "" }))).toEqual([]);
+  });
+
+  it("limita el NIF/CIF del responsable a 20 caracteres sin espacios", () => {
+    expect(validarBorrador(borradorValido({ nifResponsable: "A".repeat(21) })).map((e) => e.campo)).toContain("nifResponsable");
   });
 
   it("rechaza un precio negativo y dice qué hacer", () => {
@@ -190,6 +198,7 @@ describe("perfilDesdeBorrador", () => {
         faq: "¿Tenéis parking? | Sí, en la misma calle.",
         priorityHours: "10:00-13:00",
         specialties: " corte clásico ,, navaja ",
+        nifResponsable: " nif prueba ",
       }),
     );
     expect(p.name).toBe("The Best Shave");
@@ -198,6 +207,7 @@ describe("perfilDesdeBorrador", () => {
     expect(p.faq).toEqual(["¿Tenéis parking?~Sí, en la misma calle."]);
     expect(p.priorityHours).toEqual(["10:00-13:00"]);
     expect(p.specialties).toEqual(["corte clásico", "navaja"]);
+    expect(p.nifResponsable).toBe("NIFPRUEBA");
   });
 
   it("vaciar una caja apaga de verdad esa sección, no deja lo anterior", () => {

@@ -27,7 +27,7 @@ export function accionesDeParcheCita(patch: Record<string, unknown>): AccionId[]
   return [...out];
 }
 
-const CLAVES_WEB = new Set(["name", "tagline", "about", "address", "phone", "instagram", "photoCount", "galleryPhotos", "rating", "reviewCount", "specialties", "heroImage", "faq"]);
+const CLAVES_WEB = new Set(["name", "tagline", "about", "address", "nifResponsable", "phone", "instagram", "photoCount", "galleryPhotos", "rating", "reviewCount", "specialties", "heroImage", "faq"]);
 const CLAVES_EQUIPO = new Set(["team", "teamIds", "teamHours", "serviciosPorProfesional", "avataresEquipo"]);
 const CLAVES_CARTA = new Set(["menu"]);
 

@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { selectDemosVisibles, useSalonStore } from "./store";
 
-it("la store real del plan Básico rechaza un cuarto perfil profesional", () => {
+it("la store real del plan Básico admite seis y rechaza un séptimo perfil profesional", () => {
   const anterior = useSalonStore.getState().salonProfile;
   try {
     useSalonStore.setState({
-      salonProfile: { ...anterior, slug: "peluchic", plan: "reservas", team: ["Eva", "Lola", "Mara"] },
+      salonProfile: { ...anterior, slug: "peluchic", plan: "reservas", team: ["Eva", "Lola", "Mara", "Nuria", "Olga", "Paz"] },
       realSalonSlug: "peluchic",
     });
-    useSalonStore.getState().updateSalonProfile({ team: ["Eva", "Lola", "Mara", "Cuarta"] });
-    expect(useSalonStore.getState().salonProfile.team).toEqual(["Eva", "Lola", "Mara"]);
+    useSalonStore.getState().updateSalonProfile({ team: ["Eva", "Lola", "Mara", "Nuria", "Olga", "Paz", "Séptima"] });
+    expect(useSalonStore.getState().salonProfile.team).toEqual(["Eva", "Lola", "Mara", "Nuria", "Olga", "Paz"]);
   } finally {
     useSalonStore.setState({ salonProfile: anterior, realSalonSlug: null });
   }

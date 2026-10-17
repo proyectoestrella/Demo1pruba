@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useDisplayProfile } from "@/lib/use-display-profile";
-import { contactoDerechosPrivacidad } from "@/lib/privacidad";
+import { contactoDerechosPrivacidad, responsablePrivacidad } from "@/lib/privacidad";
 
 export const Route = createFileRoute("/s/$salonSlug/privacidad")({ component: SalonPrivacy });
 
@@ -17,7 +17,7 @@ function SalonPrivacy() {
       Al pedir cita, {profile.name} usa los datos que nos das para organizar tu visita y mantener el historial de los servicios que te hemos prestado.
     </p>
     <div className="mt-8 space-y-6 text-sm leading-relaxed">
-      <section><h2 className="font-semibold">Quién es responsable</h2><p>{profile.name}, {profile.address || "dirección pendiente de completar en el perfil del salón"}.</p></section>
+      <section><h2 className="font-semibold">Quién es responsable</h2><p>{responsablePrivacidad(profile)}, {profile.address || "dirección pendiente de completar en el perfil del salón"}.</p></section>
       <section><h2 className="font-semibold">Para qué usamos tus datos</h2><p>Para gestionar tus citas, ponernos en contacto contigo por ellas y conservar el historial de tus servicios.</p></section>
       <section><h2 className="font-semibold">Por qué podemos hacerlo</h2><p>Porque nos pides una cita y te prestamos el servicio.</p></section>
       <section><h2 className="font-semibold">Cuánto tiempo los guardamos</h2><p>Mientras sean necesarios para gestionar tus citas y el historial de servicios, y después durante los plazos legales que correspondan.</p></section>

@@ -57,7 +57,7 @@ function Team() {
   const serviciosCarta = useSalonStore((s) => s.services).filter((s) => s.active !== false);
   const esSalonReal = useRealSalonSlug() === profile.slug;
   const hoy = new Date().getDay();
-  // Profesionales por plan (3 / 6 / sin límite), sin pasar del tope técnico.
+  // Profesionales por plan (6 / 6 / sin límite), sin pasar del tope técnico.
   const plan = usePlanSalon();
   const limitePlan = MAX_PROFESIONALES[plan];
   const limite = Math.min(limitePlan ?? MAX_SALON_TEAM_ENTRIES, MAX_SALON_TEAM_ENTRIES);

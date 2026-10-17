@@ -17,13 +17,13 @@ describe("catálogo", () => {
     expect(POR_ID.get("plan-importar-mensual")?.planMinimo).toBe(FUNCIONES_POR_PLAN["importacion-mensual"]);
     expect(POR_ID.get("no-hace-facturas")?.planMinimo).toBeNull();
   });
-  test("más profesionales depende del plan (28-sep, plan-final-v2): Básico hasta 3, Estándar hasta 6", () => {
+  test("más profesionales depende del plan (9-oct): Básico y Estándar hasta 6", () => {
     const i = POR_ID.get("plan-mas-profesionales");
-    expect(i?.planMinimo).toBe("reservas-asistente");
+    expect(i?.planMinimo).toBe("todo-incluido");
     const texto = `${i?.plan} ${i?.alternativa} ${i?.mensaje}`;
     expect(texto).not.toContain("Todo incluido");
     expect(texto).not.toContain("Reservas + Asistente");
-    expect(i?.plan).toContain("Estándar");
+    expect(i?.plan).toContain("Embajador");
     expect(i?.alternativa).toContain("Básico");
   });
   test("los nombres de los ejemplos se enmascaran", () => {

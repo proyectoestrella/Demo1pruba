@@ -9,8 +9,8 @@
  * las últimas 24 h), campañas ampliadas (estándar: solo la reseña de Google;
  * cumpleaños no existe todavía), analítica avanzada e importación asistida
  * mensual. El asistente, desde Reservas + Asistente. El resto, en Reservas.
- * El Básico admite tres profesionales y Estándar hasta seis, según los
- * planes definitivos del 28-sep. Embajador conserva el máximo técnico actual
+ * Básico y Estándar admiten hasta seis profesionales, según la decisión del
+ * 9-oct. Embajador conserva el máximo técnico actual
  * de seis mientras no se implemente el «sin límite» de su ficha comercial.
  *
  * Decisión de Tomás (27-sep), alineado con el presupuesto: exportar tus citas
@@ -97,7 +97,7 @@ export function tienePlan(plan: PlanSishow, funcion: FuncionPlan): boolean {
 
 /** Límite operativo vigente. Embajador aún conserva el máximo técnico de seis. */
 export const LIMITE_PROFESIONALES: Record<PlanSishow, number> = {
-  reservas: 3,
+  reservas: 6,
   "reservas-asistente": 6,
   "todo-incluido": 6,
 };
@@ -130,12 +130,12 @@ export const HORAS_HISTORIAL_ESTANDAR = 24;
 
 /**
  * Profesionales con agenda propia por plan (tabla de precios del 2-oct):
- * Básico hasta 3, Estándar hasta 6, Embajador sin límite (`null`). Es un
+ * Básico y Estándar hasta 6, Embajador sin límite (`null`). Es un
  * límite COMERCIAL; el técnico sigue siendo `MAX_SALON_TEAM_ENTRIES` (6),
  * así que en Embajador el panel tampoco deja pasar de 6 hoy.
  */
 export const MAX_PROFESIONALES: Record<PlanSishow, number | null> = {
-  reservas: 3,
+  reservas: 6,
   "reservas-asistente": 6,
   "todo-incluido": null,
 };

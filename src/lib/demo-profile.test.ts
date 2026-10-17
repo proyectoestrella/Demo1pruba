@@ -40,6 +40,11 @@ describe("encode / decode", () => {
     expect(decodeDemoProfile(encoded)?.name).toBe("Peluquería Señor Muñoz");
   });
 
+  it("lleva el NIF/CIF del responsable en mayúsculas y sin espacios", () => {
+    const encoded = encodeDemoProfile({ name: "Salón", nifResponsable: " nif prueba " });
+    expect(decodeDemoProfile(encoded)?.nifResponsable).toBe("NIFPRUEBA");
+  });
+
   it("omite los campos vacíos para acortar el enlace", () => {
     const solo = encodeDemoProfile({ name: "Solo el nombre" });
     const todo = encodeDemoProfile({

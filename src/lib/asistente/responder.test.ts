@@ -242,10 +242,10 @@ describe("responder", () => {
     expect(r.contacto.cierre).toContain("activarlo");
   });
 
-  test("más profesionales depende del plan (28-sep, plan-final-v2): Básico sube a Estándar; Estándar y Embajador ya lo tienen", () => {
+  test("más profesionales depende del plan (9-oct): Básico y Estándar suben a Embajador; Embajador ya lo tiene", () => {
     const esperado: Record<"reservas" | "reservas-asistente" | "todo-incluido", string> = {
-      reservas: "llega con el plan **Estándar**",
-      "reservas-asistente": "ya entra en tu plan (**Estándar**)",
+      reservas: "llega con el plan **Embajador**",
+      "reservas-asistente": "llega con el plan **Embajador**",
       "todo-incluido": "ya entra en tu plan (**Embajador**)",
     };
     for (const plan of ["reservas", "reservas-asistente", "todo-incluido"] as const) {

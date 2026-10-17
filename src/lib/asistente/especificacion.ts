@@ -1698,9 +1698,9 @@ export const ESPECIFICACION: FamiliaEspecificacion[] = [
       "somos 4",
       "meter a otra chica"
     ],
-    "plan": "Todo incluido (hasta 6)",
-    "alternativa": "Reservas y Reservas + Asistente llegan hasta 3 profesionales (guía §6 Equipo)",
-    "mensaje": "Hola, soy María de PeluChic. Vamos a ser 4 en el equipo y me gustaría pasar al plan Todo incluido. ¿Qué tengo que hacer?"
+    "plan": "Todo incluido",
+    "alternativa": "Reservas y Reservas + Asistente llegan hasta 6 profesionales (guía §6 Equipo)",
+    "mensaje": "Hola, soy María de PeluChic. Vamos a ser 7 en el equipo y me gustaría pasar al plan Todo incluido. ¿Qué tengo que hacer?"
   },
   {
     "id": "plan-segunda-pagina",

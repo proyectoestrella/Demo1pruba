@@ -585,6 +585,14 @@ function MiWebHidratada() {
               pista="Mueve también el mapa de «Cómo llegar»."
             />
             <Campo
+              etiqueta="NIF/CIF del responsable"
+              valor={borrador.nifResponsable}
+              onChange={(v) => campo("nifResponsable", v)}
+              errores={errorDe("nifResponsable")}
+              maxLength={20}
+              pista="Aparece en la política de privacidad. Se guarda en mayúsculas y sin espacios."
+            />
+            <Campo
               etiqueta="Teléfono"
               valor={borrador.phone}
               onChange={(v) => campo("phone", v)}
@@ -920,6 +928,7 @@ function Campo({
   pista,
   errores = [],
   tipo = "text",
+  maxLength,
 }: {
   etiqueta: string;
   valor: string;
@@ -927,6 +936,7 @@ function Campo({
   pista?: string;
   errores?: string[];
   tipo?: string;
+  maxLength?: number;
 }) {
   return (
     <div className="space-y-1.5">
@@ -934,6 +944,7 @@ function Campo({
       <Input
         type={tipo}
         value={valor}
+        maxLength={maxLength}
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={errores.length > 0}
         className={cn("h-11", errores.length > 0 && "border-melocoton-tinta")}

@@ -34,6 +34,8 @@ export interface BorradorLanding {
   tagline: string;
   about: string;
   address: string;
+  /** NIF/CIF del responsable, sin espacios y en mayúsculas al publicar. */
+  nifResponsable: string;
   phone: string;
   instagram: string;
   heroImage: string;
@@ -111,6 +113,7 @@ export function borradorDesdePerfil(p: SalonProfile): BorradorLanding {
     tagline: p.tagline ?? "",
     about: p.about ?? "",
     address: p.address ?? "",
+    nifResponsable: p.nifResponsable ?? "",
     phone: p.phone ?? "",
     instagram: p.instagram ?? "",
     heroImage: p.heroImage ?? "",
@@ -342,6 +345,10 @@ export function validarBorrador(b: BorradorLanding): ErrorCampo[] {
     }
   });
 
+  if (b.nifResponsable.replace(/\s/g, "").length > 20) {
+    errores.push({ campo: "nifResponsable", mensaje: "El NIF/CIF puede tener como mucho 20 caracteres, sin espacios." });
+  }
+
   // Lote P. WhatsApp: un número de verdad, con prefijo o sin él.
   const wa = digitos(b.whatsapp);
   if (b.whatsapp.trim() && (wa.length < 9 || wa.length > 15)) {
@@ -413,6 +420,7 @@ export function perfilDesdeBorrador(b: BorradorLanding): Partial<SalonProfile> {
     tagline: b.tagline.trim(),
     about: b.about.trim(),
     address: b.address.trim(),
+    nifResponsable: b.nifResponsable.replace(/\s/g, "").toLocaleUpperCase("es-ES").slice(0, 20) || undefined,
     phone: b.phone.trim(),
     instagram: b.instagram.trim(),
     heroImage: b.heroImage.trim(),

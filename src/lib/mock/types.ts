@@ -308,6 +308,8 @@ export interface SalonProfile {
   tagline: string;
   about: string;
   address: string;
+  /** NIF/CIF de quien responde del tratamiento en la web pública. */
+  nifResponsable?: string;
   /** Correo al que las clientas pueden ejercer sus derechos de protección de datos. */
   correoPrivacidad?: string;
   /** El salón fija la duración al aceptar cada solicitud. */
