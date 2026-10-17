@@ -90,7 +90,7 @@ export function ImportarVentasTpv() {
     <div className="space-y-4 text-sm">
       <p className="text-muted-foreground">Trae lo que ya cobraste en TPV 123 a la caja de siShow: una línea por cobro. Si subes el mismo fichero otra vez, no se duplica nada.</p>
       <label className="block space-y-1 font-medium">
-        Histórico X Clientes (.csv o .xlsx)
+        Histórico X Clientes (.csv, .xls o .xlsx)
         <input type="file" accept=".csv,.xlsx,.xls" onChange={(e) => void cargar(e.target.files?.[0])} className="block w-full min-w-0 rounded border border-border p-2 text-sm font-normal" />
       </label>
       {error && <p role="alert" className="text-destructive">{error}</p>}

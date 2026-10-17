@@ -106,7 +106,7 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
         </div>
       )}
       {pestana === "ventas" && puedeVentas ? <ImportarVentasTpv /> : <div className="space-y-4 text-sm">
-        <label className="block space-y-1 font-medium">Fichero de clientas (.csv o .xlsx)
+        <label className="block space-y-1 font-medium">Fichero de clientas (.csv, .xls o .xlsx)
           <input type="file" accept=".csv,.xlsx,.xls" onChange={(e) => void cargar(e.target.files?.[0])}
             className="block w-full min-w-0 rounded border border-border p-2 text-sm font-normal" />
         </label>

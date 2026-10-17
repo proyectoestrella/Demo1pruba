@@ -314,9 +314,225 @@ export async function leerXlsx(bytes: Uint8Array): Promise<TablaImportacion> {
   if (!sheet) throw new Error("No se encuentra la primera hoja del .xlsx.");
   return xmlCells(sheet, strings);
 }
+
+const FIN_CADENA = 0xfffffffe;
+const LIBRE = 0xffffffff;
+
+function errorXls(): never { throw new Error("El archivo .xls no es válido o está dañado."); }
+function vistaXls(bytes: Uint8Array): DataView { return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength); }
+function rangoXls(bytes: Uint8Array, desde: number, longitud: number): void {
+  if (!Number.isSafeInteger(desde) || !Number.isSafeInteger(longitud) || desde < 0 || longitud < 0 || desde + longitud > bytes.length) errorXls();
+}
+function entero64Xls(view: DataView, pos: number): number {
+  const bajo = view.getUint32(pos, true), alto = view.getUint32(pos + 4, true);
+  if (alto > 0x1fffff) errorXls();
+  return alto * 0x1_0000_0000 + bajo;
+}
+function unirXls(partes: Uint8Array[]): Uint8Array {
+  const longitud = partes.reduce((total, parte) => total + parte.length, 0);
+  const resultado = new Uint8Array(longitud); let pos = 0;
+  for (const parte of partes) { resultado.set(parte, pos); pos += parte.length; }
+  return resultado;
+}
+
+/** Lee el stream Workbook de un Compound File Binary (OLE2). */
+function streamOle2(bytes: Uint8Array): Uint8Array {
+  try {
+    rangoXls(bytes, 0, 512); const view = vistaXls(bytes);
+    const firma = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
+    if (firma.some((n, i) => bytes[i] !== n)) errorXls();
+    const version = view.getUint16(26, true), desplazamiento = view.getUint16(30, true), miniDesplazamiento = view.getUint16(32, true);
+    if ((version !== 3 && version !== 4) || (desplazamiento !== 9 && desplazamiento !== 12) || miniDesplazamiento !== 6) errorXls();
+    const sector = 1 << desplazamiento;
+    if (bytes.length < sector || bytes.length % sector) errorXls();
+    const sectores = bytes.length / sector - 1;
+    const sectorBytes = (id: number) => {
+      if (!Number.isInteger(id) || id < 0 || id >= sectores) errorXls();
+      const inicio = sector + id * sector; rangoXls(bytes, inicio, sector);
+      return bytes.subarray(inicio, inicio + sector);
+    };
+    const totalFat = view.getUint32(44, true), primerDirectorio = view.getUint32(48, true);
+    const limiteMini = view.getUint32(56, true), primerMiniFat = view.getUint32(60, true), totalMiniFat = view.getUint32(64, true);
+    if (totalFat > sectores || totalMiniFat > sectores || limiteMini !== 4096) errorXls();
+    const difat: number[] = [];
+    for (let i = 0; i < 109; i++) {
+      const id = view.getUint32(76 + i * 4, true);
+      if (id !== LIBRE) difat.push(id);
+    }
+    let siguienteDifat = view.getUint32(68, true), totalDifat = view.getUint32(72, true);
+    if (totalDifat > sectores) errorXls();
+    for (let i = 0; i < totalDifat; i++) {
+      const datos = sectorBytes(siguienteDifat); const sectorView = vistaXls(datos);
+      for (let p = 0; p < sector - 4; p += 4) {
+        const id = sectorView.getUint32(p, true);
+        if (id !== LIBRE) difat.push(id);
+      }
+      siguienteDifat = sectorView.getUint32(sector - 4, true);
+    }
+    if (difat.length < totalFat) errorXls();
+    const fat: number[] = [];
+    for (const id of difat.slice(0, totalFat)) {
+      const datos = sectorBytes(id), sectorView = vistaXls(datos);
+      for (let p = 0; p < sector; p += 4) fat.push(sectorView.getUint32(p, true));
+    }
+    const cadena = (primero: number, tabla: number[], maximo: number) => {
+      if (primero === FIN_CADENA) return [];
+      const resultado: number[] = [], vistos = new Set<number>(); let actual = primero;
+      while (actual !== FIN_CADENA) {
+        if (!Number.isInteger(actual) || actual < 0 || actual >= tabla.length || vistos.has(actual) || resultado.length >= maximo) errorXls();
+        vistos.add(actual); resultado.push(actual); actual = tabla[actual]!;
+      }
+      return resultado;
+    };
+    const normal = (primero: number, tamano: number) => {
+      if (!Number.isSafeInteger(tamano) || tamano < 0) errorXls();
+      const ids = cadena(primero, fat, sectores + 1);
+      if (tamano > ids.length * sector) errorXls();
+      return unirXls(ids.map(sectorBytes)).subarray(0, tamano);
+    };
+    const directorio = unirXls(cadena(primerDirectorio, fat, sectores + 1).map(sectorBytes));
+    let libro: { inicio: number; tamano: number } | undefined;
+    let raiz: { inicio: number; tamano: number } | undefined;
+    for (let pos = 0; pos + 128 <= directorio.length; pos += 128) {
+      const directorioView = vistaXls(directorio); const nombreLen = directorioView.getUint16(pos + 64, true), tipo = directorio[pos + 66]!;
+      if (nombreLen > 64 || nombreLen % 2) errorXls();
+      const nombre = nombreLen < 2 ? "" : new TextDecoder("utf-16le").decode(directorio.subarray(pos, pos + nombreLen - 2));
+      const entrada = { inicio: directorioView.getUint32(pos + 116, true), tamano: entero64Xls(directorioView, pos + 120) };
+      if (tipo === 5) raiz = entrada;
+      if (tipo === 2 && (nombre === "Workbook" || nombre === "Book")) libro = entrada;
+    }
+    if (!libro) errorXls();
+    if (libro.tamano >= limiteMini) return normal(libro.inicio, libro.tamano);
+    if (!raiz || totalMiniFat === 0) errorXls();
+    const miniFat = unirXls(cadena(primerMiniFat, fat, sectores + 1).slice(0, totalMiniFat).map(sectorBytes));
+    if (miniFat.length < totalMiniFat * sector) errorXls();
+    const miniView = vistaXls(miniFat), miniTabla: number[] = [];
+    for (let pos = 0; pos < miniFat.length; pos += 4) miniTabla.push(miniView.getUint32(pos, true));
+    const miniStream = normal(raiz.inicio, raiz.tamano), minis = cadena(libro.inicio, miniTabla, miniTabla.length + 1);
+    if (libro.tamano > minis.length * 64) errorXls();
+    return unirXls(minis.map((id) => {
+      const inicio = id * 64; rangoXls(miniStream, inicio, 64); return miniStream.subarray(inicio, inicio + 64);
+    })).subarray(0, libro.tamano);
+  } catch { return errorXls(); }
+}
+
+class LectorSegmentosBiff {
+  private segmento = 0;
+  private pos = 0;
+  constructor(private readonly segmentos: Uint8Array[]) { if (!segmentos.length) errorXls(); }
+  private disponible(): number { return this.segmentos[this.segmento]!.length - this.pos; }
+  private siguiente(): boolean { if (this.segmento + 1 >= this.segmentos.length) return false; this.segmento++; this.pos = 0; return true; }
+  bytes(longitud: number): Uint8Array {
+    if (longitud < 0 || !Number.isSafeInteger(longitud)) errorXls();
+    const partes: Uint8Array[] = [];
+    while (longitud) {
+      if (!this.disponible() && !this.siguiente()) errorXls();
+      const tomar = Math.min(longitud, this.disponible());
+      partes.push(this.segmentos[this.segmento]!.subarray(this.pos, this.pos + tomar)); this.pos += tomar; longitud -= tomar;
+    }
+    return unirXls(partes);
+  }
+  u8(): number { return this.bytes(1)[0]!; }
+  u16(): number { return vistaXls(this.bytes(2)).getUint16(0, true); }
+  u32(): number { return vistaXls(this.bytes(4)).getUint32(0, true); }
+  texto(cantidad: number, opciones: number, rico: number, extension: number): string {
+    let queda = cantidad, unicode = !!(opciones & 1), resultado = "";
+    while (queda) {
+      const porCaracter = unicode ? 2 : 1;
+      const posibles = Math.floor(this.disponible() / porCaracter);
+      if (!posibles) {
+        if (!this.siguiente()) errorXls();
+        unicode = !!(this.u8() & 1); continue;
+      }
+      const tomar = Math.min(queda, posibles), datos = this.bytes(tomar * porCaracter);
+      if (unicode) resultado += new TextDecoder("utf-16le").decode(datos);
+      else resultado += String.fromCharCode(...datos);
+      queda -= tomar;
+      if (queda && tomar === posibles) {
+        if (!this.siguiente()) errorXls();
+        unicode = !!(this.u8() & 1);
+      }
+    }
+    this.bytes(rico * 4 + extension);
+    return resultado;
+  }
+}
+function cadenaBiff(lector: LectorSegmentosBiff): string {
+  const cantidad = lector.u16(), opciones = lector.u8();
+  const rico = opciones & 8 ? lector.u16() : 0, extension = opciones & 4 ? lector.u32() : 0;
+  return lector.texto(cantidad, opciones, rico, extension);
+}
+function registrosBiff(bytes: Uint8Array, desde = 0): { tipo: number; datos: Uint8Array }[] {
+  const registros: { tipo: number; datos: Uint8Array }[] = []; let pos = desde;
+  while (pos < bytes.length) {
+    rangoXls(bytes, pos, 4); const view = vistaXls(bytes), tipo = view.getUint16(pos, true), tamano = view.getUint16(pos + 2, true);
+    rangoXls(bytes, pos + 4, tamano); registros.push({ tipo, datos: bytes.subarray(pos + 4, pos + 4 + tamano) }); pos += 4 + tamano;
+  }
+  return registros;
+}
+function numeroRk(datos: Uint8Array, pos: number): number {
+  rangoXls(datos, pos, 4); const rk = vistaXls(datos).getUint32(pos, true);
+  let valor: number;
+  if (rk & 2) valor = (rk | 0) >> 2;
+  else { const flotante = new Uint8Array(8); vistaXls(flotante).setUint32(4, rk & 0xfffffffc, true); valor = vistaXls(flotante).getFloat64(0, true); }
+  return rk & 1 ? valor / 100 : valor;
+}
+function textoNumeroXls(n: number): string { return Number.isFinite(n) ? String(n) : ""; }
+export function leerXls(bytes: Uint8Array): TablaImportacion {
+  try {
+    const libro = streamOle2(bytes), globales = registrosBiff(libro);
+    if (globales[0]?.tipo !== 0x0809 || globales[0].datos.length < 2 || vistaXls(globales[0].datos).getUint16(0, true) !== 0x0600) errorXls();
+    let hoja: number | undefined; const compartidas: string[] = [];
+    for (let i = 0; i < globales.length; i++) {
+      const registro = globales[i]!;
+      if (registro.tipo === 0x0085 && hoja === undefined) { if (registro.datos.length < 4) errorXls(); hoja = vistaXls(registro.datos).getUint32(0, true); }
+      if (registro.tipo === 0x00fc) {
+        const segmentos = [registro.datos]; while (globales[i + 1]?.tipo === 0x003c) segmentos.push(globales[++i]!.datos);
+        const lector = new LectorSegmentosBiff(segmentos); lector.u32(); const cantidad = lector.u32();
+        for (let j = 0; j < cantidad; j++) compartidas.push(cadenaBiff(lector));
+      }
+      if (registro.tipo === 0x000a) break;
+    }
+    if (hoja === undefined || hoja >= libro.length) errorXls();
+    const filas = new Map<number, Map<number, string>>();
+    const poner = (fila: number, columna: number, valor: string) => {
+      if (fila > 1_048_575 || columna > 16_383) errorXls();
+      const celdas = filas.get(fila) ?? new Map<number, string>(); celdas.set(columna, valor); filas.set(fila, celdas);
+    };
+    let formulaPendiente: [number, number] | undefined;
+    for (const registro of registrosBiff(libro, hoja)) {
+      const datos = registro.datos, view = vistaXls(datos);
+      if (registro.tipo === 0x00fd) {
+        if (datos.length < 10) errorXls(); const indice = view.getUint32(6, true); if (indice >= compartidas.length) errorXls(); poner(view.getUint16(0, true), view.getUint16(2, true), compartidas[indice]!);
+      } else if (registro.tipo === 0x0204) {
+        if (datos.length < 9) errorXls(); poner(view.getUint16(0, true), view.getUint16(2, true), cadenaBiff(new LectorSegmentosBiff([datos.subarray(6)])));
+      } else if (registro.tipo === 0x0203) {
+        if (datos.length < 14) errorXls(); poner(view.getUint16(0, true), view.getUint16(2, true), textoNumeroXls(view.getFloat64(6, true)));
+      } else if (registro.tipo === 0x027e) {
+        if (datos.length < 10) errorXls(); poner(view.getUint16(0, true), view.getUint16(2, true), textoNumeroXls(numeroRk(datos, 6)));
+      } else if (registro.tipo === 0x00bd) {
+        if (datos.length < 14) errorXls(); const fila = view.getUint16(0, true), primera = view.getUint16(2, true);
+        for (let pos = 6, columna = primera; pos + 6 <= datos.length - 2; pos += 6, columna++) poner(fila, columna, textoNumeroXls(numeroRk(datos, pos + 2)));
+      } else if (registro.tipo === 0x0006) {
+        if (datos.length < 20) errorXls(); const fila = view.getUint16(0, true), columna = view.getUint16(2, true);
+        if (view.getUint16(6, true) !== 0xffff) { poner(fila, columna, textoNumeroXls(view.getFloat64(6, true))); formulaPendiente = undefined; }
+        else if (datos[8] === 0) formulaPendiente = [fila, columna];
+        else { poner(fila, columna, datos[8] === 1 ? (datos[9] ? "TRUE" : "FALSE") : ""); formulaPendiente = undefined; }
+      } else if (registro.tipo === 0x0207 && formulaPendiente) {
+        poner(formulaPendiente[0], formulaPendiente[1], cadenaBiff(new LectorSegmentosBiff([datos]))); formulaPendiente = undefined;
+      }
+      if (registro.tipo === 0x000a) break;
+    }
+    const ultimaFila = Math.max(-1, ...filas.keys()); const tabla = Array.from({ length: ultimaFila + 1 }, (_, fila) => {
+      const celdas = filas.get(fila), ultimaColumna = celdas ? Math.max(-1, ...celdas.keys()) : -1;
+      return Array.from({ length: ultimaColumna + 1 }, (_, columna) => celdas?.get(columna) ?? "");
+    });
+    return { cabeceras: tabla.shift() ?? [], filas: tabla.filter((fila) => fila.some((valor) => valor.trim())) };
+  } catch { return errorXls(); }
+}
 export async function leerTabla(file: File): Promise<TablaImportacion> {
   const ext = file.name.toLowerCase();
-  if (ext.endsWith(".xls")) throw new Error("Este .xls antiguo no se puede leer: ábrelo en Excel o LibreOffice y guárdalo como .xlsx o .csv.");
+  if (ext.endsWith(".xls")) return leerXls(new Uint8Array(await file.arrayBuffer()));
   if (ext.endsWith(".csv")) {
     const bytes = await file.arrayBuffer();
     let texto: string;
@@ -325,7 +541,7 @@ export async function leerTabla(file: File): Promise<TablaImportacion> {
     return leerCsv(texto);
   }
   if (ext.endsWith(".xlsx")) return leerXlsx(new Uint8Array(await file.arrayBuffer()));
-  throw new Error("Elige un archivo .csv o .xlsx.");
+  throw new Error("Elige un archivo .csv, .xls o .xlsx.");
 }
 
 export const aliasVisita = {

@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { deflateRawSync } from "node:zlib";
-import { completarDatosTpvCliente, detectarColumnas, importarVisitas, leerCsv, leerTabla, leerXlsx, normalizarDniCif, normalizarFechaTpv, normalizarTelefono, vistaPreviaClientas } from "./importar-clientas";
+import { completarDatosTpvCliente, detectarColumnas, importarVisitas, leerCsv, leerTabla, leerXls, leerXlsx, normalizarDniCif, normalizarFechaTpv, normalizarTelefono, vistaPreviaClientas } from "./importar-clientas";
 import type { Client } from "./mock/types";
 
 const existente: Client = { id: "c1", name: "Marta Martín", phone: "612345678", createdAt: "2020-01-01" };
@@ -34,6 +34,62 @@ function xlsx(entries: Record<string, string>): Uint8Array {
   return Buffer.concat([...files, ...central, end]);
 }
 
+function biff(tipo: number, datos: Buffer): Buffer {
+  const cabecera = Buffer.alloc(4); cabecera.writeUInt16LE(tipo, 0); cabecera.writeUInt16LE(datos.length, 2);
+  return Buffer.concat([cabecera, datos]);
+}
+function cadenaBiff(texto: string): Buffer {
+  const datos = Buffer.from(texto, "utf16le"), cabecera = Buffer.alloc(3);
+  cabecera.writeUInt16LE(texto.length, 0); cabecera[2] = 1;
+  return Buffer.concat([cabecera, datos]);
+}
+function etiquetaSst(fila: number, columna: number, indice: number): Buffer {
+  const datos = Buffer.alloc(10); datos.writeUInt16LE(fila, 0); datos.writeUInt16LE(columna, 2); datos.writeUInt32LE(indice, 6);
+  return biff(0x00fd, datos);
+}
+function ole2ConWorkbook(workbook: Buffer): Uint8Array {
+  const miniSectores = Math.ceil(workbook.length / 64), raizTamano = miniSectores * 64;
+  const header = Buffer.alloc(512, 0); Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]).copy(header);
+  header.writeUInt16LE(0x003e, 24); header.writeUInt16LE(3, 26); header.writeUInt16LE(0xfffe, 28); header.writeUInt16LE(9, 30); header.writeUInt16LE(6, 32);
+  header.writeUInt32LE(1, 44); header.writeUInt32LE(0, 48); header.writeUInt32LE(4096, 56); header.writeUInt32LE(1, 60); header.writeUInt32LE(1, 64); header.writeUInt32LE(0xfffffffe, 68);
+  for (let i = 0; i < 109; i++) header.writeUInt32LE(i === 0 ? 4 : 0xffffffff, 76 + i * 4);
+  const directorio = Buffer.alloc(512, 0), entrada = (pos: number, nombre: string, tipo: number, inicio: number, tamano: number) => {
+    const texto = Buffer.from(`${nombre}\0`, "utf16le"); texto.copy(directorio, pos); directorio.writeUInt16LE(texto.length, pos + 64); directorio[pos + 66] = tipo;
+    directorio.writeUInt32LE(inicio, pos + 116); directorio.writeUInt32LE(tamano, pos + 120);
+  };
+  entrada(0, "Root Entry", 5, 2, raizTamano); entrada(128, "Workbook", 2, 0, workbook.length);
+  const miniFat = Buffer.alloc(512, 0xff); for (let i = 0; i < miniSectores; i++) miniFat.writeUInt32LE(i + 1 < miniSectores ? i + 1 : 0xfffffffe, i * 4);
+  const miniStream = Buffer.alloc(Math.ceil(raizTamano / 512) * 512, 0); workbook.copy(miniStream);
+  const fat = Buffer.alloc(512, 0xff); fat.writeUInt32LE(0xfffffffe, 0); fat.writeUInt32LE(0xfffffffe, 4);
+  for (let i = 0; i < miniStream.length / 512; i++) fat.writeUInt32LE(i + 3 < miniStream.length / 512 + 2 ? i + 3 : 0xfffffffe, (i + 2) * 4);
+  fat.writeUInt32LE(0xfffffffd, (miniStream.length / 512 + 2) * 4);
+  return Buffer.concat([header, directorio, miniFat, miniStream, fat]);
+}
+// Fixture OLE2/BIFF8 sintético: cubre SST partido con CONTINUE, LABEL,
+// NUMBER, RK, MULRK y una fórmula con resultado numérico almacenado.
+function xlsTpv123(): Uint8Array {
+  const cabeceras = ["COD", "Nombre", "Apellidos", "dnicif", "direccion", "F.Alta", "Cumpleaños", "Ult.Visita", "Telefono", "movi", "E-mail", "Dato 1", "Dato 2"];
+  const compartidas = ["Observación extensa con ñ y tildes Áéíóú para cruzar CONTINUE", ...cabeceras, "PC-XLS-01", "Peña", "12345678Z", "angela@example.test"];
+  const sstCompleto = Buffer.concat([Buffer.from([compartidas.length, 0, 0, 0, compartidas.length, 0, 0, 0]), ...compartidas.map(cadenaBiff)]);
+  const corte = 19, sst = [biff(0x00fc, sstCompleto.subarray(0, corte)), biff(0x003c, Buffer.concat([Buffer.from([1]), sstCompleto.subarray(corte)]))];
+  const bof = biff(0x0809, Buffer.from([0, 6, 5, 0, 0xbb, 0x0d, 0xcc, 0x07]));
+  const nombreHoja = Buffer.from("Clientas", "latin1"), hoja = Buffer.alloc(8 + nombreHoja.length); hoja[6] = nombreHoja.length; hoja[7] = 0; nombreHoja.copy(hoja, 8);
+  const globales = [bof, biff(0x0085, hoja), ...sst, biff(0x000a, Buffer.alloc(0))];
+  const inicioHoja = globales.reduce((total, registro) => total + registro.length, 0); globales[1]!.writeUInt32LE(inicioHoja, 4);
+  const celdas = cabeceras.map((_, columna) => etiquetaSst(0, columna, columna + 1));
+  celdas.push(etiquetaSst(1, 0, 14));
+  const nombre = Buffer.alloc(6); nombre.writeUInt16LE(1, 0); nombre.writeUInt16LE(1, 2); celdas.push(biff(0x0204, Buffer.concat([nombre, cadenaBiff("Ángela")])))
+  celdas.push(etiquetaSst(1, 2, 15), etiquetaSst(1, 3, 16));
+  const alta = Buffer.alloc(14); alta.writeUInt16LE(1, 0); alta.writeUInt16LE(5, 2); alta.writeDoubleLE(43876, 6); celdas.push(biff(0x0203, alta));
+  const cumple = Buffer.alloc(10); cumple.writeUInt16LE(1, 0); cumple.writeUInt16LE(6, 2); cumple.writeUInt32LE((31356 << 2 | 2) >>> 0, 6); celdas.push(biff(0x027e, cumple));
+  const visita = Buffer.alloc(20); visita.writeUInt16LE(1, 0); visita.writeUInt16LE(7, 2); visita.writeDoubleLE(46082, 6); celdas.push(biff(0x0006, visita));
+  for (const [columna, valor] of [[8, 910000001], [9, 612000001]] as const) { const telefono = Buffer.alloc(14); telefono.writeUInt16LE(1, 0); telefono.writeUInt16LE(columna, 2); telefono.writeDoubleLE(valor, 6); celdas.push(biff(0x0203, telefono)); }
+  const datos = Buffer.alloc(20); datos.writeUInt16LE(1, 0); datos.writeUInt16LE(11, 2); datos.writeUInt32LE(42 << 2 | 2, 8); datos.writeUInt32LE(123 << 2 | 2, 14); datos.writeUInt16LE(12, 18); celdas.push(biff(0x00bd, datos));
+  celdas.push(etiquetaSst(1, 10, 17));
+  const sheet = [biff(0x0809, Buffer.from([0, 6, 0x10, 0, 0xbb, 0x0d, 0xcc, 0x07])), ...celdas, biff(0x000a, Buffer.alloc(0))];
+  return ole2ConWorkbook(Buffer.concat([...globales, ...sheet]));
+}
+
 test("lee la primera hoja xlsx con cadenas compartidas y DEFLATE", async () => {
   const bytes = xlsx({
     "xl/workbook.xml": '<workbook><sheets><sheet name="Clientes" r:id="rId1"/></sheets></workbook>',
@@ -46,6 +102,27 @@ test("lee la primera hoja xlsx con cadenas compartidas y DEFLATE", async () => {
   expect(previa.nuevas).toBe(1);
   expect(previa.filas[0].nombre).toBe("Elena Gómez");
   expect(previa.filas[0].telefono).toBe("600111222");
+});
+
+test("lee el .xls BIFF8 de TPV 123 igual que su .xlsx, incluso fechas y vacíos", async () => {
+  const cabeceras = ["COD", "Nombre", "Apellidos", "dnicif", "direccion", "F.Alta", "Cumpleaños", "Ult.Visita", "Telefono", "movi", "E-mail", "Dato 1", "Dato 2"];
+  const fila = ["PC-XLS-01", "Ángela", "Peña", "12345678Z", "", "43876", "31356", "46082", "910000001", "612000001", "angela@example.test", "42", "123"];
+  const celda = (columna: number, valor: string, filaNumero: number) => `<c r="${String.fromCharCode(65 + columna)}${filaNumero}"${/^[\d.]+$/.test(valor) ? "" : ' t="inlineStr"'}>${/^[\d.]+$/.test(valor) ? `<v>${valor}</v>` : `<is><t>${valor}</t></is>`}</c>`;
+  const xlsxEquivalente = xlsx({
+    "xl/workbook.xml": '<workbook><sheets><sheet name="Clientes" r:id="rId1"/></sheets></workbook>',
+    "xl/_rels/workbook.xml.rels": '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+    "xl/worksheets/sheet1.xml": `<worksheet><sheetData><row r="1">${cabeceras.map((valor, columna) => celda(columna, valor, 1)).join("")}</row><row r="2">${fila.map((valor, columna) => celda(columna, valor, 2)).join("")}</row></sheetData></worksheet>`,
+  });
+  const tablaXls = leerXls(xlsTpv123()), tablaXlsx = await leerXlsx(xlsxEquivalente);
+  expect(tablaXls).toEqual(tablaXlsx);
+  expect(vistaPreviaClientas(tablaXls, [])).toEqual(vistaPreviaClientas(tablaXlsx, []));
+  expect(tablaXls.filas[0]?.[4]).toBe("");
+  expect(vistaPreviaClientas(tablaXls, []).filas[0]).toMatchObject({ nombre: "Ángela Peña", telefono: "612000001", tpvAltaDate: "2020-02-15", birthday: "1985-11-05", tpvLastVisit: "2026-03-01" });
+});
+
+test("rechaza un .xls corrupto con un error claro", async () => {
+  await expect(leerTabla(new File([new Uint8Array([0, 1, 2, 3])], "clientes.xls"))).rejects.toThrow("El archivo .xls no es válido o está dañado.");
+  await expect(leerTabla(new File(["x"], "clientes.txt"))).rejects.toThrow("Elige un archivo .csv, .xls o .xlsx.");
 });
 
 test("visitas enlazadas y fórmula de color en observaciones", () => {
@@ -131,10 +208,10 @@ test("agrupa el histórico de informe con cabecera de clienta y conceptos bajo e
   expect(r.visitas[0]).toMatchObject({ servicios: ["corte"], importe: 30, notas: "Producto: Champú" });
 });
 
-test("permite asignar la columna del nombre y explica el formato .xls antiguo", async () => {
+test("permite asignar la columna del nombre y avisa si el .xls está dañado", async () => {
   const tabla = leerCsv("Persona,Tel.\nCristina,611 222 333\n");
   expect(vistaPreviaClientas(tabla, [], { nombre: 0, telefono: 1 }).nuevas).toBe(1);
-  await expect(leerTabla(new File(["datos"], "clientes.xls"))).rejects.toThrow("Excel o LibreOffice");
+  await expect(leerTabla(new File(["datos"], "clientes.xls"))).rejects.toThrow("El archivo .xls no es válido o está dañado.");
 });
 
 test("detecta el mismo nombre si alguna ficha no tiene teléfono", () => {
