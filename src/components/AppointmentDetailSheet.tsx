@@ -502,7 +502,7 @@ export function AppointmentDetailSheet({
                             if (conRecargo && v === "late") preguntarPorLaDeuda("tarde");
                           }}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger aria-label="Estado de la cita">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>

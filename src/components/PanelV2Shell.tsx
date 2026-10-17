@@ -215,6 +215,7 @@ export function PanelV2Shell() {
           <SheetTrigger asChild>
             <button
               type="button"
+              aria-label="Más apartados"
               className={cn(
                 "flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors",
                 activeMore ? "text-primary" : "text-muted-foreground",

@@ -49,7 +49,7 @@ export function BuscadorGlobal({ variante = "icono" }: {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Buscar clientas"
+        aria-label="Buscar clienta por nombre o teléfono"
         title="Buscar clientas · / o Ctrl+K"
         className="flex h-[42px] w-full min-w-0 items-center gap-2 rounded-full border border-input bg-card px-3.5 text-left text-sm text-muted-foreground hover:bg-nata"
       >

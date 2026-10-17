@@ -208,7 +208,7 @@ function Appointments() {
           />
         </label>
         <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="h-[42px] w-[calc(50%-4px)] sm:w-[190px] rounded-full">
+          <SelectTrigger aria-label="Filtrar por estado" className="h-[42px] w-[calc(50%-4px)] sm:w-[190px] rounded-full">
             <SelectValue placeholder="Estado" />
           </SelectTrigger>
           <SelectContent>
@@ -224,7 +224,7 @@ function Appointments() {
         {/* Filtrar "por profesional" con un solo profesional no filtra nada. */}
         {!soloUno && (
           <Select value={emp} onValueChange={setEmp}>
-            <SelectTrigger className="h-[42px] w-[calc(50%-4px)] sm:w-[170px] rounded-full">
+            <SelectTrigger aria-label="Filtrar por profesional" className="h-[42px] w-[calc(50%-4px)] sm:w-[170px] rounded-full">
               <SelectValue placeholder="Profesional" />
             </SelectTrigger>
             <SelectContent>
@@ -314,7 +314,7 @@ function Appointments() {
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="size-8">
+                              <Button variant="ghost" size="icon" className="size-8" aria-label={`Más opciones para la cita de ${a.clientName}`}>
                                 <MoreHorizontal className="size-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -380,7 +380,7 @@ function Appointments() {
                     <div onClick={(evt) => evt.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="size-8 shrink-0">
+                          <Button variant="ghost" size="icon" className="size-8 shrink-0" aria-label={`Más opciones para la cita de ${a.clientName}`}>
                             <MoreHorizontal className="size-4" />
                           </Button>
                         </DropdownMenuTrigger>

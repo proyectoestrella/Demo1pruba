@@ -486,7 +486,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
         })}
         <Sheet open={masAbierto} onOpenChange={setMasAbierto}>
           <SheetTrigger asChild>
-            <button type="button" className={clase(activoEnMas)}>
+            <button type="button" aria-label="Más apartados" className={clase(activoEnMas)}>
               <MoreHorizontal className={cn("size-[22px]", activoEnMas && "text-hoja-tinta")} strokeWidth={1.6} />
               Más
             </button>

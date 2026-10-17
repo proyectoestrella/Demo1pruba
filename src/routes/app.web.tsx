@@ -792,7 +792,7 @@ function MiWebHidratada() {
                     </button>
                   ))}
                 </div>
-                <Button variant="outline" size="icon" className="size-[42px]" asChild>
+                <Button variant="outline" size="icon" className="size-[42px]" aria-label="Abrir la vista previa en otra pestaña" asChild>
                   {/* Sin «noreferrer» a propósito: la pestaña nueva (mismo origen)
                       hereda el sessionStorage, que es donde va el borrador. */}
                   <a

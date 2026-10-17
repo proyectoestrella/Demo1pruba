@@ -1170,7 +1170,7 @@ function ServiceStep({
           if (!items.length) return null;
           return (
             <AccordionItem key={cat} value={cat} className="border-b-0">
-              <AccordionTrigger className="min-h-12 py-3 text-base font-bold hover:no-underline">
+              <AccordionTrigger headingLevel={2} className="min-h-12 py-3 text-base font-bold hover:no-underline">
                 {cat}
               </AccordionTrigger>
               <AccordionContent>
@@ -1793,7 +1793,7 @@ function BookingSummary({
     // importe se comía el ancho y cortaba «Corte y pein… 25,00 € a…».
     return (
       <div
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-lino bg-background/95 pt-3 backdrop-blur lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 min-h-[calc(4.5rem+env(safe-area-inset-bottom,0px))] border-t border-lino bg-background/95 pt-3 backdrop-blur lg:hidden"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
       >
         <div className={cn(CONTENEDOR_SALON, "flex items-center justify-between gap-3")}>
@@ -1832,6 +1832,8 @@ function BookingSummary({
                 ref={foto.ref}
                 onError={foto.onError}
                 alt=""
+                width={44}
+                height={44}
                 className="h-full w-full object-cover"
               />
             </div>

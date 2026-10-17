@@ -238,7 +238,7 @@ export function AgendaColumns() {
       {/* Selector de profesional — solo móvil, y solo si hay entre quién elegir. */}
       <div className={cn("md:hidden", soloUno && "hidden")}>
         <Select value={mobileEmployee} onValueChange={(v) => setMobileEmployee(v as EmployeeId)}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full" aria-label="Ver agenda de la profesional">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

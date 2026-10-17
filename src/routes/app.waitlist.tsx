@@ -400,7 +400,7 @@ function AltaEnListaDialog({
             <div className="space-y-1.5">
               <Label>Servicio</Label>
               <Select value={serviceId} onValueChange={setServiceId}>
-                <SelectTrigger>
+                <SelectTrigger aria-label="Servicio de la lista de espera">
                   <SelectValue placeholder="Elige un servicio" />
                 </SelectTrigger>
                 <SelectContent>
@@ -420,7 +420,7 @@ function AltaEnListaDialog({
                   value={preferredEmployeeId}
                   onValueChange={(v) => setPreferredEmployeeId(v as EmployeeId | "any")}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger aria-label={`Profesional preferida para la lista de espera`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
