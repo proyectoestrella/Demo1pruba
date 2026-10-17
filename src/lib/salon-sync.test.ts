@@ -11,11 +11,24 @@ const argumentosCitas: unknown[] = [];
 let fallarTodo = false;
 let noGuardado = false;
 let rechazo: string | null = null;
+let respuestaControlada:
+  | ((nombre: string, argumentos: unknown[]) => Promise<{ synced: boolean }> | undefined)
+  | null = null;
 const registra =
   (nombre: string) =>
   (...args: unknown[]) => {
     llamadas.push(nombre);
-    if (["syncAppointment", "syncAppointmentPatch", "applyClientPenalty", "clearClientPenalty"].includes(nombre)) argumentosCitas.push(args[0]);
+    if (
+      [
+        "syncAppointment",
+        "syncAppointmentPatch",
+        "applyClientPenalty",
+        "clearClientPenalty",
+      ].includes(nombre)
+    )
+      argumentosCitas.push(args[0]);
+    const controlada = respuestaControlada?.(nombre, args);
+    if (controlada) return controlada;
     if (fallarTodo) return Promise.reject(new Error("red caída"));
     if (rechazo) return Promise.resolve({ synced: false as const, reason: rechazo });
     if (noGuardado) return Promise.resolve({ synced: false as const });
@@ -41,7 +54,10 @@ mock.module("./api/salons.functions", () => ({
 
 const idsDePago: string[] = [];
 mock.module("./api/pagos.functions", () => ({
-  registrarPago: (a: { data: { pago: { id: string } } }) => { idsDePago.push(a.data.pago.id); return registra("registrarPago")(a); },
+  registrarPago: (a: { data: { pago: { id: string } } }) => {
+    idsDePago.push(a.data.pago.id);
+    return registra("registrarPago")(a);
+  },
   borrarPago: registra("borrarPago"),
   listarPagos: registra("listarPagos"),
   cerrarCaja: registra("cerrarCaja"),
@@ -67,7 +83,9 @@ const {
 } = await import("./salon-sync");
 // Los reintentos automáticos esperan 1 s, 3 s y 9 s: en pruebas, sin espera.
 const esperasPedidas: number[] = [];
-esperaDeReintentoParaPruebas(async (ms) => { esperasPedidas.push(ms); });
+esperaDeReintentoParaPruebas(async (ms) => {
+  esperasPedidas.push(ms);
+});
 const { salon } = await import("./mock/salon");
 const { leerAvisos, limpiarAvisos } = await import("./avisos-sync");
 
@@ -104,6 +122,7 @@ afterEach(() => {
   fallarTodo = false;
   noGuardado = false;
   rechazo = null;
+  respuestaControlada = null;
   limpiarAvisos();
   olvidarCambiosSinGuardar();
 });
@@ -124,18 +143,25 @@ describe("salon-sync con slug null (demo de venta)", () => {
 describe("salon-sync con un salón real", () => {
   it("la reserva pública espera la confirmación real", async () => {
     await expect(
-      guardarReservaPublica("the-best-shave-barber", cita, { name: "Marta", phone: "600111222" }, true),
+      guardarReservaPublica(
+        "the-best-shave-barber",
+        cita,
+        { name: "Marta", phone: "600111222" },
+        true,
+      ),
     ).resolves.toBeUndefined();
     expect(llamadas).toEqual(["syncAppointment"]);
-    expect(argumentosCitas[0]).toMatchObject({ data: { localId: cita.id, status: "pending", privacyNoticeAccepted: true } });
+    expect(argumentosCitas[0]).toMatchObject({
+      data: { localId: cita.id, status: "pending", privacyNoticeAccepted: true },
+    });
   });
 
   it("un fallo de red conserva el id para reintentar sin duplicar la solicitud", async () => {
     fallarTodo = true;
     const cliente = { name: "Marta", phone: "600111222" };
-    await expect(guardarReservaPublica("the-best-shave-barber", cita, cliente, true)).rejects.toThrow(
-      "red caída",
-    );
+    await expect(
+      guardarReservaPublica("the-best-shave-barber", cita, cliente, true),
+    ).rejects.toThrow("red caída");
     fallarTodo = false;
     await guardarReservaPublica("the-best-shave-barber", cita, cliente, true);
     expect(argumentosCitas).toHaveLength(2);
@@ -145,14 +171,24 @@ describe("salon-sync con un salón real", () => {
   it("no confunde `synced: false` con una cita guardada", async () => {
     noGuardado = true;
     await expect(
-      guardarReservaPublica("the-best-shave-barber", cita, { name: "Marta", phone: "600111222" }, true),
+      guardarReservaPublica(
+        "the-best-shave-barber",
+        cita,
+        { name: "Marta", phone: "600111222" },
+        true,
+      ),
     ).rejects.toThrow("RESERVA_NO_GUARDADA");
   });
 
   it("propaga el motivo del rechazo para mostrar el mensaje preciso", async () => {
     rechazo = "RESERVA_HUECO_OCUPADO";
     await expect(
-      guardarReservaPublica("the-best-shave-barber", cita, { name: "Marta", phone: "600111222" }, true),
+      guardarReservaPublica(
+        "the-best-shave-barber",
+        cita,
+        { name: "Marta", phone: "600111222" },
+        true,
+      ),
     ).rejects.toThrow("RESERVA_HUECO_OCUPADO");
   });
 
@@ -188,8 +224,7 @@ describe("salon-sync con un salón real", () => {
 describe("un fallo de guardado se ve en pantalla y se puede reintentar", () => {
   it("la cita que no sube deja un aviso en español, con el nombre del cliente", async () => {
     fallarTodo = true;
-    pushAppointment("the-best-shave-barber", cita);
-    await esperarAvisos();
+    await esperarAvisos(pushAppointment("the-best-shave-barber", cita));
 
     expect(leerAvisos()).toHaveLength(1);
     expect(leerAvisos()[0]!.mensaje).toBe(
@@ -199,11 +234,12 @@ describe("un fallo de guardado se ve en pantalla y se puede reintentar", () => {
 
   it("ningún aviso menciona tecnologías ni códigos de error", async () => {
     fallarTodo = true;
-    pushAppointment("the-best-shave-barber", cita);
-    pushSalonProfile("the-best-shave-barber", salon);
-    pushPenalty("the-best-shave-barber", cliente, 7, "No vino");
-    pushClientNotes("the-best-shave-barber", cliente);
-    await esperarAvisos();
+    await esperarAvisos(
+      pushAppointment("the-best-shave-barber", cita),
+      pushSalonProfile("the-best-shave-barber", salon),
+      pushPenalty("the-best-shave-barber", cliente, 7, "No vino"),
+      pushClientNotes("the-best-shave-barber", cliente),
+    );
 
     expect(leerAvisos().length).toBeGreaterThanOrEqual(4);
     for (const aviso of leerAvisos()) {
@@ -215,23 +251,20 @@ describe("un fallo de guardado se ve en pantalla y se puede reintentar", () => {
 
   it("el perfil que no sube se cuenta sin hablar de perfiles ni de bases de datos", async () => {
     fallarTodo = true;
-    pushSalonProfile("the-best-shave-barber", salon);
-    await esperarAvisos();
+    await esperarAvisos(pushSalonProfile("the-best-shave-barber", salon));
     expect(leerAvisos()[0]!.mensaje).toContain("los datos de tu salón");
   });
 
   it("el botón de reintentar vuelve a subir, y si ya va bien no deja aviso nuevo", async () => {
     fallarTodo = true;
-    pushAppointment("the-best-shave-barber", cita);
-    await esperarAvisos();
+    await esperarAvisos(pushAppointment("the-best-shave-barber", cita));
     const reintentar = leerAvisos()[0]!.reintentar;
     expect(reintentar).toBeDefined();
 
     llamadas.length = 0;
     limpiarAvisos();
     fallarTodo = false;
-    reintentar!();
-    await esperarAvisos();
+    await esperarAvisos(reintentarComoPromesa(reintentar!));
 
     expect(llamadas).toEqual(["syncAppointment"]);
     expect(leerAvisos()).toEqual([]);
@@ -239,14 +272,12 @@ describe("un fallo de guardado se ve en pantalla y se puede reintentar", () => {
 
   it("si el reintento también falla, el aviso vuelve a aparecer", async () => {
     fallarTodo = true;
-    pushAppointment("the-best-shave-barber", cita);
-    await esperarAvisos();
+    await esperarAvisos(pushAppointment("the-best-shave-barber", cita));
     const reintentar = leerAvisos()[0]!.reintentar!;
 
     // El componente descarta el aviso al pulsar; la red sigue caída.
     limpiarAvisos();
-    reintentar();
-    await esperarAvisos();
+    await esperarAvisos(reintentarComoPromesa(reintentar));
 
     expect(leerAvisos()).toHaveLength(1);
     expect(leerAvisos()[0]!.mensaje).toContain("la cita de Marta");
@@ -255,16 +286,21 @@ describe("un fallo de guardado se ve en pantalla y se puede reintentar", () => {
   });
 
   it("cuando va bien no aparece ningún aviso", async () => {
-    pushAppointment("the-best-shave-barber", cita);
-    pushSalonProfile("the-best-shave-barber", salon);
-    await esperarAvisos();
+    await esperarAvisos(
+      pushAppointment("the-best-shave-barber", cita),
+      pushSalonProfile("the-best-shave-barber", salon),
+    );
     expect(leerAvisos()).toEqual([]);
   });
 });
 
-/** Las subidas son fire-and-forget: hay que dejar correr la cola de promesas. */
-async function esperarAvisos() {
-  for (let i = 0; i < 10; i++) await new Promise((r) => setTimeout(r, 0));
+/** Las subidas son fire-and-forget: la prueba espera solo las que inició. */
+async function esperarAvisos(...subidas: Promise<void>[]) {
+  await Promise.all(subidas);
+}
+
+function reintentarComoPromesa(reintentar: () => void): Promise<void> {
+  return (reintentar as unknown as () => Promise<void>)();
 }
 
 /**
@@ -286,15 +322,19 @@ describe("el perfil sube el parche, no el perfil entero", () => {
 
   it("si el parche no sube, el dueño se entera", async () => {
     fallarTodo = true;
-    pushSalonProfilePatch("the-best-shave-barber", { phone: "600 999 888" });
-    await esperarAvisos();
+    await esperarAvisos(pushSalonProfilePatch("the-best-shave-barber", { phone: "600 999 888" }));
     expect(leerAvisos()[0]!.mensaje).toContain("los datos de tu salón");
   });
 });
 
 describe("parche por campos desde el panel", () => {
   it("un parche que solo trae status no lleva la nota ni ningún otro campo", async () => {
-    pushAppointmentPatch("the-best-shave-barber", { ...cita, note: "nota local vieja" }, { status: "confirmed" }, cliente);
+    pushAppointmentPatch(
+      "the-best-shave-barber",
+      { ...cita, note: "nota local vieja" },
+      { status: "confirmed" },
+      cliente,
+    );
     await Promise.resolve();
     expect(llamadas).toEqual(["syncAppointmentPatch"]);
     const enviado = argumentosCitas[0] as { data: { patch: Record<string, unknown> } };
@@ -304,7 +344,11 @@ describe("parche por campos desde el panel", () => {
   });
 
   it("la cita entera manda la nota limpia y las respuestas en su campo", () => {
-    pushAppointment("the-best-shave-barber", { ...cita, note: "Trae foto", bookingAnswers: { hairLength: "Largo" }, origen: "tpv123" }, cliente);
+    pushAppointment(
+      "the-best-shave-barber",
+      { ...cita, note: "Trae foto", bookingAnswers: { hairLength: "Largo" }, origen: "tpv123" },
+      cliente,
+    );
     const enviado = argumentosCitas[0] as { data: Record<string, unknown> };
     expect(enviado.data.note).toBe("Trae foto");
     expect(enviado.data.bookingAnswers).toEqual({ hairLength: "Largo" });
@@ -314,10 +358,19 @@ describe("parche por campos desde el panel", () => {
 
 describe("solapes desde el panel", () => {
   it("permitirSolape viaja explícito en el alta y en el parche, y por defecto es false", async () => {
-    pushAppointment("the-best-shave-barber", { ...cita, id: "s-1" }, cliente);
-    pushAppointment("the-best-shave-barber", { ...cita, id: "s-2" }, cliente, { permitirSolape: true });
-    pushAppointmentPatch("the-best-shave-barber", { ...cita, id: "s-3" }, { start: cita.start }, cliente, { permitirSolape: true });
-    await esperarAvisos();
+    await esperarAvisos(
+      pushAppointment("the-best-shave-barber", { ...cita, id: "s-1" }, cliente),
+      pushAppointment("the-best-shave-barber", { ...cita, id: "s-2" }, cliente, {
+        permitirSolape: true,
+      }),
+      pushAppointmentPatch(
+        "the-best-shave-barber",
+        { ...cita, id: "s-3" },
+        { start: cita.start },
+        cliente,
+        { permitirSolape: true },
+      ),
+    );
     const [sin, con, parche] = argumentosCitas as Array<{ data: { permitirSolape?: boolean } }>;
     expect(sin.data.permitirSolape).toBe(false);
     expect(con.data.permitirSolape).toBe(true);
@@ -326,34 +379,38 @@ describe("solapes desde el panel", () => {
 
   it("un rechazo por solape no se da por guardado: se convierte en aviso reintentable", async () => {
     rechazo = "RESERVA_SOLAPE_PANEL";
-    pushAppointment("the-best-shave-barber", cita, cliente);
-    await new Promise((r) => setTimeout(r, 0));
+    await esperarAvisos(pushAppointment("the-best-shave-barber", cita, cliente));
     expect(leerAvisos().some((a) => a.mensaje.includes("la cita de"))).toBe(true);
   });
 });
 
 describe("cambios locales sin guardar", () => {
   it("una cita queda marcada mientras sube y se desmarca al guardarse", async () => {
-    pushAppointment("the-best-shave-barber", cita, cliente);
+    const subida = pushAppointment("the-best-shave-barber", cita, cliente);
     expect(cambioSinGuardar(`cita:${cita.id}`)).toBe(true);
-    await new Promise((r) => setTimeout(r, 0));
+    await esperarAvisos(subida);
     expect(cambioSinGuardar(`cita:${cita.id}`)).toBe(false);
   });
 
   it("si la subida falla, sigue marcada hasta que el reintento la guarde", async () => {
     fallarTodo = true;
-    pushAppointmentPatch("the-best-shave-barber", cita, { status: "confirmed" }, cliente);
-    await new Promise((r) => setTimeout(r, 0));
+    await esperarAvisos(
+      pushAppointmentPatch("the-best-shave-barber", cita, { status: "confirmed" }, cliente),
+    );
     expect(cambioSinGuardar(`cita:${cita.id}`)).toBe(true);
     fallarTodo = false;
-    leerAvisos()[0]!.reintentar?.();
-    await new Promise((r) => setTimeout(r, 0));
+    await esperarAvisos(reintentarComoPromesa(leerAvisos()[0]!.reintentar!));
     expect(cambioSinGuardar(`cita:${cita.id}`)).toBe(false);
   });
 });
 
 describe("bloqueo manual con columna propia", () => {
-  const ficha = { id: "c-1", name: "Ana", phone: "600111222", createdAt: "2026-01-01T00:00:00.000Z" };
+  const ficha = {
+    id: "c-1",
+    name: "Ana",
+    phone: "600111222",
+    createdAt: "2026-01-01T00:00:00.000Z",
+  };
 
   it("bloquear manda manualBlock:true y desbloquear manualBlock:false", () => {
     pushManualBlock("the-best-shave-barber", ficha, true);
@@ -375,11 +432,15 @@ describe("reintentos automáticos con espera creciente", () => {
     let fallos = 2;
     const original = fallarTodo;
     fallarTodo = true;
-    esperaDeReintentoParaPruebas(async (ms) => { esperasPedidas.push(ms); if (--fallos === 0) fallarTodo = original; });
+    esperaDeReintentoParaPruebas(async (ms) => {
+      esperasPedidas.push(ms);
+      if (--fallos === 0) fallarTodo = original;
+    });
     esperasPedidas.length = 0;
-    pushAppointment("the-best-shave-barber", cita, cliente);
-    await esperarAvisos();
-    esperaDeReintentoParaPruebas(async (ms) => { esperasPedidas.push(ms); });
+    await esperarAvisos(pushAppointment("the-best-shave-barber", cita, cliente));
+    esperaDeReintentoParaPruebas(async (ms) => {
+      esperasPedidas.push(ms);
+    });
     expect(esperasPedidas).toEqual([ESPERAS_REINTENTO_MS[0], ESPERAS_REINTENTO_MS[1]]);
     expect(llamadas).toEqual(["syncAppointment", "syncAppointment", "syncAppointment"]);
     expect(leerAvisos()).toEqual([]);
@@ -389,8 +450,7 @@ describe("reintentos automáticos con espera creciente", () => {
   it("si la red sigue caída, se rinde tras los reintentos y deja UN aviso", async () => {
     fallarTodo = true;
     esperasPedidas.length = 0;
-    pushAppointment("the-best-shave-barber", cita, cliente);
-    await esperarAvisos();
+    await esperarAvisos(pushAppointment("the-best-shave-barber", cita, cliente));
     expect(esperasPedidas).toEqual([...ESPERAS_REINTENTO_MS]);
     expect(llamadas).toHaveLength(1 + ESPERAS_REINTENTO_MS.length);
     expect(leerAvisos()).toHaveLength(1);
@@ -399,8 +459,7 @@ describe("reintentos automáticos con espera creciente", () => {
 
   it("un rechazo del servidor (solape) no se reintenta: reintentar no lo arregla", async () => {
     rechazo = "RESERVA_SOLAPE_PANEL";
-    pushAppointment("the-best-shave-barber", cita, cliente);
-    await esperarAvisos();
+    await esperarAvisos(pushAppointment("the-best-shave-barber", cita, cliente));
     expect(llamadas).toEqual(["syncAppointment"]);
     expect(leerAvisos()).toHaveLength(1);
   });
@@ -408,22 +467,34 @@ describe("reintentos automáticos con espera creciente", () => {
   it("un pago que se reintenta viaja siempre con el mismo id (el servidor ignora duplicados)", async () => {
     let fallos = 1;
     fallarTodo = true;
-    esperaDeReintentoParaPruebas(async () => { if (--fallos === 0) fallarTodo = false; });
+    esperaDeReintentoParaPruebas(async () => {
+      if (--fallos === 0) fallarTodo = false;
+    });
     idsDePago.length = 0;
-    pushPago("the-best-shave-barber", {
-      id: "p-1", appointmentId: cita.id, clientId: "c-1", clientName: "Marta", importeEur: 15,
-      metodo: "efectivo", concepto: "cita", fecha: "2026-09-26T13:30:00.000Z",
-    } as never);
-    await esperarAvisos();
-    esperaDeReintentoParaPruebas(async (ms) => { esperasPedidas.push(ms); });
+    await esperarAvisos(
+      pushPago("the-best-shave-barber", {
+        id: "p-1",
+        appointmentId: cita.id,
+        clientId: "c-1",
+        clientName: "Marta",
+        importeEur: 15,
+        metodo: "efectivo",
+        concepto: "cita",
+        fecha: "2026-09-26T13:30:00.000Z",
+      } as never),
+    );
+    esperaDeReintentoParaPruebas(async (ms) => {
+      esperasPedidas.push(ms);
+    });
     expect(idsDePago).toEqual(["p-1", "p-1"]);
     expect(leerAvisos()).toEqual([]);
   });
 
   it("la ficha sin teléfono es un alta que no se repite sola (evita fichas dobles)", async () => {
     fallarTodo = true;
-    pushClient("the-best-shave-barber", { ...cliente, id: "c-sin-tel", phone: "" });
-    await esperarAvisos();
+    await esperarAvisos(
+      pushClient("the-best-shave-barber", { ...cliente, id: "c-sin-tel", phone: "" }),
+    );
     expect(llamadas).toEqual(["saveClient"]);
     expect(leerAvisos()).toHaveLength(1);
   });
@@ -431,12 +502,19 @@ describe("reintentos automáticos con espera creciente", () => {
   it("dos cambios de la misma cita suben en orden aunque el primero tenga que reintentarse", async () => {
     let fallos = 1;
     fallarTodo = true;
-    esperaDeReintentoParaPruebas(async () => { await new Promise((r) => setTimeout(r, 0)); if (--fallos === 0) fallarTodo = false; });
-    pushAppointmentPatch("the-best-shave-barber", cita, { status: "confirmed" }, cliente);
-    pushAppointmentPatch("the-best-shave-barber", cita, { status: "completed" }, cliente);
-    await esperarAvisos();
-    esperaDeReintentoParaPruebas(async (ms) => { esperasPedidas.push(ms); });
-    const estados = (argumentosCitas as Array<{ data: { patch: { status: string } } }>).map((a) => a.data.patch.status);
+    esperaDeReintentoParaPruebas(async () => {
+      if (--fallos === 0) fallarTodo = false;
+    });
+    await esperarAvisos(
+      pushAppointmentPatch("the-best-shave-barber", cita, { status: "confirmed" }, cliente),
+      pushAppointmentPatch("the-best-shave-barber", cita, { status: "completed" }, cliente),
+    );
+    esperaDeReintentoParaPruebas(async (ms) => {
+      esperasPedidas.push(ms);
+    });
+    const estados = (argumentosCitas as Array<{ data: { patch: { status: string } } }>).map(
+      (a) => a.data.patch.status,
+    );
     // confirmed falla; su reintento ya no se manda porque «completed» es
     // posterior y toca el mismo campo; completed llega después y gana.
     expect(estados).toEqual(["confirmed", "completed"]);
@@ -447,56 +525,93 @@ describe("reintentos automáticos con espera creciente", () => {
 describe("el botón «Reintentar» respeta el orden (segunda pasada)", () => {
   it("un parche viejo reintentado a mano no pisa un campo que cambió después", async () => {
     fallarTodo = true;
-    pushAppointmentPatch("the-best-shave-barber", cita, { status: "confirmed", note: "vieja" }, cliente);
-    await esperarAvisos();
+    await esperarAvisos(
+      pushAppointmentPatch(
+        "the-best-shave-barber",
+        cita,
+        { status: "confirmed", note: "vieja" },
+        cliente,
+      ),
+    );
     const reintentar = leerAvisos()[0]!.reintentar!;
     fallarTodo = false;
-    pushAppointmentPatch("the-best-shave-barber", cita, { status: "completed" }, cliente);
-    await esperarAvisos();
+    await esperarAvisos(
+      pushAppointmentPatch("the-best-shave-barber", cita, { status: "completed" }, cliente),
+    );
     argumentosCitas.length = 0;
     limpiarAvisos();
-    reintentar();
-    await esperarAvisos();
+    await esperarAvisos(reintentarComoPromesa(reintentar));
     // Solo viaja lo que nadie ha vuelto a tocar: la nota, no el estado.
-    expect((argumentosCitas as Array<{ data: { patch: object } }>).map((a) => a.data.patch)).toEqual([{ note: "vieja" }]);
+    expect(
+      (argumentosCitas as Array<{ data: { patch: object } }>).map((a) => a.data.patch),
+    ).toEqual([{ note: "vieja" }]);
     expect(leerAvisos()).toEqual([]);
   });
 
   it("reintentar la cita entera tras otro cambio de ella no la sube con la versión vieja", async () => {
     fallarTodo = true;
-    pushAppointment("the-best-shave-barber", { ...cita, id: "r-1" }, cliente);
-    await esperarAvisos();
+    await esperarAvisos(pushAppointment("the-best-shave-barber", { ...cita, id: "r-1" }, cliente));
     const reintentar = leerAvisos()[0]!.reintentar!;
     fallarTodo = false;
-    pushAppointmentPatch("the-best-shave-barber", { ...cita, id: "r-1" }, { status: "completed" }, cliente);
-    await esperarAvisos();
+    await esperarAvisos(
+      pushAppointmentPatch(
+        "the-best-shave-barber",
+        { ...cita, id: "r-1" },
+        { status: "completed" },
+        cliente,
+      ),
+    );
     llamadas.length = 0;
-    reintentar();
-    await esperarAvisos();
+    await esperarAvisos(reintentarComoPromesa(reintentar));
     expect(llamadas).toEqual([]);
   });
 
   it("el reintento espera a que termine la subida en curso de esa cita", async () => {
     fallarTodo = true;
-    pushAppointmentPatch("the-best-shave-barber", { ...cita, id: "q-1" }, { note: "a" }, cliente);
-    await esperarAvisos();
+    await esperarAvisos(
+      pushAppointmentPatch("the-best-shave-barber", { ...cita, id: "q-1" }, { note: "a" }, cliente),
+    );
     const reintentar = leerAvisos()[0]!.reintentar!;
     fallarTodo = false;
-    let soltar!: () => void;
-    esperaDeReintentoParaPruebas(() => new Promise<void>((r) => { soltar = r; }));
-    fallarTodo = true;
-    pushAppointmentPatch("the-best-shave-barber", { ...cita, id: "q-1" }, { status: "completed" }, cliente);
-    await esperarAvisos();
+    let soltarSubida!: () => void;
+    let avisarInicio!: () => void;
+    const subidaEnCurso = new Promise<{ synced: boolean }>((resolver) => {
+      soltarSubida = () => resolver({ synced: true });
+    });
+    const inicioDeSubida = new Promise<void>((resolver) => {
+      avisarInicio = resolver;
+    });
+    respuestaControlada = (nombre, [argumento]) => {
+      const datos = argumento as { data?: { localId?: string; patch?: { status?: string } } };
+      if (
+        nombre === "syncAppointmentPatch" &&
+        datos.data?.localId === "q-1" &&
+        datos.data.patch?.status === "completed"
+      ) {
+        avisarInicio();
+        return subidaEnCurso;
+      }
+      return undefined;
+    };
     argumentosCitas.length = 0;
-    fallarTodo = false;
-    reintentar();
-    await esperarAvisos();
-    // Solo las de esta cita: bajo carga, una subida tardía de otra prueba puede colarse aquí.
-    const deQ1 = () => (argumentosCitas as Array<{ data: { localId: string; patch: object } }>).filter((a) => a.data.localId === "q-1");
-    expect(deQ1()).toEqual([]); // en cola, detrás del parche que está esperando
-    soltar();
-    await esperarAvisos();
-    esperaDeReintentoParaPruebas(async (ms) => { esperasPedidas.push(ms); });
+    const subidaActual = pushAppointmentPatch(
+      "the-best-shave-barber",
+      { ...cita, id: "q-1" },
+      { status: "completed" },
+      cliente,
+    );
+    await inicioDeSubida;
+    const reintento = reintentarComoPromesa(reintentar);
+    const deQ1 = () =>
+      (argumentosCitas as Array<{ data: { localId: string; patch: object } }>).filter(
+        (a) => a.data.localId === "q-1",
+      );
+    expect(deQ1().map((a) => a.data.patch)).toEqual([{ status: "completed" }]); // el reintento sigue en cola
+    soltarSubida();
+    await esperarAvisos(subidaActual, reintento);
+    esperaDeReintentoParaPruebas(async (ms) => {
+      esperasPedidas.push(ms);
+    });
     const orden = deQ1().map((a) => a.data.patch);
     expect(orden).toEqual([{ status: "completed" }, { note: "a" }]);
   });

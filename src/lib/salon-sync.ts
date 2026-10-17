@@ -71,9 +71,7 @@ function aviso(que: string, intentar: () => Promise<unknown>) {
     console.error(`Sync con Supabase fallida (${que}); el cambio sigue en local:`, err);
     registrarAviso(
       `No hemos podido guardar ${que}. Se ve en esta pantalla, pero todavía no está guardado.`,
-      () => {
-        intentar().catch(manejar);
-      },
+      () => intentar().catch(manejar),
     );
   };
   return manejar;
@@ -121,9 +119,14 @@ function encolar(clave: string | undefined, tarea: () => Promise<unknown>): Prom
   const anterior = clave ? colas.get(clave) : undefined;
   const turno = anterior ? anterior.then(tarea, tarea) : tarea();
   if (clave) {
-    const marca = turno.then(() => {}, () => {});
+    const marca = turno.then(
+      () => {},
+      () => {},
+    );
     colas.set(clave, marca);
-    void marca.then(() => { if (colas.get(clave) === marca) colas.delete(clave); });
+    void marca.then(() => {
+      if (colas.get(clave) === marca) colas.delete(clave);
+    });
   }
   return turno;
 }
@@ -149,12 +152,19 @@ const hayPosterior = (clave: string, g: number) => (ultimaDeClave.get(clave) ?? 
 function camposVigentes<T extends object>(clave: string, g: number, patch: T): Partial<T> {
   const todos = ultimaDeCampo.get(`${clave}|*`) ?? 0;
   return Object.fromEntries(
-    Object.entries(patch).filter(([k]) => (ultimaDeCampo.get(`${clave}|${k}`) ?? 0) === g && todos < g),
+    Object.entries(patch).filter(
+      ([k]) => (ultimaDeCampo.get(`${clave}|${k}`) ?? 0) === g && todos < g,
+    ),
   ) as Partial<T>;
 }
 
 /** Lanza la subida y, si falla (tras los reintentos automáticos), la convierte en un aviso reintentable. */
-function subir(que: string, intentar: () => Promise<unknown>, claveLocal?: string, reintentable = true): Promise<void> {
+function subir(
+  que: string,
+  intentar: () => Promise<unknown>,
+  claveLocal?: string,
+  reintentable = true,
+): Promise<void> {
   pendientes += 1;
   if (claveLocal) sinGuardar.add(claveLocal);
   const unaVez = async () => {
@@ -164,9 +174,12 @@ function subir(que: string, intentar: () => Promise<unknown>, claveLocal?: strin
   // El botón «Reintentar» también pasa por la cola de la cita: nunca adelanta
   // a un cambio que esté subiendo en ese momento.
   const desdeAviso = () => encolar(claveLocal, unaVez);
-  return encolar(claveLocal, () => (reintentable ? conReintentos(unaVez) : unaVez()))
+  const subida = encolar(claveLocal, () => (reintentable ? conReintentos(unaVez) : unaVez()))
     .then(() => {}, aviso(que, desdeAviso))
-    .finally(() => { pendientes -= 1; });
+    .finally(() => {
+      pendientes -= 1;
+    });
+  return subida;
 }
 
 let pendientes = 0;
@@ -178,11 +191,17 @@ const altasPendientes = new Map<string, Promise<void>>();
  */
 const sinGuardar = new Set<string>();
 /** Evita que una lectura antigua pise un cambio local aún en camino. */
-export function sincronizacionPendiente(): boolean { return pendientes > 0; }
+export function sincronizacionPendiente(): boolean {
+  return pendientes > 0;
+}
 /** ¿Tiene esta cita/ficha un cambio local que aún no está guardado? */
-export function cambioSinGuardar(clave: string): boolean { return sinGuardar.has(clave); }
+export function cambioSinGuardar(clave: string): boolean {
+  return sinGuardar.has(clave);
+}
 /** Solo para pruebas. */
-export function olvidarCambiosSinGuardar(): void { sinGuardar.clear(); }
+export function olvidarCambiosSinGuardar(): void {
+  sinGuardar.clear();
+}
 
 /** Sube una cita (crear o modificar: es el mismo upsert). */
 export function pushAppointment(
@@ -190,16 +209,23 @@ export function pushAppointment(
   appt: Appointment,
   cliente?: ClienteDeCita,
   opciones: OpcionesGuardado = {},
-): void {
-  if (!slug) return;
+): Promise<void> {
+  if (!slug) return Promise.resolve();
   const quien = (cliente?.name ?? appt.clientName ?? "").trim();
   const g = nuevaGeneracion(`cita:${appt.id}`, "todos");
-  subir(quien ? `la cita de ${quien}` : "la cita", async () => {
-    // Un reintento de la cita entera tras otro cambio de ella la pisaría con la versión vieja.
-    if (hayPosterior(`cita:${appt.id}`, g)) return;
-    if (appt.origen === "tpv123" && !cliente?.phone) await altasPendientes.get(`${slug}|${quien}`);
-    return exigirGuardado(await syncAppointment({ data: appointmentPayload(slug, appt, cliente, opciones) }));
-  }, `cita:${appt.id}`);
+  return subir(
+    quien ? `la cita de ${quien}` : "la cita",
+    async () => {
+      // Un reintento de la cita entera tras otro cambio de ella la pisaría con la versión vieja.
+      if (hayPosterior(`cita:${appt.id}`, g)) return;
+      if (appt.origen === "tpv123" && !cliente?.phone)
+        await altasPendientes.get(`${slug}|${quien}`);
+      return exigirGuardado(
+        await syncAppointment({ data: appointmentPayload(slug, appt, cliente, opciones) }),
+      );
+    },
+    `cita:${appt.id}`,
+  );
 }
 
 /** Opciones del panel al guardar. Ver el contrato de solapes en lib/solape.ts. */
@@ -221,7 +247,12 @@ function exigirGuardado<T extends { synced: boolean; reason?: string }>(r: T): T
   return r;
 }
 
-function appointmentPayload(slug: string, appt: Appointment, cliente?: ClienteDeCita, opciones: OpcionesGuardado = {}) {
+function appointmentPayload(
+  slug: string,
+  appt: Appointment,
+  cliente?: ClienteDeCita,
+  opciones: OpcionesGuardado = {},
+) {
   return {
     slug,
     permitirSolape: opciones.permitirSolape === true,
@@ -277,22 +308,34 @@ export function pushAppointmentPatch(
   patch: Partial<Appointment>,
   cliente?: ClienteDeCita,
   opciones: OpcionesGuardado = {},
-): void {
-  if (!slug) return;
+): Promise<void> {
+  if (!slug) return Promise.resolve();
   const quien = (cliente?.name ?? appt.clientName ?? "").trim();
   const g = nuevaGeneracion(`cita:${appt.id}`, Object.keys(patch));
-  subir(quien ? `la cita de ${quien}` : "la cita", async () => {
-    const vigente = camposVigentes(`cita:${appt.id}`, g, patch);
-    if (Object.keys(vigente).length === 0) return; // todo lo de este parche ya lo cambió otro posterior
-    const r = await syncAppointmentPatch({
-      data: { slug, localId: appt.id, patch: vigente, permitirSolape: opciones.permitirSolape === true, ...(opciones.origen ? { origen: opciones.origen } : {}) },
-    });
-    if (!r.synced && r.reason === "sin-fila") {
-      if (hayPosterior(`cita:${appt.id}`, g)) return exigirGuardado({ ...r, reason: undefined });
-      return exigirGuardado(await syncAppointment({ data: appointmentPayload(slug, appt, cliente, opciones) }));
-    }
-    return exigirGuardado(r);
-  }, `cita:${appt.id}`);
+  return subir(
+    quien ? `la cita de ${quien}` : "la cita",
+    async () => {
+      const vigente = camposVigentes(`cita:${appt.id}`, g, patch);
+      if (Object.keys(vigente).length === 0) return; // todo lo de este parche ya lo cambió otro posterior
+      const r = await syncAppointmentPatch({
+        data: {
+          slug,
+          localId: appt.id,
+          patch: vigente,
+          permitirSolape: opciones.permitirSolape === true,
+          ...(opciones.origen ? { origen: opciones.origen } : {}),
+        },
+      });
+      if (!r.synced && r.reason === "sin-fila") {
+        if (hayPosterior(`cita:${appt.id}`, g)) return exigirGuardado({ ...r, reason: undefined });
+        return exigirGuardado(
+          await syncAppointment({ data: appointmentPayload(slug, appt, cliente, opciones) }),
+        );
+      }
+      return exigirGuardado(r);
+    },
+    `cita:${appt.id}`,
+  );
 }
 
 /** La reserva pública espera la confirmación; un `synced: false` no es éxito. */
@@ -302,7 +345,9 @@ export async function guardarReservaPublica(
   cliente: ClienteDeCita,
   privacyNoticeAccepted: boolean,
 ): Promise<void> {
-  const resultado = await syncAppointment({ data: appointmentPayload(slug, appt, cliente, { privacyNoticeAccepted }) });
+  const resultado = await syncAppointment({
+    data: appointmentPayload(slug, appt, cliente, { privacyNoticeAccepted }),
+  });
   if (!resultado.synced) {
     throw new Error("reason" in resultado ? resultado.reason : "RESERVA_NO_GUARDADA");
   }
@@ -350,9 +395,9 @@ export function pushWaitlistDeletion(slug: string | null, localId: string): void
  * Ver `pushSalonProfilePatch` para el camino normal, y el comentario de
  * `patchSalonProfile` en api/salons.functions.ts para por qué importa.
  */
-export function pushSalonProfile(slug: string | null, profile: SalonProfile): void {
-  if (!slug) return;
-  subir("los datos de tu salón", () =>
+export function pushSalonProfile(slug: string | null, profile: SalonProfile): Promise<void> {
+  if (!slug) return Promise.resolve();
+  return subir("los datos de tu salón", () =>
     saveSalonProfile({ data: { slug, profile: profile as unknown as Record<string, unknown> } }),
   );
 }
@@ -364,14 +409,17 @@ export function pushSalonProfile(slug: string | null, profile: SalonProfile): vo
  * viejo guardado en `localStorage` ya no puede revertir un campo que cambió
  * otro dispositivo, porque ese campo ni siquiera viaja.
  */
-export function pushSalonProfilePatch(slug: string | null, patch: Partial<SalonProfile>): void {
-  if (!slug) return;
+export function pushSalonProfilePatch(
+  slug: string | null,
+  patch: Partial<SalonProfile>,
+): Promise<void> {
+  if (!slug) return Promise.resolve();
   const claves = Object.keys(patch).filter(
     (k) => (patch as Record<string, unknown>)[k] !== undefined,
   );
   // Un `updateSalonProfile({})` no tiene por qué tocar la red.
-  if (claves.length === 0) return;
-  subir("los datos de tu salón", () =>
+  if (claves.length === 0) return Promise.resolve();
+  return subir("los datos de tu salón", () =>
     patchSalonProfile({ data: { slug, patch: patch as unknown as Record<string, unknown> } }),
   );
 }
@@ -382,8 +430,8 @@ export function pushPenalty(
   cliente: Client | undefined,
   eur: number,
   note?: string,
-): void {
-  if (!slug || !cliente?.phone) return;
+): Promise<void> {
+  if (!slug || !cliente?.phone) return Promise.resolve();
   const payload = {
     slug,
     clientId: cliente.id,
@@ -397,7 +445,7 @@ export function pushPenalty(
     // bloquea, igual que se comportaba antes de que existiera la opción.
     penaltyBlock: cliente.penaltyBlock !== false,
   };
-  subir(`la deuda de ${cliente.name}`, () => applyClientPenalty({ data: payload }));
+  return subir(`la deuda de ${cliente.name}`, () => applyClientPenalty({ data: payload }));
 }
 
 /** Cierra la penalización de un cliente (cobrada o perdonada). */
@@ -453,30 +501,52 @@ export function pushManualBlock(
               penaltyBlock: cliente.penaltyBlock !== false,
             },
           })
-        : clearClientPenalty({ data: { slug, clientId: cliente.id, phone: cliente.phone, manualBlock: false } }),
+        : clearClientPenalty({
+            data: { slug, clientId: cliente.id, phone: cliente.phone, manualBlock: false },
+          }),
     );
   }
 }
 
 /** Sube las indicaciones del salón sobre un cliente. */
-export function pushClientNotes(slug: string | null, cliente: Client | undefined): void {
-  if (!slug || !cliente?.phone) return;
-  subir(`las notas de ${cliente.name}`, () =>
+export function pushClientNotes(slug: string | null, cliente: Client | undefined): Promise<void> {
+  if (!slug || !cliente?.phone) return Promise.resolve();
+  return subir(`las notas de ${cliente.name}`, () =>
     saveClientNotes({ data: { slug, phone: cliente.phone, notes: cliente.notes ?? "" } }),
   );
 }
 
 /** Alta de ficha sin cita para los salones reales. */
-export function pushClient(slug: string | null, cliente: Client): void {
-  if (!slug) return;
+export function pushClient(slug: string | null, cliente: Client): Promise<void> {
+  if (!slug) return Promise.resolve();
   const clave = `${slug}|${cliente.name}`;
-  const pending = subir(`la ficha de ${cliente.name}`, () => saveClient({ data: {
-    slug, name: cliente.name, phone: cliente.phone, email: cliente.email, notes: cliente.notes, createdAt: cliente.createdAt,
-    tpvCode: cliente.tpvCode, birthday: cliente.birthday, address: cliente.address, taxId: cliente.taxId,
-    tpvAltaDate: cliente.tpvAltaDate, tpvLastVisit: cliente.tpvLastVisit,
-  } }), undefined, Boolean(cliente.phone)); // sin teléfono es un insert: no se repite solo
+  const pending = subir(
+    `la ficha de ${cliente.name}`,
+    () =>
+      saveClient({
+        data: {
+          slug,
+          name: cliente.name,
+          phone: cliente.phone,
+          email: cliente.email,
+          notes: cliente.notes,
+          createdAt: cliente.createdAt,
+          tpvCode: cliente.tpvCode,
+          birthday: cliente.birthday,
+          address: cliente.address,
+          taxId: cliente.taxId,
+          tpvAltaDate: cliente.tpvAltaDate,
+          tpvLastVisit: cliente.tpvLastVisit,
+        },
+      }),
+    undefined,
+    Boolean(cliente.phone),
+  ); // sin teléfono es un insert: no se repite solo
   altasPendientes.set(clave, pending);
-  void pending.finally(() => { if (altasPendientes.get(clave) === pending) altasPendientes.delete(clave); });
+  void pending.finally(() => {
+    if (altasPendientes.get(clave) === pending) altasPendientes.delete(clave);
+  });
+  return pending;
 }
 
 /** Sube un cambio del historial (lote 9). La autora la pone el servidor. */
@@ -487,8 +557,16 @@ export function pushCambio(slug: string | null, c: Cambio): void {
       data: {
         slug,
         cambio: {
-          id: c.id, tipo: c.tipo, entidad: c.entidad, idEntidad: c.idEntidad, antes: c.antes, despues: c.despues,
-          resumen: c.resumen, fecha: c.fecha, deshaceA: c.deshaceA, avisoEnviado: c.avisoEnviado,
+          id: c.id,
+          tipo: c.tipo,
+          entidad: c.entidad,
+          idEntidad: c.idEntidad,
+          antes: c.antes,
+          despues: c.despues,
+          resumen: c.resumen,
+          fecha: c.fecha,
+          deshaceA: c.deshaceA,
+          avisoEnviado: c.avisoEnviado,
         },
       },
     }),
@@ -505,16 +583,24 @@ export function pushAvisoEnviado(slug: string | null, cambioId: string): void {
 /* ---------------------------------------------------------------------- */
 
 /** Sube un pago (alta manual). Idempotente por `id`. */
-export function pushPago(slug: string | null, pago: Pago): void {
-  if (!slug) return;
-  subir("el pago", () =>
+export function pushPago(slug: string | null, pago: Pago): Promise<void> {
+  if (!slug) return Promise.resolve();
+  return subir("el pago", () =>
     registrarPagoApi({
       data: {
         slug,
         pago: {
-          id: pago.id, appointmentId: pago.appointmentId, clientId: pago.clientId, clientName: pago.clientName,
-          importeEur: pago.importeEur, metodo: pago.metodo, concepto: pago.concepto, cobradoPor: pago.cobradoPor,
-          nota: pago.nota, refExterna: pago.refExterna, fecha: pago.fecha,
+          id: pago.id,
+          appointmentId: pago.appointmentId,
+          clientId: pago.clientId,
+          clientName: pago.clientName,
+          importeEur: pago.importeEur,
+          metodo: pago.metodo,
+          concepto: pago.concepto,
+          cobradoPor: pago.cobradoPor,
+          nota: pago.nota,
+          refExterna: pago.refExterna,
+          fecha: pago.fecha,
         },
       },
     }),
@@ -531,7 +617,11 @@ export function pushPagoDeletion(slug: string | null, id: string): void {
  * `listarCambios`: no forma parte de la carga inicial del salón). En una
  * demo no hay nada que pedir: se resuelve con `null` sin tocar la red.
  */
-export async function cargarPagosDeServidor(slug: string | null, desde: string, hasta: string): Promise<Pago[] | null> {
+export async function cargarPagosDeServidor(
+  slug: string | null,
+  desde: string,
+  hasta: string,
+): Promise<Pago[] | null> {
   if (!slug) return null;
   const r = await listarPagosApi({ data: { slug, desde, hasta } });
   return r.pagos as Pago[];
