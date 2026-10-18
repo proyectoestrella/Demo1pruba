@@ -1230,7 +1230,36 @@ export const syncAppointment = createServerFn({ method: "POST" })
         return { synced: false as const, reason: ERROR_SOLAPE_PANEL };
       }
     }
-    if (data.clientPhone && key.length >= 6 && data.clientName) {
+    if (!manda && data.clientPhone && key.length >= 6 && data.clientName) {
+      // Reserva pública (A4): quien reserva NO es dueño de la ficha. Si la
+      // clienta ya existe se reutiliza tal cual (solo se rellenan campos que
+      // estén vacíos); nunca se pisa su nombre ni su correo, que son a donde
+      // llegan después los recordatorios.
+      const { data: existente, error: errorBuscar } = await supabase
+        .from("clients")
+        .select("id, name, email")
+        .eq("salon_slug", data.slug)
+        .eq("phone_key", key)
+        .maybeSingle();
+      if (errorBuscar) throw new Error(`syncAppointment (cliente): ${errorBuscar.message}`);
+      if (existente) {
+        clientId = existente.id as string;
+        const relleno: Record<string, string> = {};
+        if (!existente.name) relleno.name = data.clientName;
+        if (!existente.email && data.clientEmail) relleno.email = data.clientEmail;
+        if (Object.keys(relleno).length) {
+          await supabase.from("clients").update(relleno).eq("id", clientId).eq("salon_slug", data.slug);
+        }
+      } else {
+        const { data: nueva, error: errorNueva } = await supabase
+          .from("clients")
+          .insert({ salon_slug: data.slug, name: data.clientName, phone: data.clientPhone, phone_key: key, email: data.clientEmail })
+          .select("id")
+          .single();
+        if (errorNueva) throw new Error(`syncAppointment (cliente): ${errorNueva.message}`);
+        clientId = nueva.id as string;
+      }
+    } else if (data.clientPhone && key.length >= 6 && data.clientName) {
       const { data: cliente, error } = await supabase
         .from("clients")
         .upsert(
