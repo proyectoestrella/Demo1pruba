@@ -88,15 +88,15 @@ export function HistorialCambios() {
   const realSlug = useRealSalonSlug();
   const esReal = Boolean(realSlug);
   const locales = useCambios((s) => s.cambios);
-  const servidor = useHistorialServidor(realSlug ?? "", esReal);
+  // Lote 13: fuera de Estándar (28-sep: bajó de Embajador), las últimas 24 h (el aviso de 10 s sigue en todos los planes).
+  const completo = useTienePlan("historial-completo");
+  const servidor = useHistorialServidor(realSlug ?? "", esReal, completo);
   const todos = esReal ? servidor.cambios : locales;
   // «Deshacer» solo puede ofrecerse para un cambio que esta store conoce
   // (ver la nota de arriba): en la demo son siempre los mismos, en un salón
   // real puede que el historial del servidor traiga más de los que esta
   // pestaña ha visto hacer.
   const idsConocidos = useMemo(() => new Set(locales.map((c) => c.id)), [locales]);
-  // Lote 13: fuera de Estándar (28-sep: bajó de Embajador), las últimas 24 h (el aviso de 10 s sigue en todos los planes).
-  const completo = useTienePlan("historial-completo");
   const cambios = useMemo(() => (completo ? todos : todos.filter((c) => Date.now() - Date.parse(c.fecha) <= HORAS_HISTORIAL_ESTANDAR * 3_600_000)), [todos, completo]);
   const permisos = usePermisos();
   const [grupo, setGrupo] = useState<Grupo | "todo">("todo");

@@ -11,9 +11,10 @@
  * se traducen a rutas del panel.
  */
 import { useFichas } from "@/lib/use-fichas";
-import { LlegaConPlan } from "@/components/LlegaConPlan";
+import { HojaFuncionPlan, LlegaConPlan } from "@/components/LlegaConPlan";
 import { useTienePlan } from "@/lib/accesos-panel";
-import { planDe } from "@/lib/plan";
+import { planDe, type FuncionPlan } from "@/lib/plan";
+import { descartarFuncionPlan, leerDescubrimientoPlan } from "@/lib/plan-descubrimiento";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowUp, BookOpen, Copy, Mail, RotateCcw, Sparkles } from "lucide-react";
@@ -80,6 +81,8 @@ function PanelDelAsistente({ className }: { className?: string }) {
   const navigate = useNavigate();
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [texto, setTexto] = useState("");
+  const [funcionPlan, setFuncionPlan] = useState<FuncionPlan | null>(null);
+  const [funcionesRechazadas, setFuncionesRechazadas] = useState<FuncionPlan[]>([]);
   const permisosTemas = usePermisos();
   const temas = useMemo(() => {
     const veDinero = puede(permisosTemas, "dinero.ver-global") || alcance(permisosTemas, "dinero.ver-propio") === "propio";
@@ -135,6 +138,13 @@ function PanelDelAsistente({ className }: { className?: string }) {
 
   // El historial dura lo que la sesión del navegador: se recupera al volver a abrir el panel.
   useEffect(() => setMensajes(leerHistorial()), []);
+  useEffect(() => {
+    try {
+      setFuncionesRechazadas(leerDescubrimientoPlan(window.sessionStorage).descartadas);
+    } catch {
+      /* el ejemplo sigue funcionando aunque sessionStorage no esté disponible */
+    }
+  }, []);
   useEffect(() => {
     try {
       window.sessionStorage.setItem(CLAVE_HISTORIAL, JSON.stringify(mensajes.slice(-40)));
@@ -225,7 +235,7 @@ function PanelDelAsistente({ className }: { className?: string }) {
               {m.texto}
             </p>
           ) : (
-            <Respuesta key={m.id} r={m.r} onAccion={ejecutar} onPreguntar={preguntar} />
+            <Respuesta key={m.id} r={m.r} onAccion={ejecutar} onPreguntar={preguntar} onFuncion={setFuncionPlan} funcionesRechazadas={funcionesRechazadas} />
           ),
         )}
         <div ref={final} />
@@ -292,11 +302,27 @@ function PanelDelAsistente({ className }: { className?: string }) {
         </button>
       </form>
 
+      {funcionPlan && (
+        <HojaFuncionPlan
+          funcion={funcionPlan}
+          abierto
+          onCerrar={() => {
+            try {
+              descartarFuncionPlan(funcionPlan, window.sessionStorage);
+              setFuncionesRechazadas(leerDescubrimientoPlan(window.sessionStorage).descartadas);
+            } catch {
+              /* sin almacenamiento, solo se cierra */
+            }
+            setFuncionPlan(null);
+          }}
+        />
+      )}
+
     </div>
   );
 }
 
-function Respuesta({ r, onAccion, onPreguntar }: { r: RespuestaAsistente; onAccion: (a: Accion) => void; onPreguntar: (t: string) => void }) {
+function Respuesta({ r, onAccion, onPreguntar, onFuncion, funcionesRechazadas }: { r: RespuestaAsistente; onAccion: (a: Accion) => void; onPreguntar: (t: string) => void; onFuncion: (funcion: FuncionPlan) => void; funcionesRechazadas: FuncionPlan[] }) {
   const caja = "max-w-[92%] rounded-2xl rounded-bl-md border border-lino bg-card px-3.5 py-3 text-[14px] leading-snug text-cafe";
   const chip = "rounded-full border border-salvia bg-salvia-suave px-3 py-1.5 text-[13px] font-bold text-hoja-tinta hover:bg-salvia-clara";
   if (r.tipo === "respuesta") {
@@ -385,11 +411,16 @@ function Respuesta({ r, onAccion, onPreguntar }: { r: RespuestaAsistente; onAcci
           </button>
         </p>
         <p className="mt-2 rounded-xl border border-lino bg-superficie px-3 py-2 text-[13px] text-cafe-medio">{r.contacto.mensaje}</p>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          <button type="button" onClick={() => copiar(r.contacto.mensaje, "Mensaje")} className={chip}>
-            Copiar mensaje
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        <button type="button" onClick={() => copiar(r.contacto.mensaje, "Mensaje")} className={chip}>
+          Copiar mensaje
+        </button>
+        {r.funcion && !funcionesRechazadas.includes(r.funcion) && (
+          <button type="button" onClick={() => onFuncion(r.funcion!)} className={chip}>
+            Ver ejemplo
           </button>
-          <a href={`mailto:${r.contacto.correo}?subject=${encodeURIComponent("Ayuda con siShow")}&body=${encodeURIComponent(r.contacto.mensaje)}`} className={chip}>
+        )}
+        <a href={`mailto:${r.contacto.correo}?subject=${encodeURIComponent("Ayuda con siShow")}&body=${encodeURIComponent(r.contacto.mensaje)}`} className={chip}>
             Abrir el correo
           </a>
         </div>

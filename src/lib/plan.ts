@@ -76,23 +76,113 @@ export const FUNCIONES_POR_PLAN: Record<FuncionPlan, PlanSishow> = {
 };
 
 /** Qué es cada función, para la tarjeta «llega con el plan…». */
-export const QUE_ES: Record<FuncionPlan, { titulo: string; texto: string; plural?: boolean }> = {
-  asistente: { titulo: "El asistente", texto: "Pregúntale por tu salón como hablas: cuántas citas, huecos, cobrado, el color de una clienta. Responde con tus datos." },
-  "roles-ampliados": { titulo: "Más tipos de acceso", plural: true, texto: "Además de gerente y estilista, una subencargada y recepción, cada una con lo suyo." },
-  "historial-completo": { titulo: "El historial completo", texto: "Todo lo cambiado en los últimos 90 días, con quién y cuándo, y deshacerlo o volver a una versión anterior de tu web." },
-  "campanas-ampliadas": { titulo: "Todas las campañas", plural: true, texto: "Recupera a las que no vuelven, llena tus horas flojas, segunda visita y ofrece otros servicios, con la lista y el mensaje preparados." },
-  "analitica-avanzada": { titulo: "La analítica completa", texto: "Cualquier periodo que elijas y los patrones de todo tu histórico: la franja más floja, el servicio estrella, quién repite más." },
-  exportar: { titulo: "Exportar a Excel", texto: "Tus citas y tu analítica en un fichero para tu gestoría o para lo que quieras." },
-  "senal-liberacion-automatica": { titulo: "La señal que se libera sola", texto: "Si no llega la señal a tiempo, el hueco se libera sin que tengas que estar pendiente." },
-  "importacion-mensual": { titulo: "Importación mensual", texto: "Traemos cada mes tus clientas de TPV 123 para que siShow esté al día." },
-  "caja-exportar": { titulo: "Exportar para la gestoría", texto: "Todos los cobros del periodo que elijas en un fichero listo para tu gestoría: fecha, concepto, forma de pago, importe y quién cobró." },
-  "caja-cierre": { titulo: "El cierre de caja guardado", texto: "Cuenta el efectivo al cerrar, siShow calcula el descuadre y guarda cada cierre para que puedas revisarlo después." },
+export interface EjemploFuncionPlan {
+  /** Título del bloque estático. Nunca se rellena con datos del salón. */
+  titulo: string;
+  filas: ReadonlyArray<{ etiqueta: string; valor: string }>;
+}
+
+export interface DescripcionFuncionPlan {
+  titulo: string;
+  texto: string;
+  plural?: boolean;
+  /** Una miniatura legible y explícitamente ficticia para las tarjetas del panel. */
+  ejemplo: EjemploFuncionPlan;
+}
+
+/**
+ * Texto, beneficio y miniatura de cada función. Mantenerlo junto a la tabla
+ * de planes evita que una tarjeta, el asistente y el servidor vendan cosas
+ * distintas. Las filas de `ejemplo` son deliberadamente inventadas.
+ */
+export const QUE_ES: Record<FuncionPlan, DescripcionFuncionPlan> = {
+  asistente: {
+    titulo: "El asistente",
+    texto: "Pregúntale por tu salón como hablas y obtiene una respuesta clara sobre agenda, cobros o fichas.",
+    ejemplo: { titulo: "Respuesta del asistente", filas: [{ etiqueta: "Huecos esta tarde", valor: "3 libres" }, { etiqueta: "Siguiente cita", valor: "16:30 · Corte" }] },
+  },
+  "roles-ampliados": {
+    titulo: "Más tipos de acceso",
+    plural: true,
+    texto: "Da a recepción y a una subencargada justo el acceso que necesitan, sin compartirlo todo.",
+    ejemplo: { titulo: "Accesos del equipo", filas: [{ etiqueta: "Laura", valor: "Recepción · confirma citas" }, { etiqueta: "Marta", valor: "Subencargada · organiza el día" }] },
+  },
+  "historial-completo": {
+    titulo: "El historial completo",
+    texto: "Consulta lo cambiado durante 90 días, quién lo hizo y vuelve a una versión anterior si lo necesitas.",
+    ejemplo: { titulo: "Cambios recientes", filas: [{ etiqueta: "Ayer, 18:10", valor: "Precio de mechas actualizado" }, { etiqueta: "Lunes, 09:25", valor: "Horario de Sara ajustado" }] },
+  },
+  "campanas-ampliadas": {
+    titulo: "Todas las campañas",
+    plural: true,
+    texto: "Recupera clientas, llena horas flojas y propone una segunda visita con la lista y el mensaje preparados.",
+    ejemplo: { titulo: "Campaña preparada", filas: [{ etiqueta: "Clientas que no vuelven", valor: "18 personas" }, { etiqueta: "Mensaje", valor: "Listo para revisar" }] },
+  },
+  "analitica-avanzada": {
+    titulo: "La analítica completa",
+    texto: "Mira cualquier periodo y descubre patrones de tu histórico: horas flojas, servicios y clientas que repiten.",
+    ejemplo: { titulo: "Patrón del mes", filas: [{ etiqueta: "Franja más floja", valor: "Martes · 16:00" }, { etiqueta: "Servicio estrella", valor: "Mechas · 24 citas" }] },
+  },
+  exportar: {
+    titulo: "Exportar a Excel",
+    texto: "Lleva tus citas y tu analítica a un fichero para la gestoría o para revisarlo como quieras.",
+    ejemplo: { titulo: "Fichero preparado", filas: [{ etiqueta: "Periodo", valor: "1–30 septiembre" }, { etiqueta: "Formato", valor: "Excel · 126 citas" }] },
+  },
+  "senal-liberacion-automatica": {
+    titulo: "La señal que se libera sola",
+    texto: "Si no llega la señal a tiempo, el hueco se libera sin que tengas que estar pendiente.",
+    ejemplo: { titulo: "Regla de señal", filas: [{ etiqueta: "Plazo", valor: "2 horas" }, { etiqueta: "Al vencer", valor: "Hueco liberado" }] },
+  },
+  "importacion-mensual": {
+    titulo: "Importación mensual",
+    texto: "Traemos cada mes tus clientas y ventas de TPV 123 para que siShow esté al día.",
+    ejemplo: { titulo: "Importación de ejemplo", filas: [{ etiqueta: "Octubre", valor: "42 ventas revisadas" }, { etiqueta: "Duplicados", valor: "2 unificados" }] },
+  },
+  "caja-exportar": {
+    titulo: "Exportar para la gestoría",
+    texto: "Prepara los cobros del periodo con fecha, concepto, forma de pago, importe y quién cobró.",
+    ejemplo: { titulo: "CSV para gestoría", filas: [{ etiqueta: "Periodo", valor: "1–30 septiembre" }, { etiqueta: "Cobros", valor: "84 líneas" }] },
+  },
+  "caja-cierre": {
+    titulo: "El cierre de caja guardado",
+    texto: "Cuenta el efectivo al cerrar, calcula el descuadre y guarda cada cierre para revisarlo después.",
+    ejemplo: { titulo: "Cierre de ejemplo", filas: [{ etiqueta: "Efectivo esperado", valor: "186,00 €" }, { etiqueta: "Descuadre", valor: "0,00 €" }] },
+  },
 };
 
 const RANGO: Record<PlanSishow, number> = { reservas: 0, "reservas-asistente": 1, "todo-incluido": 2 };
 
 export function tienePlan(plan: PlanSishow, funcion: FuncionPlan): boolean {
   return RANGO[plan] >= RANGO[FUNCIONES_POR_PLAN[funcion]];
+}
+
+/** Catálogo que puede ver un salón sin mezclarlo con datos de su cuenta. */
+export function funcionesNoIncluidas(plan: PlanSishow): FuncionPlan[] {
+  return (Object.keys(FUNCIONES_POR_PLAN) as FuncionPlan[]).filter((funcion) => !tienePlan(plan, funcion));
+}
+
+/** Nombre, beneficio y plan de una función, siempre derivados de esta tabla. */
+export function catalogoFuncion(funcion: FuncionPlan) {
+  return { funcion, ...QUE_ES[funcion], plan: FUNCIONES_POR_PLAN[funcion], nombrePlan: NOMBRE_PLAN[FUNCIONES_POR_PLAN[funcion]] };
+}
+
+/**
+ * Señales concretas para que el asistente abra la misma ficha contextual. No
+ * son respuestas ni datos: solo reconocen que alguien ha pedido una función
+ * del catálogo anterior. Se mantienen aquí para no duplicar planes en el
+ * motor del asistente.
+ */
+export function funcionDePlanMencionada(texto: string): FuncionPlan | null {
+  const t = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (/\b(subencargad|recepcion|tipos? de acceso)\b/.test(t)) return "roles-ampliados";
+  if (/\bhistorial completo\b|\b90 dias\b|\bversion(?:es)? anterior(?:es)?\b/.test(t)) return "historial-completo";
+  if (/\b(campanas? ampliadas?|todas las campanas?)\b/.test(t)) return "campanas-ampliadas";
+  if (/\b(analitica completa|patrones? del historico|franja mas floja)\b/.test(t)) return "analitica-avanzada";
+  if (/\b(importacion mensual|importar(?:me|nos)? cada mes|traer(?:me|nos)? cada mes)\b/.test(t)) return "importacion-mensual";
+  if (/\b(cierre de caja guardado|cierres de caja)\b/.test(t)) return "caja-cierre";
+  if (/\b(exportar (?:la )?caja|gestoria)\b/.test(t)) return "caja-exportar";
+  if (/\basistente\b/.test(t)) return "asistente";
+  return null;
 }
 
 /** Límite operativo vigente. Embajador aún conserva el máximo técnico de seis. */

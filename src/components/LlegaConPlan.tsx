@@ -1,56 +1,183 @@
-import { useState } from "react";
-import { Sparkles } from "lucide-react";
-import { FUNCIONES_POR_PLAN, NOMBRE_PLAN, PLANES, QUE_ES, incluye, type FuncionPlan } from "@/lib/plan";
-import { useSalonStore } from "@/lib/store";
+import { useEffect, useState } from "react";
+import {
+  ArchiveRestore,
+  BarChart3,
+  Bot,
+  Download,
+  FileSpreadsheet,
+  Landmark,
+  Megaphone,
+  ShieldCheck,
+  Sparkles,
+  Upload,
+  UsersRound,
+  type LucideIcon,
+} from "lucide-react";
+import { FUNCIONES_POR_PLAN, NOMBRE_PLAN, QUE_ES, type FuncionPlan } from "@/lib/plan";
+import { useEsDemo } from "@/lib/accesos-panel";
+import { descartarFuncionPlan, destacarFuncionPlan } from "@/lib/plan-descubrimiento";
+import { enlaceCorreo } from "@/lib/sishow-web";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 
-const CORREO = "ejemplo@sishow.com";
+const ICONOS: Record<FuncionPlan, LucideIcon> = {
+  asistente: Bot,
+  "roles-ampliados": UsersRound,
+  "historial-completo": ArchiveRestore,
+  "campanas-ampliadas": Megaphone,
+  "analitica-avanzada": BarChart3,
+  exportar: FileSpreadsheet,
+  "senal-liberacion-automatica": ShieldCheck,
+  "importacion-mensual": Upload,
+  "caja-exportar": Download,
+  "caja-cierre": Landmark,
+};
+
+function useEsMovil() {
+  const [movil, setMovil] = useState(true);
+  useEffect(() => {
+    const consulta = window.matchMedia("(max-width: 639px)");
+    const actualizar = () => setMovil(consulta.matches);
+    actualizar();
+    consulta.addEventListener("change", actualizar);
+    return () => consulta.removeEventListener("change", actualizar);
+  }, []);
+  return movil;
+}
+
+/** Miniatura 100 % estática: nunca recibe ni lee datos de la cuenta. */
+export function VistaPreviaFuncionPlan({ funcion, className }: { funcion: FuncionPlan; className?: string }) {
+  const ejemplo = QUE_ES[funcion].ejemplo;
+  return (
+    <div
+      role="group"
+      className={cn("overflow-hidden rounded-xl border border-lino bg-blanco", className)}
+      aria-label={`Ejemplo de ${QUE_ES[funcion].titulo.toLowerCase()}`}
+    >
+      <div className="flex items-center justify-between gap-2 border-b border-lino bg-beige/70 px-3 py-2">
+        <p className="truncate text-[12px] font-bold text-cafe-medio">{ejemplo.titulo}</p>
+        <span className="shrink-0 rounded-full bg-arena px-2 py-0.5 text-[10.5px] font-extrabold uppercase tracking-[0.06em] text-cafe-medio">Ejemplo</span>
+      </div>
+      <dl className="divide-y divide-lino px-3">
+        {ejemplo.filas.map((fila) => (
+          <div key={fila.etiqueta} className="flex items-baseline justify-between gap-3 py-2 text-[12.5px]">
+            <dt className="min-w-0 text-cafe-suave">{fila.etiqueta}</dt>
+            <dd className="shrink-0 text-right font-extrabold tabular-nums text-cafe">{fila.valor}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function ContenidoHoja({ funcion, onAhoraNo }: { funcion: FuncionPlan; onAhoraNo: () => void }) {
+  const plan = FUNCIONES_POR_PLAN[funcion];
+  const { titulo, texto } = QUE_ES[funcion];
+  const asunto = `siShow · ${titulo}`;
+  const cuerpo = `Hola, me interesa ${titulo.toLowerCase()} (plan ${NOMBRE_PLAN[plan]}). ¿Me contáis cómo funciona?`;
+  return (
+    <div className="space-y-4 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-salvia-suave text-hoja-tinta">
+          <Sparkles className="size-[18px]" strokeWidth={1.6} aria-hidden="true" />
+        </span>
+        <div>
+          <p className="text-[12.5px] font-bold text-hoja-tinta">Plan {NOMBRE_PLAN[plan]}</p>
+          <h2 className="text-[20px] font-extrabold tracking-[-0.02em] text-cafe">{titulo}</h2>
+        </div>
+      </div>
+      <p className="text-[14px] leading-snug text-cafe-medio">{texto}</p>
+      <VistaPreviaFuncionPlan funcion={funcion} />
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button type="button" variant="ghost" onClick={onAhoraNo} className="rounded-full font-bold">
+          Ahora no
+        </Button>
+        <Button asChild className="rounded-full px-5 font-bold">
+          <a href={enlaceCorreo(asunto, cuerpo)}>Quiero saber más</a>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Hoja inferior en móvil y diálogo centrado en escritorio. */
+export function HojaFuncionPlan({ funcion, abierto, onCerrar }: { funcion: FuncionPlan; abierto: boolean; onCerrar: () => void }) {
+  const movil = useEsMovil();
+  if (movil) {
+    return (
+      <Drawer open={abierto} onOpenChange={(s) => !s && onCerrar()}>
+        <DrawerContent className="max-h-[88dvh] overflow-y-auto rounded-t-[20px] border-lino bg-card">
+          <DrawerTitle className="sr-only">{QUE_ES[funcion].titulo}</DrawerTitle>
+          <DrawerDescription className="sr-only">Información del plan {NOMBRE_PLAN[FUNCIONES_POR_PLAN[funcion]]}</DrawerDescription>
+          <ContenidoHoja funcion={funcion} onAhoraNo={onCerrar} />
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+  return (
+    <Dialog open={abierto} onOpenChange={(s) => !s && onCerrar()}>
+      <DialogContent className="max-h-[88vh] max-w-lg overflow-y-auto rounded-[20px] border-lino bg-card p-0 shadow-[0_24px_60px_rgba(59,47,42,.25)]">
+        <DialogTitle className="sr-only">{QUE_ES[funcion].titulo}</DialogTitle>
+        <DialogDescription className="sr-only">Información del plan {NOMBRE_PLAN[FUNCIONES_POR_PLAN[funcion]]}</DialogDescription>
+        <ContenidoHoja funcion={funcion} onAhoraNo={onCerrar} />
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 /**
- * Lo que el plan del salón no incluye (lote 13): qué es, con qué plan llega
- * y cómo pedirlo. Nunca un botón roto ni un pago desde el panel: «Quiero
- * probarlo» escribe al equipo de siShow con el mensaje preparado.
+ * Tarjeta discreta en el contexto natural de una función no incluida. La
+ * miniatura es de ejemplo; no toca la store salvo para saber si es una demo.
  */
 export function LlegaConPlan({ funcion, compacta = false, className }: { funcion: FuncionPlan; compacta?: boolean; className?: string }) {
-  const salon = useSalonStore((s) => s.salonProfile.name);
-  const [verPlanes, setVerPlanes] = useState(false);
+  const esDemo = useEsDemo();
+  const [abierto, setAbierto] = useState(false);
+  const [destacada, setDestacada] = useState(false);
   const plan = FUNCIONES_POR_PLAN[funcion];
-  const { titulo, texto, plural } = QUE_ES[funcion];
-  const mensaje = `Hola, soy de ${salon}. Me interesa ${titulo.toLowerCase()} (plan ${NOMBRE_PLAN[plan]}). ¿Me contáis cómo probarlo?`;
+  const { titulo, texto } = QUE_ES[funcion];
+  const Icono = ICONOS[funcion];
+
+  useEffect(() => {
+    if (esDemo || typeof window === "undefined") return;
+    setDestacada(destacarFuncionPlan(funcion, window.sessionStorage));
+  }, [esDemo, funcion]);
+
+  function cerrar() {
+    if (typeof window !== "undefined") descartarFuncionPlan(funcion, window.sessionStorage);
+    setDestacada(false);
+    setAbierto(false);
+  }
+
   return (
-    <div className={cn("rounded-3xl border border-salvia bg-salvia-suave text-left", compacta ? "px-4 py-3.5" : "px-6 py-6", className)}>
-      <p className="flex items-center gap-1.5 text-[12.5px] font-bold text-hoja-tinta">
-        <Sparkles className="size-4" strokeWidth={1.7} aria-hidden="true" /> Plan {NOMBRE_PLAN[plan]}
-      </p>
-      <h2 className={cn("mt-1 font-extrabold tracking-[-0.01em] text-foreground", compacta ? "text-[16px]" : "text-[21px]")}>
-        {titulo} {plural ? "llegan" : "llega"} con el plan {NOMBRE_PLAN[plan]}
-      </h2>
-      <p className="mt-1.5 max-w-prose text-[14px] leading-snug text-cafe-medio">{texto}</p>
-      <div className="mt-3.5 flex flex-wrap items-center gap-2">
-        <Button asChild className="rounded-full px-5 font-bold">
-          <a href={`mailto:${CORREO}?subject=${encodeURIComponent(`siShow · ${titulo}`)}&body=${encodeURIComponent(mensaje)}`}>Quiero probarlo</a>
-        </Button>
-        <button type="button" onClick={() => setVerPlanes((v) => !v)} aria-expanded={verPlanes} className="px-2 text-[13.5px] font-bold text-hoja-tinta hover:underline">
-          Qué incluye cada plan
-        </button>
-      </div>
-      {verPlanes && (
-        <ul className="mt-3 space-y-2 border-t border-salvia pt-3 text-[13.5px]">
-          {PLANES.map((p) => (
-            <li key={p}>
-              <b className={cn(p === plan && "text-hoja-tinta")}>{NOMBRE_PLAN[p]}</b>
-              <span className="text-cafe-medio">
-                {" · "}
-                {p === "reservas"
-                  ? "agenda, clientas, tu página de reservas, señal, avisos por WhatsApp y el aviso de 10 s para deshacer"
-                  : incluye(p).map((f) => QUE_ES[f].titulo.toLowerCase()).join(", ")}
-                {p !== "reservas" ? ", y todo lo del plan anterior" : ""}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <>
+      <button
+        type="button"
+        onClick={() => setAbierto(true)}
+        className={cn(
+          "group w-full overflow-hidden rounded-[20px] border border-lino bg-card text-left transition-[transform,box-shadow,border-color] hover:-translate-y-px hover:border-salvia hover:shadow-[0_12px_32px_rgba(59,47,42,.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+          destacada && "border-dashed border-moca",
+          compacta ? "p-4" : "p-5",
+          className,
+        )}
+      >
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-nata text-cafe-medio group-hover:bg-salvia-suave group-hover:text-hoja-tinta">
+            <Icono className="size-[18px]" strokeWidth={1.6} aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="text-[16px] font-extrabold tracking-[-0.01em] text-cafe">{titulo}</span>
+              <span className="rounded-full bg-arena px-2.5 py-0.5 text-[11.5px] font-bold text-cafe-medio">Plan {NOMBRE_PLAN[plan]}</span>
+              {destacada && <span className="rounded-full bg-salvia-suave px-2 py-0.5 text-[11px] font-bold text-hoja-tinta">Para conocer</span>}
+            </span>
+            <span className="mt-1 block text-[13.5px] leading-snug text-cafe-medio">{texto}</span>
+          </span>
+        </div>
+        <VistaPreviaFuncionPlan funcion={funcion} className="mt-3" />
+      </button>
+      <HojaFuncionPlan funcion={funcion} abierto={abierto} onCerrar={cerrar} />
+    </>
   );
 }

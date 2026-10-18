@@ -67,7 +67,7 @@ export function siguientePagina(recibidosEnUltimaPagina: number, limite: number,
 const SIN_CAMBIOS: Cambio[] = [];
 
 /** El historial del servidor para un salón real, paginado por `antesDe`. */
-export function useHistorialServidor(slug: string, activo: boolean): EstadoHistorialPanel {
+export function useHistorialServidor(slug: string, activo: boolean, completo: boolean): EstadoHistorialPanel {
   const [cambios, setCambios] = useState<Cambio[]>(SIN_CAMBIOS);
   const [cargando, setCargando] = useState(activo);
   const [cargandoMas, setCargandoMas] = useState(false);
@@ -79,7 +79,7 @@ export function useHistorialServidor(slug: string, activo: boolean): EstadoHisto
     setCambios(SIN_CAMBIOS);
     setHayMas(true);
     setError(null);
-    listarCambios({ data: { slug, limite: CAMBIOS_POR_PAGINA } })
+    listarCambios({ data: { slug, limite: CAMBIOS_POR_PAGINA, completo } })
       .then((res) => {
         setCambios(res.cambios as Cambio[]);
         setHayMas(siguientePagina(res.cambios.length, CAMBIOS_POR_PAGINA, res.cambios[res.cambios.length - 1]?.fecha).hayMas);
@@ -90,7 +90,7 @@ export function useHistorialServidor(slug: string, activo: boolean): EstadoHisto
         setError("No se ha podido cargar el historial.");
       })
       .finally(() => setCargando(false));
-  }, [slug]);
+  }, [slug, completo]);
 
   useEffect(() => {
     if (!activo) return;
@@ -105,7 +105,7 @@ export function useHistorialServidor(slug: string, activo: boolean): EstadoHisto
     if (!antesDe || cargandoMas) return;
     setCargandoMas(true);
     setError(null);
-    listarCambios({ data: { slug, antesDe, antesDeId: ultimo.id, limite: CAMBIOS_POR_PAGINA } })
+    listarCambios({ data: { slug, antesDe, antesDeId: ultimo.id, limite: CAMBIOS_POR_PAGINA, completo } })
       .then((res) => {
         setCambios((prev) => {
           const vistos = new Set(prev.map((c) => c.id));
@@ -119,7 +119,7 @@ export function useHistorialServidor(slug: string, activo: boolean): EstadoHisto
         setError("No se ha podido cargar más historial.");
       })
       .finally(() => setCargandoMas(false));
-  }, [slug, cambios, cargandoMas]);
+  }, [slug, cambios, cargandoMas, completo]);
 
   if (!activo) {
     return { cambios: SIN_CAMBIOS, cargando: false, cargandoMas: false, error: null, hayMas: false, cargarMas: () => undefined, recargar: () => undefined };

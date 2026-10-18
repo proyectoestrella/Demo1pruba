@@ -22,6 +22,7 @@ import { accionesDeCambio, DIAS_RETENCION, TIPOS_CAMBIO } from "../cambios";
 import { getSupabaseServerClient } from "../supabase.server";
 import { exigirAcceso } from "./autorizacion.server";
 import { exigirAcciones } from "./guardas";
+import { exigirFuncionPlanEn } from "./plan-guardas.server";
 import { conSesion } from "./sesion.middleware";
 
 const slug = z.string().min(1).max(120);
@@ -98,11 +99,14 @@ export const listarCambios = createServerFn({ method: "GET" })
       autor: z.string().optional(),
       idEntidad: z.string().optional(),
       limite: z.number().int().min(1).max(200).default(100),
+      /** Las últimas 24 h son base; el historial completo exige su plan. */
+      completo: z.boolean().default(false),
     }),
   )
   .handler(async ({ data }) => {
     const quien = await exigirAcceso(data.slug);
     exigirAcciones(quien, ["historial.ver"]);
+    if (data.completo) await exigirFuncionPlanEn(data.slug, "historial-completo", quien);
     if (quien.tipo !== "miembro") return { cambios: [] };
     const sb = getSupabaseServerClient();
     if (!sb) return { cambios: [] };
@@ -114,6 +118,7 @@ export const listarCambios = createServerFn({ method: "GET" })
     if (data.tipo) q = q.eq("tipo", data.tipo);
     if (data.autor) q = q.eq("autor", data.autor);
     if (data.idEntidad) q = q.eq("id_entidad", data.idEntidad);
+    if (!data.completo) q = q.gte("fecha", new Date(Date.now() - 24 * 3_600_000).toISOString());
     const { data: filas, error } = await q;
     if (error) return { cambios: [], aviso: "El historial aún no está activado en este salón." };
     return {

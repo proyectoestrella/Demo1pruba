@@ -125,7 +125,11 @@ function useGruposVisibles() {
   const modulosOcultos = useSalonStore((s) => s.salonProfile.modulosOcultos);
   const permisos = usePermisos();
   const plan = usePlanSalon();
-  const visible = (i: NavItem) => (!i.modulo || moduloVisibleEnPanel({ modulosOcultos }, i.modulo)) && veRuta(permisos, i.to) && (plan !== "reservas" || !rutaSoloCompleto(i.to));
+  const esDemo = useEsDemo();
+  const visible = (i: NavItem) =>
+    (!i.modulo || moduloVisibleEnPanel({ modulosOcultos }, i.modulo)) &&
+    veRuta(permisos, i.to) &&
+    (!esDemo || plan !== "reservas" || !rutaSoloCompleto(i.to));
   return GRUPOS_NAV.map((g) => ({
     ...g,
     items: g.items.filter(visible).map((i) => (i.hijos ? { ...i, hijos: i.hijos.filter(visible) } : i)),
@@ -141,7 +145,10 @@ function useSolicitudesPendientes() {
 function useBarraMovil(grupos: { items: NavItem[] }[]): NavItem[] {
   const permisos = usePermisos();
   const plan = usePlanSalon();
-  const fijos = BARRA_MOVIL.filter((i) => veRuta(permisos, i.to) && (plan !== "reservas" || !rutaSoloCompleto(i.to)));
+  const esDemo = useEsDemo();
+  const fijos = BARRA_MOVIL.filter(
+    (i) => veRuta(permisos, i.to) && (!esDemo || plan !== "reservas" || !rutaSoloCompleto(i.to)),
+  );
   const resto = grupos.flatMap((g) => g.items).filter((i) => !fijos.some((f) => f.to === i.to));
   return [...fijos, ...resto].slice(0, 4);
 }
@@ -337,7 +344,6 @@ export interface CabeceraArenaProps {
 
 /** Cabecera: buscador, Asistente, campana, Nueva cita. En móvil, marca + asistente y el buscador debajo. */
 export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraArenaProps) {
-  const plan = usePlanSalon();
   return (
     <header className="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-border bg-beige/95 px-4 py-2.5 backdrop-blur md:flex-nowrap md:gap-3 md:px-8 md:py-3.5">
       <div className="md:hidden">
@@ -349,7 +355,7 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
       <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
         <VerComo className="hidden xl:flex xl:group-data-[panel=abierto]/panel:hidden" />
         <PlanContratado className="hidden xl:inline-flex xl:group-data-[panel=abierto]/panel:hidden" />
-        {plan !== "reservas" && <Button
+        <Button
           data-tour="assistant"
           variant="outline"
           onClick={onAsistente}
@@ -358,7 +364,7 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
         >
           <Sparkles className="size-[18px]" strokeWidth={1.6} />
           <span className="hidden md:inline md:group-data-[panel=abierto]/panel:hidden">Asistente</span>
-        </Button>}
+        </Button>
         {onTour && (
           <button
             type="button"

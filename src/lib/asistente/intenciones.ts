@@ -234,6 +234,11 @@ const FUNCION_DE: Record<string, FuncionPlan> = {
   "plan-importar-mensual": "importacion-mensual",
 };
 
+/** Función del catálogo compartido asociada a una intención de planes. */
+export function funcionDeIntencionPlan(id: string): FuncionPlan | null {
+  return FUNCION_DE[id] ?? null;
+}
+
 /**
  * Lo que la tabla de planes contradice del documento (`preguntas-universo.md`,
  * 25-sep): el documento sigue con los nombres y el reparto de antes de la

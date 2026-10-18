@@ -125,9 +125,10 @@ export function CampanasPanel() {
               }
             />
           ))}
-          {!ampliadas && <LlegaConPlan funcion="campanas-ampliadas" compacta />}
         </div>
       )}
+
+      {!ampliadas && <LlegaConPlan funcion="campanas-ampliadas" compacta />}
 
       <div className="grid gap-4 xl:grid-cols-2 xl:group-data-[panel=abierto]/panel:grid-cols-1">
         <HistorialCard preparadas={preparadas} />

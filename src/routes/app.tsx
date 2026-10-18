@@ -28,7 +28,7 @@ import {
 import { FranjaVerComo } from "@/components/VerComo";
 import { SinPermiso } from "@/components/SinPermiso";
 import { instalarAtajoDeshacer, instalarRegistro } from "@/lib/deshacer-maqueta";
-import { usePlanSalon } from "@/lib/accesos-panel";
+import { useEsDemo, usePlanSalon } from "@/lib/accesos-panel";
 import { rutaSoloCompleto } from "@/lib/plan-basico";
 import { useRedirigirSiRutaSinPermiso } from "@/lib/route-guards";
 import { IncluidoEnPlanCompleto } from "@/components/IncluidoEnPlanCompleto";
@@ -274,8 +274,11 @@ function DashboardLayoutV1() {
   const conPanel = useHayPanelLateral();
   // Lote 11: una sección que el rol no ve se sustituye por «Esta parte la lleva…».
   const plan = usePlanSalon();
+  const esDemo = useEsDemo();
   const permitida = useRedirigirSiRutaSinPermiso(path);
-  const fueraDelBasico = plan === "reservas" && rutaSoloCompleto(path);
+  // En una cuenta real las secciones siguen visibles: cada una enseña sus
+  // tarjetas de plan. La demo conserva su conmutador y la puerta visual.
+  const fueraDelBasico = esDemo && plan === "reservas" && rutaSoloCompleto(path);
   const seccion = TODOS_LOS_ITEMS.find((i) => estaActivo(i, path))?.label ?? "esta sección";
   // Colores elegidos por la dueña en Ajustes (9h): se sincronizan antes de pintar.
   const coloresServicio = useSalonStore((s) => s.salonProfile.coloresServicio);
@@ -331,20 +334,22 @@ function DashboardLayoutV1() {
 
       <NewAppointmentDialog open={newApptOpen} onOpenChange={setNewApptOpen} />
 
-      {plan !== "reservas" && (
-        <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
-          <SheetContent side="right" panel="asistente" className="flex w-full flex-col gap-0 p-0">
-            <SheetHeader className="border-b border-border/60 px-4 py-4 text-left">
-              <SheetTitle className="text-lg font-extrabold">Asistente del salón</SheetTitle>
-              <SheetDescription>
-                Consulta tus datos en lenguaje natural. Calcula sobre tus reservas reales: no es un
-                modelo de lenguaje y no inventa cifras.
-              </SheetDescription>
-            </SheetHeader>
-            <AssistantPanel className="flex-1" />
-          </SheetContent>
-        </Sheet>
-      )}
+      <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
+        <SheetContent
+          side="right"
+          panel="asistente"
+          className="flex w-full flex-col gap-0 p-0"
+        >
+          <SheetHeader className="border-b border-border/60 px-4 py-4 text-left">
+            <SheetTitle className="text-lg font-extrabold">Asistente del salón</SheetTitle>
+            <SheetDescription>
+              Consulta tus datos en lenguaje natural. Calcula sobre tus reservas
+              reales: no es un modelo de lenguaje y no inventa cifras.
+            </SheetDescription>
+          </SheetHeader>
+          <AssistantPanel className="flex-1" />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

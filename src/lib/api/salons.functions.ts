@@ -79,6 +79,7 @@ import {
 } from "../salon-rows";
 import type { Appointment, Client, SalonProfile, WaitlistEntry } from "../mock/types";
 import { equipoCabeEnPlan, planDe } from "../plan";
+import { exigirFuncionPlanEn } from "./plan-guardas.server";
 import {
   hayOcupadoExternoEnHueco,
   procesarCitaParaConexiones,
@@ -542,9 +543,11 @@ async function guardarVersion(
 
 export const listarVersiones = createServerFn({ method: "GET" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug }))
+  .inputValidator(z.object({ slug, completo: z.boolean().default(false) }))
   .handler(async ({ data }) => {
-    exigirAcciones(await exigirAcceso(data.slug), ["web.restaurar-version"]);
+    const quien = await exigirAcceso(data.slug);
+    exigirAcciones(quien, ["web.restaurar-version"]);
+    if (data.completo) await exigirFuncionPlanEn(data.slug, "historial-completo", quien);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { versiones: [] };
     const { data: filas, error } = await supabase
@@ -552,7 +555,7 @@ export const listarVersiones = createServerFn({ method: "GET" })
       .select("id, fecha, autor_nombre, nota")
       .eq("salon_slug", data.slug)
       .order("fecha", { ascending: false })
-      .limit(60);
+      .limit(data.completo ? 60 : 1);
     if (error) return { versiones: [] };
     return {
       versiones: (filas ?? []).map(
@@ -578,6 +581,7 @@ export const restaurarVersion = createServerFn({ method: "POST" })
     > => {
       const quien = await exigirAcceso(data.slug);
       exigirAcciones(quien, ["web.restaurar-version"]);
+      await exigirFuncionPlanEn(data.slug, "historial-completo", quien);
       const supabase = getSupabaseServerClient();
       if (!supabase) return { ok: false, motivo: "sin-backend" };
       const { data: v } = await supabase

@@ -14,8 +14,9 @@ import { diaEnZona } from "./reloj";
 import { extraerEntidades, NOMBRES_COMUNES, type Entidades } from "./entidades";
 import type { ClientaA, FuentesAsistente, PlanSishow } from "./fuentes";
 import { apartadoGuia } from "./guia";
-import { NOMBRE_PLAN } from "../plan";
-import { candidatos, POR_ID, preguntaCon, reencaminar, VOCABULARIO, type Intencion } from "./intenciones";
+import { catalogoFuncion, funcionDePlanMencionada, NOMBRE_PLAN, tienePlan, type FuncionPlan } from "../plan";
+import { CORREO_SISHOW } from "../sishow-web";
+import { candidatos, funcionDeIntencionPlan, POR_ID, preguntaCon, reencaminar, VOCABULARIO, type Intencion } from "./intenciones";
 import { enmascarar, MARCA_CLIENTA, MARCA_PRO, MARCA_SERVICIO } from "./mascara";
 import { refuerzos } from "./pistas";
 import { tieneAncla } from "./anclas";
@@ -26,7 +27,7 @@ import { citasDelDia, visitasPorClienta } from "./resolutores/calculos";
 import { solicitudes } from "./resolutores/hoy";
 import type { Accion, Cifra, Contexto } from "./resolutores/tipos";
 
-export const CORREO_SOPORTE = "ejemplo@sishow.com";
+export const CORREO_SOPORTE = CORREO_SISHOW;
 
 export type RespuestaAsistente =
   | {
@@ -43,6 +44,8 @@ export type RespuestaAsistente =
       pasos: string[];
       guia: string | null;
       contacto: { cierre: string; correo: string; mensaje: string };
+      /** Abre la misma hoja de ejemplo que la tarjeta contextual del panel. */
+      funcion?: FuncionPlan;
     };
 
 export interface Asistente {
@@ -230,6 +233,7 @@ function escalarPlan(i: Intencion, plan: PlanSishow, salon: string): RespuestaAs
     texto = `Eso llega${nota ? `, ${nota.replace(/^hasta /, "hasta ")},` : ""} con el plan **${nombre}**. Mientras tanto, puedes hacer esto:`;
     cierre = "Si quieres activarlo, escríbenos a";
   }
+  const funcion = funcionDeIntencionPlan(i.id);
   return {
     tipo: "escalar",
     intencion: i.id,
@@ -237,6 +241,25 @@ function escalarPlan(i: Intencion, plan: PlanSishow, salon: string): RespuestaAs
     pasos: paso ? [paso.charAt(0).toUpperCase() + paso.slice(1)] : [],
     guia: apartadoGuia(guiaRef ? `§${guiaRef.replace(/^§/, "")}` : null),
     contacto: { cierre, correo: CORREO_SOPORTE, mensaje: salonDe(i.mensaje ?? "", salon) },
+    ...(funcion ? { funcion } : {}),
+  };
+}
+
+/** Una petición explícita de una función superior nunca calcula ni inventa resultados. */
+function escalarFuncionDeCatalogo(funcion: FuncionPlan, salon: string): RespuestaAsistente {
+  const f = catalogoFuncion(funcion);
+  return {
+    tipo: "escalar",
+    intencion: `plan-${funcion}`,
+    funcion,
+    texto: `${f.titulo} llega con el plan **${f.nombrePlan}**.`,
+    pasos: [f.texto],
+    guia: null,
+    contacto: {
+      cierre: "Si quieres conocerlo, escríbenos a",
+      correo: CORREO_SOPORTE,
+      mensaje: `Hola, te escribo desde ${salon}. Me interesa ${f.titulo.toLowerCase()} (plan ${f.nombrePlan}).`,
+    },
   };
 }
 
@@ -302,6 +325,7 @@ export function crearAsistente(fuentes: FuentesAsistente): Asistente {
     const s = fuentes.estado();
     const hoy = diaEnZona(s.ahora, s.timeZone);
     const t = normalizar(textoOriginal);
+    const funcionMencionada = funcionDePlanMencionada(textoOriginal);
     const ctxEnt = { vocabulario: VOCABULARIO, clientes: s.clientas, equipo: s.equipo, servicios: s.servicios, ahora: s.ahora, timeZone: s.timeZone };
 
     if (RE_SALUD.test(t)) {
@@ -376,11 +400,25 @@ export function crearAsistente(fuentes: FuentesAsistente): Asistente {
     const ctx: Contexto = { fuentes, estado: s, e, hoy, pregunta: t };
 
     if (i.grupo === "charla") { memoria = null; return charla(i.id, ctx); }
-    if (i.grupo === "plan") return escalarPlan(i, s.plan, s.salonNombre);
+    // Las intenciones de planes que ya existían conservan su explicación y
+    // guía; si nombran una función del catálogo, la ficha suma la vista previa
+    // compartida y su descripción derivada de `plan.ts`.
+    if (i.grupo === "plan") {
+      if (funcionMencionada && !tienePlan(s.plan, funcionMencionada)) {
+        return escalarFuncionDeCatalogo(funcionMencionada, s.salonNombre);
+      }
+      return escalarPlan(i, s.plan, s.salonNombre);
+    }
     if (i.grupo === "tecnica") return escalarTecnica(i, s.salonNombre);
 
     // El plan Básico no incluye el asistente: se dice, con la alternativa.
     if (s.plan === "reservas") return escalarPlan(POR_ID.get("plan-asistente")!, s.plan, s.salonNombre);
+
+    // Una petición literal del catálogo superior se queda en explicación y
+    // ejemplo: no se consulta ni se fabrica ningún resultado del salón.
+    if (funcionMencionada && !tienePlan(s.plan, funcionMencionada)) {
+      return escalarFuncionDeCatalogo(funcionMencionada, s.salonNombre);
+    }
 
     // Entidades que faltan: se pregunta, nunca se supone.
     let clienta: ClientaA | undefined;

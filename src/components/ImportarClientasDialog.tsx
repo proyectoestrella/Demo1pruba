@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ImportarVentasTpv } from "@/components/ImportarVentasTpv";
-import { usePermisos, usePlanSalon } from "@/lib/accesos-panel";
+import { usePermisos, useTienePlan } from "@/lib/accesos-panel";
+import { LlegaConPlan } from "@/components/LlegaConPlan";
 import { puede } from "@/lib/permisos";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -41,10 +42,11 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [resumen, setResumen] = useState("");
-  // 14b: las ventas de TPV 123 van a la caja; solo quien puede importar dinero.
-  // El plan Básico («reservas») importa solo el listado de clientas, sin historial.
-  const plan = usePlanSalon();
-  const puedeVentas = puede(usePermisos(), "dinero.importar") && plan !== "reservas";
+  // Solo quien puede importar dinero puede usar la importación mensual. Si
+  // no está incluida se ve su ejemplo aquí mismo, sin abrir el importador.
+  const tieneImportacionMensual = useTienePlan("importacion-mensual");
+  const puedeImportarDinero = puede(usePermisos(), "dinero.importar");
+  const puedeVentas = puedeImportarDinero && tieneImportacionMensual;
   const [pestana, setPestana] = useState<"clientas" | "ventas">("clientas");
   const previa = useMemo(() => tabla && mapa.nombre !== undefined ? vistaPreviaClientas(tabla, clientes, mapa) : null, [tabla, clientes, mapa]);
   const fichasACompletar = useMemo(() => previa?.filas.filter((fila) => {
@@ -144,6 +146,7 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
           </div>
         </details>
       </div>}
+      {!puedeVentas && esTpv123 && puedeImportarDinero && <LlegaConPlan funcion="importacion-mensual" compacta />}
     </DialogContent>
   </Dialog>;
 }

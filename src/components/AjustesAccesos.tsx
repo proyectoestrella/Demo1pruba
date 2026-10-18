@@ -13,6 +13,7 @@ import {
 import { permisosDe, puede, ROLES, type PermisosExtra, type Rol } from "@/lib/permisos";
 import { useEquipo } from "@/lib/use-equipo";
 import { AvatarPersona } from "@/components/ArenaShell";
+import { LlegaConPlan } from "@/components/LlegaConPlan";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -52,7 +53,7 @@ function resultado(r: ResultadoAccesosPanel, ok: string, deshacer?: () => void) 
       r.codigo === "PLAN"
         ? {
             description:
-              "Con el plan Embajador puedes usar los cuatro. Escríbenos a ejemplo@sishow.com.",
+              "Esta combinación llega con el plan Embajador. Puedes ver el ejemplo en Accesos.",
           }
         : undefined,
     );
@@ -503,6 +504,7 @@ function HojaInvitar({
                     name="rol"
                     value={r}
                     checked={rol === r}
+                    disabled={!rolesAmpliados && (r === "subencargado" || r === "recepcion")}
                     onChange={() => setRol(r)}
                     className="mt-1 accent-[var(--hoja)]"
                   />
@@ -520,6 +522,7 @@ function HojaInvitar({
                 </label>
               ))}
             </fieldset>
+            {!rolesAmpliados && <LlegaConPlan funcion="roles-ampliados" compacta />}
             {(rol === "estilista" || rol === "gerente") && (
               <label className="block space-y-1.5">
                 <span className="text-[13px] font-bold">

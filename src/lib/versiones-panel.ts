@@ -42,7 +42,7 @@ export interface EstadoVersionesPanel {
 }
 
 /** Versiones publicadas de Mi página para este salón (demo o real). */
-export function useVersionesPanel(slug: string, esReal: boolean): EstadoVersionesPanel {
+export function useVersionesPanel(slug: string, esReal: boolean, completo: boolean): EstadoVersionesPanel {
   const demoVersiones = useVersiones((s) => s.porSalon[slug]);
   const [servidor, setServidor] = useState<VersionPanel[]>([]);
   const [cargando, setCargando] = useState(esReal);
@@ -54,7 +54,7 @@ export function useVersionesPanel(slug: string, esReal: boolean): EstadoVersione
     let cancelado = false;
     setCargando(true);
     setError(null);
-    listarVersiones({ data: { slug } })
+    listarVersiones({ data: { slug, completo } })
       .then((res) => {
         if (cancelado) return;
         setServidor(res.versiones.map((v) => ({ id: v.id, fecha: v.fecha, autorNombre: v.autorNombre, web: null })));
@@ -70,7 +70,7 @@ export function useVersionesPanel(slug: string, esReal: boolean): EstadoVersione
     return () => {
       cancelado = true;
     };
-  }, [slug, esReal, intento]);
+  }, [slug, esReal, completo, intento]);
 
   const recargar = useCallback(() => setIntento((n) => n + 1), []);
 
