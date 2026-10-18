@@ -8,7 +8,15 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { ANCHO_PANEL_LATERAL, anchoDesdeBorde, anchoGuardado, aplicarAncho, guardarAncho, registrarPanelLateral } from "@/lib/panel-lateral";
+import {
+  ANCHO_PANEL_LATERAL,
+  anchoDesdeBorde,
+  anchoGuardado,
+  anchoPredeterminadoPanel,
+  aplicarAncho,
+  guardarAncho,
+  registrarPanelLateral,
+} from "@/lib/panel-lateral";
 
 const Sheet = SheetPrimitive.Root;
 
@@ -53,7 +61,7 @@ function RegistroPanelLateral({ panel }: { panel?: string }) {
  */
 function AsaAncho({ panel }: { panel: string }) {
   const marco = React.useRef(0);
-  const ultimo = React.useRef(ANCHO_PANEL_LATERAL);
+  const ultimo = React.useRef(anchoPredeterminadoPanel(panel));
   const raiz = () => document.documentElement;
   const mover = (x: number) => {
     ultimo.current = anchoDesdeBorde(x, window.innerWidth);
@@ -86,14 +94,19 @@ function AsaAncho({ panel }: { panel: string }) {
         guardarAncho(panel, ultimo.current);
       }}
       onDoubleClick={() => {
-        aplicarAncho(ANCHO_PANEL_LATERAL);
+        aplicarAncho(anchoPredeterminadoPanel(panel));
         guardarAncho(panel, null);
       }}
       onKeyDown={(e) => {
         if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
         e.preventDefault();
-        const actual = parseFloat(getComputedStyle(raiz()).getPropertyValue("--ancho-panel")) || ANCHO_PANEL_LATERAL;
-        const nuevo = anchoDesdeBorde(window.innerWidth - actual + (e.key === "ArrowLeft" ? -24 : 24), window.innerWidth);
+        const actual =
+          parseFloat(getComputedStyle(raiz()).getPropertyValue("--ancho-panel")) ||
+          anchoPredeterminadoPanel(panel);
+        const nuevo = anchoDesdeBorde(
+          window.innerWidth - actual + (e.key === "ArrowLeft" ? -24 : 24),
+          window.innerWidth,
+        );
         aplicarAncho(nuevo);
         guardarAncho(panel, nuevo);
       }}
@@ -138,21 +151,26 @@ const SheetContent = React.forwardRef<
 >(({ side = "right", className, children, panel, onCloseAutoFocus, ...props }, ref) => {
   const antes = React.useRef<HTMLElement | null>(null);
   return (
-  <SheetPortal>
-    {/* Sin velo en los paneles laterales: lo de detrás se queda a la vista tal
+    <SheetPortal>
+      {/* Sin velo en los paneles laterales: lo de detrás se queda a la vista tal
         cual (o se estrecha, en PC). Se cierran con la X, Esc o un clic fuera. */}
-    <SheetOverlay className={side === "right" ? "bg-transparent" : "bg-cafe/30"} />
-    <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props} onCloseAutoFocus={devolverFocoA(antes, onCloseAutoFocus)}>
-      <ApuntarFoco destino={antes} />
-      {side === "right" && <RegistroPanelLateral panel={panel} />}
-      {side === "right" && panel && <AsaAncho panel={panel} />}
-      <SheetPrimitive.Close className="absolute top-3.5 right-4 grid size-[42px] place-items-center rounded-full border border-input bg-card text-cafe-medio cursor-pointer transition-colors hover:bg-nata focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none">
-        <X className="size-[18px]" strokeWidth={1.6} />
-        <span className="sr-only">Cerrar</span>
-      </SheetPrimitive.Close>
-      {children}
-    </SheetPrimitive.Content>
-  </SheetPortal>
+      <SheetOverlay className={side === "right" ? "bg-transparent" : "bg-cafe/30"} />
+      <SheetPrimitive.Content
+        ref={ref}
+        className={cn(sheetVariants({ side }), className)}
+        {...props}
+        onCloseAutoFocus={devolverFocoA(antes, onCloseAutoFocus)}
+      >
+        <ApuntarFoco destino={antes} />
+        {side === "right" && <RegistroPanelLateral panel={panel} />}
+        {side === "right" && panel && <AsaAncho panel={panel} />}
+        <SheetPrimitive.Close className="absolute top-3.5 right-4 grid size-[42px] place-items-center rounded-full border border-input bg-card text-cafe-medio cursor-pointer transition-colors hover:bg-nata focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none">
+          <X className="size-[18px]" strokeWidth={1.6} />
+          <span className="sr-only">Cerrar</span>
+        </SheetPrimitive.Close>
+        {children}
+      </SheetPrimitive.Content>
+    </SheetPortal>
   );
 });
 SheetContent.displayName = SheetPrimitive.Content.displayName;

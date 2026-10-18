@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { anchoDesdeBorde } from "./panel-lateral";
+import { ANCHO_FICHA_LATERAL, anchoDesdeBorde, anchoPredeterminadoPanel } from "./panel-lateral";
 
 describe("ancho del panel al arrastrar su borde", () => {
   test("el ancho es lo que queda a la derecha del puntero", () => {
@@ -10,4 +10,10 @@ describe("ancho del panel al arrastrar su borde", () => {
     expect(anchoDesdeBorde(100, 1440)).toBe(1008);
     expect(anchoDesdeBorde(0, 480)).toBe(360); // ventana pequeña: el mínimo manda
   });
+});
+
+test("las fichas abren más anchas sin ampliar otros paneles", () => {
+  expect(anchoPredeterminadoPanel("ficha")).toBe(ANCHO_FICHA_LATERAL);
+  expect(anchoPredeterminadoPanel("detalle-cita")).toBe(ANCHO_FICHA_LATERAL);
+  expect(anchoPredeterminadoPanel("asistente")).toBe(440);
 });

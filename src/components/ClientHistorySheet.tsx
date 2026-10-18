@@ -24,7 +24,17 @@ import { Desplegable } from "@/components/Desplegable";
 import { useFichas } from "@/lib/use-fichas";
 import { StatusBadge } from "@/components/StatusBadge";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
-import { Calendar, ChevronRight, MessageCircle, Phone, Plus, TriangleAlert, Ban, Unlock, Mail } from "lucide-react";
+import {
+  Calendar,
+  ChevronRight,
+  MessageCircle,
+  Phone,
+  Plus,
+  TriangleAlert,
+  Ban,
+  Unlock,
+  Mail,
+} from "lucide-react";
 
 export interface ClientHistorySheetProps {
   client: Client | null;
@@ -72,7 +82,15 @@ export function ClientHistorySheet({
   const carta = selectServiceMap(services);
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
   const { abrirCita, puedeVolver, volver } = useFichas();
-  const ficha = client ? fichaDeClienta(client.id, { citas: appointments, clientes: clients, servicios: services, equipo, ahora: new Date() }) : null;
+  const ficha = client
+    ? fichaDeClienta(client.id, {
+        citas: appointments,
+        clientes: clients,
+        servicios: services,
+        equipo,
+        ahora: new Date(),
+      })
+    : null;
   // Plantones y retrasos sin avisar de los últimos 3 meses — ver lib/plantones.ts.
   const plantones = client ? historialDeFallos(appointments, client.id) : null;
 
@@ -95,7 +113,9 @@ export function ClientHistorySheet({
     .filter((a) => a.status !== "cancelled" && +new Date(a.start) >= now)
     .sort((a, b) => +new Date(a.start) - +new Date(b.start));
   const history = ownAppointments
-    .filter((a) => a.status !== "completed" && (+new Date(a.start) < now || a.status === "cancelled"))
+    .filter(
+      (a) => a.status !== "completed" && (+new Date(a.start) < now || a.status === "cancelled"),
+    )
     .sort((a, b) => +new Date(b.start) - +new Date(a.start));
 
   if (!client || !ficha) {
@@ -122,9 +142,12 @@ export function ClientHistorySheet({
           ? `Está en el salón desde las ${hora(deHoy.start)} · ${que}`
           : `Viene hoy a las ${hora(deHoy.start)} · ${que}`;
   }
-  const accion = "inline-flex h-10 items-center gap-1.5 rounded-full border border-input bg-card px-4 text-[13px] font-bold text-cafe-medio hover:bg-nata focus-visible:outline-2 focus-visible:outline-primary";
+  const accion =
+    "inline-flex h-11 items-center gap-1.5 rounded-full border border-input bg-card px-4 text-[13px] font-bold text-cafe-medio hover:bg-nata focus-visible:outline-2 focus-visible:outline-primary";
 
-  const ajena = !puede(permisos, "clienta.ver-todas") && !appointments.some((a) => a.clientId === client.id && a.employeeId === mio);
+  const ajena =
+    !puede(permisos, "clienta.ver-todas") &&
+    !appointments.some((a) => a.clientId === client.id && a.employeeId === mio);
   const puedeBloquear = puede(permisos, "clienta.bloquear");
   const veDeudas = puede(permisos, "recargo.gestionar");
 
@@ -132,11 +155,12 @@ export function ClientHistorySheet({
   const proxima = upcoming[0];
   const masProximas = upcoming.slice(1);
   const empProxima = proxima ? equipo.find((e) => e.id === proxima.employeeId) : undefined;
-  const lineaCita = (a: typeof upcoming[number]) => {
+  const lineaCita = (a: (typeof upcoming)[number]) => {
     const e = equipo.find((x) => x.id === a.employeeId);
     return `${serviceLabelOf(a, carta) || "—"}${!soloUno && e ? ` · con ${e.name}` : ""}`;
   };
-  const filaCita = "flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left text-sm hover:bg-nata focus-visible:outline-2 focus-visible:outline-primary";
+  const filaCita =
+    "flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left text-sm hover:bg-nata focus-visible:outline-2 focus-visible:outline-primary";
 
   // Cabecera de PERSONA: avatar grande y nombre en serif. Nada de barras de
   // color ni horas: eso es de las citas.
@@ -144,8 +168,12 @@ export function ClientHistorySheet({
     <div className="flex items-center gap-4">
       <EditarAvatar tipo="clienta" id={client.id} nombre={client.name} size="2xl" />
       <div className="min-w-0">
-        <p className="font-display text-[28px] leading-tight font-medium break-words">{client.name}</p>
-        {client.phone && <p className="text-[14px] text-muted-foreground tabular-nums">{client.phone}</p>}
+        <p className="font-display text-[30px] leading-tight font-medium break-words sm:text-[32px]">
+          {client.name}
+        </p>
+        {client.phone && (
+          <p className="text-[14px] text-muted-foreground tabular-nums">{client.phone}</p>
+        )}
         {client.email && (
           <p className="flex items-center gap-1.5 truncate text-[12.5px] text-muted-foreground">
             <Mail className="size-3.5 shrink-0" aria-hidden="true" />
@@ -171,13 +199,22 @@ export function ClientHistorySheet({
       {cabecera}
       {/* Una acción primaria (dar cita) y dos de contacto, neutras. */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Button type="button" className="h-10 gap-1.5 rounded-full px-5 font-bold" onClick={() => setNuevaAbierta(true)}>
+        <Button
+          type="button"
+          className="h-11 gap-1.5 rounded-full px-5 font-bold"
+          onClick={() => setNuevaAbierta(true)}
+        >
           <Plus className="size-[15px]" strokeWidth={1.8} />
           Nueva cita
         </Button>
         {client.phone && (
           <>
-            <a className={accion} href={whatsappUrl(client.phone, "")} target="_blank" rel="noopener noreferrer">
+            <a
+              className={accion}
+              href={whatsappUrl(client.phone, "")}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <MessageCircle className="size-[15px]" strokeWidth={1.6} />
               WhatsApp
             </a>
@@ -199,20 +236,46 @@ export function ClientHistorySheet({
             aria-label={`Abrir la cita del ${new Date(proxima.start).toLocaleDateString("es", { day: "numeric", month: "long" })}`}
             className="group flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 text-left hover:bg-nata focus-visible:outline-2 focus-visible:outline-primary"
           >
-            <span className="grid w-14 shrink-0 place-items-center rounded-lg bg-arena py-1.5 text-cafe" aria-hidden="true">
-              <span className="text-[11px] font-bold uppercase">{new Date(proxima.start).toLocaleDateString("es", { month: "short" }).replace(".", "")}</span>
-              <span className="text-[22px] leading-none font-extrabold tabular-nums">{new Date(proxima.start).getDate()}</span>
+            <span
+              className="grid w-14 shrink-0 place-items-center rounded-lg bg-arena py-1.5 text-cafe"
+              aria-hidden="true"
+            >
+              <span className="text-[11px] font-bold uppercase">
+                {new Date(proxima.start)
+                  .toLocaleDateString("es", { month: "short" })
+                  .replace(".", "")}
+              </span>
+              <span className="text-[22px] leading-none font-extrabold tabular-nums">
+                {new Date(proxima.start).getDate()}
+              </span>
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex flex-wrap items-center gap-x-2">
-                <span className="text-[15px] font-extrabold tabular-nums">{hora(proxima.start)}</span>
-                {textoHoy && <span className="text-[12px] font-extrabold text-terracota">{textoHoy.startsWith("Está") ? "Ahora" : textoHoy.startsWith("Ha venido") ? "Ya vino hoy" : "Hoy"}</span>}
+                <span className="text-[15px] font-extrabold tabular-nums">
+                  {hora(proxima.start)}
+                </span>
+                {textoHoy && (
+                  <span className="text-[12px] font-extrabold text-terracota">
+                    {textoHoy.startsWith("Está")
+                      ? "Ahora"
+                      : textoHoy.startsWith("Ha venido")
+                        ? "Ya vino hoy"
+                        : "Hoy"}
+                  </span>
+                )}
               </span>
-              <span className="block truncate text-[13.5px] text-cafe-medio">{serviceLabelOf(proxima, carta) || "—"}{!soloUno && empProxima ? ` · con ${empProxima.name}` : ""}</span>
+              <span className="block truncate text-[13.5px] text-cafe-medio">
+                {serviceLabelOf(proxima, carta) || "—"}
+                {!soloUno && empProxima ? ` · con ${empProxima.name}` : ""}
+              </span>
               <BookingAnswersSummary answers={proxima.bookingAnswers} />
             </span>
             <StatusBadge status={proxima.status} />
-            <ChevronRight className="size-4 shrink-0 text-cafe-suave transition-transform group-hover:translate-x-0.5" strokeWidth={1.7} aria-hidden="true" />
+            <ChevronRight
+              className="size-4 shrink-0 text-cafe-suave transition-transform group-hover:translate-x-0.5"
+              strokeWidth={1.7}
+              aria-hidden="true"
+            />
           </button>
         ) : textoHoy ? (
           <button
@@ -229,109 +292,165 @@ export function ClientHistorySheet({
       </div>
 
       <div className="mt-3.5 space-y-3">
-      {/* Contador de plantones — el contexto antes que la deuda: saber que
+        {/* Contador de plantones — el contexto antes que la deuda: saber que
           alguien ha fallado dos veces en tres meses cambia la decisión aunque
           ya te haya pagado la penalización. */}
-      {veDeudas && plantones && (
-        <div className="flex items-center gap-2.5 rounded-2xl border border-melocoton-borde bg-melocoton px-3.5 py-3 text-melocoton-tinta">
-          <TriangleAlert className="size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
-          <p className="text-[12.5px]">{plantones}</p>
-        </div>
-      )}
+        {veDeudas && plantones && (
+          <div className="flex items-center gap-2.5 rounded-2xl border border-melocoton-borde bg-melocoton px-3.5 py-3 text-melocoton-tinta">
+            <TriangleAlert className="size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
+            <p className="text-[12.5px]">{plantones}</p>
+          </div>
+        )}
 
-      {/* Lo que debe y las tres salidas: cobrada, perdonada, o bloquear.
+        {/* Lo que debe y las tres salidas: cobrada, perdonada, o bloquear.
           Mismo componente que el inicio y el detalle de la cita, para que las
           tres pantallas no puedan decir cosas distintas. */}
-      {conRecargo && veDeudas && <BandaDeuda client={client} />}
-      {conRecargo && (client.penaltyEur ?? 0) > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-          <p>
-            {penaltyReasonLabel(client)}
-            {client.penaltyReviewedAt &&
-              ` · Revisado el ${new Date(client.penaltyReviewedAt).toLocaleDateString("es", { day: "numeric", month: "short" })}`}
-          </p>
-          {!client.penaltyReviewedAt && (
-            <Button size="sm" variant="outline" onClick={() => reviewPenalty(client.id)}>
-              Mantener pendiente
-            </Button>
-          )}
-        </div>
-      )}
+        {conRecargo && veDeudas && <BandaDeuda client={client} />}
+        {conRecargo && (client.penaltyEur ?? 0) > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <p>
+              {penaltyReasonLabel(client)}
+              {client.penaltyReviewedAt &&
+                ` · Revisado el ${new Date(client.penaltyReviewedAt).toLocaleDateString("es", { day: "numeric", month: "short" })}`}
+            </p>
+            {!client.penaltyReviewedAt && (
+              <Button size="sm" variant="outline" onClick={() => reviewPenalty(client.id)}>
+                Mantener pendiente
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
-      <FichaCompleta ficha={ficha} client={client} origenTpv123={origenTpv123} onAbrirCita={abrirCita} onAddColor={(datos: DatosColorTPV) => {
-        const formula = [datos.producto.trim(), datos.cantidad.trim(), datos.raiz.trim() && `${datos.raiz.trim()} raíz`, datos.medios.trim() && `medios ${datos.medios.trim()}`, datos.puntas.trim() && `puntas ${datos.puntas.trim()}`, datos.tiempo.trim()].filter(Boolean).join(", ");
-        const fecha = new Date(`${datos.fecha}T12:00:00`).toISOString();
-        addAppointment({ clientId: client.id, clientName: client.name, serviceIds: [], employeeId: equipo[0]?.id ?? "mario", start: fecha, duration: 0, priceEur: 0, status: "completed", origen: origenTpv123 ? "tpv123" : "sishow", colorFormula: formula, technicalNotes: datos.notas.trim() || undefined }, { name: client.name, phone: client.phone, email: client.email });
-      }} antesDelHistorial={<>
+      <FichaCompleta
+        ficha={ficha}
+        client={client}
+        origenTpv123={origenTpv123}
+        onAbrirCita={abrirCita}
+        onAddColor={(datos: DatosColorTPV) => {
+          const formula = [
+            datos.producto.trim(),
+            datos.cantidad.trim(),
+            datos.raiz.trim() && `${datos.raiz.trim()} raíz`,
+            datos.medios.trim() && `medios ${datos.medios.trim()}`,
+            datos.puntas.trim() && `puntas ${datos.puntas.trim()}`,
+            datos.tiempo.trim(),
+          ]
+            .filter(Boolean)
+            .join(", ");
+          const fecha = new Date(`${datos.fecha}T12:00:00`).toISOString();
+          addAppointment(
+            {
+              clientId: client.id,
+              clientName: client.name,
+              serviceIds: [],
+              employeeId: equipo[0]?.id ?? "mario",
+              start: fecha,
+              duration: 0,
+              priceEur: 0,
+              status: "completed",
+              origen: origenTpv123 ? "tpv123" : "sishow",
+              colorFormula: formula,
+              technicalNotes: datos.notas.trim() || undefined,
+            },
+            { name: client.name, phone: client.phone, email: client.email },
+          );
+        }}
+        antesDelHistorial={
+          <>
+            {/* Observaciones */}
+            <div>
+              <EtiquetaFicha id="notas-clienta">Notas y preferencias</EtiquetaFicha>
+              <Textarea
+                aria-labelledby="notas-clienta"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                onBlur={saveNotes}
+                rows={3}
+                placeholder="Usa el número 8 · Le vendimos el champú de árbol de té, preguntar qué tal"
+                className="resize-y text-sm"
+              />
+            </div>
 
-      {/* Observaciones */}
-      <div>
-        <EtiquetaFicha id="notas-clienta">Notas y preferencias</EtiquetaFicha>
-        <Textarea
-          aria-labelledby="notas-clienta"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          onBlur={saveNotes}
-          rows={3}
-          placeholder="Usa el número 8 · Le vendimos el champú de árbol de té, preguntar qué tal"
-          className="resize-y text-sm"
-        />
-      </div>
+            {/* El resto de próximas citas */}
+            {masProximas.length > 0 && (
+              <div>
+                <EtiquetaFicha>Más citas por venir</EtiquetaFicha>
+                <ul className="divide-y divide-border/60">
+                  {masProximas.map((a) => (
+                    <li key={a.id}>
+                      <button type="button" onClick={() => abrirCita(a.id)} className={filaCita}>
+                        <span className="w-24 shrink-0 text-[12.5px] font-bold tabular-nums">
+                          {new Date(a.start).toLocaleDateString("es", {
+                            day: "2-digit",
+                            month: "short",
+                          })}{" "}
+                          · {hora(a.start)}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate">{lineaCita(a)}</span>
+                        <StatusBadge status={a.status} />
+                        <ChevronRight
+                          className="size-4 shrink-0 text-cafe-suave"
+                          strokeWidth={1.7}
+                          aria-hidden="true"
+                        />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-      {/* El resto de próximas citas */}
-      {masProximas.length > 0 && (
-        <div>
-          <EtiquetaFicha>Más citas por venir</EtiquetaFicha>
-          <ul className="divide-y divide-border/60">
-            {masProximas.map((a) => (
-              <li key={a.id}>
-                <button type="button" onClick={() => abrirCita(a.id)} className={filaCita}>
-                  <span className="w-24 shrink-0 text-[12.5px] font-bold tabular-nums">
-                    {new Date(a.start).toLocaleDateString("es", { day: "2-digit", month: "short" })} · {hora(a.start)}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{lineaCita(a)}</span>
-                  <StatusBadge status={a.status} />
-                  <ChevronRight className="size-4 shrink-0 text-cafe-suave" strokeWidth={1.7} aria-hidden="true" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Anuladas y plantones: plegado, es historia que casi nunca se mira. */}
-      {history.length > 0 && (
-        <div className="mt-3">
-          <Desplegable titulo="Anuladas y plantones" resumen={`${history.length} ${history.length === 1 ? "cita" : "citas"}`}>
-            <ul className="divide-y divide-border/60">
-              {history.map((a) => (
-                <li key={a.id}>
-                  <button type="button" onClick={() => abrirCita(a.id)} className={filaCita}>
-                    <span className="w-16 shrink-0 text-[12.5px] text-muted-foreground tabular-nums">
-                      {new Date(a.start).toLocaleDateString("es", { day: "2-digit", month: "short" })}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate font-bold">{lineaCita(a)}</span>
-                    <span className="text-sm font-bold tabular-nums">{eur(a.priceEur)}</span>
-                    <StatusBadge status={a.status} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </Desplegable>
-        </div>
-      )}
-</>} />
+            {/* Anuladas y plantones: plegado, es historia que casi nunca se mira. */}
+            {history.length > 0 && (
+              <div className="mt-3">
+                <Desplegable
+                  titulo="Anuladas y plantones"
+                  resumen={`${history.length} ${history.length === 1 ? "cita" : "citas"}`}
+                >
+                  <ul className="divide-y divide-border/60">
+                    {history.map((a) => (
+                      <li key={a.id}>
+                        <button type="button" onClick={() => abrirCita(a.id)} className={filaCita}>
+                          <span className="w-16 shrink-0 text-[12.5px] text-muted-foreground tabular-nums">
+                            {new Date(a.start).toLocaleDateString("es", {
+                              day: "2-digit",
+                              month: "short",
+                            })}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate font-bold">{lineaCita(a)}</span>
+                          <span className="text-sm font-bold tabular-nums">{eur(a.priceEur)}</span>
+                          <StatusBadge status={a.status} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </Desplegable>
+              </div>
+            )}
+          </>
+        }
+      />
 
       {/* Reserva por internet: solo si hay algo que decidir; si no, plegado. */}
       {puedeBloquear && (!conRecargo || client.manualBlock) && (
         <div className="mt-5">
-          <Desplegable titulo="Reserva por internet" resumen={client.manualBlock ? "Bloqueada a mano" : "Puede reservar"} abiertoAlInicio={!!client.manualBlock}>
+          <Desplegable
+            titulo="Reserva por internet"
+            resumen={client.manualBlock ? "Bloqueada a mano" : "Puede reservar"}
+            abiertoAlInicio={!!client.manualBlock}
+          >
             <div data-vaul-no-drag className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-[12.5px] font-bold">
-                {client.manualBlock ? "Reserva por internet bloqueada a mano" : "Puede reservar por internet"}
+                {client.manualBlock
+                  ? "Reserva por internet bloqueada a mano"
+                  : "Puede reservar por internet"}
               </p>
-              <Button size="sm" variant="outline" onClick={() => setManualBlock(client.id, !client.manualBlock)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setManualBlock(client.id, !client.manualBlock)}
+              >
                 {client.manualBlock ? <Unlock className="size-4" /> : <Ban className="size-4" />}
                 {client.manualBlock ? "Desbloquear" : "Bloquear reserva por internet"}
               </Button>
@@ -352,7 +471,9 @@ export function ClientHistorySheet({
         descripcion={`Contacto, visitas, color y observaciones de ${client.name}.`}
         onVolver={puedeVolver ? volver : undefined}
       >
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-8">{body}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-8 sm:px-7 sm:pt-7 sm:pb-10">
+          {body}
+        </div>
       </FichaContenedor>
       <NewAppointmentDialog
         open={nuevaAbierta}

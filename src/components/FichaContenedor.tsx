@@ -29,7 +29,7 @@ export interface FichaContenedorProps {
 /**
  * La pieza común de las fichas de clienta y de cita.
  *
- * - En escritorio abre CENTRADA, como pop-up (máx. 640 px, fondo atenuado,
+ * - En escritorio abre CENTRADA, como pop-up (hasta 800 px, fondo atenuado,
  *   Esc y clic fuera cierran, el foco queda dentro). Arriba a la derecha, el
  *   icono «Anclar» la pasa al lateral derecho de siempre; se recuerda por
  *   tipo de ficha, y con el mismo icono se vuelve al centro.
@@ -39,14 +39,25 @@ export interface FichaContenedorProps {
  *   cuadrado + «Cita» para un evento (guía de diseño §4: nunca la misma
  *   cabecera para las dos).
  */
-export function FichaContenedor({ tipo, open, onOpenChange, titulo, descripcion, onVolver, children }: FichaContenedorProps) {
+export function FichaContenedor({
+  tipo,
+  open,
+  onOpenChange,
+  titulo,
+  descripcion,
+  onVolver,
+  children,
+}: FichaContenedorProps) {
   const { presentacion, modo, puedeAnclar } = usePresentacionFicha(tipo);
   const antes = useRef<HTMLElement | null>(null);
   const meta = ETIQUETA[tipo];
   const Icono = tipo === "clienta" ? User : CalendarDays;
 
   const barra = (
-    <div className="flex h-[66px] shrink-0 items-center gap-2 border-b border-border bg-perla pr-[124px] pl-5" data-ficha-barra={tipo}>
+    <div
+      className="flex h-[66px] shrink-0 items-center gap-2 border-b border-border bg-perla pr-[124px] pl-5"
+      data-ficha-barra={tipo}
+    >
       {onVolver && (
         <button
           type="button"
@@ -57,10 +68,18 @@ export function FichaContenedor({ tipo, open, onOpenChange, titulo, descripcion,
           Volver
         </button>
       )}
-      <span className={cn("grid size-8 shrink-0 place-items-center bg-arena text-cafe-medio", tipo === "clienta" ? "rounded-full" : "rounded-lg")} aria-hidden="true">
+      <span
+        className={cn(
+          "grid size-8 shrink-0 place-items-center bg-arena text-cafe-medio",
+          tipo === "clienta" ? "rounded-full" : "rounded-lg",
+        )}
+        aria-hidden="true"
+      >
         <Icono className="size-4" strokeWidth={1.7} />
       </span>
-      <span className="text-[12px] font-extrabold tracking-[0.08em] text-cafe-medio uppercase">{meta.texto}</span>
+      <span className="text-[12px] font-extrabold tracking-[0.08em] text-cafe-medio uppercase">
+        {meta.texto}
+      </span>
     </div>
   );
 
@@ -69,17 +88,25 @@ export function FichaContenedor({ tipo, open, onOpenChange, titulo, descripcion,
       type="button"
       onClick={() => fijarModoFicha(tipo, modo === "lateral" ? "centrada" : "lateral")}
       aria-label={modo === "lateral" ? "Volver al centro" : "Anclar a la derecha"}
-      title={modo === "lateral" ? "Volver al centro" : "Anclar a la derecha: la agenda queda a la vista"}
+      title={
+        modo === "lateral" ? "Volver al centro" : "Anclar a la derecha: la agenda queda a la vista"
+      }
       className="absolute top-3.5 right-[66px] z-10 grid size-[42px] cursor-pointer place-items-center rounded-full border border-input bg-card text-cafe-medio transition-colors hover:bg-nata focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
-      {modo === "lateral" ? <PinOff className="size-[18px]" strokeWidth={1.6} /> : <PanelRight className="size-[18px]" strokeWidth={1.6} />}
+      {modo === "lateral" ? (
+        <PinOff className="size-[18px]" strokeWidth={1.6} />
+      ) : (
+        <PanelRight className="size-[18px]" strokeWidth={1.6} />
+      )}
     </button>
   );
 
   const textos = (
     <>
       <DialogPrimitive.Title className="sr-only">{titulo}</DialogPrimitive.Title>
-      <DialogPrimitive.Description className="sr-only">{descripcion ?? titulo}</DialogPrimitive.Description>
+      <DialogPrimitive.Description className="sr-only">
+        {descripcion ?? titulo}
+      </DialogPrimitive.Description>
     </>
   );
 
@@ -98,7 +125,7 @@ export function FichaContenedor({ tipo, open, onOpenChange, titulo, descripcion,
               (e.currentTarget as HTMLElement | null)?.focus({ preventScroll: true });
             }}
             tabIndex={-1}
-            className="outline-none fixed top-1/2 left-1/2 z-50 flex max-h-[min(90dvh,860px)] w-[min(640px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-[0_24px_70px_-20px_rgba(59,47,42,0.45)] duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+            className="outline-none fixed top-1/2 left-1/2 z-50 flex max-h-[min(94dvh,960px)] w-[min(800px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-[0_24px_70px_-20px_rgba(59,47,42,0.45)] duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
           >
             <ApuntarFoco destino={antes} />
             {textos}
@@ -117,7 +144,13 @@ export function FichaContenedor({ tipo, open, onOpenChange, titulo, descripcion,
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" panel={meta.panel} data-ficha={tipo} data-presentacion={presentacion} className="flex w-full flex-col gap-0 overflow-hidden p-0">
+      <SheetContent
+        side="right"
+        panel={meta.panel}
+        data-ficha={tipo}
+        data-presentacion={presentacion}
+        className="flex w-full flex-col gap-0 overflow-hidden p-0"
+      >
         {textos}
         {barra}
         {anclar}
