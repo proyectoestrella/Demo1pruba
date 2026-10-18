@@ -29,6 +29,8 @@ export function crearDobleSupabase(
         escrituras.push({ tabla, op, datos, filtros: [...filtros] });
         if (err()) return { data: null, error: err() };
         // Semántica mínima de upsert/insert para poder comprobar QUÉ datos quedan.
+        if (op === "update") { for (const f of filas()) Object.assign(f, datos as Fila); }
+        if (op === "delete") { const fuera = new Set(filas()); tablas[tabla] = (tablas[tabla] ?? []).filter((f) => !fuera.has(f)); }
         if (op === "insert" || op === "upsert") {
           const t = (tablas[tabla] ??= []);
           for (const d of (Array.isArray(datos) ? datos : [datos]) as Fila[]) {

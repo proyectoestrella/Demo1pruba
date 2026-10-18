@@ -485,10 +485,19 @@ export const saveSalonProfile = createServerFn({ method: "POST" })
       const supabase = getSupabaseServerClient();
       if (!supabase) return { synced: false as const, motivo: "sin-backend" as const };
 
+      const { data: filaActual } = await supabase
+        .from("salons")
+        .select("profile")
+        .eq("slug", data.slug)
+        .maybeSingle();
+      const perfilAGuardar = conClavesDelServidor(
+        data.profile,
+        (filaActual as { profile?: Record<string, unknown> } | null)?.profile,
+      );
       const { error } = await supabase
         .from("salons")
         .upsert(
-          { slug: data.slug, profile: data.profile, updated_at: new Date().toISOString() },
+          { slug: data.slug, profile: perfilAGuardar, updated_at: new Date().toISOString() },
           { onConflict: "slug" },
         );
       if (faltaEsquema(error)) {
@@ -500,7 +509,7 @@ export const saveSalonProfile = createServerFn({ method: "POST" })
       await guardarVersion(
         supabase,
         data.slug,
-        data.profile,
+        perfilAGuardar,
         quien.tipo === "miembro" ? quien : null,
         null,
       );
@@ -577,6 +586,27 @@ export const listarVersiones = createServerFn({ method: "GET" })
     };
   });
 
+/**
+ * Claves del perfil que decide el servidor (el operador de siShow), no el
+ * navegador (M3, auditoría 18-oct-2026): el plan que se paga y el flag de
+ * calendarios externos. Antes cualquier gerente podía darse `todo-incluido`
+ * con un `patchSalonProfile({ plan })`.
+ */
+const CLAVES_SOLO_SERVIDOR = ["plan", "calendariosExternosActivo"] as const;
+
+/** `nuevo` con las claves reservadas tomadas de `actual` (no de lo que mande el navegador). */
+function conClavesDelServidor(
+  nuevo: Record<string, unknown>,
+  actual: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const salida = { ...nuevo };
+  for (const k of CLAVES_SOLO_SERVIDOR) {
+    if (actual && k in actual) salida[k] = actual[k];
+    else delete salida[k];
+  }
+  return salida;
+}
+
 /** Publica de nuevo una versión anterior (como versión nueva) y lo deja en el historial. */
 export const restaurarVersion = createServerFn({ method: "POST" })
   .middleware([conSesion])
@@ -614,7 +644,7 @@ export const restaurarVersion = createServerFn({ method: "POST" })
       const restauraPerfilEntero =
         tienePermiso(quien, "salon.editar") && tienePermiso(quien, "plan.gestionar");
       const perfilRestaurado = restauraPerfilEntero
-        ? (v.perfil as Record<string, unknown>)
+        ? conClavesDelServidor(v.perfil as Record<string, unknown>, perfilAnterior)
         : { ...perfilAnterior, ...soloCamposWeb(v.perfil as Record<string, unknown>) };
       const { error } = await supabase
         .from("salons")
@@ -710,7 +740,12 @@ export const patchSalonProfile = createServerFn({ method: "POST" })
       if (errorLectura) throw new Error(`patchSalonProfile (lectura): ${errorLectura.message}`);
       if (!fila) return { synced: false as const, motivo: "sin-salon" as const };
 
-      const fusionado = fusionarPerfil((fila.profile ?? {}) as Record<string, unknown>, data.patch);
+      const actualPerfil = (fila.profile ?? {}) as Record<string, unknown>;
+      for (const k of CLAVES_SOLO_SERVIDOR) {
+        if (k in data.patch && JSON.stringify(data.patch[k] ?? null) !== JSON.stringify(actualPerfil[k] ?? null))
+          throw new PermisoDenegado("plan.gestionar");
+      }
+      const fusionado = fusionarPerfil(actualPerfil, data.patch);
       if ("team" in data.patch && !perfilDentroDelTopeDeProfesionales(fusionado)) {
         return { synced: false as const, motivo: "limite-profesionales" as const };
       }
