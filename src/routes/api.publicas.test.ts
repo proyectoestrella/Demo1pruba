@@ -56,11 +56,11 @@ describe.each([["recordatorios", "/api/recordatorios", "recordatorios"], ["senal
       expect((await pedir(rutas[nombre], req[0], req[1] as RequestInit | undefined)).status).toBe(401);
     expect(trabajos[contador]).toBe(0);
   });
-  it("secreto correcto (Bearer o ?token=): 200 y ejecuta una vez cada vez", async () => {
+  it("solo Authorization Bearer admite el secreto; ?token= no lo ejecuta", async () => {
     process.env.CRON_SECRET = SECRETO;
     expect((await pedir(rutas[nombre], u, { headers: { authorization: `Bearer ${SECRETO}` } })).status).toBe(200);
-    expect((await pedir(rutas[nombre], `${u}?token=${SECRETO}`, undefined, "POST")).status).toBe(200);
-    expect(trabajos[contador]).toBe(2);
+    expect((await pedir(rutas[nombre], `${u}?token=${SECRETO}`, undefined, "POST")).status).toBe(401);
+    expect(trabajos[contador]).toBe(1);
   });
 });
 

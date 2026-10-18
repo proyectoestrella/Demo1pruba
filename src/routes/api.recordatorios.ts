@@ -7,8 +7,8 @@ import { enviarRecordatoriosDeManana, leerFiltroRecordatorios } from "@/lib/api/
 /**
  * Disparador del recordatorio automático por email (ver
  * `lib/api/recordatorios.server.ts`). Lo llama el cron de Vercel definido en
- * `vercel.json`, que manda `Authorization: Bearer <CRON_SECRET>`; para
- * lanzarlo a mano vale `?token=<CRON_SECRET>`. A mano, además, se puede
+ * `vercel.json`, que manda `Authorization: Bearer <CRON_SECRET>`. A mano,
+ * usa la misma cabecera. Además, se puede
  * limitar a un salón (`?salon=<slug>`), a una cita (`?cita=<id>`) o solo
  * simular (`?dry=1`); ver `leerFiltroRecordatorios` y
  * docs/pruebas-google-2026-09-27.md.
@@ -27,7 +27,7 @@ function autorizado(request: Request): boolean {
   const secreto = process.env.CRON_SECRET;
   if (!secreto) return false;
   const cabecera = request.headers.get("authorization") ?? "";
-  const token = cabecera.startsWith("Bearer ") ? cabecera.slice(7) : new URL(request.url).searchParams.get("token") ?? "";
+  const token = cabecera.startsWith("Bearer ") ? cabecera.slice(7) : "";
   const a = Buffer.from(token);
   const b = Buffer.from(secreto);
   return a.length === b.length && timingSafeEqual(a, b);
