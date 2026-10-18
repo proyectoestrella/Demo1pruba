@@ -4,19 +4,21 @@
  * autorización de verdad (autorizacion.server → autorizacion → guardas) corre
  * entera; solo se sustituyen la base de datos y la cabecera de la petición.
  */
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import { crearDobleSupabase } from "./doble-supabase";
-import { instalarDobleStart, llamar } from "./doble-start";
+import { instalarDobleStart, llamar, mockTransitorio } from "./doble-start";
 
 let cabecera: string | null = null;
 let doble = crearDobleSupabase({});
-mock.module("../supabase.server", () => ({ getSupabaseServerClient: () => doble }));
-mock.module("@tanstack/react-start/server", () => ({
-  getRequestHeader: (n: string) => (n.toLowerCase() === "authorization" ? (cabecera ?? undefined) : undefined),
-  getRequestUrl: () => new URL("https://sishow.test/x"),
-}));
+const m1 = await mockTransitorio("../supabase.server", { getSupabaseServerClient: () => doble as never });
+const m2 = await mockTransitorio("@tanstack/react-start/server", {
+  getRequestHeader: ((n: string) => (n.toLowerCase() === "authorization" ? (cabecera ?? undefined) : undefined)) as never,
+  getRequestUrl: (() => new URL("https://sishow.test/x")) as never,
+});
+beforeAll(() => { m1.activar(); m2.activar(); });
+afterAll(() => { m1.desactivar(); m2.desactivar(); });
 instalarDobleStart();
-const { getCalendarSubscription, regenerateCalendarSubscription } = await import("./calendar.functions");
+const { getCalendarSubscription, regenerateCalendarSubscription } = await import("./calendar.functions?doble");
 
 const TOKEN_A = "T".repeat(43);
 const TOKEN_B = "U".repeat(43);

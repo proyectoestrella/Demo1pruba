@@ -1060,6 +1060,9 @@ export const syncAppointment = createServerFn({ method: "POST" })
      * límites: su panel hace exactamente lo que hacía antes.
      */
     const quien = await acceso(data.slug);
+    // Un slug que no existe en salons no es un salón al que reservar: no se
+    // guarda nada (A1). Las demos viven en el navegador.
+    if (quien.tipo === "demo") return { synced: false as const };
     const manda = tieneMando(quien);
 
     // Una reserva pública solo se guarda después de confirmar el aviso. La

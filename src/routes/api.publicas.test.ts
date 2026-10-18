@@ -3,24 +3,27 @@
  * los handlers reales; solo se sustituyen Supabase y los trabajos que
  * enviarían correos o sincronizarían calendarios.
  */
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import { crearDobleSupabase } from "@/lib/api/doble-supabase";
+import { mockTransitorio } from "@/lib/api/doble-start";
 
 let doble = crearDobleSupabase({});
 let trabajos = { recordatorios: 0, senales: 0, polling: 0 };
-mock.module("@/lib/supabase.server", () => ({ getSupabaseServerClient: () => doble }));
-mock.module("@/lib/api/recordatorios.server", () => ({
-  enviarRecordatoriosDeManana: async () => { trabajos.recordatorios++; return { enviados: 0 }; },
-  leerFiltroRecordatorios: () => ({}),
-}));
-mock.module("@/lib/api/senales-vencidas.server", () => ({
-  liberarSenalesVencidasDeTodos: async () => { trabajos.senales++; return { liberadas: 0 }; },
-}));
-mock.module("@/lib/calendario-externo/calendario-externo.server", () => ({
-  sincronizarPollingDeRespaldo: async () => { trabajos.polling++; return { procesadas: 0, errores: 0 }; },
-  procesarNotificacionGoogle: async () => {},
-  completarConexionGoogle: async () => ({ ok: false, error: "x" }),
-}));
+const ms = [
+  await mockTransitorio("@/lib/supabase.server", { getSupabaseServerClient: () => doble as never }),
+  await mockTransitorio("@/lib/api/recordatorios.server", {
+    enviarRecordatoriosDeManana: (async () => { trabajos.recordatorios++; return { enviados: 0 }; }) as never,
+    leerFiltroRecordatorios: (() => ({})) as never,
+  }),
+  await mockTransitorio("@/lib/api/senales-vencidas.server", {
+    liberarSenalesVencidasDeTodos: (async () => { trabajos.senales++; return { liberadas: 0 }; }) as never,
+  }),
+  await mockTransitorio("@/lib/calendario-externo/calendario-externo.server", {
+    sincronizarPollingDeRespaldo: (async () => { trabajos.polling++; return { procesadas: 0, errores: 0 }; }) as never,
+  }),
+];
+beforeAll(() => ms.forEach((m) => m.activar()));
+afterAll(() => ms.forEach((m) => m.desactivar()));
 
 const rutas = {
   recordatorios: (await import("./api.recordatorios")).Route,

@@ -2,16 +2,18 @@
  * Funciones de servidor PÚBLICAS (sin sesión a propósito): getDosierQr y
  * lookupGoogleMaps. Se ejecutan las reales; la red se sustituye por un doble.
  */
-import { afterEach, describe, expect, it, mock } from "bun:test";
-import { instalarDobleStart, llamar } from "./doble-start";
+import { afterAll, afterEach, beforeAll, describe, expect, it, mock } from "bun:test";
+import { instalarDobleStart, llamar, mockTransitorio } from "./doble-start";
 
-mock.module("@tanstack/react-start/server", () => ({
-  getRequestHeader: () => undefined,
-  getRequestUrl: () => new URL("https://sishow.test/s/x"),
-}));
+const m2 = await mockTransitorio("@tanstack/react-start/server", {
+  getRequestHeader: (() => undefined) as never,
+  getRequestUrl: (() => new URL("https://sishow.test/s/x")) as never,
+});
+beforeAll(() => m2.activar());
+afterAll(() => m2.desactivar());
 instalarDobleStart();
-const { getDosierQr } = await import("./dosier-qr.functions");
-const { lookupGoogleMaps, esAcortadorGoogle, expandShortLink } = await import("./maps.functions");
+const { getDosierQr } = await import("./dosier-qr.functions?doble");
+const { lookupGoogleMaps, esAcortadorGoogle, expandShortLink } = await import("./maps.functions?doble");
 
 describe("getDosierQr (público): entrada", () => {
   it("rechaza vacío, rutas externas y rutas absurdamente largas", async () => {
