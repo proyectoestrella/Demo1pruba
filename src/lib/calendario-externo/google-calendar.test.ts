@@ -113,9 +113,9 @@ describe("consultarOcupado", () => {
 });
 
 describe("comoEventoExternoListado", () => {
-  it("un evento ajeno se ve como ocupado, con su resumen y sin marca propia", () => {
+  it("un evento ajeno se ve como ocupado, sin su título y sin marca propia", () => {
     const r = comoEventoExternoListado({ id: "e1", status: "confirmed", summary: "Dentista", start: { dateTime: "2026-10-01T09:00:00Z" }, end: { dateTime: "2026-10-01T09:30:00Z" } });
-    expect(r).toEqual({ eventoExternoId: "e1", intervalo: { start: "2026-10-01T09:00:00Z", end: "2026-10-01T09:30:00Z" }, resumen: "Dentista", citaIdPropio: null });
+    expect(r).toEqual({ eventoExternoId: "e1", intervalo: { start: "2026-10-01T09:00:00Z", end: "2026-10-01T09:30:00Z" }, resumen: null, citaIdPropio: null });
   });
 
   it("un eco propio trae su citaId desde extendedProperties", () => {

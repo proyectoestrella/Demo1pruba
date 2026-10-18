@@ -32,7 +32,7 @@ function plegar(linea: string): string {
 }
 
 export function generarCalendarioIcs(citas: CitaCalendario[], salon: string, profesional?: string, ahora = new Date()): string {
-  const lineas = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//siShow//Agenda del salon//ES", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", `X-WR-CALNAME:${escapar(salon)}`];
+  const lineas = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//siShow//Agenda del salon//ES", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", `X-WR-CALNAME:${escapar(salon)}`, "X-WR-TIMEZONE:Europe/Madrid", "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H"];
   for (const cita of citas) {
     if (cita.status !== "confirmed" || (profesional && cita.employeeId !== profesional)) continue;
     const inicio = new Date(cita.start);
@@ -43,4 +43,10 @@ export function generarCalendarioIcs(citas: CitaCalendario[], salon: string, pro
   }
   lineas.push("END:VCALENDAR");
   return lineas.map(plegar).join("\r\n") + "\r\n";
+}
+
+/** Enlaces de un toque para suscribirse al feed (solo salida). `http(s)://…` → webcal:// y alta en Google Calendar. */
+export function enlacesSuscripcion(feedUrl: string): { webcal: string; google: string } {
+  const webcal = feedUrl.replace(/^https?:\/\//i, "webcal://");
+  return { webcal, google: `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}` };
 }

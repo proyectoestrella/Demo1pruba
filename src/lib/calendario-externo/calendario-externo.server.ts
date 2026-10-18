@@ -43,7 +43,7 @@ import {
   urlDeAutorizacion,
   type ConfigGoogle,
 } from "./google-oauth";
-import { citaIdDeIcs, eventoGoogleDeCita, fechasDeIcs, icsDeCita, resumenDeIcs } from "./mapeo-eventos";
+import { citaIdDeIcs, eventoGoogleDeCita, fechasDeIcs, icsDeCita } from "./mapeo-eventos";
 import {
   diffBloqueosExternos,
   sincronizarCitaSaliente,
@@ -607,12 +607,12 @@ export async function procesarCitaParaConexiones(salonSlug: string, cita: CitaPa
 // Entrada: leer lo que ha cambiado en el calendario externo
 // -----------------------------------------------------------------------
 
-async function aplicarDiffBloqueos(db: Supabase, conexionId: string, diff: DiffBloqueos): Promise<void> {
+export async function aplicarDiffBloqueos(db: Supabase, conexionId: string, diff: DiffBloqueos): Promise<void> {
   for (const c of diff.aCrear) {
     const { error } = await db
       .from("calendario_bloqueos_externos")
       .upsert(
-        { conexion_id: conexionId, salon_slug: c.salonSlug, employee_id: c.employeeId, evento_externo_id: c.eventoExternoId, start_at: c.startAt, end_at: c.endAt, resumen: c.resumen },
+        { conexion_id: conexionId, salon_slug: c.salonSlug, employee_id: c.employeeId, evento_externo_id: c.eventoExternoId, start_at: c.startAt, end_at: c.endAt },
         { onConflict: "conexion_id,evento_externo_id" },
       );
     if (error) console.error("calendario-externo (crear bloqueo):", error.message);
@@ -620,7 +620,7 @@ async function aplicarDiffBloqueos(db: Supabase, conexionId: string, diff: DiffB
   for (const a of diff.aActualizar) {
     const { error } = await db
       .from("calendario_bloqueos_externos")
-      .update({ start_at: a.startAt, end_at: a.endAt, resumen: a.resumen, actualizado: new Date().toISOString() })
+      .update({ start_at: a.startAt, end_at: a.endAt, actualizado: new Date().toISOString() })
       .eq("conexion_id", conexionId)
       .eq("evento_externo_id", a.eventoExternoId);
     if (error) console.error("calendario-externo (actualizar bloqueo):", error.message);
@@ -689,7 +689,7 @@ async function sincronizarAppleEntrante(db: Supabase, fila: FilaConexion, creden
     const ics = await leerEvento(cred, r.href);
     const citaIdPropio = citaIdDeIcs(ics);
     const fechas = fechasDeIcs(ics);
-    eventos.push({ eventoExternoId: r.href, intervalo: fechas ? { start: fechas.start, end: fechas.end } : null, resumen: resumenDeIcs(ics), citaIdPropio });
+    eventos.push({ eventoExternoId: r.href, intervalo: fechas ? { start: fechas.start, end: fechas.end } : null, resumen: null, citaIdPropio });
     // Autocuración del ETag de nuestros propios eventos: si Apple lo cambió
     // (p. ej. la profesional lo tocó y lo deshizo), refrescarlo aquí evita
     // que la próxima escritura falle con un conflicto de ETag evitable.

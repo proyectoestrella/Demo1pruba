@@ -24,6 +24,7 @@ import { AjustesDiasEspeciales } from "@/components/AjustesDiasEspeciales";
 import { GuiaAsistente } from "@/components/GuiaAsistente";
 import { GuiaUso } from "@/components/GuiaUso";
 import { AjustesAccesos } from "@/components/AjustesAccesos";
+import { enlacesSuscripcion } from "@/lib/calendario-ics";
 import { AjustesCalendarios } from "@/components/AjustesCalendarios";
 import {
   API_CALENDARIOS,
@@ -333,10 +334,13 @@ function Settings() {
                 </p>
               </div>
               {!realSlug ? (
-                <p className="text-sm text-muted-foreground">
-                  La suscripción se activa cuando el salón es real. En esta demo puedes ver cómo
-                  quedará el ajuste.
-                </p>
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    La suscripción se activa cuando el salón es real. En esta demo puedes ver cómo
+                    quedará el ajuste.
+                  </p>
+                  <BotonesSuscripcion url="https://ejemplo.invalid/api/calendario?token=EJEMPLO" ejemplo />
+                </>
               ) : (
                 <>
                   {calendarError && (
@@ -382,6 +386,7 @@ function Settings() {
                           Copiar enlace
                         </Button>
                       </div>
+                      <BotonesSuscripcion url={calendarUrl} />
                       <p className="text-xs text-muted-foreground">
                         Este enlace es privado: quien lo tenga podrá ver esas citas. Si lo
                         regeneras, el anterior dejará de funcionar.
@@ -834,6 +839,28 @@ function Field({
       </Label>
       <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} />
       {hint ? <p className="text-[12.5px] text-muted-foreground">{hint}</p> : null}
+    </div>
+  );
+}
+
+/** Añadir el feed a Apple/Google Calendar con un toque. Solo salida: la app externa no escribe en siShow. */
+function BotonesSuscripcion({ url, ejemplo = false }: { url: string; ejemplo?: boolean }) {
+  const { webcal, google } = enlacesSuscripcion(url);
+  const clase = "inline-flex h-10 flex-1 items-center justify-center rounded-xl border border-input bg-blanco px-3 text-center text-sm font-semibold";
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-col gap-2 min-[420px]:flex-row">
+        <a className={clase} href={ejemplo ? undefined : webcal} aria-disabled={ejemplo}>
+          Añadir a Apple Calendar
+        </a>
+        <a className={clase} href={ejemplo ? undefined : google} target="_blank" rel="noopener noreferrer" aria-disabled={ejemplo}>
+          Añadir a Google Calendar
+        </a>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Es de solo lectura: tu calendario muestra las citas de siShow pero no cambia nada aquí. Se
+        actualiza solo; cada app decide cada cuánto.
+      </p>
     </div>
   );
 }
