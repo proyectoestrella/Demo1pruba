@@ -77,7 +77,7 @@ export function citaIdDeIcs(ics: string): string | null {
   return m ? m[1].trim().replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\") : null;
 }
 
-/** El nombre libre "resumen" de un VEVENT ajeno, para guardarlo en el bloqueo importado (sin más detalle). */
+/** Solo para lectura puntual/diagnóstico: NO guardar el resultado de eventos ajenos (privacidad, aviso 122). */
 export function resumenDeIcs(ics: string): string | null {
   const desplegado = ics.replace(/\r\n[ \t]/g, "");
   const m = /^SUMMARY:(.*)$/m.exec(desplegado);

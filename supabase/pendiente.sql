@@ -432,3 +432,8 @@ create table if not exists calendario_bloqueos_externos (
 create index if not exists calendario_bloqueos_externos_hueco_idx
   on calendario_bloqueos_externos (salon_slug, employee_id, start_at, end_at);
 alter table calendario_bloqueos_externos enable row level security;
+
+-- 20. Privacidad (aviso 122): el código ya NO escribe `resumen` de eventos ajenos.
+-- SIN APLICAR. Limpieza de títulos que ya se hubieran guardado (reversible: solo
+-- vacía un campo informativo; la columna se conserva):
+--   update calendario_bloqueos_externos set resumen = null where resumen is not null;

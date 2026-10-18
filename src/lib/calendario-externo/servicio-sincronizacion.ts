@@ -156,10 +156,10 @@ export function diffBloqueosExternos(
         eventoExternoId: ev.eventoExternoId,
         startAt: ev.intervalo.start,
         endAt: ev.intervalo.end,
-        resumen: ev.resumen,
+        resumen: null, // privacidad: nunca el título ajeno
       });
-    } else if (previo.startAt !== ev.intervalo.start || previo.endAt !== ev.intervalo.end || previo.resumen !== ev.resumen) {
-      aActualizar.push({ eventoExternoId: ev.eventoExternoId, startAt: ev.intervalo.start, endAt: ev.intervalo.end, resumen: ev.resumen });
+    } else if (previo.startAt !== ev.intervalo.start || previo.endAt !== ev.intervalo.end) {
+      aActualizar.push({ eventoExternoId: ev.eventoExternoId, startAt: ev.intervalo.start, endAt: ev.intervalo.end, resumen: null });
     }
   }
   // Lo que había guardado y ya no aparece en absoluto en el listado (Apple:

@@ -42,7 +42,8 @@ export function comoEventoExternoListado(ev: EventoGoogle): {
   return {
     eventoExternoId: ev.id,
     intervalo,
-    resumen: ev.summary ?? null,
+    // Privacidad: el título de un evento ajeno NUNCA sale de aquí.
+    resumen: null,
     citaIdPropio: ev.extendedProperties?.private?.[SISHOW_PROP] ?? null,
   };
 }

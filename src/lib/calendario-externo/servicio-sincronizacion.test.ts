@@ -119,7 +119,7 @@ describe("diffBloqueosExternos", () => {
   it("un evento nuevo (no eco, no visto antes) se crea", () => {
     const eventos: EventoExternoListado[] = [{ eventoExternoId: "ext-2", intervalo: { start: "2026-10-01T11:00:00Z", end: "2026-10-01T11:30:00Z" }, resumen: "Médico", citaIdPropio: null }];
     const r = diffBloqueosExternos(eventos, [], "s", "noelia", true);
-    expect(r.aCrear).toEqual([{ salonSlug: "s", employeeId: "noelia", eventoExternoId: "ext-2", startAt: "2026-10-01T11:00:00Z", endAt: "2026-10-01T11:30:00Z", resumen: "Médico" }]);
+    expect(r.aCrear).toEqual([{ salonSlug: "s", employeeId: "noelia", eventoExternoId: "ext-2", startAt: "2026-10-01T11:00:00Z", endAt: "2026-10-01T11:30:00Z", resumen: null }]);
   });
 
   it("un eco propio (citaIdPropio) nunca se crea como bloqueo", () => {
@@ -141,7 +141,7 @@ describe("diffBloqueosExternos", () => {
     const previo = PREVIO();
     const eventos: EventoExternoListado[] = [{ eventoExternoId: previo.eventoExternoId, intervalo: { start: "2026-10-01T10:00:00Z", end: "2026-10-01T10:30:00Z" }, resumen: previo.resumen, citaIdPropio: null }];
     const r = diffBloqueosExternos(eventos, [previo], "s", "noelia", true);
-    expect(r.aActualizar).toEqual([{ eventoExternoId: previo.eventoExternoId, startAt: "2026-10-01T10:00:00Z", endAt: "2026-10-01T10:30:00Z", resumen: previo.resumen }]);
+    expect(r.aActualizar).toEqual([{ eventoExternoId: previo.eventoExternoId, startAt: "2026-10-01T10:00:00Z", endAt: "2026-10-01T10:30:00Z", resumen: null }]);
   });
 
   it("cancelado explícitamente (intervalo null) se borra", () => {
