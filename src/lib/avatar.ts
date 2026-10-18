@@ -1,71 +1,77 @@
-/**
- * Avatares de personas del panel (clientas y equipo): estilo DiceBear Open
- * Peeps (CC0 1.0, Pablo Stanley; se comprueba en `openPeeps.meta.license`).
- *
- * Prioridad de lo que se enseña, de más a menos fuerte:
- *   foto > avatar elegido > avatar por defecto (según el id) > iniciales.
- *
- * Aquí vive la parte pura (qué avatar toca y cómo se guarda); el dibujo está
- * en `avatar-svg.ts` para que esto no arrastre la librería a quien solo
- * necesita decidir.
- */
+import { IDS_AVATAR, type AvatarId } from "./avatar-svg";
 
-/** Cuántos avatares curados ofrece el selector. */
-export const TOTAL_AVATARES = 48;
-
-/**
- * Lo que se guarda en el perfil del salón (JSON existente, sin columnas
- * nuevas): el índice del curado. `style` deja la puerta abierta a otros
- * estilos o a opciones libres sin migrar nada.
- */
+/** Avatares propios que se guardan a partir de ahora. */
 export interface AvatarElegido {
+  style: "trimly";
+  avatar: AvatarId;
+}
+/** Forma que ya vive en perfiles guardados de versiones anteriores. */
+export interface AvatarOpenPeepsLegado {
   style: "openPeeps";
-  /** Posición en la rejilla de curados (0 a 47). */
   curado: number;
 }
-
-export type MapaAvatares = Record<string, AvatarElegido>;
-
+export type AvatarGuardado = AvatarElegido | AvatarOpenPeepsLegado;
+export type MapaAvatares = Record<string, AvatarGuardado>;
 export type OrigenAvatar = "foto" | "elegido" | "defecto" | "iniciales";
-
 export interface AvatarResuelto {
   origen: OrigenAvatar;
-  /** Índice del curado a dibujar (solo con `elegido` o `defecto`). */
-  curado?: number;
+  avatar?: AvatarId;
   foto?: string;
 }
+
+/** Los 48 índices Open Peeps se traducen de forma estable a la nueva familia. */
+export const TOTAL_AVATARES_LEGADOS = 48;
+export const MAPA_OPEN_PEEPS_LEGADO: readonly AvatarId[] = Array.from(
+  { length: TOTAL_AVATARES_LEGADOS },
+  (_, indice) => IDS_AVATAR[indice % IDS_AVATAR.length],
+);
 
 export function hashTexto(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
   return h;
 }
-
-/** ¿Es un valor guardado que sabemos dibujar? Protege de datos viejos o a medias. */
-export function avatarValido(v: unknown): v is AvatarElegido {
-  if (!v || typeof v !== "object") return false;
-  const a = v as Partial<AvatarElegido>;
-  return a.style === "openPeeps" && Number.isInteger(a.curado) && (a.curado as number) >= 0 && (a.curado as number) < TOTAL_AVATARES;
+export function avatarIdValido(valor: unknown): valor is AvatarId {
+  return typeof valor === "string" && (IDS_AVATAR as readonly string[]).includes(valor);
 }
 
-/** El curado que le toca a alguien que no ha elegido: siempre el mismo para el mismo id. */
-export function curadoPorDefecto(id: string): number {
-  return hashTexto(id) % TOTAL_AVATARES;
+/** Acepta tanto el formato nuevo como los 48 valores Open Peeps ya guardados. */
+export function avatarValido(valor: unknown): valor is AvatarGuardado {
+  if (!valor || typeof valor !== "object") return false;
+  const avatar = valor as Partial<AvatarGuardado>;
+  return (
+    (avatar.style === "trimly" && avatarIdValido((avatar as Partial<AvatarElegido>).avatar)) ||
+    (avatar.style === "openPeeps" &&
+      Number.isInteger((avatar as Partial<AvatarOpenPeepsLegado>).curado) &&
+      (avatar as Partial<AvatarOpenPeepsLegado>).curado! >= 0 &&
+      (avatar as Partial<AvatarOpenPeepsLegado>).curado! < TOTAL_AVATARES_LEGADOS)
+  );
 }
 
-export function elegirAvatar(curado: number): AvatarElegido {
-  return { style: "openPeeps", curado };
+/** Resuelve una elección guardada (también la histórica) al id de SVG actual. */
+export function avatarIdDeElegido(valor: unknown): AvatarId | undefined {
+  if (!avatarValido(valor)) return undefined;
+  return valor.style === "trimly" ? valor.avatar : MAPA_OPEN_PEEPS_LEGADO[valor.curado];
+}
+/** Avatar que se guarda desde el selector. */
+export function elegirAvatar(avatar: AvatarId): AvatarElegido {
+  return { style: "trimly", avatar };
+}
+/** Avatar automático estable para el mismo id. */
+export function avatarPorDefecto(id: string): AvatarId {
+  return IDS_AVATAR[hashTexto(id) % IDS_AVATAR.length];
 }
 
-/**
- * Decide qué se pinta. Sin id ni avatar elegido no hay forma de que el
- * defecto sea estable, así que se cae a las iniciales.
- */
-export function resolverAvatar(entrada: { id?: string; foto?: string | null; elegido?: unknown }): AvatarResuelto {
+export function resolverAvatar(entrada: {
+  id?: string;
+  foto?: string | null;
+  elegido?: unknown;
+}): AvatarResuelto {
   const foto = entrada.foto?.trim();
   if (foto) return { origen: "foto", foto };
-  if (avatarValido(entrada.elegido)) return { origen: "elegido", curado: entrada.elegido.curado };
-  if (entrada.id) return { origen: "defecto", curado: curadoPorDefecto(entrada.id) };
+  const elegido = avatarIdDeElegido(entrada.elegido);
+  if (elegido) return { origen: "elegido", avatar: elegido };
+  if (entrada.id) return { origen: "defecto", avatar: avatarPorDefecto(entrada.id) };
   return { origen: "iniciales" };
 }
 
@@ -79,9 +85,11 @@ export function iniciales(nombre: string): string {
     .join("")
     .toUpperCase();
 }
-
-/** Devuelve el mapa con el avatar de `id` cambiado (o quitado si `avatar` es null). */
-export function conAvatar(mapa: MapaAvatares | undefined, id: string, avatar: AvatarElegido | null): MapaAvatares {
+export function conAvatar(
+  mapa: MapaAvatares | undefined,
+  id: string,
+  avatar: AvatarElegido | null,
+): MapaAvatares {
   const salida = { ...(mapa ?? {}) };
   if (avatar) salida[id] = avatar;
   else delete salida[id];

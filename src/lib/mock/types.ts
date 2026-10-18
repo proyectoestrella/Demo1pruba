@@ -221,7 +221,14 @@ export interface Appointment {
 }
 
 /** Estados que se guardan. `vencida` no se guarda: se calcula con la hora (ver `estadoSenal`). */
-export type EstadoSenalGuardado = "por_pedir" | "pedida" | "recibida" | "aplicada" | "devuelta" | "retenida" | "anulada";
+export type EstadoSenalGuardado =
+  | "por_pedir"
+  | "pedida"
+  | "recibida"
+  | "aplicada"
+  | "devuelta"
+  | "retenida"
+  | "anulada";
 /** Cómo llegó la señal. siShow no la cobra: lo apunta la dueña. */
 export type MetodoSenal = "bizum" | "efectivo" | "tarjeta" | "transferencia";
 
@@ -406,9 +413,9 @@ export interface SalonProfile {
   /** Color elegido por la dueña (9h): servicio → 1-6 de la paleta; profesional → 1-4. */
   coloresServicio?: Record<string, number>;
   coloresProfesional?: Record<string, number>;
-  /** Avatar elegido de cada clienta (por id) y de cada profesional (por id). Viven en el JSON del perfil: sin columnas nuevas. Ver lib/avatar.ts. */
-  avataresClientas?: Record<string, { style: "openPeeps"; curado: number }>;
-  avataresEquipo?: Record<string, { style: "openPeeps"; curado: number }>;
+  /** Avatar elegido de cada clienta (por id) y de cada profesional (por id). Incluye el formato histórico para que perfiles guardados sigan viéndose. */
+  avataresClientas?: Record<string, import("../avatar").AvatarGuardado>;
+  avataresEquipo?: Record<string, import("../avatar").AvatarGuardado>;
   /**
    * Equipo real del salón, de 1 a 6 entradas ("Nombre" o "Nombre~Especialidad"
    * — ver `parseTeamEntry` en business-type.ts). Vacío o ausente = el equipo

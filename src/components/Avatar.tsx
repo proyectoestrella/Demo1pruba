@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { useSalonStore } from "@/lib/store";
 import { employeeMap } from "@/lib/mock/salon";
 import { hashTexto, iniciales, resolverAvatar } from "@/lib/avatar";
-import { uriDeCurado } from "@/lib/avatar-svg";
+import { uriDeAvatar } from "@/lib/avatar-svg";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
@@ -42,26 +42,50 @@ export interface AvatarProps {
  * Prioridad: foto > avatar elegido > avatar por defecto según el id > iniciales.
  * Se dibuja en el navegador, sin red.
  */
-export function Avatar({ nombre, id, foto, elegido, size = "md", aro, aroColor, className, decorativo = true }: AvatarProps) {
-  const t = typeof size === "number" ? { px: size, texto: size >= 40 ? "text-sm" : "text-[11px]" } : TAMANOS[size];
+export function Avatar({
+  nombre,
+  id,
+  foto,
+  elegido,
+  size = "md",
+  aro,
+  aroColor,
+  className,
+  decorativo = true,
+}: AvatarProps) {
+  const t =
+    typeof size === "number"
+      ? { px: size, texto: size >= 40 ? "text-sm" : "text-[11px]" }
+      : TAMANOS[size];
   const [fotoRota, setFotoRota] = useState<string | null>(null);
   let r = resolverAvatar({ id, foto: foto && foto !== fotoRota ? foto : undefined, elegido });
   let uri: string | undefined;
-  if (r.curado !== undefined) {
+  if (r.avatar !== undefined) {
     try {
-      uri = uriDeCurado(r.curado);
+      uri = uriDeAvatar(r.avatar);
     } catch {
       r = { origen: "iniciales" };
     }
   }
   const caja = cn("relative block shrink-0 overflow-hidden rounded-full select-none", className);
-  const estilo = { width: t.px, height: t.px, ...(aro || aroColor ? { boxShadow: `0 0 0 2px ${aro ? `var(${aro})` : aroColor}` } : {}) };
-  const accesible = decorativo ? { "aria-hidden": true as const } : { role: "img" as const, "aria-label": nombre };
+  const estilo = {
+    width: t.px,
+    height: t.px,
+    ...(aro || aroColor ? { boxShadow: `0 0 0 2px ${aro ? `var(${aro})` : aroColor}` } : {}),
+  };
+  const accesible = decorativo
+    ? { "aria-hidden": true as const }
+    : { role: "img" as const, "aria-label": nombre };
 
   if (r.origen === "foto") {
     return (
       <span className={caja} style={estilo} {...accesible} data-avatar="foto">
-        <img src={r.foto} alt="" onError={() => setFotoRota(r.foto ?? null)} className="h-full w-full object-cover" />
+        <img
+          src={r.foto}
+          alt=""
+          onError={() => setFotoRota(r.foto ?? null)}
+          className="h-full w-full object-cover"
+        />
       </span>
     );
   }
@@ -86,18 +110,66 @@ export function Avatar({ nombre, id, foto, elegido, size = "md", aro, aroColor, 
 }
 
 /** Avatar de una clienta: lee el que se haya elegido en el perfil del salón. */
-export function AvatarClienta({ id, nombre, foto, size, className }: { id?: string; nombre: string; foto?: string | null; size?: AvatarSize; className?: string }) {
+export function AvatarClienta({
+  id,
+  nombre,
+  foto,
+  size,
+  className,
+}: {
+  id?: string;
+  nombre: string;
+  foto?: string | null;
+  size?: AvatarSize;
+  className?: string;
+}) {
   const elegido = useSalonStore((s) => (id ? s.salonProfile.avataresClientas?.[id] : undefined));
-  return <Avatar nombre={nombre} id={id} foto={foto} elegido={elegido} size={size} className={className} />;
+  return (
+    <Avatar
+      nombre={nombre}
+      id={id}
+      foto={foto}
+      elegido={elegido}
+      size={size}
+      className={className}
+    />
+  );
 }
 
 /** Avatar de una profesional del panel, con el aro de su color. */
-export function AvatarProfesional({ id, nombre, foto, size, colorVar, aroColor, className }: { id: string; nombre: string; foto?: string | null; size?: AvatarSize | number; colorVar?: string; aroColor?: string; className?: string }) {
+export function AvatarProfesional({
+  id,
+  nombre,
+  foto,
+  size,
+  colorVar,
+  aroColor,
+  className,
+}: {
+  id: string;
+  nombre: string;
+  foto?: string | null;
+  size?: AvatarSize | number;
+  colorVar?: string;
+  aroColor?: string;
+  className?: string;
+}) {
   const elegido = useSalonStore((s) => s.salonProfile.avataresEquipo?.[id]);
   const variable = colorVar ?? employeeMap[id]?.colorVar;
   const aro = variable ? (variable.startsWith("--") ? variable : `--${variable}`) : undefined;
   // Hoy no hay subida de fotos de personas: la única «foto» del equipo es la de
   // stock de las demos de barbería. Un avatar elegido a propósito gana a esa foto
   // (cuando exista la subida real, la foto subida mandará: ver lib/avatar.ts).
-  return <Avatar nombre={nombre} id={id} foto={elegido ? undefined : foto} elegido={elegido} size={size} aro={aroColor ? undefined : aro} aroColor={aroColor} className={className} />;
+  return (
+    <Avatar
+      nombre={nombre}
+      id={id}
+      foto={elegido ? undefined : foto}
+      elegido={elegido}
+      size={size}
+      aro={aroColor ? undefined : aro}
+      aroColor={aroColor}
+      className={className}
+    />
+  );
 }
