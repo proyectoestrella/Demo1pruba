@@ -2,13 +2,11 @@ import { soloMetodos } from "@/lib/api/metodos";
 import { createFileRoute } from "@tanstack/react-router";
 import { getSupabaseServerClient } from "@/lib/supabase.server";
 import { generarCalendarioIcs, type CitaCalendario } from "@/lib/calendario-ics";
-import { nombreServicioLibre } from "@/lib/appointment-services";
-import { servicesForType } from "@/lib/mock/salon";
-import { inferBusinessType } from "@/lib/business-type";
 import type { SalonProfile } from "@/lib/mock/types";
 
 const TOKEN_VALIDO = /^[A-Za-z0-9_-]{43}$/;
 const EMPLEADO_VALIDO = /^[A-Za-z0-9_-]{1,80}$/;
+const VENTANA_FEED_DIAS = 180;
 
 function error(status: number) {
   return new Response("Calendario no disponible", { status, headers: { "Cache-Control": "no-store" } });
@@ -29,19 +27,20 @@ export const Route = createFileRoute("/api/calendario")({
     const { data: salon, error: salonError } = await db.from("salons").select("profile").eq("slug", slug).maybeSingle();
     if (salonError || !salon) return error(503);
     const perfil = salon.profile as SalonProfile;
-    const servicios = Object.fromEntries(servicesForType(inferBusinessType(perfil.tagline, perfil.name), perfil.menu).map((s) => [s.id, s.name]));
+    const desde = new Date();
+    const hasta = new Date(desde.getTime() + VENTANA_FEED_DIAS * 24 * 60 * 60_000);
     type Fila = { id: string; local_id: string | null; client_name: string | null; service_id: string | null; employee_id: string; start_at: string; duration_min: number; status: string };
     const citas: CitaCalendario[] = [];
     for (let offset = 0; ; offset += 500) {
       const { data: filas, error: citasError } = await db.from("appointments")
         .select("id, local_id, client_name, service_id, employee_id, start_at, duration_min, status")
         .eq("salon_slug", slug).eq("status", "confirmed")
+        .gte("start_at", desde.toISOString()).lte("start_at", hasta.toISOString())
         .order("start_at", { ascending: true }).range(offset, offset + 499);
       if (citasError) return error(503);
       const lote = (filas ?? []) as Fila[];
       for (const fila of lote) citas.push({
-        id: fila.local_id ?? fila.id, clientName: fila.client_name ?? "Cliente",
-        service: (fila.service_id ?? "").split(",").filter(Boolean).map((id) => servicios[id] ?? nombreServicioLibre(id) ?? "Servicio").join(" + ") || "Servicio",
+        id: fila.local_id ?? fila.id, clientName: "", service: "Cita reservada",
         employeeId: fila.employee_id, start: fila.start_at, duration: fila.duration_min, status: fila.status,
       });
       if (lote.length < 500) break;

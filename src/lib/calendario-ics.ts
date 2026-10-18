@@ -38,8 +38,9 @@ export function generarCalendarioIcs(citas: CitaCalendario[], salon: string, pro
     const inicio = new Date(cita.start);
     if (!Number.isFinite(inicio.getTime()) || !Number.isFinite(cita.duration) || cita.duration <= 0) continue;
     const fin = new Date(inicio.getTime() + cita.duration * 60_000);
-    const nombre = cita.clientName.trim().split(/\s+/)[0] || "Cliente";
-    lineas.push("BEGIN:VEVENT", `UID:${escapar(cita.id)}@sishow`, `DTSTAMP:${fechaIcs(ahora)}`, `DTSTART:${fechaIcs(inicio)}`, `DTEND:${fechaIcs(fin)}`, `SUMMARY:${escapar(cita.service)} · ${escapar(nombre)}`, "END:VEVENT");
+    const nombre = cita.clientName.trim().split(/\s+/)[0];
+    const resumen = nombre ? `${cita.service} · ${nombre}` : cita.service;
+    lineas.push("BEGIN:VEVENT", `UID:${escapar(cita.id)}@sishow`, `DTSTAMP:${fechaIcs(ahora)}`, `DTSTART:${fechaIcs(inicio)}`, `DTEND:${fechaIcs(fin)}`, `SUMMARY:${escapar(resumen)}`, "END:VEVENT");
   }
   lineas.push("END:VCALENDAR");
   return lineas.map(plegar).join("\r\n") + "\r\n";

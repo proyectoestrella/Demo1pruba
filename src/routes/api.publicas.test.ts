@@ -98,6 +98,8 @@ describe("/api/calendario (feed ICS por token)", () => {
         { id: "1", local_id: "l1", salon_slug: "a", client_name: "Clienta de A", service_id: "", employee_id: "e", start_at: "2026-10-20T09:00:00Z", duration_min: 30, status: "confirmed" },
         { id: "2", local_id: "l2", salon_slug: "b", client_name: "Clienta de B", service_id: "", employee_id: "e", start_at: "2026-10-20T09:00:00Z", duration_min: 30, status: "confirmed" },
         { id: "3", local_id: "l3", salon_slug: "a", client_name: "Cancelada de A", service_id: "", employee_id: "e", start_at: "2026-10-21T09:00:00Z", duration_min: 30, status: "cancelled" },
+        { id: "4", local_id: "historica", salon_slug: "a", client_name: "Clienta histórica", service_id: "", employee_id: "e", start_at: "2000-01-01T09:00:00Z", duration_min: 30, status: "confirmed" },
+        { id: "5", local_id: "lejana", salon_slug: "a", client_name: "Clienta lejana", service_id: "", employee_id: "e", start_at: "2099-01-01T09:00:00Z", duration_min: 30, status: "confirmed" },
       ],
     });
   });
@@ -113,7 +115,7 @@ describe("/api/calendario (feed ICS por token)", () => {
   it("token con forma válida pero desconocido: 404 (no distingue de inexistente)", async () => {
     expect((await feed(`?token=${"C".repeat(43)}`)).status).toBe(404);
   });
-  it("token del salón A: solo citas confirmadas de A, nunca las de B ni las canceladas", async () => {
+  it("token del salón A: solo citas próximas, confirmadas y sin datos de clienta o servicio", async () => {
     const r = await feed(`?token=${TA}`);
     expect(r.status).toBe(200);
     expect(r.headers.get("cache-control")).toBe("private, no-store");
@@ -121,6 +123,10 @@ describe("/api/calendario (feed ICS por token)", () => {
     expect(ics).toContain("UID:l1@sishow");
     expect(ics).not.toContain("l2@sishow");
     expect(ics).not.toContain("l3@sishow");
+    expect(ics).not.toContain("historica@sishow");
+    expect(ics).not.toContain("lejana@sishow");
+    expect(ics).not.toContain("Clienta de A");
+    expect(ics).not.toContain("Servicio");
     const citas = doble.consultas.find((c) => c.tabla === "appointments")!;
     expect(citas.filtros).toContainEqual(["salon_slug", "a"]);
   });
