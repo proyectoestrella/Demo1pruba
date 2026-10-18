@@ -62,7 +62,7 @@ export function Avatar({
   let uri: string | undefined;
   if (r.avatar !== undefined) {
     try {
-      uri = uriDeAvatar(r.avatar);
+      uri = uriDeAvatar(r.avatar, t.px);
     } catch {
       r = { origen: "iniciales" };
     }
