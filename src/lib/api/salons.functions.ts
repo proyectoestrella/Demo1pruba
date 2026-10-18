@@ -146,7 +146,10 @@ const NIVEL_LOTE3 = [
   "origen",
   "updated_at",
 ];
+/** Marca técnica para la exclusión SQL: distinta del origen TPV de la cita. */
+const NIVEL_ORIGEN_RESERVA = ["origen_reserva"];
 const NIVELES_CITA: string[][] = [
+  NIVEL_ORIGEN_RESERVA,
   ["privacy_notice_acknowledged_at"],
   NIVEL_SENAL,
   NIVEL_LOTE3,
@@ -1412,6 +1415,9 @@ export const syncAppointment = createServerFn({ method: "POST" })
       deposit_due_at: manda ? (data.depositDueAt ?? null) : null,
       deposit_period_hours: manda ? (data.depositPeriodHours ?? null) : null,
       origen: manda ? (data.origen ?? "sishow") : "sishow",
+      // `origen` ya significa si llegó del TPV; esta marca solo decide la
+      // exclusión SQL de reservas web y cae limpiamente si falta la columna.
+      origen_reserva: manda ? "panel" : "web",
       // Señal: solo el panel escribe su estado. La reserva pública nunca
       // puede decir que ya la pagó (la señal automática la pone el servidor, abajo).
       deposit_status: manda ? (data.depositStatus ?? null) : null,

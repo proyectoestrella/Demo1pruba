@@ -20,8 +20,8 @@
 --     rechazar lo que ya hay. (`alter table … validate constraint …` las
 --     valida cuando quieras.)
 --   · Cada sección termina con su REVERSIÓN en un comentario.
---   · Las secciones 20 y 21 son OPCIONALES y están comentadas: necesitan
---     decisión de Tomás (ver el informe peluchic-backend-auditoria-2026-10-18).
+--   · La sección 20 es OPCIONAL y está comentada; la 21 aplica la decisión
+--     de Tomás para las reservas web (ver el informe de auditoría).
 --
 -- Requisitos: ya existen `salons`, `clients` y `appointments` (si no,
 -- ejecuta antes supabase/schema.sql entero) y el esquema `auth` de Supabase.
@@ -47,7 +47,7 @@ with esperadas(tabla, columna) as (values
   ('salon_members','display_name'),('salon_members','email'),('salon_members','invited_by'),('salon_members','actualizado'),
   ('appointments','local_id'),('appointments','client_name'),('appointments','payment_method'),('appointments','paid_at'),
   ('appointments','deposit_status'),('appointments','deposit_method'),('appointments','deposit_due_at'),
-  ('appointments','booking_answers'),('appointments','origen'),('appointments','updated_at'),
+  ('appointments','booking_answers'),('appointments','origen'),('appointments','origen_reserva'),('appointments','updated_at'),
   ('appointments','ultimo_deshacer_en'),('appointments','reminder_sent_at'),('appointments','privacy_notice_acknowledged_at'),
   ('clients','phone_key'),('clients','email'),('clients','notes'),('clients','penalty_at'),('clients','penalty_keep'),
   ('clients','penalty_block'),('clients','manual_block'),('clients','tpv_code'),('clients','birthday'),
@@ -85,7 +85,7 @@ from salon_members where rol not in ('gerente','subencargado','recepcion','estil
 -- 0.8 Citas sin local_id (el código las identifica por local_id).
 select count(*) as citas_sin_local_id from appointments where local_id is null;
 
--- 0.9 Solapes reales entre citas vivas de la misma profesional (informa de la sección 21 opcional).
+-- 0.9 Solapes reales entre citas vivas de la misma profesional (informativo).
 select count(*) as pares_solapados
 from appointments a join appointments b
   on a.salon_slug = b.salon_slug and a.employee_id = b.employee_id and a.id < b.id
@@ -537,21 +537,24 @@ alter table calendario_bloqueos_externos enable row level security;
 -- end $$;
 -- REVERSIÓN: alter table appointments drop constraint if exists appointments_status_chk;
 
--- 21. OPCIONAL — impedir en la base dos citas solapadas (M5, NO activado) ------
--- DECISIÓN DE TOMÁS: el panel permite solapar a propósito («permitirSolape»,
--- lib/solape.ts). Esta restricción lo PROHIBIRÍA también al panel. Si se quiere
--- solo para reservas públicas, hay que marcarlas con una columna (p. ej. `origen`)
--- y añadir `and origen = 'web'` al `where`. No se puede crear si 0.9 > 0.
--- Usa `at time zone 'utc'` porque la expresión debe ser inmutable.
--- create extension if not exists btree_gist;
--- alter table appointments add constraint appointments_sin_solape_excl
---   exclude using gist (
---     salon_slug with =, employee_id with =,
---     tsrange((start_at at time zone 'utc'),
---             (start_at at time zone 'utc') + duration_min * interval '1 minute') with &&
---   ) where (status not in ('cancelled','no-show'));
--- REVERSIÓN: alter table appointments drop constraint if exists appointments_sin_solape_excl;
--- Mientras no exista, el código vuelve a comprobar tras escribir (perdioLaCarrera) y deshace la reserva perdedora.
+-- 21. Reserva web: exclusión atómica de solapes (M5) --------------------------
+-- Decisión de Tomás: SOLO `origen_reserva = 'web'` queda sujeto a esta
+-- exclusión. Las citas creadas o movidas desde el panel siguen admitiendo el
+-- solape deliberado. `at time zone 'utc'` hace inmutable el rango de la GIST.
+-- `origen` ya conserva la procedencia TPV; este campo nuevo es solo web/panel.
+alter table appointments add column if not exists origen_reserva text not null default 'panel';
+create extension if not exists btree_gist;
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'appointments_web_sin_solape_excl') then
+    alter table appointments add constraint appointments_web_sin_solape_excl
+      exclude using gist (
+        salon_slug with =, employee_id with =,
+        tsrange((start_at at time zone 'utc'),
+                (start_at at time zone 'utc') + duration_min * interval '1 minute', '[)') with &&
+      ) where (origen_reserva = 'web' and status <> 'cancelled');
+  end if;
+end $$;
+-- REVERSIÓN: alter table appointments drop constraint if exists appointments_web_sin_solape_excl; alter table appointments drop column if exists origen_reserva;  (solo tras confirmar que ningún código la usa)
 
 -- ===========================================================================
 -- DATOS — rellenos de filas viejas. NO se ejecutan con este fichero.

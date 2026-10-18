@@ -349,6 +349,23 @@ alter table appointments add column if not exists deposit_due_at timestamptz;
 alter table appointments add column if not exists deposit_period_hours smallint;
 -- Procedencia del historial: 'sishow' (la app) o 'tpv123' (importado).
 alter table appointments add column if not exists origen text not null default 'sishow';
+-- Origen de alta para impedir solo las carreras de la reserva pública; no
+-- sustituye el `origen` anterior, que distingue importaciones TPV.
+alter table appointments add column if not exists origen_reserva text not null default 'panel';
+
+-- Dos reservas web concurrentes no pueden ocupar a la misma profesional en
+-- la misma franja. El panel conserva sus solapes deliberados (`panel`).
+create extension if not exists btree_gist;
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'appointments_web_sin_solape_excl') then
+    alter table appointments add constraint appointments_web_sin_solape_excl
+      exclude using gist (
+        salon_slug with =, employee_id with =,
+        tsrange((start_at at time zone 'utc'),
+                (start_at at time zone 'utc') + duration_min * interval '1 minute', '[)') with &&
+      ) where (origen_reserva = 'web' and status <> 'cancelled');
+  end if;
+end $$;
 
 -- Bloqueo manual de la reserva online, separado de la deuda por plantón.
 alter table clients add column if not exists manual_block boolean not null default false;

@@ -62,6 +62,14 @@ describe("A4: una clienta nueva sí se crea con los datos que da", () => {
   });
 });
 
+describe("M5: la reserva pública queda marcada como origen web", () => {
+  it("guarda origen_reserva:web para que la base aplique la exclusión solo a la web", async () => {
+    await llamar(S.syncAppointment, reserva({ clientPhone: "699888777", clientName: "Nueva" }));
+    const cita = doble.escrituras.find((e) => e.tabla === "appointments" && e.op === "upsert");
+    expect(cita?.datos).toMatchObject({ origen_reserva: "web" });
+  });
+});
+
 describe("M4: topes de entrada, horizonte y ritmo en la reserva pública", () => {
   it("rechaza textos desmesurados", async () => {
     await expect(llamar(S.syncAppointment, reserva({ clientName: "N".repeat(101) }))).rejects.toThrow();
