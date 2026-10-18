@@ -27,6 +27,13 @@ export const ERROR_SERVICIO_PROFESIONAL = "RESERVA_SERVICIO_PROFESIONAL";
 export const ERROR_BLOQUEO_AGENDA = "RESERVA_BLOQUEO_AGENDA";
 export const ERROR_DATOS_RESERVA = "RESERVA_DATOS_INVALIDOS";
 export const ERROR_RESERVA_PASADA = "RESERVA_PASADA";
+export const ERROR_RESERVA_LEJANA = "RESERVA_LEJANA";
+export const ERROR_DEMASIADAS_RESERVAS = "RESERVA_DEMASIADAS";
+
+/** Topes de la reserva pública (M4, auditoría 18-oct-2026). */
+export const HORIZONTE_RESERVA_DIAS = 365;
+export const MAX_RESERVAS_POR_TELEFONO_Y_DIA = 5;
+export const MAX_RESERVAS_PUBLICAS_POR_SALON_Y_HORA = 60;
 
 /** La casilla acredita que se mostró la información; no expresa una base legal de consentimiento. */
 export function haLeidoAvisoPrivacidad(valor: unknown): valor is true {
@@ -99,6 +106,10 @@ export function mensajeErrorReserva(error: unknown): string {
     return "Los servicios o su duración han cambiado. Revisa la reserva y vuelve a elegir una hora.";
   if (mensaje.includes(ERROR_RESERVA_PASADA))
     return "Esa hora ya ha pasado. Elige otra hora disponible.";
+  if (mensaje.includes(ERROR_RESERVA_LEJANA))
+    return "Solo se puede reservar hasta con un año de antelación. Elige una fecha más cercana.";
+  if (mensaje.includes(ERROR_DEMASIADAS_RESERVAS))
+    return "Hay demasiadas solicitudes seguidas. Espera un rato o llama al salón.";
   return "No hemos podido enviar tu solicitud. Tus datos siguen aquí; inténtalo de nuevo.";
 }
 

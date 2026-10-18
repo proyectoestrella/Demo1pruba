@@ -61,6 +61,11 @@ import {
   ERROR_BLOQUEO_AGENDA,
   ERROR_DATOS_RESERVA,
   ERROR_RESERVA_PASADA,
+  ERROR_RESERVA_LEJANA,
+  ERROR_DEMASIADAS_RESERVAS,
+  HORIZONTE_RESERVA_DIAS,
+  MAX_RESERVAS_POR_TELEFONO_Y_DIA,
+  MAX_RESERVAS_PUBLICAS_POR_SALON_Y_HORA,
   datosReservaPublicaDesdeCarta,
   faltaColumnaAcusePrivacidad,
   haLeidoAvisoPrivacidad,
@@ -987,19 +992,19 @@ export const syncAppointment = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       slug,
-      localId: z.string().min(1),
-      clientName: z.string().optional(),
-      clientPhone: z.string().optional(),
-      clientEmail: z.string().email().optional(),
+      localId: z.string().min(1).max(100),
+      clientName: z.string().max(100).optional(),
+      clientPhone: z.string().max(30).optional(),
+      clientEmail: z.string().email().max(200).optional(),
       importedFromTpv: z.boolean().optional(),
-      serviceIds: z.array(z.string()).default([]),
-      employeeId: z.string().min(1),
-      startISO: z.string().min(1),
+      serviceIds: z.array(z.string().max(100)).max(20).default([]),
+      employeeId: z.string().min(1).max(100),
+      startISO: z.string().min(1).max(40),
       durationMin: z.number().nonnegative(),
       priceEur: z.number().nonnegative(),
       status: z.string().min(1),
       clientConfirmedAt: z.string().nullable().optional(),
-      note: z.string().nullable().optional(),
+      note: z.string().max(1000).nullable().optional(),
       paymentMethod: z.string().nullable().optional(),
       paidAt: z.string().nullable().optional(),
       depositRequestedAt: z.string().nullable().optional(),
@@ -1073,6 +1078,9 @@ export const syncAppointment = createServerFn({ method: "POST" })
     if (!manda && !inicioReservaPublicaEsFuturo(data.startISO)) {
       return { synced: false as const, reason: ERROR_RESERVA_PASADA };
     }
+    if (!manda && Date.parse(data.startISO) > Date.now() + HORIZONTE_RESERVA_DIAS * 86_400_000) {
+      return { synced: false as const, reason: ERROR_RESERVA_LEJANA };
+    }
 
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
@@ -1106,6 +1114,20 @@ export const syncAppointment = createServerFn({ method: "POST" })
       }
     }
 
+    // Ritmo (M4): tope de reservas públicas nuevas por salón y hora. Sin
+    // infraestructura nueva: se cuenta en la propia tabla.
+    if (!manda) {
+      const { data: recientes, error: errorRitmo } = await supabase
+        .from("appointments")
+        .select("id")
+        .eq("salon_slug", data.slug)
+        .eq("status", "pending")
+        .gte("created_at", new Date(Date.now() - 3_600_000).toISOString());
+      if (errorRitmo) throw new Error(`syncAppointment (ritmo): ${errorRitmo.message}`);
+      if ((recientes ?? []).length >= MAX_RESERVAS_PUBLICAS_POR_SALON_Y_HORA) {
+        return { synced: false as const, reason: ERROR_DEMASIADAS_RESERVAS };
+      }
+    }
     let clientId: string | null = null;
     const key = phoneKey(data.clientPhone);
     if (!manda && key.length >= 9) {
@@ -1276,6 +1298,18 @@ export const syncAppointment = createServerFn({ method: "POST" })
         .single();
       if (error) throw new Error(`syncAppointment (cliente): ${error.message}`);
       clientId = cliente.id as string;
+    }
+    if (!manda && clientId) {
+      const { data: delDia, error: errorDia } = await supabase
+        .from("appointments")
+        .select("id")
+        .eq("salon_slug", data.slug)
+        .eq("client_id", clientId)
+        .gte("created_at", new Date(Date.now() - 86_400_000).toISOString());
+      if (errorDia) throw new Error(`syncAppointment (ritmo): ${errorDia.message}`);
+      if ((delDia ?? []).length >= MAX_RESERVAS_POR_TELEFONO_Y_DIA) {
+        return { synced: false as const, reason: ERROR_DEMASIADAS_RESERVAS };
+      }
     }
     if (manda && data.importedFromTpv && !key && data.clientName) {
       const { data: previa, error: buscarError } = await supabase

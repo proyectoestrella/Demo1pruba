@@ -61,3 +61,33 @@ describe("A4: una clienta nueva sí se crea con los datos que da", () => {
     expect(doble.tablas.clients.find((c) => c.phone_key === "699888777")).toMatchObject({ name: "Nueva", email: "n@x.test" });
   });
 });
+
+describe("M4: topes de entrada, horizonte y ritmo en la reserva pública", () => {
+  it("rechaza textos desmesurados", async () => {
+    await expect(llamar(S.syncAppointment, reserva({ clientName: "N".repeat(101) }))).rejects.toThrow();
+    await expect(llamar(S.syncAppointment, reserva({ clientPhone: "6".repeat(31) }))).rejects.toThrow();
+    await expect(llamar(S.syncAppointment, reserva({ note: "x".repeat(1001) }))).rejects.toThrow();
+    await expect(llamar(S.syncAppointment, reserva({ localId: "l".repeat(101) }))).rejects.toThrow();
+  });
+  it("no acepta una reserva a más de un año vista", async () => {
+    const lejos = new Date(Date.parse(proximoDia(2)) + 2 * 365 * 86_400_000);
+    while (lejos.getUTCDay() !== 2) lejos.setUTCDate(lejos.getUTCDate() + 1);
+    const r = await llamar<{ synced: boolean; reason?: string }>(S.syncAppointment, reserva({ startISO: lejos.toISOString() }));
+    expect(r.synced).toBe(false);
+    expect(r.reason).toBe("RESERVA_LEJANA");
+  });
+  it("el mismo teléfono no puede abrir más de 5 reservas en un día", async () => {
+    const base = Date.parse(proximoDia(2));
+    const resultados: Array<{ synced: boolean; reason?: string }> = [];
+    for (let i = 0; i < 7; i++)
+      resultados.push(await llamar(S.syncAppointment, reserva({ clientPhone: "644555666", startISO: new Date(base + i * 7 * 86_400_000).toISOString() })));
+    expect(resultados.filter((r) => r.synced).length).toBe(5);
+    expect(resultados[5].reason).toBe("RESERVA_DEMASIADAS");
+  });
+  it("un salón no recibe más de 60 reservas públicas por hora", async () => {
+    const ahora = new Date().toISOString();
+    doble.tablas.appointments = Array.from({ length: 60 }, (_, i) => ({ id: `a${i}`, salon_slug: "real", local_id: `x${i}`, status: "pending", created_at: ahora, start_at: "2099-01-01T10:00:00Z", duration_min: 30, employee_id: "otro" }));
+    const r = await llamar<{ synced: boolean; reason?: string }>(S.syncAppointment, reserva({ clientPhone: "655000111" }));
+    expect(r.reason).toBe("RESERVA_DEMASIADAS");
+  });
+});
