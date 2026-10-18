@@ -12,13 +12,32 @@ export const MAX_VERSIONES = 20;
 
 /** Los campos que publica Mi página (el equipo se edita en Equipo). */
 export const CAMPOS_WEB = [
-  "name", "tagline", "about", "address", "phone", "instagram", "heroImage", "logoUrl",
-  "rating", "reviewCount", "specialties", "openingHours", "menu", "faq", "priorityHours",
+  "name",
+  "tagline",
+  "about",
+  "address",
+  "nifResponsable",
+  "phone",
+  "instagram",
+  "heroImage",
+  "logoUrl",
+  "rating",
+  "reviewCount",
+  "specialties",
+  "openingHours",
+  "menu",
+  "faq",
+  "priorityHours",
   // Lote P.
-  "whatsapp", "enlaces", "boletin", "galeriaPropia", "descripcionesServicios",
+  "whatsapp",
+  "enlaces",
+  "boletin",
+  "galeriaPropia",
+  "descripcionesServicios",
 ] as const;
 type CampoWeb = (typeof CAMPOS_WEB)[number];
-export type WebPublicada = Partial<Pick<SalonProfile, Extract<CampoWeb, keyof SalonProfile>>> & Record<string, unknown>;
+export type WebPublicada = Partial<Pick<SalonProfile, Extract<CampoWeb, keyof SalonProfile>>> &
+  Record<string, unknown>;
 
 export interface VersionWeb {
   id: string;
@@ -43,8 +62,18 @@ export const useVersiones = create<EstadoVersiones>()(
       porSalon: {},
       guardar: (slug, web, autorNombre, fecha = new Date().toISOString()) =>
         set((s) => {
-          const v: VersionWeb = { id: `v-${Date.parse(fecha)}-${Math.random().toString(36).slice(2, 6)}`, fecha, autorNombre, web };
-          return { porSalon: { ...s.porSalon, [slug]: [v, ...(s.porSalon[slug] ?? [])].slice(0, MAX_VERSIONES) } };
+          const v: VersionWeb = {
+            id: `v-${Date.parse(fecha)}-${Math.random().toString(36).slice(2, 6)}`,
+            fecha,
+            autorNombre,
+            web,
+          };
+          return {
+            porSalon: {
+              ...s.porSalon,
+              [slug]: [v, ...(s.porSalon[slug] ?? [])].slice(0, MAX_VERSIONES),
+            },
+          };
         }),
     }),
     { name: "sishow-versiones-web", storage: createJSONStorage(() => localStorage) },
@@ -56,6 +85,7 @@ const ETIQUETA: Record<CampoWeb, string> = {
   tagline: "Tipo de negocio",
   about: "Texto de presentación",
   address: "Dirección",
+  nifResponsable: "NIF responsable",
   phone: "Teléfono",
   instagram: "Instagram",
   heroImage: "Foto de portada",
@@ -77,7 +107,10 @@ const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "
 
 function texto(v: unknown): string {
   if (v === undefined || v === null || v === "") return "—";
-  if (Array.isArray(v)) return v.length ? v.map((x) => (typeof x === "object" && x !== null ? texto(x) : String(x))).join(", ") : "—";
+  if (Array.isArray(v))
+    return v.length
+      ? v.map((x) => (typeof x === "object" && x !== null ? texto(x) : String(x))).join(", ")
+      : "—";
   if (typeof v === "object") {
     // Lote P: enlaces, boletín, fotos y descripciones, en palabras.
     const o = v as Record<string, unknown>;
@@ -108,7 +141,13 @@ export function diferenciasWeb(desde: WebPublicada, hasta: WebPublicada): Difere
     if (JSON.stringify(vacio(a)) === JSON.stringify(vacio(b))) continue;
     if (k === "openingHours" && Array.isArray(a) && Array.isArray(b)) {
       DIAS.forEach((d, i) => {
-        if (a[i] !== b[i]) out.push({ campo: `${k}.${i}`, etiqueta: `Horario · ${d}`, antes: texto(a[i]), despues: texto(b[i]) });
+        if (a[i] !== b[i])
+          out.push({
+            campo: `${k}.${i}`,
+            etiqueta: `Horario · ${d}`,
+            antes: texto(a[i]),
+            despues: texto(b[i]),
+          });
       });
       continue;
     }
@@ -117,13 +156,27 @@ export function diferenciasWeb(desde: WebPublicada, hasta: WebPublicada): Difere
       const despues = b as string[];
       const quitados = antes.filter((x) => !despues.includes(x));
       const puestos = despues.filter((x) => !antes.includes(x));
-      out.push({ campo: k, etiqueta: ETIQUETA[k], antes: corto(quitados.join(" · ") || "—", 90), despues: corto(puestos.join(" · ") || "—", 90) });
+      out.push({
+        campo: k,
+        etiqueta: ETIQUETA[k],
+        antes: corto(quitados.join(" · ") || "—", 90),
+        despues: corto(puestos.join(" · ") || "—", 90),
+      });
       continue;
     }
     if ((k === "galeriaPropia" || k === "descripcionesServicios") && (a || b)) {
-      const n = (v: unknown) => (Array.isArray(v) ? v.length : v && typeof v === "object" ? Object.keys(v).length : 0);
-      const cuenta = (v: unknown) => (k === "galeriaPropia" ? `${n(v)} ${n(v) === 1 ? "foto" : "fotos"}` : `${n(v)} ${n(v) === 1 ? "descripción" : "descripciones"}`);
-      out.push({ campo: k, etiqueta: ETIQUETA[k], antes: n(a) ? cuenta(a) : "—", despues: n(b) ? cuenta(b) : "—" });
+      const n = (v: unknown) =>
+        Array.isArray(v) ? v.length : v && typeof v === "object" ? Object.keys(v).length : 0;
+      const cuenta = (v: unknown) =>
+        k === "galeriaPropia"
+          ? `${n(v)} ${n(v) === 1 ? "foto" : "fotos"}`
+          : `${n(v)} ${n(v) === 1 ? "descripción" : "descripciones"}`;
+      out.push({
+        campo: k,
+        etiqueta: ETIQUETA[k],
+        antes: n(a) ? cuenta(a) : "—",
+        despues: n(b) ? cuenta(b) : "—",
+      });
       continue;
     }
     out.push({ campo: k, etiqueta: ETIQUETA[k], antes: corto(texto(a)), despues: corto(texto(b)) });

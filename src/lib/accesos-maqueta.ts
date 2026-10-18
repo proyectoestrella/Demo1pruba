@@ -13,7 +13,13 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { Employee } from "./mock/types";
-import { cabeRol, rolesPermitidosPorPlan, type Rol } from "./permisos";
+import {
+  cabeRol,
+  permisosExtraDe,
+  rolesPermitidosPorPlan,
+  type PermisosExtra,
+  type Rol,
+} from "./permisos";
 
 /** El mensaje cuando un tipo de rol no cabe en el plan (28-sep: Básico dos, Estándar tres, Embajador cuatro). */
 function mensajeLimiteRoles(plan: string | null): string {
@@ -29,6 +35,8 @@ export interface Miembro {
   displayName: string | null;
   email: string;
   estado: "invitada" | "activa" | "baja";
+  /** Excepciones por persona; ausentes = exactamente la matriz de su rol. */
+  permisosExtra?: PermisosExtra;
   /** Solo en invitadas: cuándo se mandó y cuándo caduca el enlace. */
   invitadaEn?: string;
   caducaEn?: string;
@@ -38,7 +46,11 @@ export interface Miembro {
 
 export type ResultadoAccesos =
   | { ok: true }
-  | { ok: false; codigo: "PLAN" | "ULTIMA_GERENTE" | "VINCULO" | "DUPLICADO"; mensaje: string };
+  | {
+      ok: false;
+      codigo: "PLAN" | "ULTIMA_GERENTE" | "VINCULO" | "DUPLICADO" | "DATOS";
+      mensaje: string;
+    };
 
 export const NOMBRE_ROL: Record<Rol, string> = {
   gerente: "Gerente",
@@ -241,6 +253,32 @@ export const accesos = {
     useAccesosDemo
       .getState()
       .aplicar((l) => l.map((x) => (x.userId === userId ? { ...x, employeeId } : x)));
+    return { ok: true };
+  },
+
+  cambiarPermisosExtra(userId: string, permisosExtra: PermisosExtra): ResultadoAccesos {
+    const m = activos(useAccesosDemo.getState().miembros ?? []);
+    const persona = m.find((x) => x.userId === userId);
+    if (!persona) return { ok: false, codigo: "DATOS", mensaje: "Esa persona no tiene acceso." };
+    if (persona.rol === "gerente")
+      return {
+        ok: false,
+        codigo: "DATOS",
+        mensaje: "Los permisos de una gerente no se pueden limitar desde aquí.",
+      };
+    if (persona.rol !== "estilista" && persona.rol !== "subencargado")
+      return {
+        ok: false,
+        codigo: "DATOS",
+        mensaje: "Estos accesos se configuran para estilistas y subencargadas.",
+      };
+    useAccesosDemo
+      .getState()
+      .aplicar((l) =>
+        l.map((x) =>
+          x.userId === userId ? { ...x, permisosExtra: permisosExtraDe(permisosExtra) } : x,
+        ),
+      );
     return { ok: true };
   },
 

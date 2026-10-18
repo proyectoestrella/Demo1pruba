@@ -27,6 +27,7 @@ import {
   reenviarInvitacionAlSalon,
   revocarInvitacionAlSalon,
   vincularEmpleadaDelSalon,
+  cambiarPermisosExtraMiembro,
 } from "./api/accesos.functions";
 import type { ResultadoAccesos as ResultadoAccesosServidor } from "./api/accesos";
 import { planDe, tienePlan, type FuncionPlan, type PlanSishow } from "./plan";
@@ -37,6 +38,7 @@ import {
   type AccionId,
   type PaginaId,
   type Permisos,
+  type PermisosExtra,
   type Rol,
 } from "./permisos";
 import type { Appointment, Employee } from "./mock/types";
@@ -79,7 +81,13 @@ export function useMiembroActual(): Miembro | null {
     if (!esDemo) return;
     const st = useSalonStore.getState();
     const actual = st.miembro;
-    if (demo ? actual?.userId !== demo.userId || actual?.rol !== demo.rol : actual !== null) {
+    if (
+      demo
+        ? actual?.userId !== demo.userId ||
+          actual?.rol !== demo.rol ||
+          JSON.stringify(actual?.permisosExtra ?? {}) !== JSON.stringify(demo.permisosExtra ?? {})
+        : actual !== null
+    ) {
       st.setMiembro(
         demo
           ? {
@@ -87,11 +95,12 @@ export function useMiembroActual(): Miembro | null {
               rol: demo.rol,
               employeeId: demo.employeeId,
               displayName: demo.displayName,
+              permisosExtra: demo.permisosExtra,
             }
           : null,
       );
     }
-  }, [esDemo, demo?.userId, demo?.rol, demo?.employeeId]);
+  }, [esDemo, demo?.userId, demo?.rol, demo?.employeeId, demo?.permisosExtra]);
   // Salón real: el miembro lo da el servidor (accesoAlPanel → s.miembro).
   if (!esDemo) return real ? { ...real, email: "", estado: "activa" } : null;
   return demo;
@@ -99,7 +108,7 @@ export function useMiembroActual(): Miembro | null {
 
 export function usePermisos(): Permisos {
   const miembro = useMiembroActual();
-  return permisosDe(miembro?.rol ?? "gerente");
+  return permisosDe(miembro?.rol ?? "gerente", miembro?.permisosExtra);
 }
 
 /**
@@ -136,6 +145,10 @@ export interface AccesosAPI {
   }) => Promise<ResultadoAccesosPanel>;
   cambiarRol: (m: Miembro, rol: Rol) => Promise<ResultadoAccesosPanel>;
   vincular: (m: Miembro, employeeId: string | null) => Promise<ResultadoAccesosPanel>;
+  cambiarPermisosExtra: (
+    m: Miembro,
+    permisosExtra: PermisosExtra,
+  ) => Promise<ResultadoAccesosPanel>;
   darDeBaja: (m: Miembro) => Promise<ResultadoAccesosPanel>;
   /** Deshace un cambio de rol, un vínculo o una baja, dado cómo estaba antes. */
   restaurar: (m: Miembro) => Promise<ResultadoAccesosPanel>;
@@ -150,6 +163,7 @@ function mapearListaReal(datos: {
     rol: Rol;
     employeeId: string | null;
     displayName: string | null;
+    permisosExtra?: PermisosExtra;
   }[];
   invitaciones: readonly {
     id: string;
@@ -169,6 +183,7 @@ function mapearListaReal(datos: {
         rol: m.rol,
         employeeId: m.employeeId,
         displayName: m.displayName,
+        permisosExtra: m.permisosExtra,
         email: m.email ?? "",
         estado: "activa",
       }),
@@ -283,6 +298,19 @@ export function useAccesos(): AccesosAPI {
     [esDemo, slug, recargarReal],
   );
 
+  const cambiarPermisosExtra = useCallback<AccesosAPI["cambiarPermisosExtra"]>(
+    async (m, permisosExtra) => {
+      if (esDemo) return deDemo(accesosDemo.cambiarPermisosExtra(m.userId, permisosExtra));
+      if (!slug) return { ok: false, codigo: "OTRO", mensaje: "No se sabe a qué salón." };
+      const r = await llamarServidor(() =>
+        cambiarPermisosExtraMiembro({ data: { slug, userId: m.userId, permisosExtra } }),
+      );
+      if (r.ok) await recargarReal();
+      return r;
+    },
+    [esDemo, slug, recargarReal],
+  );
+
   const darDeBaja = useCallback<AccesosAPI["darDeBaja"]>(
     async (m) => {
       if (esDemo) return deDemo(accesosDemo.darDeBaja(m.userId));
@@ -378,6 +406,7 @@ export function useAccesos(): AccesosAPI {
       invitar,
       cambiarRol,
       vincular,
+      cambiarPermisosExtra,
       darDeBaja,
       restaurar,
       reenviarInvitacion,
@@ -392,6 +421,7 @@ export function useAccesos(): AccesosAPI {
     invitar,
     cambiarRol,
     vincular,
+    cambiarPermisosExtra,
     darDeBaja,
     restaurar,
     reenviarInvitacion,

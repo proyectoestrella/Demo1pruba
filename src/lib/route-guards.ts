@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { redirect, useNavigate } from "@tanstack/react-router";
 import { useSalonStore } from "./store";
 import { moduloVisibleEnPanel, type ModuloOcultable } from "./demo-profile";
+import { permisosDe, vePagina, type PaginaId } from "./permisos";
 
 /**
  * `beforeLoad` para una ruta que una demo puede ocultar (Equipo, Marketing,
@@ -40,4 +41,41 @@ export function useRedirigirSiModuloOculto(clave: ModuloOcultable) {
     if (!visible) navigate({ to: "/app" });
   }, [visible, navigate]);
   return visible;
+}
+
+/** La página protegida de una URL del panel, sin importar el chrome del menú. */
+function paginaDeRutaPanel(path: string): PaginaId | null {
+  const rutas: Array<[RegExp, PaginaId]> = [
+    [/^\/app\/?$/, "hoy"],
+    [/^\/app\/calendar/, "calendario"],
+    [/^\/app\/appointments/, "citas"],
+    [/^\/app\/waitlist/, "lista-espera"],
+    [/^\/app\/clients/, "clientas"],
+    [/^\/app\/hoja/, "hoja"],
+    [/^\/app\/employees/, "equipo"],
+    [/^\/app\/services/, "servicios"],
+    [/^\/app\/web/, "mi-pagina"],
+    [/^\/app\/settings/, "ajustes"],
+    [/^\/app\/insights/, "analitica"],
+    [/^\/app\/marketing/, "marketing"],
+    [/^\/app\/caja/, "caja"],
+  ];
+  return rutas.find(([re]) => re.test(path))?.[1] ?? null;
+}
+
+/**
+ * Segunda puerta de las rutas del panel: el menú ya no enseña lo que no toca,
+ * pero una URL guardada o escrita a mano también debe volver a Inicio. Lee el
+ * miembro que ha dado el servidor, incluidos los overrides por persona.
+ */
+export function useRedirigirSiRutaSinPermiso(path: string): boolean {
+  const navigate = useNavigate();
+  const miembro = useSalonStore((s) => s.miembro);
+  const pagina = paginaDeRutaPanel(path);
+  const permitida =
+    !pagina || vePagina(permisosDe(miembro?.rol ?? "gerente", miembro?.permisosExtra), pagina);
+  useEffect(() => {
+    if (!permitida) void navigate({ to: "/app", replace: true });
+  }, [navigate, permitida]);
+  return permitida;
 }

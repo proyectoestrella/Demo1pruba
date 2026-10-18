@@ -8,11 +8,7 @@ import { useRealSalon } from "@/lib/use-real-salon";
 import { aplicarPrecedenciaDeEnlace } from "@/lib/precedencia-enlace-panel-store";
 import { usePanelRefresh } from "@/lib/use-panel-refresh";
 import { useSyncPanelV2FromUrl, usePanelV2 } from "@/lib/use-panel-v2";
-import {
-  DEMO_PARAM,
-  blankDemoProfile,
-  decodeDemoProfile,
-} from "@/lib/demo-profile";
+import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "@/lib/demo-profile";
 import { inferBusinessType } from "@/lib/business-type";
 import { useDemoRegistradaAlDia } from "@/lib/demos/aplicar";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
@@ -22,12 +18,19 @@ import { GuardiaDelPanel } from "@/components/GuardiaDelPanel";
 import { FichasGlobales } from "@/components/FichasGlobales";
 import { accesoPanel } from "@/lib/acceso-actual-panel";
 import { hasSeenTour, startTour } from "@/lib/tour";
-import { BarraInferior, CabeceraArena, MenuLateral, TODOS_LOS_ITEMS, estaActivo } from "@/components/ArenaShell";
+import {
+  BarraInferior,
+  CabeceraArena,
+  MenuLateral,
+  TODOS_LOS_ITEMS,
+  estaActivo,
+} from "@/components/ArenaShell";
 import { FranjaVerComo } from "@/components/VerComo";
 import { SinPermiso } from "@/components/SinPermiso";
 import { instalarAtajoDeshacer, instalarRegistro } from "@/lib/deshacer-maqueta";
-import { usePermisos, usePlanSalon, veRuta } from "@/lib/accesos-panel";
+import { usePlanSalon } from "@/lib/accesos-panel";
 import { rutaSoloCompleto } from "@/lib/plan-basico";
+import { useRedirigirSiRutaSinPermiso } from "@/lib/route-guards";
 import { IncluidoEnPlanCompleto } from "@/components/IncluidoEnPlanCompleto";
 import { useHayPanelLateral } from "@/lib/panel-lateral";
 import { cn } from "@/lib/utils";
@@ -182,7 +185,9 @@ function useTituloDelPanel() {
  */
 function useAplicarPrecedenciaDelEnlace() {
   const s = useRouterState({ select: (st) => (st.location.search as Record<string, unknown>)?.s });
-  const d = useRouterState({ select: (st) => (st.location.search as Record<string, unknown>)?.[DEMO_PARAM] });
+  const d = useRouterState({
+    select: (st) => (st.location.search as Record<string, unknown>)?.[DEMO_PARAM],
+  });
   useLayoutEffect(() => {
     aplicarPrecedenciaDeEnlace({ s, d });
   }, [s, d]);
@@ -200,7 +205,9 @@ function DashboardLayout() {
   useAplicarPrecedenciaDelEnlace();
   useApplyDemoFromUrl();
   // Lote P: una demo registrada cargada otro día se recarga (su «hoy» caduca).
-  const conEnlaceDemo = useRouterState({ select: (s) => typeof (s.location.search as Record<string, unknown>)?.[DEMO_PARAM] === "string" });
+  const conEnlaceDemo = useRouterState({
+    select: (s) => typeof (s.location.search as Record<string, unknown>)?.[DEMO_PARAM] === "string",
+  });
   useDemoRegistradaAlDia(conEnlaceDemo);
   useTituloDelPanel();
   const slug = useSalonSlugDelPanel();
@@ -223,12 +230,22 @@ function PanelAutorizado({ slug }: { slug?: string }) {
   const refresco = usePanelRefresh(realSlug);
   const panelV2 = usePanelV2();
   const plan = usePlanSalon();
+  // También cubre el armazón V2; el V1 enseña además el mensaje intermedio
+  // mientras esta red de seguridad devuelve a Inicio.
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  useRedirigirSiRutaSinPermiso(path);
 
-  return <>
-    {panelV2 && plan !== "reservas" ? <PanelV2Shell /> : <DashboardLayoutV1 />}
-    <FichasGlobales />
-    {refresco && <span className="indicador-refresco fixed bottom-3 right-3 z-10 rounded-full border border-border bg-background/90 px-2 py-1 text-[10px] text-muted-foreground shadow-sm max-lg:bottom-20">{refresco}</span>}
-  </>;
+  return (
+    <>
+      {panelV2 && plan !== "reservas" ? <PanelV2Shell /> : <DashboardLayoutV1 />}
+      <FichasGlobales />
+      {refresco && (
+        <span className="indicador-refresco fixed bottom-3 right-3 z-10 rounded-full border border-border bg-background/90 px-2 py-1 text-[10px] text-muted-foreground shadow-sm max-lg:bottom-20">
+          {refresco}
+        </span>
+      )}
+    </>
+  );
 }
 
 /**
@@ -242,7 +259,10 @@ function DashboardLayoutV1() {
   useLayoutEffect(() => {
     if (menosMovimiento()) return;
     contenedorRuta.current?.animate?.(
-      [{ opacity: 0.4, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }],
+      [
+        { opacity: 0.4, transform: "translateY(8px)" },
+        { opacity: 1, transform: "none" },
+      ],
       { duration: 180, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
     );
   }, [path]);
@@ -253,9 +273,8 @@ function DashboardLayoutV1() {
   // dueña puede cambiar arrastrando su borde): el panel empuja, no tapa.
   const conPanel = useHayPanelLateral();
   // Lote 11: una sección que el rol no ve se sustituye por «Esta parte la lleva…».
-  const permisos = usePermisos();
   const plan = usePlanSalon();
-  const permitida = veRuta(permisos, path);
+  const permitida = useRedirigirSiRutaSinPermiso(path);
   const fueraDelBasico = plan === "reservas" && rutaSoloCompleto(path);
   const seccion = TODOS_LOS_ITEMS.find((i) => estaActivo(i, path))?.label ?? "esta sección";
   // Colores elegidos por la dueña en Ajustes (9h): se sincronizan antes de pintar.
@@ -278,7 +297,10 @@ function DashboardLayoutV1() {
 
       <div
         data-panel={conPanel ? "abierto" : "cerrado"}
-        className={cn("group/panel flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ease-out", conPanel && "lg:pr-[var(--ancho-panel,440px)]")}
+        className={cn(
+          "group/panel flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ease-out",
+          conPanel && "lg:pr-[var(--ancho-panel,440px)]",
+        )}
       >
         <CabeceraArena
           onAsistente={() => setAssistantOpen(true)}
@@ -294,7 +316,13 @@ function DashboardLayoutV1() {
               (180 ms). Con la Web Animations API y sin `key`: remontar el
               contenedor en cada ruta costaba el doble de tiempo al navegar. */}
           <div ref={contenedorRuta} className="flex min-w-0 flex-1 flex-col">
-            {fueraDelBasico ? <IncluidoEnPlanCompleto /> : permitida ? <Outlet /> : <SinPermiso seccion={seccion} />}
+            {fueraDelBasico ? (
+              <IncluidoEnPlanCompleto />
+            ) : permitida ? (
+              <Outlet />
+            ) : (
+              <SinPermiso seccion={seccion} />
+            )}
           </div>
         </main>
       </div>
@@ -303,22 +331,20 @@ function DashboardLayoutV1() {
 
       <NewAppointmentDialog open={newApptOpen} onOpenChange={setNewApptOpen} />
 
-      {plan !== "reservas" && <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
-        <SheetContent
-          side="right"
-          panel="asistente"
-          className="flex w-full flex-col gap-0 p-0"
-        >
-          <SheetHeader className="border-b border-border/60 px-4 py-4 text-left">
-            <SheetTitle className="text-lg font-extrabold">Asistente del salón</SheetTitle>
-            <SheetDescription>
-              Consulta tus datos en lenguaje natural. Calcula sobre tus reservas
-              reales: no es un modelo de lenguaje y no inventa cifras.
-            </SheetDescription>
-          </SheetHeader>
-          <AssistantPanel className="flex-1" />
-        </SheetContent>
-      </Sheet>}
+      {plan !== "reservas" && (
+        <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
+          <SheetContent side="right" panel="asistente" className="flex w-full flex-col gap-0 p-0">
+            <SheetHeader className="border-b border-border/60 px-4 py-4 text-left">
+              <SheetTitle className="text-lg font-extrabold">Asistente del salón</SheetTitle>
+              <SheetDescription>
+                Consulta tus datos en lenguaje natural. Calcula sobre tus reservas reales: no es un
+                modelo de lenguaje y no inventa cifras.
+              </SheetDescription>
+            </SheetHeader>
+            <AssistantPanel className="flex-1" />
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   );
 }

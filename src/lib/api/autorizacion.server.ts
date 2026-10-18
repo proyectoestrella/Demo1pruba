@@ -103,7 +103,15 @@ function depsReales(): DepsAutorizacion {
       if (error || !data) return null;
       const f = data as Record<string, unknown>;
       const texto = (k: string) => (typeof f[k] === "string" && f[k] ? (f[k] as string) : null);
-      return { rol: texto("rol"), employeeId: texto("employee_id"), displayName: texto("display_name"), estado: texto("estado") };
+      return {
+        rol: texto("rol"),
+        employeeId: texto("employee_id"),
+        displayName: texto("display_name"),
+        estado: texto("estado"),
+        // `select(*)` mantiene compatibilidad si aún no se aplicó la
+        // migración: una columna ausente simplemente llega como undefined.
+        permisosExtra: f.permisos_extra,
+      };
     },
   };
 }
@@ -119,7 +127,11 @@ export function exigirAcceso(slug: string): Promise<Acceso> {
 }
 
 /** Exige además el permiso de la acción (lote 8). `sobreEmployeeId`: la profesional afectada. */
-export function exigirPermisoEn(slug: string, accion: AccionId, sobreEmployeeId?: string | null): Promise<Acceso> {
+export function exigirPermisoEn(
+  slug: string,
+  accion: AccionId,
+  sobreEmployeeId?: string | null,
+): Promise<Acceso> {
   return exigirPermiso(slug, accion, depsReales(), sobreEmployeeId);
 }
 

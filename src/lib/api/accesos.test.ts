@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { PermisoDenegado, type Acceso } from "./autorizacion";
 import {
   aceptarInvitacion,
+  cambiarPermisosExtra,
   cambiarRol,
   darDeBaja,
   invitarMiembro,
@@ -200,6 +201,47 @@ describe("accesos: roles y bajas", () => {
     expect((await darDeBaja(maria, "noelia", w.deps)).ok).toBe(true);
     expect(w.miembros.find((m) => m.userId === "noelia")?.estado).toBe("baja");
     expect((await listarAccesos(maria, w.deps)).miembros.map((m) => m.userId)).toEqual(["maria"]);
+  });
+});
+
+describe("accesos: overrides configurables", () => {
+  it("la gerente los guarda para una estilista sin convertirla en gerente", async () => {
+    const w = mundo("todo-incluido");
+    await invitarMiembro(
+      maria,
+      { email: "noelia@correo.es", rol: "estilista", employeeId: "noelia" },
+      w.deps,
+    );
+    await aceptarInvitacion("noelia", w.invs[0].id, w.deps);
+    const r = await cambiarPermisosExtra(
+      maria,
+      "noelia",
+      { verAgendaCompleta: true, accesoWeb: true, accesoReservas: true, dinero: true },
+      w.deps,
+    );
+    expect(r).toEqual({ ok: true });
+    expect(w.miembros.find((m) => m.userId === "noelia")?.permisosExtra).toEqual({
+      verAgendaCompleta: true,
+      accesoWeb: true,
+      accesoReservas: true,
+    });
+  });
+
+  it("requiere accesos.gestionar y no permite que la gerente se limite a sí misma", async () => {
+    const w = mundo();
+    await expect(
+      cambiarPermisosExtra(noelia, "maria", { accesoWeb: false }, w.deps),
+    ).rejects.toBeInstanceOf(PermisoDenegado);
+    const propio = await cambiarPermisosExtra(maria, "maria", { accesoWeb: false }, w.deps);
+    expect(propio.ok === false && propio.codigo).toBe("DATOS");
+  });
+
+  it("no deja convertir esta pantalla en permisos de recepción o de otra gerente", async () => {
+    const w = mundo("todo-incluido");
+    await invitarMiembro(maria, { email: "r@c.es", rol: "recepcion" }, w.deps);
+    await aceptarInvitacion("r", w.invs[0].id, w.deps);
+    const recepcion = await cambiarPermisosExtra(maria, "r", { accesoWeb: true }, w.deps);
+    expect(recepcion.ok === false && recepcion.codigo).toBe("DATOS");
   });
 });
 

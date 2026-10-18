@@ -142,20 +142,37 @@ describe("la guarda está puesta en todas las funciones de servidor", () => {
   });
 
   it("el servidor impide guardar perfiles por encima del plan en alta y parche", () => {
-    expect(cuerpoDe("saveSalonProfile")).toContain("perfilDentroDelTopeDeProfesionales(data.profile)");
-    expect(cuerpoDe("patchSalonProfile")).toContain('if ("team" in data.patch && !perfilDentroDelTopeDeProfesionales(fusionado))');
+    expect(cuerpoDe("saveSalonProfile")).toContain(
+      "perfilDentroDelTopeDeProfesionales(data.profile)",
+    );
+    expect(cuerpoDe("patchSalonProfile")).toContain(
+      'if ("team" in data.patch && !perfilDentroDelTopeDeProfesionales(fusionado))',
+    );
+  });
+
+  it("un acceso limitado a la web no puede sobrescribir ni restaurar el perfil entero", () => {
+    expect(cuerpoDe("saveSalonProfile")).toContain(
+      'exigirAcciones(quien, ["web.publicar", "salon.editar", "plan.gestionar"])',
+    );
+    expect(cuerpoDe("restaurarVersion")).toContain(
+      "soloCamposWeb(v.perfil as Record<string, unknown>)",
+    );
   });
 
   it("una reserva de fuera no puede pisar una cita que ya existe", () => {
     const cuerpo = cuerpoDe("syncAppointment");
     expect(cuerpo).toContain("if (yaExiste)");
-    expect(cuerpo.indexOf("if (yaExiste)")).toBeLessThan(cuerpo.indexOf("escribirCita(supabase, fila)"));
+    expect(cuerpo.indexOf("if (yaExiste)")).toBeLessThan(
+      cuerpo.indexOf("escribirCita(supabase, fila)"),
+    );
     expect(cuerpo).toContain("return { synced: true as const }");
   });
 
   it("la comprobación de solape precede a la escritura pública", () => {
     const cuerpo = cuerpoDe("syncAppointment");
-    expect(cuerpo.indexOf("haySolape(data.startISO")).toBeLessThan(cuerpo.indexOf("escribirCita(supabase, fila)"));
+    expect(cuerpo.indexOf("haySolape(data.startISO")).toBeLessThan(
+      cuerpo.indexOf("escribirCita(supabase, fila)"),
+    );
   });
 
   it("el panel solo solapa diciéndolo: sin permitirSolape se rechaza antes de escribir", () => {
@@ -180,7 +197,12 @@ describe("la guarda está puesta en todas las funciones de servidor", () => {
   it("la reserva pública valida especialidad, preguntas y bloqueos del perfil antes de escribir", () => {
     const cuerpo = cuerpoDe("syncAppointment");
     const escritura = cuerpo.indexOf("escribirCita(supabase, fila)");
-    for (const regla of ["profesionalHaceServicios", "limpiarRespuestas", "obligatoriasSinResponder", "hayBloqueoEnHueco"]) {
+    for (const regla of [
+      "profesionalHaceServicios",
+      "limpiarRespuestas",
+      "obligatoriasSinResponder",
+      "hayBloqueoEnHueco",
+    ]) {
       expect(cuerpo.indexOf(regla), regla).toBeGreaterThan(-1);
       expect(cuerpo.indexOf(regla), regla).toBeLessThan(escritura);
     }
@@ -202,14 +224,30 @@ describe("sin backend en producción no hay degradación silenciosa a demo", () 
     expect(cuerpo).toContain('process.env.VERCEL_ENV === "production"');
     expect(cuerpo).not.toContain('process.env.NODE_ENV === "production"');
     expect(cuerpo).toContain('throw new Error("Backend sin configurar")');
-    expect(cuerpo.indexOf("Backend sin configurar")).toBeLessThan(cuerpo.indexOf("return { profile: null }"));
+    expect(cuerpo.indexOf("Backend sin configurar")).toBeLessThan(
+      cuerpo.indexOf("return { profile: null }"),
+    );
   });
 });
 
 describe("señal: la reserva pública no la decide el navegador", () => {
   it("todos los campos de la señal se escriben solo con mando", () => {
     const cuerpo = cuerpoDe("syncAppointment");
-    for (const c of ["deposit_status", "deposit_method", "deposit_received_eur", "deposit_applied_at", "deposit_applied_eur", "deposit_refunded_at", "deposit_refunded_eur", "deposit_retained_at", "deposit_note", "deposit_eur", "deposit_requested_at", "deposit_received_at", "deposit_due_at"]) {
+    for (const c of [
+      "deposit_status",
+      "deposit_method",
+      "deposit_received_eur",
+      "deposit_applied_at",
+      "deposit_applied_eur",
+      "deposit_refunded_at",
+      "deposit_refunded_eur",
+      "deposit_retained_at",
+      "deposit_note",
+      "deposit_eur",
+      "deposit_requested_at",
+      "deposit_received_at",
+      "deposit_due_at",
+    ]) {
       expect(cuerpo, c).toContain(`${c}: manda ?`);
     }
   });
@@ -225,7 +263,7 @@ describe("señal: la reserva pública no la decide el navegador", () => {
   it("una reserva pública recalcula carta, duración y precio antes de revisar huecos o escribir", () => {
     const cuerpo = cuerpoDe("syncAppointment");
     const recalculo = cuerpo.indexOf("datosReservaPublicaDesdeCarta(perfil, data.serviceIds)");
-    const bloqueo = cuerpo.indexOf("hayBloqueoEnHueco(perfil.bloqueosAgenda");
+    const bloqueo = cuerpo.indexOf("hayBloqueoEnHueco(");
     const escritura = cuerpo.indexOf("escribirCita(supabase, fila)");
     expect(recalculo).toBeGreaterThan(-1);
     expect(recalculo).toBeLessThan(bloqueo);

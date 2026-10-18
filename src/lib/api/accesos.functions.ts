@@ -15,11 +15,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 
-import { rolVigente } from "../permisos";
+import { permisosExtraDe, rolVigente } from "../permisos";
 import { getSupabaseServerClient } from "../supabase.server";
 import {
   aceptarInvitacion,
   cambiarRol,
+  cambiarPermisosExtra,
   darDeBaja,
   invitarMiembro,
   listarAccesos,
@@ -89,6 +90,7 @@ function depsDe(salonSlug: string): DepsAccesos {
           employeeId: f.employee_id ?? null,
           displayName: f.display_name ?? null,
           estado: f.estado === "baja" ? "baja" : "activa",
+          permisosExtra: permisosExtraDe(f.permisos_extra),
         }),
       );
     },
@@ -153,6 +155,7 @@ function depsDe(salonSlug: string): DepsAccesos {
           employee_id: m.employeeId,
           display_name: m.displayName,
           estado: m.estado,
+          permisos_extra: m.permisosExtra ?? {},
           actualizado: new Date().toISOString(),
         },
         { onConflict: "user_id,salon_slug" },
@@ -254,6 +257,30 @@ export const vincularEmpleadaDelSalon = createServerFn({ method: "POST" })
   .inputValidator(z.object({ slug, userId: z.string().min(1), employeeId: z.string().nullable() }))
   .handler(async ({ data }) =>
     vincularEmpleada(await accesoReal(data.slug), data.userId, data.employeeId, depsDe(data.slug)),
+  );
+
+export const cambiarPermisosExtraMiembro = createServerFn({ method: "POST" })
+  .middleware([conSesion])
+  .inputValidator(
+    z.object({
+      slug,
+      userId: z.string().min(1),
+      permisosExtra: z
+        .object({
+          verAgendaCompleta: z.boolean().optional(),
+          accesoWeb: z.boolean().optional(),
+          accesoReservas: z.boolean().optional(),
+        })
+        .strict(),
+    }),
+  )
+  .handler(async ({ data }) =>
+    cambiarPermisosExtra(
+      await accesoReal(data.slug),
+      data.userId,
+      data.permisosExtra,
+      depsDe(data.slug),
+    ),
   );
 
 export const reactivarMiembroDelSalon = createServerFn({ method: "POST" })

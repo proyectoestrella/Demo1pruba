@@ -3,8 +3,22 @@ import { filtrarCitas, paginaDeRuta, veRuta } from "./accesos-panel";
 import { permisosDe } from "./permisos";
 import type { Appointment } from "./mock/types";
 
-const RUTAS_MENU = ["/app", "/app/calendar", "/app/appointments", "/app/waitlist", "/app/clients", "/app/hoja", "/app/employees", "/app/services", "/app/web", "/app/settings", "/app/insights", "/app/marketing"];
-const ve = (rol: Parameters<typeof permisosDe>[0]) => RUTAS_MENU.filter((r) => veRuta(permisosDe(rol), r));
+const RUTAS_MENU = [
+  "/app",
+  "/app/calendar",
+  "/app/appointments",
+  "/app/waitlist",
+  "/app/clients",
+  "/app/hoja",
+  "/app/employees",
+  "/app/services",
+  "/app/web",
+  "/app/settings",
+  "/app/insights",
+  "/app/marketing",
+];
+const ve = (rol: Parameters<typeof permisosDe>[0]) =>
+  RUTAS_MENU.filter((r) => veRuta(permisosDe(rol), r));
 
 describe("gating de rutas por rol (lote 11)", () => {
   test("cada ruta del panel tiene su página", () => {
@@ -15,10 +29,24 @@ describe("gating de rutas por rol (lote 11)", () => {
     expect(ve("gerente")).toEqual(RUTAS_MENU);
   });
   test("la estilista: Hoy, Calendario, Citas, Clientas y Hoja; nada del salón", () => {
-    expect(ve("estilista")).toEqual(["/app", "/app/calendar", "/app/appointments", "/app/clients", "/app/hoja"]);
+    expect(ve("estilista")).toEqual([
+      "/app",
+      "/app/calendar",
+      "/app/appointments",
+      "/app/clients",
+      "/app/hoja",
+    ]);
   });
   test("recepción: agenda, clientas, lista de espera y servicios; sin dinero ni ajustes", () => {
-    expect(ve("recepcion")).toEqual(["/app", "/app/calendar", "/app/appointments", "/app/waitlist", "/app/clients", "/app/hoja", "/app/services"]);
+    expect(ve("recepcion")).toEqual([
+      "/app",
+      "/app/calendar",
+      "/app/appointments",
+      "/app/waitlist",
+      "/app/clients",
+      "/app/hoja",
+      "/app/services",
+    ]);
   });
   test("la subencargada ve todas las pantallas del menú", () => {
     expect(ve("subencargado")).toEqual(RUTAS_MENU);
@@ -26,13 +54,24 @@ describe("gating de rutas por rol (lote 11)", () => {
   test("/app/demos es interna y no pasa por la matriz", () => {
     expect(veRuta(permisosDe("estilista"), "/app/demos")).toBe(true);
   });
+  test("los overrides actualizan menú y URL de web/ajustes", () => {
+    const conTodo = permisosDe("estilista", { accesoWeb: true, accesoReservas: true });
+    expect(veRuta(conTodo, "/app/web")).toBe(true);
+    expect(veRuta(conTodo, "/app/settings")).toBe(true);
+    const sinWeb = permisosDe("subencargado", { accesoWeb: false });
+    expect(veRuta(sinWeb, "/app/web")).toBe(false);
+    expect(veRuta(sinWeb, "/app/settings")).toBe(true);
+  });
 });
 
 describe("citas que se pintan", () => {
   const cita = (id: string, employeeId: string) => ({ id, employeeId }) as Appointment;
   const citas = [cita("1", "noelia"), cita("2", "sara"), cita("3", "noelia")];
   test("la estilista ve solo las suyas", () => {
-    expect(filtrarCitas(citas, permisosDe("estilista"), "noelia").map((c) => c.id)).toEqual(["1", "3"]);
+    expect(filtrarCitas(citas, permisosDe("estilista"), "noelia").map((c) => c.id)).toEqual([
+      "1",
+      "3",
+    ]);
   });
   test("una estilista sin profesional vinculada no ve ninguna", () => {
     expect(filtrarCitas(citas, permisosDe("estilista"), null)).toEqual([]);
@@ -40,5 +79,10 @@ describe("citas que se pintan", () => {
   test("recepción y gerente ven todas", () => {
     expect(filtrarCitas(citas, permisosDe("recepcion"), null)).toHaveLength(3);
     expect(filtrarCitas(citas, permisosDe("gerente"), "noelia")).toHaveLength(3);
+  });
+  test("el override de agenda completa enseña todas las citas también en la UI", () => {
+    expect(
+      filtrarCitas(citas, permisosDe("estilista", { verAgendaCompleta: true }), "noelia"),
+    ).toHaveLength(3);
   });
 });
