@@ -226,6 +226,7 @@ function Appointments() {
             <SelectItem value="all">Todos los estados</SelectItem>
             <SelectItem value="pending">Pendiente de confirmar</SelectItem>
             <SelectItem value="confirmed">Confirmada</SelectItem>
+            <SelectItem value="in-progress">En el salón</SelectItem>
             <SelectItem value="completed">Vino</SelectItem>
             <SelectItem value="cancelled">Cancelada</SelectItem>
             <SelectItem value="late">Vino tarde sin avisar</SelectItem>

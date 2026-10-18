@@ -1,5 +1,5 @@
 import { memo, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Check, Clock3, UserX } from "lucide-react";
+import { Check, Clock3, UserCheck, UserX } from "lucide-react";
 import { tinteProfesional } from "@/lib/colores-elegidos";
 import { hora } from "@/lib/copy";
 import { serviceLabelOf } from "@/lib/appointment-services";
@@ -616,9 +616,9 @@ export function CitaRejilla({
 
 /** Estado de la cita con un icono discreto (el texto va en el title). */
 export function IconoEstado({ status, className }: { status: Appointment["status"]; className?: string }) {
-  const Icono = status === "completed" ? Check : status === "pending" ? Clock3 : status === "no-show" ? UserX : null;
+  const Icono = status === "completed" ? Check : status === "in-progress" ? UserCheck : status === "pending" ? Clock3 : status === "no-show" ? UserX : null;
   if (!Icono) return null;
-  const txt = status === "completed" ? "Vino" : status === "pending" ? "Por confirmar" : "No vino";
+  const txt = status === "completed" ? "Vino" : status === "in-progress" ? "En el salón" : status === "pending" ? "Por confirmar" : "No vino";
   return (
     <span className={cn("absolute grid size-[15px] place-items-center rounded-full bg-card/85 text-cafe-medio", className)} role="img" aria-label={txt}>
       <Icono className="size-[10px]" strokeWidth={2.4} aria-hidden="true" />

@@ -32,7 +32,7 @@ import { useFichas } from "@/lib/use-fichas";
 import { StatusBadge } from "@/components/StatusBadge";
 import { BandaDeuda } from "@/components/DeudaCliente";
 import { DecisionDeudaDialog } from "@/components/DecisionDeudaDialog";
-import { BotonesDesenlace, useAplicarDesenlace } from "@/components/CitasPorResolver";
+import { BotonesDesenlace, useAplicarDesenlace, useMarcarEnCurso } from "@/components/CitasPorResolver";
 import { Button } from "@/components/ui/button";
 import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
 import { DepositStatusControls } from "@/components/DepositStatusControls";
@@ -150,6 +150,7 @@ export function AppointmentDetailSheet({
   /** Qué desenlace ha elegido el dueño, mientras decide qué hace con el dinero. */
   const [decision, setDecision] = useState<Desenlace | null>(null);
   const aplicarDesenlace = useAplicarDesenlace();
+  const marcarEnCurso = useMarcarEnCurso();
 
   /**
    * Preguntar por el dinero solo con recargo activo y ficha a la que anotarlo.
@@ -381,7 +382,11 @@ export function AppointmentDetailSheet({
                 {porResolver && (
                   <div className="space-y-2 rounded-xl border border-[var(--warning)]/50 bg-[var(--warning)]/10 p-4">
                     <p className="text-sm font-medium">¿Qué pasó con esta cita?</p>
-                    <BotonesDesenlace actual={appointment.status} onElegir={elegirDesenlace} />
+                    <BotonesDesenlace
+                      actual={appointment.status}
+                      onMarcarEnCurso={() => marcarEnCurso(appointment)}
+                      onElegir={elegirDesenlace}
+                    />
                     {conRecargo && (
                       <p className="text-xs text-muted-foreground">
                         Si te quedó a deber, te lo pregunto justo después.

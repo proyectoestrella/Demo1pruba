@@ -1,4 +1,4 @@
-import { Ban, Check, CheckCheck, Clock3, TriangleAlert, UserX, type LucideIcon } from "lucide-react";
+import { Ban, Check, CheckCheck, Clock3, TriangleAlert, UserCheck, UserX, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AppointmentStatus } from "@/lib/mock/types";
 
@@ -13,6 +13,7 @@ const STATUS_CONFIG: Record<AppointmentStatus, { label: string; className: strin
     className: "border-[1.5px] border-dashed border-moca bg-card text-primary",
   },
   confirmed: { Icono: Check, label: "Confirmada", className: "bg-salvia-suave text-hoja-tinta" },
+  "in-progress": { Icono: UserCheck, label: "En el salón", className: "bg-salvia-clara text-hoja-tinta" },
   completed: { Icono: CheckCheck, label: "Vino", className: "bg-salvia-clara text-hoja-tinta" },
   cancelled: { Icono: Ban, label: "Cancelada", className: "bg-nata text-muted-foreground line-through" },
   late: { Icono: TriangleAlert, label: "Tarde sin avisar", className: "bg-melocoton text-melocoton-tinta" },

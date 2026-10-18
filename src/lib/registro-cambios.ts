@@ -13,7 +13,7 @@ export function tipoCambioCita(antes: Partial<Appointment>, despues: Partial<App
     const s = despues.status;
     if (s === "cancelled") return antes.status === "pending" ? "cita.rechazar" : "cita.cancelar";
     if (s === "confirmed" && antes.status === "pending") return "cita.confirmar";
-    if (s === "completed" || s === "no-show" || s === "late") return "cita.marcar-asistencia";
+    if (s === "in-progress" || s === "completed" || s === "no-show" || s === "late") return "cita.marcar-asistencia";
   }
   if (antes.paidAt !== despues.paidAt || antes.paymentMethod !== despues.paymentMethod) return "cita.cobrar";
   if (antes.depositStatus !== despues.depositStatus || antes.depositDueAt !== despues.depositDueAt) {
@@ -62,7 +62,14 @@ export function resumenCita(tipo: TipoCambio, antes: Partial<Appointment>, despu
   const nombre = pila(despues.clientName ?? antes.clientName);
   const cuando = cuandoCorto(antes.start ?? despues.start, timeZone);
   if (tipo === "cita.marcar-asistencia") {
-    const que = despues.status === "no-show" ? "no vino" : despues.status === "late" ? "llegó tarde" : "vino";
+    const que =
+      despues.status === "in-progress"
+        ? "está en el salón"
+        : despues.status === "no-show"
+          ? "no vino"
+          : despues.status === "late"
+            ? "llegó tarde"
+            : "vino";
     return `Marcado que ${nombre} ${que} (${cuando})`;
   }
   if (tipo === "cita.cobrar") return `${despues.paidAt ? "Cobrada" : "Quitado el cobro de"} la cita de ${nombre} (${cuando})`;

@@ -42,7 +42,7 @@ export const TEXTO_DESENLACE: Record<Desenlace, string> = {
 };
 
 /** Estados que significan "esta cita ya está resuelta, no hay nada que preguntar". */
-const YA_RESUELTA: AppointmentStatus[] = ["completed", "late", "no-show", "cancelled", "blocked"];
+const YA_RESUELTA: AppointmentStatus[] = ["in-progress", "completed", "late", "no-show", "cancelled", "blocked"];
 
 /** Cuántos días hacia atrás se sigue preguntando por una cita sin resolver. */
 export const DIAS_POR_RESOLVER = 14;

@@ -3,6 +3,8 @@ export type EmployeeId = string;
 export type AppointmentStatus =
   | "pending"
   | "confirmed"
+  /** La clienta ya ha llegado; el desenlace se marca al terminar el servicio. */
+  | "in-progress"
   | "completed"
   | "cancelled"
   | "no-show"

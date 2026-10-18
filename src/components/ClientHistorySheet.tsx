@@ -136,11 +136,13 @@ export function ClientHistorySheet({
     const con = soloUno ? "" : ` con ${equipo.find((e) => e.id === deHoy.employeeId)?.name ?? ""}`;
     const que = `${serviceLabelOf(deHoy, carta)}${con}`;
     textoHoy =
-      fin <= now
-        ? `Ha venido hoy a las ${hora(deHoy.start)} · ${que}`
-        : ini <= now
-          ? `Está en el salón desde las ${hora(deHoy.start)} · ${que}`
-          : `Viene hoy a las ${hora(deHoy.start)} · ${que}`;
+      deHoy.status === "in-progress"
+        ? `Está en el salón desde las ${hora(deHoy.start)} · ${que}`
+        : fin <= now
+          ? `Ha venido hoy a las ${hora(deHoy.start)} · ${que}`
+          : ini <= now
+            ? `Está en el salón desde las ${hora(deHoy.start)} · ${que}`
+            : `Viene hoy a las ${hora(deHoy.start)} · ${que}`;
   }
   const accion =
     "inline-flex h-11 items-center gap-1.5 rounded-full border border-input bg-card px-4 text-[13px] font-bold text-cafe-medio hover:bg-nata focus-visible:outline-2 focus-visible:outline-primary";

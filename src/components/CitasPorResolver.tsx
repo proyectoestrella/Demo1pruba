@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { usePlegado } from "@/lib/use-plegado";
 import { toast } from "sonner";
-import { Check, Clock3, UserX, HelpCircle } from "lucide-react";
+import { Check, Clock3, HelpCircle, UserCheck, UserX } from "lucide-react";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { citasSinDesenlace, ESTADO_POR_DESENLACE, type Desenlace } from "@/lib/deuda";
@@ -24,10 +24,13 @@ import { cn } from "@/lib/utils";
  */
 export function BotonesDesenlace({
   onElegir,
+  onMarcarEnCurso,
   actual,
   size = "sm",
 }: {
   onElegir: (d: Desenlace) => void;
+  /** Marca una llegada sin cerrar todavía el desenlace de la cita. */
+  onMarcarEnCurso?: () => void;
   /** Estado actual de la cita, para marcar el botón que ya está elegido. */
   actual?: AppointmentStatus;
   size?: "sm" | "default";
@@ -39,6 +42,24 @@ export function BotonesDesenlace({
   ];
   return (
     <div className="flex flex-wrap gap-2">
+      {onMarcarEnCurso && (
+        <Button
+          size={size}
+          variant="outline"
+          aria-pressed={actual === "in-progress"}
+          onClick={(e) => {
+            e.stopPropagation();
+            onMarcarEnCurso();
+          }}
+          className={cn(
+            "min-h-11 gap-1.5 border-salvia text-hoja-tinta hover:bg-salvia-clara",
+            actual === "in-progress" && "bg-salvia-clara",
+          )}
+        >
+          <UserCheck className="size-3.5" aria-hidden="true" />
+          Ya está en el salón
+        </Button>
+      )}
       {opciones.map(({ d, texto, icon: Icon }) => {
         const elegido = actual === ESTADO_POR_DESENLACE[d];
         return (
@@ -52,7 +73,7 @@ export function BotonesDesenlace({
               onElegir(d);
             }}
             className={cn(
-              "gap-1.5",
+              "min-h-11 gap-1.5",
               d === "vino"
                 ? "hover:border-salvia hover:bg-salvia-clara hover:text-hoja-tinta"
                 : "hover:border-melocoton-borde hover:bg-melocoton hover:text-melocoton-tinta",
@@ -89,6 +110,17 @@ export function useAplicarDesenlace() {
   };
 }
 
+/** Marca que la clienta ya llegó sin convertirlo aún en «vino». */
+export function useMarcarEnCurso() {
+  const updateAppointment = useSalonStore((s) => s.updateAppointment);
+
+  return function marcarEnCurso(a: Appointment) {
+    const { cambio } = conCambio(() => updateAppointment(a.id, { status: "in-progress" }));
+    const nombre = (a.clientName || "").split(" ")[0];
+    if (cambio) avisar(`${nombre} ya está en el salón`, () => deshacerConAviso(cambio.id), cambio.id);
+  };
+}
+
 export interface CitasPorResolverProps {
   /** Cuántas filas se enseñan de golpe. El resto se cuenta al pie. */
   limite?: number;
@@ -113,6 +145,7 @@ export function CitasPorResolver({ limite = 5, className, plegable }: CitasPorRe
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const conRecargo = recargoActivo({ noShowFeeEur });
   const aplicarDesenlace = useAplicarDesenlace();
+  const marcarEnCurso = useMarcarEnCurso();
   const [decision, setDecision] = useState<{
     client: Client | undefined;
     cita: Appointment;
@@ -183,7 +216,11 @@ export function CitasPorResolver({ limite = 5, className, plegable }: CitasPorRe
                     {employeeMap[a.employeeId] ? ` · con ${employeeMap[a.employeeId].name}` : ""}
                   </p>
                 </div>
-                <BotonesDesenlace actual={a.status} onElegir={(d) => elegir(a, d)} />
+                <BotonesDesenlace
+                  actual={a.status}
+                  onMarcarEnCurso={() => marcarEnCurso(a)}
+                  onElegir={(d) => elegir(a, d)}
+                />
               </div>
             ))}
           </div>

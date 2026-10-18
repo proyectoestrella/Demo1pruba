@@ -16,7 +16,7 @@ export function accionesDeParcheCita(patch: Record<string, unknown>): AccionId[]
   const estado = typeof patch.status === "string" ? patch.status : null;
   if (estado === "cancelled") out.add("cita.cancelar");
   else if (estado === "confirmed") out.add("cita.confirmar-solicitud");
-  else if (estado === "completed" || estado === "no-show" || estado === "late")
+  else if (estado === "in-progress" || estado === "completed" || estado === "no-show" || estado === "late")
     out.add("cita.marcar-asistencia");
   else if (estado) out.add("cita.editar");
   if (k.some((c) => c === "paidAt" || c === "paymentMethod")) out.add("cita.cobrar");

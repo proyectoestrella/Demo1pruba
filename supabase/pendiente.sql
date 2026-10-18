@@ -29,6 +29,8 @@
 -- deben dejar la base de datos igual.
 -- ---------------------------------------------------------------------------
 
+-- PENDIENTE (estado): `appointments.status` usa el nuevo valor textual `in-progress` («En el salón»). Si producción lo restringe con un enum o CHECK, añadir ese valor manualmente allí; no ejecutar SQL desde este cambio.
+
 -- 1. Lista de espera ---------------------------------------------------------
 create table if not exists waitlist (
   id uuid primary key default gen_random_uuid(),

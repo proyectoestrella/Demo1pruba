@@ -32,6 +32,7 @@ const recepcion: Acceso = {
 describe("guardas de escritura por rol", () => {
   it("un parche de cita se traduce a sus acciones", () => {
     expect(accionesDeParcheCita({ status: "cancelled" })).toEqual(["cita.cancelar"]);
+    expect(accionesDeParcheCita({ status: "in-progress" })).toEqual(["cita.marcar-asistencia"]);
     expect(accionesDeParcheCita({ paidAt: "x", paymentMethod: "card" })).toEqual(["cita.cobrar"]);
     expect(accionesDeParcheCita({ start: "x" })).toEqual(["cita.mover"]);
     expect(accionesDeParcheCita({ depositStatus: "recibida" })).toEqual(["senal.gestionar"]);

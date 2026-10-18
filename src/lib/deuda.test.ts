@@ -53,9 +53,14 @@ describe("qué citas hay que resolver", () => {
   });
 
   it("no pregunta por lo que ya tiene desenlace", () => {
-    for (const status of ["completed", "late", "no-show", "cancelled", "blocked"] as AppointmentStatus[]) {
+    for (const status of ["in-progress", "completed", "late", "no-show", "cancelled", "blocked"] as AppointmentStatus[]) {
       expect(necesitaDesenlace(cita({ status }), AHORA)).toBe(false);
     }
+  });
+
+  it("deja de pedir desenlace al marcar que la clienta está en el salón", () => {
+    const pendientes = citasSinDesenlace([cita({ id: "llego", status: "in-progress" }), cita({ id: "sin-marcar" })], AHORA);
+    expect(pendientes.map((a) => a.id)).toEqual(["sin-marcar"]);
   });
 
   it("deja de preguntar pasada la ventana de días", () => {
