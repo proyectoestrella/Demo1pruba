@@ -13,6 +13,7 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { getSupabaseServerClient } from "../supabase.server";
 import { getConfigCalendarios } from "../config.server";
 import { cifrarCredencial, descifrarCredencial, derivarClaveContextual } from "./cifrado";
+import { permisosDe, permisosExtraDe, puede, rolVigente } from "../permisos";
 import {
   CalDAVNoDisponible,
   CredencialCalDAVInvalida,
@@ -234,6 +235,22 @@ function claveCifradoOCorta(): string {
   return cfg.claveCifrado;
 }
 
+/** Subclave de firma: el material AES nunca firma directamente un OAuth state. */
+function claveEstadoOAuth(claveCifrado: string): string {
+  return derivarClaveContextual("google-oauth-state", claveCifrado).toString("base64url");
+}
+
+/** Durante sus diez minutos de vida, admite un state emitido antes de separar las claves. */
+function decodificarEstadoCompatible(state: string, claveCifrado: string) {
+  try {
+    return decodificarEstado(state, claveEstadoOAuth(claveCifrado)) ?? decodificarEstado(state, claveCifrado);
+  } catch {
+    // Un entorno mal configurado no debe convertir un callback manipulado en
+    // una respuesta 500; el state nunca se acepta sin una firma válida.
+    return decodificarEstado(state, claveCifrado);
+  }
+}
+
 /** Token opaco por canal: Google lo devuelve en X-Goog-Channel-Token. */
 export function tokenDeCanalGoogle(canalId: string, claveCifrado: string): string {
   return createHmac("sha256", derivarClaveContextual("google-watch-token", claveCifrado)).update(canalId).digest("base64url");
@@ -247,7 +264,7 @@ function igualSeguro(a: string, b: string): boolean {
 
 export function iniciarConexionGoogle(args: { salonSlug: string; employeeId: string | null; userId: string }): { url: string } {
   const config = configGoogleOCorta();
-  const state = codificarEstado({ salonSlug: args.salonSlug, employeeId: args.employeeId, userId: args.userId }, claveCifradoOCorta());
+  const state = codificarEstado({ salonSlug: args.salonSlug, employeeId: args.employeeId, userId: args.userId }, claveEstadoOAuth(claveCifradoOCorta()));
   return { url: urlDeAutorizacion(config, state) };
 }
 
@@ -255,6 +272,25 @@ export interface ResultadoCallbackGoogle {
   ok: boolean;
   salonSlug?: string;
   error?: string;
+}
+
+/** El callback no lleva la cookie de sesión: vuelve a autorizar al sujeto que firmó el state. */
+async function puedeCompletarConexionGoogle(db: Supabase, estado: { salonSlug: string; employeeId: string | null; userId: string }): Promise<boolean> {
+  const { data, error } = await db
+    .from("salon_members")
+    .select("*")
+    .eq("user_id", estado.userId)
+    .eq("salon_slug", estado.salonSlug)
+    .maybeSingle();
+  if (error || !data) return false;
+  const miembro = data as Record<string, unknown>;
+  if (miembro.estado === "baja" || miembro.estado === "invitada") return false;
+  const rol = rolVigente(typeof miembro.rol === "string" ? miembro.rol : null);
+  const miEmployeeId = typeof miembro.employee_id === "string" ? miembro.employee_id : null;
+  return puede(permisosDe(rol, permisosExtraDe(miembro.permisos_extra)), "calendario-externo.gestionar", {
+    employeeId: estado.employeeId,
+    miEmployeeId,
+  });
 }
 
 /** Llamado por la ruta de callback (navegación real del navegador, sin sesión: la autorización viaja en `state`). */
@@ -267,8 +303,13 @@ export async function completarConexionGoogle(code: string, state: string): Prom
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
-  const estado = decodificarEstado(state, clave);
+  const estado = decodificarEstadoCompatible(state, clave);
   if (!estado) return { ok: false, error: "El enlace de conexión ha caducado o no es válido. Vuelve a intentarlo desde el panel." };
+
+  const db = requerirDb();
+  if (!(await puedeCompletarConexionGoogle(db, estado))) {
+    return { ok: false, salonSlug: estado.salonSlug, error: "Ya no tienes permiso para conectar este calendario." };
+  }
 
   let tokens;
   try {
@@ -285,7 +326,6 @@ export async function completarConexionGoogle(code: string, state: string): Prom
     };
   }
   const cuenta = await correoDeLaCuenta(tokens.accessToken).catch(() => null);
-  const db = requerirDb();
   const credencial: CredencialGoogle = { tipo: "google", refreshToken: tokens.refreshToken, cuenta: cuenta ?? "" };
   const conexionId = await guardarConexion(db, estado.salonSlug, estado.employeeId, "google", {
     estado: "activa",
