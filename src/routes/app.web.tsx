@@ -28,7 +28,7 @@ import { usePanelPublicLink } from "@/lib/panel-public-link";
 
 import { useSalonStore } from "@/lib/store";
 import { useRealSalonSlug } from "@/lib/use-real-salon";
-import { saveSalonProfile } from "@/lib/api/salons.functions";
+import { patchSalonProfile } from "@/lib/api/salons.functions";
 import { encodeDemoProfile } from "@/lib/demo-profile";
 import { guardarPrevia, huellaPrevia } from "@/lib/vista-previa";
 import {
@@ -178,8 +178,14 @@ function MiWebHidratada() {
 
   // Lote P: el borrador va por el sessionStorage de la pestaña (lib/vista-previa.ts);
   // la dirección solo lleva su huella. `cartaCompleta`: toda la carta, no 12.
-  const rawPrevio = useMemo(() => encodeDemoProfile(perfilPrevio, { cartaCompleta: true }), [perfilPrevio]);
-  const urlPrevia = useMemo(() => `/s/${slugPrevia}?previa=${huellaPrevia(rawPrevio)}`, [slugPrevia, rawPrevio]);
+  const rawPrevio = useMemo(
+    () => encodeDemoProfile(perfilPrevio, { cartaCompleta: true }),
+    [perfilPrevio],
+  );
+  const urlPrevia = useMemo(
+    () => `/s/${slugPrevia}?previa=${huellaPrevia(rawPrevio)}`,
+    [slugPrevia, rawPrevio],
+  );
 
   // Se espera a que pare de teclear antes de recargar el iframe: una recarga
   // por pulsación deja la vista previa parpadeando y no se lee nada.
@@ -252,15 +258,26 @@ function MiWebHidratada() {
    * (sin otro aviso: el de publicar ya lleva «Deshacer») y guarda la versión.
    * La primera vez guarda también cómo estaba antes, para poder volver.
    */
-  function publicarEnPanel(parcheWeb: Partial<SalonProfile>, previo: SalonProfile, tipo: "perfil.publicar" | "perfil.restaurar") {
-    const { versiones, guardar } = { versiones: useVersiones.getState().porSalon[slugPrevia] ?? [], guardar: useVersiones.getState().guardar };
+  function publicarEnPanel(
+    parcheWeb: Partial<SalonProfile>,
+    previo: SalonProfile,
+    tipo: "perfil.publicar" | "perfil.restaurar",
+  ) {
+    const { versiones, guardar } = {
+      versiones: useVersiones.getState().porSalon[slugPrevia] ?? [],
+      guardar: useVersiones.getState().guardar,
+    };
     const autor = miembroAhora()?.displayName ?? null;
-    if (versiones.length === 0) guardar(slugPrevia, webDe(previo), null, new Date(Date.now() - 1000).toISOString());
+    if (versiones.length === 0)
+      guardar(slugPrevia, webDe(previo), null, new Date(Date.now() - 1000).toISOString());
     conCambio(() => guardarPerfil(parcheWeb as never, tipo));
     guardar(slugPrevia, webDe({ ...previo, ...parcheWeb }), autor);
   }
 
-  async function publicar(desde: BorradorLanding = borrador, tipo: "perfil.publicar" | "perfil.restaurar" = "perfil.publicar") {
+  async function publicar(
+    desde: BorradorLanding = borrador,
+    tipo: "perfil.publicar" | "perfil.restaurar" = "perfil.publicar",
+  ) {
     // El borrador conserva el equipo para compatibilidad con el perfil, pero
     // aquí ya no se edita: lo gestiona Equipo y admite hasta seis personas.
     const fallos = validarBorrador({ ...desde, team: "" });
@@ -274,7 +291,12 @@ function MiWebHidratada() {
       return;
     }
 
-    const previo = { ...publicado, team: salonProfile.team, teamHours: salonProfile.teamHours, teamIds: salonProfile.teamIds };
+    const previo = {
+      ...publicado,
+      team: salonProfile.team,
+      teamHours: salonProfile.teamHours,
+      teamIds: salonProfile.teamIds,
+    };
     const parche = perfilDesdeBorrador(desde);
     // El equipo se edita en una sola pantalla. No guardar una copia antigua
     // de nombres ni horarios cuando se publica otro cambio de la web.
@@ -288,9 +310,14 @@ function MiWebHidratada() {
       publicarEnPanel(parcheWeb, previo, tipo);
       setPublicado(nuevo);
       setAnterior(previo);
-      toast.success(tipo === "perfil.restaurar" ? "Versión restaurada en esta demo" : "Cambios aplicados en esta demo", {
-        description: "No se ha publicado nada: una demo no tiene web propia que actualizar.",
-      });
+      toast.success(
+        tipo === "perfil.restaurar"
+          ? "Versión restaurada en esta demo"
+          : "Cambios aplicados en esta demo",
+        {
+          description: "No se ha publicado nada: una demo no tiene web propia que actualizar.",
+        },
+      );
       return;
     }
 
@@ -298,8 +325,8 @@ function MiWebHidratada() {
     try {
       // Se espera al servidor ANTES de tocar nada local: si esto falla, lo
       // escrito sigue en su caja y la web pública no se ha movido.
-      const res = await saveSalonProfile({
-        data: { slug: realSlug, profile: nuevo as unknown as Record<string, unknown> },
+      const res = await patchSalonProfile({
+        data: { slug: realSlug, patch: parcheWeb as Record<string, unknown> },
       });
       if (!res.synced) {
         toast.error(
@@ -310,15 +337,20 @@ function MiWebHidratada() {
         );
         return;
       }
-      // Ya está arriba: ahora sí se aplica en el panel. Esto vuelve a subirlo
-      // por la vía de siempre (`pushSalonProfile`), que es el mismo upsert —
-      // repetirlo no cambia nada y mantiene una sola forma de escribir.
+      // Ya está arriba: ahora sí se aplica en el panel. La store vuelve a
+      // mandar solo el mismo parche por su vía normal, sin abrir la puerta a
+      // que esta pantalla sobrescriba ajustes que no edita.
       publicarEnPanel(parcheWeb, previo, tipo);
       setPublicado(nuevo);
       setAnterior(previo);
-      toast.success(tipo === "perfil.restaurar" ? "Restaurada: tu web vuelve a esa versión" : "Publicado: tu web ya muestra estos cambios", {
-        description: "Cualquiera que abra tu enlace lo ve ya.",
-      });
+      toast.success(
+        tipo === "perfil.restaurar"
+          ? "Restaurada: tu web vuelve a esa versión"
+          : "Publicado: tu web ya muestra estos cambios",
+        {
+          description: "Cualquiera que abra tu enlace lo ve ya.",
+        },
+      );
     } catch (err) {
       console.error("No se pudo publicar el perfil:", err);
       toast.error("No se ha podido publicar", {
@@ -336,8 +368,8 @@ function MiWebHidratada() {
     if (esReal && realSlug) {
       setGuardando(true);
       try {
-        const res = await saveSalonProfile({
-          data: { slug: realSlug, profile: volver as unknown as Record<string, unknown> },
+        const res = await patchSalonProfile({
+          data: { slug: realSlug, patch: webDe(volver) },
         });
         if (!res.synced) {
           toast.error("No se ha podido deshacer: tu web sigue con el último cambio publicado.");
@@ -369,12 +401,19 @@ function MiWebHidratada() {
    */
   async function restaurarReal(version: VersionPanel) {
     if (!realSlug) return;
-    const previo = { ...publicado, team: salonProfile.team, teamHours: salonProfile.teamHours, teamIds: salonProfile.teamIds };
+    const previo = {
+      ...publicado,
+      team: salonProfile.team,
+      teamHours: salonProfile.teamHours,
+      teamIds: salonProfile.teamIds,
+    };
     setGuardando(true);
     try {
       const res = await restaurarVersionReal(realSlug, version.id);
       if (!res.ok) {
-        toast.error("No se ha podido restaurar", { description: "Tu web sigue como estaba. Inténtalo otra vez." });
+        toast.error("No se ha podido restaurar", {
+          description: "Tu web sigue como estaba. Inténtalo otra vez.",
+        });
         return;
       }
       const nuevo: SalonProfile = { ...salonProfile, ...res.profile };
@@ -382,11 +421,14 @@ function MiWebHidratada() {
       setBorrador(borradorDesdePerfil(nuevo));
       setErrores([]);
       setAnterior(previo);
-      toast.success("Restaurada: tu web vuelve a esa versión", { description: "Cualquiera que abra tu enlace lo ve ya." });
+      toast.success("Restaurada: tu web vuelve a esa versión", {
+        description: "Cualquiera que abra tu enlace lo ve ya.",
+      });
     } catch (err) {
       console.error("No se pudo restaurar la versión:", err);
       toast.error("No se ha podido restaurar", {
-        description: "No se ha cambiado nada de tu web. Comprueba la conexión e inténtalo otra vez.",
+        description:
+          "No se ha cambiado nada de tu web. Comprueba la conexión e inténtalo otra vez.",
       });
     } finally {
       setGuardando(false);
@@ -434,18 +476,22 @@ function MiWebHidratada() {
           role="alert"
           className="flex gap-2.5 rounded-2xl border border-melocoton-borde bg-melocoton px-4 py-3 text-[12.5px] text-melocoton-tinta"
         >
-          <TriangleAlert className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
+          <TriangleAlert
+            className="mt-px size-[15px] shrink-0"
+            strokeWidth={1.6}
+            aria-hidden="true"
+          />
           <div>
-          <p className="font-bold">
-            {errores.length === 1
-              ? "Hay algo que revisar antes de publicar:"
-              : `Hay ${errores.length} cosas que revisar antes de publicar:`}
-          </p>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            {errores.map((e, i) => (
-              <li key={`${e.campo}-${i}`}>{e.mensaje}</li>
-            ))}
-          </ul>
+            <p className="font-bold">
+              {errores.length === 1
+                ? "Hay algo que revisar antes de publicar:"
+                : `Hay ${errores.length} cosas que revisar antes de publicar:`}
+            </p>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              {errores.map((e, i) => (
+                <li key={`${e.campo}-${i}`}>{e.mensaje}</li>
+              ))}
+            </ul>
           </div>
         </div>
       )}
@@ -501,7 +547,9 @@ function MiWebHidratada() {
         <span
           className={cn(
             "inline-flex h-6 items-center rounded-full px-2.5 text-[12.5px] font-bold",
-            sucio ? "border-[1.5px] border-dashed border-moca bg-card text-primary" : "bg-salvia-clara text-hoja-tinta",
+            sucio
+              ? "border-[1.5px] border-dashed border-moca bg-card text-primary"
+              : "bg-salvia-clara text-hoja-tinta",
           )}
         >
           {sucio ? "Cambios sin publicar" : "Todo publicado"}
@@ -571,7 +619,10 @@ function MiWebHidratada() {
                 />
               </div>
               <div className="mt-7 flex shrink-0 flex-col items-center gap-1">
-                <AvatarSalon size={56} logoForzado={borrador.logoUrl.trim() ? borrador.logoUrl.trim() : undefined} />
+                <AvatarSalon
+                  size={56}
+                  logoForzado={borrador.logoUrl.trim() ? borrador.logoUrl.trim() : undefined}
+                />
                 <span className="text-[11.5px] text-cafe-suave">Vista previa</span>
               </div>
             </div>
@@ -617,7 +668,9 @@ function MiWebHidratada() {
 
           <Bloque titulo="Tu blog, redes y tienda" forzar={errores.length > 0}>
             <p className="text-[13px] text-muted-foreground">
-              Sale un botón discreto por cada uno que rellenes. Pega la dirección completa, tal y como la ves en el navegador. Con tu ficha de Google, la web enseña tu nota real y «Ver reseñas en Google».
+              Sale un botón discreto por cada uno que rellenes. Pega la dirección completa, tal y
+              como la ves en el navegador. Con tu ficha de Google, la web enseña tu nota real y «Ver
+              reseñas en Google».
             </p>
             {CAMPOS_ENLACES.map((clave) => (
               <Campo
@@ -653,7 +706,9 @@ function MiWebHidratada() {
               valor={borrador.boletinCondiciones}
               onChange={(v) => campo("boletinCondiciones", v)}
             />
-            <p className="text-xs text-muted-foreground">Vacío del todo: el boletín no sale en tu web.</p>
+            <p className="text-xs text-muted-foreground">
+              Vacío del todo: el boletín no sale en tu web.
+            </p>
           </Bloque>
 
           <Bloque titulo="Galería de fotos" forzar={errores.length > 0}>
@@ -686,7 +741,9 @@ function MiWebHidratada() {
             <div className="grid gap-2 sm:grid-cols-2">
               {DAY_LABELS_ES.map((etiqueta, i) => (
                 <div key={etiqueta} className="flex items-center gap-2">
-                  <span className="w-20 shrink-0 text-[12.5px] font-bold text-cafe-medio">{etiqueta}</span>
+                  <span className="w-20 shrink-0 text-[12.5px] font-bold text-cafe-medio">
+                    {etiqueta}
+                  </span>
                   <Input
                     aria-label={etiqueta}
                     value={borrador.openingHours[i] ?? ""}
@@ -710,8 +767,13 @@ function MiWebHidratada() {
 
           <Bloque titulo="Servicios y precios" forzar={errores.length > 0}>
             <ResumenCarta services={services} />
-            <details className="group rounded-2xl border border-border bg-perla/60 px-4 py-3" open={errorDe("menu").length > 0}>
-              <summary className="cursor-pointer text-[13px] font-bold text-cafe-medio">Editar la carta como texto</summary>
+            <details
+              className="group rounded-2xl border border-border bg-perla/60 px-4 py-3"
+              open={errorDe("menu").length > 0}
+            >
+              <summary className="cursor-pointer text-[13px] font-bold text-cafe-medio">
+                Editar la carta como texto
+              </summary>
               <div className="mt-3">
                 <CampoLargo
                   etiqueta="Tu carta"
@@ -730,15 +792,32 @@ function MiWebHidratada() {
             <EditorDescripciones
               services={services}
               valores={borrador.descripciones}
-              onChange={(id, texto) => campo("descripciones", { ...borrador.descripciones, [id]: texto })}
+              onChange={(id, texto) =>
+                campo("descripciones", { ...borrador.descripciones, [id]: texto })
+              }
             />
             <Fallos mensajes={errorDe("descripciones")} />
           </Bloque>
 
           <Bloque titulo="Equipo" forzar={errores.length > 0}>
-            <p className="text-[13px] text-muted-foreground">Este equipo también aparece en tus reservas. Cambia nombres, especialidades y horarios desde su pantalla.</p>
-            <ul className="mt-3 space-y-1 text-sm">{equipo.map((persona) => <li key={persona.id}>{persona.name}{persona.specialty ? ` · ${persona.specialty}` : ""}</li>)}</ul>
-            <Link to="/app/employees" className="mt-3 inline-flex h-[34px] items-center rounded-full border border-input bg-card px-[13px] text-[12.5px] font-bold hover:bg-nata">Editar equipo y horarios</Link>
+            <p className="text-[13px] text-muted-foreground">
+              Este equipo también aparece en tus reservas. Cambia nombres, especialidades y horarios
+              desde su pantalla.
+            </p>
+            <ul className="mt-3 space-y-1 text-sm">
+              {equipo.map((persona) => (
+                <li key={persona.id}>
+                  {persona.name}
+                  {persona.specialty ? ` · ${persona.specialty}` : ""}
+                </li>
+              ))}
+            </ul>
+            <Link
+              to="/app/employees"
+              className="mt-3 inline-flex h-[34px] items-center rounded-full border border-input bg-card px-[13px] text-[12.5px] font-bold hover:bg-nata"
+            >
+              Editar equipo y horarios
+            </Link>
           </Bloque>
 
           <Bloque titulo="Preguntas frecuentes" forzar={errores.length > 0}>
@@ -770,12 +849,25 @@ function MiWebHidratada() {
           <div className="flex h-full min-w-0 flex-col rounded-[20px] border border-border bg-perla p-3.5">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <div className="min-w-0">
-                <h2 className="text-base font-extrabold tracking-[-0.01em]">Así la ve tu clienta</h2>
-                <p className="text-[12.5px] text-muted-foreground">Tu web de verdad, con los cambios sin publicar.</p>
+                <h2 className="text-base font-extrabold tracking-[-0.01em]">
+                  Así la ve tu clienta
+                </h2>
+                <p className="text-[12.5px] text-muted-foreground">
+                  Tu web de verdad, con los cambios sin publicar.
+                </p>
               </div>
               <div className="ml-auto flex items-center gap-1.5">
-                <div role="tablist" aria-label="Tamaño de la vista previa" className="inline-flex gap-0.5 rounded-full border border-border bg-nata p-1">
-                  {([["movil", "Móvil", Smartphone], ["escritorio", "Ordenador", Monitor]] as const).map(([id, texto, Icono]) => (
+                <div
+                  role="tablist"
+                  aria-label="Tamaño de la vista previa"
+                  className="inline-flex gap-0.5 rounded-full border border-border bg-nata p-1"
+                >
+                  {(
+                    [
+                      ["movil", "Móvil", Smartphone],
+                      ["escritorio", "Ordenador", Monitor],
+                    ] as const
+                  ).map(([id, texto, Icono]) => (
                     <button
                       key={id}
                       type="button"
@@ -784,7 +876,8 @@ function MiWebHidratada() {
                       onClick={() => setDispositivo(id)}
                       className={cn(
                         "inline-flex h-[34px] items-center gap-1.5 rounded-full px-3 text-[13px] font-bold text-cafe-medio",
-                        dispositivo === id && "bg-card text-foreground shadow-[0_1px_3px_rgba(59,47,42,0.12)]",
+                        dispositivo === id &&
+                          "bg-card text-foreground shadow-[0_1px_3px_rgba(59,47,42,0.12)]",
                       )}
                     >
                       <Icono className="size-4" strokeWidth={1.6} />
@@ -792,7 +885,13 @@ function MiWebHidratada() {
                     </button>
                   ))}
                 </div>
-                <Button variant="outline" size="icon" className="size-[42px]" aria-label="Abrir la vista previa en otra pestaña" asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-[42px]"
+                  aria-label="Abrir la vista previa en otra pestaña"
+                  asChild
+                >
                   {/* Sin «noreferrer» a propósito: la pestaña nueva (mismo origen)
                       hereda el sessionStorage, que es donde va el borrador. */}
                   <a
@@ -894,15 +993,37 @@ function Marco({ ancho, children }: { ancho: number; children: React.ReactNode }
  * Bloque del editor, plegable desde su título (recordado en el navegador).
  * Si hay errores al publicar se abren todos, para que ninguno quede escondido.
  */
-function Bloque({ titulo, children, abierto: porDefecto = false, forzar = false }: { titulo: string; children: React.ReactNode; abierto?: boolean; forzar?: boolean }) {
+function Bloque({
+  titulo,
+  children,
+  abierto: porDefecto = false,
+  forzar = false,
+}: {
+  titulo: string;
+  children: React.ReactNode;
+  abierto?: boolean;
+  forzar?: boolean;
+}) {
   const [abierto, alternar] = usePlegado(`mi-pagina:${titulo}`, porDefecto);
   const visible = abierto || forzar;
   return (
     <section className="rounded-[20px] border border-border bg-card">
       <h2>
-        <button type="button" aria-expanded={visible} onClick={alternar} className="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-beige/50">
+        <button
+          type="button"
+          aria-expanded={visible}
+          onClick={alternar}
+          className="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-beige/50"
+        >
           <span className="flex-1 text-base font-extrabold tracking-[-0.01em]">{titulo}</span>
-          <ChevronDown className={cn("size-5 shrink-0 text-cafe-medio transition-transform", visible && "rotate-180")} strokeWidth={1.6} aria-hidden="true" />
+          <ChevronDown
+            className={cn(
+              "size-5 shrink-0 text-cafe-medio transition-transform",
+              visible && "rotate-180",
+            )}
+            strokeWidth={1.6}
+            aria-hidden="true"
+          />
         </button>
       </h2>
       {visible && <div className="space-y-4 px-5 pb-5">{children}</div>}
@@ -941,7 +1062,9 @@ function Campo({
   const id = useId();
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-[12.5px] font-bold text-cafe-medio">{etiqueta}</Label>
+      <Label htmlFor={id} className="text-[12.5px] font-bold text-cafe-medio">
+        {etiqueta}
+      </Label>
       <Input
         id={id}
         type={tipo}
@@ -977,7 +1100,9 @@ function CampoLargo({
   const id = useId();
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-[12.5px] font-bold text-cafe-medio">{etiqueta}</Label>
+      <Label htmlFor={id} className="text-[12.5px] font-bold text-cafe-medio">
+        {etiqueta}
+      </Label>
       <Textarea
         id={id}
         value={valor}
@@ -1012,19 +1137,29 @@ const ETIQUETA_ENLACE: Record<(typeof CAMPOS_ENLACES)[number], string> = {
 function ResumenCarta({ services }: { services: import("@/lib/mock/types").Service[] }) {
   const grupos = agruparCarta(services);
   if (services.length === 0) {
-    return <p className="text-[13px] text-muted-foreground">Todavía no hay servicios: añádelos en «Servicios y precios» y saldrán aquí y en tu web.</p>;
+    return (
+      <p className="text-[13px] text-muted-foreground">
+        Todavía no hay servicios: añádelos en «Servicios y precios» y saldrán aquí y en tu web.
+      </p>
+    );
   }
   return (
     <div className="space-y-3">
       <ul className="grid gap-1.5 text-[13px] sm:grid-cols-2">
         {grupos.map((g) => (
-          <li key={g.categoria} className="flex items-baseline justify-between gap-3 rounded-xl bg-nata/60 px-3 py-2">
+          <li
+            key={g.categoria}
+            className="flex items-baseline justify-between gap-3 rounded-xl bg-nata/60 px-3 py-2"
+          >
             <span className="font-bold">{g.categoria}</span>
             <span className="shrink-0 text-cafe-suave tabular-nums">{g.servicios.length}</span>
           </li>
         ))}
       </ul>
-      <Link to="/app/services" className="inline-flex h-[34px] items-center rounded-full border border-input bg-card px-[13px] text-[12.5px] font-bold hover:bg-nata">
+      <Link
+        to="/app/services"
+        className="inline-flex h-[34px] items-center rounded-full border border-input bg-card px-[13px] text-[12.5px] font-bold hover:bg-nata"
+      >
         Cambiar servicios, precios y duraciones
       </Link>
     </div>
@@ -1043,23 +1178,36 @@ function EditorDescripciones({
 }) {
   const grupos = agruparCarta(services);
   if (grupos.length === 0) {
-    return <p className="text-[13px] text-muted-foreground">Cuando tengas servicios, aquí escribes una o dos frases de cada uno para tu web.</p>;
+    return (
+      <p className="text-[13px] text-muted-foreground">
+        Cuando tengas servicios, aquí escribes una o dos frases de cada uno para tu web.
+      </p>
+    );
   }
   return (
     <div className="space-y-2">
-      <p className="text-[13px] text-muted-foreground">Una o dos frases por servicio: salen bajo su nombre en tu web. Vacío: no sale nada.</p>
+      <p className="text-[13px] text-muted-foreground">
+        Una o dos frases por servicio: salen bajo su nombre en tu web. Vacío: no sale nada.
+      </p>
       {grupos.map((g) => {
         const escritas = g.servicios.filter((sv) => (valores[sv.id] ?? "").trim()).length;
         return (
           <details key={g.categoria} className="rounded-2xl border border-border bg-card">
             <summary className="flex cursor-pointer items-baseline justify-between gap-3 px-4 py-3 text-[13.5px] font-bold">
               <span>{g.categoria}</span>
-              <span className="text-[12px] font-semibold text-cafe-suave tabular-nums">{escritas} de {g.servicios.length} con texto</span>
+              <span className="text-[12px] font-semibold text-cafe-suave tabular-nums">
+                {escritas} de {g.servicios.length} con texto
+              </span>
             </summary>
             <div className="space-y-3 px-4 pb-4">
               {g.servicios.map((sv) => (
                 <div key={sv.id} className="space-y-1">
-                  <Label htmlFor={`desc-${sv.id}`} className="text-[12.5px] font-bold text-cafe-medio">{sv.name}</Label>
+                  <Label
+                    htmlFor={`desc-${sv.id}`}
+                    className="text-[12.5px] font-bold text-cafe-medio"
+                  >
+                    {sv.name}
+                  </Label>
                   <Textarea
                     id={`desc-${sv.id}`}
                     value={valores[sv.id] ?? ""}
@@ -1111,20 +1259,64 @@ function EditorGaleria({
         {fotos.map((f, i) => (
           <li key={i} className="flex gap-3 rounded-2xl border border-border bg-card p-2.5">
             <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-nata">
-              {f.url.trim() ? <img src={f.url.trim()} alt="" className="h-full w-full object-cover" loading="lazy" /> : <span className="text-[11px] text-cafe-suave">Sin foto</span>}
+              {f.url.trim() ? (
+                <img
+                  src={f.url.trim()}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <span className="text-[11px] text-cafe-suave">Sin foto</span>
+              )}
             </span>
             <div className="min-w-0 flex-1 space-y-1.5">
-              <Input aria-label={`Dirección de la foto ${i + 1}`} value={f.url} onChange={(e) => cambiar(i, { url: e.target.value })} placeholder="https://… .jpg" className="h-9 text-[13px]" />
-              <Input aria-label={`Texto alternativo de la foto ${i + 1}`} value={f.alt} onChange={(e) => cambiar(i, { alt: e.target.value })} placeholder="Qué se ve: «Recogido de novia con trenzas»" className="h-9 text-[13px]" />
+              <Input
+                aria-label={`Dirección de la foto ${i + 1}`}
+                value={f.url}
+                onChange={(e) => cambiar(i, { url: e.target.value })}
+                placeholder="https://… .jpg"
+                className="h-9 text-[13px]"
+              />
+              <Input
+                aria-label={`Texto alternativo de la foto ${i + 1}`}
+                value={f.alt}
+                onChange={(e) => cambiar(i, { alt: e.target.value })}
+                placeholder="Qué se ve: «Recogido de novia con trenzas»"
+                className="h-9 text-[13px]"
+              />
             </div>
             <div className="flex shrink-0 flex-col gap-1">
-              <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={`Subir la foto ${i + 1}`} disabled={i === 0} onClick={() => mover(i, -1)}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                aria-label={`Subir la foto ${i + 1}`}
+                disabled={i === 0}
+                onClick={() => mover(i, -1)}
+              >
                 <ArrowUp className="size-4" strokeWidth={1.6} />
               </Button>
-              <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={`Bajar la foto ${i + 1}`} disabled={i === fotos.length - 1} onClick={() => mover(i, 1)}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                aria-label={`Bajar la foto ${i + 1}`}
+                disabled={i === fotos.length - 1}
+                onClick={() => mover(i, 1)}
+              >
                 <ArrowDown className="size-4" strokeWidth={1.6} />
               </Button>
-              <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={`Quitar la foto ${i + 1}`} onClick={() => onChange(fotos.filter((_, k) => k !== i))}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                aria-label={`Quitar la foto ${i + 1}`}
+                onClick={() => onChange(fotos.filter((_, k) => k !== i))}
+              >
                 <X className="size-4" strokeWidth={1.6} />
               </Button>
             </div>

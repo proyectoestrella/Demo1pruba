@@ -142,7 +142,14 @@ describe("sin sesión no se entra a un salón de pago", () => {
 
 describe("el usuario del salón A no llega al salón B", () => {
   it("Ana manda en el suyo", async () => {
-    expect(await comoAna("salon-a")).toEqual({ tipo: "miembro", userId: "usuario-ana", rol: "gerente", employeeId: null, displayName: null });
+    expect(await comoAna("salon-a")).toEqual({
+      tipo: "miembro",
+      userId: "usuario-ana",
+      rol: "gerente",
+      employeeId: null,
+      displayName: null,
+      permisosExtra: {},
+    });
   });
 
   it("Ana es una ajena en el de Bruno, con su sesión perfectamente válida", async () => {
@@ -230,7 +237,13 @@ describe("cuando algo falla, se falla cerrando", () => {
 });
 
 describe("vistaEfectiva", () => {
-  const miembro: Acceso = { tipo: "miembro", userId: "usuario-ana", rol: "gerente", employeeId: null, displayName: null };
+  const miembro: Acceso = {
+    tipo: "miembro",
+    userId: "usuario-ana",
+    rol: "gerente",
+    employeeId: null,
+    displayName: null,
+  };
   const demo: Acceso = { tipo: "demo" };
   const ajeno: Acceso = { tipo: "ajeno" };
 
@@ -259,30 +272,99 @@ describe("roles (lote 8)", () => {
   const conFicha = (ficha: DepsAutorizacion["ficha"]) => deps("Bearer token-de-ana", { ficha });
 
   it("sin columnas nuevas (ficha solo con rol 'dueno') sigue siendo gerente con mando completo", async () => {
-    const a = await resolverAcceso("salon-a", conFicha(async () => ({ rol: "dueno", employeeId: null, displayName: null, estado: null })));
-    expect(a).toEqual({ tipo: "miembro", userId: "usuario-ana", rol: "gerente", employeeId: null, displayName: null });
+    const a = await resolverAcceso(
+      "salon-a",
+      conFicha(async () => ({ rol: "dueno", employeeId: null, displayName: null, estado: null })),
+    );
+    expect(a).toEqual({
+      tipo: "miembro",
+      userId: "usuario-ana",
+      rol: "gerente",
+      employeeId: null,
+      displayName: null,
+      permisosExtra: {},
+    });
     expect(tienePermiso(a, "dinero.ver-global")).toBe(true);
   });
 
   it("una estilista entra, pero solo sobre sus citas y sin dinero global", async () => {
-    const a = await resolverAcceso("salon-a", conFicha(async () => ({ rol: "estilista", employeeId: "noelia", displayName: "Noelia", estado: "activa" })));
+    const a = await resolverAcceso(
+      "salon-a",
+      conFicha(async () => ({
+        rol: "estilista",
+        employeeId: "noelia",
+        displayName: "Noelia",
+        estado: "activa",
+      })),
+    );
     expect(a.tipo === "miembro" && a.displayName).toBe("Noelia");
     expect(tienePermiso(a, "cita.cancelar", "noelia")).toBe(true);
     expect(tienePermiso(a, "cita.cancelar", "sara")).toBe(false);
     expect(tienePermiso(a, "dinero.ver-global")).toBe(false);
-    await expect(exigirPermiso("salon-a", "web.publicar", conFicha(async () => ({ rol: "estilista", employeeId: "noelia", displayName: null, estado: "activa" })))).rejects.toBeInstanceOf(PermisoDenegado);
-    await expect(exigirPermiso("salon-a", "cita.mover", conFicha(async () => ({ rol: "estilista", employeeId: "noelia", displayName: null, estado: "activa" })), "sara")).rejects.toBeInstanceOf(PermisoDenegado);
+    await expect(
+      exigirPermiso(
+        "salon-a",
+        "web.publicar",
+        conFicha(async () => ({
+          rol: "estilista",
+          employeeId: "noelia",
+          displayName: null,
+          estado: "activa",
+        })),
+      ),
+    ).rejects.toBeInstanceOf(PermisoDenegado);
+    await expect(
+      exigirPermiso(
+        "salon-a",
+        "cita.mover",
+        conFicha(async () => ({
+          rol: "estilista",
+          employeeId: "noelia",
+          displayName: null,
+          estado: "activa",
+        })),
+        "sara",
+      ),
+    ).rejects.toBeInstanceOf(PermisoDenegado);
+  });
+
+  it("aplica los overrides leídos de salon_members y niega llamadas directas a web o reservas", async () => {
+    const ficha = async () => ({
+      rol: "estilista",
+      employeeId: "noelia",
+      displayName: "Noelia",
+      estado: "activa",
+      permisosExtra: { accesoWeb: false, accesoReservas: false, verAgendaCompleta: true },
+    });
+    const a = await resolverAcceso("salon-a", conFicha(ficha));
+    expect(tienePermiso(a, "cita.ver-todas")).toBe(true);
+    expect(tienePermiso(a, "web.publicar")).toBe(false);
+    expect(tienePermiso(a, "reservas.editar")).toBe(false);
+    await expect(exigirPermiso("salon-a", "web.editar", conFicha(ficha))).rejects.toBeInstanceOf(
+      PermisoDenegado,
+    );
+    await expect(
+      exigirPermiso("salon-a", "reservas.editar", conFicha(ficha)),
+    ).rejects.toBeInstanceOf(PermisoDenegado);
   });
 
   it("dada de baja o solo invitada: no entra aunque tenga fila", async () => {
     for (const estado of ["baja", "invitada"]) {
-      const a = await resolverAcceso("salon-a", conFicha(async () => ({ rol: "gerente", employeeId: null, displayName: null, estado })));
+      const a = await resolverAcceso(
+        "salon-a",
+        conFicha(async () => ({ rol: "gerente", employeeId: null, displayName: null, estado })),
+      );
       expect([estado, a.tipo]).toEqual([estado, "ajeno"]);
     }
   });
 
   it("si leer la ficha falla, no se entra", async () => {
-    const a = await resolverAcceso("salon-a", conFicha(async () => { throw new Error("red"); }));
+    const a = await resolverAcceso(
+      "salon-a",
+      conFicha(async () => {
+        throw new Error("red");
+      }),
+    );
     expect(a.tipo).toBe("ajeno");
   });
 

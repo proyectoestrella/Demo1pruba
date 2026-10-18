@@ -4,7 +4,15 @@
  * (service role, `auth.admin.inviteUserByEmail`) vive en
  * `accesos.functions.ts` y NUNCA en el navegador.
  */
-import { cabeRol, esRol, rolesPermitidosPorPlan, rolVigente, type Rol } from "../permisos";
+import {
+  cabeRol,
+  esRol,
+  permisosExtraDe,
+  rolesPermitidosPorPlan,
+  rolVigente,
+  type PermisosExtra,
+  type Rol,
+} from "../permisos";
 import { PermisoDenegado, tienePermiso, type Acceso } from "./autorizacion";
 
 export const DIAS_CADUCIDAD_INVITACION = 7;
@@ -25,6 +33,8 @@ export interface MiembroFila {
   employeeId: string | null;
   displayName: string | null;
   estado: "activa" | "baja";
+  /** Ausente en filas anteriores a la migración: manda solo el rol. */
+  permisosExtra?: PermisosExtra;
 }
 
 export interface InvitacionFila {
@@ -258,6 +268,41 @@ export async function vincularEmpleada(
   )
     return { ok: false, codigo: "DATOS", motivo: "Esa profesional ya tiene un acceso vinculado." };
   await deps.guardarMiembro({ ...m, employeeId });
+  return { ok: true };
+}
+
+/**
+ * Cambia únicamente las tres excepciones configurables de una persona.
+ * No es un atajo para cambiar roles: la gerente no puede aplicárselo a sí
+ * misma ni tocar a otra gerente, y los únicos destinos configurables son
+ * estilistas y subencargadas.
+ */
+export async function cambiarPermisosExtra(
+  acceso: Acceso,
+  userId: string,
+  nuevo: unknown,
+  deps: DepsAccesos,
+): Promise<ResultadoAccesos> {
+  exigirGestion(acceso);
+  if (acceso.tipo === "miembro" && acceso.userId === userId)
+    return { ok: false, codigo: "DATOS", motivo: "No puedes cambiar tus propios accesos." };
+  const m = (await deps.miembros()).find((x) => x.userId === userId && x.estado === "activa");
+  if (!m) return { ok: false, codigo: "NO_EXISTE", motivo: "Esa persona no tiene acceso." };
+  if (m.rol === "gerente")
+    return {
+      ok: false,
+      codigo: "DATOS",
+      motivo: "Los permisos de una gerente no se pueden limitar desde aquí.",
+    };
+  if (m.rol !== "estilista" && m.rol !== "subencargado")
+    return {
+      ok: false,
+      codigo: "DATOS",
+      motivo: "Estos accesos se configuran para estilistas y subencargadas.",
+    };
+  // Solo se conservan tres booleanos conocidos; una petición manipulada no
+  // puede colar acciones de dinero, plan ni administración de accesos.
+  await deps.guardarMiembro({ ...m, permisosExtra: permisosExtraDe(nuevo) });
   return { ok: true };
 }
 

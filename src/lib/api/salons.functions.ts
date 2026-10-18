@@ -18,11 +18,16 @@ import process from "node:process";
 import { z } from "zod";
 
 import { acceso, exigirAcceso } from "./autorizacion.server";
-import { accionesDeParcheCita, accionesDeParchePerfil, exigirAcciones } from "./guardas";
+import {
+  accionesDeParcheCita,
+  accionesDeParchePerfil,
+  exigirAcciones,
+  soloCamposWeb,
+} from "./guardas";
 import { recortarDatosPanel } from "./recorte";
 import { alcance, permisosDe, type MiembroActual } from "../permisos";
 import { DIAS_RETENCION } from "../cambios";
-import { PermisoDenegado } from "./autorizacion";
+import { PermisoDenegado, tienePermiso } from "./autorizacion";
 import { tieneMando, vistaEfectiva } from "./autorizacion";
 import { conSesion } from "./sesion.middleware";
 import { getSupabaseServerClient } from "../supabase.server";
@@ -35,7 +40,12 @@ import { ERROR_SOLAPE_PANEL } from "../solape";
 import { duracionCartaParaSenal, reglaSenal, senalDeReservaNueva } from "../senal";
 import { inferBusinessType } from "../business-type";
 import { servicesForType } from "../mock/salon";
-import { limpiarRespuestas, obligatoriasSinResponder, preguntasAplicables, preguntasDelSalon } from "../preguntas-reserva";
+import {
+  limpiarRespuestas,
+  obligatoriasSinResponder,
+  preguntasAplicables,
+  preguntasDelSalon,
+} from "../preguntas-reserva";
 import { profesionalHaceServicios } from "../servicios-profesional";
 import { hayBloqueoEnHueco } from "../bloqueos-agenda";
 import { zonaDelSalon } from "../zona-horaria";
@@ -69,8 +79,15 @@ import {
 } from "../salon-rows";
 import type { Appointment, Client, SalonProfile, WaitlistEntry } from "../mock/types";
 import { equipoCabeEnPlan, planDe } from "../plan";
-import { hayOcupadoExternoEnHueco, procesarCitaParaConexiones } from "../calendario-externo/calendario-externo.server";
-import { accionCalendarioDe, citaParaCalendarioDeFila, parcheAfectaCalendario } from "./cita-calendario";
+import {
+  hayOcupadoExternoEnHueco,
+  procesarCitaParaConexiones,
+} from "../calendario-externo/calendario-externo.server";
+import {
+  accionCalendarioDe,
+  citaParaCalendarioDeFila,
+  parcheAfectaCalendario,
+} from "./cita-calendario";
 import type { CitaParaCalendario } from "../calendario-externo/tipos";
 
 /**
@@ -88,7 +105,8 @@ const APPOINTMENT_COLS_NUEVAS =
 const APPOINTMENT_COLS_TECNICAS = "color_formula, technical_notes";
 const APPOINTMENT_COLS_RECORDATORIO = "reminder_sent_at";
 /** Lote 3 (26/09/2026): lo que iba codificado en `note`, con columna propia. */
-const APPOINTMENT_COLS_LOTE3 = "booking_answers, deposit_due_at, deposit_period_hours, origen, updated_at";
+const APPOINTMENT_COLS_LOTE3 =
+  "booking_answers, deposit_due_at, deposit_period_hours, origen, updated_at";
 const CLIENT_COLS_BASE = "id, name, phone, email, notes, penalty_eur, penalty_note, created_at";
 const CLIENT_COLS_NUEVAS = "penalty_at, penalty_keep, penalty_block";
 const CLIENT_COLS_LOTE3 = "manual_block, tpv_code, birthday, updated_at";
@@ -102,9 +120,25 @@ const WAITLIST_COLS =
  * despliegue nunca depende de que el DDL se haya aplicado antes.
  */
 /** Ciclo de vida de la señal (25/09/2026). Es el nivel más reciente. */
-const NIVEL_SENAL = ["deposit_status", "deposit_method", "deposit_received_eur", "deposit_applied_at", "deposit_applied_eur", "deposit_refunded_at", "deposit_refunded_eur", "deposit_retained_at", "deposit_note"];
+const NIVEL_SENAL = [
+  "deposit_status",
+  "deposit_method",
+  "deposit_received_eur",
+  "deposit_applied_at",
+  "deposit_applied_eur",
+  "deposit_refunded_at",
+  "deposit_refunded_eur",
+  "deposit_retained_at",
+  "deposit_note",
+];
 /** Lote 3: lo que iba codificado en `note`. Al quitarlo, la nota vuelve a llevar los marcadores. */
-const NIVEL_LOTE3 = ["booking_answers", "deposit_due_at", "deposit_period_hours", "origen", "updated_at"];
+const NIVEL_LOTE3 = [
+  "booking_answers",
+  "deposit_due_at",
+  "deposit_period_hours",
+  "origen",
+  "updated_at",
+];
 const NIVELES_CITA: string[][] = [
   ["privacy_notice_acknowledged_at"],
   NIVEL_SENAL,
@@ -178,15 +212,21 @@ async function sincronizarPagoDeSenal(
   if (!("depositStatus" in patch) && !("depositAppliedEur" in patch)) return;
   const refExterna = refSenalAplicada(localId);
   try {
-    if (patch.depositStatus === "aplicada" && typeof patch.depositAppliedEur === "number" && patch.depositAppliedEur > 0) {
+    if (
+      patch.depositStatus === "aplicada" &&
+      typeof patch.depositAppliedEur === "number" &&
+      patch.depositAppliedEur > 0
+    ) {
       const { data: fila } = await supabase
         .from("appointments")
         .select("client_id, client_name, deposit_method")
         .eq("salon_slug", slug)
         .eq("local_id", localId)
         .maybeSingle();
-      const metodoGuardado = (patch.depositMethod as string | undefined) ?? (fila?.deposit_method as string | undefined);
-      const metodo: MetodoPago = metodoGuardado === "efectivo" || metodoGuardado === "tarjeta" ? metodoGuardado : "bizum";
+      const metodoGuardado =
+        (patch.depositMethod as string | undefined) ?? (fila?.deposit_method as string | undefined);
+      const metodo: MetodoPago =
+        metodoGuardado === "efectivo" || metodoGuardado === "tarjeta" ? metodoGuardado : "bizum";
       const { error } = await supabase.from("payments").upsert(
         {
           salon_slug: slug,
@@ -204,11 +244,19 @@ async function sincronizarPagoDeSenal(
       );
       if (error && !faltaEsquema(error)) console.warn(`sincronizarPagoDeSenal: ${error.message}`);
     } else if (typeof patch.depositStatus === "string" && patch.depositStatus !== "aplicada") {
-      const { error } = await supabase.from("payments").delete().eq("salon_slug", slug).eq("origen", "sishow").eq("ref_externa", refExterna);
-      if (error && !faltaEsquema(error)) console.warn(`sincronizarPagoDeSenal (borrado): ${error.message}`);
+      const { error } = await supabase
+        .from("payments")
+        .delete()
+        .eq("salon_slug", slug)
+        .eq("origen", "sishow")
+        .eq("ref_externa", refExterna);
+      if (error && !faltaEsquema(error))
+        console.warn(`sincronizarPagoDeSenal (borrado): ${error.message}`);
     }
   } catch (err) {
-    console.warn(`sincronizarPagoDeSenal (¿falta aplicar supabase/pendiente.sql sección 14?): ${err}`);
+    console.warn(
+      `sincronizarPagoDeSenal (¿falta aplicar supabase/pendiente.sql sección 14?): ${err}`,
+    );
   }
 }
 
@@ -268,7 +316,12 @@ async function profesionalActual(
   slug: string,
   localId: string,
 ): Promise<string | null> {
-  const { data } = await supabase.from("appointments").select("employee_id").eq("salon_slug", slug).eq("local_id", localId).maybeSingle();
+  const { data } = await supabase
+    .from("appointments")
+    .select("employee_id")
+    .eq("salon_slug", slug)
+    .eq("local_id", localId)
+    .maybeSingle();
   return (data as { employee_id?: string } | null)?.employee_id ?? null;
 }
 
@@ -305,13 +358,21 @@ export const accesoAlPanel = createServerFn({ method: "GET" })
   .middleware([conSesion])
   .inputValidator(z.object({ slug }))
   .handler(
-    async ({ data }): Promise<{ real: boolean; permitido: boolean; miembro: MiembroActual | null }> => {
+    async ({
+      data,
+    }): Promise<{ real: boolean; permitido: boolean; miembro: MiembroActual | null }> => {
       const quien = await acceso(data.slug);
       // El miembro que entra (lote 8): rol, profesional vinculada y nombre para
       // el saludo. null en una demo o para quien no pertenece al salón.
       const miembro =
         quien.tipo === "miembro"
-          ? { userId: quien.userId, rol: quien.rol, employeeId: quien.employeeId, displayName: quien.displayName }
+          ? {
+              userId: quien.userId,
+              rol: quien.rol,
+              employeeId: quien.employeeId,
+              displayName: quien.displayName,
+              permisosExtra: quien.permisosExtra,
+            }
           : null;
       return { real: quien.tipo !== "demo", permitido: tieneMando(quien), miembro };
     },
@@ -389,7 +450,10 @@ export const getSalonProfile = createServerFn({ method: "GET" })
 export type MotivoNoPublicado = "sin-backend" | "falta-esquema" | "limite-profesionales";
 
 function perfilDentroDelTopeDeProfesionales(profile: Record<string, unknown>): boolean {
-  return equipoCabeEnPlan(planDe({ plan: typeof profile.plan === "string" ? profile.plan : null }, false), profile.team);
+  return equipoCabeEnPlan(
+    planDe({ plan: typeof profile.plan === "string" ? profile.plan : null }, false),
+    profile.team,
+  );
 }
 
 export const saveSalonProfile = createServerFn({ method: "POST" })
@@ -400,8 +464,12 @@ export const saveSalonProfile = createServerFn({ method: "POST" })
       // Sobrescribir el perfil entero de un salón es cosa de su dueño. Sin
       // esto, cualquiera podía cambiarle el teléfono, la dirección o la carta.
       const quien = await exigirAcceso(data.slug);
-      // Publicar el perfil entero (Mi página) es de quien puede publicar la web.
-      exigirAcciones(quien, ["web.publicar"]);
+      // Este endpoint sobreescribe el PERFIL ENTERO. La edición de Mi página
+      // usa `patchSalonProfile`, que comprueba solo sus campos de web; aquí
+      // hace falta además el permiso de plan: es la única forma de garantizar
+      // que ni una estilista autorizada para la web ni una subencargada puedan
+      // mandar por API un plan, una fianza o cualquier ajuste ajeno.
+      exigirAcciones(quien, ["web.publicar", "salon.editar", "plan.gestionar"]);
       if (!perfilDentroDelTopeDeProfesionales(data.profile)) {
         return { synced: false as const, motivo: "limite-profesionales" as const };
       }
@@ -420,7 +488,13 @@ export const saveSalonProfile = createServerFn({ method: "POST" })
       if (error) throw new Error(`saveSalonProfile: ${error.message}`);
       // Versión de lo publicado (lote 9): «Restaurar esta versión». Si la tabla
       // aún no existe, publicar sigue funcionando igual.
-      await guardarVersion(supabase, data.slug, data.profile, quien.tipo === "miembro" ? quien : null, null);
+      await guardarVersion(
+        supabase,
+        data.slug,
+        data.profile,
+        quien.tipo === "miembro" ? quien : null,
+        null,
+      );
       return { synced: true as const };
     },
   );
@@ -440,7 +514,12 @@ async function guardarVersion(
 ): Promise<string | null> {
   const id = randomUUID();
   const { error } = await supabase.from("perfil_versiones").insert({
-    id, salon_slug: salonSlug, perfil: profile, publicado_por: autor?.userId ?? null, autor_nombre: autor?.displayName ?? null, nota,
+    id,
+    salon_slug: salonSlug,
+    perfil: profile,
+    publicado_por: autor?.userId ?? null,
+    autor_nombre: autor?.displayName ?? null,
+    nota,
   });
   if (error) {
     console.warn(`perfil_versiones (¿falta aplicar supabase/pendiente.sql?): ${error.message}`);
@@ -448,9 +527,15 @@ async function guardarVersion(
   }
   // Se quedan las 30 últimas o las de los últimos 90 días, lo que dé más.
   const { data: viejas } = await supabase
-    .from("perfil_versiones").select("id, fecha").eq("salon_slug", salonSlug).order("fecha", { ascending: false }).range(VERSIONES_MINIMAS, 1000);
+    .from("perfil_versiones")
+    .select("id, fecha")
+    .eq("salon_slug", salonSlug)
+    .order("fecha", { ascending: false })
+    .range(VERSIONES_MINIMAS, 1000);
   const limite = Date.now() - DIAS_RETENCION * 86_400_000;
-  const borrar = (viejas ?? []).filter((v: { fecha: string }) => Date.parse(v.fecha) < limite).map((v: { id: string }) => v.id);
+  const borrar = (viejas ?? [])
+    .filter((v: { fecha: string }) => Date.parse(v.fecha) < limite)
+    .map((v: { id: string }) => v.id);
   if (borrar.length) await supabase.from("perfil_versiones").delete().in("id", borrar);
   return id;
 }
@@ -463,12 +548,21 @@ export const listarVersiones = createServerFn({ method: "GET" })
     const supabase = getSupabaseServerClient();
     if (!supabase) return { versiones: [] };
     const { data: filas, error } = await supabase
-      .from("perfil_versiones").select("id, fecha, autor_nombre, nota").eq("salon_slug", data.slug).order("fecha", { ascending: false }).limit(60);
+      .from("perfil_versiones")
+      .select("id, fecha, autor_nombre, nota")
+      .eq("salon_slug", data.slug)
+      .order("fecha", { ascending: false })
+      .limit(60);
     if (error) return { versiones: [] };
     return {
-      versiones: (filas ?? []).map((f: { id: string; fecha: string; autor_nombre: string | null; nota: string | null }) => ({
-        id: f.id, fecha: f.fecha, autorNombre: f.autor_nombre, nota: f.nota,
-      })),
+      versiones: (filas ?? []).map(
+        (f: { id: string; fecha: string; autor_nombre: string | null; nota: string | null }) => ({
+          id: f.id,
+          fecha: f.fecha,
+          autorNombre: f.autor_nombre,
+          nota: f.nota,
+        }),
+      ),
     };
   });
 
@@ -476,26 +570,76 @@ export const listarVersiones = createServerFn({ method: "GET" })
 export const restaurarVersion = createServerFn({ method: "POST" })
   .middleware([conSesion])
   .inputValidator(z.object({ slug, versionId: z.string().min(8) }))
-  .handler(async ({ data }): Promise<{ ok: true; profile: Record<string, JsonPerfil> } | { ok: false; motivo: string }> => {
-    const quien = await exigirAcceso(data.slug);
-    exigirAcciones(quien, ["web.restaurar-version"]);
-    const supabase = getSupabaseServerClient();
-    if (!supabase) return { ok: false, motivo: "sin-backend" };
-    const { data: v } = await supabase.from("perfil_versiones").select("perfil, fecha").eq("id", data.versionId).eq("salon_slug", data.slug).maybeSingle();
-    if (!v) return { ok: false, motivo: "Esa versión ya no existe." };
-    const { data: actual } = await supabase.from("salons").select("profile").eq("slug", data.slug).maybeSingle();
-    const { error } = await supabase.from("salons").update({ profile: v.perfil, updated_at: new Date().toISOString() }).eq("slug", data.slug);
-    if (error) return { ok: false, motivo: "No se ha podido restaurar. Tu web sigue como estaba." };
-    const autor = quien.tipo === "miembro" ? quien : null;
-    await guardarVersion(supabase, data.slug, v.perfil as Record<string, unknown>, autor, `Restaurada la versión del ${String(v.fecha).slice(0, 10)}`);
-    await supabase.from("cambios").insert({
-      id: randomUUID(), salon_slug: data.slug, tipo: "perfil.restaurar", entidad: "perfil", id_entidad: "perfil",
-      antes: { perfil: (actual as { profile?: unknown } | null)?.profile ?? null }, despues: { perfil: v.perfil },
-      resumen: `Restaurada la versión de tu página del ${String(v.fecha).slice(0, 10)}`,
-      autor: autor?.userId ?? null, autor_nombre: autor?.displayName ?? null, fecha: new Date().toISOString(), aviso_enviado: false,
-    });
-    return { ok: true, profile: v.perfil as Record<string, JsonPerfil> };
-  });
+  .handler(
+    async ({
+      data,
+    }): Promise<
+      { ok: true; profile: Record<string, JsonPerfil> } | { ok: false; motivo: string }
+    > => {
+      const quien = await exigirAcceso(data.slug);
+      exigirAcciones(quien, ["web.restaurar-version"]);
+      const supabase = getSupabaseServerClient();
+      if (!supabase) return { ok: false, motivo: "sin-backend" };
+      const { data: v } = await supabase
+        .from("perfil_versiones")
+        .select("perfil, fecha")
+        .eq("id", data.versionId)
+        .eq("salon_slug", data.slug)
+        .maybeSingle();
+      if (!v) return { ok: false, motivo: "Esa versión ya no existe." };
+      const { data: actual } = await supabase
+        .from("salons")
+        .select("profile")
+        .eq("slug", data.slug)
+        .maybeSingle();
+      const perfilAnterior = ((actual as { profile?: unknown } | null)?.profile ?? {}) as Record<
+        string,
+        unknown
+      >;
+      // Las versiones históricas guardan el perfil entero. Una persona a quien
+      // solo se le dio Mi página puede restaurar su web, pero no recuperar por
+      // esa puerta un plan, un ajuste de caja o cualquier otro mando del salón.
+      const restauraPerfilEntero =
+        tienePermiso(quien, "salon.editar") && tienePermiso(quien, "plan.gestionar");
+      const perfilRestaurado = restauraPerfilEntero
+        ? (v.perfil as Record<string, unknown>)
+        : { ...perfilAnterior, ...soloCamposWeb(v.perfil as Record<string, unknown>) };
+      const { error } = await supabase
+        .from("salons")
+        .update({ profile: perfilRestaurado, updated_at: new Date().toISOString() })
+        .eq("slug", data.slug);
+      if (error)
+        return { ok: false, motivo: "No se ha podido restaurar. Tu web sigue como estaba." };
+      const autor = quien.tipo === "miembro" ? quien : null;
+      await guardarVersion(
+        supabase,
+        data.slug,
+        perfilRestaurado,
+        autor,
+        `Restaurada la versión del ${String(v.fecha).slice(0, 10)}`,
+      );
+      await supabase.from("cambios").insert({
+        id: randomUUID(),
+        salon_slug: data.slug,
+        tipo: "perfil.restaurar",
+        entidad: "perfil",
+        id_entidad: "perfil",
+        antes: { perfil: perfilAnterior },
+        despues: { perfil: perfilRestaurado },
+        resumen: `Restaurada la versión de tu página del ${String(v.fecha).slice(0, 10)}`,
+        autor: autor?.userId ?? null,
+        autor_nombre: autor?.displayName ?? null,
+        fecha: new Date().toISOString(),
+        aviso_enviado: false,
+      });
+      // Devolver solo el parche a quien no tiene mando evita que su store
+      // vuelva a enviar un perfil entero al hidratar la versión restaurada.
+      const perfilParaPanel = restauraPerfilEntero
+        ? perfilRestaurado
+        : soloCamposWeb(v.perfil as Record<string, unknown>);
+      return { ok: true, profile: perfilParaPanel as Record<string, JsonPerfil> };
+    },
+  );
 
 type JsonPerfil = string | number | boolean | null | JsonPerfil[] | { [k: string]: JsonPerfil };
 
@@ -572,9 +716,20 @@ export const patchSalonProfile = createServerFn({ method: "POST" })
       // como punto al que volver. Una tanda = una versión, no una por
       // interruptor; el deshacer fino lo da cada cambio por campo.
       const { data: ultima } = await supabase
-        .from("perfil_versiones").select("fecha").eq("salon_slug", data.slug).order("fecha", { ascending: false }).limit(1).maybeSingle();
+        .from("perfil_versiones")
+        .select("fecha")
+        .eq("salon_slug", data.slug)
+        .order("fecha", { ascending: false })
+        .limit(1)
+        .maybeSingle();
       if (tocaVersionLigera((ultima as { fecha?: string } | null)?.fecha ?? null, new Date())) {
-        await guardarVersion(supabase, data.slug, (fila.profile ?? {}) as Record<string, unknown>, quien.tipo === "miembro" ? quien : null, "Antes de cambiar ajustes");
+        await guardarVersion(
+          supabase,
+          data.slug,
+          (fila.profile ?? {}) as Record<string, unknown>,
+          quien.tipo === "miembro" ? quien : null,
+          "Antes de cambiar ajustes",
+        );
       }
       return { synced: true as const };
     },
@@ -633,12 +788,23 @@ export const listSalonData = createServerFn({ method: "GET" })
         let ultimo: { data: T[]; error: { message: string } | null } = { data: [], error: null };
         for (const columnas of selects) {
           // Por páginas: PostgREST corta en 1000 filas sin avisar (ver api/paginar.ts).
-          const r = await leerTodasLasFilas<T, { message: string }>((desde, hasta) =>
-            supabase!.from(tabla).select(columnas).eq("salon_slug", data.slug).order("id").range(desde, hasta) as unknown as PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+          const r = await leerTodasLasFilas<T, { message: string }>(
+            (desde, hasta) =>
+              supabase!
+                .from(tabla)
+                .select(columnas)
+                .eq("salon_slug", data.slug)
+                .order("id")
+                .range(desde, hasta) as unknown as PromiseLike<{
+                data: T[] | null;
+                error: { message: string } | null;
+              }>,
           );
           if (!r.error) return { data: (r.data ?? []) as unknown as T[], error: null };
           if (!faltaEsquema(r.error)) return { data: [] as T[], error: r.error };
-          console.warn(`listSalonData: ${tabla} sin alguna columna de «${columnas}»; falta aplicar supabase/pendiente.sql`);
+          console.warn(
+            `listSalonData: ${tabla} sin alguna columna de «${columnas}»; falta aplicar supabase/pendiente.sql`,
+          );
           ultimo = { data: [] as T[], error: r.error };
         }
         return ultimo;
@@ -654,12 +820,21 @@ export const listSalonData = createServerFn({ method: "GET" })
         // debe ver un salón real, en vez de las 4 entradas de ejemplo del seed.
         publica
           ? Promise.resolve({ data: [] as WaitlistRow[], error: null })
-          : leerTodasLasFilas<WaitlistRow, { message: string }>((desde, hasta) =>
-              supabase.from("waitlist").select(WAITLIST_COLS).eq("salon_slug", data.slug).order("id").range(desde, hasta) as unknown as PromiseLike<{ data: WaitlistRow[] | null; error: { message: string } | null }>,
+          : leerTodasLasFilas<WaitlistRow, { message: string }>(
+              (desde, hasta) =>
+                supabase
+                  .from("waitlist")
+                  .select(WAITLIST_COLS)
+                  .eq("salon_slug", data.slug)
+                  .order("id")
+                  .range(desde, hasta) as unknown as PromiseLike<{
+                  data: WaitlistRow[] | null;
+                  error: { message: string } | null;
+                }>,
             ).then((r) => ({
-                data: (r.data ?? []) as unknown as WaitlistRow[],
-                error: faltaEsquema(r.error) ? null : r.error,
-              })),
+              data: (r.data ?? []) as unknown as WaitlistRow[],
+              error: faltaEsquema(r.error) ? null : r.error,
+            })),
       ]);
 
       if (citas.error) throw new Error(`listSalonData (citas): ${citas.error.message}`);
@@ -781,8 +956,14 @@ export const syncAppointment = createServerFn({ method: "POST" })
       depositRequestedAt: z.string().nullable().optional(),
       depositReceivedAt: z.string().nullable().optional(),
       depositEur: z.number().nullable().optional(),
-      depositStatus: z.enum(["por_pedir", "pedida", "recibida", "aplicada", "devuelta", "retenida", "anulada"]).nullable().optional(),
-      depositMethod: z.enum(["bizum", "efectivo", "tarjeta", "transferencia"]).nullable().optional(),
+      depositStatus: z
+        .enum(["por_pedir", "pedida", "recibida", "aplicada", "devuelta", "retenida", "anulada"])
+        .nullable()
+        .optional(),
+      depositMethod: z
+        .enum(["bizum", "efectivo", "tarjeta", "transferencia"])
+        .nullable()
+        .optional(),
       depositReceivedEur: z.number().nonnegative().nullable().optional(),
       depositAppliedAt: z.string().nullable().optional(),
       depositAppliedEur: z.number().nonnegative().nullable().optional(),
@@ -849,7 +1030,12 @@ export const syncAppointment = createServerFn({ method: "POST" })
     if (quien.tipo === "miembro") {
       const antes = await profesionalActual(supabase, data.slug, data.localId);
       if (antes === null) exigirAcciones(quien, ["cita.crear"], [data.employeeId]);
-      else exigirAcciones(quien, antes === data.employeeId ? ["cita.editar"] : ["cita.editar", "cita.mover"], [antes, data.employeeId]);
+      else
+        exigirAcciones(
+          quien,
+          antes === data.employeeId ? ["cita.editar"] : ["cita.editar", "cita.mover"],
+          [antes, data.employeeId],
+        );
     }
 
     if (!manda) {
@@ -898,7 +1084,9 @@ export const syncAppointment = createServerFn({ method: "POST" })
       if (errorSalon) throw new Error(`syncAppointment (horario): ${errorSalon.message}`);
       const perfil = salonRow?.profile as SalonProfile | undefined;
       perfilPublico = perfil;
-      datosRecalculados = perfil ? datosReservaPublicaDesdeCarta(perfil, data.serviceIds) ?? undefined : undefined;
+      datosRecalculados = perfil
+        ? (datosReservaPublicaDesdeCarta(perfil, data.serviceIds) ?? undefined)
+        : undefined;
       if (
         !datosRecalculados ||
         data.durationMin !== datosRecalculados.durationMin ||
@@ -906,13 +1094,28 @@ export const syncAppointment = createServerFn({ method: "POST" })
       ) {
         return { synced: false as const, reason: ERROR_DATOS_RESERVA };
       }
-      if (perfil && !profesionalHaceServicios(data.employeeId, data.serviceIds, perfil.serviciosPorProfesional)) {
+      if (
+        perfil &&
+        !profesionalHaceServicios(data.employeeId, data.serviceIds, perfil.serviciosPorProfesional)
+      ) {
         return { synced: false as const, reason: ERROR_SERVICIO_PROFESIONAL };
       }
-      if (perfil && hayBloqueoEnHueco(perfil.bloqueosAgenda, data.employeeId, data.startISO, datosRecalculados.durationMin, zonaDelSalon(perfil))) {
+      if (
+        perfil &&
+        hayBloqueoEnHueco(
+          perfil.bloqueosAgenda,
+          data.employeeId,
+          data.startISO,
+          datosRecalculados.durationMin,
+          zonaDelSalon(perfil),
+        )
+      ) {
         return { synced: false as const, reason: ERROR_BLOQUEO_AGENDA };
       }
-      if (perfil && !profesionalTrabaja(perfil, data.employeeId, data.startISO, datosRecalculados.durationMin)) {
+      if (
+        perfil &&
+        !profesionalTrabaja(perfil, data.employeeId, data.startISO, datosRecalculados.durationMin)
+      ) {
         return { synced: false as const, reason: ERROR_FUERA_HORARIO };
       }
       if (perfil) {
@@ -926,7 +1129,16 @@ export const syncAppointment = createServerFn({ method: "POST" })
         }
       }
 
-      if (await solapaEnServidor(supabase, data.slug, data.localId, data.employeeId, data.startISO, datosRecalculados.durationMin)) {
+      if (
+        await solapaEnServidor(
+          supabase,
+          data.slug,
+          data.localId,
+          data.employeeId,
+          data.startISO,
+          datosRecalculados.durationMin,
+        )
+      ) {
         return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
       }
 
@@ -936,8 +1148,15 @@ export const syncAppointment = createServerFn({ method: "POST" })
       // docs/contrato-calendarios.md §5. Si la tabla aún no existe (SQL sin
       // aplicar) o falla, se abre paso: es exactamente el comportamiento de
       // antes de este lote.
-      const finExterno = new Date(Date.parse(data.startISO) + datosRecalculados.durationMin * 60_000).toISOString();
-      const ocupadoExterno = await hayOcupadoExternoEnHueco(data.slug, data.employeeId, data.startISO, finExterno).catch(() => false);
+      const finExterno = new Date(
+        Date.parse(data.startISO) + datosRecalculados.durationMin * 60_000,
+      ).toISOString();
+      const ocupadoExterno = await hayOcupadoExternoEnHueco(
+        data.slug,
+        data.employeeId,
+        data.startISO,
+        finExterno,
+      ).catch(() => false);
       if (ocupadoExterno) {
         return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
       }
@@ -946,7 +1165,16 @@ export const syncAppointment = createServerFn({ method: "POST" })
     // `permitirSolape` se rechaza con su propio código y la pantalla enseña
     // el aviso. Ver el contrato en lib/solape.ts.
     if (manda && !data.permitirSolape) {
-      if (await solapaEnServidor(supabase, data.slug, data.localId, data.employeeId, data.startISO, data.durationMin)) {
+      if (
+        await solapaEnServidor(
+          supabase,
+          data.slug,
+          data.localId,
+          data.employeeId,
+          data.startISO,
+          data.durationMin,
+        )
+      ) {
         return { synced: false as const, reason: ERROR_SOLAPE_PANEL };
       }
     }
@@ -969,14 +1197,25 @@ export const syncAppointment = createServerFn({ method: "POST" })
       clientId = cliente.id as string;
     }
     if (manda && data.importedFromTpv && !key && data.clientName) {
-      const { data: previa, error: buscarError } = await supabase.from("clients").select("id")
-        .eq("salon_slug", data.slug).is("phone", null).eq("name", data.clientName).maybeSingle();
+      const { data: previa, error: buscarError } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("salon_slug", data.slug)
+        .is("phone", null)
+        .eq("name", data.clientName)
+        .maybeSingle();
       if (buscarError) throw new Error(`syncAppointment (cliente): ${buscarError.message}`);
       if (previa) clientId = previa.id as string;
       else {
-        const { data: creada, error: crearError } = await supabase.from("clients").insert({
-          salon_slug: data.slug, name: data.clientName, phone: null,
-        }).select("id").single();
+        const { data: creada, error: crearError } = await supabase
+          .from("clients")
+          .insert({
+            salon_slug: data.slug,
+            name: data.clientName,
+            phone: null,
+          })
+          .select("id")
+          .single();
         if (crearError) throw new Error(`syncAppointment (cliente): ${crearError.message}`);
         clientId = creada.id as string;
       }
@@ -1085,7 +1324,11 @@ export const syncAppointment = createServerFn({ method: "POST" })
     // ha salido. El coste es la latencia de esta llamada — la función
     // interna nunca lanza, así que el `try/catch` es solo por si acaso.
     try {
-      await procesarCitaParaConexiones(data.slug, citaParaCalendario, fila.status === "cancelled" ? "borrar" : "upsert");
+      await procesarCitaParaConexiones(
+        data.slug,
+        citaParaCalendario,
+        fila.status === "cancelled" ? "borrar" : "upsert",
+      );
     } catch (err) {
       console.error("calendario-externo (tras guardar cita):", err);
     }
@@ -1101,15 +1344,20 @@ export const syncAppointment = createServerFn({ method: "POST" })
 async function escribirFicha(
   _supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
   quien: string,
-  escribir: (fila: Record<string, unknown>) => PromiseLike<{ error: { code?: string; message: string } | null }>,
+  escribir: (
+    fila: Record<string, unknown>,
+  ) => PromiseLike<{ error: { code?: string; message: string } | null }>,
   fila: Record<string, unknown>,
 ): Promise<void> {
   let actual = fila;
   for (let nivel = 0; nivel <= NIVELES_CLIENTE.length; nivel++) {
     const { error } = await escribir(actual);
     if (!error) return;
-    if (!faltaEsquema(error) || nivel === NIVELES_CLIENTE.length) throw new Error(`${quien}: ${error.message}`);
-    console.warn(`${quien}: faltan columnas (${NIVELES_CLIENTE[nivel].join(", ")}); aplica supabase/pendiente.sql`);
+    if (!faltaEsquema(error) || nivel === NIVELES_CLIENTE.length)
+      throw new Error(`${quien}: ${error.message}`);
+    console.warn(
+      `${quien}: faltan columnas (${NIVELES_CLIENTE[nivel].join(", ")}); aplica supabase/pendiente.sql`,
+    );
     actual = sinCampos(actual, NIVELES_CLIENTE[nivel]);
   }
 }
@@ -1161,11 +1409,19 @@ async function escribirCita(
       .upsert(actual, { onConflict: "salon_slug,local_id" });
     if (!error) return;
     if (exigirAcusePrivacidad && faltaColumnaAcusePrivacidad(error)) {
-      throw new Error("syncAppointment: aplica supabase/pendiente.sql antes de abrir las reservas públicas.");
+      throw new Error(
+        "syncAppointment: aplica supabase/pendiente.sql antes de abrir las reservas públicas.",
+      );
     }
-    if (!faltaEsquema(error) || nivel === NIVELES_CITA.length) throw new Error(`syncAppointment: ${error.message}`);
-    console.warn(`syncAppointment: faltan columnas (${NIVELES_CITA[nivel].join(", ")}); aplica supabase/pendiente.sql`);
-    actual = NIVELES_CITA[nivel] === NIVEL_LOTE3 ? filaSinLote3(actual) : sinCampos(actual, NIVELES_CITA[nivel]);
+    if (!faltaEsquema(error) || nivel === NIVELES_CITA.length)
+      throw new Error(`syncAppointment: ${error.message}`);
+    console.warn(
+      `syncAppointment: faltan columnas (${NIVELES_CITA[nivel].join(", ")}); aplica supabase/pendiente.sql`,
+    );
+    actual =
+      NIVELES_CITA[nivel] === NIVEL_LOTE3
+        ? filaSinLote3(actual)
+        : sinCampos(actual, NIVELES_CITA[nivel]);
   }
 }
 
@@ -1203,7 +1459,10 @@ export const syncAppointmentPatch = createServerFn({ method: "POST" })
     if (!Object.keys(columnas).length) return { synced: true as const };
     // Mover de hora, cambiar la duración o la profesional puede crear un
     // solape: se comprueba con la fila actual completada por el parche.
-    if (!data.permitirSolape && ("start_at" in columnas || "duration_min" in columnas || "employee_id" in columnas)) {
+    if (
+      !data.permitirSolape &&
+      ("start_at" in columnas || "duration_min" in columnas || "employee_id" in columnas)
+    ) {
       const { data: actual, error: errorActual } = await supabase
         .from("appointments")
         .select("employee_id, start_at, duration_min")
@@ -1212,8 +1471,21 @@ export const syncAppointmentPatch = createServerFn({ method: "POST" })
         .maybeSingle();
       if (errorActual) throw new Error(`syncAppointmentPatch: ${errorActual.message}`);
       if (!actual) return { synced: false as const, reason: "sin-fila" as const };
-      const fusion = { ...actual, ...columnas } as { employee_id: string; start_at: string; duration_min: number };
-      if (await solapaEnServidor(supabase, data.slug, data.localId, fusion.employee_id, fusion.start_at, fusion.duration_min)) {
+      const fusion = { ...actual, ...columnas } as {
+        employee_id: string;
+        start_at: string;
+        duration_min: number;
+      };
+      if (
+        await solapaEnServidor(
+          supabase,
+          data.slug,
+          data.localId,
+          fusion.employee_id,
+          fusion.start_at,
+          fusion.duration_min,
+        )
+      ) {
         return { synced: false as const, reason: ERROR_SOLAPE_PANEL };
       }
     }
@@ -1244,15 +1516,20 @@ export const syncAppointmentPatch = createServerFn({ method: "POST" })
         // si la columna aún no existe (supabase/pendiente.sql, sección 13).
         if (data.origen === "deshacer") {
           const { error: e2 } = await supabase
-            .from("appointments").update({ ultimo_deshacer_en: new Date().toISOString() }).eq("salon_slug", data.slug).eq("local_id", data.localId);
-          if (e2 && !faltaEsquema(e2)) console.warn(`syncAppointmentPatch (origen deshacer): ${e2.message}`);
+            .from("appointments")
+            .update({ ultimo_deshacer_en: new Date().toISOString() })
+            .eq("salon_slug", data.slug)
+            .eq("local_id", data.localId);
+          if (e2 && !faltaEsquema(e2))
+            console.warn(`syncAppointmentPatch (origen deshacer): ${e2.message}`);
         }
         // Lote 11: la señal aplicada al cobrar crea (o borra) su pago. No
         // bloquea la respuesta: la cita ya está guardada pase lo que pase aquí.
         await sincronizarPagoDeSenal(supabase, data.slug, data.localId, data.patch);
         return { synced: true as const };
       }
-      if (!faltaEsquema(error) || nivel === NIVELES_CITA.length) throw new Error(`syncAppointmentPatch: ${error.message}`);
+      if (!faltaEsquema(error) || nivel === NIVELES_CITA.length)
+        throw new Error(`syncAppointmentPatch: ${error.message}`);
       // Sin esa columna en producción, el campo no se puede parchear suelto:
       // se manda la cita entera, que sí sabe volcarlo a la nota legado.
       const perdidas = NIVELES_CITA[nivel].filter((c) => c in columnas);
@@ -1271,7 +1548,12 @@ export const deleteAppointment = createServerFn({ method: "POST" })
     const quien = await exigirAcceso(data.slug);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
-    if (quien.tipo === "miembro") exigirAcciones(quien, ["cita.cancelar"], [await profesionalActual(supabase, data.slug, data.localId)]);
+    if (quien.tipo === "miembro")
+      exigirAcciones(
+        quien,
+        ["cita.cancelar"],
+        [await profesionalActual(supabase, data.slug, data.localId)],
+      );
     const { data: borradas, error } = await supabase
       .from("appointments")
       .delete()
@@ -1301,7 +1583,12 @@ type FilaFichaExistente = Record<string, unknown>;
 
 /** Lee una ficha con degradado de columnas, igual que la carga inicial. */
 async function buscarFichaParaGuardar(
-  consulta: (columnas: string) => PromiseLike<{ data: FilaFichaExistente | null; error: { code?: string; message: string } | null }>,
+  consulta: (
+    columnas: string,
+  ) => PromiseLike<{
+    data: FilaFichaExistente | null;
+    error: { code?: string; message: string } | null;
+  }>,
 ): Promise<FilaFichaExistente | null> {
   for (const columnas of selectsPorNivel(CLIENT_COLS_BASE, NIVELES_CLIENTE)) {
     const { data, error } = await consulta(columnas);
@@ -1325,8 +1612,14 @@ function faltaValor(valor: unknown): boolean {
 function completarFilaExistente(
   previa: FilaFichaExistente,
   data: {
-    email?: string; notes?: string; tpvCode?: string; birthday?: string; address?: string;
-    taxId?: string; tpvAltaDate?: string; tpvLastVisit?: string;
+    email?: string;
+    notes?: string;
+    tpvCode?: string;
+    birthday?: string;
+    address?: string;
+    taxId?: string;
+    tpvAltaDate?: string;
+    tpvLastVisit?: string;
   },
 ): Record<string, unknown> {
   const completar = (columna: string, valor: string | undefined) =>
@@ -1346,10 +1639,31 @@ function completarFilaExistente(
 /** Alta directa de una ficha, también cuando aún no tiene ninguna cita. */
 export const saveClient = createServerFn({ method: "POST" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug, name: z.string().min(1), phone: z.string(), email: z.string().email().optional(), notes: z.string().optional(), createdAt: z.string().datetime().optional(),
-    tpvCode: z.string().max(40).optional(), birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    address: z.string().max(300).optional(), taxId: z.string().max(32).optional(),
-    tpvAltaDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), tpvLastVisit: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }))
+  .inputValidator(
+    z.object({
+      slug,
+      name: z.string().min(1),
+      phone: z.string(),
+      email: z.string().email().optional(),
+      notes: z.string().optional(),
+      createdAt: z.string().datetime().optional(),
+      tpvCode: z.string().max(40).optional(),
+      birthday: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional(),
+      address: z.string().max(300).optional(),
+      taxId: z.string().max(32).optional(),
+      tpvAltaDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional(),
+      tpvLastVisit: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional(),
+    }),
+  )
   .handler(async ({ data }) => {
     exigirAcciones(await exigirAcceso(data.slug), ["clienta.crear"]);
     const supabase = getSupabaseServerClient();
@@ -1357,27 +1671,58 @@ export const saveClient = createServerFn({ method: "POST" })
     const key = phoneKey(data.phone);
     let previa: FilaFichaExistente | null = null;
     if (data.tpvCode) {
-      previa = await buscarFichaParaGuardar((columnas) => supabase.from("clients").select(columnas)
-        .eq("salon_slug", data.slug).eq("tpv_code", data.tpvCode).maybeSingle());
+      previa = await buscarFichaParaGuardar((columnas) =>
+        supabase
+          .from("clients")
+          .select(columnas)
+          .eq("salon_slug", data.slug)
+          .eq("tpv_code", data.tpvCode)
+          .maybeSingle(),
+      );
     }
     if (!previa && key) {
-      previa = await buscarFichaParaGuardar((columnas) => supabase.from("clients").select(columnas)
-        .eq("salon_slug", data.slug).eq("phone_key", key).maybeSingle());
+      previa = await buscarFichaParaGuardar((columnas) =>
+        supabase
+          .from("clients")
+          .select(columnas)
+          .eq("salon_slug", data.slug)
+          .eq("phone_key", key)
+          .maybeSingle(),
+      );
     }
     if (!previa && !key) {
-      previa = await buscarFichaParaGuardar((columnas) => supabase.from("clients").select(columnas)
-        .eq("salon_slug", data.slug).is("phone", null).eq("name", data.name).maybeSingle());
+      previa = await buscarFichaParaGuardar((columnas) =>
+        supabase
+          .from("clients")
+          .select(columnas)
+          .eq("salon_slug", data.slug)
+          .is("phone", null)
+          .eq("name", data.name)
+          .maybeSingle(),
+      );
     }
     if (previa) {
       const parche = completarFilaExistente(previa, data);
       if (Object.keys(parche).length) {
-        await escribirFicha(supabase, "saveClient", (fila) => supabase.from("clients").update(fila).eq("id", previa!.id as string), parche);
+        await escribirFicha(
+          supabase,
+          "saveClient",
+          (fila) =>
+            supabase
+              .from("clients")
+              .update(fila)
+              .eq("id", previa!.id as string),
+          parche,
+        );
       }
       return { synced: true as const };
     }
     // Los campos opcionales solo viajan cuando existen: un alta a mano no
     // puede borrar lo que trajera TPV 123 en una ficha ya guardada.
-    let fila: Record<string, unknown> = { salon_slug: data.slug, name: data.name, phone: data.phone || null,
+    let fila: Record<string, unknown> = {
+      salon_slug: data.slug,
+      name: data.name,
+      phone: data.phone || null,
       phone_key: key || null,
       ...(data.email !== undefined ? { email: data.email } : {}),
       ...(data.notes !== undefined ? { notes: data.notes } : {}),
@@ -1387,7 +1732,8 @@ export const saveClient = createServerFn({ method: "POST" })
       ...(data.address ? { address: data.address } : {}),
       ...(data.taxId ? { tax_id: data.taxId } : {}),
       ...(data.tpvAltaDate ? { tpv_alta: data.tpvAltaDate } : {}),
-      ...(data.tpvLastVisit ? { tpv_last_visit: data.tpvLastVisit } : {}) };
+      ...(data.tpvLastVisit ? { tpv_last_visit: data.tpvLastVisit } : {}),
+    };
     // Baja de nivel de esquema si producción aún no tiene alguna columna
     // (ver NIVELES_CLIENTE): la ficha se guarda sin ese dato antes que no
     // guardarse.
@@ -1396,8 +1742,11 @@ export const saveClient = createServerFn({ method: "POST" })
         ? await supabase.from("clients").upsert(fila, { onConflict: "salon_slug,phone_key" })
         : await supabase.from("clients").insert(fila);
       if (!result.error) return { synced: true as const };
-      if (!faltaEsquema(result.error) || nivel === NIVELES_CLIENTE.length) throw new Error(`saveClient: ${result.error.message}`);
-      console.warn(`saveClient: faltan columnas (${NIVELES_CLIENTE[nivel].join(", ")}); aplica supabase/pendiente.sql`);
+      if (!faltaEsquema(result.error) || nivel === NIVELES_CLIENTE.length)
+        throw new Error(`saveClient: ${result.error.message}`);
+      console.warn(
+        `saveClient: faltan columnas (${NIVELES_CLIENTE[nivel].join(", ")}); aplica supabase/pendiente.sql`,
+      );
       fila = sinCampos(fila, NIVELES_CLIENTE[nivel]);
     }
     return { synced: true as const };
@@ -1466,7 +1815,12 @@ export const applyClientPenalty = createServerFn({ method: "POST" })
       ...(data.manualBlock !== undefined ? { manual_block: data.manualBlock } : {}),
     };
 
-    await escribirFicha(supabase, "applyClientPenalty", (f) => supabase.from("clients").upsert(f, { onConflict: "salon_slug,phone_key" }), fila);
+    await escribirFicha(
+      supabase,
+      "applyClientPenalty",
+      (f) => supabase.from("clients").upsert(f, { onConflict: "salon_slug,phone_key" }),
+      fila,
+    );
     return { synced: true as const };
   });
 
@@ -1498,7 +1852,12 @@ export const clearClientPenalty = createServerFn({ method: "POST" })
       penalty_block: true,
       ...(data.manualBlock !== undefined ? { manual_block: data.manualBlock } : {}),
     };
-    await escribirFicha(supabase, "clearClientPenalty", (f) => supabase.from("clients").update(f).eq("id", id), parche);
+    await escribirFicha(
+      supabase,
+      "clearClientPenalty",
+      (f) => supabase.from("clients").update(f).eq("id", id),
+      parche,
+    );
     return { synced: true as const };
   });
 

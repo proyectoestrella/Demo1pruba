@@ -27,7 +27,17 @@
  * demuestra que esto funciona. El cableado real está en `autorizacion.server.ts`.
  */
 
-import { permisosDe, PERMISOS_DEMO, puede, rolVigente, type AccionId, type Permisos, type Rol } from "../permisos";
+import {
+  permisosDe,
+  permisosExtraDe,
+  PERMISOS_DEMO,
+  puede,
+  rolVigente,
+  type AccionId,
+  type Permisos,
+  type PermisosExtra,
+  type Rol,
+} from "../permisos";
 
 /** Lo que dice la fila de `salon_members` de esta persona (lote 8). */
 export interface FichaMiembro {
@@ -35,6 +45,8 @@ export interface FichaMiembro {
   employeeId: string | null;
   displayName: string | null;
   estado: string | null;
+  /** JSON opcional: las filas antiguas no lo tienen y conservan su rol. */
+  permisosExtra?: unknown;
 }
 
 /** Qué es quien está llamando, respecto al salón que ha pedido. */
@@ -42,7 +54,14 @@ export type Acceso =
   /** El slug no existe en `salons`: es una demo. Barra libre, como siempre. */
   | { tipo: "demo" }
   /** Salón de pago y quien llama pertenece a él, con su rol. */
-  | { tipo: "miembro"; userId: string; rol: Rol; employeeId: string | null; displayName: string | null }
+  | {
+      tipo: "miembro";
+      userId: string;
+      rol: Rol;
+      employeeId: string | null;
+      displayName: string | null;
+      permisosExtra?: PermisosExtra;
+    }
   /** Salón de pago y quien llama NO ha demostrado pertenecer a él. */
   | { tipo: "ajeno" };
 
@@ -126,13 +145,20 @@ export async function resolverAcceso(slug: string, deps: DepsAutorizacion): Prom
   const rol = rolVigente(f?.rol);
   // Una estilista sin profesional vinculada no puede ver «lo suyo»: se le deja
   // entrar, pero su alcance propio no casa con ninguna cita.
-  return { tipo: "miembro", userId, rol, employeeId: f?.employeeId ?? null, displayName: f?.displayName ?? null };
+  return {
+    tipo: "miembro",
+    userId,
+    rol,
+    employeeId: f?.employeeId ?? null,
+    displayName: f?.displayName ?? null,
+    permisosExtra: permisosExtraDe(f?.permisosExtra),
+  };
 }
 
 /** Los permisos de quien llama. Una demo tiene los de la gerente; un ajeno, ninguno. */
 export function permisosDeAcceso(acceso: Acceso): Permisos | null {
   if (acceso.tipo === "demo") return PERMISOS_DEMO;
-  if (acceso.tipo === "miembro") return permisosDe(acceso.rol);
+  if (acceso.tipo === "miembro") return permisosDe(acceso.rol, acceso.permisosExtra);
   return null;
 }
 
@@ -149,11 +175,18 @@ export class PermisoDenegado extends Error {
  * ¿Puede quien llama hacer esta acción? `sobreEmployeeId`: la profesional de
  * la cita afectada, para las acciones con alcance «propio».
  */
-export function tienePermiso(acceso: Acceso, accion: AccionId, sobreEmployeeId?: string | null): boolean {
+export function tienePermiso(
+  acceso: Acceso,
+  accion: AccionId,
+  sobreEmployeeId?: string | null,
+): boolean {
   const p = permisosDeAcceso(acceso);
   if (!p) return false;
   if (sobreEmployeeId === undefined) return puede(p, accion);
-  return puede(p, accion, { employeeId: sobreEmployeeId, miEmployeeId: acceso.tipo === "miembro" ? acceso.employeeId : null });
+  return puede(p, accion, {
+    employeeId: sobreEmployeeId,
+    miEmployeeId: acceso.tipo === "miembro" ? acceso.employeeId : null,
+  });
 }
 
 /** Como `exigirMando`, pero además exige el permiso de la acción. */
@@ -216,10 +249,7 @@ export async function exigirMando(slug: string, deps: DepsAutorizacion): Promise
  *     cualquiera que entre a pedir hora. Lo que no recibe es un solo dato de
  *     un cliente.
  */
-export function vistaEfectiva(
-  pedida: "panel" | "publica",
-  acceso: Acceso,
-): "panel" | "publica" {
+export function vistaEfectiva(pedida: "panel" | "publica", acceso: Acceso): "panel" | "publica" {
   if (pedida === "publica") return "publica";
   return tieneMando(acceso) ? "panel" : "publica";
 }

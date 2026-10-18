@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Loader2, Mail, MoreHorizontal, Plus, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { EXPLICA_ROL, NOMBRE_ROL } from "@/lib/accesos-maqueta";
+import type { Miembro } from "@/lib/accesos-maqueta";
 import {
   useAccesos,
   useEsDemo,
@@ -9,11 +10,12 @@ import {
   useTienePlan,
   type ResultadoAccesosPanel,
 } from "@/lib/accesos-panel";
-import { ROLES, type Rol } from "@/lib/permisos";
+import { permisosDe, puede, ROLES, type PermisosExtra, type Rol } from "@/lib/permisos";
 import { useEquipo } from "@/lib/use-equipo";
 import { AvatarPersona } from "@/components/ArenaShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,6 +56,87 @@ function resultado(r: ResultadoAccesosPanel, ok: string, deshacer?: () => void) 
           }
         : undefined,
     );
+}
+
+/** Los únicos tres accesos que la gerente puede configurar sin cambiar roles. */
+function PermisosPorPersona({
+  miembro,
+  ocupado,
+  onCambiar,
+}: {
+  miembro: Miembro;
+  ocupado: boolean;
+  onCambiar: (permisos: PermisosExtra) => void;
+}) {
+  if (
+    miembro.estado !== "activa" ||
+    (miembro.rol !== "estilista" && miembro.rol !== "subencargado")
+  )
+    return null;
+  const efectivos = permisosDe(miembro.rol, miembro.permisosExtra);
+  const permisos: Required<PermisosExtra> = {
+    verAgendaCompleta: puede(efectivos, "cita.ver-todas"),
+    accesoWeb: puede(efectivos, "web.editar"),
+    accesoReservas: puede(efectivos, "reservas.editar"),
+  };
+  const opciones: Array<{
+    clave: keyof PermisosExtra;
+    titulo: string;
+    ayuda: string;
+    activo: boolean;
+  }> = [
+    {
+      clave: "verAgendaCompleta",
+      titulo: "Ve toda la agenda / solo su día",
+      ayuda: permisos.verAgendaCompleta
+        ? "Ahora puede ver las citas de todo el equipo."
+        : "Ahora solo ve sus citas; las demás no salen del servidor con datos personales.",
+      activo: permisos.verAgendaCompleta,
+    },
+    {
+      clave: "accesoWeb",
+      titulo: "Puede editar la web",
+      ayuda: "Incluye publicar cambios y restaurar versiones de la web del salón.",
+      activo: permisos.accesoWeb,
+    },
+    {
+      clave: "accesoReservas",
+      titulo: "Puede gestionar la página de reservas",
+      ayuda: "Puede cambiar preguntas, precios visibles y reparto de las reservas por internet.",
+      activo: permisos.accesoReservas,
+    },
+  ];
+
+  return (
+    <div
+      className="basis-full rounded-xl border border-lino bg-nata/60 p-3"
+      aria-label={`Accesos configurables de ${miembro.displayName ?? miembro.email}`}
+    >
+      <p className="mb-1 text-[12.5px] font-bold text-cafe-medio">Accesos configurables</p>
+      <div className="grid gap-1.5 lg:grid-cols-3">
+        {opciones.map((opcion) => (
+          <label
+            key={opcion.clave}
+            className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-2 py-1.5 transition-colors hover:bg-beige/70"
+          >
+            <Switch
+              aria-label={opcion.titulo}
+              checked={opcion.activo}
+              disabled={ocupado}
+              onCheckedChange={(activo) => onCambiar({ ...permisos, [opcion.clave]: activo })}
+            />
+            <span className="min-w-0">
+              <span className="block text-[13px] font-bold text-cafe">{opcion.titulo}</span>
+              <span className="block text-[12px] leading-snug text-cafe-suave">{opcion.ayuda}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      <p className="mt-2 text-[12px] text-cafe-suave">
+        No cambia dinero, plan, accesos ni otros permisos de gestión.
+      </p>
+    </div>
+  );
 }
 
 /**
@@ -281,6 +364,17 @@ export function AjustesAccesos() {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
+              <PermisosPorPersona
+                miembro={m}
+                ocupado={enCurso}
+                onCambiar={(permisosExtra) =>
+                  ejecutar(
+                    m.userId,
+                    () => acc.cambiarPermisosExtra(m, permisosExtra),
+                    `Accesos de ${m.displayName ?? m.email} actualizados`,
+                  )
+                }
+              />
             </li>
           );
         })}

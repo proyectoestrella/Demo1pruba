@@ -202,6 +202,9 @@ alter table salon_members add column if not exists email text;
 alter table salon_members add column if not exists invited_by uuid references auth.users (id);
 alter table salon_members add column if not exists estado text not null default 'activa';
 alter table salon_members add column if not exists actualizado timestamptz not null default now();
+-- Excepciones acotadas por persona. `{}` mantiene exactamente la matriz del
+-- rol y permite desplegar este código antes de configurar a nadie.
+alter table salon_members add column if not exists permisos_extra jsonb not null default '{}'::jsonb;
 update salon_members set rol = 'gerente' where rol in ('dueno', 'encargado');
 alter table salon_members alter column rol set default 'gerente';
 do $$ begin
