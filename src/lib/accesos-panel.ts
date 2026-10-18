@@ -55,7 +55,16 @@ export function usePlanSalon(): PlanSishow {
 
 /** ¿Incluye el plan del salón esta función? */
 export function useTienePlan(funcion: FuncionPlan): boolean {
-  return tienePlan(usePlanSalon(), funcion);
+  const esSalonReal = useSalonStore((s) => !!s.realSalonSlug);
+  const confirmadaPorServidor = useSalonStore((s) => s.funcionesPlan);
+  const incluidaEnPerfil = tienePlan(usePlanSalon(), funcion);
+  // Solo estas dos funciones reciben una habilitación junto con los datos del
+  // panel. En un salón real, esa respuesta vence a un perfil que alguien haya
+  // alterado en memoria; en las demos se conserva la regla local.
+  if (funcion === "asistente" || funcion === "analitica-avanzada") {
+    return (esSalonReal ? confirmadaPorServidor?.[funcion] : undefined) ?? incluidaEnPerfil;
+  }
+  return incluidaEnPerfil;
 }
 
 /** El miembro que mira el panel; `null` en un salón real hasta conectar con el servidor. */

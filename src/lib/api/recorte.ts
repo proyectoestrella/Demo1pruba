@@ -11,6 +11,24 @@ import type { Campana } from "../campanas";
 import { planDe, tienePlan } from "../plan";
 import { rangoDePeriodo } from "../periodos";
 
+/**
+ * Contrato de datos protegidos por plan en el panel (solo salones reales):
+ *
+ * | Función | Datos que habilita el servidor | Plan |
+ * | --- | --- | --- |
+ * | `analitica-avanzada` | Citas históricas anteriores a la ventana operativa; las gráficas, series y patrones se calculan en el cliente a partir de esas citas. No hay endpoint de agregados. | Estándar y Embajador |
+ * | `asistente` | No tiene datos ni endpoint propios: el motor determinista solo consulta el estado ya hidratado del panel. El servidor entrega la habilitación para que la entrada no se active en Básico; no recorta citas, fichas ni lista de espera adicionales. | Estándar y Embajador |
+ *
+ * Básico conserva las citas del mes en curso, las 24 h anteriores y toda la
+ * agenda futura, además de fichas y lista de espera que autorice el rol. Así
+ * no se rompen Hoy, Calendario ni Clientas. Las demos no pasan por Supabase y
+ * conservan ambas funciones en su estado local completo.
+ */
+export interface FuncionesPlanPanel {
+  "analitica-avanzada": boolean;
+  asistente: boolean;
+}
+
 export interface DatosPanel {
   appointments: Appointment[];
   clients: Client[];
@@ -20,6 +38,22 @@ export interface DatosPanel {
 /** La salida de marketing se calcula en servidor, tras el recorte de rol. */
 export interface DatosPanelConPlan extends DatosPanel {
   campanas?: Campana[];
+  /** Decisión calculada desde el perfil que leyó el servidor, nunca del navegador. */
+  funcionesPlan?: FuncionesPlanPanel;
+}
+
+/** Habilitaciones de las dos funciones que consumen los datos del panel. */
+export function funcionesPlanPanel(
+  acceso: Acceso,
+  perfil: { plan?: string | null },
+): FuncionesPlanPanel {
+  // Una demo no es una cuenta real ni consulta Supabase: mantiene el muestrario.
+  if (acceso.tipo === "demo") return { "analitica-avanzada": true, asistente: true };
+  const plan = planDe(perfil, false);
+  return {
+    "analitica-avanzada": tienePlan(plan, "analitica-avanzada"),
+    asistente: tienePlan(plan, "asistente"),
+  };
 }
 
 /** Una cita ajena sin nada de la clienta ni del dinero. */
@@ -93,11 +127,11 @@ export function recortarDatosPanelPorPlan(
   ahora: Date = new Date(),
 ): DatosPanelConPlan {
   const porRol = recortarDatosPanel(acceso, datos);
-  if (acceso.tipo === "demo") return { ...porRol, campanas };
+  const funcionesPlan = funcionesPlanPanel(acceso, perfil);
+  if (acceso.tipo === "demo") return { ...porRol, campanas, funcionesPlan };
 
-  const plan = planDe(perfil, false);
   const permitidas = campanasPermitidasPorPlan(perfil, acceso, campanas);
-  if (tienePlan(plan, "analitica-avanzada")) return { ...porRol, campanas: permitidas };
+  if (funcionesPlan["analitica-avanzada"]) return { ...porRol, campanas: permitidas, funcionesPlan };
 
   const mes = rangoDePeriodo("mes", ahora, undefined, perfil.timeZone);
   // El primer día de mes puede llegar justo después de una cita de ayer.
@@ -109,5 +143,6 @@ export function recortarDatosPanelPorPlan(
       return Number.isFinite(instante) && instante >= desde;
     }),
     campanas: permitidas,
+    funcionesPlan,
   };
 }

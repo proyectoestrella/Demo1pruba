@@ -9,10 +9,16 @@ export interface Escritura { tabla: string; op: string; datos?: unknown; filtros
 
 export function crearDobleSupabase(
   tablas: Record<string, Fila[]>,
-  opciones: { tokens?: Record<string, string>; errorEn?: Record<string, string> } = {},
+  opciones: {
+    tokens?: Record<string, string>;
+    errorEn?: Record<string, string>;
+    /** Falla desde una lectura concreta; permite comprobar la segunda lectura del perfil. */
+    errorDespuesDe?: Record<string, { lectura: number; mensaje: string }>;
+  } = {},
 ) {
   const escrituras: Escritura[] = [];
   const consultas: Array<{ tabla: string; filtros: Array<[string, unknown]>; or?: string[] }> = [];
+  const lecturas: Record<string, number> = {};
   const from = (tabla: string) => {
     const filtros: Array<[string, unknown]> = [];
     let op = "select";
@@ -44,7 +50,13 @@ export function crearDobleSupabase(
         return { data: selecciona ? afectadas : null, error: null };
       }
       consultas.push({ tabla, filtros: [...filtros], ...(filtrosOr.length ? { or: [...filtrosOr] } : {}) });
-      return { data: err() ? null : filas(), error: err() };
+      const numeroLectura = (lecturas[tabla] ?? 0) + 1;
+      lecturas[tabla] = numeroLectura;
+      const errorPosterior = opciones.errorDespuesDe?.[tabla];
+      const error = errorPosterior && numeroLectura >= errorPosterior.lectura
+        ? { message: errorPosterior.mensaje }
+        : err();
+      return { data: error ? null : filas(), error };
     };
     const q: any = {
       select: () => { selecciona = true; return q; },
