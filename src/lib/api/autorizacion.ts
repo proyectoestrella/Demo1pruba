@@ -113,7 +113,17 @@ export function extraerBearer(cabecera: string | null | undefined): string | nul
  * —que es justo lo que necesita la web pública de reservas de un salón real.
  */
 export async function resolverAcceso(slug: string, deps: DepsAutorizacion): Promise<Acceso> {
-  if (!(await deps.esSalonReal(slug))) return { tipo: "demo" };
+  // Si NO se puede saber si el salón es real (Supabase caído o con error), no
+  // se asume "demo": una demo manda sobre el salón, y un fallo transitorio
+  // daría mando a cualquiera sobre un salón de pago. Se trata como ajeno.
+  let esReal: boolean;
+  try {
+    esReal = await deps.esSalonReal(slug);
+  } catch (err) {
+    console.error("No se pudo saber si el salón es real:", err);
+    return { tipo: "ajeno" };
+  }
+  if (!esReal) return { tipo: "demo" };
 
   const token = deps.tokenDeLaPeticion();
   if (!token) return { tipo: "ajeno" };

@@ -11,6 +11,7 @@
 import { getRequestHeader } from "@tanstack/react-start/server";
 
 import {
+  AccesoDenegado,
   exigirMando,
   exigirPermiso,
   extraerBearer,
@@ -39,14 +40,10 @@ function depsReales(): DepsAutorizacion {
         .eq("slug", slug)
         .maybeSingle();
       if (error) {
-        // Ojo con el criterio: si no se puede saber si el salón es real, se
-        // responde que NO lo es. Suena raro, pero es lo seguro aquí: un salón
-        // tratado como demo no recibe ningún dato de Supabase, porque quien
-        // los sirve es esa misma base de datos que acaba de fallar. Lo que no
-        // puede pasar es lo contrario —quedarse sin poder comprobar la
-        // pertenencia y aun así servir datos reales.
-        console.error("esSalonReal:", error.message);
-        return false;
+        // Fail-closed: si no se puede saber si el salón es real, se lanza y
+        // `resolverAcceso` lo trata como ajeno. Devolver false lo habría
+        // convertido en "demo", que manda sobre el salón (auditoría 18-oct).
+        throw new Error(`esSalonReal: ${error.message}`);
       }
       return Boolean(data);
     },
@@ -121,18 +118,34 @@ export function acceso(slug: string): Promise<Acceso> {
   return resolverAcceso(slug, depsReales());
 }
 
-/** Lo mismo, pero cortando si no manda sobre el salón. Para todo lo del dueño. */
-export function exigirAcceso(slug: string): Promise<Acceso> {
+/**
+ * Lo mismo, pero cortando si no manda sobre el salón. Para todo lo del dueño.
+ *
+ * Una DEMO no pasa por aquí (A1, auditoría 18-oct-2026): "demo" significa "este
+ * slug no existe en salons", y eso no puede dar mando de gerente a quien no
+ * tiene sesión. Las demos viven en el navegador y nunca llaman a estas
+ * funciones. Quien necesite tratar la demo con un aviso usa `exigirAccesoOdemo`.
+ */
+export async function exigirAcceso(slug: string): Promise<Acceso> {
+  const a = await exigirMando(slug, depsReales());
+  if (a.tipo === "demo") throw new AccesoDenegado(slug);
+  return a;
+}
+
+/** Como `exigirAcceso`, pero deja pasar a la demo para que la función responda "no hago nada". */
+export function exigirAccesoOdemo(slug: string): Promise<Acceso> {
   return exigirMando(slug, depsReales());
 }
 
 /** Exige además el permiso de la acción (lote 8). `sobreEmployeeId`: la profesional afectada. */
-export function exigirPermisoEn(
+export async function exigirPermisoEn(
   slug: string,
   accion: AccionId,
   sobreEmployeeId?: string | null,
 ): Promise<Acceso> {
-  return exigirPermiso(slug, accion, depsReales(), sobreEmployeeId);
+  const a = await exigirPermiso(slug, accion, depsReales(), sobreEmployeeId);
+  if (a.tipo === "demo") throw new AccesoDenegado(slug);
+  return a;
 }
 
 /**

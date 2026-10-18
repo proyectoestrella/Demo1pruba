@@ -373,3 +373,17 @@ describe("roles (lote 8)", () => {
     expect(tienePermiso({ tipo: "ajeno" }, "cita.crear")).toBe(false);
   });
 });
+
+describe("si no se puede saber si el salón es real (Supabase falla)", () => {
+  const roto = { esSalonReal: async () => { throw new Error("supabase caído"); } };
+
+  it("NO se trata como demo: es ajeno, así que no manda sobre nada", async () => {
+    const a = await resolverAcceso("salon-a", deps(null, roto));
+    expect(a.tipo).toBe("ajeno");
+  });
+
+  it("exigirMando corta en vez de dar mando de demo", async () => {
+    await expect(exigirMando("salon-a", deps(null, roto))).rejects.toThrow(AccesoDenegado);
+    await expect(exigirMando("salon-a", deps("Bearer token-de-ana", roto))).rejects.toThrow(AccesoDenegado);
+  });
+});

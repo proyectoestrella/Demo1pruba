@@ -61,6 +61,11 @@ import {
   ERROR_BLOQUEO_AGENDA,
   ERROR_DATOS_RESERVA,
   ERROR_RESERVA_PASADA,
+  ERROR_RESERVA_LEJANA,
+  ERROR_DEMASIADAS_RESERVAS,
+  HORIZONTE_RESERVA_DIAS,
+  MAX_RESERVAS_POR_TELEFONO_Y_DIA,
+  MAX_RESERVAS_PUBLICAS_POR_SALON_Y_HORA,
   datosReservaPublicaDesdeCarta,
   faltaColumnaAcusePrivacidad,
   haLeidoAvisoPrivacidad,
@@ -480,10 +485,19 @@ export const saveSalonProfile = createServerFn({ method: "POST" })
       const supabase = getSupabaseServerClient();
       if (!supabase) return { synced: false as const, motivo: "sin-backend" as const };
 
+      const { data: filaActual } = await supabase
+        .from("salons")
+        .select("profile")
+        .eq("slug", data.slug)
+        .maybeSingle();
+      const perfilAGuardar = conClavesDelServidor(
+        data.profile,
+        (filaActual as { profile?: Record<string, unknown> } | null)?.profile,
+      );
       const { error } = await supabase
         .from("salons")
         .upsert(
-          { slug: data.slug, profile: data.profile, updated_at: new Date().toISOString() },
+          { slug: data.slug, profile: perfilAGuardar, updated_at: new Date().toISOString() },
           { onConflict: "slug" },
         );
       if (faltaEsquema(error)) {
@@ -495,7 +509,7 @@ export const saveSalonProfile = createServerFn({ method: "POST" })
       await guardarVersion(
         supabase,
         data.slug,
-        data.profile,
+        perfilAGuardar,
         quien.tipo === "miembro" ? quien : null,
         null,
       );
@@ -572,6 +586,27 @@ export const listarVersiones = createServerFn({ method: "GET" })
     };
   });
 
+/**
+ * Claves del perfil que decide el servidor (el operador de siShow), no el
+ * navegador (M3, auditoría 18-oct-2026): el plan que se paga y el flag de
+ * calendarios externos. Antes cualquier gerente podía darse `todo-incluido`
+ * con un `patchSalonProfile({ plan })`.
+ */
+const CLAVES_SOLO_SERVIDOR = ["plan", "calendariosExternosActivo"] as const;
+
+/** `nuevo` con las claves reservadas tomadas de `actual` (no de lo que mande el navegador). */
+function conClavesDelServidor(
+  nuevo: Record<string, unknown>,
+  actual: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const salida = { ...nuevo };
+  for (const k of CLAVES_SOLO_SERVIDOR) {
+    if (actual && k in actual) salida[k] = actual[k];
+    else delete salida[k];
+  }
+  return salida;
+}
+
 /** Publica de nuevo una versión anterior (como versión nueva) y lo deja en el historial. */
 export const restaurarVersion = createServerFn({ method: "POST" })
   .middleware([conSesion])
@@ -609,7 +644,7 @@ export const restaurarVersion = createServerFn({ method: "POST" })
       const restauraPerfilEntero =
         tienePermiso(quien, "salon.editar") && tienePermiso(quien, "plan.gestionar");
       const perfilRestaurado = restauraPerfilEntero
-        ? (v.perfil as Record<string, unknown>)
+        ? conClavesDelServidor(v.perfil as Record<string, unknown>, perfilAnterior)
         : { ...perfilAnterior, ...soloCamposWeb(v.perfil as Record<string, unknown>) };
       const { error } = await supabase
         .from("salons")
@@ -705,7 +740,12 @@ export const patchSalonProfile = createServerFn({ method: "POST" })
       if (errorLectura) throw new Error(`patchSalonProfile (lectura): ${errorLectura.message}`);
       if (!fila) return { synced: false as const, motivo: "sin-salon" as const };
 
-      const fusionado = fusionarPerfil((fila.profile ?? {}) as Record<string, unknown>, data.patch);
+      const actualPerfil = (fila.profile ?? {}) as Record<string, unknown>;
+      for (const k of CLAVES_SOLO_SERVIDOR) {
+        if (k in data.patch && JSON.stringify(data.patch[k] ?? null) !== JSON.stringify(actualPerfil[k] ?? null))
+          throw new PermisoDenegado("plan.gestionar");
+      }
+      const fusionado = fusionarPerfil(actualPerfil, data.patch);
       if ("team" in data.patch && !perfilDentroDelTopeDeProfesionales(fusionado)) {
         return { synced: false as const, motivo: "limite-profesionales" as const };
       }
@@ -987,19 +1027,19 @@ export const syncAppointment = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       slug,
-      localId: z.string().min(1),
-      clientName: z.string().optional(),
-      clientPhone: z.string().optional(),
-      clientEmail: z.string().email().optional(),
+      localId: z.string().min(1).max(100),
+      clientName: z.string().max(100).optional(),
+      clientPhone: z.string().max(30).optional(),
+      clientEmail: z.string().email().max(200).optional(),
       importedFromTpv: z.boolean().optional(),
-      serviceIds: z.array(z.string()).default([]),
-      employeeId: z.string().min(1),
-      startISO: z.string().min(1),
+      serviceIds: z.array(z.string().max(100)).max(20).default([]),
+      employeeId: z.string().min(1).max(100),
+      startISO: z.string().min(1).max(40),
       durationMin: z.number().nonnegative(),
       priceEur: z.number().nonnegative(),
       status: z.string().min(1),
       clientConfirmedAt: z.string().nullable().optional(),
-      note: z.string().nullable().optional(),
+      note: z.string().max(1000).nullable().optional(),
       paymentMethod: z.string().nullable().optional(),
       paidAt: z.string().nullable().optional(),
       depositRequestedAt: z.string().nullable().optional(),
@@ -1060,6 +1100,9 @@ export const syncAppointment = createServerFn({ method: "POST" })
      * límites: su panel hace exactamente lo que hacía antes.
      */
     const quien = await acceso(data.slug);
+    // Un slug que no existe en salons no es un salón al que reservar: no se
+    // guarda nada (A1). Las demos viven en el navegador.
+    if (quien.tipo === "demo") return { synced: false as const };
     const manda = tieneMando(quien);
 
     // Una reserva pública solo se guarda después de confirmar el aviso. La
@@ -1069,6 +1112,9 @@ export const syncAppointment = createServerFn({ method: "POST" })
     }
     if (!manda && !inicioReservaPublicaEsFuturo(data.startISO)) {
       return { synced: false as const, reason: ERROR_RESERVA_PASADA };
+    }
+    if (!manda && Date.parse(data.startISO) > Date.now() + HORIZONTE_RESERVA_DIAS * 86_400_000) {
+      return { synced: false as const, reason: ERROR_RESERVA_LEJANA };
     }
 
     const supabase = getSupabaseServerClient();
@@ -1103,6 +1149,20 @@ export const syncAppointment = createServerFn({ method: "POST" })
       }
     }
 
+    // Ritmo (M4): tope de reservas públicas nuevas por salón y hora. Sin
+    // infraestructura nueva: se cuenta en la propia tabla.
+    if (!manda) {
+      const { data: recientes, error: errorRitmo } = await supabase
+        .from("appointments")
+        .select("id")
+        .eq("salon_slug", data.slug)
+        .eq("status", "pending")
+        .gte("created_at", new Date(Date.now() - 3_600_000).toISOString());
+      if (errorRitmo) throw new Error(`syncAppointment (ritmo): ${errorRitmo.message}`);
+      if ((recientes ?? []).length >= MAX_RESERVAS_PUBLICAS_POR_SALON_Y_HORA) {
+        return { synced: false as const, reason: ERROR_DEMASIADAS_RESERVAS };
+      }
+    }
     let clientId: string | null = null;
     const key = phoneKey(data.clientPhone);
     if (!manda && key.length >= 9) {
@@ -1227,7 +1287,36 @@ export const syncAppointment = createServerFn({ method: "POST" })
         return { synced: false as const, reason: ERROR_SOLAPE_PANEL };
       }
     }
-    if (data.clientPhone && key.length >= 6 && data.clientName) {
+    if (!manda && data.clientPhone && key.length >= 6 && data.clientName) {
+      // Reserva pública (A4): quien reserva NO es dueño de la ficha. Si la
+      // clienta ya existe se reutiliza tal cual (solo se rellenan campos que
+      // estén vacíos); nunca se pisa su nombre ni su correo, que son a donde
+      // llegan después los recordatorios.
+      const { data: existente, error: errorBuscar } = await supabase
+        .from("clients")
+        .select("id, name, email")
+        .eq("salon_slug", data.slug)
+        .eq("phone_key", key)
+        .maybeSingle();
+      if (errorBuscar) throw new Error(`syncAppointment (cliente): ${errorBuscar.message}`);
+      if (existente) {
+        clientId = existente.id as string;
+        const relleno: Record<string, string> = {};
+        if (!existente.name) relleno.name = data.clientName;
+        if (!existente.email && data.clientEmail) relleno.email = data.clientEmail;
+        if (Object.keys(relleno).length) {
+          await supabase.from("clients").update(relleno).eq("id", clientId).eq("salon_slug", data.slug);
+        }
+      } else {
+        const { data: nueva, error: errorNueva } = await supabase
+          .from("clients")
+          .insert({ salon_slug: data.slug, name: data.clientName, phone: data.clientPhone, phone_key: key, email: data.clientEmail })
+          .select("id")
+          .single();
+        if (errorNueva) throw new Error(`syncAppointment (cliente): ${errorNueva.message}`);
+        clientId = nueva.id as string;
+      }
+    } else if (data.clientPhone && key.length >= 6 && data.clientName) {
       const { data: cliente, error } = await supabase
         .from("clients")
         .upsert(
@@ -1244,6 +1333,18 @@ export const syncAppointment = createServerFn({ method: "POST" })
         .single();
       if (error) throw new Error(`syncAppointment (cliente): ${error.message}`);
       clientId = cliente.id as string;
+    }
+    if (!manda && clientId) {
+      const { data: delDia, error: errorDia } = await supabase
+        .from("appointments")
+        .select("id")
+        .eq("salon_slug", data.slug)
+        .eq("client_id", clientId)
+        .gte("created_at", new Date(Date.now() - 86_400_000).toISOString());
+      if (errorDia) throw new Error(`syncAppointment (ritmo): ${errorDia.message}`);
+      if ((delDia ?? []).length >= MAX_RESERVAS_POR_TELEFONO_Y_DIA) {
+        return { synced: false as const, reason: ERROR_DEMASIADAS_RESERVAS };
+      }
     }
     if (manda && data.importedFromTpv && !key && data.clientName) {
       const { data: previa, error: buscarError } = await supabase
@@ -1349,6 +1450,18 @@ export const syncAppointment = createServerFn({ method: "POST" })
 
     await escribirCita(supabase, fila);
 
+    // M5: la comprobación de hueco de arriba y esta escritura no son atómicas.
+    // Hasta que exista la restricción de exclusión (supabase/pendiente.sql,
+    // sección «no solapar citas»), se vuelve a mirar DESPUÉS de escribir: si
+    // otra reserva simultánea se llevó el hueco antes que esta, esta se deshace.
+    if (
+      !manda &&
+      (await perdioLaCarrera(supabase, data.slug, data.localId, data.employeeId, data.startISO, durationMinGuardada))
+    ) {
+      await supabase.from("appointments").delete().eq("salon_slug", data.slug).eq("local_id", data.localId);
+      return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
+    }
+
     // Lote 13: llevar la cita a los calendarios externos conectados de esta
     // profesional (y al del salón entero, si lo hay). Nunca lanza (lo
     // garantiza `procesarCitaParaConexiones`); un fallo del calendario
@@ -1417,6 +1530,37 @@ async function escribirFicha(
  * una ventana de siete días; la protección definitiva contra dos
  * inserciones simultáneas sería una restricción en PostgreSQL.
  */
+/**
+ * ¿Hay otra cita que solape con esta y que se creó ANTES (o a la vez y con
+ * un id menor)? Entonces esta es la que pierde la carrera.
+ */
+export async function perdioLaCarrera(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  salonSlug: string,
+  localId: string,
+  employeeId: string,
+  startISO: string,
+  durationMin: number,
+): Promise<boolean> {
+  const fin = new Date(Date.parse(startISO) + durationMin * 60_000).toISOString();
+  const desde = new Date(Date.parse(startISO) - 7 * 24 * 60 * 60_000).toISOString();
+  const { data: cercanas, error } = await supabase
+    .from("appointments")
+    .select("local_id, start_at, duration_min, status, created_at")
+    .eq("salon_slug", salonSlug)
+    .eq("employee_id", employeeId)
+    .gte("start_at", desde)
+    .lt("start_at", fin);
+  if (error) throw new Error(`syncAppointment (hueco): ${error.message}`);
+  const filas = (cercanas ?? []) as Array<{ local_id: string; start_at: string; duration_min: number; status: string; created_at?: string }>;
+  const propia = filas.find((c) => c.local_id === localId);
+  const propiaCreada = propia?.created_at ?? "";
+  const anteriores = filas.filter(
+    (c) => c.local_id !== localId && ((c.created_at ?? "") < propiaCreada || ((c.created_at ?? "") === propiaCreada && c.local_id < localId)),
+  );
+  return haySolape(startISO, durationMin, anteriores);
+}
+
 async function solapaEnServidor(
   supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
   salonSlug: string,
@@ -1982,5 +2126,24 @@ export const checkClientPenalty = createServerFn({ method: "GET" })
     }
 
     const fila = findPenaltyRow((rows ?? []) as unknown as ClientRow[], data.phone);
-    return { client: fila ? rowToClient(fila) : null };
+    return { client: fila ? fichaMinimaDeBloqueo(rowToClient(fila), data.phone) : null };
   });
+
+/**
+ * Lo único que la web pública de reservas necesita para decidir si bloquea:
+ * el importe y las marcas de bloqueo. Sin nombre, correo, notas, id ni el
+ * texto del motivo (A3, auditoría 18-oct-2026): esta función no pide sesión.
+ */
+function fichaMinimaDeBloqueo(c: Client, telefonoPedido: string): Client {
+  return {
+    id: "",
+    name: "",
+    phone: telefonoPedido,
+    createdAt: c.createdAt,
+    manualBlock: c.manualBlock,
+    penaltyEur: c.penaltyEur,
+    penaltyAt: c.penaltyAt,
+    penaltyKeep: c.penaltyKeep,
+    penaltyBlock: c.penaltyBlock,
+  };
+}

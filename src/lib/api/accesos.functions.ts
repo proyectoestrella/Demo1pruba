@@ -32,7 +32,7 @@ import {
   type InvitacionFila,
   type MiembroFila,
 } from "./accesos";
-import { exigirAcceso, usuarioDeLaPeticion } from "./autorizacion.server";
+import { exigirAccesoOdemo, usuarioDeLaPeticion } from "./autorizacion.server";
 import { conSesion } from "./sesion.middleware";
 
 const slug = z.string().min(1).max(120);
@@ -52,7 +52,7 @@ function origen(): string {
  * cuentas: se responde vacío o con un aviso, sin escribir nada en la base.
  */
 async function accesoReal(salonSlug: string) {
-  const a = await exigirAcceso(salonSlug);
+  const a = await exigirAccesoOdemo(salonSlug);
   if (a.tipo === "demo")
     throw new Error(
       "En una demo no hay accesos que gestionar: se activan al dar de alta el salón.",

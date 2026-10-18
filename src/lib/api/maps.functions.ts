@@ -52,11 +52,25 @@ export interface MapsLookup {
  * Acaba en una búsqueda de Google con el nombre del negocio en `q=`, que es
  * justo la consulta que necesita Places.
  */
-async function expandShortLink(url: string): Promise<string> {
-  if (!/goo\.gl|maps\.app|share\.google|g\.co\//.test(url)) return url;
-  // Las URLs de búsqueda no redirigen a una ficha: no hay nada que expandir.
+/** Acortadores de Google que se siguen en el servidor. Cualquier otro host se ignora (SSRF). */
+const HOSTS_ACORTADOR = new Set(["goo.gl", "maps.app.goo.gl", "share.google", "g.co"]);
+
+export function esAcortadorGoogle(url: string): boolean {
   try {
-    const res = await fetch(url, { redirect: "follow" });
+    const u = new URL(url);
+    return u.protocol === "https:" && !u.username && !u.password && HOSTS_ACORTADOR.has(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
+export async function expandShortLink(url: string, pedir: typeof fetch = fetch): Promise<string> {
+  // Antes bastaba con que el texto CONTUVIERA «goo.gl» en cualquier parte (p. ej.
+  // `http://169.254.169.254/?x=goo.gl`) para que el servidor hiciera la petición:
+  // una vía de SSRF abierta a cualquiera, porque esta función no pide sesión.
+  if (!esAcortadorGoogle(url)) return url;
+  try {
+    const res = await pedir(url, { redirect: "follow", signal: AbortSignal.timeout(5000) });
     return res.url || url;
   } catch {
     return url;

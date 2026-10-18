@@ -20,7 +20,7 @@ import { z } from "zod";
 
 import { accionesDeCambio, DIAS_RETENCION, TIPOS_CAMBIO } from "../cambios";
 import { getSupabaseServerClient } from "../supabase.server";
-import { exigirAcceso } from "./autorizacion.server";
+import { exigirAcceso, exigirAccesoOdemo } from "./autorizacion.server";
 import { exigirAcciones } from "./guardas";
 import { exigirFuncionPlanEn } from "./plan-guardas.server";
 import { conSesion } from "./sesion.middleware";
@@ -47,7 +47,7 @@ export const guardarCambio = createServerFn({ method: "POST" })
   .middleware([conSesion])
   .inputValidator(z.object({ slug, cambio: cambioSchema }))
   .handler(async ({ data }) => {
-    const quien = await exigirAcceso(data.slug);
+    const quien = await exigirAccesoOdemo(data.slug);
     // Una demo no guarda historial en el servidor: vive en su navegador.
     if (quien.tipo !== "miembro") return { guardado: false as const, motivo: "demo" as const };
     exigirAcciones(quien, accionesDeCambio(data.cambio));
