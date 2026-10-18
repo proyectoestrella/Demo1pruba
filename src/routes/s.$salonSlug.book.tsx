@@ -60,6 +60,7 @@ import { guardarReservaPublica } from "@/lib/salon-sync";
 import { firmaReservaPublica, haLeidoAvisoPrivacidad, mensajeErrorReserva } from "@/lib/reserva-publica";
 import { reintentarSalonPublico } from "@/lib/use-real-salon";
 import { sumServices } from "@/lib/appointment-services";
+import { resumenServiciosReserva } from "@/lib/resumen-servicios-reserva";
 import { FluidSteps } from "@/components/twentyfirst/fluid-steps";
 import { capitalizar, eur, fechaLarga } from "@/lib/copy";
 import { mostrarPreciosEnReserva } from "@/lib/precio-reserva";
@@ -406,10 +407,10 @@ function BookingWizard() {
     [employees, data.serviceIds, profile.serviciosPorProfesional],
   );
   const sinProfesionalParaServicios = selectedServices.length > 0 && eligibleEmployees.length === 0;
-  const serviceNames = selectedServices.map((s) => s.name);
   // Precio y duración de carta son la suma de los servicios elegidos. El
   // hueco puede reservar más tiempo si la duración es flexible; la fianza no.
-  const { durationMin: totalMin, priceEur: total } = sumServices(selectedServices);
+  const resumenServicios = resumenServiciosReserva(selectedServices, mostrarPrecio);
+  const { nombres: serviceNames, durationMin: totalMin, priceEur: total } = resumenServicios;
   const flexible = duracionFlexibleDemo;
   const flexRange = flexible ? flexDurationRange(totalMin) : null;
   // Con duración flexible se bloquea el extremo alto: esa cifra es solo para
@@ -758,10 +759,12 @@ function BookingWizard() {
             <>
               <ServiceStep
                 selected={data.serviceIds}
+                selectedServices={selectedServices}
                 totalMin={totalMin}
                 durationLabel={durationLabel}
                 flexNota={flexible ? flexNota : undefined}
                 mostrarPrecio={mostrarPrecio}
+                total={total}
                 onToggle={toggleService}
                 tipo={tipo}
                 services={services}
@@ -1116,22 +1119,26 @@ function Step({ title, children }: { title: string; children: React.ReactNode })
 
 function ServiceStep({
   selected,
+  selectedServices,
   totalMin,
   durationLabel,
   flexNota,
   mostrarPrecio,
+  total,
   onToggle,
   tipo,
   services,
   reglaSenal: reglaSenalSalon,
 }: {
   selected: string[];
+  selectedServices: Service[];
   totalMin: number;
   /** "45 min" o, con duración flexible, "aprox. 1 h 30 – 2 h 15". */
   durationLabel: string;
   /** Frase «la duración final la confirma…», solo con duración flexible. */
   flexNota?: string;
   mostrarPrecio: boolean;
+  total: number;
   onToggle: (id: string) => void;
   tipo: BusinessType;
   services: Service[];
@@ -1152,6 +1159,46 @@ function ServiceStep({
       </p>
       {count > 0 && flexNota && (
         <p className="mb-6 text-sm font-medium text-foreground">{flexNota}</p>
+      )}
+      {count > 1 && (
+        <div className="mb-6 rounded-[20px] border-2 border-salvia bg-salvia-clara p-4 shadow-[var(--sombra-tarjeta)]">
+          <div className="flex items-start gap-3">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-hoja-tinta text-white" aria-hidden="true">
+              <Check className="size-4" strokeWidth={2.5} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-hoja-tinta" aria-live="polite">
+                {count} servicios elegidos
+              </p>
+              <p className="mt-0.5 text-xs text-cafe-medio">Revisa tu cita antes de continuar.</p>
+            </div>
+          </div>
+          <ul className="mt-3 divide-y divide-salvia border-y border-salvia">
+            {selectedServices.map((service) => (
+              <li key={service.id} className="flex min-h-11 items-center justify-between gap-3 py-2">
+                <span className="min-w-0 text-sm font-medium text-cafe">{service.name}</span>
+                <button
+                  type="button"
+                  onClick={() => onToggle(service.id)}
+                  className="min-h-11 shrink-0 rounded-full px-3 text-sm font-bold text-hoja-tinta underline underline-offset-2 hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  aria-label={`Quitar ${service.name} de la reserva`}
+                >
+                  Quitar
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 flex items-baseline justify-between gap-4 text-sm">
+            <span className="font-medium text-cafe-medio">Duración total</span>
+            <span className="font-bold tabular-nums text-cafe">{durationLabel}</span>
+          </div>
+          {mostrarPrecio && (
+            <div className="mt-1 flex items-baseline justify-between gap-4 text-sm">
+              <span className="font-medium text-cafe-medio">Precio total</span>
+              <span className="text-lg font-extrabold tabular-nums text-cafe">{eur(total)}</span>
+            </div>
+          )}
+        </div>
       )}
       {/* `key`: cuando la carta llega del enlace después del primer render, las
           categorías cambian («Cortes» → «Servicios») y un defaultValue ya
@@ -1189,7 +1236,7 @@ function ServiceStep({
                         className={cn(
                           "flex min-h-16 w-full items-center justify-between gap-4 rounded-2xl border bg-card px-4 py-3.5 text-left transition-colors",
                           isSelected
-                            ? "border-primary bg-primary/10"
+                            ? "border-2 border-salvia bg-salvia-clara"
                             : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
                         )}
                       >
@@ -1202,7 +1249,11 @@ function ServiceStep({
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
                           {mostrarPrecio && <span className="max-w-[9rem] text-right text-base font-extrabold leading-snug tabular-nums">{s.priceText?.trim() || eur(s.priceEur)}</span>}
-                          {isSelected && <Check className="h-4 w-4 text-primary" />}
+                          {isSelected && (
+                            <span className="grid size-6 place-items-center rounded-full bg-hoja-tinta text-white" aria-hidden="true">
+                              <Check className="size-4" strokeWidth={2.5} />
+                            </span>
+                          )}
                         </div>
                       </button>
                     );
