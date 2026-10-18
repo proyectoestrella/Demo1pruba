@@ -42,6 +42,7 @@ import { cierraEseDia, claveDelDia } from "./dia-cerrado-panel";
 import { inferBusinessType, menuDesdeServicios, slugForId, type BusinessType } from "./business-type";
 import { equipoCabeEnPlan, planDe } from "./plan";
 import type { Campana } from "./campanas";
+import type { FuncionesPlanPanel } from "./api/recorte";
 import { solapaConAgenda } from "./solape";
 import {
   aplicarSenal,
@@ -93,6 +94,8 @@ interface SalonState {
   clients: Client[];
   /** Campañas ya calculadas y autorizadas por el servidor para un salón real. */
   campanas: Campana[] | null;
+  /** Las dos funciones de pago cuya entrada decide el servidor al hidratar el panel. */
+  funcionesPlan: FuncionesPlanPanel | null;
   services: Service[];
   /**
    * Pagos reales (lote 11). A diferencia de `appointments`/`clients`/
@@ -370,6 +373,7 @@ interface SalonState {
     clients: Client[];
     waitlist: WaitlistEntry[];
     campanas?: Campana[];
+    funcionesPlan?: FuncionesPlanPanel;
   }) => void;
   /**
    * Deja citas, clientes y lista de espera a cero.
@@ -380,6 +384,20 @@ interface SalonState {
    * vacío mientras carga que un panel con gente que no existe.
    */
   vaciarDatosDeEjemplo: () => void;
+}
+
+/** Evita que el refresco de un minuto repinte por dos booleanos sin cambios. */
+function conservarFuncionesPlan(
+  siguiente: FuncionesPlanPanel | undefined,
+  actual: FuncionesPlanPanel | null,
+): FuncionesPlanPanel | null {
+  if (!siguiente) return null;
+  if (
+    actual &&
+    actual["analitica-avanzada"] === siguiente["analitica-avanzada"] &&
+    actual.asistente === siguiente.asistente
+  ) return actual;
+  return siguiente;
 }
 
 /**
@@ -594,6 +612,7 @@ export const useSalonStore = create<SalonState>()(
       waitlist: seedWaitlist,
       clients: seedClients,
       campanas: null,
+      funcionesPlan: null,
       services: seedServices,
       payments: [],
       salonProfile: salon,
@@ -1122,7 +1141,7 @@ export const useSalonStore = create<SalonState>()(
 
       deleteDemo: (id) => set((s) => ({ savedDemos: s.savedDemos.filter((d) => d.id !== id) })),
 
-      setRealSalonSlug: (slug) => set({ realSalonSlug: slug }),
+      setRealSalonSlug: (slug) => set({ realSalonSlug: slug, ...(slug ? {} : { funcionesPlan: null }) }),
       setMiembro: (m) => set({ miembro: m }),
 
       registrarCambio: (c) => {
@@ -1218,7 +1237,7 @@ export const useSalonStore = create<SalonState>()(
       },
       setPublicBookingResolution: (value) => set({ publicBookingResolution: value }),
 
-      hydrateFromServer: ({ appointments, clients, waitlist, campanas }) =>
+      hydrateFromServer: ({ appointments, clients, waitlist, campanas, funcionesPlan }) =>
         set((s) => {
           // Una cita con un cambio local todavía sin guardar (subida en
           // camino o fallida con aviso) conserva su versión local: el
@@ -1229,14 +1248,15 @@ export const useSalonStore = create<SalonState>()(
           const fichas = conservarIguales(clients, s.clients);
           const espera = conservarIguales(waitlist, s.waitlist);
           const campanasNuevas = campanas ?? null;
+          const funcionesNuevas = conservarFuncionesPlan(funcionesPlan, s.funcionesPlan);
           // Nada ha cambiado: el MISMO estado, así la store no avisa a nadie
           // y no se repinta el panel cada 60 s (ver conservar-iguales.ts).
-          if (citas === s.appointments && fichas === s.clients && espera === s.waitlist && campanasNuevas === s.campanas) return s;
-          return { appointments: citas, clients: fichas, waitlist: espera, campanas: campanasNuevas };
+          if (citas === s.appointments && fichas === s.clients && espera === s.waitlist && campanasNuevas === s.campanas && funcionesNuevas === s.funcionesPlan) return s;
+          return { appointments: citas, clients: fichas, waitlist: espera, campanas: campanasNuevas, funcionesPlan: funcionesNuevas };
         }),
 
       // Un salón real tampoco «está en una demo»: fuera la marca del enlace.
-      vaciarDatosDeEjemplo: () => set({ appointments: [], clients: [], waitlist: [], campanas: null, demoActive: false }),
+      vaciarDatosDeEjemplo: () => set({ appointments: [], clients: [], waitlist: [], campanas: null, funcionesPlan: null, demoActive: false }),
 
       applyDemo: (id) => {
         const demo = get().savedDemos.find((d) => d.id === id);
@@ -1267,7 +1287,7 @@ export const useSalonStore = create<SalonState>()(
       },
 
       resetSalonProfile: () => {
-        set({ salonProfile: salon, campanas: null, demoActive: false, realSalonSlug: null });
+        set({ salonProfile: salon, campanas: null, funcionesPlan: null, demoActive: false, realSalonSlug: null });
         get().applyBusinessType("barberia", { abrirHoy: true });
       },
     };

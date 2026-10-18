@@ -24,7 +24,7 @@ import {
   exigirAcciones,
   soloCamposWeb,
 } from "./guardas";
-import { recortarDatosPanel, recortarDatosPanelPorPlan } from "./recorte";
+import { funcionesPlanPanel, recortarDatosPanel, recortarDatosPanelPorPlan, type FuncionesPlanPanel } from "./recorte";
 import { alcance, permisosDe, type MiembroActual } from "../permisos";
 import { DIAS_RETENCION } from "../cambios";
 import { PermisoDenegado, tienePermiso } from "./autorizacion";
@@ -824,14 +824,21 @@ export const listSalonData = createServerFn({ method: "GET" })
       clients: Client[];
       waitlist: WaitlistEntry[];
       campanas?: ReturnType<typeof buildCampanas>;
+      funcionesPlan?: FuncionesPlanPanel;
     }> => {
       const supabase = getSupabaseServerClient();
-      if (!supabase) return { appointments: [], clients: [], waitlist: [] };
+      if (!supabase) {
+        // Sin Supabase solo existen demos locales: no hay datos de servidor
+        // que hidratar, pero ambas funciones conservan el muestrario local.
+        return { appointments: [], clients: [], waitlist: [], funcionesPlan: funcionesPlanPanel({ tipo: "demo" }, {}) };
+      }
 
       const quien = await acceso(data.slug);
       // Las demos viven en el navegador y nunca tienen fila en `salons`.
       // Conservan la misma respuesta vacía de servidor de antes.
-      if (quien.tipo === "demo") return { appointments: [], clients: [], waitlist: [] };
+      if (quien.tipo === "demo") {
+        return { appointments: [], clients: [], waitlist: [], funcionesPlan: funcionesPlanPanel(quien, {}) };
+      }
       const publica = vistaEfectiva(data.vista, quien) === "publica";
 
       // El plan se lee de la fila del salón, nunca de un dato que mande el navegador.

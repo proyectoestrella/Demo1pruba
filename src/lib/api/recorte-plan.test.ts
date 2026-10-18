@@ -80,6 +80,7 @@ describe("respuesta de listSalonData recortada por plan", () => {
       "agenda-futura",
     ]);
     expect(respuesta.campanas?.map((c) => c.id)).toEqual(["resena"]);
+    expect(respuesta.funcionesPlan).toEqual({ "analitica-avanzada": false, asistente: false });
     expect(JSON.stringify(respuesta)).not.toContain("historial-oculto");
     expect(JSON.stringify(respuesta)).not.toContain("Destinataria de campaña ampliada");
     expect(JSON.stringify(respuesta)).not.toContain("Patrón de horas flojas");
@@ -96,6 +97,7 @@ describe("respuesta de listSalonData recortada por plan", () => {
 
     expect(respuesta.appointments).toEqual(datos.appointments);
     expect(respuesta.campanas?.map((c) => c.id)).toEqual(["resena"]);
+    expect(respuesta.funcionesPlan).toEqual({ "analitica-avanzada": true, asistente: true });
     expect(JSON.stringify(respuesta)).not.toContain("Destinataria de campaña ampliada");
   });
 
@@ -110,6 +112,7 @@ describe("respuesta de listSalonData recortada por plan", () => {
 
     expect(respuesta.appointments).toEqual(datos.appointments);
     expect(respuesta.campanas).toEqual(campanas);
+    expect(respuesta.funcionesPlan).toEqual({ "analitica-avanzada": true, asistente: true });
   });
 
   it("una demo conserva todos los datos aunque su perfil diga Básico", () => {
@@ -123,5 +126,6 @@ describe("respuesta de listSalonData recortada por plan", () => {
 
     expect(respuesta.appointments).toEqual(datos.appointments);
     expect(respuesta.campanas).toEqual(campanas);
+    expect(respuesta.funcionesPlan).toEqual({ "analitica-avanzada": true, asistente: true });
   });
 });
