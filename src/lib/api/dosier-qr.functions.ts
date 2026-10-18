@@ -17,7 +17,11 @@ import { z } from "zod";
  * impreso lleve a la misma demo que se enseñó en la visita.
  */
 export const getDosierQr = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ path: z.string().min(1) }))
+  .inputValidator(z.object({
+      // Solo una ruta interna: `//otro.sitio` o `@host` harían que el QR impreso
+      // apunte fuera de nuestro dominio; y un tope, porque un QR no admite más.
+      path: z.string().min(1).max(2900).regex(/^\/(?![/\\])/, "La ruta debe empezar por una sola /"),
+    }))
   .handler(async ({ data }) => {
     let origin = "";
     try {
