@@ -8,25 +8,23 @@ import { procesarNotificacionGoogle } from "@/lib/calendario-externo/calendario-
  * a mirar" — nunca QUÉ cambió, así que aquí solo se dispara la
  * sincronización incremental de esa conexión.
  *
- * Sin autenticación de sesión a propósito (Google no manda ninguna): la
- * "autorización" es que el `X-Goog-Channel-ID` tiene que coincidir con un
- * `canal_watch_id` guardado — si no coincide, no se toca nada. Responder
- * siempre 200 rápido es lo que pide Google (si no, reintenta con backoff y,
- * si sigue fallando, para el canal).
+ * Sin autenticación de sesión a propósito (Google no manda ninguna): cada
+ * canal lleva un token HMAC derivado que Google devuelve en
+ * `X-Goog-Channel-Token`. Sin ambos valores válidos no se toca nada.
  */
 async function manejar({ request }: { request: Request }) {
   const canalId = request.headers.get("x-goog-channel-id");
+  const tokenCanal = request.headers.get("x-goog-channel-token");
   const estadoRecurso = request.headers.get("x-goog-resource-state");
+  if (!canalId || !tokenCanal) return new Response(null, { status: 401 });
   // "sync": el primer aviso al crear el canal, sin cambios reales todavía.
-  if (canalId && estadoRecurso !== "sync") {
-    try {
-      await procesarNotificacionGoogle(canalId);
-    } catch (err) {
-      console.error("calendario-externo (webhook Google):", err);
-      // Se responde 200 igualmente: el polling de respaldo del cron cubre
-      // el caso, y devolver un error aquí solo consigue que Google reintente
-      // el mismo ping sin más información.
-    }
+  try {
+    const aceptada = await procesarNotificacionGoogle(canalId, tokenCanal, estadoRecurso !== "sync");
+    if (!aceptada) return new Response(null, { status: 401 });
+  } catch (err) {
+    console.error("calendario-externo (webhook Google):", err);
+    // La credencial ya se comprobó; el polling de respaldo cubre un fallo de
+    // sincronización y Google no debe reintentar el mismo ping sin más datos.
   }
   return new Response(null, { status: 200 });
 }

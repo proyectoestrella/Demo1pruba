@@ -12,7 +12,7 @@
  * El blob de salida es un único string, para que quepa en una sola columna:
  * `v1.<iv en base64>.<tag en base64>.<ciphertext en base64>`.
  */
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
 
 const ALGORITMO = "aes-256-gcm";
 const VERSION = "v1";
@@ -26,6 +26,15 @@ function clave(claveBase64?: string): Buffer {
     throw new Error(`CALENDARIO_CLAVE_CIFRADO debe decodificar a 32 bytes (AES-256); tiene ${buf.length}.`);
   }
   return buf;
+}
+
+/**
+ * Saca una subclave independiente del material de cifrado. Así los protocolos
+ * auxiliares (OAuth, webhooks) no reutilizan directamente la clave AES.
+ */
+export function derivarClaveContextual(contexto: string, claveBase64?: string): Buffer {
+  if (!/^[a-z0-9-]{1,80}$/i.test(contexto)) throw new Error("Contexto de clave no válido.");
+  return Buffer.from(hkdfSync("sha256", clave(claveBase64), Buffer.alloc(0), Buffer.from(`sishow/${contexto}/v1`), 32));
 }
 
 export function cifrar(texto: string, claveBase64?: string): string {

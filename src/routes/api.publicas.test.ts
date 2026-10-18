@@ -8,7 +8,8 @@ import { crearDobleSupabase } from "@/lib/api/doble-supabase";
 import { mockTransitorio } from "@/lib/api/doble-start";
 
 let doble = crearDobleSupabase({});
-let trabajos = { recordatorios: 0, senales: 0, polling: 0 };
+let trabajos = { recordatorios: 0, senales: 0, polling: 0, notificacionesGoogle: 0 };
+const TOKEN_CANAL = "token-watch-de-prueba";
 const ms = [
   await mockTransitorio("@/lib/supabase.server", { getSupabaseServerClient: () => doble as never }),
   await mockTransitorio("@/lib/api/recordatorios.server", {
@@ -20,6 +21,11 @@ const ms = [
   }),
   await mockTransitorio("@/lib/calendario-externo/calendario-externo.server", {
     sincronizarPollingDeRespaldo: (async () => { trabajos.polling++; return { procesadas: 0, errores: 0 }; }) as never,
+    procesarNotificacionGoogle: (async (_canal: string, token: string) => {
+      if (token !== TOKEN_CANAL) return false;
+      trabajos.notificacionesGoogle++;
+      return true;
+    }) as never,
   }),
 ];
 beforeAll(() => ms.forEach((m) => m.activar()));
@@ -30,12 +36,13 @@ const rutas = {
   senales: (await import("./api.senales-vencidas")).Route,
   cron: (await import("./api.calendario-externo.cron")).Route,
   calendario: (await import("./api.calendario")).Route,
+  webhookGoogle: (await import("./api.calendario-externo.google.webhook")).Route,
 };
 const handlers = (r: unknown) => (r as { options: { server: { handlers: Record<string, (c: { request: Request }) => Promise<Response>> } } }).options.server.handlers;
 
 const SECRETO = "secreto-de-prueba-123";
 const original = process.env.CRON_SECRET;
-beforeEach(() => { trabajos = { recordatorios: 0, senales: 0, polling: 0 }; });
+beforeEach(() => { trabajos = { recordatorios: 0, senales: 0, polling: 0, notificacionesGoogle: 0 }; });
 afterEach(() => { if (original === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = original; });
 
 const pedir = (r: unknown, url: string, init?: RequestInit, m: "GET" | "POST" = "GET") =>
@@ -61,6 +68,22 @@ describe.each([["recordatorios", "/api/recordatorios", "recordatorios"], ["senal
     expect((await pedir(rutas[nombre], u, { headers: { authorization: `Bearer ${SECRETO}` } })).status).toBe(200);
     expect((await pedir(rutas[nombre], `${u}?token=${SECRETO}`, undefined, "POST")).status).toBe(401);
     expect(trabajos[contador]).toBe(1);
+  });
+});
+
+describe("webhook Google: token del canal", () => {
+  const url = "https://sishow.test/api/calendario-externo/google/webhook";
+
+  it("rechaza la notificación sin X-Goog-Channel-Token y no sincroniza", async () => {
+    const r = await pedir(rutas.webhookGoogle, url, { headers: { "x-goog-channel-id": "canal-1" } }, "POST");
+    expect(r.status).toBe(401);
+    expect(trabajos.notificacionesGoogle).toBe(0);
+  });
+
+  it("solo sincroniza cuando el token del canal es válido", async () => {
+    expect((await pedir(rutas.webhookGoogle, url, { headers: { "x-goog-channel-id": "canal-1", "x-goog-channel-token": "otro" } }, "POST")).status).toBe(401);
+    expect((await pedir(rutas.webhookGoogle, url, { headers: { "x-goog-channel-id": "canal-1", "x-goog-channel-token": TOKEN_CANAL } }, "POST")).status).toBe(200);
+    expect(trabajos.notificacionesGoogle).toBe(1);
   });
 });
 

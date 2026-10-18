@@ -9,10 +9,10 @@
  * comprobados) y las rutas `src/routes/api.calendario-externo.*` (callback,
  * webhook, cron).
  */
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { getSupabaseServerClient } from "../supabase.server";
 import { getConfigCalendarios } from "../config.server";
-import { cifrarCredencial, descifrarCredencial } from "./cifrado";
+import { cifrarCredencial, descifrarCredencial, derivarClaveContextual } from "./cifrado";
 import {
   CalDAVNoDisponible,
   CredencialCalDAVInvalida,
@@ -234,6 +234,17 @@ function claveCifradoOCorta(): string {
   return cfg.claveCifrado;
 }
 
+/** Token opaco por canal: Google lo devuelve en X-Goog-Channel-Token. */
+export function tokenDeCanalGoogle(canalId: string, claveCifrado: string): string {
+  return createHmac("sha256", derivarClaveContextual("google-watch-token", claveCifrado)).update(canalId).digest("base64url");
+}
+
+function igualSeguro(a: string, b: string): boolean {
+  const izquierda = Buffer.from(a);
+  const derecha = Buffer.from(b);
+  return izquierda.length === derecha.length && timingSafeEqual(izquierda, derecha);
+}
+
 export function iniciarConexionGoogle(args: { salonSlug: string; employeeId: string | null; userId: string }): { url: string } {
   const config = configGoogleOCorta();
   const state = codificarEstado({ salonSlug: args.salonSlug, employeeId: args.employeeId, userId: args.userId }, claveCifradoOCorta());
@@ -293,9 +304,11 @@ export async function completarConexionGoogle(code: string, state: string): Prom
   const cfg = getConfigCalendarios();
   if (cfg.siteUrl) {
     try {
+      const canalId = randomUUID();
       const canal = await iniciarWatch(tokens.accessToken, "primary", {
-        canalId: randomUUID(),
+        canalId,
         address: `${cfg.siteUrl}/api/calendario-externo/google/webhook`,
+        tokenCanal: tokenDeCanalGoogle(canalId, clave),
       });
       await db
         .from("calendario_conexiones")
@@ -640,7 +653,7 @@ async function previosDe(db: Supabase, conexionId: string): Promise<BloqueoExter
   return (data ?? []).map(filaABloqueo);
 }
 
-async function sincronizarGoogleEntrante(db: Supabase, fila: FilaConexion, credencial: CredencialGoogle): Promise<Partial<FilaConexion>> {
+async function sincronizarGoogleEntrante(db: Supabase, fila: FilaConexion, credencial: CredencialGoogle, clave: string): Promise<Partial<FilaConexion>> {
   const config = configGoogleOCorta();
   const { accessToken } = await refrescarToken(config, credencial.refreshToken);
   const calendarId = fila.calendario_externo_id ?? "primary";
@@ -651,7 +664,12 @@ async function sincronizarGoogleEntrante(db: Supabase, fila: FilaConexion, crede
   const patch: Partial<FilaConexion> = {};
   if (cfg.siteUrl && (!caduca || caduca - Date.now() < 6 * 60 * 60_000)) {
     try {
-      const canal = await iniciarWatch(accessToken, calendarId, { canalId: randomUUID(), address: `${cfg.siteUrl}/api/calendario-externo/google/webhook` });
+      const canalId = randomUUID();
+      const canal = await iniciarWatch(accessToken, calendarId, {
+        canalId,
+        address: `${cfg.siteUrl}/api/calendario-externo/google/webhook`,
+        tokenCanal: tokenDeCanalGoogle(canalId, clave),
+      });
       patch.canal_watch_id = canal.id;
       patch.canal_recurso_id = canal.resourceId;
       patch.canal_caduca = canal.expirationMs ? new Date(canal.expirationMs).toISOString() : null;
@@ -710,7 +728,7 @@ export async function sincronizarConexionEntrante(fila: FilaConexion): Promise<b
   if (!clave) return false;
   try {
     const credencial = descifrarCredencial<Credencial>(fila.credencial_cifrada, clave);
-    const patch = credencial.tipo === "google" ? await sincronizarGoogleEntrante(db, fila, credencial) : await sincronizarAppleEntrante(db, fila, credencial);
+    const patch = credencial.tipo === "google" ? await sincronizarGoogleEntrante(db, fila, credencial, clave) : await sincronizarAppleEntrante(db, fila, credencial);
     await db
       .from("calendario_conexiones")
       .update({ ...patch, estado: "activa", ultimo_error: null, ultimo_error_en: null, ultima_sincronizacion: new Date().toISOString() })
@@ -731,12 +749,15 @@ export async function sincronizarConexionEntrante(fila: FilaConexion): Promise<b
 }
 
 /** Recibe el ping de un canal watch de Google ("algo ha cambiado, ve a mirar"). */
-export async function procesarNotificacionGoogle(canalId: string): Promise<void> {
+export async function procesarNotificacionGoogle(canalId: string, tokenCanal: string, sincronizar = true): Promise<boolean> {
   const db = getSupabaseServerClient();
-  if (!db || !canalId) return;
+  if (!db || !canalId || !tokenCanal) return false;
   const { data, error } = await db.from("calendario_conexiones").select("*").eq("canal_watch_id", canalId).eq("proveedor", "google").maybeSingle();
-  if (error || !data) return;
-  await sincronizarConexionEntrante(data as FilaConexion);
+  if (error || !data) return false;
+  const clave = getConfigCalendarios().claveCifrado;
+  if (!clave || !igualSeguro(tokenCanal, tokenDeCanalGoogle(canalId, clave))) return false;
+  if (sincronizar) await sincronizarConexionEntrante(data as FilaConexion);
+  return true;
 }
 
 /** El polling de respaldo (cron cada 5 min): TODAS las conexiones activas, Google incluida (el watch puede fallar). */
