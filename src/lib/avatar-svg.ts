@@ -421,26 +421,26 @@ export interface RasgosAvatar {
 
 /** Colores por tono: los dos últimos usan ojo claro y nunca un contorno oscuro. */
 export const RASGOS_POR_PIEL: Record<Piel, RasgosAvatar> = {
-  "muy-clara": { cejas: "#5A3A22", ojo: "#5A3A22", nariz: "#7B4B31", boca: "#924A48" },
-  clara: { cejas: "#5A3A22", ojo: "#5A3A22", nariz: "#7B4B31", boca: "#924A48" },
-  miel: { cejas: "#5A3A22", ojo: "#5A3A22", nariz: "#6B3F29", boca: "#843E43" },
-  dorado: { cejas: "#4A2B19", ojo: "#4A2B19", nariz: "#5D3520", boca: "#783541" },
-  oliva: { cejas: "#3A2214", ojo: "#3A2214", nariz: "#3A2214", boca: "#71313B" },
-  canela: { cejas: "#3A2214", ojo: "#3A2214", nariz: "#3A2214", boca: "#6A2931" },
-  morena: { cejas: "#25150D", ojo: "#25150D", nariz: "#25150D", boca: "#2A1010" },
-  castana: { cejas: "#21120C", ojo: "#21120C", nariz: "#21120C", boca: "#2A1010" },
+  "muy-clara": { cejas: "#5A3A22", ojo: "#3F2616", nariz: "#D9A98A", boca: "#B2504E" },
+  clara: { cejas: "#5A3A22", ojo: "#3F2616", nariz: "#D2A07C", boca: "#B2504E" },
+  miel: { cejas: "#5A3A22", ojo: "#3F2616", nariz: "#C9966F", boca: "#A8434A" },
+  dorado: { cejas: "#4A2B19", ojo: "#3A2012", nariz: "#B98558", boca: "#9A3A46" },
+  oliva: { cejas: "#3A2214", ojo: "#2E190E", nariz: "#A67443", boca: "#8A323E" },
+  canela: { cejas: "#3A2214", ojo: "#2E190E", nariz: "#B26E43", boca: "#7E2A33" },
+  morena: { cejas: "#25150D", ojo: "#1F100A", nariz: "#8C4820", boca: "#3B1214" },
+  castana: { cejas: "#21120C", ojo: "#1C0F09", nariz: "#70441F", boca: "#2E0F10" },
   oscura: {
     cejas: "#F5F0E8",
     ojo: "#F5F0E8",
     pupila: "#120A06",
-    nariz: "#E8B5A5",
+    nariz: "#46301F",
     boca: "#F2A39A",
   },
   profunda: {
     cejas: "#F5F0E8",
     ojo: "#F5F0E8",
     pupila: "#120A06",
-    nariz: "#E8B5A5",
+    nariz: "#7A5644",
     boca: "#F2A39A",
   },
 };
@@ -466,21 +466,23 @@ function peloDetras(peinado: Peinado, color: string): string {
         color,
       );
     case "largo-liso":
-      return cierre(
+      return `${cierre(
         "M23 39C18 54 20 80 28 91h40c8-11 10-37 5-52-7 10-15 14-25 14S30 49 23 39Z",
         color,
-      );
+      )}${trazo("M26 58c-1 10 0 20 3 28", mezclar(color, "#000000", 0.3), 1.8)}${trazo("M70 58c1 10 0 20-3 28", mezclar(color, "#000000", 0.3), 1.8)}`;
     case "ondulado-largo":
-      return cierre(
-        "M22 41c-5 13-2 39 7 50h9l4-7 6 6 6-6 5 7h9c9-11 12-37 7-50-8 9-17 13-26 13S30 50 22 41Z",
+      return `${cierre(
+        "M22 41c-6 13-3 27 2 36-3 6-1 11 4 14 3-3 6-3 9 0 3-3 6-3 9 0 3-3 6-3 9 0 3-3 6-3 9 0 5-3 7-8 4-14 5-9 8-23 2-36-8 9-17 13-26 13S30 50 22 41Z",
         color,
-      );
+      )}${trazo("M25 56c3 4-3 8 0 12s-2 6 0 9", mezclar(color, "#000000", 0.3), 1.8)}${trazo("M71 56c-3 4 3 8 0 12s2 6 0 9", mezclar(color, "#000000", 0.3), 1.8)}`;
     case "trenzas":
       return [
         cierre("M26 45c-7 10-6 29 1 39l6-3c-4-10-3-22 1-30Z", color),
         circulo(28, 61, 4, color),
         circulo(27, 69, 4, color),
         circulo(28, 77, 4, color),
+        trazo("M24.5 65h7M24.5 73h7", mezclar(color, "#000000", 0.4), 1.6),
+        trazo("M64.5 65h7M64.5 73h7", mezclar(color, "#000000", 0.4), 1.6),
         cierre("M70 45c7 10 6 29-1 39l-6-3c4-10 3-22-1-30Z", color),
         circulo(68, 61, 4, color),
         circulo(69, 69, 4, color),
@@ -504,7 +506,7 @@ function peloDelante(peinado: Peinado, color: string): string {
     case "rapado":
       return cierre("M30 35c3-11 10-17 18-17s15 6 18 17c-5-3-11-4-18-4s-13 1-18 4Z", color, 0.84);
     case "corto-con-raya":
-      return `${casquete}${cierre("M28 39c8-9 17-13 31-10l10 8v7c-9-5-21-6-41 2Z", color)}`;
+      return `${casquete}${cierre("M28 39c8-9 17-13 31-10l10 8v7c-9-5-21-6-41 2Z", color)}${trazo("M41 19.5c0 7-2 12-8 17", mezclar(color, "#000000", 0.4), 1.8)}${trazo("M45 18c3 4 9 8 22 12", mezclar(color, "#000000", 0.25), 1.6)}`;
     case "corto-texturizado":
       return cierre("M27 42c0-12 7-24 21-24 12 0 19 8 21 23l-8-4-3 4-6-6-5 6-7-6-5 7Z", color);
     case "fade-tupe":
@@ -521,15 +523,18 @@ function peloDelante(peinado: Peinado, color: string): string {
       return `${casquete}${cierre("M26 41c5-7 10 2 15-3s10 4 15-1 9 1 13 5v7c-10-6-30-7-43 1Z", color)}`;
     case "rizado-corto":
       return [
+        cierre("M28 48c-3-18 6-27 20-27s23 9 20 27c-6-7-12-10-20-10s-14 3-20 10Z", color),
         circulo(30, 35, 7, color),
         circulo(36, 27, 8, color),
         circulo(45, 24, 9, color),
         circulo(55, 25, 9, color),
         circulo(64, 32, 8, color),
         cierre("M29 44c5-7 12-9 19-9s14 2 19 9v5H29Z", color),
+        ...[[37, 28], [48, 24], [59, 28], [32, 38], [64, 38]].map(([x, y]) => circulo(x!, y!, 2.6, mezclar(color, "#000000", 0.28))),
       ].join("");
     case "afro":
       return [
+        cierre("M26 48C22 22 34 9 48 9s26 13 22 39c-6-7-13-10-22-10s-16 3-22 10Z", color),
         circulo(27, 37, 9, color),
         circulo(31, 27, 10, color),
         circulo(39, 20, 11, color),
@@ -537,6 +542,7 @@ function peloDelante(peinado: Peinado, color: string): string {
         circulo(61, 23, 11, color),
         circulo(68, 34, 9, color),
         cierre("M28 44c5-7 12-10 20-10s15 3 20 10v6H28Z", color),
+        ...[[36, 20], [48, 14], [60, 20], [30, 33], [66, 33]].map(([x, y]) => circulo(x!, y!, 3.2, mezclar(color, "#000000", 0.28))),
       ].join("");
     case "trenzas":
       return `${casquete}${cierre("M27 40c8-8 25-9 42-2v8c-11-6-29-6-42 2Z", color)}`;
@@ -557,50 +563,77 @@ function barba(peinado: Peinado, color: string): string {
     : "";
 }
 
-function canas(edad: EdadAvatar, peinado: Peinado): string {
-  if (edad !== "mayor" || peinado === "calvo-barba") return "";
-  return [
-    ovalo(38, 27, 4, 1.5, "#E3E0DA", 0.92),
-    ovalo(50, 23, 4, 1.5, "#E3E0DA", 0.92),
-    ovalo(59, 29, 4, 1.5, "#E3E0DA", 0.92),
-  ].join("");
+function mezclar(color: string, con: string, t: number): string {
+  const c = (hex: string, i: number) => Number.parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
+  return `#${[0, 1, 2]
+    .map((i) =>
+      Math.round(c(color, i) * (1 - t) + c(con, i) * t)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
 }
 
-function rasgos(piel: Piel): string {
+/** Línea curva sin relleno, siempre redondeada y con grosor mínimo de 1,5. */
+const trazo = (d: string, color: string, ancho: number, opacity?: number) =>
+  `<path d="${d}" fill="none" stroke="${color}" stroke-width="${Math.max(ancho, 1.5)}" stroke-linecap="round" stroke-linejoin="round"${opacity ? ` opacity="${opacity}"` : ""}/>`;
+
+function rasgos(piel: Piel, edad: EdadAvatar, simple: boolean): string {
   const r = RASGOS_POR_PIEL[piel];
-  const cejas = `${ovalo(39, 42, 5.3, 1.55, r.cejas)}${ovalo(57, 42, 5.3, 1.55, r.cejas)}`;
-  const ojos = r.pupila
-    ? `${ovalo(39, 49, 4.8, 3.4, r.ojo)}${ovalo(57, 49, 4.8, 3.4, r.ojo)}${circulo(39, 49, 1.7, r.pupila)}${circulo(57, 49, 1.7, r.pupila)}`
-    : `${circulo(39, 49, 2.65, r.ojo)}${circulo(57, 49, 2.65, r.ojo)}`;
-  const nariz = cierre("M48 50c-3 3-4 8-1 10 2 1 5 0 5-2 0-3-2-6-4-8Z", r.nariz);
-  const boca = cierre("M40 63c4 2 12 2 16 0-1 5-4 7-8 7s-7-2-8-7Z", r.boca);
+  const claro = Boolean(r.pupila);
+  const brillo = "#FFFFFF";
+  if (simple) {
+    const ojos = claro
+      ? `${ovalo(39, 49, 5.6, 4.4, r.ojo)}${ovalo(57, 49, 5.6, 4.4, r.ojo)}${circulo(39, 49, 2.6, r.pupila!)}${circulo(57, 49, 2.6, r.pupila!)}`
+      : `${circulo(39, 49, 4.2, r.ojo)}${circulo(57, 49, 4.2, r.ojo)}`;
+    return `${ojos}${trazo("M40 62q8 8 16 0", r.boca, 3.6)}`;
+  }
+  const cejaColor = edad === "mayor" && !claro ? "#8A8683" : r.cejas;
+  const cejas = `${ovalo(39, 41.5, 5.3, 1.6, cejaColor)}${ovalo(57, 41.5, 5.3, 1.6, cejaColor)}`;
+  const ojos = claro
+    ? `${ovalo(39, 49, 5.2, 3.8, r.ojo)}${ovalo(57, 49, 5.2, 3.8, r.ojo)}${circulo(39.4, 49, 2.3, r.pupila!)}${circulo(57.4, 49, 2.3, r.pupila!)}${circulo(40.2, 48.1, 0.8, brillo)}${circulo(58.2, 48.1, 0.8, brillo)}`
+    : `${circulo(39, 49, 3.5, r.ojo)}${circulo(57, 49, 3.5, r.ojo)}${circulo(40.2, 47.8, 1.1, brillo)}${circulo(58.2, 47.8, 1.1, brillo)}`;
+  const nariz = trazo("M45.5 55c-1.5 3-1 5.5 2 6 2 .3 3.3-.6 3.6-1.6", r.nariz, 1.9);
+  const boca = trazo("M41 64.5q7 6 14 0", r.boca, claro ? 2.6 : 2.3);
   return `${cejas}${ojos}${nariz}${boca}`;
 }
 
-function detalleMayor(edad: EdadAvatar, piel: Piel): string {
-  if (edad !== "mayor") return "";
-  const color = piel === "oscura" || piel === "profunda" ? "#E8B5A5" : "#8A5A43";
-  return `${ovalo(33, 56, 3.4, 1.05, color, 0.22)}${ovalo(63, 56, 3.4, 1.05, color, 0.22)}`;
+function detalleMayor(edad: EdadAvatar, piel: Piel, simple: boolean): string {
+  if (edad !== "mayor" || simple) return "";
+  const base = opcion(PIELES, piel).color;
+  const color = RASGOS_POR_PIEL[piel].pupila ? mezclar(base, "#FFFFFF", 0.22) : mezclar(base, "#3A1F10", 0.3);
+  return [
+    trazo("M33.5 47c-2 1.800-2.200 4-1.400 5.600", color, 1.5),
+    trazo("M62.5 47c2 1.800 2.200 4 1.400 5.600", color, 1.5),
+    trazo("M40 57c-2.500 3-2.500 6-1 8", color, 1.5),
+    trazo("M56 57c2.500 3 2.500 6 1 8", color, 1.5),
+  ].join("");
 }
 
 /** SVG original y plano para una composición ya validada. */
-export function svgDeComposicion(composicion: AvatarComposicion): string {
+export function svgDeComposicion(
+  composicion: AvatarComposicion,
+  opciones: { simple?: boolean } = {},
+): string {
+  const simple = opciones.simple === true;
   if (!composicionValida(composicion)) throw new Error("Composición de avatar no válida");
   const piel = opcion(PIELES, composicion.piel);
   const pelo = opcion(COLORES_PELO, composicion.colorPelo);
   const fondo = opcion(FONDOS_AVATAR, composicion.fondo);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img"><circle cx="48" cy="48" r="48" fill="${fondo.color}"/><path d="M0 96c2-19 18-30 48-30s46 11 48 30Z" fill="${COLOR_CAMISETA}"/><path d="M35 68h26v12c-4 6-9 8-13 8s-9-2-13-8Z" fill="${piel.color}"/>${peloDetras(composicion.peinado, pelo.color)}<ellipse cx="48" cy="47" rx="20" ry="24" fill="${piel.color}"/><ellipse cx="28" cy="48" rx="3.5" ry="5" fill="${piel.color}"/><ellipse cx="68" cy="48" rx="3.5" ry="5" fill="${piel.color}"/>${peloDelante(composicion.peinado, pelo.color)}${canas(composicion.edad, composicion.peinado)}${rasgos(composicion.piel)}${barba(composicion.peinado, pelo.color)}${detalleMayor(composicion.edad, composicion.piel)}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img"><circle cx="48" cy="48" r="48" fill="${fondo.color}"/><path d="M0 96c2-19 18-30 48-30s46 11 48 30Z" fill="${COLOR_CAMISETA}"/><path d="M35 68h26v12c-4 6-9 8-13 8s-9-2-13-8Z" fill="${piel.color}"/>${peloDetras(composicion.peinado, pelo.color)}<ellipse cx="48" cy="47" rx="20" ry="24" fill="${piel.color}"/><ellipse cx="28" cy="48" rx="3.5" ry="5" fill="${piel.color}"/><ellipse cx="68" cy="48" rx="3.5" ry="5" fill="${piel.color}"/>${peloDelante(composicion.peinado, pelo.color)}${rasgos(composicion.piel, composicion.edad, simple)}${barba(composicion.peinado, pelo.color)}${detalleMayor(composicion.edad, composicion.piel, simple)}</svg>`;
 }
 
 const cache = new Map<string, string>();
 
 /** SVG propio como data URI; se memoriza para listas largas. */
-export function uriDeAvatar(clave: AvatarClave | string): string {
-  const guardada = cache.get(clave);
+export function uriDeAvatar(clave: AvatarClave | string, px?: number): string {
+  const simple = px !== undefined && px <= 28;
+  const llave = simple ? `s:${clave}` : clave;
+  const guardada = cache.get(llave);
   if (guardada) return guardada;
   const composicion = composicionDeAvatar(clave);
   if (!composicion) throw new Error(`Avatar desconocido: ${clave}`);
-  const uri = `data:image/svg+xml,${encodeURIComponent(svgDeComposicion(composicion))}`;
-  cache.set(clave, uri);
+  const uri = `data:image/svg+xml,${encodeURIComponent(svgDeComposicion(composicion, { simple }))}`;
+  cache.set(llave, uri);
   return uri;
 }

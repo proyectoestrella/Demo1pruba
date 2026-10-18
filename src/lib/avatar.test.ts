@@ -121,11 +121,14 @@ describe("familia SVG propia compuesta", () => {
       const rasgos = RASGOS_POR_PIEL[piel.id];
       for (const [nombre, color] of Object.entries({
         ojos: rasgos.ojo,
-        nariz: rasgos.nariz,
         boca: rasgos.boca,
       })) {
         expect(contrasteWCAG(piel.color, color), `${piel.id}: ${nombre}`).toBeGreaterThanOrEqual(3);
       }
+      // La nariz es una línea sutil de tono de piel más oscuro: solo ha de distinguirse.
+      expect(contrasteWCAG(piel.color, rasgos.nariz), `${piel.id}: nariz`).toBeGreaterThanOrEqual(
+        1.3,
+      );
     }
   });
 
@@ -149,7 +152,9 @@ describe("familia SVG propia compuesta", () => {
               expect(svg.endsWith("</svg>")).toBe(true);
               expect(svg).not.toContain("undefined");
               expect(svg).not.toContain("NaN");
-              expect(svg).not.toContain("stroke=");
+              for (const ancho of svg.matchAll(/stroke-width="([\d.]+)"/g))
+                expect(Number(ancho[1])).toBeGreaterThanOrEqual(1.5);
+              expect(svg.match(/stroke="/g)?.length ?? 0).toBe(svg.match(/stroke-width="/g)?.length ?? 0);
               expect(svg.toLowerCase()).not.toContain("sombrero");
               expect(svg.toLowerCase()).not.toContain("gorro");
               expect(svg.toLowerCase()).not.toContain("<hat");
@@ -187,8 +192,8 @@ describe("familia SVG propia compuesta", () => {
     };
     const mayor = svgDeComposicion({ ...base, edad: "mayor" });
     expect(mayor).not.toBe(svgDeComposicion(base));
-    expect(mayor).toContain('fill="#E3E0DA"');
+    expect(mayor).toContain("stroke-linecap");
+    expect(mayor).not.toContain('opacity="0.92"');
     expect(mayor).not.toContain("<rect");
-    expect(mayor).not.toContain("stroke=");
   });
 });

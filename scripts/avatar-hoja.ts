@@ -3,6 +3,7 @@
 import { dirname, resolve } from "node:path";
 import { mkdir } from "node:fs/promises";
 import {
+  COLORES_PELO,
   EDADES,
   PEINADOS,
   PIELES,
@@ -23,7 +24,7 @@ const escapar = (texto: string) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[caracter]!,
   );
 const avatar = (receta: AvatarComposicion, px: number, etiqueta: string) =>
-  `<figure class="celda"><div class="avatar" style="width:${px}px;height:${px}px">${svgDeComposicion(receta)}</div><figcaption>${escapar(etiqueta)}</figcaption></figure>`;
+  `<figure class="celda"><div class="avatar" style="width:${px}px;height:${px}px">${svgDeComposicion(receta, { simple: px <= 28 })}</div><figcaption>${escapar(etiqueta)}</figcaption></figure>`;
 const receta = (
   piel: AvatarComposicion["piel"],
   peinado: AvatarComposicion["peinado"],
@@ -32,7 +33,12 @@ const receta = (
   piel,
   peinado,
   edad,
-  colorPelo: edad === "mayor" ? "gris" : "castano",
+  colorPelo:
+    edad === "mayor"
+      ? "gris"
+      : ["morena", "castana", "oscura", "profunda"].includes(piel)
+        ? "negro"
+        : "castano",
   fondo: "salvia",
 });
 
@@ -52,6 +58,16 @@ const matrizPeinados = PEINADOS.flatMap((peinado) =>
 ).join("");
 const tamanos = PIELES.flatMap((piel) =>
   [24, 40].map((px) => avatar(receta(piel.id, "corto-con-raya"), px, `${piel.nombre} · ${px}px`)),
+).join("");
+
+const coloresPelo = COLORES_PELO.flatMap((color) =>
+  (["clara", "oliva", "oscura"] as const).map((piel) =>
+    avatar(
+      { ...receta(piel, "corto-con-raya"), colorPelo: color.id },
+      64,
+      `${color.nombre} · ${PIELES.find((tono) => tono.id === piel)!.nombre}`,
+    ),
+  ),
 ).join("");
 
 const html = `<!doctype html>
@@ -83,6 +99,7 @@ const html = `<!doctype html>
   <p>SVG original, sin recursos externos. Camiseta fija; cambia solo el fondo.</p>
   <section><h2>10 tonos × 3 edades · 96 px</h2><p class="nota">Peinado común: corto con raya.</p><div class="rejilla">${matrizEdad}</div></section>
   <section><h2>16 peinados × claro, oliváceo y profundo · 64 px</h2><p class="nota">Los tres tonos son Muy clara, Oliva <code>#C99C62</code> y Profunda.</p><div class="rejilla peinados">${matrizPeinados}</div></section>
+  <section><h2>10 colores de pelo × Clara, Oliva y Oscura · 64 px</h2><div class="rejilla peinados">${coloresPelo}</div></section>
   <section><h2>Lectura a tamaño pequeño · 24 y 40 px</h2><div class="rejilla pequenos">${tamanos}</div></section>
 </body>
 </html>`;
