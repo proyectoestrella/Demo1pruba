@@ -504,20 +504,24 @@ export async function listarOcupadoExterno(
 export async function hayOcupadoExternoEnHueco(salonSlug: string, employeeId: string, startISO: string, endISO: string): Promise<boolean> {
   const db = getSupabaseServerClient();
   if (!db) return false;
-  const { data, error } = await db
-    .from("calendario_bloqueos_externos")
-    .select("id")
-    .eq("salon_slug", salonSlug)
-    .or(`employee_id.eq.${employeeId},employee_id.is.null`)
-    .lt("start_at", endISO)
-    .gt("end_at", startISO)
-    .limit(1);
+  const consultar = (deQuien: string | null) => {
+    const consulta = db
+      .from("calendario_bloqueos_externos")
+      .select("id")
+      .eq("salon_slug", salonSlug);
+    return (deQuien === null ? consulta.is("employee_id", null) : consulta.eq("employee_id", deQuien))
+      .lt("start_at", endISO)
+      .gt("end_at", startISO)
+      .limit(1);
+  };
+  const [deProfesional, deSalon] = await Promise.all([consultar(employeeId), consultar(null)]);
+  const error = deProfesional.error ?? deSalon.error;
   if (error) {
     if (tablaNoExiste(error)) return false;
     console.error("calendario-externo (comprobar hueco):", error.message);
     return false;
   }
-  return (data ?? []).length > 0;
+  return (deProfesional.data ?? []).length > 0 || (deSalon.data ?? []).length > 0;
 }
 
 // -----------------------------------------------------------------------
@@ -615,18 +619,22 @@ export async function procesarCitaParaConexiones(salonSlug: string, cita: CitaPa
   if (!db) return;
   let filas: FilaConexion[];
   try {
-    const { data, error } = await db
-      .from("calendario_conexiones")
-      .select("*")
-      .eq("salon_slug", salonSlug)
-      .eq("estado", "activa")
-      .or(`employee_id.eq.${cita.employeeId},employee_id.is.null`);
+    const consultar = (deQuien: string | null) => {
+      const consulta = db
+        .from("calendario_conexiones")
+        .select("*")
+        .eq("salon_slug", salonSlug)
+        .eq("estado", "activa");
+      return deQuien === null ? consulta.is("employee_id", null) : consulta.eq("employee_id", deQuien);
+    };
+    const [deProfesional, deSalon] = await Promise.all([consultar(cita.employeeId), consultar(null)]);
+    const error = deProfesional.error ?? deSalon.error;
     if (error) {
       if (tablaNoExiste(error)) return;
       console.error("calendario-externo (conexiones para cita):", error.message);
       return;
     }
-    filas = (data ?? []) as FilaConexion[];
+    filas = [...(deProfesional.data ?? []), ...(deSalon.data ?? [])] as FilaConexion[];
   } catch (err) {
     console.error("calendario-externo (conexiones para cita):", err);
     return;

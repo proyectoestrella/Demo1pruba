@@ -12,7 +12,7 @@ export function crearDobleSupabase(
   opciones: { tokens?: Record<string, string>; errorEn?: Record<string, string> } = {},
 ) {
   const escrituras: Escritura[] = [];
-  const consultas: Array<{ tabla: string; filtros: Array<[string, unknown]> }> = [];
+  const consultas: Array<{ tabla: string; filtros: Array<[string, unknown]>; or?: string[] }> = [];
   const from = (tabla: string) => {
     const filtros: Array<[string, unknown]> = [];
     let op = "select";
@@ -23,6 +23,7 @@ export function crearDobleSupabase(
     let afectadas: Fila[] = [];
     const noNulos: string[] = [];
     const comp: Array<(f: Fila) => boolean> = [];
+    const filtrosOr: string[] = [];
     const filas = () => (tablas[tabla] ?? []).filter((f) => filtros.every(([c, v]) => (Array.isArray(v) ? v.includes(f[c]) : f[c] === v)) && comp.every((fn) => fn(f)) && noNulos.every((c) => f[c] !== null && f[c] !== undefined));
     const resultado = () => {
       if (op !== "select") {
@@ -42,7 +43,7 @@ export function crearDobleSupabase(
         }
         return { data: selecciona ? afectadas : null, error: null };
       }
-      consultas.push({ tabla, filtros: [...filtros] });
+      consultas.push({ tabla, filtros: [...filtros], ...(filtrosOr.length ? { or: [...filtrosOr] } : {}) });
       return { data: err() ? null : filas(), error: err() };
     };
     const q: any = {
@@ -56,7 +57,7 @@ export function crearDobleSupabase(
       lt: (c: string, v: string) => { comp.push((f) => String(f[c]) < v); return q; },
       neq: (c: string, v: unknown) => { comp.push((f) => f[c] !== v); return q; },
       is: (c: string, v: unknown) => { comp.push((f) => (f[c] ?? null) === v); return q; },
-      or: () => q,
+      or: (filtro: string) => { filtrosOr.push(filtro); return q; },
       order: () => q,
       range: () => q,
       limit: () => q,
