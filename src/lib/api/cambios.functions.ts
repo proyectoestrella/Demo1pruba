@@ -54,14 +54,29 @@ export const guardarCambio = createServerFn({ method: "POST" })
     const sb = getSupabaseServerClient();
     if (!sb) return { guardado: false as const, motivo: "sin-backend" as const };
     const c = data.cambio;
-    const { error } = await sb.from("cambios").upsert(
+    // Igual que los pagos, `cambios.id` es una PK global: un reintento solo
+    // es idempotente si el registro que ya existe pertenece a este salón.
+    const { data: existente, error: errorExistente } = await sb
+      .from("cambios")
+      .select("salon_slug")
+      .eq("id", c.id)
+      .maybeSingle();
+    if (errorExistente) {
+      console.warn(`guardarCambio (comprobar id): ${errorExistente.message}`);
+      return { guardado: false as const, motivo: "sin-tabla" as const };
+    }
+    if (existente) {
+      return existente.salon_slug === data.slug
+        ? { guardado: true as const }
+        : { guardado: false as const, motivo: "id-en-uso" as const };
+    }
+    const { error } = await sb.from("cambios").insert(
       {
         id: c.id, salon_slug: data.slug, tipo: c.tipo, entidad: c.entidad, id_entidad: c.idEntidad,
         antes: c.antes, despues: c.despues, resumen: c.resumen,
         autor: quien.userId, autor_nombre: quien.displayName, fecha: c.fecha,
         deshace_a: c.deshaceA ?? null, aviso_enviado: c.avisoEnviado,
       },
-      { onConflict: "id", ignoreDuplicates: true },
     );
     if (error) {
       console.warn(`guardarCambio (¿falta aplicar supabase/pendiente.sql?): ${error.message}`);

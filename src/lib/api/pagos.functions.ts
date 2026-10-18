@@ -111,14 +111,26 @@ export const registrarPago = createServerFn({ method: "POST" })
     const supabase = getSupabaseServerClient();
     if (!supabase) return { guardado: false as const };
     const p = data.pago;
-    const { error } = await supabase.from("payments").upsert(
+    // `payments.id` es una PK global. Antes `ignoreDuplicates` confirmaba
+    // como guardado un id que pertenecía a OTRO salón; comprobamos primero la
+    // idempotencia propia y una colisión ajena falla sin tocarla.
+    const { data: existente, error: errorExistente } = await supabase
+      .from("payments")
+      .select("salon_slug")
+      .eq("id", p.id)
+      .maybeSingle();
+    if (errorExistente) {
+      console.warn(`registrarPago (comprobar id): ${errorExistente.message}`);
+      return { guardado: false as const };
+    }
+    if (existente) return { guardado: existente.salon_slug === data.slug };
+    const { error } = await supabase.from("payments").insert(
       {
         id: p.id, salon_slug: data.slug, appointment_id: p.appointmentId ?? null, client_id: p.clientId ?? null,
         client_name: p.clientName ?? null, importe_eur: p.importeEur, metodo: p.metodo, concepto: p.concepto,
         cobrado_por: p.cobradoPor ?? null, nota: p.nota ?? null, origen: "sishow", ref_externa: p.refExterna ?? null,
         fecha: p.fecha,
       },
-      { onConflict: "id", ignoreDuplicates: true },
     );
     if (error) {
       console.warn(`registrarPago (¿falta aplicar supabase/pendiente.sql sección 14?): ${error.message}`);
