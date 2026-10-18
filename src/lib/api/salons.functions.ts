@@ -1415,6 +1415,18 @@ export const syncAppointment = createServerFn({ method: "POST" })
 
     await escribirCita(supabase, fila);
 
+    // M5: la comprobación de hueco de arriba y esta escritura no son atómicas.
+    // Hasta que exista la restricción de exclusión (supabase/pendiente.sql,
+    // sección «no solapar citas»), se vuelve a mirar DESPUÉS de escribir: si
+    // otra reserva simultánea se llevó el hueco antes que esta, esta se deshace.
+    if (
+      !manda &&
+      (await perdioLaCarrera(supabase, data.slug, data.localId, data.employeeId, data.startISO, durationMinGuardada))
+    ) {
+      await supabase.from("appointments").delete().eq("salon_slug", data.slug).eq("local_id", data.localId);
+      return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
+    }
+
     // Lote 13: llevar la cita a los calendarios externos conectados de esta
     // profesional (y al del salón entero, si lo hay). Nunca lanza (lo
     // garantiza `procesarCitaParaConexiones`); un fallo del calendario
@@ -1483,6 +1495,37 @@ async function escribirFicha(
  * una ventana de siete días; la protección definitiva contra dos
  * inserciones simultáneas sería una restricción en PostgreSQL.
  */
+/**
+ * ¿Hay otra cita que solape con esta y que se creó ANTES (o a la vez y con
+ * un id menor)? Entonces esta es la que pierde la carrera.
+ */
+export async function perdioLaCarrera(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  salonSlug: string,
+  localId: string,
+  employeeId: string,
+  startISO: string,
+  durationMin: number,
+): Promise<boolean> {
+  const fin = new Date(Date.parse(startISO) + durationMin * 60_000).toISOString();
+  const desde = new Date(Date.parse(startISO) - 7 * 24 * 60 * 60_000).toISOString();
+  const { data: cercanas, error } = await supabase
+    .from("appointments")
+    .select("local_id, start_at, duration_min, status, created_at")
+    .eq("salon_slug", salonSlug)
+    .eq("employee_id", employeeId)
+    .gte("start_at", desde)
+    .lt("start_at", fin);
+  if (error) throw new Error(`syncAppointment (hueco): ${error.message}`);
+  const filas = (cercanas ?? []) as Array<{ local_id: string; start_at: string; duration_min: number; status: string; created_at?: string }>;
+  const propia = filas.find((c) => c.local_id === localId);
+  const propiaCreada = propia?.created_at ?? "";
+  const anteriores = filas.filter(
+    (c) => c.local_id !== localId && ((c.created_at ?? "") < propiaCreada || ((c.created_at ?? "") === propiaCreada && c.local_id < localId)),
+  );
+  return haySolape(startISO, durationMin, anteriores);
+}
+
 async function solapaEnServidor(
   supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
   salonSlug: string,

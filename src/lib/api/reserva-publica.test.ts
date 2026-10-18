@@ -91,3 +91,26 @@ describe("M4: topes de entrada, horizonte y ritmo en la reserva pública", () =>
     expect(r.reason).toBe("RESERVA_DEMASIADAS");
   });
 });
+
+describe("M5: doble reserva simultánea", () => {
+  const HUECO = proximoDia(2);
+  const solape = (created_at: string, local_id: string) => ({
+    id: local_id, salon_slug: "real", local_id, employee_id: employees[0].id, start_at: HUECO, duration_min: 30, status: "pending", created_at,
+  });
+
+  it("perdioLaCarrera: pierde la reserva creada después; gana la primera", async () => {
+    const { perdioLaCarrera } = S as unknown as { perdioLaCarrera: (...a: unknown[]) => Promise<boolean> };
+    expect(typeof perdioLaCarrera).toBe("function");
+    doble.tablas.appointments = [solape("2026-10-18T10:00:00.000Z", "A"), solape("2026-10-18T10:00:00.050Z", "B")];
+    expect(await perdioLaCarrera(doble, "real", "B", employees[0].id, HUECO, 30)).toBe(true);
+    expect(await perdioLaCarrera(doble, "real", "A", employees[0].id, HUECO, 30)).toBe(false);
+  });
+
+  it("la reserva pública llama a la comprobación posterior a la escritura y deshace la suya si pierde", async () => {
+    const fuente = await Bun.file(new URL("./salons.functions.ts", import.meta.url)).text();
+    const i = fuente.indexOf("await escribirCita(supabase, fila);");
+    const resto = fuente.slice(i, i + 900);
+    expect(resto).toContain("perdioLaCarrera(");
+    expect(resto).toContain(".delete()");
+  });
+});
