@@ -5,7 +5,7 @@
  * finos ni recursos externos. La receta compacta v2 se mantiene para que los
  * perfiles existentes continúen siendo válidos.
  */
-export const COLOR_CAMISETA = "#7A5539";
+export const COLOR_CAMISETA = "#2F8791";
 
 /** De claro a oscuro; dorado y oliváceo no son tonos de transición ocultos. */
 export const PIELES = [
@@ -25,20 +25,20 @@ export const PIELES = [
 export const PEINADOS = [
   { id: "rapado", nombre: "Rapado" },
   { id: "corto-con-raya", nombre: "Corto con raya" },
-  { id: "corto-texturizado", nombre: "Corto texturizado" },
-  { id: "fade-tupe", nombre: "Fade con tupé" },
+  { id: "corto-texturizado", nombre: "Texturizado" },
+  { id: "fade-tupe", nombre: "Fade y tupé" },
   { id: "flat-top", nombre: "Flat top" },
   { id: "mohicano", nombre: "Mohicano" },
   { id: "bob", nombre: "Bob" },
-  { id: "largo-liso", nombre: "Melena larga lisa" },
-  { id: "ondulado-largo", nombre: "Ondulado largo" },
+  { id: "largo-liso", nombre: "Melena lisa" },
+  { id: "ondulado-largo", nombre: "Ondas largas" },
   { id: "rizado-corto", nombre: "Rizado corto" },
   { id: "afro", nombre: "Afro" },
   { id: "trenzas", nombre: "Trenzas" },
   { id: "mono-alto", nombre: "Moño alto" },
   { id: "coleta-baja", nombre: "Coleta baja" },
-  { id: "calvo-barba", nombre: "Calvo con barba" },
-  { id: "flequillo-media-melena", nombre: "Flequillo y media melena" },
+  { id: "calvo-barba", nombre: "Calvo y barba" },
+  { id: "flequillo-media-melena", nombre: "Flequillo" },
 ] as const;
 
 export const EDADES = [
@@ -475,19 +475,15 @@ function peloDetras(peinado: Peinado, color: string): string {
         "M22 41c-6 13-3 27 2 36-3 6-1 11 4 14 3-3 6-3 9 0 3-3 6-3 9 0 3-3 6-3 9 0 3-3 6-3 9 0 5-3 7-8 4-14 5-9 8-23 2-36-8 9-17 13-26 13S30 50 22 41Z",
         color,
       )}${trazo("M25 56c3 4-3 8 0 12s-2 6 0 9", mezclar(color, "#000000", 0.3), 1.8)}${trazo("M71 56c-3 4 3 8 0 12s2 6 0 9", mezclar(color, "#000000", 0.3), 1.8)}`;
-    case "trenzas":
-      return [
-        cierre("M26 45c-7 10-6 29 1 39l6-3c-4-10-3-22 1-30Z", color),
-        circulo(28, 61, 4, color),
-        circulo(27, 69, 4, color),
-        circulo(28, 77, 4, color),
-        trazo("M24.5 65h7M24.5 73h7", mezclar(color, "#000000", 0.4), 1.6),
-        trazo("M64.5 65h7M64.5 73h7", mezclar(color, "#000000", 0.4), 1.6),
-        cierre("M70 45c7 10 6 29-1 39l-6-3c4-10 3-22-1-30Z", color),
-        circulo(68, 61, 4, color),
-        circulo(69, 69, 4, color),
-        circulo(68, 77, 4, color),
-      ].join("");
+    case "trenzas": {
+      const oscuro = mezclar(color, "#000000", 0.3);
+      const claro = mezclar(color, "#FFFFFF", 0.12);
+      const lado = (x: number) =>
+        [cierre(`M${x - 4} 50h8v10h-8Z`, color)]
+          .concat([62, 69, 76, 83].map((y, k) => ovalo(x, y, 5, 4.2, k % 2 ? oscuro : claro)))
+          .join("");
+      return `${lado(27)}${lado(69)}`;
+    }
     case "coleta-baja":
       return cierre("M65 47c13 4 15 20 4 29-6-1-10-8-10-16Z", color);
     case "flequillo-media-melena":
@@ -520,30 +516,39 @@ function peloDelante(peinado: Peinado, color: string): string {
     case "largo-liso":
       return `${casquete}${cierre("M27 40c8-9 26-10 42-2v8c-10-6-31-7-42 2Z", color)}`;
     case "ondulado-largo":
-      return `${casquete}${cierre("M26 41c5-7 10 2 15-3s10 4 15-1 9 1 13 5v7c-10-6-30-7-43 1Z", color)}`;
-    case "rizado-corto":
+      return `${casquete}${cierre("M26 42c6-10 14-14 22-14s16 4 22 14v4c-11-6-33-6-44 0Z", color)}${trazo("M44 22c-2 6-6 11-13 15", mezclar(color, "#000000", 0.3), 1.8)}`;
+    case "rizado-corto": {
+      const sombra = mezclar(color, "#000000", 0.3);
+      const luz = mezclar(color, "#FFFFFF", 0.2);
       return [
-        cierre("M28 48c-3-18 6-27 20-27s23 9 20 27c-6-7-12-10-20-10s-14 3-20 10Z", color),
-        circulo(30, 35, 7, color),
-        circulo(36, 27, 8, color),
-        circulo(45, 24, 9, color),
-        circulo(55, 25, 9, color),
-        circulo(64, 32, 8, color),
-        cierre("M29 44c5-7 12-9 19-9s14 2 19 9v5H29Z", color),
-        ...[[37, 28], [48, 24], [59, 28], [32, 38], [64, 38]].map(([x, y]) => circulo(x!, y!, 2.6, mezclar(color, "#000000", 0.28))),
+        cierre("M28 48c-3-18 6-27 20-27s23 9 20 27c-6-7-12-10-20-10s-14 3-20 10Z", sombra),
+        circulo(30, 36, 7, sombra),
+        circulo(36, 28, 8, color),
+        circulo(46, 25, 9, color),
+        circulo(56, 26, 9, color),
+        circulo(65, 33, 8, color),
+        circulo(32, 40, 6, color),
+        circulo(65, 41, 6, color),
+        cierre("M29 42c5-6 12-8 19-8s14 2 19 8v3c-11-5-27-5-38 0Z", color),
+        ...[[36, 25], [46, 21], [56, 22], [64, 29]].map(([x, y]) => circulo(x!, y!, 3.6, luz)),
       ].join("");
-    case "afro":
+    }
+    case "afro": {
+      const sombra = mezclar(color, "#000000", 0.3);
+      const luz = mezclar(color, "#FFFFFF", 0.2);
       return [
-        cierre("M26 48C22 22 34 9 48 9s26 13 22 39c-6-7-13-10-22-10s-16 3-22 10Z", color),
-        circulo(27, 37, 9, color),
-        circulo(31, 27, 10, color),
-        circulo(39, 20, 11, color),
-        circulo(50, 19, 12, color),
-        circulo(61, 23, 11, color),
-        circulo(68, 34, 9, color),
-        cierre("M28 44c5-7 12-10 20-10s15 3 20 10v6H28Z", color),
-        ...[[36, 20], [48, 14], [60, 20], [30, 33], [66, 33]].map(([x, y]) => circulo(x!, y!, 3.2, mezclar(color, "#000000", 0.28))),
+        cierre("M26 48C22 22 34 9 48 9s26 13 22 39c-6-7-13-10-22-10s-16 3-22 10Z", sombra),
+        circulo(27, 38, 9, sombra),
+        circulo(68, 38, 9, sombra),
+        circulo(31, 28, 10, color),
+        circulo(40, 20, 11, color),
+        circulo(50, 18, 12, color),
+        circulo(60, 21, 11, color),
+        circulo(67, 30, 9, color),
+        cierre("M28 43c5-6 12-8 20-8s15 2 20 8v3c-12-5-28-5-40 0Z", color),
+        ...[[38, 16], [50, 12], [60, 17], [30, 24], [67, 26]].map(([x, y]) => circulo(x!, y!, 4.2, luz)),
       ].join("");
+    }
     case "trenzas":
       return `${casquete}${cierre("M27 40c8-8 25-9 42-2v8c-11-6-29-6-42 2Z", color)}`;
     case "mono-alto":
@@ -553,7 +558,7 @@ function peloDelante(peinado: Peinado, color: string): string {
     case "calvo-barba":
       return "";
     case "flequillo-media-melena":
-      return `${casquete}${cierre("M27 39c5-10 13-14 22-14 8 0 15 4 20 13l-7 8-5-7-9 7-8-7-6 7Z", color)}`;
+      return `${casquete}${cierre("M27 42c0-11 8-18 21-18s21 7 21 18c-14-4-28-4-42 0Z", color)}${trazo("M36 27c-2 5-4 9-7 12M48 25v13M60 27c2 5 4 9 7 12", mezclar(color, "#000000", 0.3), 1.8)}`;
   }
 }
 
@@ -584,9 +589,9 @@ function rasgos(piel: Piel, edad: EdadAvatar, simple: boolean): string {
   const brillo = "#FFFFFF";
   if (simple) {
     const ojos = claro
-      ? `${ovalo(39, 49, 5.6, 4.4, r.ojo)}${ovalo(57, 49, 5.6, 4.4, r.ojo)}${circulo(39, 49, 2.6, r.pupila!)}${circulo(57, 49, 2.6, r.pupila!)}`
-      : `${circulo(39, 49, 4.2, r.ojo)}${circulo(57, 49, 4.2, r.ojo)}`;
-    return `${ojos}${trazo("M40 62q8 8 16 0", r.boca, 3.6)}`;
+      ? `${ovalo(38.5, 49, 7, 5.6, r.ojo)}${ovalo(57.5, 49, 7, 5.6, r.ojo)}${circulo(38.5, 49, 3.6, r.pupila!)}${circulo(57.5, 49, 3.6, r.pupila!)}`
+      : `${circulo(38.5, 49, 5.6, r.ojo)}${circulo(57.5, 49, 5.6, r.ojo)}`;
+    return `${ojos}${trazo("M37 61q11 12 22 0", r.boca, 5)}`;
   }
   const cejaColor = edad === "mayor" && !claro ? "#8A8683" : r.cejas;
   const cejas = `${ovalo(39, 41.5, 5.3, 1.6, cejaColor)}${ovalo(57, 41.5, 5.3, 1.6, cejaColor)}`;

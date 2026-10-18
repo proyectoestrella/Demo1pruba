@@ -186,7 +186,7 @@ export function SelectorAvatar({
                     title={piel.nombre}
                     onClick={() => cambiar("piel", piel.id)}
                     className={cn(
-                      "relative grid min-h-11 place-items-center rounded-xl border-2 p-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                      "relative grid size-11 place-items-center justify-self-center rounded-full border-2 p-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                       activo ? "border-moca-fuerte bg-beige" : "border-transparent hover:bg-beige",
                     )}
                   >
@@ -229,7 +229,7 @@ export function SelectorAvatar({
                     aria-label={peinado.nombre}
                     onClick={() => cambiar("peinado", peinado.id)}
                     className={cn(
-                      "relative flex min-h-14 flex-col items-center justify-center rounded-xl border-2 px-1 py-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                      "relative flex min-h-[4.5rem] flex-col items-center justify-center rounded-xl border-2 px-1 py-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                       activo ? "border-moca-fuerte bg-beige" : "border-transparent hover:bg-beige",
                     )}
                   >
@@ -239,7 +239,7 @@ export function SelectorAvatar({
                       draggable={false}
                       className="size-9 rounded-full"
                     />
-                    <span className="mt-0.5 line-clamp-1 max-w-full text-[9px] font-bold leading-3 text-cafe-medio">
+                    <span className="mt-0.5 min-h-6 max-w-full text-center text-[10px] font-bold leading-3 text-balance text-cafe-medio">
                       {peinado.nombre}
                     </span>
                     {activo && (
@@ -277,7 +277,7 @@ export function SelectorAvatar({
                     title={color.nombre}
                     onClick={() => cambiar("colorPelo", color.id)}
                     className={cn(
-                      "relative grid min-h-11 place-items-center rounded-full border-2 p-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                      "relative grid size-11 place-items-center justify-self-center rounded-full border-2 p-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                       activo ? "border-moca-fuerte bg-beige" : "border-transparent hover:bg-beige",
                     )}
                   >

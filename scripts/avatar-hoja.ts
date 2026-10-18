@@ -57,7 +57,7 @@ const matrizPeinados = PEINADOS.flatMap((peinado) =>
   ),
 ).join("");
 const tamanos = PIELES.flatMap((piel) =>
-  [24, 40].map((px) => avatar(receta(piel.id, "corto-con-raya"), px, `${piel.nombre} · ${px}px`)),
+  [24, 28, 40].map((px) => avatar(receta(piel.id, "corto-con-raya"), px, `${piel.nombre} · ${px}px`)),
 ).join("");
 
 const coloresPelo = COLORES_PELO.flatMap((color) =>
@@ -100,7 +100,7 @@ const html = `<!doctype html>
   <section><h2>10 tonos × 3 edades · 96 px</h2><p class="nota">Peinado común: corto con raya.</p><div class="rejilla">${matrizEdad}</div></section>
   <section><h2>16 peinados × claro, oliváceo y profundo · 64 px</h2><p class="nota">Los tres tonos son Muy clara, Oliva <code>#C99C62</code> y Profunda.</p><div class="rejilla peinados">${matrizPeinados}</div></section>
   <section><h2>10 colores de pelo × Clara, Oliva y Oscura · 64 px</h2><div class="rejilla peinados">${coloresPelo}</div></section>
-  <section><h2>Lectura a tamaño pequeño · 24 y 40 px</h2><div class="rejilla pequenos">${tamanos}</div></section>
+  <section><h2>Lectura a tamaño pequeño · 24, 28 y 40 px</h2><div class="rejilla pequenos">${tamanos}</div></section>
 </body>
 </html>`;
 
