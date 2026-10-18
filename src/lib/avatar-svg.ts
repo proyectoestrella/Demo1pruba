@@ -478,11 +478,25 @@ function peloDetras(peinado: Peinado, color: string): string {
     case "trenzas": {
       const oscuro = mezclar(color, "#000000", 0.3);
       const claro = mezclar(color, "#FFFFFF", 0.12);
-      const lado = (x: number) =>
-        [cierre(`M${x - 4} 50h8v10h-8Z`, color)]
-          .concat([62, 69, 76, 83].map((y, k) => ovalo(x, y, 5, 4.2, k % 2 ? oscuro : claro)))
-          .join("");
-      return `${lado(27)}${lado(69)}`;
+      // Cada trenza es una cinta continua con cruces desiguales: evita la
+      // lectura de una columna de bolitas perfectamente regular.
+      const izquierda = cierre(
+        "M25 48c-4 6-4 12-1 17-4 4-3 9 0 13-3 4-2 8 1 11l7-2c-2-4-1-8 1-11-2-4-2-9 1-13-2-5 0-10 3-14Z",
+        color,
+      );
+      const derecha = cierre(
+        "M71 48c4 7 4 13 1 18 4 4 3 8 0 12 3 4 2 8-1 12l-7-2c2-4 1-8-1-11 2-4 2-9-1-13 2-5 0-10-3-14Z",
+        color,
+      );
+      const cruces = [
+        cierre("M21 60c3-3 6-3 9 0l-2 4c-3-2-5-2-8 0Z", claro),
+        cierre("M20 73c3-3 7-3 9 1l-2 4c-3-2-5-2-8 0Z", oscuro),
+        cierre("M21 85c3-3 6-3 8 0l-2 4c-2-2-5-2-7 0Z", claro),
+        cierre("M66 61c3-3 6-3 9 0l-1 4c-3-2-6-2-8 0Z", oscuro),
+        cierre("M67 74c2-3 6-3 9 0l-1 4c-3-2-5-2-8 0Z", claro),
+        cierre("M67 86c3-3 6-3 8 0l-1 4c-2-2-5-2-7 0Z", oscuro),
+      ].join("");
+      return `${izquierda}${derecha}${cruces}`;
     }
     case "coleta-baja":
       return cierre("M65 47c13 4 15 20 4 29-6-1-10-8-10-16Z", color);
@@ -510,7 +524,8 @@ function peloDelante(peinado: Peinado, color: string): string {
     case "flat-top":
       return cierre("M28 43V27l7-9h25l8 9v16c-11-5-28-5-40 0Z", color);
     case "mohicano":
-      return cierre("M39 42V21l9-10 9 10v21c-5-4-13-4-18 0Z", color);
+      // La cresta acaba por encima de las cejas, incluso en miniatura.
+      return cierre("M40 36V21l8-10 8 10v15c-4-2-12-2-16 0Z", color);
     case "bob":
       return `${casquete}${cierre("M28 40c9-8 24-9 40-2v8c-10-6-29-6-40 2Z", color)}`;
     case "largo-liso":
@@ -521,32 +536,28 @@ function peloDelante(peinado: Peinado, color: string): string {
       const sombra = mezclar(color, "#000000", 0.3);
       const luz = mezclar(color, "#FFFFFF", 0.2);
       return [
-        cierre("M28 48c-3-18 6-27 20-27s23 9 20 27c-6-7-12-10-20-10s-14 3-20 10Z", sombra),
-        circulo(30, 36, 7, sombra),
-        circulo(36, 28, 8, color),
-        circulo(46, 25, 9, color),
-        circulo(56, 26, 9, color),
-        circulo(65, 33, 8, color),
-        circulo(32, 40, 6, color),
-        circulo(65, 41, 6, color),
-        cierre("M29 42c5-6 12-8 19-8s14 2 19 8v3c-11-5-27-5-38 0Z", color),
-        ...[[36, 25], [46, 21], [56, 22], [64, 29]].map(([x, y]) => circulo(x!, y!, 3.6, luz)),
+        // Una sola masa de pelo con borde rizado, no discos independientes.
+        cierre(
+          "M27 46c-2-4-1-9 2-12-1-5 2-9 7-10 2-5 8-6 12-3 4-3 10-1 12 3 5-1 10 3 10 8 4 4 2 9 0 13-5-6-13-9-21-9s-16 3-21 9Z",
+          color,
+        ),
+        cierre("M28 43c5-5 12-7 20-7s15 2 20 7v4c-11-5-29-5-40 0Z", sombra),
+        trazo("M32 34c2-3 5-3 7 0M42 27c2-3 5-3 7 0M53 28c2-3 5-3 7 0M61 35c2-3 4-2 5 1", luz, 1.5),
+        trazo("M35 39c2-2 4-2 6 0M47 34c2-2 5-2 7 0M57 39c2-2 4-2 6 0", sombra, 1.6),
       ].join("");
     }
     case "afro": {
       const sombra = mezclar(color, "#000000", 0.3);
       const luz = mezclar(color, "#FFFFFF", 0.2);
       return [
-        cierre("M26 48C22 22 34 9 48 9s26 13 22 39c-6-7-13-10-22-10s-16 3-22 10Z", sombra),
-        circulo(27, 38, 9, sombra),
-        circulo(68, 38, 9, sombra),
-        circulo(31, 28, 10, color),
-        circulo(40, 20, 11, color),
-        circulo(50, 18, 12, color),
-        circulo(60, 21, 11, color),
-        circulo(67, 30, 9, color),
-        cierre("M28 43c5-6 12-8 20-8s15 2 20 8v3c-12-5-28-5-40 0Z", color),
-        ...[[38, 16], [50, 12], [60, 17], [30, 24], [67, 26]].map(([x, y]) => circulo(x!, y!, 4.2, luz)),
+        // Volumen continuo, con apenas unos rizos sugeridos dentro de la masa.
+        cierre(
+          "M25 47c-3-4-3-10 0-14-2-5 2-10 7-11 1-6 7-10 13-7 5-5 12-2 14 3 6-1 12 4 12 10 4 5 3 11 0 16-5-6-13-9-22-9s-17 3-22 9Z",
+          color,
+        ),
+        cierre("M27 42c4-8 12-11 21-11s17 3 21 11v5c-11-5-31-5-42 0Z", sombra),
+        trazo("M31 30c2-4 6-4 8 0M41 20c3-4 7-4 9 0M53 20c3-4 7-3 9 1M62 30c2-3 5-3 7 0", luz, 1.6),
+        trazo("M31 38c2-3 5-3 7 0M43 30c2-3 6-3 8 0M56 31c2-3 5-3 7 0", sombra, 1.7),
       ].join("");
     }
     case "trenzas":
@@ -583,20 +594,26 @@ function mezclar(color: string, con: string, t: number): string {
 const trazo = (d: string, color: string, ancho: number, opacity?: number) =>
   `<path d="${d}" fill="none" stroke="${color}" stroke-width="${Math.max(ancho, 1.5)}" stroke-linecap="round" stroke-linejoin="round"${opacity ? ` opacity="${opacity}"` : ""}/>`;
 
-function rasgos(piel: Piel, edad: EdadAvatar, simple: boolean): string {
+function rasgos(piel: Piel, simple: boolean, colorPelo: string): string {
   const r = RASGOS_POR_PIEL[piel];
   const claro = Boolean(r.pupila);
   const brillo = "#FFFFFF";
+  const tintaOjo = claro ? r.pupila! : r.ojo;
+  const cejas = `${trazo("M34.8 42.5q4-1.8 7.8-.1", colorPelo, 1.5)}${trazo(
+    "M53.4 42.4q3.8-1.7 7.8.1",
+    colorPelo,
+    1.5,
+  )}`;
   if (simple) {
-    const ojos = claro
-      ? `${ovalo(38.5, 49, 7, 5.6, r.ojo)}${ovalo(57.5, 49, 7, 5.6, r.ojo)}${circulo(38.5, 49, 3.6, r.pupila!)}${circulo(57.5, 49, 3.6, r.pupila!)}`
-      : `${circulo(38.5, 49, 5.6, r.ojo)}${circulo(57.5, 49, 5.6, r.ojo)}`;
-    return `${ojos}${trazo("M37 61q11 12 22 0", r.boca, 5)}`;
+    // A 24/28 px, puntos con un brillo se leen como ojos; los óvalos grandes
+    // formaban el aspecto de gafas, sobre todo en pieles profundas.
+    const ojos = `${circulo(38.5, 49, 3, tintaOjo)}${circulo(57.5, 49, 3, tintaOjo)}${circulo(39.35, 48.15, 0.82, brillo)}${circulo(58.35, 48.15, 0.82, brillo)}`;
+    return `${cejas}${ojos}${trazo("M38.5 61.2q9.5 8.5 19 0", r.boca, 3.8)}`;
   }
-  const cejaColor = edad === "mayor" && !claro ? "#8A8683" : r.cejas;
-  const cejas = `${ovalo(39, 41.5, 5.3, 1.6, cejaColor)}${ovalo(57, 41.5, 5.3, 1.6, cejaColor)}`;
+  // En tonos profundos no hay un aro de esclerótica claro alrededor de la
+  // pupila: solo tinta y un brillo independiente, para que no parezca gafa.
   const ojos = claro
-    ? `${ovalo(39, 49, 5.2, 3.8, r.ojo)}${ovalo(57, 49, 5.2, 3.8, r.ojo)}${circulo(39.4, 49, 2.3, r.pupila!)}${circulo(57.4, 49, 2.3, r.pupila!)}${circulo(40.2, 48.1, 0.8, brillo)}${circulo(58.2, 48.1, 0.8, brillo)}`
+    ? `${ovalo(39, 49, 3.8, 2.9, tintaOjo)}${ovalo(57, 49, 3.8, 2.9, tintaOjo)}${circulo(40.2, 48.1, 1.15, brillo)}${circulo(58.2, 48.1, 1.15, brillo)}`
     : `${circulo(39, 49, 3.5, r.ojo)}${circulo(57, 49, 3.5, r.ojo)}${circulo(40.2, 47.8, 1.1, brillo)}${circulo(58.2, 47.8, 1.1, brillo)}`;
   const nariz = trazo("M45.5 55c-1.5 3-1 5.5 2 6 2 .3 3.3-.6 3.6-1.6", r.nariz, 1.9);
   const boca = trazo("M41 64.5q7 6 14 0", r.boca, claro ? 2.6 : 2.3);
@@ -625,7 +642,10 @@ export function svgDeComposicion(
   const piel = opcion(PIELES, composicion.piel);
   const pelo = opcion(COLORES_PELO, composicion.colorPelo);
   const fondo = opcion(FONDOS_AVATAR, composicion.fondo);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img"><circle cx="48" cy="48" r="48" fill="${fondo.color}"/><path d="M0 96c2-19 18-30 48-30s46 11 48 30Z" fill="${COLOR_CAMISETA}"/><path d="M35 68h26v12c-4 6-9 8-13 8s-9-2-13-8Z" fill="${piel.color}"/>${peloDetras(composicion.peinado, pelo.color)}<ellipse cx="48" cy="47" rx="20" ry="24" fill="${piel.color}"/><ellipse cx="28" cy="48" rx="3.5" ry="5" fill="${piel.color}"/><ellipse cx="68" cy="48" rx="3.5" ry="5" fill="${piel.color}"/>${peloDelante(composicion.peinado, pelo.color)}${rasgos(composicion.piel, composicion.edad, simple)}${barba(composicion.peinado, pelo.color)}${detalleMayor(composicion.edad, composicion.piel, simple)}</svg>`;
+  const cabeza = simple
+    ? `<ellipse cx="48" cy="46.5" rx="22" ry="25" fill="${piel.color}"/><ellipse cx="26" cy="48" rx="3.5" ry="5" fill="${piel.color}"/><ellipse cx="70" cy="48" rx="3.5" ry="5" fill="${piel.color}"/>`
+    : `<ellipse cx="48" cy="47" rx="20" ry="24" fill="${piel.color}"/><ellipse cx="28" cy="48" rx="3.5" ry="5" fill="${piel.color}"/><ellipse cx="68" cy="48" rx="3.5" ry="5" fill="${piel.color}"/>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img"><circle cx="48" cy="48" r="48" fill="${fondo.color}"/><path d="M0 96c2-19 18-30 48-30s46 11 48 30Z" fill="${COLOR_CAMISETA}"/><path d="M35 68h26v12c-4 6-9 8-13 8s-9-2-13-8Z" fill="${piel.color}"/>${peloDetras(composicion.peinado, pelo.color)}${cabeza}${peloDelante(composicion.peinado, pelo.color)}${rasgos(composicion.piel, simple, pelo.color)}${barba(composicion.peinado, pelo.color)}${detalleMayor(composicion.edad, composicion.piel, simple)}</svg>`;
 }
 
 const cache = new Map<string, string>();
