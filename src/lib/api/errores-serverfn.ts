@@ -20,6 +20,7 @@
 
 export const PREFIJO_SERVER_FN = "/_serverFn/";
 const CABECERA_SERIALIZADO = "x-tss-serialized";
+const MENSAJE_ERROR_INTERNO = "No se ha podido completar la operación. Inténtalo de nuevo.";
 
 /**
  * seroval guarda cada cadena (nodo `t:1`) ya escapada como un literal de JS
@@ -111,8 +112,9 @@ function nodoDeError(raiz: Nodo): Nodo | null {
 }
 
 /**
- * Si la respuesta de una server function es un error de validación de zod,
- * la misma respuesta con 400 y el mensaje en español. Si no, la original.
+ * Los errores de validación se traducen a 400; los 5xx serializados se
+ * registran aquí y se sustituyen por un mensaje genérico. Así una restricción
+ * o columna de Supabase no llega a quien usa el navegador.
  */
 export async function reescribirErrorDeValidacion(r: Response): Promise<Response> {
   if (r.headers.get(CABECERA_SERIALIZADO) !== "true") return r;
@@ -127,11 +129,18 @@ export async function reescribirErrorDeValidacion(r: Response): Promise<Response
   const msg = nodo?.s?.message;
   if (!nodo || !msg || typeof msg.s !== "string") return r;
   const es = mensajeDeValidacion(desescapar(msg.s));
-  if (!es) return r;
-  msg.s = escapar(es);
+  if (es) {
+    msg.s = escapar(es);
+    const headers = new Headers(r.headers);
+    headers.delete("content-length");
+    return new Response(JSON.stringify(raiz), { status: 400, headers });
+  }
+  if (r.status < 500) return r;
+  console.error("server function:", desescapar(msg.s));
+  msg.s = escapar(MENSAJE_ERROR_INTERNO);
   const headers = new Headers(r.headers);
   headers.delete("content-length");
-  return new Response(JSON.stringify(raiz), { status: 400, headers });
+  return new Response(JSON.stringify(raiz), { status: r.status, headers });
 }
 
 /** ¿Pide JSON (o cualquier cosa que no sea HTML) a una ruta de página? */

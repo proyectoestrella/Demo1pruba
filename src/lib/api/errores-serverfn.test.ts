@@ -43,11 +43,13 @@ describe("server functions: entradas malformadas → 4xx en español", () => {
     expect(r.headers.get("x-tss-serialized")).toBe("true");
   });
 
-  it("una respuesta buena o un error que no es de zod no se tocan", async () => {
+  it("una respuesta buena no se toca y un error interno se vuelve genérico", async () => {
     const ok = new Response(JSON.stringify({ t: 10, p: { k: ["result"], v: [1] } }), { headers: { "content-type": "application/json", "x-tss-serialized": "true" } });
     expect(await reescribirErrorDeValidacion(ok)).toBe(ok);
-    const otro = respuestaDeError("No autorizado", 500);
-    expect(await reescribirErrorDeValidacion(otro)).toBe(otro);
+    const otro = respuestaDeError("syncAppointment: columna interna appointments_origen_check", 500);
+    const seguro = await reescribirErrorDeValidacion(otro);
+    expect(seguro.status).toBe(500);
+    expect(await seguro.json()).toMatchObject({ s: { message: { s: "No se ha podido completar la operación. Inténtalo de nuevo." } } });
   });
 
   it("mensajes de zod más comunes", () => {
