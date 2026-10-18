@@ -196,4 +196,22 @@ describe("familia SVG propia compuesta", () => {
     expect(mayor).not.toContain('opacity="0.92"');
     expect(mayor).not.toContain("<rect");
   });
+
+  it("la variante pequeña profunda lee como cara y no como gafas claras", () => {
+    const receta: AvatarComposicion = {
+      piel: "profunda",
+      peinado: "corto-con-raya",
+      edad: "adulta",
+      colorPelo: "negro",
+      fondo: "salvia",
+    };
+    const simple = svgDeComposicion(receta, { simple: true });
+
+    // Cabeza algo mayor, dos puntos de tinta con brillo y cejas finas de pelo:
+    // no hay escleróticas ni cejas claras que puedan unirse como unas gafas.
+    expect(simple).toContain('cx="48" cy="46.5" rx="22" ry="25"');
+    expect(simple.match(/fill="#120A06"/g)).toHaveLength(2);
+    expect(simple).toContain('stroke="#261B1A" stroke-width="1.5"');
+    expect(simple).not.toContain('fill="#F5F0E8"');
+  });
 });

@@ -95,7 +95,7 @@ const html = `<!doctype html>
   </style>
 </head>
 <body>
-  <h1>Hoja de contacto · avatares v3</h1>
+  <h1>Hoja de contacto · avatares v5</h1>
   <p>SVG original, sin recursos externos. Camiseta fija; cambia solo el fondo.</p>
   <section><h2>10 tonos × 3 edades · 96 px</h2><p class="nota">Peinado común: corto con raya.</p><div class="rejilla">${matrizEdad}</div></section>
   <section><h2>16 peinados × claro, oliváceo y profundo · 64 px</h2><p class="nota">Los tres tonos son Muy clara, Oliva <code>#C99C62</code> y Profunda.</p><div class="rejilla peinados">${matrizPeinados}</div></section>
