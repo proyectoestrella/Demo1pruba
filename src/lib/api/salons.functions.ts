@@ -856,16 +856,24 @@ export const listSalonData = createServerFn({ method: "GET" })
         for (const columnas of selects) {
           // Por páginas: PostgREST corta en 1000 filas sin avisar (ver api/paginar.ts).
           const r = await leerTodasLasFilas<T, { message: string }>(
-            (desde, hasta) =>
-              supabase!
+            (desde, hasta) => {
+              const consulta = supabase!
                 .from(tabla)
                 .select(columnas)
-                .eq("salon_slug", data.slug)
+                .eq("salon_slug", data.slug);
+              // La web solo calcula huecos. Basta el pasado inmediato para no
+              // ofrecer un tramo que empezó hace minutos y aún sigue ocupado;
+              // no se entrega el historial entero ni estados ya resueltos.
+              const acotada = tabla === "appointments" && publica
+                ? consulta.gte("start_at", new Date(Date.now() - 24 * 60 * 60_000).toISOString()).in("status", ["pending", "confirmed", "in-progress", "blocked"])
+                : consulta;
+              return acotada
                 .order("id")
                 .range(desde, hasta) as unknown as PromiseLike<{
                 data: T[] | null;
                 error: { message: string } | null;
-              }>,
+              }>;
+            },
           );
           if (!r.error) return { data: (r.data ?? []) as unknown as T[], error: null };
           if (!faltaEsquema(r.error)) return { data: [] as T[], error: r.error };

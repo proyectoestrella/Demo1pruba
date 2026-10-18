@@ -143,13 +143,13 @@ export function rowToAppointment(row: AppointmentRow, anonimo = false): Appointm
     // El id que conoce el navegador es `local_id`; las filas antiguas (y las
     // que creó la reserva pública antes de esto) no lo tienen y caen al uuid.
     id: row.local_id ?? row.id,
-    clientId: row.client_id ?? "",
+    clientId: anonimo ? "" : (row.client_id ?? ""),
     clientName: anonimo ? "Reservado" : (row.client_name ?? ""),
-    serviceIds: row.service_id ? row.service_id.split(",").filter(Boolean) : [],
+    serviceIds: anonimo ? [] : (row.service_id ? row.service_id.split(",").filter(Boolean) : []),
     employeeId: row.employee_id as EmployeeId,
     start: row.start_at,
     duration: num(row.duration_min),
-    priceEur: num(row.price_eur),
+    priceEur: anonimo ? 0 : num(row.price_eur),
     status: row.status as AppointmentStatus,
     clientConfirmedAt: row.client_confirmed_at ?? undefined,
     note: booking.note,
@@ -165,8 +165,8 @@ export function rowToAppointment(row: AppointmentRow, anonimo = false): Appointm
     paymentMethod: anonimo ? undefined : ((row.payment_method as PaymentMethod) ?? undefined),
     paidAt: anonimo ? undefined : (row.paid_at ?? undefined),
     depositRequestedAt: anonimo ? undefined : (row.deposit_requested_at ?? deposit.requestedAt),
-    depositDueAt: row.deposit_due_at ?? deposit.dueAt,
-    depositPeriodHours: (row.deposit_period_hours as Appointment["depositPeriodHours"]) ?? deposit.hours,
+    depositDueAt: anonimo ? undefined : (row.deposit_due_at ?? deposit.dueAt),
+    depositPeriodHours: anonimo ? undefined : ((row.deposit_period_hours as Appointment["depositPeriodHours"]) ?? deposit.hours),
     depositReceivedAt: anonimo ? undefined : (row.deposit_received_at ?? deposit.receivedAt),
     depositEur: anonimo ? undefined : (row.deposit_eur == null ? deposit.eur : num(row.deposit_eur)),
     // La web pública no ve nada de la señal de otras clientas.

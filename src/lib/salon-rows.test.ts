@@ -106,7 +106,11 @@ describe("rowToAppointment", () => {
   it("en modo anónimo (web pública) no viajan ni el nombre ni la nota interna", () => {
     const a = rowToAppointment(fila, true);
     expect(a.clientName).toBe("Reservado");
+    expect(a.clientId).toBe("");
+    expect(a.serviceIds).toEqual([]);
     expect(a.note).toBeUndefined();
+    expect(a.depositDueAt).toBeUndefined();
+    expect(a.depositPeriodHours).toBeUndefined();
     // Pero el hueco sí: es para lo único que la necesita la web pública.
     expect(a.start).toBe(fila.start_at);
     expect(a.duration).toBe(50);
