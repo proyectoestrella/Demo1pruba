@@ -9,6 +9,7 @@ import { conRegistroEnPausa, useSalonStore } from "../store";
 import { useVersiones } from "../versiones-maqueta";
 import { claveDelDia } from "../dia-cerrado-panel";
 import { demoRegistrada, marcaDeDemo } from "./index";
+import { PLAN_DEL_CLIENTE_DE_DEMO, esVistaCliente, useVistaDemo } from "../vista-demo";
 
 /**
  * Cargar una demo registrada (lib/demos) en este navegador.
@@ -81,7 +82,9 @@ export function perfilDeDemoRegistrada(perfil: SalonProfile): SalonProfile {
 export function cargarDemoRegistrada(slug: string, opciones: { panel?: boolean } = {}): boolean {
   const demo = demoRegistrada(slug);
   if (!demo) return false;
-  const perfil = perfilDeDemoRegistrada(demo.perfil);
+  const base = perfilDeDemoRegistrada(demo.perfil);
+  // Vista de cliente: el salón enseña el plan que de verdad contrata.
+  const perfil = esVistaCliente(slug, useVistaDemo.getState().vista) ? { ...base, plan: PLAN_DEL_CLIENTE_DE_DEMO[slug] } : base;
   const store = useSalonStore.getState();
   conRegistroEnPausa(() => {
     useSalonStore.setState({

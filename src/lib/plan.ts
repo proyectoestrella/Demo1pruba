@@ -244,7 +244,30 @@ export function muestraConmutadorDePlan(estado: {
   realSalonSlug: string | null;
   slug: string;
   resolucion: { slug: string; status: string } | null;
+  /** «cliente»: la demo se enseña como la ve su dueña, sin selector. */
+  vista?: "cliente" | "prospecto";
 }): boolean {
   if (estado.realSalonSlug) return false;
+  if (estado.vista === "cliente") return false;
   return !!estado.resolucion && estado.resolucion.slug === estado.slug && estado.resolucion.status === "demo";
+}
+
+/** Apartados del menú que son una función de un plan superior (el resto no lleva insignia). */
+export const FUNCION_DE_RUTA: Record<string, FuncionPlan> = {
+  "/app/insights": "analitica-avanzada",
+  "/app/marketing": "campanas-ampliadas",
+};
+
+/** La insignia de plan de un apartado: solo si ese plan NO lo tiene; nunca de un plan inferior. */
+export function insigniaDeRuta(ruta: string, plan: PlanSishow): string | null {
+  const funcion = FUNCION_DE_RUTA[ruta];
+  return funcion && !tienePlan(plan, funcion) ? NOMBRE_PLAN[FUNCIONES_POR_PLAN[funcion]] : null;
+}
+
+/** Funciones que el resumen «Lo que añade el plan Embajador» enseña, en este orden. */
+const RESUMEN_EMBAJADOR: readonly FuncionPlan[] = ["campanas-ampliadas", "roles-ampliados", "importacion-mensual"];
+
+/** Hasta cuatro funciones del plan inmediatamente superior que el salón aún no tiene. */
+export function resumenPlanSuperior(plan: PlanSishow): FuncionPlan[] {
+  return RESUMEN_EMBAJADOR.filter((f) => !tienePlan(plan, f));
 }

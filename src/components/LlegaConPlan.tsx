@@ -13,8 +13,10 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
-import { FUNCIONES_POR_PLAN, NOMBRE_PLAN, QUE_ES, type FuncionPlan } from "@/lib/plan";
-import { useEsDemo } from "@/lib/accesos-panel";
+import { FUNCIONES_POR_PLAN, NOMBRE_PLAN, QUE_ES, resumenPlanSuperior, type FuncionPlan } from "@/lib/plan";
+import { useEsDemo, usePlanSalon } from "@/lib/accesos-panel";
+import { useSalonStore } from "@/lib/store";
+import { esVistaCliente, useVistaDemo } from "@/lib/vista-demo";
 import { descartarFuncionPlan, destacarFuncionPlan } from "@/lib/plan-descubrimiento";
 import { enlaceCorreo } from "@/lib/sishow-web";
 import { Button } from "@/components/ui/button";
@@ -34,6 +36,23 @@ const ICONOS: Record<FuncionPlan, LucideIcon> = {
   "caja-exportar": Download,
   "caja-cierre": Landmark,
 };
+
+/** localStorage sin romper si el navegador lo bloquea. */
+export function duradero(): Storage | null {
+  try {
+    return typeof window === "undefined" ? null : window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+/** Demo enseñada a un prospecto (con selector de plan): ahí no hay avisos destacados. */
+function useEsProspecto() {
+  const esDemo = useEsDemo();
+  const slug = useSalonStore((s) => s.salonProfile.slug);
+  const vista = useVistaDemo((s) => s.vista);
+  return esDemo && !esVistaCliente(slug, vista);
+}
 
 function useEsMovil() {
   const [movil, setMovil] = useState(true);
@@ -90,6 +109,7 @@ function ContenidoHoja({ funcion, onAhoraNo }: { funcion: FuncionPlan; onAhoraNo
       </div>
       <p className="text-[14px] leading-snug text-cafe-medio">{texto}</p>
       <VistaPreviaFuncionPlan funcion={funcion} />
+      <p className="text-[13px] font-bold text-cafe-medio">Para tenerla, escríbenos y lo vemos.</p>
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button type="button" variant="ghost" onClick={onAhoraNo} className="rounded-full font-bold">
           Ahora no
@@ -132,7 +152,7 @@ export function HojaFuncionPlan({ funcion, abierto, onCerrar }: { funcion: Funci
  * miniatura es de ejemplo; no toca la store salvo para saber si es una demo.
  */
 export function LlegaConPlan({ funcion, compacta = false, className }: { funcion: FuncionPlan; compacta?: boolean; className?: string }) {
-  const esDemo = useEsDemo();
+  const esDemo = useEsProspecto();
   const [abierto, setAbierto] = useState(false);
   const [destacada, setDestacada] = useState(false);
   const plan = FUNCIONES_POR_PLAN[funcion];
@@ -141,11 +161,11 @@ export function LlegaConPlan({ funcion, compacta = false, className }: { funcion
 
   useEffect(() => {
     if (esDemo || typeof window === "undefined") return;
-    setDestacada(destacarFuncionPlan(funcion, window.sessionStorage));
+    setDestacada(destacarFuncionPlan(funcion, window.sessionStorage, duradero()));
   }, [esDemo, funcion]);
 
   function cerrar() {
-    if (typeof window !== "undefined") descartarFuncionPlan(funcion, window.sessionStorage);
+    if (typeof window !== "undefined") descartarFuncionPlan(funcion, window.sessionStorage, duradero());
     setDestacada(false);
     setAbierto(false);
   }
@@ -179,5 +199,41 @@ export function LlegaConPlan({ funcion, compacta = false, className }: { funcion
       </button>
       <HojaFuncionPlan funcion={funcion} abierto={abierto} onCerrar={cerrar} />
     </>
+  );
+}
+
+/**
+ * Un único resumen, sobrio, de lo que añade el plan superior: tres filas con
+ * su insignia. Pulsar una abre la misma hoja con el ejemplo. Si el salón ya
+ * tiene todo, no se pinta.
+ */
+export function ResumenPlanSuperior({ className }: { className?: string }) {
+  const plan = usePlanSalon();
+  const funciones = resumenPlanSuperior(plan);
+  const [abierta, setAbierta] = useState<FuncionPlan | null>(null);
+  if (funciones.length === 0) return null;
+  const siguiente = NOMBRE_PLAN[FUNCIONES_POR_PLAN[funciones[0]]];
+  return (
+    <section className={cn("overflow-hidden rounded-[20px] border border-lino bg-card", className)} aria-label={`Lo que añade el plan ${siguiente}`}>
+      <h2 className="px-5 pt-4 text-[16px] font-extrabold tracking-[-0.01em] text-cafe">Lo que añade el plan {siguiente}</h2>
+      <ul className="mt-2 divide-y divide-lino">
+        {funciones.map((funcion) => {
+          const Icono = ICONOS[funcion];
+          return (
+            <li key={funcion}>
+              <button type="button" onClick={() => setAbierta(funcion)} className="flex w-full items-start gap-3 px-5 py-3 text-left hover:bg-beige/50">
+                <Icono className="mt-0.5 size-[18px] shrink-0 text-cafe-medio" strokeWidth={1.6} aria-hidden="true" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[14px] font-extrabold text-cafe">{QUE_ES[funcion].titulo}</span>
+                  <span className="block text-[13px] leading-snug text-cafe-medio">{QUE_ES[funcion].texto}</span>
+                </span>
+                <span className="shrink-0 rounded-full bg-arena px-2 py-0.5 text-[10.5px] font-bold text-cafe-medio">{NOMBRE_PLAN[FUNCIONES_POR_PLAN[funcion]]}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {abierta && <HojaFuncionPlan funcion={abierta} abierto onCerrar={() => setAbierta(null)} />}
+    </section>
   );
 }

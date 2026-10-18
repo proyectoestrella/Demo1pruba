@@ -37,6 +37,7 @@ import { IconoSiShow, LetrasSiShow } from "@/components/MarcaSiShow";
 import { VerComo, PlanContratado } from "@/components/VerComo";
 import { AjustesCalendarios } from "@/components/AjustesCalendarios";
 import { API_CALENDARIOS, alcanceCalendario, useCalendariosActivos } from "@/lib/calendarios-panel";
+import { insigniaDeRuta } from "@/lib/plan";
 import { useCitasVisibles, useEsDemo, useMiembroActual, usePermisos, usePlanSalon, veRuta } from "@/lib/accesos-panel";
 import { rutaSoloCompleto } from "@/lib/plan-basico";
 import { NOMBRE_ROL } from "@/lib/accesos-maqueta";
@@ -194,7 +195,13 @@ function Marca({ compacta = false }: { compacta?: boolean }) {
   );
 }
 
+/** Insignia discreta, a la derecha: solo en lo que el plan del salón aún no tiene. */
+function InsigniaPlan({ nombre }: { nombre: string }) {
+  return <span className="ml-auto rounded-full bg-arena px-2 py-0.5 text-[10.5px] font-bold text-cafe-medio">{nombre}</span>;
+}
+
 function EnlaceNav({ item, active, contador, onNavigate, hijo = false }: { item: NavItem; active: boolean; contador?: number; onNavigate?: () => void; hijo?: boolean }) {
+  const insignia = insigniaDeRuta(item.to, usePlanSalon());
   return (
     <Link
       to={item.to}
@@ -210,6 +217,7 @@ function EnlaceNav({ item, active, contador, onNavigate, hijo = false }: { item:
     >
       <item.icon className={cn("size-[18px] shrink-0", active && "text-hoja-tinta")} strokeWidth={1.6} />
       {item.label}
+      {insignia && <InsigniaPlan nombre={insignia} />}
       {!!contador && (
         <span className="ml-auto rounded-full bg-salvia-clara px-2 text-[11px] font-bold tabular-nums text-hoja-tinta">
           {contador}
@@ -451,6 +459,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
   const publicLink = usePanelPublicLink();
   const permisos = usePermisos();
   const esDemo = useEsDemo();
+  const plan = usePlanSalon();
   const [masAbierto, setMasAbierto] = useState(false);
   const apartado = useFabApartado();
   const enBarra = new Set(barra.map((i) => i.to));
@@ -522,6 +531,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
                   >
                     <item.icon className="size-5" strokeWidth={1.6} />
                     {item.label}
+                    {insigniaDeRuta(item.to, plan) && <span className="rounded-full bg-arena px-2 py-0.5 text-[10px] font-bold text-cafe-medio">{insigniaDeRuta(item.to, plan)}</span>}
                   </Link>
                 );
               })}
