@@ -39,14 +39,10 @@ function depsReales(): DepsAutorizacion {
         .eq("slug", slug)
         .maybeSingle();
       if (error) {
-        // Ojo con el criterio: si no se puede saber si el salón es real, se
-        // responde que NO lo es. Suena raro, pero es lo seguro aquí: un salón
-        // tratado como demo no recibe ningún dato de Supabase, porque quien
-        // los sirve es esa misma base de datos que acaba de fallar. Lo que no
-        // puede pasar es lo contrario —quedarse sin poder comprobar la
-        // pertenencia y aun así servir datos reales.
-        console.error("esSalonReal:", error.message);
-        return false;
+        // Fail-closed: si no se puede saber si el salón es real, se lanza y
+        // `resolverAcceso` lo trata como ajeno. Devolver false lo habría
+        // convertido en "demo", que manda sobre el salón (auditoría 18-oct).
+        throw new Error(`esSalonReal: ${error.message}`);
       }
       return Boolean(data);
     },
