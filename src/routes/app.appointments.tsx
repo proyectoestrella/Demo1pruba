@@ -14,9 +14,10 @@ import { employeeMap } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { deudaDe } from "@/lib/deuda";
-import { esCitaProxima, ordenarCitasProximasPrimero } from "@/lib/orden-citas";
+import { ordenarCitasProximasPrimero } from "@/lib/orden-citas";
+import { agruparCitasPorProximidad, horaDestacadaCita } from "@/lib/lista-citas";
 import { recargoActivo } from "@/lib/recargo-activo";
-import { eur, fechaHoraCitaMovil } from "@/lib/copy";
+import { eur } from "@/lib/copy";
 import { Badge } from "@/components/ui/badge";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import type { Appointment, AppointmentStatus, Client } from "@/lib/mock/types";
@@ -84,9 +85,7 @@ function RecargoChip({ appointment, client }: { appointment: Appointment; client
   const esRetraso = (appointment.lateMinutes ?? 0) > 0;
   const esNoPresentado = appointment.status === "no-show";
   if (!esRetraso && !esNoPresentado) return null;
-  const motivo = esNoPresentado
-    ? "No se presentó"
-    : `Llegó tarde (${appointment.lateMinutes} min)`;
+  const motivo = esNoPresentado ? "No se presentó" : `Llegó tarde (${appointment.lateMinutes} min)`;
   const pendiente =
     (client?.penaltyEur ?? 0) > 0 && client?.penaltyAppointmentId === appointment.id;
   return (
@@ -127,7 +126,8 @@ function Appointments() {
   const permisosCitas = usePermisos();
   const puedeExportar = puede(permisosCitas, "exportar.excel");
   // Lote 12: recepción no ve precios (sin dinero.ver-*).
-  const veDinero = puede(permisosCitas, "dinero.ver-global") || !!alcance(permisosCitas, "dinero.ver-propio");
+  const veDinero =
+    puede(permisosCitas, "dinero.ver-global") || !!alcance(permisosCitas, "dinero.ver-propio");
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const conRecargo = recargoActivo({ noShowFeeEur });
   const clients = useSalonStore((s) => s.clients);
@@ -143,7 +143,9 @@ function Appointments() {
   const soloUno = esSoloUnProfesional(employees);
   const [busqueda, setBusqueda] = useState("");
   const { abrirCita, abrirClienta } = useFichas();
-  const setSelected = (a: Appointment | null) => { if (a) abrirCita(a.id); };
+  const setSelected = (a: Appointment | null) => {
+    if (a) abrirCita(a.id);
+  };
   const [newApptOpen, setNewApptOpen] = useState(false);
   /** Filas a la vista: de 20 en 20; vuelve a 20 al filtrar o buscar. */
   const [cuantas, setCuantas] = useState(20);
@@ -167,14 +169,14 @@ function Appointments() {
     [citasOrdenadas, status, emp, termino],
   );
   const citasVisibles = filtered.slice(0, cuantas);
-  const indiceAnteriores = citasVisibles.findIndex((a) => !esCitaProxima(a, ahora));
+  const gruposVisibles = agruparCitasPorProximidad(citasVisibles, ahora);
+  const indiceAnteriores = gruposVisibles.proximas.length;
   const columnasTabla = 5 + (soloUno ? 0 : 1) + (veDinero ? 1 : 0);
 
   function handleStatusChange(a: Appointment, next: AppointmentStatus) {
     // Lote 12: el aviso con «Deshacer» lo pone el registro de cambios.
     updateAppointment(a.id, { status: next });
   }
-
 
   return (
     <div className="flex flex-1 flex-col gap-5">
@@ -183,18 +185,24 @@ function Appointments() {
         description={soloUno ? "Todas tus reservas." : "Todas las reservas de tu equipo."}
         actions={
           <>
-            {puedeExportar && <BotonConPlan funcion="exportar" etiqueta="Exportar a Excel (CSV)"><ExportCsvButtons
-              appointments={appointments}
-              services={services}
-              employees={employees}
-            /></BotonConPlan>}
+            {puedeExportar && (
+              <BotonConPlan funcion="exportar" etiqueta="Exportar a Excel (CSV)">
+                <ExportCsvButtons
+                  appointments={appointments}
+                  services={services}
+                  employees={employees}
+                />
+              </BotonConPlan>
+            )}
           </>
         }
       />
 
       {/* Plegados desde su cabecera: la tabla queda a la vista al entrar. */}
       <CitasPorResolver plegable="citas-por-resolver" />
-      {mostrarSolicitudes && <PendingRequestsBanner plegable="citas-solicitudes" onOpenDetail={setSelected} />}
+      {mostrarSolicitudes && (
+        <PendingRequestsBanner plegable="citas-solicitudes" onOpenDetail={setSelected} />
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex h-[42px] w-full items-center gap-2 rounded-full border border-input bg-card px-3.5 text-muted-foreground sm:w-[320px]">
@@ -208,7 +216,10 @@ function Appointments() {
           />
         </label>
         <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger aria-label="Filtrar por estado" className="h-[42px] w-[calc(50%-4px)] sm:w-[190px] rounded-full">
+          <SelectTrigger
+            aria-label="Filtrar por estado"
+            className="h-[42px] w-[calc(50%-4px)] sm:w-[190px] rounded-full"
+          >
             <SelectValue placeholder="Estado" />
           </SelectTrigger>
           <SelectContent>
@@ -224,7 +235,10 @@ function Appointments() {
         {/* Filtrar "por profesional" con un solo profesional no filtra nada. */}
         {!soloUno && (
           <Select value={emp} onValueChange={setEmp}>
-            <SelectTrigger aria-label="Filtrar por profesional" className="h-[42px] w-[calc(50%-4px)] sm:w-[170px] rounded-full">
+            <SelectTrigger
+              aria-label="Filtrar por profesional"
+              className="h-[42px] w-[calc(50%-4px)] sm:w-[170px] rounded-full"
+            >
               <SelectValue placeholder="Profesional" />
             </SelectTrigger>
             <SelectContent>
@@ -258,11 +272,13 @@ function Appointments() {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Cuándo</TableHead>
+                  <TableHead>Hora</TableHead>
                   <TableHead>Clienta</TableHead>
                   <TableHead className="@max-[560px]:hidden">Servicio</TableHead>
                   {!soloUno && <TableHead className="@max-[680px]:hidden">Profesional</TableHead>}
-                  {veDinero && <TableHead className="text-right @max-[440px]:hidden">Precio</TableHead>}
+                  {veDinero && (
+                    <TableHead className="text-right @max-[440px]:hidden">Precio</TableHead>
+                  )}
                   <TableHead>Estado</TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
@@ -270,51 +286,87 @@ function Appointments() {
               <TableBody>
                 {citasVisibles.map((a, indice) => {
                   const e = employeeMap[a.employeeId];
+                  const momento = horaDestacadaCita(a, ahora);
                   return (
                     <Fragment key={a.id}>
                       {indice === indiceAnteriores && (
                         <TableRow className="bg-nata hover:bg-nata">
-                          <TableCell colSpan={columnasTabla} className="py-2 text-xs font-extrabold tracking-[0.06em] text-cafe-medio uppercase">
+                          <TableCell
+                            colSpan={columnasTabla}
+                            className="py-2 text-xs font-extrabold tracking-[0.06em] text-cafe-medio uppercase"
+                          >
                             Anteriores
                           </TableCell>
                         </TableRow>
                       )}
-                      <TableRow
-                        className="cursor-pointer"
-                        onClick={() => setSelected(a)}
-                      >
-                        <TableCell className="whitespace-nowrap tabular-nums @max-[440px]:whitespace-normal">
-                          {new Date(a.start).toLocaleString("es", {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                      <TableRow className="cursor-pointer" onClick={() => setSelected(a)}>
+                        <TableCell className="w-[148px] py-4 align-top tabular-nums">
+                          <div className="leading-none">
+                            <p className="text-[26px] font-extrabold tracking-[-0.04em] text-cafe">
+                              {momento.hora}
+                            </p>
+                            <p className="mt-1.5 text-[12.5px] font-bold text-cafe-medio">
+                              {momento.dia}
+                            </p>
+                            <p className="mt-1 text-[12px] text-muted-foreground">
+                              {momento.duracion}
+                            </p>
+                          </div>
                         </TableCell>
-                        <TableCell className="font-bold">
+                        <TableCell className="py-4 align-top">
                           <span className="inline-flex flex-wrap items-center gap-2">
-                            <EnlaceClienta clientId={a.clientId} className="font-bold">{a.clientName}</EnlaceClienta>
+                            <EnlaceClienta
+                              clientId={a.clientId}
+                              className="font-display text-[18px] leading-tight font-medium"
+                            >
+                              {a.clientName}
+                            </EnlaceClienta>
                             {conRecargo && <DeudaBadge clientId={a.clientId} clients={clients} />}
                           </span>
                         </TableCell>
-                        <TableCell className="text-muted-foreground @max-[560px]:hidden">{serviceLabelOf(a, carta)}</TableCell>
+                        <TableCell className="py-4 align-top text-muted-foreground @max-[560px]:hidden">
+                          {serviceLabelOf(a, carta)}
+                        </TableCell>
                         {!soloUno && (
-                          <TableCell className="@max-[680px]:hidden">
+                          <TableCell className="py-4 align-top @max-[680px]:hidden">
                             <span className="inline-flex items-center gap-1.5">
-                              <i className="size-2.5 shrink-0 rounded-full" style={{ background: bordeProfesional(Math.max(0, employees.findIndex((x) => x.id === a.employeeId)), a.employeeId) }} aria-hidden="true" />
+                              <i
+                                className="size-2.5 shrink-0 rounded-full"
+                                style={{
+                                  background: bordeProfesional(
+                                    Math.max(
+                                      0,
+                                      employees.findIndex((x) => x.id === a.employeeId),
+                                    ),
+                                    a.employeeId,
+                                  ),
+                                }}
+                                aria-hidden="true"
+                              />
                               {e.name}
                             </span>
                           </TableCell>
                         )}
-                        {veDinero && <TableCell className="whitespace-nowrap text-right font-bold tabular-nums @max-[440px]:hidden">{eur(a.priceEur)}</TableCell>}
-                        <TableCell>
+                        {veDinero && (
+                          <TableCell className="py-4 align-top whitespace-nowrap text-right font-bold tabular-nums @max-[440px]:hidden">
+                            {eur(a.priceEur)}
+                          </TableCell>
+                        )}
+                        <TableCell className="py-4 align-top">
                           <StatusBadge status={a.status} />
-                          {conRecargo && <RecargoChip appointment={a} client={clientById.get(a.clientId)} />}
+                          {conRecargo && (
+                            <RecargoChip appointment={a} client={clientById.get(a.clientId)} />
+                          )}
                         </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="py-4 align-top" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="size-8" aria-label={`Más opciones para la cita de ${a.clientName}`}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8"
+                                aria-label={`Más opciones para la cita de ${a.clientName}`}
+                              >
                                 <MoreHorizontal className="size-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -358,6 +410,7 @@ function Appointments() {
           <div className="overflow-hidden rounded-[20px] border border-border bg-card md:hidden">
             {citasVisibles.map((a, indice) => {
               const e = employeeMap[a.employeeId];
+              const momento = horaDestacadaCita(a, ahora);
               return (
                 <Fragment key={a.id}>
                   {indice === indiceAnteriores && (
@@ -366,70 +419,89 @@ function Appointments() {
                     </p>
                   )}
                   <div
-                    className="border-t border-border px-4 py-3 first:border-t-0"
+                    className="border-t border-border px-4 py-4 first:border-t-0"
                     onClick={() => setSelected(a)}
                   >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="whitespace-nowrap leading-none font-extrabold tabular-nums">
-                        {fechaHoraCitaMovil(a.start)}
-                      </p>
-                      <p className="mt-1 truncate font-bold"><EnlaceClienta clientId={a.clientId}>{a.clientName}</EnlaceClienta></p>
-                      {conRecargo && <DeudaBadge clientId={a.clientId} clients={clients} className="mt-1" />}
+                    <div className="flex items-start gap-3">
+                      <div className="w-[76px] shrink-0 tabular-nums">
+                        <p className="text-[26px] leading-none font-extrabold tracking-[-0.04em] text-cafe">
+                          {momento.hora}
+                        </p>
+                        <p className="mt-1.5 text-[12px] font-bold text-cafe-medio">
+                          {momento.dia}
+                        </p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">{momento.duracion}</p>
+                      </div>
+                      <div className="min-w-0 flex-1 pt-0.5">
+                        <p className="truncate font-display text-[18px] leading-tight font-medium">
+                          <EnlaceClienta clientId={a.clientId}>{a.clientName}</EnlaceClienta>
+                        </p>
+                        {conRecargo && (
+                          <DeudaBadge clientId={a.clientId} clients={clients} className="mt-1" />
+                        )}
+                      </div>
+                      <div className="-mt-1" onClick={(evt) => evt.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-11 shrink-0"
+                              aria-label={`Más opciones para la cita de ${a.clientName}`}
+                            >
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel className="text-xs text-muted-foreground">
+                              {a.clientName}
+                            </DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => setSelected(a)}>
+                              Ver detalle
+                            </DropdownMenuItem>
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger>Cambiar estado</DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent>
+                                {STATUS_OPTIONS.map((c) => (
+                                  <DropdownMenuItem
+                                    key={c.value}
+                                    onClick={() => handleStatusChange(a, c.value)}
+                                  >
+                                    {c.label}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              disabled={a.status === "cancelled"}
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => cancelAppointment(a.id)}
+                            >
+                              Cancelar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
-                    <div onClick={(evt) => evt.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="size-8 shrink-0" aria-label={`Más opciones para la cita de ${a.clientName}`}>
-                            <MoreHorizontal className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel className="text-xs text-muted-foreground">
-                            {a.clientName}
-                          </DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => setSelected(a)}>
-                            Ver detalle
-                          </DropdownMenuItem>
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>Cambiar estado</DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent>
-                              {STATUS_OPTIONS.map((c) => (
-                                <DropdownMenuItem
-                                  key={c.value}
-                                  onClick={() => handleStatusChange(a, c.value)}
-                                >
-                                  {c.label}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            disabled={a.status === "cancelled"}
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => cancelAppointment(a.id)}
-                          >
-                            Cancelar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between text-sm">
-                    <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-muted-foreground">
-                      <StylistDot employeeId={a.employeeId} />
-                      <span className="truncate">
-                        {serviceLabelOf(a, carta)}
-                        {soloUno ? "" : ` · ${e.name}`}
+                    <div className="mt-3 ml-[88px] flex items-center justify-between text-sm">
+                      <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-muted-foreground">
+                        <StylistDot employeeId={a.employeeId} />
+                        <span className="truncate">
+                          {serviceLabelOf(a, carta)}
+                          {soloUno ? "" : ` · ${e.name}`}
+                        </span>
                       </span>
-                    </span>
-                    {veDinero && <span className="shrink-0 font-bold tabular-nums">{eur(a.priceEur)}</span>}
-                  </div>
-                  <div className="mt-3">
-                    <StatusBadge status={a.status} />
-                    {conRecargo && <RecargoChip appointment={a} client={clientById.get(a.clientId)} />}
-                  </div>
+                      {veDinero && (
+                        <span className="shrink-0 font-bold tabular-nums">{eur(a.priceEur)}</span>
+                      )}
+                    </div>
+                    <div className="mt-3 ml-[88px]">
+                      <StatusBadge status={a.status} />
+                      {conRecargo && (
+                        <RecargoChip appointment={a} client={clientById.get(a.clientId)} />
+                      )}
+                    </div>
                   </div>
                 </Fragment>
               );
@@ -442,14 +514,15 @@ function Appointments() {
               className="inline-flex items-center gap-1 self-start rounded-full px-3 py-2 text-[13.5px] font-bold text-cafe-medio hover:bg-beige"
             >
               Ver {Math.min(20, filtered.length - cuantas)} más
-              <span className="font-semibold text-cafe-suave tabular-nums">· {cuantas} de {filtered.length}</span>
+              <span className="font-semibold text-cafe-suave tabular-nums">
+                · {cuantas} de {filtered.length}
+              </span>
             </button>
           )}
         </>
       )}
 
       <NewAppointmentDialog open={newApptOpen} onOpenChange={setNewApptOpen} />
-
     </div>
   );
 }

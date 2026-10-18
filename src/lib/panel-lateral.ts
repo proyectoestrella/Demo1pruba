@@ -39,6 +39,8 @@ export function useHayPanelLateral(): boolean {
 
 /** Ancho por defecto del panel lateral en PC; el hueco que deja el armazón es el mismo. */
 export const ANCHO_PANEL_LATERAL = 440;
+/** Las fichas se leen y editan mejor con dos columnas de datos disponibles. */
+export const ANCHO_FICHA_LATERAL = 560;
 /** Límites al arrastrar el borde (9e): ni más estrecho que esto ni más del 70 % de la ventana. */
 export const ANCHO_PANEL_MINIMO = 360;
 export const FRACCION_PANEL_MAXIMA = 0.7;
@@ -51,6 +53,11 @@ export function anchoDesdeBorde(x: number, anchoVentana: number): number {
 
 const CLAVE = (panel: string) => `sishow-ancho-panel:${panel}`;
 
+/** Las fichas son más amplias sin alterar el tamaño del asistente u otros paneles. */
+export function anchoPredeterminadoPanel(panel?: string): number {
+  return panel === "ficha" || panel === "detalle-cita" ? ANCHO_FICHA_LATERAL : ANCHO_PANEL_LATERAL;
+}
+
 /** El ancho recordado de un panel (o el de por defecto), acotado a la ventana de ahora. */
 export function anchoGuardado(panel: string, anchoVentana: number): number {
   let g = NaN;
@@ -59,7 +66,7 @@ export function anchoGuardado(panel: string, anchoVentana: number): number {
   } catch {
     /* sin almacenamiento */
   }
-  if (!Number.isFinite(g) || g <= 0) return ANCHO_PANEL_LATERAL;
+  if (!Number.isFinite(g) || g <= 0) return anchoPredeterminadoPanel(panel);
   return anchoDesdeBorde(anchoVentana - g, anchoVentana);
 }
 
