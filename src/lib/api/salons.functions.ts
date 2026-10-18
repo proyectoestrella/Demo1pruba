@@ -1985,5 +1985,24 @@ export const checkClientPenalty = createServerFn({ method: "GET" })
     }
 
     const fila = findPenaltyRow((rows ?? []) as unknown as ClientRow[], data.phone);
-    return { client: fila ? rowToClient(fila) : null };
+    return { client: fila ? fichaMinimaDeBloqueo(rowToClient(fila), data.phone) : null };
   });
+
+/**
+ * Lo único que la web pública de reservas necesita para decidir si bloquea:
+ * el importe y las marcas de bloqueo. Sin nombre, correo, notas, id ni el
+ * texto del motivo (A3, auditoría 18-oct-2026): esta función no pide sesión.
+ */
+function fichaMinimaDeBloqueo(c: Client, telefonoPedido: string): Client {
+  return {
+    id: "",
+    name: "",
+    phone: telefonoPedido,
+    createdAt: c.createdAt,
+    manualBlock: c.manualBlock,
+    penaltyEur: c.penaltyEur,
+    penaltyAt: c.penaltyAt,
+    penaltyKeep: c.penaltyKeep,
+    penaltyBlock: c.penaltyBlock,
+  };
+}

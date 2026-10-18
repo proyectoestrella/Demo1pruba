@@ -18,7 +18,8 @@ export function crearDobleSupabase(
     let op = "select";
     let datos: unknown;
     const err = () => (opciones.errorEn?.[tabla] ? { message: opciones.errorEn[tabla] } : null);
-    const filas = () => (tablas[tabla] ?? []).filter((f) => filtros.every(([c, v]) => (Array.isArray(v) ? v.includes(f[c]) : f[c] === v)));
+    const noNulos: string[] = [];
+    const filas = () => (tablas[tabla] ?? []).filter((f) => filtros.every(([c, v]) => (Array.isArray(v) ? v.includes(f[c]) : f[c] === v)) && noNulos.every((c) => f[c] !== null && f[c] !== undefined));
     const resultado = () => {
       if (op !== "select") { escrituras.push({ tabla, op, datos, filtros: [...filtros] }); return { data: null, error: err() }; }
       consultas.push({ tabla, filtros: [...filtros] });
@@ -28,6 +29,7 @@ export function crearDobleSupabase(
       select: () => q,
       eq: (c: string, v: unknown) => { filtros.push([c, v]); return q; },
       in: (c: string, v: unknown[]) => { filtros.push([c, v]); return q; },
+      not: (c: string, _o: string, _v: unknown) => { noNulos.push(c); return q; },
       order: () => q,
       range: () => q,
       limit: () => q,
