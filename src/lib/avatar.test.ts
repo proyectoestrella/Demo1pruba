@@ -10,7 +10,23 @@ import {
   iniciales,
   resolverAvatar,
 } from "./avatar";
-import { AVATARES, GRUPOS_AVATAR, IDS_AVATAR, uriDeAvatar } from "./avatar-svg";
+import {
+  AVATARES,
+  COLORES_PELO,
+  EDADES,
+  FONDOS_AVATAR,
+  IDS_AVATAR,
+  PEINADOS,
+  PIELES,
+  SUGERIDOS_AVATAR,
+  composicionDeAvatar,
+  composicionValida,
+  deserializarAvatar,
+  serializarAvatar,
+  svgDeComposicion,
+  uriDeAvatar,
+  type AvatarComposicion,
+} from "./avatar-svg";
 
 describe("resolverAvatar: foto > elegido > defecto > iniciales", () => {
   it("la foto manda sobre todo lo demás", () => {
@@ -29,7 +45,7 @@ describe("resolverAvatar: foto > elegido > defecto > iniciales", () => {
       resolverAvatar({ id: "c1", foto: "  ", elegido: elegirAvatar(IDS_AVATAR[3]) }).origen,
     ).toBe("elegido");
   });
-  it("sin elección, el defecto es estable y pertenece al catálogo", () => {
+  it("sin elección, el defecto es estable y pertenece al catálogo histórico", () => {
     const avatar = resolverAvatar({ id: "clienta-42" });
     expect(avatar.origen).toBe("defecto");
     expect(resolverAvatar({ id: "clienta-42" })).toEqual(avatar);
@@ -48,68 +64,110 @@ describe("resolverAvatar: foto > elegido > defecto > iniciales", () => {
   });
 });
 
-describe("guardado y compatibilidad", () => {
+describe("guardado compacto y compatibilidad", () => {
+  it("guarda las cinco decisiones en una clave corta y recupera exactamente la receta", () => {
+    const receta: AvatarComposicion = {
+      piel: "canela",
+      peinado: "trenzas",
+      edad: "mayor",
+      colorPelo: "blanco",
+      fondo: "lavanda",
+    };
+    const clave = serializarAvatar(receta);
+    expect(clave).toMatch(/^v2:[0-9a-z]{5}$/);
+    expect(deserializarAvatar(clave)).toEqual(receta);
+    expect(composicionDeAvatar(clave)).toEqual(receta);
+    expect(elegirAvatar(receta)).toEqual({ style: "trimly", avatar: clave });
+    expect(avatarValido(elegirAvatar(receta))).toBe(true);
+  });
   it("conAvatar pone, cambia y quita sin tocar el original", () => {
     const base = { a: elegirAvatar(IDS_AVATAR[1]) };
-    const b = conAvatar(base, "b", elegirAvatar(IDS_AVATAR[2]));
+    const b = conAvatar(base, "b", elegirAvatar(SUGERIDOS_AVATAR[0]));
     expect(base).toEqual({ a: elegirAvatar(IDS_AVATAR[1]) });
     expect(Object.keys(b)).toEqual(["a", "b"]);
-    expect(conAvatar(b, "a", null)).toEqual({ b: elegirAvatar(IDS_AVATAR[2]) });
+    expect(conAvatar(b, "a", null)).toEqual({ b: elegirAvatar(SUGERIDOS_AVATAR[0]) });
   });
-  it("acepta los nuevos ids y las 48 claves Open Peeps históricas", () => {
-    expect(avatarValido(elegirAvatar(IDS_AVATAR[0]))).toBe(true);
+  it("acepta claves de v1 y las 48 claves Open Peeps históricas", () => {
+    for (const avatar of AVATARES) {
+      const antiguo = { style: "trimly", avatar: avatar.id } as const;
+      expect(avatarValido(antiguo)).toBe(true);
+      expect(composicionValida(composicionDeAvatar(avatar.id))).toBe(true);
+      expect(uriDeAvatar(avatar.id).startsWith("data:image/svg+xml,")).toBe(true);
+    }
     for (let curado = 0; curado < TOTAL_AVATARES_LEGADOS; curado++) {
       const antiguo = { style: "openPeeps", curado } as const;
       expect(avatarValido(antiguo)).toBe(true);
       expect(avatarIdDeElegido(antiguo)).toBe(MAPA_OPEN_PEEPS_LEGADO[curado]);
-      expect(resolverAvatar({ id: "c", elegido: antiguo }).avatar).toBe(
-        MAPA_OPEN_PEEPS_LEGADO[curado],
-      );
+      expect(composicionValida(composicionDeAvatar(avatarIdDeElegido(antiguo)))).toBe(true);
     }
     expect(avatarValido({ style: "trimly", avatar: "no-existe" })).toBe(false);
+    expect(avatarValido({ style: "trimly", avatar: "v2:99999" })).toBe(false);
     expect(avatarValido({ style: "openPeeps", curado: TOTAL_AVATARES_LEGADOS })).toBe(false);
   });
 });
 
-describe("familia SVG propia", () => {
-  it("tiene al menos 12 avatares, ids únicos y cuatro grupos de edad", () => {
-    expect(AVATARES.length).toBeGreaterThanOrEqual(12);
-    expect(new Set(IDS_AVATAR).size).toBe(AVATARES.length);
-    expect(GRUPOS_AVATAR.map((grupo) => grupo.titulo)).toEqual([
-      "Primeros años",
-      "Adultas",
-      "Maduras",
-      "Mayores",
-    ]);
-    expect(GRUPOS_AVATAR.every((grupo) => grupo.avatares.length >= 3)).toBe(true);
+describe("familia SVG propia compuesta", () => {
+  it("ofrece seis tonos de piel, tres edades, al menos diez peinados y doce sugeridos", () => {
+    expect(PIELES.length).toBeGreaterThanOrEqual(6);
+    expect(EDADES.map((edad) => edad.id)).toEqual(["joven", "adulta", "mayor"]);
+    expect(PEINADOS.length).toBeGreaterThanOrEqual(10);
+    expect(COLORES_PELO.length).toBeGreaterThanOrEqual(6);
+    expect(FONDOS_AVATAR.length).toBeGreaterThanOrEqual(6);
+    expect(SUGERIDOS_AVATAR).toHaveLength(12);
   });
-  it("cada grupo conserva ids propios y un orden estable para el selector", () => {
-    const idsEnGrupos = GRUPOS_AVATAR.flatMap((grupo) => grupo.avatares.map((avatar) => avatar.id));
-    expect(idsEnGrupos).toEqual(IDS_AVATAR);
-    expect(new Set(idsEnGrupos).size).toBe(AVATARES.length);
-  });
-  it("cada avatar genera SVG propio, amarillo y estable", () => {
-    for (const avatar of AVATARES) {
-      const uri = uriDeAvatar(avatar.id);
-      expect(uri.startsWith("data:image/svg+xml,")).toBe(true);
-      const svg = decodeURIComponent(uri.slice("data:image/svg+xml,".length));
-      expect(svg).toContain("<svg");
-      expect(svg).toContain("#F8D665");
-      expect(uriDeAvatar(avatar.id)).toBe(uri);
+  it("todas las combinaciones válidas generan un SVG plano sin errores ni elementos prohibidos", () => {
+    for (const piel of PIELES) {
+      for (const peinado of PEINADOS) {
+        for (const edad of EDADES) {
+          for (const colorPelo of COLORES_PELO) {
+            for (const fondo of FONDOS_AVATAR) {
+              const receta: AvatarComposicion = {
+                piel: piel.id,
+                peinado: peinado.id,
+                edad: edad.id,
+                colorPelo: colorPelo.id,
+                fondo: fondo.id,
+              };
+              const clave = serializarAvatar(receta);
+              expect(deserializarAvatar(clave)).toEqual(receta);
+              const svg = svgDeComposicion(receta);
+              expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg"')).toBe(true);
+              expect(svg.endsWith("</svg>")).toBe(true);
+              expect(svg).not.toContain("undefined");
+              expect(svg).not.toContain("NaN");
+              expect(svg).not.toContain("<image");
+              expect(svg.toLowerCase()).not.toContain("sombrero");
+              expect(svg.toLowerCase()).not.toContain("gorro");
+              expect(svg.toLowerCase()).not.toContain("<hat");
+            }
+          }
+        }
+      }
     }
   });
-  it("los fondos son pasteles de Arena y no enlazan imágenes externas", () => {
-    for (const avatar of AVATARES) {
-      const svg = decodeURIComponent(uriDeAvatar(avatar.id).slice("data:image/svg+xml,".length));
-      expect(svg).toContain(`fill=\"${avatar.fondo}\"`);
-      expect(svg).not.toContain("<image");
+  it("los SVG llevan fondo circular, hombros y no enlazan recursos externos", () => {
+    for (const sugerido of SUGERIDOS_AVATAR) {
+      const svg = decodeURIComponent(
+        uriDeAvatar(serializarAvatar(sugerido)).slice("data:image/svg+xml,".length),
+      );
+      expect(svg).toContain('<circle cx="48" cy="48" r="48"');
+      expect(svg).toContain('d="M7 96c2-18');
       expect(svg).not.toContain("href=");
+      expect(svg).not.toContain("<image");
     }
   });
-  it("distingue pelo y rasgos de edad sin duplicar recetas", () => {
-    expect(new Set(AVATARES.map((avatar) => avatar.pelo)).size).toBeGreaterThanOrEqual(10);
-    expect(new Set(AVATARES.map((avatar) => avatar.colorPelo)).size).toBeGreaterThanOrEqual(10);
-    expect(AVATARES.filter((avatar) => avatar.gafas).length).toBeGreaterThanOrEqual(4);
-    expect(AVATARES.filter((avatar) => avatar.arrugas).length).toBeGreaterThanOrEqual(8);
+  it("la edad mayor se distingue con gafas suaves y arrugas discretas", () => {
+    const base: AvatarComposicion = {
+      piel: "miel",
+      peinado: "corto",
+      edad: "adulta",
+      colorPelo: "gris",
+      fondo: "salvia",
+    };
+    const adulta = svgDeComposicion(base);
+    const mayor = svgDeComposicion({ ...base, edad: "mayor" });
+    expect(mayor).not.toBe(adulta);
+    expect(mayor).toContain('<rect x="28" y="43"');
+    expect(mayor).toContain('stroke="#8E6251"');
   });
 });

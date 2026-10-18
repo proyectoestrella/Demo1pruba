@@ -1,9 +1,17 @@
-import { IDS_AVATAR, type AvatarId } from "./avatar-svg";
+import {
+  IDS_AVATAR,
+  claveAvatarValida,
+  serializarAvatar,
+  type AvatarClave,
+  type AvatarComposicion,
+  type AvatarId,
+} from "./avatar-svg";
 
 /** Avatares propios que se guardan a partir de ahora. */
 export interface AvatarElegido {
   style: "trimly";
-  avatar: AvatarId;
+  /** Id de v1 o receta compacta de v2 (`v2:01234`). */
+  avatar: AvatarClave;
 }
 /** Forma que ya vive en perfiles guardados de versiones anteriores. */
 export interface AvatarOpenPeepsLegado {
@@ -15,7 +23,7 @@ export type MapaAvatares = Record<string, AvatarGuardado>;
 export type OrigenAvatar = "foto" | "elegido" | "defecto" | "iniciales";
 export interface AvatarResuelto {
   origen: OrigenAvatar;
-  avatar?: AvatarId;
+  avatar?: AvatarClave;
   foto?: string;
 }
 
@@ -31,8 +39,8 @@ export function hashTexto(s: string): number {
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
   return h;
 }
-export function avatarIdValido(valor: unknown): valor is AvatarId {
-  return typeof valor === "string" && (IDS_AVATAR as readonly string[]).includes(valor);
+export function avatarIdValido(valor: unknown): valor is AvatarClave {
+  return claveAvatarValida(valor);
 }
 
 /** Acepta tanto el formato nuevo como los 48 valores Open Peeps ya guardados. */
@@ -49,13 +57,15 @@ export function avatarValido(valor: unknown): valor is AvatarGuardado {
 }
 
 /** Resuelve una elección guardada (también la histórica) al id de SVG actual. */
-export function avatarIdDeElegido(valor: unknown): AvatarId | undefined {
+export function avatarIdDeElegido(valor: unknown): AvatarClave | undefined {
   if (!avatarValido(valor)) return undefined;
   return valor.style === "trimly" ? valor.avatar : MAPA_OPEN_PEEPS_LEGADO[valor.curado];
 }
-/** Avatar que se guarda desde el selector. */
-export function elegirAvatar(avatar: AvatarId): AvatarElegido {
-  return { style: "trimly", avatar };
+/** Avatar que se guarda desde el selector; v2 ocupa solo cinco caracteres de receta. */
+export function elegirAvatar(avatar: AvatarClave | AvatarComposicion): AvatarElegido {
+  const clave = typeof avatar === "string" ? avatar : serializarAvatar(avatar);
+  if (!avatarIdValido(clave)) throw new Error("Avatar no válido");
+  return { style: "trimly", avatar: clave };
 }
 /** Avatar automático estable para el mismo id. */
 export function avatarPorDefecto(id: string): AvatarId {
