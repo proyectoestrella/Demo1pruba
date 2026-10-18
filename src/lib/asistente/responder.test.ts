@@ -2,6 +2,7 @@ import { describe, expect, setSystemTime, test } from "bun:test";
 import { AHORA_CORPUS } from "./evaluar";
 import { asistentePeluChic, datosPeluChic } from "./prueba-peluchic";
 import { CORREO_SOPORTE } from "./responder";
+import { FUNCIONES_POR_PLAN, NOMBRE_PLAN, QUE_ES } from "../plan";
 
 const nuevo = (plan?: "reservas" | "reservas-asistente" | "todo-incluido") => asistentePeluChic({ ahora: AHORA_CORPUS, plan }).asistente;
 
@@ -268,6 +269,16 @@ describe("responder", () => {
   test("plan Básico: las preguntas de negocio remiten a Estándar", () => {
     const r = nuevo("reservas").responder("cuantas citas tengo hoy");
     expect(r.tipo === "escalar" && r.intencion).toBe("plan-asistente");
+  });
+
+  test("catálogo de planes: menciona una función superior sin ejecutarla", () => {
+    const r = nuevo("reservas-asistente").responder("quiero ver todas las campañas ampliadas");
+    expect(r.tipo).toBe("escalar");
+    if (r.tipo !== "escalar") return;
+    expect(r.funcion).toBe("campanas-ampliadas");
+    expect(r.texto).toContain(NOMBRE_PLAN[FUNCIONES_POR_PLAN["campanas-ampliadas"]]);
+    expect(r.pasos).toEqual([QUE_ES["campanas-ampliadas"].texto]);
+    expect(r.contacto.mensaje).toContain(QUE_ES["campanas-ampliadas"].titulo.toLowerCase());
   });
 
   test("charla con carisma y el dato del día", () => {

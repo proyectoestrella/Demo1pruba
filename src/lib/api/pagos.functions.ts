@@ -13,6 +13,7 @@ import { z } from "zod";
 
 import { exigirAcceso } from "./autorizacion.server";
 import { PermisoDenegado, tienePermiso } from "./autorizacion";
+import { exigirFuncionPlanEn } from "./plan-guardas.server";
 import { conSesion } from "./sesion.middleware";
 import { getSupabaseServerClient } from "../supabase.server";
 import { zonaDelSalon } from "../zona-horaria";
@@ -191,6 +192,7 @@ export const cerrarCaja = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const quien = await exigirAcceso(data.slug);
     if (!tienePermiso(quien, "dinero.cerrar")) throw new PermisoDenegado("dinero.cerrar");
+    await exigirFuncionPlanEn(data.slug, "caja-cierre", quien);
     const supabase = getSupabaseServerClient();
     if (!supabase) return null;
     // El día es el de la zona del salón (un cobro a las 00:30 de Madrid es del
@@ -232,6 +234,7 @@ export const listarCierresCaja = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const quien = await exigirAcceso(data.slug);
     if (!tienePermiso(quien, "dinero.cerrar")) throw new PermisoDenegado("dinero.cerrar");
+    await exigirFuncionPlanEn(data.slug, "caja-cierre", quien);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { cierres: [] };
     const { data: filas, error } = await supabase
@@ -248,6 +251,7 @@ export const generarCsvGestoria = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const quien = await exigirAcceso(data.slug);
     if (!tienePermiso(quien, "dinero.exportar")) throw new PermisoDenegado("dinero.exportar");
+    await exigirFuncionPlanEn(data.slug, "caja-exportar", quien);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { csv: null };
     const zona = await zonaDe(supabase, data.slug);
@@ -295,6 +299,7 @@ export const importarPagosTpvServidor = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const quien = await exigirAcceso(data.slug);
     if (!tienePermiso(quien, "dinero.importar")) throw new PermisoDenegado("dinero.importar");
+    await exigirFuncionPlanEn(data.slug, "importacion-mensual", quien);
     const supabase = getSupabaseServerClient();
     if (!supabase || !data.pagos.length) return { insertados: 0 };
     const filas = data.pagos.map((p) => ({

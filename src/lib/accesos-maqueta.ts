@@ -15,10 +15,10 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import type { Employee } from "./mock/types";
 import { cabeRol, rolesPermitidosPorPlan, type Rol } from "./permisos";
 
-/** El mensaje cuando un tipo de rol no cabe en el plan (28-sep: Básico dos, Estándar tres, Embajador cuatro). */
+/** El mensaje cuando un tipo de rol no cabe en el plan. */
 function mensajeLimiteRoles(plan: string | null): string {
   const n = rolesPermitidosPorPlan(plan);
-  if (n >= 3) return "Tu plan incluye tres tipos de acceso (gerente, encargada y estilista).";
+  if (n >= 4) return "Tu plan incluye los cuatro tipos de acceso.";
   return "Tu plan incluye dos tipos de acceso (gerente y estilista).";
 }
 

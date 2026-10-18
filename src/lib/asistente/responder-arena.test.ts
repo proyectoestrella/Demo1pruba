@@ -6,6 +6,7 @@ import { CORPUS_CIEGO_3 } from "./corpus-ciego-3";
 import { CORPUS_CIEGO_4 } from "./corpus-ciego-4";
 import { normalizar } from "./normalizar";
 import { asistentePeluChicArena, datosPeluChicArena } from "./prueba-peluchic-arena";
+import { CORREO_SOPORTE } from "./responder";
 
 /**
  * El motor de BACKEND con el adaptador de ESTA rama (fuentes-panel.ts) sobre
@@ -69,7 +70,7 @@ describe("motor de BACKEND con las fuentes de la rama Arena", () => {
     expect(r.tipo).toBe("escalar");
     if (r.tipo === "escalar") {
       expect(r.pasos.length).toBeGreaterThan(0);
-      expect(r.contacto.correo).toBe("ejemplo@sishow.com");
+      expect(r.contacto.correo).toBe(CORREO_SOPORTE);
     }
   });
 });

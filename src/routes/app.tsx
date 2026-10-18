@@ -26,7 +26,7 @@ import { BarraInferior, CabeceraArena, MenuLateral, TODOS_LOS_ITEMS, estaActivo 
 import { FranjaVerComo } from "@/components/VerComo";
 import { SinPermiso } from "@/components/SinPermiso";
 import { instalarAtajoDeshacer, instalarRegistro } from "@/lib/deshacer-maqueta";
-import { usePermisos, usePlanSalon, veRuta } from "@/lib/accesos-panel";
+import { useEsDemo, usePermisos, usePlanSalon, veRuta } from "@/lib/accesos-panel";
 import { rutaSoloCompleto } from "@/lib/plan-basico";
 import { IncluidoEnPlanCompleto } from "@/components/IncluidoEnPlanCompleto";
 import { useHayPanelLateral } from "@/lib/panel-lateral";
@@ -255,8 +255,12 @@ function DashboardLayoutV1() {
   // Lote 11: una sección que el rol no ve se sustituye por «Esta parte la lleva…».
   const permisos = usePermisos();
   const plan = usePlanSalon();
+  const esDemo = useEsDemo();
   const permitida = veRuta(permisos, path);
-  const fueraDelBasico = plan === "reservas" && rutaSoloCompleto(path);
+  // En una cuenta real las secciones siguen visibles: cada una enseña sus
+  // tarjetas de plan en el sitio donde se entenderían. La demo conserva su
+  // conmutador y la puerta visual que ya usaban los prospectos.
+  const fueraDelBasico = esDemo && plan === "reservas" && rutaSoloCompleto(path);
   const seccion = TODOS_LOS_ITEMS.find((i) => estaActivo(i, path))?.label ?? "esta sección";
   // Colores elegidos por la dueña en Ajustes (9h): se sincronizan antes de pintar.
   const coloresServicio = useSalonStore((s) => s.salonProfile.coloresServicio);
@@ -303,7 +307,7 @@ function DashboardLayoutV1() {
 
       <NewAppointmentDialog open={newApptOpen} onOpenChange={setNewApptOpen} />
 
-      {plan !== "reservas" && <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
+      <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
         <SheetContent
           side="right"
           panel="asistente"
@@ -318,7 +322,7 @@ function DashboardLayoutV1() {
           </SheetHeader>
           <AssistantPanel className="flex-1" />
         </SheetContent>
-      </Sheet>}
+      </Sheet>
     </div>
   );
 }

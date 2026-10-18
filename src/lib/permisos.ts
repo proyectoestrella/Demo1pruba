@@ -176,19 +176,20 @@ export function vePagina(p: Permisos, pagina: PaginaId): boolean {
 }
 
 /**
- * Límite de roles distintos en uso según el plan (decisión de Tomás,
- * 28-sep, `plan-final-v2.md`): Básico (`reservas`) dos — gerente y
- * estilista —, Estándar (`reservas-asistente`) tres — gerente, encargada o
- * subencargada, y estilista —, Embajador (`todo-incluido`) los cuatro.
+ * Límite de roles distintos en uso según la tabla única de planes: Básico y
+ * Estándar se quedan con gerente y estilista; «roles-ampliados» llega con
+ * Embajador y abre también subencargada y recepción.
  */
 export function rolesPermitidosPorPlan(plan: string | null | undefined): number {
   if (plan === "todo-incluido") return ROLES.length;
-  if (plan === "reservas-asistente") return 3;
   return 2;
 }
 
 /** ¿Cabe un miembro más con este rol, dados los roles ya en uso y el plan? */
 export function cabeRol(rol: Rol, enUso: Rol[], plan: string | null | undefined): boolean {
+  // No basta contar: con dos huecos, Básico/Estándar no pueden sustituir a
+  // una estilista por recepción y obtener una función de Embajador gratis.
+  if (plan !== "todo-incluido" && (rol === "subencargado" || rol === "recepcion")) return false;
   const distintos = new Set([...enUso, rol]);
   return distintos.size <= rolesPermitidosPorPlan(plan);
 }

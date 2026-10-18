@@ -205,7 +205,7 @@ describe("accesos: roles y bajas", () => {
 
 describe("accesos: vincular a una profesional", () => {
   it("vincula y desvincula a un miembro activo", async () => {
-    const w = mundo();
+    const w = mundo("todo-incluido");
     await invitarMiembro(maria, { email: "s@c.es", rol: "recepcion" }, w.deps);
     await aceptarInvitacion("s", w.invs[0].id, w.deps);
     expect((await vincularEmpleada(maria, "s", "sara", w.deps)).ok).toBe(true);

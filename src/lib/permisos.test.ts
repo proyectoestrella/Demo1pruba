@@ -49,16 +49,16 @@ describe("matriz de permisos", () => {
     expect(PERMISOS_DEMO.rol).toBe("gerente");
   });
 
-  test("plan: reparto de roles del 28-sep — Básico dos, Estándar tres, Embajador cuatro", () => {
+  test("plan: los roles ampliados son solo de Embajador", () => {
     expect(rolesPermitidosPorPlan("reservas")).toBe(2);
-    expect(rolesPermitidosPorPlan("reservas-asistente")).toBe(3);
+    expect(rolesPermitidosPorPlan("reservas-asistente")).toBe(2);
     expect(rolesPermitidosPorPlan("todo-incluido")).toBe(4);
     // Básico: un tercer tipo de rol no cabe.
     expect(cabeRol("estilista", ["gerente"], "reservas")).toBe(true);
     expect(cabeRol("recepcion", ["gerente", "estilista"], "reservas")).toBe(false);
     expect(cabeRol("estilista", ["gerente", "estilista"], "reservas")).toBe(true);
-    // Estándar: cabe un tercer tipo, pero no un cuarto.
-    expect(cabeRol("recepcion", ["gerente", "estilista"], "reservas-asistente")).toBe(true);
+    // Estándar: mantiene los dos roles base.
+    expect(cabeRol("recepcion", ["gerente", "estilista"], "reservas-asistente")).toBe(false);
     expect(cabeRol("recepcion", ["gerente", "subencargado", "estilista"], "reservas-asistente")).toBe(false);
     // Embajador: caben los cuatro.
     expect(cabeRol("recepcion", ["gerente", "subencargado", "estilista"], "todo-incluido")).toBe(true);
