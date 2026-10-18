@@ -11,10 +11,10 @@
  * se traducen a rutas del panel.
  */
 import { useFichas } from "@/lib/use-fichas";
-import { HojaFuncionPlan, LlegaConPlan } from "@/components/LlegaConPlan";
-import { useTienePlan } from "@/lib/accesos-panel";
+import { HojaFuncionPlan, LlegaConPlan, duradero } from "@/components/LlegaConPlan";
+import { usePlanSalon, useTienePlan } from "@/lib/accesos-panel";
 import { planDe, type FuncionPlan } from "@/lib/plan";
-import { descartarFuncionPlan, leerDescubrimientoPlan } from "@/lib/plan-descubrimiento";
+import { descartarFuncionPlan, leerDescubrimientoPlan, puedeOfrecerFuncion } from "@/lib/plan-descubrimiento";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowUp, BookOpen, Copy, Mail, RotateCcw, Sparkles } from "lucide-react";
@@ -308,7 +308,7 @@ function PanelDelAsistente({ className }: { className?: string }) {
           abierto
           onCerrar={() => {
             try {
-              descartarFuncionPlan(funcionPlan, window.sessionStorage);
+              descartarFuncionPlan(funcionPlan, window.sessionStorage, duradero());
               setFuncionesRechazadas(leerDescubrimientoPlan(window.sessionStorage).descartadas);
             } catch {
               /* sin almacenamiento, solo se cierra */
@@ -325,6 +325,7 @@ function PanelDelAsistente({ className }: { className?: string }) {
 function Respuesta({ r, onAccion, onPreguntar, onFuncion, funcionesRechazadas }: { r: RespuestaAsistente; onAccion: (a: Accion) => void; onPreguntar: (t: string) => void; onFuncion: (funcion: FuncionPlan) => void; funcionesRechazadas: FuncionPlan[] }) {
   const caja = "max-w-[92%] rounded-2xl rounded-bl-md border border-lino bg-card px-3.5 py-3 text-[14px] leading-snug text-cafe";
   const chip = "rounded-full border border-salvia bg-salvia-suave px-3 py-1.5 text-[13px] font-bold text-hoja-tinta hover:bg-salvia-clara";
+  const plan = usePlanSalon();
   if (r.tipo === "respuesta") {
     return (
       <div className={caja}>
@@ -415,7 +416,7 @@ function Respuesta({ r, onAccion, onPreguntar, onFuncion, funcionesRechazadas }:
         <button type="button" onClick={() => copiar(r.contacto.mensaje, "Mensaje")} className={chip}>
           Copiar mensaje
         </button>
-        {r.funcion && !funcionesRechazadas.includes(r.funcion) && (
+        {r.funcion && puedeOfrecerFuncion(r.funcion, plan, funcionesRechazadas) && (
           <button type="button" onClick={() => onFuncion(r.funcion!)} className={chip}>
             Ver ejemplo
           </button>

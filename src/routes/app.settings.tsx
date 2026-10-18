@@ -33,7 +33,7 @@ import {
 } from "@/lib/calendarios-panel";
 import { HistorialCambios } from "@/components/HistorialCambios";
 import { usePermisos, useTienePlan } from "@/lib/accesos-panel";
-import { LlegaConPlan } from "@/components/LlegaConPlan";
+import { LlegaConPlan, ResumenPlanSuperior } from "@/components/LlegaConPlan";
 import { puede } from "@/lib/permisos";
 import { useSalonStore } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
@@ -648,6 +648,8 @@ function Settings() {
           >
             <AjustesColores />
           </SeccionAjustes>
+
+          {!buscar.trim() && <ResumenPlanSuperior />}
         </div>
       </div>
     </div>

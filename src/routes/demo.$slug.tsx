@@ -4,6 +4,7 @@ import { Loader2, TriangleAlert } from "lucide-react";
 
 import { demoPorSlug } from "@/lib/demos";
 import { cargarDemoRegistrada } from "@/lib/demos/aplicar";
+import { entrarEnVistaDemo } from "@/lib/vista-demo";
 
 /**
  * `/demo/<slug>`: el enlace corto de una presentación (lote P).
@@ -25,11 +26,17 @@ export const Route = createFileRoute("/demo/$slug")({
       ],
     };
   },
+  // `?cliente=1` (vista de la dueña, sin selector de plan) o `?prospecto=1` (con selector).
+  validateSearch: (search: Record<string, unknown>): { cliente?: string; prospecto?: string } => ({
+    ...(search.cliente !== undefined ? { cliente: String(search.cliente) } : {}),
+    ...(search.prospecto !== undefined ? { prospecto: String(search.prospecto) } : {}),
+  }),
   component: EntrarEnDemo,
 });
 
 function EntrarEnDemo() {
   const { slug } = Route.useParams();
+  const { cliente, prospecto } = Route.useSearch();
   const navigate = useNavigate();
   const perfil = demoPorSlug(slug);
   const [error, setError] = useState(false);
@@ -37,13 +44,14 @@ function EntrarEnDemo() {
   useEffect(() => {
     if (!perfil) return;
     try {
+      entrarEnVistaDemo(slug, { cliente, prospecto });
       cargarDemoRegistrada(slug, { panel: true });
       void navigate({ to: "/app", replace: true });
     } catch (err) {
       console.error("No se pudo preparar la demo:", err);
       setError(true);
     }
-  }, [slug, perfil, navigate]);
+  }, [slug, perfil, navigate, cliente, prospecto]);
 
   if (!perfil || error) {
     return (

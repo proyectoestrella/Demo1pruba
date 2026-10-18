@@ -3,6 +3,7 @@ import { useAccesosDemo, NOMBRE_ROL } from "@/lib/accesos-maqueta";
 import { useEsDemo, useMiembroActual, usePlanSalon } from "@/lib/accesos-panel";
 import { NOMBRE_PLAN, PLANES, muestraConmutadorDePlan, type PlanSishow } from "@/lib/plan";
 import { useSalonStore } from "@/lib/store";
+import { PLAN_DEL_CLIENTE_DE_DEMO, esVistaCliente, tieneVistaCliente, useVistaDemo } from "@/lib/vista-demo";
 import { cn } from "@/lib/utils";
 
 /**
@@ -16,7 +17,10 @@ export function VerComo({ className }: { className?: string }) {
   const setVerComo = useAccesosDemo((s) => s.setVerComo);
   const actual = useMiembroActual();
   const plan = usePlanSalon();
-  const conmutador = useSalonStore((s) => muestraConmutadorDePlan({ realSalonSlug: s.realSalonSlug, slug: s.salonProfile.slug, resolucion: s.publicBookingResolution }));
+  const slug = useSalonStore((s) => s.salonProfile.slug);
+  const vista = useVistaDemo((s) => s.vista);
+  const fijarVista = useVistaDemo((s) => s.fijar);
+  const conmutador = useSalonStore((s) => muestraConmutadorDePlan({ realSalonSlug: s.realSalonSlug, slug: s.salonProfile.slug, resolucion: s.publicBookingResolution, vista }));
   if (!esDemo || !miembros || !actual) return null;
   const activos = miembros.filter((m) => m.estado === "activa");
   // Lote 13: en la demo también se elige el plan, para enseñar lo que abre cada uno.
@@ -56,6 +60,19 @@ export function VerComo({ className }: { className?: string }) {
           </option>
         ))}
       </select>}
+      {tieneVistaCliente(slug) && (
+        <button
+          type="button"
+          onClick={() => {
+            const siguiente = esVistaCliente(slug, vista) ? "prospecto" : "cliente";
+            fijarVista(slug, siguiente);
+            if (siguiente === "cliente") cambiarPlan(PLAN_DEL_CLIENTE_DE_DEMO[slug]);
+          }}
+          className="shrink-0 rounded-full px-2 text-[12px] font-bold underline underline-offset-2 hover:bg-salvia-clara"
+        >
+          {esVistaCliente(slug, vista) ? "Vista de prospecto (con selector)" : "Vista del salón"}
+        </button>
+      )}
     </label>
   );
 }
