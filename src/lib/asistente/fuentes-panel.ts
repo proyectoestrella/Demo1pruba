@@ -14,7 +14,7 @@ import { duracionFlexibleActiva } from "../duracion-flexible";
 import { isBookingBlocked } from "../no-show";
 import { indiceColorServicio } from "../hoy-arena";
 import { colorElegidoProfesional } from "../colores-elegidos";
-import { buildCampanas, calcularHuecoFlojo, resumenDelMes } from "../campanas";
+import { buildCampanas, calcularHuecoFlojo, resumenDelMes, type Campana } from "../campanas";
 import { DIAS_SEGUNDA_VISITA, DIAS_RESENA } from "../campanas";
 import { comparar, resumenDePeriodo } from "../periodos";
 
@@ -29,6 +29,8 @@ export interface EstadoPanel {
   clients: Client[];
   services: Service[];
   waitlist: WaitlistEntry[];
+  /** En un salón real, campañas ya calculadas y recortadas en servidor. */
+  campanas?: Campana[] | null;
   salonProfile: SalonProfile;
   realSalonSlug: string | null;
 }
@@ -211,6 +213,10 @@ export function crearFuentesPanel(
     marketing: (() => {
       const campanas = () => {
         const s = leer();
+        // En una cuenta real no se reconstruyen campañas desde las citas: la
+        // lista viene ya recortada por plan desde `listSalonData`. Las demos
+        // no tienen servidor y conservan su cálculo local de muestra.
+        if (s.realSalonSlug) return s.campanas ?? [];
         return buildCampanas({ appointments: s.appointments, clients: s.clients, services: s.services, employees: equipo(), salonName: s.salonProfile.name, salonAddress: s.salonProfile.address, now: ahora() });
       };
       return {
@@ -221,6 +227,7 @@ export function crearFuentesPanel(
         },
         franjaFloja: () => {
           // La ocupación real de la franja más floja, la misma que usa la campaña «Llena los…».
+          if (leer().realSalonSlug && !campanas().some((c) => c.id === "huecos-flojos")) return null;
           const f = calcularHuecoFlojo(leer().appointments, equipo(), ahora());
           return f ? { etiqueta: `${f.diaLabel} por la ${f.franjaLabel}`, pct: f.ocupacionPct } : null;
         },

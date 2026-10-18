@@ -24,7 +24,7 @@ import {
   exigirAcciones,
   soloCamposWeb,
 } from "./guardas";
-import { recortarDatosPanel } from "./recorte";
+import { recortarDatosPanel, recortarDatosPanelPorPlan } from "./recorte";
 import { alcance, permisosDe, type MiembroActual } from "../permisos";
 import { DIAS_RETENCION } from "../cambios";
 import { PermisoDenegado, tienePermiso } from "./autorizacion";
@@ -39,7 +39,8 @@ import { columnasDeParche, filaSinLote3 } from "../cita-parche";
 import { ERROR_SOLAPE_PANEL } from "../solape";
 import { duracionCartaParaSenal, reglaSenal, senalDeReservaNueva } from "../senal";
 import { inferBusinessType } from "../business-type";
-import { servicesForType } from "../mock/salon";
+import { employeesForType, servicesForType, textosDeCarta } from "../mock/salon";
+import { buildCampanas } from "../campanas";
 import {
   limpiarRespuestas,
   obligatoriasSinResponder,
@@ -281,8 +282,10 @@ const slug = z.string().min(1).max(120);
  *
  *   RECORTADO    `listSalonData`. No corta: recorta. Quien no sea miembro
  *                recibe la vista pública —los huecos ocupados, sin nombres y
- *                sin una sola ficha de cliente— aunque pida la del panel. Es
- *                así porque la web de reservas de un salón de pago tiene que
+ *                sin una sola ficha de cliente— aunque pida la del panel. En
+ *                el panel aplica además el plan guardado: Básico no recibe
+ *                histórico avanzado y solo sale la campaña de reseña. Es así
+ *                porque la web de reservas de un salón de pago tiene que
  *                seguir funcionando para cualquiera que entre a pedir hora.
  *
  *   MIXTO        `syncAppointment`. El dueño puede todo; quien no lo sea solo
@@ -776,12 +779,32 @@ export const listSalonData = createServerFn({ method: "GET" })
   .handler(
     async ({
       data,
-    }): Promise<{ appointments: Appointment[]; clients: Client[]; waitlist: WaitlistEntry[] }> => {
+    }): Promise<{
+      appointments: Appointment[];
+      clients: Client[];
+      waitlist: WaitlistEntry[];
+      campanas?: ReturnType<typeof buildCampanas>;
+    }> => {
       const supabase = getSupabaseServerClient();
       if (!supabase) return { appointments: [], clients: [], waitlist: [] };
 
       const quien = await acceso(data.slug);
+      // Las demos viven en el navegador y nunca tienen fila en `salons`.
+      // Conservan la misma respuesta vacía de servidor de antes.
+      if (quien.tipo === "demo") return { appointments: [], clients: [], waitlist: [] };
       const publica = vistaEfectiva(data.vista, quien) === "publica";
+
+      // El plan se lee de la fila del salón, nunca de un dato que mande el navegador.
+      let perfil: SalonProfile | null = null;
+      if (!publica) {
+        const { data: salon, error } = await supabase
+          .from("salons")
+          .select("profile")
+          .eq("slug", data.slug)
+          .maybeSingle();
+        if (error || !salon) throw new Error("No se ha podido comprobar el plan de este salón.");
+        perfil = { ...((salon.profile ?? {}) as SalonProfile), slug: data.slug };
+      }
 
       /**
        * Un `select` con las columnas nuevas y, si el esquema todavía no las
@@ -850,9 +873,31 @@ export const listSalonData = createServerFn({ method: "GET" })
         clients: (fichas.data ?? []).map(rowToClient),
         waitlist: (espera.data ?? []).map(rowToWaitlist),
       };
-      // Vista de panel: cada rol recibe solo lo suyo (lote 8). La pública ya
-      // viene recortada por rowToAppointment y no lleva clientas.
-      return publica ? todo : recortarDatosPanel(quien, todo);
+      // Vista de panel: cada rol recibe solo lo suyo (lote 8). Las campañas
+      // se calculan en servidor y se recortan por plan antes de la respuesta.
+      if (publica) return todo;
+      const porRol = recortarDatosPanel(quien, todo);
+      const perfilSeguro = perfil!;
+      const tipo = inferBusinessType(perfilSeguro.tagline, perfilSeguro.name);
+      const campanas = buildCampanas({
+        appointments: porRol.appointments,
+        clients: porRol.clients,
+        services: servicesForType(tipo, perfilSeguro.menu, textosDeCarta(perfilSeguro)),
+        employees: employeesForType(
+          tipo,
+          perfilSeguro.team,
+          perfilSeguro.teamHours,
+          perfilSeguro.openingHours,
+          perfilSeguro.teamIds,
+          perfilSeguro.demoAbreHoy,
+          perfilSeguro.serviciosPorProfesional,
+        ),
+        salonName: perfilSeguro.name,
+        salonAddress: perfilSeguro.address,
+        timeZone: zonaDelSalon(perfilSeguro),
+        canales: { enlaces: perfilSeguro.enlaces, boletin: perfilSeguro.boletin },
+      });
+      return recortarDatosPanelPorPlan(quien, perfilSeguro, todo, campanas);
     },
   );
 

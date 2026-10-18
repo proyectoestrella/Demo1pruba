@@ -7,6 +7,7 @@ import { inferBusinessType } from "./business-type";
 import { resolveActiveProfile } from "./salon-rows";
 import { conRegistroEnPausa, useSalonStore } from "./store";
 import type { Appointment, Client, SalonProfile, WaitlistEntry } from "./mock/types";
+import type { Campana } from "./campanas";
 
 /** Lo que dice el aviso cuando la agenda de un salón real no ha podido cargarse. */
 export const MENSAJE_CARGA_FALLIDA = "No hemos podido cargar tus datos. Vuelve a intentarlo.";
@@ -16,6 +17,7 @@ export interface DatosDelSalon {
   appointments: Appointment[];
   clients: Client[];
   waitlist: WaitlistEntry[];
+  campanas?: Campana[];
 }
 
 /**

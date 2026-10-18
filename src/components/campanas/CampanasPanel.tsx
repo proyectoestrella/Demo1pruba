@@ -1,6 +1,8 @@
 import { buildCampanasMemo } from "@/lib/selectores-rutas";
 import { useTrasPintar } from "@/lib/tras-pintar-panel";
 import { useTienePlan } from "@/lib/accesos-panel";
+import { useRealSalonSlug } from "@/lib/use-real-salon";
+import { campanasDelPanel } from "@/lib/campanas-del-panel";
 import { LlegaConPlan } from "@/components/LlegaConPlan";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -47,8 +49,8 @@ const ICONOS: Record<string, LucideIcon> = {
 };
 
 /**
- * Pantalla de campañas listas para enviar, calculadas sobre las citas y
- * clientes reales del salón — ver `lib/campanas.ts`. Nada se envía desde
+ * Pantalla de campañas listas para enviar. En un salón real las calcula y
+ * recorta el servidor; en demo usa el muestrario local. Nada se envía desde
  * aquí: cada tarjeta prepara el texto y la lista, y el dueño lo manda desde
  * su propio WhatsApp con un toque.
  */
@@ -57,6 +59,8 @@ const CAMPANAS_ESTANDAR = new Set(["resena"]);
 
 export function CampanasPanel() {
   const ampliadas = useTienePlan("campanas-ampliadas");
+  const realSlug = useRealSalonSlug();
+  const campanasServidor = useSalonStore((s) => s.campanas);
   const appointments = useSalonStore((s) => s.appointments);
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
@@ -69,12 +73,12 @@ export function CampanasPanel() {
    */
   const [preparadas, setPreparadas] = useState<{ id: string; titulo: string; personas: number; cuando: string }[]>([]);
 
-  // Lote 16: las campañas (cálculo caro de BACKEND) se calculan un fotograma
-  // después de pintar la pantalla, para que el clic del menú responda ya.
+  // La demo mantiene el cálculo diferido; un salón real solo consume la
+  // respuesta ya recortada del servidor.
   const listo = useTrasPintar();
-  const campanas = useMemo(
+  const campanasDemo = useMemo(
     () =>
-      !listo ? [] : buildCampanasMemo({
+      !listo || realSlug ? [] : buildCampanasMemo({
         appointments,
         clients,
         services,
@@ -88,8 +92,9 @@ export function CampanasPanel() {
         // Lote P: su boletín, su tienda y su Instagram en los mensajes.
         canales: { enlaces: salonProfile.enlaces, boletin: salonProfile.boletin },
       }),
-    [listo, appointments, clients, services, employees, salonProfile],
+    [listo, realSlug, appointments, clients, services, employees, salonProfile],
   );
+  const campanas = campanasDelPanel(!!realSlug, campanasServidor, campanasDemo);
 
   const resumen = resumenDelMes(campanas);
 

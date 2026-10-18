@@ -4,6 +4,7 @@ import type { FuentesAsistente } from "./fuentes";
 import { clients, seedAppointments, seedWaitlist } from "../mock/seed";
 import { employees, salon, services } from "../mock/salon";
 import type { Appointment, Client } from "../mock/types";
+import type { Campana } from "../campanas";
 
 const estado = { appointments: seedAppointments, clients, services, waitlist: seedWaitlist, salonProfile: salon, realSalonSlug: null };
 const f: FuentesAsistente = crearFuentesPanel(() => estado, () => employees, { enlace: () => "https://sishow.app/s/demo" });
@@ -54,6 +55,20 @@ describe("adaptador a FuentesAsistente de BACKEND", () => {
     expect(f.marketing.campanas()?.length).toBeGreaterThan(0);
     const franja = f.marketing.franjaFloja();
     if (franja) expect(franja.pct).toBeGreaterThanOrEqual(0);
+  });
+  test("un salón real usa las campañas recortadas por el servidor", () => {
+    const resena: Campana = {
+      id: "resena", titulo: "Reseña", resumenAQuien: "Tras la cita", cifra: 1,
+      cifraLabel: "persona", personas: [{ clientId: "c-1", nombre: "Ana", detalle: "Ayer" }], mensaje: "Gracias", coste: "Incluido",
+    };
+    const real = { ...estado, realSalonSlug: "salon-real", campanas: [resena] };
+    const fuentes = crearFuentesPanel(() => real, () => employees, {});
+
+    expect(fuentes.marketing.campanas()).toEqual([
+      { titulo: "Reseña", personas: 1, motivo: "Tras la cita" },
+    ]);
+    expect(fuentes.marketing.segundaVisita()).toBeNull();
+    expect(fuentes.marketing.franjaFloja()).toBeNull();
   });
   test("ficha: las observaciones no salen dos veces y la nota técnica de la visita llega al asistente", () => {
     const ficha = fConNotas.fichaClienta(clientaConNotas.id)!;

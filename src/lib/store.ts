@@ -41,6 +41,7 @@ import { recargoActivo } from "./recargo-activo";
 import { cierraEseDia, claveDelDia } from "./dia-cerrado-panel";
 import { inferBusinessType, menuDesdeServicios, slugForId, type BusinessType } from "./business-type";
 import { equipoCabeEnPlan, planDe } from "./plan";
+import type { Campana } from "./campanas";
 import { solapaConAgenda } from "./solape";
 import {
   aplicarSenal,
@@ -90,6 +91,8 @@ interface SalonState {
   appointments: Appointment[];
   waitlist: WaitlistEntry[];
   clients: Client[];
+  /** Campañas ya calculadas y autorizadas por el servidor para un salón real. */
+  campanas: Campana[] | null;
   services: Service[];
   /**
    * Pagos reales (lote 11). A diferencia de `appointments`/`clients`/
@@ -366,6 +369,7 @@ interface SalonState {
     appointments: Appointment[];
     clients: Client[];
     waitlist: WaitlistEntry[];
+    campanas?: Campana[];
   }) => void;
   /**
    * Deja citas, clientes y lista de espera a cero.
@@ -589,6 +593,7 @@ export const useSalonStore = create<SalonState>()(
       appointments: seedAppointments,
       waitlist: seedWaitlist,
       clients: seedClients,
+      campanas: null,
       services: seedServices,
       payments: [],
       salonProfile: salon,
@@ -1213,7 +1218,7 @@ export const useSalonStore = create<SalonState>()(
       },
       setPublicBookingResolution: (value) => set({ publicBookingResolution: value }),
 
-      hydrateFromServer: ({ appointments, clients, waitlist }) =>
+      hydrateFromServer: ({ appointments, clients, waitlist, campanas }) =>
         set((s) => {
           // Una cita con un cambio local todavía sin guardar (subida en
           // camino o fallida con aviso) conserva su versión local: el
@@ -1223,14 +1228,15 @@ export const useSalonStore = create<SalonState>()(
           const citas = conservarIguales(conservarSinGuardar(appointments, s.appointments, "cita"), s.appointments);
           const fichas = conservarIguales(clients, s.clients);
           const espera = conservarIguales(waitlist, s.waitlist);
+          const campanasNuevas = campanas ?? null;
           // Nada ha cambiado: el MISMO estado, así la store no avisa a nadie
           // y no se repinta el panel cada 60 s (ver conservar-iguales.ts).
-          if (citas === s.appointments && fichas === s.clients && espera === s.waitlist) return s;
-          return { appointments: citas, clients: fichas, waitlist: espera };
+          if (citas === s.appointments && fichas === s.clients && espera === s.waitlist && campanasNuevas === s.campanas) return s;
+          return { appointments: citas, clients: fichas, waitlist: espera, campanas: campanasNuevas };
         }),
 
       // Un salón real tampoco «está en una demo»: fuera la marca del enlace.
-      vaciarDatosDeEjemplo: () => set({ appointments: [], clients: [], waitlist: [], demoActive: false }),
+      vaciarDatosDeEjemplo: () => set({ appointments: [], clients: [], waitlist: [], campanas: null, demoActive: false }),
 
       applyDemo: (id) => {
         const demo = get().savedDemos.find((d) => d.id === id);
@@ -1261,7 +1267,7 @@ export const useSalonStore = create<SalonState>()(
       },
 
       resetSalonProfile: () => {
-        set({ salonProfile: salon, demoActive: false, realSalonSlug: null });
+        set({ salonProfile: salon, campanas: null, demoActive: false, realSalonSlug: null });
         get().applyBusinessType("barberia", { abrirHoy: true });
       },
     };
