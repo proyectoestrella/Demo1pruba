@@ -3,10 +3,25 @@ import { useFichas } from "@/lib/use-fichas";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Bell, CalendarDays, Check, ChevronDown, Clock3, Euro, FileText, MoreHorizontal } from "lucide-react";
+import {
+  Bell,
+  CalendarDays,
+  Check,
+  ChevronDown,
+  Clock3,
+  Euro,
+  FileText,
+  MoreHorizontal,
+} from "lucide-react";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { useEquipo } from "@/lib/use-equipo";
-import { saludo, useCitasVisibles, useEquipoVisible, useMiembroActual, usePermisos } from "@/lib/accesos-panel";
+import {
+  saludo,
+  useCitasVisibles,
+  useEquipoVisible,
+  useMiembroActual,
+  usePermisos,
+} from "@/lib/accesos-panel";
 import { alcance, puede } from "@/lib/permisos";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { serviceLabelOf } from "@/lib/appointment-services";
@@ -63,10 +78,14 @@ import {
  */
 
 const tituloBloque = "text-[17px] font-extrabold tracking-[-0.01em]";
-const bloque = "rounded-[24px] border border-lino bg-card p-5 md:p-7";
+const bloque = "tarjeta-principal border border-lino bg-card p-5 md:p-7";
 
 function fechaDeHoy(ahora: Date) {
-  const texto = ahora.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  const texto = ahora.toLocaleDateString("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
   return `${texto.charAt(0).toUpperCase()}${texto.slice(1)} · ${hora(ahora)}`;
 }
 
@@ -98,7 +117,8 @@ export function HoyArena() {
   const miembro = useMiembroActual();
   const permisos = usePermisos();
   // Dinero: el del salón (gerente), el suyo (estilista) o ninguno (recepción, subencargada).
-  const veDinero = puede(permisos, "dinero.ver-global") || alcance(permisos, "dinero.ver-propio") === "propio";
+  const veDinero =
+    puede(permisos, "dinero.ver-global") || alcance(permisos, "dinero.ver-propio") === "propio";
   const dineroPropio = !puede(permisos, "dinero.ver-global");
   const veDeudas = puede(permisos, "recargo.gestionar");
   const mostrarSolicitudes = useSalonStore((s) => s.salonProfile.mostrarSolicitudes ?? true);
@@ -108,7 +128,9 @@ export function HoyArena() {
   const soloUno = esSoloUnProfesional(equipo);
   const carta = selectServiceMap(services);
   const { abrirCita } = useFichas();
-  const setSeleccionada = (a: Appointment | null) => { if (a) abrirCita(a.id); };
+  const setSeleccionada = (a: Appointment | null) => {
+    if (a) abrirCita(a.id);
+  };
 
   const ahora = new Date();
   const hoy = useMemo(() => citasDelDiaMemo(appointments, ahora), [appointments]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -116,7 +138,10 @@ export function HoyArena() {
   // PeluChic), las cifras y la línea del día miran al siguiente día abierto.
   const horario = useSalonStore((s) => s.salonProfile.openingHours);
   const proximoAbierto = useMemo(
-    () => (hoy.length === 0 && cierraEseDia(horario, ahora) ? diaAbiertoMasCercano(horario, ahora, 1) : null),
+    () =>
+      hoy.length === 0 && cierraEseDia(horario, ahora)
+        ? diaAbiertoMasCercano(horario, ahora, 1)
+        : null,
     [horario, hoy.length], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const diaVista = proximoAbierto ?? ahora;
@@ -130,7 +155,10 @@ export function HoyArena() {
     .filter((a) => a.status === "pending")
     .sort((a, b) => +new Date(a.start) - +new Date(b.start));
   const agenda = useMemo(() => agendaDeHoy(citasVista, equipo, diaVista), [citasVista, equipo]); // eslint-disable-line react-hooks/exhaustive-deps
-  const dineroCitas = useMemo(() => dineroDelRango(appointments, rangoDelDia(diaVista), ahora), [appointments, proximoAbierto]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dineroCitas = useMemo(
+    () => dineroDelRango(appointments, rangoDelDia(diaVista), ahora),
+    [appointments, proximoAbierto],
+  ); // eslint-disable-line react-hooks/exhaustive-deps
   // 14b: lo cobrado de verdad (pagos apuntados; si una cita no tiene pagos, su precio si está marcada cobrada).
   const pagos = useSalonStore((s) => s.payments);
   // 14c: que los calendarios externos (Apple no avisa solo) se pongan al día al abrir Hoy.
@@ -142,10 +170,22 @@ export function HoyArena() {
   }, [cargarPagos]);
   const dinero = useMemo(() => {
     const porCita = agruparPagosPorCita(pagos);
-    const cobrado = Math.round(citasVista.reduce((t, a) => t + cobradoDeCita(a.id, porCita, a.paidAt ? a.priceEur : 0), 0) * 100) / 100;
+    const cobrado =
+      Math.round(
+        citasVista.reduce(
+          (t, a) => t + cobradoDeCita(a.id, porCita, a.paidAt ? a.priceEur : 0),
+          0,
+        ) * 100,
+      ) / 100;
     // Lo que queda por cobrar no cuenta las propinas: son un extra, no parte del precio.
     const sinPropina = agruparPagosPorCita(pagos.filter((p) => p.concepto !== "propina"));
-    const delPrecio = Math.round(citasVista.reduce((t, a) => t + cobradoDeCita(a.id, sinPropina, a.paidAt ? a.priceEur : 0), 0) * 100) / 100;
+    const delPrecio =
+      Math.round(
+        citasVista.reduce(
+          (t, a) => t + cobradoDeCita(a.id, sinPropina, a.paidAt ? a.priceEur : 0),
+          0,
+        ) * 100,
+      ) / 100;
     return { ...dineroCitas, cobrado, delPrecio };
   }, [pagos, citasVista, dineroCitas]);
   const esDemo = useSalonStore((s) => !s.realSalonSlug);
@@ -157,22 +197,26 @@ export function HoyArena() {
   // Lo de las pestañas, contado para que la pestaña diga cuánto hay dentro.
   // Una solicitud sin confirmar se resuelve en «Solicitudes» (confirmar o rechazar), no en
   // «¿Vinieron?»: así no cuenta dos veces en «Pendiente de ti» y coincide con el asistente.
-  const terminadas = hoy.filter((a) => terminada(a, ahora) && !(mostrarSolicitudes && a.status === "pending"));
-  const sinMarcar = terminadas.filter((a) => a.status === "pending" || a.status === "confirmed").length;
+  const terminadas = hoy.filter(
+    (a) => terminada(a, ahora) && !(mostrarSolicitudes && a.status === "pending"),
+  );
+  const sinMarcar = terminadas.filter(
+    (a) => a.status === "pending" || a.status === "confirmed",
+  ).length;
   const solicitudesVisibles = mostrarSolicitudes ? pendientes.length : 0;
   const senalesVencidas = appointments.filter((a) => estadoSenal(a, ahora) === "vencida").length;
   const pendienteDeTi = solicitudesVisibles + sinMarcar + senalesVencidas;
   const manana = new Date(ahora);
   manana.setDate(manana.getDate() + 1);
-  const filasManana = hojaDelDia(appointments, fechaLocal(manana)).sort((x, y) => +new Date(x.cita.start) - +new Date(y.cita.start));
+  const filasManana = hojaDelDia(appointments, fechaLocal(manana)).sort(
+    (x, y) => +new Date(x.cita.start) - +new Date(y.cita.start),
+  );
   const sinRecordar = filasManana.filter((f) => !f.cita.reminderSentAt).length;
   const conRecargo = recargoActivo({ noShowFeeEur });
   // 14a: las señales a menos de 1 h de vencer también cuentan como aviso.
   const porVencer = useRecordatoriosSenal().length;
   const avisos =
-    (conRecargo && veDeudas ? resumenDeDeuda(clients).personas : 0) +
-    senalesVencidas +
-    porVencer;
+    (conRecargo && veDeudas ? resumenDeDeuda(clients).personas : 0) + senalesVencidas + porVencer;
 
   const nombreCorto = (a: Appointment) => {
     const e = equipo.find((x) => x.id === a.employeeId);
@@ -186,10 +230,16 @@ export function HoyArena() {
         <div className="min-w-0">
           <p className="text-[13px] font-semibold text-muted-foreground tabular-nums">
             {fechaDeHoy(ahora)}
-            {cuando && <span className="ml-2 inline-flex rounded-full bg-beige px-2.5 py-0.5 text-[12px] font-bold text-cafe-medio">Hoy cerráis</span>}
+            {cuando && (
+              <span className="ml-2 inline-flex rounded-full bg-beige px-2.5 py-0.5 text-[12px] font-bold text-cafe-medio">
+                Hoy cerráis
+              </span>
+            )}
           </p>
           <h1 className="mt-1 font-display text-[28px] leading-[1.1] font-medium tracking-[-0.02em] md:text-[34px]">
-            {miembro?.displayName ? saludo(miembro.displayName, ahora.getHours()) : `${saludoPara(ahora.getHours())}, ${salonName}`}
+            {miembro?.displayName
+              ? saludo(miembro.displayName, ahora.getHours())
+              : `${saludoPara(ahora.getHours())}, ${salonName}`}
           </h1>
         </div>
         <Button variant="ghost" asChild className="text-cafe-medio md:ml-auto">
@@ -200,28 +250,76 @@ export function HoyArena() {
         </Button>
       </header>
 
-      <div data-tour="kpis" className="-mt-2 grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4 xl:group-data-[panel=abierto]/panel:grid-cols-2">
-        <TarjetaCifra icono={CalendarDays} titulo={cuando ? `Citas ${cuando === "mañana" ? "de mañana" : cuando.replace(/^el /, "del ")}` : "Citas de hoy"} to="/app/calendar">
-          <Cifra><CifraAnimada texto={agenda.total} /></Cifra>
-          <Detalle>{soloUno ? `${agenda.ocupacionPct} % de tu jornada` : agenda.porPro.map((x) => `${x.citas} ${x.e.name}`).join(" · ")}</Detalle>
+      <div
+        data-tour="kpis"
+        className="-mt-2 grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4 xl:group-data-[panel=abierto]/panel:grid-cols-2"
+      >
+        <TarjetaCifra
+          icono={CalendarDays}
+          titulo={
+            cuando
+              ? `Citas ${cuando === "mañana" ? "de mañana" : cuando.replace(/^el /, "del ")}`
+              : "Citas de hoy"
+          }
+          to="/app/calendar"
+        >
+          <Cifra>
+            <CifraAnimada texto={agenda.total} />
+          </Cifra>
+          <Detalle>
+            {soloUno
+              ? `${agenda.ocupacionPct} % de tu jornada`
+              : agenda.porPro.map((x) => `${x.citas} ${x.e.name}`).join(" · ")}
+          </Detalle>
           <Barra pct={agenda.ocupacionPct} texto={`Agenda al ${agenda.ocupacionPct} %`} />
         </TarjetaCifra>
-        <TarjetaCifra icono={Clock3} titulo={cuando ? `Huecos libres ${cuando}` : "Huecos libres"} to="/app/calendar">
-          <Cifra extra={agenda.minutosLibres > 0 ? `· ${duracionCorta(agenda.minutosLibres)}` : undefined}><CifraAnimada texto={agenda.huecos.length} /></Cifra>
-          <Detalle>{agenda.huecos.length ? agenda.detalleHuecos : cuando ? "Sin huecos de media hora: agenda llena." : "Hoy ya no queda ningún hueco de media hora."}</Detalle>
+        <TarjetaCifra
+          icono={Clock3}
+          titulo={cuando ? `Huecos libres ${cuando}` : "Huecos libres"}
+          to="/app/calendar"
+        >
+          <Cifra
+            extra={
+              agenda.minutosLibres > 0 ? `· ${duracionCorta(agenda.minutosLibres)}` : undefined
+            }
+          >
+            <CifraAnimada texto={agenda.huecos.length} />
+          </Cifra>
+          <Detalle>
+            {agenda.huecos.length
+              ? agenda.detalleHuecos
+              : cuando
+                ? "Sin huecos de media hora: agenda llena."
+                : "Hoy ya no queda ningún hueco de media hora."}
+          </Detalle>
         </TarjetaCifra>
         {veDinero ? (
-        <TarjetaCifra icono={Euro} titulo={cuando ? `${dineroPropio ? "Lo tuyo" : "Previsto"} ${cuando}` : dineroPropio ? "Lo tuyo de hoy" : "Ingresos de hoy"}>
-          <Cifra><CifraAnimada texto={eurRedondo(valorDelDia)} /></Cifra>
-          <Detalle>
-            {cuando
-              ? `${citasVista.filter(esCobrable).length} citas por cobrar · hoy no hay caja`
-              : dinero.cobrado === 0 && dinero.sinCobroMarcado > 0 && !esDemo
-              ? "0 € cobrados · marca los cobros en el detalle de cada cita"
-              : `Llevas ${eurRedondo(dinero.cobrado)} cobrados · quedan ${eurRedondo(porCobrar)} por cobrar`}
-          </Detalle>
-          <Barra pct={valorDelDia ? Math.round((dinero.cobrado / valorDelDia) * 100) : 0} texto="Cobrado del total del día" oculto />
-        </TarjetaCifra>
+          <TarjetaCifra
+            icono={Euro}
+            titulo={
+              cuando
+                ? `${dineroPropio ? "Lo tuyo" : "Previsto"} ${cuando}`
+                : dineroPropio
+                  ? "Lo tuyo de hoy"
+                  : "Ingresos de hoy"
+            }
+          >
+            <Cifra>
+              <CifraAnimada texto={eurRedondo(valorDelDia)} />
+            </Cifra>
+            <Detalle>
+              {cuando
+                ? `${citasVista.filter(esCobrable).length} citas por cobrar · hoy no hay caja`
+                : dinero.cobrado === 0 && dinero.sinCobroMarcado > 0 && !esDemo
+                  ? "0 € cobrados · marca los cobros en el detalle de cada cita"
+                  : `Llevas ${eurRedondo(dinero.cobrado)} cobrados · quedan ${eurRedondo(porCobrar)} por cobrar`}
+            </Detalle>
+            <Barra
+              pct={valorDelDia ? Math.round((dinero.cobrado / valorDelDia) * 100) : 0}
+              texto="Cobrado del total del día"
+              oculto
+            />
+          </TarjetaCifra>
         ) : (
           // Sin dinero (recepción, subencargada): cuántas citas quedan por cobrar, no cuánto.
           <TarjetaCifra icono={Euro} titulo="Citas por cobrar">
@@ -229,22 +327,53 @@ export function HoyArena() {
             <Detalle>Las cobra quien atiende la cita.</Detalle>
           </TarjetaCifra>
         )}
-        <TarjetaCifra icono={Bell} titulo="Pendiente de ti" destacada={pendienteDeTi > 0} href={solicitudesVisibles > 0 ? "#espera" : undefined} to={solicitudesVisibles > 0 ? undefined : "/app/appointments"}>
-          <Cifra><CifraAnimada texto={pendienteDeTi} /></Cifra>
-          <Detalle>
+        <TarjetaCifra
+          icono={Bell}
+          titulo="Pendiente de ti"
+          destacada={pendienteDeTi > 0}
+          href={solicitudesVisibles > 0 ? "#espera" : undefined}
+          to={solicitudesVisibles > 0 ? undefined : "/app/appointments"}
+        >
+          <Cifra centrada>
+            <CifraAnimada texto={pendienteDeTi} />
+          </Cifra>
+          <Detalle bajo>
             {pendienteDeTi === 0
               ? "Nada pendiente: todo al día."
-              : [solicitudesVisibles > 0 && `${solicitudesVisibles} ${solicitudesVisibles === 1 ? "solicitud" : "solicitudes"}`, sinMarcar > 0 && `${sinMarcar} por marcar`, senalesVencidas > 0 && `${senalesVencidas} ${senalesVencidas === 1 ? "señal vencida" : "señales vencidas"}`].filter(Boolean).join(" · ")}
+              : [
+                  solicitudesVisibles > 0 &&
+                    `${solicitudesVisibles} ${solicitudesVisibles === 1 ? "solicitud" : "solicitudes"}`,
+                  sinMarcar > 0 && `${sinMarcar} por marcar`,
+                  senalesVencidas > 0 &&
+                    `${senalesVencidas} ${senalesVencidas === 1 ? "señal vencida" : "señales vencidas"}`,
+                ]
+                  .filter((texto): texto is string => Boolean(texto))
+                  .map((texto) => (
+                    <span key={texto} className="block">
+                      {texto}
+                    </span>
+                  ))}
           </Detalle>
         </TarjetaCifra>
       </div>
 
       {/* Lo único que pide respuesta, y solo si lo hay. */}
-      {mostrarSolicitudes && pendientes.length > 0 && <EstoTeEspera pendientes={pendientes} onAbrirDetalle={setSeleccionada} />}
+      {mostrarSolicitudes && pendientes.length > 0 && (
+        <EstoTeEspera pendientes={pendientes} onAbrirDetalle={setSeleccionada} />
+      )}
 
       {/* Lote 16: «Ahora», siempre a la vista: la cita en curso, la siguiente y
           la agenda del día en una línea de tiempo. */}
-      <BloqueAhora hoy={citasVista} equipo={equipo} ahora={diaVista} carta={carta} services={services} detalle={nombreCorto} onAbrir={setSeleccionada} previa={cuando} />
+      <BloqueAhora
+        hoy={citasVista}
+        equipo={equipo}
+        ahora={diaVista}
+        carta={carta}
+        services={services}
+        detalle={nombreCorto}
+        onAbrir={setSeleccionada}
+        previa={cuando}
+      />
 
       {/* El resto del día, plegado: cada bloque dice cuánto hay dentro. */}
       <Plegables
@@ -252,34 +381,82 @@ export function HoyArena() {
         items={[
           {
             id: "ahora",
-            titulo: cuando ? `Todas las citas ${cuando === "mañana" ? "de mañana" : cuando.replace(/^el /, "del ")}` : "Todas las citas que quedan",
+            titulo: cuando
+              ? `Todas las citas ${cuando === "mañana" ? "de mañana" : cuando.replace(/^el /, "del ")}`
+              : "Todas las citas que quedan",
             contador: citasVista.filter((a) => !terminada(a, ahora)).length,
-            resumen: cuando ? "Hoy cerráis: así viene el próximo día abierto" : "Las citas que quedan hoy",
+            resumen: cuando
+              ? "Hoy cerráis: así viene el próximo día abierto"
+              : "Las citas que quedan hoy",
             tour: "today-list",
-            contenido: <AhoraYSiguientes hoy={citasVista} ahora={ahora} carta={carta} services={services} detalle={nombreCorto} onAbrir={setSeleccionada} previa={!!cuando} />,
+            contenido: (
+              <AhoraYSiguientes
+                hoy={citasVista}
+                ahora={ahora}
+                carta={carta}
+                services={services}
+                detalle={nombreCorto}
+                onAbrir={setSeleccionada}
+                previa={!!cuando}
+              />
+            ),
           },
           {
             id: "vinieron",
             titulo: "¿Vinieron?",
             contador: sinMarcar,
-            resumen: sinMarcar > 0 ? "Citas terminadas sin marcar" : "Todas las terminadas están marcadas",
-            contenido: <Vinieron terminadas={terminadas} carta={carta} detalle={nombreCorto} clients={clients} />,
+            resumen:
+              sinMarcar > 0 ? "Citas terminadas sin marcar" : "Todas las terminadas están marcadas",
+            contenido: (
+              <Vinieron
+                terminadas={terminadas}
+                carta={carta}
+                detalle={nombreCorto}
+                clients={clients}
+              />
+            ),
           },
           {
             id: "manana",
             titulo: "Mañana y recordatorios",
             contador: sinRecordar,
-            resumen: filasManana.length === 0 ? "Mañana no hay citas" : sinRecordar > 0 ? "Sin recordar" : "Todas recordadas",
-            contenido: <Manana filas={filasManana} pendientes={sinRecordar} dia={manana} carta={carta} detalle={nombreCorto} />,
+            resumen:
+              filasManana.length === 0
+                ? "Mañana no hay citas"
+                : sinRecordar > 0
+                  ? "Sin recordar"
+                  : "Todas recordadas",
+            contenido: (
+              <Manana
+                filas={filasManana}
+                pendientes={sinRecordar}
+                dia={manana}
+                carta={carta}
+                detalle={nombreCorto}
+              />
+            ),
           },
           {
             id: "avisos",
             titulo: "Avisos",
             contador: avisos,
-            resumen: avisos > 0 ? (porVencer > 0 ? `${porVencer} ${porVencer === 1 ? "señal vence" : "señales vencen"} en menos de 1 h` : veDeudas ? "Deudas, señales vencidas o recargos" : "Señales vencidas") : "Nada pendiente",
+            resumen:
+              avisos > 0
+                ? porVencer > 0
+                  ? `${porVencer} ${porVencer === 1 ? "señal vence" : "señales vencen"} en menos de 1 h`
+                  : veDeudas
+                    ? "Deudas, señales vencidas o recargos"
+                    : "Señales vencidas"
+                : "Nada pendiente",
             contenido: (
               <div className="space-y-4">
-                {avisos === 0 && <p className="text-[14px] text-muted-foreground">{veDeudas ? "Nada pendiente: ni deudas, ni señales vencidas, ni recargos." : "Nada pendiente: ninguna señal vencida."}</p>}
+                {avisos === 0 && (
+                  <p className="text-[14px] text-muted-foreground">
+                    {veDeudas
+                      ? "Nada pendiente: ni deudas, ni señales vencidas, ni recargos."
+                      : "Nada pendiente: ninguna señal vencida."}
+                  </p>
+                )}
                 {veDeudas && <AvisoDeudasHoy />}
                 <RecordatoriosSenal />
                 <ExpiredDepositsNotice onOpenDetail={setSeleccionada} />
@@ -289,7 +466,6 @@ export function HoyArena() {
           },
         ]}
       />
-
     </div>
   );
 }
@@ -333,8 +509,17 @@ function BloqueAhora({
       )}
     >
       <span className="min-w-0 flex-1">
-        <span className={cn("block text-[11px] font-bold tracking-[0.06em] uppercase", viva ? "text-hoja-tinta" : "text-cafe-suave")}>{etiqueta}</span>
-        <span className="mt-0.5 block truncate font-display text-[18px] font-medium">{a.clientName}</span>
+        <span
+          className={cn(
+            "block text-[11px] font-bold tracking-[0.06em] uppercase",
+            viva ? "text-hoja-tinta" : "text-cafe-suave",
+          )}
+        >
+          {etiqueta}
+        </span>
+        <span className="mt-0.5 block truncate font-display text-[18px] font-medium">
+          {a.clientName}
+        </span>
         <span className="block truncate text-[13px] text-cafe-medio">
           {serviceLabelOf(a, carta)}
           {detalle(a)}
@@ -342,7 +527,9 @@ function BloqueAhora({
       </span>
       <span className="shrink-0 text-right text-[15px] font-extrabold tabular-nums">
         {hora(a.start)}
-        <span className="block text-[12px] font-semibold text-muted-foreground">{a.duration} min</span>
+        <span className="block text-[12px] font-semibold text-muted-foreground">
+          {a.duration} min
+        </span>
       </span>
     </button>
   );
@@ -356,9 +543,18 @@ function BloqueAhora({
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="ahora-titulo" className={tituloBloque}>
           {titulo}
-          {previa && <span className="ml-2 text-[13px] font-semibold text-muted-foreground">Hoy cerráis: así viene el próximo día abierto</span>}
+          {previa && (
+            <span className="ml-2 text-[13px] font-semibold text-muted-foreground">
+              Hoy cerráis: así viene el próximo día abierto
+            </span>
+          )}
         </h2>
-        <Link to="/app/calendar" className="text-[13.5px] font-bold text-cafe-medio hover:text-foreground">Ver calendario</Link>
+        <Link
+          to="/app/calendar"
+          className="text-[13.5px] font-bold text-cafe-medio hover:text-foreground"
+        >
+          Ver calendario
+        </Link>
       </div>
       {sinNada ? (
         <p className="mt-3 text-[14px] text-muted-foreground">
@@ -377,12 +573,29 @@ function BloqueAhora({
                   {porConfirmar > 0 ? ` · ${porConfirmar} por confirmar` : ""}
                 </p>
               </>
-            ) : enCurso.length > 0
-              ? enCurso.slice(0, 2).map((a) => tarjeta(a, `En curso · hasta las ${hora(new Date(Date.parse(a.start) + a.duration * 60_000).toISOString())}`, true))
-              : <p className="flex items-center rounded-2xl border border-dashed border-lino-fuerte px-4 py-3 text-[14px] text-cafe-medio">Nadie en el sillón ahora mismo.</p>}
-            {!previa && (siguiente
-              ? tarjeta(siguiente, `Siguiente · ${enCuanto(minutosHastaSiguiente)}`, false)
-              : <p className="flex items-center rounded-2xl border border-dashed border-lino-fuerte px-4 py-3 text-[14px] text-cafe-medio">No queda ninguna cita más hoy.</p>)}
+            ) : enCurso.length > 0 ? (
+              enCurso
+                .slice(0, 2)
+                .map((a) =>
+                  tarjeta(
+                    a,
+                    `En curso · hasta las ${hora(new Date(Date.parse(a.start) + a.duration * 60_000).toISOString())}`,
+                    true,
+                  ),
+                )
+            ) : (
+              <p className="flex items-center rounded-2xl border border-dashed border-lino-fuerte px-4 py-3 text-[14px] text-cafe-medio">
+                Nadie en el sillón ahora mismo.
+              </p>
+            )}
+            {!previa &&
+              (siguiente ? (
+                tarjeta(siguiente, `Siguiente · ${enCuanto(minutosHastaSiguiente)}`, false)
+              ) : (
+                <p className="flex items-center rounded-2xl border border-dashed border-lino-fuerte px-4 py-3 text-[14px] text-cafe-medio">
+                  No queda ninguna cita más hoy.
+                </p>
+              ))}
           </div>
           {/* Agenda del día en una línea de tiempo: una fila por profesional. */}
           <div className="mt-5 overflow-x-auto">
@@ -391,13 +604,17 @@ function BloqueAhora({
             <div className="min-w-[600px] pr-3">
               <div className="relative ml-16 h-4 text-[11px] text-muted-foreground tabular-nums">
                 {horas.map((h) => (
-                  <span key={h} className="absolute -translate-x-1/2" style={{ left: pct(h) }}>{h / 60}</span>
+                  <span key={h} className="absolute -translate-x-1/2" style={{ left: pct(h) }}>
+                    {h / 60}
+                  </span>
                 ))}
               </div>
               <div className="mt-1 space-y-1.5">
                 {linea.filas.map((f) => (
                   <div key={f.e.id} className="flex items-center gap-2">
-                    <span className="w-14 shrink-0 truncate text-[12.5px] font-bold text-cafe-medio">{f.e.name}</span>
+                    <span className="w-14 shrink-0 truncate text-[12.5px] font-bold text-cafe-medio">
+                      {f.e.name}
+                    </span>
                     <div className="relative h-7 flex-1 rounded-lg bg-beige/60">
                       {f.tramos.map((t, i) => (
                         <button
@@ -410,13 +627,29 @@ function BloqueAhora({
                             "barra-rellena absolute top-0.5 bottom-0.5 min-w-6 overflow-hidden rounded-md border border-[rgba(59,47,42,0.25)] px-1 text-left text-[10.5px] leading-6 font-bold whitespace-nowrap text-[#1F2633] hover:brightness-95",
                             t.cita.status === "pending" && "border-dashed bg-card",
                           )}
-                          style={{ left: pct(t.ini), width: `calc(${((t.fin - t.ini) / total) * 100}% - 2px)`, background: t.cita.status === "pending" ? undefined : colorServicio(t.cita.serviceIds[0], services).replace("-borde)", ")"), borderLeft: `3px solid ${colorServicio(t.cita.serviceIds[0], services)}`, animationDelay: `${i * 25}ms` }}
+                          style={{
+                            left: pct(t.ini),
+                            width: `calc(${((t.fin - t.ini) / total) * 100}% - 2px)`,
+                            background:
+                              t.cita.status === "pending"
+                                ? undefined
+                                : colorServicio(t.cita.serviceIds[0], services).replace(
+                                    "-borde)",
+                                    ")",
+                                  ),
+                            borderLeft: `3px solid ${colorServicio(t.cita.serviceIds[0], services)}`,
+                            animationDelay: `${i * 25}ms`,
+                          }}
                         >
                           {t.cita.clientName.split(" ")[0]}
                         </button>
                       ))}
                       {minAhora >= linea.ini && minAhora <= linea.fin && (
-                        <span className="pointer-events-none absolute -top-1 -bottom-1 w-0.5 rounded-full bg-hoja" style={{ left: pct(minAhora) }} aria-hidden="true" />
+                        <span
+                          className="pointer-events-none absolute -top-1 -bottom-1 w-0.5 rounded-full bg-hoja"
+                          style={{ left: pct(minAhora) }}
+                          aria-hidden="true"
+                        />
                       )}
                     </div>
                   </div>
@@ -458,8 +691,10 @@ function TarjetaCifra({
   children: ReactNode;
 }) {
   const clase = cn(
-    "entrada-lista elevar flex min-w-0 flex-col rounded-[20px] border px-3.5 py-3 sm:px-5 sm:py-4",
-    destacada ? "border-miel-borde bg-miel hover:bg-[#EFDFB5]" : "border-lino bg-card hover:bg-superficie",
+    "entrada-lista elevar flex min-w-0 flex-col tarjeta-secundaria border px-3.5 py-3 sm:px-5 sm:py-4",
+    destacada
+      ? "border-transparent bg-miel hover:brightness-95"
+      : "border-lino bg-card hover:bg-superficie",
   );
   const dentro = (
     <>
@@ -470,38 +705,90 @@ function TarjetaCifra({
       {children}
     </>
   );
-  if (href) return <a href={href} className={clase}>{dentro}</a>;
-  if (to) return <Link to={to} className={clase}>{dentro}</Link>;
+  if (href)
+    return (
+      <a href={href} className={clase}>
+        {dentro}
+      </a>
+    );
+  if (to)
+    return (
+      <Link to={to} className={clase}>
+        {dentro}
+      </Link>
+    );
   return <div className={clase}>{dentro}</div>;
 }
 
-function Cifra({ children, extra }: { children: ReactNode; extra?: string }) {
+function Cifra({
+  children,
+  extra,
+  centrada = false,
+}: {
+  children: ReactNode;
+  extra?: string;
+  centrada?: boolean;
+}) {
   return (
-    <p className="mt-1.5 flex items-baseline gap-1.5 leading-none">
-      <span className="text-[24px] font-extrabold tracking-[-0.02em] tabular-nums sm:text-[30px]">{children}</span>
+    <p
+      className={cn(
+        "flex items-baseline gap-1.5 leading-none",
+        centrada ? "mt-4 sm:mt-5" : "mt-1.5",
+      )}
+    >
+      <span className="text-[34px] font-bold tracking-[-0.045em] tabular-nums sm:text-[44px]">
+        {children}
+      </span>
       {extra && <span className="text-[15px] font-bold text-cafe-medio tabular-nums">{extra}</span>}
     </p>
   );
 }
 
-function Detalle({ children }: { children: ReactNode }) {
-  return <p className="mt-1.5 text-[12.5px] leading-snug text-cafe-medio sm:mt-2 sm:text-[13.5px]">{children}</p>;
+function Detalle({ children, bajo = false }: { children: ReactNode; bajo?: boolean }) {
+  return (
+    <p
+      className={cn(
+        "text-[12.5px] leading-snug text-cafe-medio sm:text-[13.5px]",
+        bajo ? "mt-3.5 sm:mt-4" : "mt-1.5 sm:mt-2",
+      )}
+    >
+      {children}
+    </p>
+  );
 }
 
 function Barra({ pct, texto, oculto = false }: { pct: number; texto: string; oculto?: boolean }) {
   return (
     <div className="mt-auto pt-3">
-      <span className="block h-1.5 overflow-hidden rounded-full bg-beige" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={texto}>
-        <i className="barra-rellena block h-full rounded-full bg-hoja" style={{ width: `${Math.min(100, pct)}%` }} />
+      <span
+        className="block h-1.5 overflow-hidden rounded-full bg-beige"
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={texto}
+      >
+        <i
+          className="barra-rellena block h-full rounded-full bg-hoja"
+          style={{ width: `${Math.min(100, pct)}%` }}
+        />
       </span>
-      {!oculto && <span className="mt-1.5 block text-[12.5px] text-cafe-medio tabular-nums">{texto}</span>}
+      {!oculto && (
+        <span className="mt-1.5 block text-[12.5px] text-cafe-medio tabular-nums">{texto}</span>
+      )}
     </div>
   );
 }
 
 /* ---------- Esto te espera ---------- */
 
-function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[]; onAbrirDetalle: (a: Appointment) => void }) {
+function EstoTeEspera({
+  pendientes,
+  onAbrirDetalle,
+}: {
+  pendientes: Appointment[];
+  onAbrirDetalle: (a: Appointment) => void;
+}) {
   const appointments = useSalonStore((s) => s.appointments);
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
@@ -512,7 +799,9 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
   const depositEnabled = useSalonStore((s) => !!s.salonProfile.depositEnabled);
   const depositBizumPhone = useSalonStore((s) => s.salonProfile.depositBizumPhone ?? "");
   const depositAmountEur = useSalonStore((s) => s.salonProfile.depositAmountEur ?? 10);
-  const depositDeadlineHours = useSalonStore((s) => deadlineHours(s.salonProfile.depositDeadlineHours));
+  const depositDeadlineHours = useSalonStore((s) =>
+    deadlineHours(s.salonProfile.depositDeadlineHours),
+  );
   const equipo = useEquipo();
   const soloUno = esSoloUnProfesional(equipo);
   const serviceMap = selectServiceMap(services);
@@ -523,7 +812,9 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
   const visibles = todas ? pendientes : pendientes.slice(0, 3);
 
   // Confirmar ya no es a ciegas (9f): abre la ventana con la ficha y la propuesta.
-  const [aConfirmar, setAConfirmar] = useState<{ cita: Appointment; duracion: number } | null>(null);
+  const [aConfirmar, setAConfirmar] = useState<{ cita: Appointment; duracion: number } | null>(
+    null,
+  );
   function confirmar(a: Appointment, duracion: number) {
     setAConfirmar({ cita: a, duracion });
   }
@@ -557,12 +848,18 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
   const cuando = (a: Appointment) => {
     const d = new Date(a.start);
     const esHoy = fechaLocal(d) === fechaLocal(new Date());
-    const dia = esHoy ? "Hoy" : d.toLocaleDateString("es-ES", { weekday: "short", day: "numeric" }).replace(/\.$/, "");
+    const dia = esHoy
+      ? "Hoy"
+      : d.toLocaleDateString("es-ES", { weekday: "short", day: "numeric" }).replace(/\.$/, "");
     return `${dia.charAt(0).toUpperCase()}${dia.slice(1)} ${hora(a.start)}`;
   };
 
   return (
-    <section id="espera" data-tour="pending-requests" className="rounded-[24px] border border-salvia bg-salvia-suave p-5 md:p-7">
+    <section
+      id="espera"
+      data-tour="pending-requests"
+      className="rounded-[24px] border border-salvia bg-salvia-suave p-5 md:p-7"
+    >
       <div className="flex items-baseline gap-3">
         <h2 className={tituloBloque}>Esto te espera</h2>
         <span className="inline-flex h-6 items-center rounded-full border-[1.5px] border-dashed border-moca px-2.5 text-[12.5px] font-bold text-primary tabular-nums">
@@ -571,31 +868,53 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
       </div>
       <ul className="mt-4 divide-y divide-salvia/70">
         {visibles.map((a) => {
-          const catalogoMin = a.serviceIds.reduce((sum, id) => sum + (serviceMap[id]?.durationMin ?? 0), 0);
+          const catalogoMin = a.serviceIds.reduce(
+            (sum, id) => sum + (serviceMap[id]?.durationMin ?? 0),
+            0,
+          );
           const recordada = duracionRecordada(appointments, a.clientId, a.serviceIds, catalogoMin);
           const propuesta = recordada?.minutos ?? (catalogoMin || a.duration);
           const elegida = duracionPorTarjeta[a.id] ?? propuesta;
           const emp = equipo.find((e) => e.id === a.employeeId);
-          const esNueva = !appointments.some((b) => b.clientId === a.clientId && b.id !== a.id && b.status === "completed");
+          const esNueva = !appointments.some(
+            (b) => b.clientId === a.clientId && b.id !== a.id && b.status === "completed",
+          );
           return (
             <li key={a.id} className="py-4 first:pt-0 last:pb-0">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2.5">
-                <button type="button" onClick={() => onAbrirDetalle(a)} className="min-w-0 basis-full text-left sm:flex-1 sm:basis-0">
+                <button
+                  type="button"
+                  onClick={() => onAbrirDetalle(a)}
+                  className="min-w-0 basis-full text-left sm:flex-1 sm:basis-0"
+                >
                   <b className="block truncate text-[15px]">
                     {a.clientName}
-                    {esNueva && <span className="ml-2 align-[1px] text-[12px] font-bold text-melocoton-tinta">Nueva</span>}
+                    {esNueva && (
+                      <span className="ml-2 align-[1px] text-[12px] font-bold text-melocoton-tinta">
+                        Nueva
+                      </span>
+                    )}
                   </b>
                   <span className="block truncate text-[13.5px] text-muted-foreground tabular-nums">
                     {cuando(a)} · {serviceLabelOf(a, serviceMap)}
                     {emp && !soloUno ? ` · ${emp.name}` : ""}
                   </span>
                 </button>
-                <Button variant={visibles.length === 1 ? "default" : "outline"} onClick={() => confirmar(a, elegida)} className="flex-1 tabular-nums sm:flex-none" title="Al confirmarla queda en tu agenda. El aviso a la clienta lo mandas tú por WhatsApp desde su ficha.">
+                <Button
+                  variant={visibles.length === 1 ? "default" : "outline"}
+                  onClick={() => confirmar(a, elegida)}
+                  className="flex-1 tabular-nums sm:flex-none"
+                  title="Al confirmarla queda en tu agenda. El aviso a la clienta lo mandas tú por WhatsApp desde su ficha."
+                >
                   Confirmar · {duracionCorta(elegida)}
                 </Button>
                 <BotonMas etiqueta={`Más opciones para ${a.clientName}`}>
-                  <DropdownMenuItem onClick={() => setEditando(editando === a.id ? null : a.id)}>Cambiar la duración</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onAbrirDetalle(a)}>Cambiar fecha u hora</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setEditando(editando === a.id ? null : a.id)}>
+                    Cambiar la duración
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onAbrirDetalle(a)}>
+                    Cambiar fecha u hora
+                  </DropdownMenuItem>
                   {pideFianza && !a.depositReceivedAt && (
                     <DropdownMenuItem onClick={() => confirmar(a, elegida)}>
                       {/* La señal se pide desde la ventana, con su ciclo (9j): abrir WhatsApp no es enviar. */}
@@ -603,7 +922,10 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-melocoton-tinta focus:text-melocoton-tinta" onClick={() => rechazar(a)}>
+                  <DropdownMenuItem
+                    className="text-melocoton-tinta focus:text-melocoton-tinta"
+                    onClick={() => rechazar(a)}
+                  >
                     Rechazar
                   </DropdownMenuItem>
                 </BotonMas>
@@ -618,7 +940,9 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
                       onClick={() => setDuracionPorTarjeta((prev) => ({ ...prev, [a.id]: min }))}
                       className={cn(
                         "h-9 rounded-full px-3.5 text-[13px] font-bold tabular-nums",
-                        min === elegida ? "bg-blanco text-foreground shadow-[var(--sombra-tarjeta)]" : "text-cafe-medio hover:bg-superficie",
+                        min === elegida
+                          ? "bg-blanco text-foreground shadow-[var(--sombra-tarjeta)]"
+                          : "text-cafe-medio hover:bg-superficie",
                       )}
                     >
                       {duracionCorta(min)}
@@ -642,9 +966,16 @@ function EstoTeEspera({ pendientes, onAbrirDetalle }: { pendientes: Appointment[
         })}
       </ul>
       {pendientes.length > 3 && (
-        <button type="button" onClick={() => setTodas((v) => !v)} className="mt-2 inline-flex items-center gap-1 text-[13.5px] font-bold text-cafe-medio hover:text-foreground">
+        <button
+          type="button"
+          onClick={() => setTodas((v) => !v)}
+          className="mt-2 inline-flex items-center gap-1 text-[13.5px] font-bold text-cafe-medio hover:text-foreground"
+        >
           {todas ? "Ver menos" : `Ver las ${pendientes.length - 3} restantes`}
-          <ChevronDown className={cn("size-4 transition-transform", todas && "rotate-180")} strokeWidth={1.6} />
+          <ChevronDown
+            className={cn("size-4 transition-transform", todas && "rotate-180")}
+            strokeWidth={1.6}
+          />
         </button>
       )}
       <VentanaConfirmar
@@ -717,8 +1048,16 @@ function Plegables({ items, porDefecto }: { items: Plegable[]; porDefecto: strin
                     {it.contador}
                   </span>
                 )}
-                <span className="ml-auto hidden truncate text-[13.5px] text-muted-foreground sm:block">{it.resumen}</span>
-                <ChevronDown className={cn("size-5 shrink-0 text-cafe-medio transition-transform", abierto && "rotate-180")} strokeWidth={1.6} />
+                <span className="ml-auto hidden truncate text-[13.5px] text-muted-foreground sm:block">
+                  {it.resumen}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "size-5 shrink-0 text-cafe-medio transition-transform",
+                    abierto && "rotate-180",
+                  )}
+                  strokeWidth={1.6}
+                />
               </button>
             </h2>
             {abierto && (
@@ -759,7 +1098,9 @@ function AhoraYSiguientes({
   return (
     <div>
       {siguientes.length === 0 ? (
-        <p className="mt-1 text-[14px] text-muted-foreground">No queda ninguna cita hoy. Las de mañana están en el calendario.</p>
+        <p className="mt-1 text-[14px] text-muted-foreground">
+          No queda ninguna cita hoy. Las de mañana están en el calendario.
+        </p>
       ) : (
         <ul>
           {siguientes.map((a) => {
@@ -769,12 +1110,21 @@ function AhoraYSiguientes({
                 <button
                   type="button"
                   onClick={() => onAbrir(a)}
-                  className={cn("-mx-3 flex w-[calc(100%+1.5rem)] items-center gap-4 rounded-2xl px-3 py-3 text-left hover:bg-beige", ahoraMismo && "bg-salvia-suave")}
+                  className={cn(
+                    "-mx-3 flex w-[calc(100%+1.5rem)] items-center gap-4 rounded-2xl px-3 py-3 text-left hover:bg-beige",
+                    ahoraMismo && "bg-salvia-suave",
+                  )}
                 >
-                  <span className="w-12 shrink-0 text-[15px] font-extrabold tabular-nums">{hora(a.start)}</span>
+                  <span className="w-12 shrink-0 text-[15px] font-extrabold tabular-nums">
+                    {hora(a.start)}
+                  </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
-                      <i className="size-2 shrink-0 rounded-full" style={{ background: colorServicio(a.serviceIds[0], services) }} aria-hidden="true" />
+                      <i
+                        className="size-2 shrink-0 rounded-full"
+                        style={{ background: colorServicio(a.serviceIds[0], services) }}
+                        aria-hidden="true"
+                      />
                       <b className="truncate text-[15px]">{a.clientName}</b>
                     </span>
                     <span className="block truncate pl-4 text-[13.5px] text-muted-foreground">
@@ -782,8 +1132,19 @@ function AhoraYSiguientes({
                       {detalle(a)}
                     </span>
                   </span>
-                  <span className={cn("shrink-0 text-[13px] font-bold tabular-nums", ahoraMismo ? "text-hoja-tinta" : "text-muted-foreground")}>
-                    {ahoraMismo ? "Ahora" : a.status === "pending" ? "Por confirmar" : previa ? duracionCorta(a.duration) : faltaPara(a, ahora)}
+                  <span
+                    className={cn(
+                      "shrink-0 text-[13px] font-bold tabular-nums",
+                      ahoraMismo ? "text-hoja-tinta" : "text-muted-foreground",
+                    )}
+                  >
+                    {ahoraMismo
+                      ? "Ahora"
+                      : a.status === "pending"
+                        ? "Por confirmar"
+                        : previa
+                          ? duracionCorta(a.duration)
+                          : faltaPara(a, ahora)}
                   </span>
                 </button>
               </li>
@@ -792,12 +1153,22 @@ function AhoraYSiguientes({
         </ul>
       )}
       {quedan.length > 5 && (
-        <button type="button" onClick={() => setTodas((v) => !v)} className="mt-2 inline-flex items-center gap-1 text-[13.5px] font-bold text-cafe-medio hover:text-foreground">
+        <button
+          type="button"
+          onClick={() => setTodas((v) => !v)}
+          className="mt-2 inline-flex items-center gap-1 text-[13.5px] font-bold text-cafe-medio hover:text-foreground"
+        >
           {todas ? "Ver menos" : `Ver las ${quedan.length - 5} restantes`}
-          <ChevronDown className={cn("size-4 transition-transform", todas && "rotate-180")} strokeWidth={1.6} />
+          <ChevronDown
+            className={cn("size-4 transition-transform", todas && "rotate-180")}
+            strokeWidth={1.6}
+          />
         </button>
       )}
-      <Link to="/app/calendar" className="mt-3 block text-[13.5px] font-bold text-cafe-medio hover:text-foreground">
+      <Link
+        to="/app/calendar"
+        className="mt-3 block text-[13.5px] font-bold text-cafe-medio hover:text-foreground"
+      >
         Ver calendario
       </Link>
     </div>
@@ -820,7 +1191,11 @@ function Vinieron({
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const conRecargo = recargoActivo({ noShowFeeEur });
   const aplicar = useAplicarDesenlace();
-  const [decision, setDecision] = useState<{ client: Client | undefined; cita: Appointment; desenlace: Desenlace } | null>(null);
+  const [decision, setDecision] = useState<{
+    client: Client | undefined;
+    cita: Appointment;
+    desenlace: Desenlace;
+  } | null>(null);
 
   function elegir(a: Appointment, d: Desenlace) {
     if (a.status === ESTADO_POR_DESENLACE[d]) return;
@@ -829,10 +1204,18 @@ function Vinieron({
     const client = clients.find((c) => c.id === a.clientId);
     if (client) setDecision({ client, cita: a, desenlace: d });
   }
-  const estado: Record<string, string> = { completed: "Vino", late: "Tarde sin avisar", "no-show": "No vino" };
+  const estado: Record<string, string> = {
+    completed: "Vino",
+    late: "Tarde sin avisar",
+    "no-show": "No vino",
+  };
 
   if (terminadas.length === 0) {
-    return <p className="text-[14px] text-muted-foreground">Aún no ha terminado ninguna cita. Según vayan acabando, aquí marcas si vinieron.</p>;
+    return (
+      <p className="text-[14px] text-muted-foreground">
+        Aún no ha terminado ninguna cita. Según vayan acabando, aquí marcas si vinieron.
+      </p>
+    );
   }
   return (
     <>
@@ -841,7 +1224,9 @@ function Vinieron({
           const marcada = estado[a.status];
           return (
             <li key={a.id} className="flex items-center gap-4 py-3">
-              <span className="w-12 shrink-0 text-[15px] font-extrabold tabular-nums">{hora(a.start)}</span>
+              <span className="w-12 shrink-0 text-[15px] font-extrabold tabular-nums">
+                {hora(a.start)}
+              </span>
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[15px]">{a.clientName}</b>
                 <span className="block truncate text-[13.5px] text-muted-foreground">
@@ -850,17 +1235,34 @@ function Vinieron({
                 </span>
               </span>
               {marcada ? (
-                <span className={cn("shrink-0 text-[13px] font-bold", a.status === "completed" ? "text-hoja-tinta" : "text-melocoton-tinta")}>{marcada}</span>
+                <span
+                  className={cn(
+                    "shrink-0 text-[13px] font-bold",
+                    a.status === "completed" ? "text-hoja-tinta" : "text-melocoton-tinta",
+                  )}
+                >
+                  {marcada}
+                </span>
               ) : (
-                <Button variant="outline" size="sm" onClick={() => elegir(a, "vino")} className="shrink-0 border-salvia bg-salvia-suave text-hoja-tinta hover:bg-salvia-clara">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => elegir(a, "vino")}
+                  className="shrink-0 border-salvia bg-salvia-suave text-hoja-tinta hover:bg-salvia-clara"
+                >
                   <Check className="size-4" strokeWidth={1.8} />
                   Vino
                 </Button>
               )}
               <BotonMas etiqueta={`Otras respuestas para ${a.clientName}`}>
                 <DropdownMenuItem onClick={() => elegir(a, "vino")}>Vino</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => elegir(a, "tarde")}>Llegó tarde sin avisar</DropdownMenuItem>
-                <DropdownMenuItem className="text-melocoton-tinta focus:text-melocoton-tinta" onClick={() => elegir(a, "no-vino")}>
+                <DropdownMenuItem onClick={() => elegir(a, "tarde")}>
+                  Llegó tarde sin avisar
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-melocoton-tinta focus:text-melocoton-tinta"
+                  onClick={() => elegir(a, "no-vino")}
+                >
                   No vino
                 </DropdownMenuItem>
               </BotonMas>
@@ -898,7 +1300,12 @@ function Manana({
 }) {
   const [todas, setTodas] = useState(false);
   const diaTexto = dia.toLocaleDateString("es-ES", { weekday: "long", day: "numeric" });
-  if (filas.length === 0) return <p className="text-[14px] text-muted-foreground">Mañana no hay citas: no hay nada que recordar.</p>;
+  if (filas.length === 0)
+    return (
+      <p className="text-[14px] text-muted-foreground">
+        Mañana no hay citas: no hay nada que recordar.
+      </p>
+    );
   const visibles = todas ? filas : filas.slice(0, 6);
   return (
     <div>
@@ -908,7 +1315,8 @@ function Manana({
           {diaTexto.slice(1)}: <b className="text-foreground tabular-nums">{filas.length}</b> citas,{" "}
           {pendientes > 0 ? (
             <>
-              <b className="text-foreground tabular-nums">{pendientes}</b> sin recordar. Se envían desde tu WhatsApp.
+              <b className="text-foreground tabular-nums">{pendientes}</b> sin recordar. Se envían
+              desde tu WhatsApp.
             </>
           ) : (
             "todas recordadas."
@@ -925,7 +1333,9 @@ function Manana({
       <ul className="mt-3 divide-y divide-lino">
         {visibles.map(({ cita }) => (
           <li key={cita.id} className="flex items-center gap-4 py-3">
-            <span className="w-12 shrink-0 text-[15px] font-extrabold tabular-nums">{hora(cita.start)}</span>
+            <span className="w-12 shrink-0 text-[15px] font-extrabold tabular-nums">
+              {hora(cita.start)}
+            </span>
             <span className="min-w-0 flex-1">
               <b className="block truncate text-[15px]">{cita.clientName}</b>
               <span className="block truncate text-[13.5px] text-muted-foreground">
@@ -933,16 +1343,28 @@ function Manana({
                 {detalle(cita)}
               </span>
             </span>
-            <span className={cn("shrink-0 text-[13px] font-bold", cita.reminderSentAt ? "text-hoja-tinta" : "text-muted-foreground")}>
+            <span
+              className={cn(
+                "shrink-0 text-[13px] font-bold",
+                cita.reminderSentAt ? "text-hoja-tinta" : "text-muted-foreground",
+              )}
+            >
               {cita.reminderSentAt ? "Recordada" : "Sin recordar"}
             </span>
           </li>
         ))}
       </ul>
       {filas.length > 6 && (
-        <button type="button" onClick={() => setTodas((v) => !v)} className="mt-2 inline-flex items-center gap-1 text-[13.5px] font-bold text-cafe-medio hover:text-foreground">
+        <button
+          type="button"
+          onClick={() => setTodas((v) => !v)}
+          className="mt-2 inline-flex items-center gap-1 text-[13.5px] font-bold text-cafe-medio hover:text-foreground"
+        >
           {todas ? "Ver menos" : `Ver las ${filas.length - 6} restantes`}
-          <ChevronDown className={cn("size-4 transition-transform", todas && "rotate-180")} strokeWidth={1.6} />
+          <ChevronDown
+            className={cn("size-4 transition-transform", todas && "rotate-180")}
+            strokeWidth={1.6}
+          />
         </button>
       )}
     </div>
