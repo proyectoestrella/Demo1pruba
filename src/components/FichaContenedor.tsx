@@ -125,7 +125,7 @@ export function FichaContenedor({
               (e.currentTarget as HTMLElement | null)?.focus({ preventScroll: true });
             }}
             tabIndex={-1}
-            className="outline-none fixed top-1/2 left-1/2 z-50 flex max-h-[min(94dvh,960px)] w-[min(800px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-[0_24px_70px_-20px_rgba(59,47,42,0.45)] duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+            className="contenedor-flotante outline-none fixed top-1/2 left-1/2 z-50 flex max-h-[min(94dvh,960px)] w-[min(800px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden border border-border bg-background duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
           >
             <ApuntarFoco destino={antes} />
             {textos}
