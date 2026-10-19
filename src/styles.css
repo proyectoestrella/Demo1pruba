@@ -21,7 +21,9 @@
   font-weight: 400 800;
   font-display: swap;
   src: url("/fonts/manrope-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Manrope";
@@ -29,7 +31,10 @@
   font-weight: 400 800;
   font-display: swap;
   src: url("/fonts/manrope-latin-ext.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
 }
 @font-face {
   font-family: "Fraunces";
@@ -37,7 +42,9 @@
   font-weight: 400 500;
   font-display: swap;
   src: url("/fonts/fraunces-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Fraunces";
@@ -45,7 +52,10 @@
   font-weight: 400 500;
   font-display: swap;
   src: url("/fonts/fraunces-latin-ext.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
 }
 
 /*
@@ -161,70 +171,83 @@
   /* «Arena · calma» (lote 8c): un escalón más pastel. Página crema, menú y
      cabecera en taupe claro, tarjetas nata claras con borde lino visible, y
      el blanco puro solo en campos de texto. Contrastes medidos: DESIGN.md. */
-  --pagina: #EFE7DB;
-  --superficie: #F7F2EA;
-  --beige: #E9DFD1;
-  --taupe-claro: #DDCFBD;
-  --blanco: #FFFFFF;
-  --perla: #F2EBE0;
-  --nata: #E4D8C8;
-  --arena: #E0D2C0;
-  --taupe: #CDB9A4;
-  --lino: #D9CBB8;
-  --lino-fuerte: #C9B8A2;
-  --cafe: #3B2F2A;
-  --cafe-medio: #5E4F48;
-  --cafe-suave: #62534C;
-  --moca: #A47B5C;
-  --moca-fuerte: #7A5539;
-  --salvia-clara: #CFDFCF;
-  --salvia-suave: #DCE7DA;
-  --salvia: #9FB8A3;
-  --hoja: #4F6F58;
-  --hoja-tinta: #3F5A47;
+  --pagina: #efe7db;
+  --superficie: #f7f2ea;
+  --beige: #e9dfd1;
+  --taupe-claro: #ddcfbd;
+  --blanco: #ffffff;
+  --perla: #f2ebe0;
+  --nata: #e4d8c8;
+  --arena: #e0d2c0;
+  --taupe: #cdb9a4;
+  --lino: #d9cbb8;
+  --lino-fuerte: #c9b8a2;
+  --cafe: #3b2f2a;
+  --cafe-medio: #5e4f48;
+  --cafe-suave: #62534c;
+  --moca: #a47b5c;
+  --moca-fuerte: #7a5539;
+  --salvia-clara: #cfdfcf;
+  --salvia-suave: #dce7da;
+  --salvia: #9fb8a3;
+  --hoja: #4f6f58;
+  --hoja-tinta: #3f5a47;
   /* Terracota de la marca siShow: solo acento («ahora», destacados). La acción sigue siendo moca fuerte. */
-  --terracota: #A44C20;
-  --melocoton: #F1D9C8;
+  --terracota: #a44c20;
+  --melocoton: #f1d9c8;
   /* Pastel miel: lo que está pendiente de la dueña en Hoy (café 10,4:1). */
-  --miel: #F3E6C4;
-  --miel-borde: #DCC68F;
-  --melocoton-borde: #DDB9A2;
-  --melocoton-tinta: #74462B;
+  --miel: #f3e6c4;
+  --miel-borde: #dcc68f;
+  --melocoton-borde: #ddb9a2;
+  --melocoton-tinta: #74462b;
 
   /* Paleta del calendario: un pastel frío por servicio (fondo · borde). */
-  --serv-1: #DDEBFB; --serv-1-borde: #5B8FD6;
-  --serv-2: #EAE3FB; --serv-2-borde: #8E76D8;
-  --serv-3: #D7F2E6; --serv-3-borde: #3EA67C;
-  --serv-4: #FCE4ED; --serv-4-borde: #D9728F;
-  --serv-5: #FEE8D8; --serv-5-borde: #E08A50;
-  --serv-6: #FBF2CB; --serv-6-borde: #C8A21F;
+  --serv-1: #ddebfb;
+  --serv-1-borde: #5b8fd6;
+  --serv-2: #eae3fb;
+  --serv-2-borde: #8e76d8;
+  --serv-3: #d7f2e6;
+  --serv-3-borde: #3ea67c;
+  --serv-4: #fce4ed;
+  --serv-4-borde: #d9728f;
+  --serv-5: #fee8d8;
+  --serv-5-borde: #e08a50;
+  --serv-6: #fbf2cb;
+  --serv-6-borde: #c8a21f;
 
   /* Estructura del calendario: tinta azulada, líneas frías, «ahora» añil. */
-  --k-tinta: #1F2633;
-  --k-tinta2: #4A5363;
-  --k-gris: #5A6372;
-  --k-linea: #E3D8C9;
-  --k-linea-media: #EAE1D5;
-  --k-linea-f: #CDBFAC;
-  --k-cab: #E9DFD1;
-  --k-cab-hoy: #DCE7DA;
-  --k-ahora: #C0503A;
+  --k-tinta: #1f2633;
+  --k-tinta2: #4a5363;
+  --k-gris: #5a6372;
+  --k-linea: #e3d8c9;
+  --k-linea-media: #eae1d5;
+  --k-linea-f: #cdbfac;
+  --k-cab: #e9dfd1;
+  --k-cab-hoy: #dce7da;
+  --k-ahora: #c0503a;
   /* Horas en que no trabaja nadie de la columna: rayado muy suave. */
   --k-cerrado: rgba(122, 96, 72, 0.07);
   /* Profesionales (guía de diseño del panel, §2): hasta 7 hues, cada uno con tinte
      de fondo (texto SIEMPRE café encima, ≥ 11:1) y borde saturado de 4 px (≥ 3:1
      contra la página). La terracota no se asigna a nadie: es de acción y «ahora». */
-  --pro-1: #F6DDE3; --pro-1-borde: #B24A63; /* rosa viejo */
-  --pro-2: #DDEBDD; --pro-2-borde: #4F7A5A; /* salvia */
-  --pro-3: #EEDDEA; --pro-3-borde: #8A4A78; /* ciruela */
-  --pro-4: #DCE8F2; --pro-4-borde: #3F6C94; /* azul pizarra */
-  --pro-5: #F5E8C4; --pro-5-borde: #8F6A0E; /* ocre */
-  --pro-6: #D6ECEB; --pro-6-borde: #2F7F80; /* verde azulado */
-  --pro-7: #E6E1DA; --pro-7-borde: #5D5750; /* grafito */
-  --k-libre: #F1FAF6;
-  --k-libre-b: #8CCFB2;
-  --k-libre-t: #23694E;
-  --k-vino: #2F7A5B;
+  --pro-1: #f6dde3;
+  --pro-1-borde: #b24a63; /* rosa viejo */
+  --pro-2: #ddebdd;
+  --pro-2-borde: #4f7a5a; /* salvia */
+  --pro-3: #eeddea;
+  --pro-3-borde: #8a4a78; /* ciruela */
+  --pro-4: #dce8f2;
+  --pro-4-borde: #3f6c94; /* azul pizarra */
+  --pro-5: #f5e8c4;
+  --pro-5-borde: #8f6a0e; /* ocre */
+  --pro-6: #d6eceb;
+  --pro-6-borde: #2f7f80; /* verde azulado */
+  --pro-7: #e6e1da;
+  --pro-7-borde: #5d5750; /* grafito */
+  --k-libre: #f1faf6;
+  --k-libre-b: #8ccfb2;
+  --k-libre-t: #23694e;
+  --k-vino: #2f7a5b;
   /* Barras de ocupación por profesional (vista Mes y pie): el tono fuerte de --pro-N. */
   --k-pro-1: var(--pro-1-borde);
   --k-pro-2: var(--pro-2-borde);
@@ -245,7 +268,7 @@
 
   /* Acción: moca fuerte, 5,3:1 con blanco. */
   --primary: var(--moca-fuerte);
-  --primary-foreground: #FFFFFF;
+  --primary-foreground: #ffffff;
 
   --secondary: var(--beige);
   --secondary-foreground: var(--cafe);
@@ -258,7 +281,7 @@
 
   /* Nunca rojo saturado: lo destructivo va en la tinta del melocotón. */
   --destructive: var(--melocoton-tinta);
-  --destructive-foreground: #FFFFFF;
+  --destructive-foreground: #ffffff;
 
   --success: var(--hoja);
   /* «Te espera» no es una alarma: el aviso pendiente se pinta en moca. */
@@ -286,15 +309,109 @@
   --sidebar: var(--nata);
   --sidebar-foreground: var(--cafe);
   --sidebar-primary: var(--moca-fuerte);
-  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: var(--arena);
   --sidebar-accent-foreground: var(--cafe);
   --sidebar-border: var(--lino);
   --sidebar-ring: var(--moca);
 
   --sombra-tarjeta: 0 1px 2px rgba(59, 47, 42, 0.05);
-  --sombra-panel: -12px 0 40px rgba(59, 47, 42, 0.10);
+  --sombra-panel: -12px 0 40px rgba(59, 47, 42, 0.1);
   --sombra-flotante: 0 12px 32px rgba(59, 47, 42, 0.12);
+}
+
+/*
+ * Capa visual de la vista previa. Se activa desde /app con
+ * `data-tema="claro"`, por lo que ni la web pública ni la identidad Arena
+ * original cambian fuera del panel. Conservamos --moca y el verde de estado:
+ * Analítica, guardas de plan y «Pendiente de ti» aún los necesitan con su
+ * significado previo.
+ */
+[data-tema="claro"] {
+  --radius: 1.25rem;
+
+  /* Tokens propios del rediseño: crema, carbón y mantequilla. */
+  --k-crema: #fbf7ec;
+  --k-crema-suave: #f7f4e9;
+  --k-blanco: #ffffff;
+  --k-carbon: #303030;
+  --k-carbon-medio: #4c4c4c;
+  --k-carbon-suave: #5f5b52;
+  --k-amarillo: #ffd960;
+  --k-miel: #fff4c8;
+  --k-perla: #e7e7e9;
+  --k-lino: #e7e4d9;
+  --k-lino-fuerte: #d8d5c9;
+  --k-foco: #8a6b00;
+  --k-rejilla: rgba(48, 48, 48, 0.08);
+  --k-rejilla-media: rgba(48, 48, 48, 0.04);
+  --k-sombra-suave: rgba(48, 48, 48, 0.16);
+  --k-sombra-aire: rgba(40, 44, 58, 0.18);
+
+  --pagina: var(--k-crema);
+  --superficie: var(--k-blanco);
+  --beige: var(--k-crema-suave);
+  --taupe-claro: var(--k-perla);
+  --blanco: var(--k-blanco);
+  --perla: var(--k-perla);
+  --nata: #f7f6f1;
+  --arena: #f5efcd;
+  --taupe: var(--k-lino-fuerte);
+  --lino: var(--k-lino);
+  --lino-fuerte: var(--k-lino-fuerte);
+  --cafe: var(--k-carbon);
+  --cafe-medio: var(--k-carbon-medio);
+  --cafe-suave: var(--k-carbon-suave);
+  /* --moca y --moca-fuerte se mantienen: son datos, no el nuevo acento. */
+  --melocoton: #f9e2d3;
+  --miel: var(--k-miel);
+  --miel-borde: #d6b94d;
+
+  --serv-1-tinta: #31577d;
+  --serv-2-tinta: #55467e;
+  --serv-3-tinta: #28684f;
+  --serv-4-tinta: #8b3e56;
+  --serv-5-tinta: #81481f;
+  --serv-6-tinta: #66520f;
+  --pro-1-tinta: #713040;
+  --pro-2-tinta: #35543d;
+  --pro-3-tinta: #603451;
+  --pro-4-tinta: #2b4d6b;
+  --pro-5-tinta: #604807;
+  --pro-6-tinta: #20595a;
+  --pro-7-tinta: #403c37;
+
+  --k-tinta: var(--k-carbon);
+  --k-tinta2: var(--k-carbon-suave);
+  --k-gris: var(--k-carbon-suave);
+  --k-linea: var(--k-rejilla);
+  --k-linea-media: var(--k-rejilla-media);
+  --k-linea-f: #ecebe6;
+  --k-cab: var(--k-blanco);
+  --k-cab-hoy: var(--k-carbon);
+  --k-ahora: var(--k-carbon);
+  --k-cerrado: rgba(95, 91, 82, 0.045);
+
+  --background: var(--pagina);
+  --foreground: var(--cafe);
+  --card: var(--k-blanco);
+  --popover: var(--k-blanco);
+  --primary: var(--k-carbon);
+  --secondary: var(--arena);
+  --accent: var(--arena);
+  --ring: var(--k-foco);
+  --sidebar: transparent;
+  --sidebar-primary: var(--k-carbon);
+  --sidebar-accent: var(--arena);
+
+  --radio-tarjeta: 1.875rem;
+  --radio-tarjeta-sm: 1.4375rem;
+  --radio-marco: 2.625rem;
+  --sombra-tarjeta: 0 18px 40px -18px var(--k-sombra-suave), 0 2px 8px rgba(48, 48, 48, 0.04);
+  --sombra-tarjeta-sm: 0 12px 28px -16px rgba(48, 48, 48, 0.12), 0 1px 5px rgba(48, 48, 48, 0.035);
+  --sombra-panel: -12px 0 40px rgba(40, 44, 58, 0.14);
+  --sombra-flotante: 0 22px 56px -20px rgba(48, 48, 48, 0.22), 0 4px 14px rgba(48, 48, 48, 0.06);
+  --sombra-marco: 0 40px 80px -20px rgba(40, 44, 58, 0.45), 0 10px 30px var(--k-sombra-aire);
 }
 
 /* Animaciones que exigen los componentes de MagicUI. Vienen en el campo
@@ -310,10 +427,13 @@
 }
 
 @keyframes shiny-text {
-  0%, 90%, 100% {
+  0%,
+  90%,
+  100% {
     background-position: calc(-100% - var(--shiny-width)) 0;
   }
-  30%, 60% {
+  30%,
+  60% {
     background-position: calc(100% + var(--shiny-width)) 0;
   }
 }
@@ -369,10 +489,12 @@
   0% {
     transform: translateZ(0) rotate(0);
   }
-  15%, 35% {
+  15%,
+  35% {
     transform: translateZ(0) rotate(90deg);
   }
-  65%, 85% {
+  65%,
+  85% {
     transform: translateZ(0) rotate(270deg);
   }
   100% {
@@ -405,6 +527,87 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+
+  html[data-tema="claro"],
+  html[data-tema="claro"] body {
+    background: var(--k-crema);
+  }
+
+  [data-tema="claro"] :focus-visible {
+    outline: 3px solid var(--k-foco);
+    outline-offset: 2px;
+  }
+}
+
+/* El degradado exterior se limita al panel: la web pública conserva Arena. */
+.panel-marco {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: var(--k-crema, var(--pagina));
+  background-image:
+    radial-gradient(
+      ellipse 76% 88% at 104% 48%,
+      color-mix(in srgb, var(--k-amarillo, var(--moca)) 50%, transparent) 0%,
+      color-mix(in srgb, var(--k-amarillo, var(--moca)) 28%, transparent) 43%,
+      transparent 78%
+    ),
+    radial-gradient(
+      ellipse 68% 55% at 0% 105%,
+      color-mix(in srgb, var(--arena) 82%, transparent) 0%,
+      transparent 74%
+    ),
+    linear-gradient(
+      125deg,
+      var(--k-perla, var(--perla)) 0%,
+      var(--k-crema, var(--pagina)) 52%,
+      var(--k-crema-suave, var(--beige)) 100%
+    );
+  overflow: clip;
+}
+
+.tarjeta-principal {
+  border-radius: var(--radio-tarjeta, var(--radius-2xl));
+  box-shadow: var(--sombra-tarjeta);
+}
+
+.tarjeta-secundaria {
+  border-radius: var(--radio-tarjeta-sm, var(--radius-xl));
+  box-shadow: var(--sombra-tarjeta-sm, var(--sombra-tarjeta));
+}
+
+.tarjeta-anidada {
+  border-radius: var(--radio-tarjeta-sm, var(--radius-xl));
+}
+
+.contenedor-flotante {
+  border-radius: var(--radio-tarjeta, var(--radius-2xl));
+  box-shadow: var(--sombra-flotante);
+}
+
+.panel-flotante-lateral {
+  border-radius: var(--radio-tarjeta, var(--radius-2xl)) 0 0 var(--radio-tarjeta, var(--radius-2xl));
+  box-shadow: var(--sombra-flotante);
+}
+
+[data-tema="claro"] [role="tablist"] [role="tab"] {
+  border-radius: 999px;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+[data-tema="claro"] [role="tablist"] [role="tab"][aria-selected="true"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 1px 3px var(--k-sombra-aire);
+}
+
+@media (max-width: 1023px) {
+  [data-tema="claro"] input:not([type="checkbox"]):not([type="radio"]),
+  [data-tema="claro"] select,
+  [data-tema="claro"] textarea {
+    min-height: 44px;
+  }
 }
 
 @layer components {
@@ -432,8 +635,12 @@
   }
 
   @keyframes rb-shine {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
   }
 
   /* Sin animación, el texto se queda en su color base — sigue siendo legible. */
@@ -444,7 +651,6 @@
       color: var(--rb-shiny-base);
     }
   }
-
 }
 
 /* -----------------------------------------------------------------------
@@ -505,10 +711,18 @@
 }
 
 /* La flecha del popover apunta a un fondo claro por defecto. */
-.driver-popover.trimly-tour .driver-popover-arrow-side-top { border-top-color: var(--color-card); }
-.driver-popover.trimly-tour .driver-popover-arrow-side-bottom { border-bottom-color: var(--color-card); }
-.driver-popover.trimly-tour .driver-popover-arrow-side-left { border-left-color: var(--color-card); }
-.driver-popover.trimly-tour .driver-popover-arrow-side-right { border-right-color: var(--color-card); }
+.driver-popover.trimly-tour .driver-popover-arrow-side-top {
+  border-top-color: var(--color-card);
+}
+.driver-popover.trimly-tour .driver-popover-arrow-side-bottom {
+  border-bottom-color: var(--color-card);
+}
+.driver-popover.trimly-tour .driver-popover-arrow-side-left {
+  border-left-color: var(--color-card);
+}
+.driver-popover.trimly-tour .driver-popover-arrow-side-right {
+  border-right-color: var(--color-card);
+}
 
 /* ---------------------------------------------------------------------------
  * Barras fijas al borde inferior de la pantalla (la navegación del panel en
@@ -548,18 +762,54 @@
   display: none;
 }
 @media print {
-  @page { size: A4 portrait; margin: 10mm; }
-  body { background: white !important; color: black !important; }
-  body * { visibility: hidden !important; }
-  .hoja-dia, .hoja-dia * { visibility: visible !important; }
-  .hoja-dia { position: absolute; inset: 0; width: 100%; max-width: none; margin: 0; font-size: 9pt; }
-  .hoja-dia .hoja-controles { display: none !important; }
-  .hoja-dia .hoja-recordatorios { display: none !important; }
-  .indicador-refresco { display: none !important; }
-  .hoja-dia .hoja-grupo { break-inside: avoid; border-color: #aaa; margin-bottom: 8mm; }
-  .hoja-dia .hoja-visita { break-inside: avoid; padding-top: 2mm; padding-bottom: 2mm; }
-  .hoja-dia .hoja-ficha { display: none !important; }
-  .hoja-dia .hoja-tercera-visita { display: block !important; }
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  body * {
+    visibility: hidden !important;
+  }
+  .hoja-dia,
+  .hoja-dia * {
+    visibility: visible !important;
+  }
+  .hoja-dia {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    font-size: 9pt;
+  }
+  .hoja-dia .hoja-controles {
+    display: none !important;
+  }
+  .hoja-dia .hoja-recordatorios {
+    display: none !important;
+  }
+  .indicador-refresco {
+    display: none !important;
+  }
+  .hoja-dia .hoja-grupo {
+    break-inside: avoid;
+    border-color: #aaa;
+    margin-bottom: 8mm;
+  }
+  .hoja-dia .hoja-visita {
+    break-inside: avoid;
+    padding-top: 2mm;
+    padding-bottom: 2mm;
+  }
+  .hoja-dia .hoja-ficha {
+    display: none !important;
+  }
+  .hoja-dia .hoja-tercera-visita {
+    display: block !important;
+  }
 }
 
 /* Mientras se arrastra el borde de un panel lateral (9e): sin transiciones que
@@ -588,11 +838,18 @@
   animation-play-state: paused;
 }
 @keyframes barra-deshacer {
-  from { transform: scaleX(1); }
-  to { transform: scaleX(0); }
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .barra-deshacer { animation: none; opacity: 0.35; }
+  .barra-deshacer {
+    animation: none;
+    opacity: 0.35;
+  }
 }
 
 /* Lote 16: esqueleto con brillo, solo donde de verdad aún no hay datos. */
@@ -610,10 +867,15 @@
   animation: esqueleto-brillo 1.3s ease-in-out infinite;
 }
 @keyframes esqueleto-brillo {
-  to { transform: translateX(100%); }
+  to {
+    transform: translateX(100%);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .esqueleto::after { animation: none; display: none; }
+  .esqueleto::after {
+    animation: none;
+    display: none;
+  }
 }
 
 /* Lote 16: sistema de movimiento «calma». Solo opacidad y desplazamientos
@@ -623,28 +885,56 @@
   --curva-salida: cubic-bezier(0.22, 1, 0.36, 1);
 }
 @keyframes entrar-suave {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 @keyframes rellenar-x {
-  from { transform: scaleX(0); }
+  from {
+    transform: scaleX(0);
+  }
 }
 @keyframes rellenar-y {
-  from { transform: scaleY(0); }
+  from {
+    transform: scaleY(0);
+  }
 }
 /* Entrada escalonada: cada hijo de una lista entra 30 ms después del anterior (máx. 10). */
 .entrada-lista {
   animation: entrar-suave 260ms var(--curva-salida) both;
 }
-.entrada-lista:nth-child(2) { animation-delay: 30ms; }
-.entrada-lista:nth-child(3) { animation-delay: 60ms; }
-.entrada-lista:nth-child(4) { animation-delay: 90ms; }
-.entrada-lista:nth-child(5) { animation-delay: 120ms; }
-.entrada-lista:nth-child(6) { animation-delay: 150ms; }
-.entrada-lista:nth-child(7) { animation-delay: 180ms; }
-.entrada-lista:nth-child(8) { animation-delay: 210ms; }
-.entrada-lista:nth-child(9) { animation-delay: 240ms; }
-.entrada-lista:nth-child(n + 10) { animation-delay: 270ms; }
+.entrada-lista:nth-child(2) {
+  animation-delay: 30ms;
+}
+.entrada-lista:nth-child(3) {
+  animation-delay: 60ms;
+}
+.entrada-lista:nth-child(4) {
+  animation-delay: 90ms;
+}
+.entrada-lista:nth-child(5) {
+  animation-delay: 120ms;
+}
+.entrada-lista:nth-child(6) {
+  animation-delay: 150ms;
+}
+.entrada-lista:nth-child(7) {
+  animation-delay: 180ms;
+}
+.entrada-lista:nth-child(8) {
+  animation-delay: 210ms;
+}
+.entrada-lista:nth-child(9) {
+  animation-delay: 240ms;
+}
+.entrada-lista:nth-child(n + 10) {
+  animation-delay: 270ms;
+}
 .barra-rellena {
   transform-origin: left center;
   animation: rellenar-x 600ms var(--curva-salida) both;
@@ -656,7 +946,12 @@
   transition: height 400ms var(--curva-salida);
 }
 @media (prefers-reduced-motion: reduce) {
-  .entrada-lista, .barra-rellena, .barra-sube { animation: none; transition: none; }
+  .entrada-lista,
+  .barra-rellena,
+  .barra-sube {
+    animation: none;
+    transition: none;
+  }
 }
 
 /* Plegable que se despliega (alto animado con grid-rows, sin medir en JS). */
@@ -665,7 +960,9 @@
   grid-template-rows: 0fr;
   transition: grid-template-rows 220ms var(--curva-salida);
 }
-.plegable.abierto { grid-template-rows: 1fr; }
+.plegable.abierto {
+  grid-template-rows: 1fr;
+}
 
 /* Micro-check de «Guardado»: el trazo se dibuja y el texto entra. */
 .micro-check {
@@ -679,16 +976,27 @@
   animation: dibujar-check 320ms 60ms var(--curva-salida) forwards;
 }
 @keyframes dibujar-check {
-  to { stroke-dashoffset: 0; }
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .plegable { transition: none; }
-  .micro-check, .micro-check path { animation: none; stroke-dashoffset: 0; }
+  .plegable {
+    transition: none;
+  }
+  .micro-check,
+  .micro-check path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
 }
 
 /* Hover con elevación sutil (tarjetas pulsables). */
 .elevar {
-  transition: transform 160ms var(--curva-salida), box-shadow 160ms var(--curva-salida), background-color 160ms;
+  transition:
+    transform 160ms var(--curva-salida),
+    box-shadow 160ms var(--curva-salida),
+    background-color 160ms;
 }
 @media (hover: hover) {
   .elevar:hover {
@@ -697,23 +1005,43 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .elevar, .elevar:hover { transition: none; transform: none; }
+  .elevar,
+  .elevar:hover {
+    transition: none;
+    transform: none;
+  }
 }
 
 /* Portada de la web pública (lote 17): cada bloque entra una vez, desde
    opacidad 0,4 y 10 px más abajo, 520 ms, escalonado 60 ms. Empieza visible:
    no retrasa el primer pintado ni el LCP. */
 @keyframes entrar-portada {
-  from { opacity: 0.4; transform: translateY(10px); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0.4;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 .entrada-portada > * {
   animation: entrar-portada 520ms var(--curva-salida) both;
 }
-.entrada-portada > :nth-child(2) { animation-delay: 60ms; }
-.entrada-portada > :nth-child(3) { animation-delay: 120ms; }
-.entrada-portada > :nth-child(4) { animation-delay: 180ms; }
-.entrada-portada > :nth-child(n + 5) { animation-delay: 240ms; }
+.entrada-portada > :nth-child(2) {
+  animation-delay: 60ms;
+}
+.entrada-portada > :nth-child(3) {
+  animation-delay: 120ms;
+}
+.entrada-portada > :nth-child(4) {
+  animation-delay: 180ms;
+}
+.entrada-portada > :nth-child(n + 5) {
+  animation-delay: 240ms;
+}
 @media (prefers-reduced-motion: reduce) {
-  .entrada-portada > * { animation: none; }
+  .entrada-portada > * {
+    animation: none;
+  }
 }

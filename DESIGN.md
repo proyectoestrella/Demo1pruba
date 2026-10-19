@@ -9,6 +9,27 @@ significa «bien».
 Fuente de verdad del diseño: el prototipo aprobado del 25-09-2026 (`prototipo-arena-2026-09-25/`,
 `identidad.md` + `estilos.css`). Este brief lo traduce a reglas; si discrepan, manda el prototipo.
 
+## Vista previa «claro» — octubre de 2026
+
+Esta rama de demostración aplica una capa visual activable solo dentro del panel
+(`data-tema="claro"`); la web pública y la versión Arena original no cambian. Su
+objetivo es llevar más aire y una jerarquía de calendario más nítida a demos de
+salones nuevos, sin cambiar el significado de los estados ni los módulos.
+
+| Token                               |               Valor | Uso en la vista previa                                                              |
+| ----------------------------------- | ------------------: | ----------------------------------------------------------------------------------- |
+| `--radius`                          |           `1.25rem` | Radio base de campos y controles; las tarjetas usan `--radio-tarjeta` (`1.875rem`). |
+| `--k-crema`                         |           `#FBF7EC` | Fondo de la aplicación.                                                             |
+| `--k-carbon`                        |           `#303030` | Acción principal, navegación activa y cabecera de hoy en calendario.                |
+| `--k-amarillo`                      |           `#FFD960` | Luz ambiental del degradado; nunca texto.                                           |
+| `--k-miel`                          |           `#FFF4C8` | Tarjeta «Pendiente de ti».                                                          |
+| `--k-rejilla` / `--k-rejilla-media` | carbón al 8 % / 4 % | Rejilla horaria de calendario, deliberadamente casi invisible.                      |
+
+El fondo crema tiene un degradado suave solo detrás del panel (`.panel-marco`),
+no dentro de las tarjetas. `--moca`, `--moca-fuerte`, `--salvia` y `--hoja`
+conservan sus valores Arena: son semánticos en Analítica, guardas de plan y los
+estados resueltos, y no deben convertirse en amarillo.
+
 ## Tres principios que la hacen reconocible
 
 1. **Un solo color dice «bien».** El verde salvia/hoja se reserva a lo resuelto: vino,
@@ -30,26 +51,26 @@ Fuente de verdad del diseño: el prototipo aprobado del 25-09-2026 (`prototipo-a
 
 Toda la app, salvo el calendario, vive en esta escala cálida. Contrastes medidos con WCAG 2.1.
 
-| Rol | Nombre | Hex | Dónde |
-|---|---|---|---|
-| Fondo de la aplicación | Blanco | `#FFFFFF` | Fondo en PC y móvil; tarjetas y paneles |
-| Superficie de cabecera | Perla | `#FCFAF7` | Cabeceras de tabla, fondo de la capa «Nueva cita», pie de panel |
-| Superficie hundida | Nata | `#F6F1EA` | Menú lateral, píldoras, burbujas del asistente, segmentos |
-| Hover / chip neutro | Arena | `#EADFD2` | Hover del menú, chips neutros, hoja del día, burbuja «yo» |
-| Barra apagada | Taupe | `#D9C7B5` | Barras de progreso, interruptor apagado, hora ocupada |
-| Borde | Lino | `#EAE1D8` | Bordes de tarjeta, separadores de lista |
-| Borde de campo | Lino fuerte | `#DCCFC1` | Campos, botones secundarios, chips de opción |
-| Texto principal | Tinta café | `#3B2F2A` | Todo el texto base (12,4:1 sobre perla) |
-| Texto sobre pastel | Café medio | `#6B5B52` | Texto sobre arena y pasteles (4,7:1) |
-| Texto secundario | Café suave | `#7A6A60` | Subtítulos, etiquetas, ayuda (5,0:1 perla · 4,6:1 nata) |
-| Decorativo | Moca | `#A47B5C` | Bordes «te espera», marcas de tinte, barra de gráfica. **No para texto** (3,8:1) |
-| Acción | Moca fuerte | `#8A6446` | Botón principal, apartado activo, icono activo, hover `#7A5840` (5,3:1 con blanco) |
-| Éxito suave | Salvia clara | `#DDE8DD` | Fila «ahora», huecos libres, chips «vino», profesional Sara |
-| Éxito medio | Salvia | `#9FB8A3` | Barras de ocupación, borde de hueco al pasar |
-| Éxito fuerte | Hoja | `#4F6F58` | «Vino», confirmado, botón verde, línea de «ahora», toast |
-| Éxito texto | Hoja tinta | `#45624E` | Texto sobre salvia clara (5,1:1) |
-| Aviso | Melocotón · borde · tinta | `#F3DED1` · `#E6C6B2` · `#7E4F33` | Solo avisos: alergias, «no vino», color pendiente (4,9:1) |
-| Profesionales | María · Sara · Noelia | `#EDE2D6` · `#DDE8DD` · `#F1E4CF` | Avatares e iniciales, siempre con texto café |
+| Rol                    | Nombre                    | Hex                               | Dónde                                                                              |
+| ---------------------- | ------------------------- | --------------------------------- | ---------------------------------------------------------------------------------- |
+| Fondo de la aplicación | Blanco                    | `#FFFFFF`                         | Fondo en PC y móvil; tarjetas y paneles                                            |
+| Superficie de cabecera | Perla                     | `#FCFAF7`                         | Cabeceras de tabla, fondo de la capa «Nueva cita», pie de panel                    |
+| Superficie hundida     | Nata                      | `#F6F1EA`                         | Menú lateral, píldoras, burbujas del asistente, segmentos                          |
+| Hover / chip neutro    | Arena                     | `#EADFD2`                         | Hover del menú, chips neutros, hoja del día, burbuja «yo»                          |
+| Barra apagada          | Taupe                     | `#D9C7B5`                         | Barras de progreso, interruptor apagado, hora ocupada                              |
+| Borde                  | Lino                      | `#EAE1D8`                         | Bordes de tarjeta, separadores de lista                                            |
+| Borde de campo         | Lino fuerte               | `#DCCFC1`                         | Campos, botones secundarios, chips de opción                                       |
+| Texto principal        | Tinta café                | `#3B2F2A`                         | Todo el texto base (12,4:1 sobre perla)                                            |
+| Texto sobre pastel     | Café medio                | `#6B5B52`                         | Texto sobre arena y pasteles (4,7:1)                                               |
+| Texto secundario       | Café suave                | `#7A6A60`                         | Subtítulos, etiquetas, ayuda (5,0:1 perla · 4,6:1 nata)                            |
+| Decorativo             | Moca                      | `#A47B5C`                         | Bordes «te espera», marcas de tinte, barra de gráfica. **No para texto** (3,8:1)   |
+| Acción                 | Moca fuerte               | `#8A6446`                         | Botón principal, apartado activo, icono activo, hover `#7A5840` (5,3:1 con blanco) |
+| Éxito suave            | Salvia clara              | `#DDE8DD`                         | Fila «ahora», huecos libres, chips «vino», profesional Sara                        |
+| Éxito medio            | Salvia                    | `#9FB8A3`                         | Barras de ocupación, borde de hueco al pasar                                       |
+| Éxito fuerte           | Hoja                      | `#4F6F58`                         | «Vino», confirmado, botón verde, línea de «ahora», toast                           |
+| Éxito texto            | Hoja tinta                | `#45624E`                         | Texto sobre salvia clara (5,1:1)                                                   |
+| Aviso                  | Melocotón · borde · tinta | `#F3DED1` · `#E6C6B2` · `#7E4F33` | Solo avisos: alergias, «no vino», color pendiente (4,9:1)                          |
+| Profesionales          | María · Sara · Noelia     | `#EDE2D6` · `#DDE8DD` · `#F1E4CF` | Avatares e iniciales, siempre con texto café                                       |
 
 ### Paleta del calendario (pasteles fríos, uno por servicio)
 
@@ -57,14 +78,14 @@ El calendario tiene paleta propia para leerse de un vistazo sobre blanco. **El c
 servicio**; la fila, columna o carril dice la profesional. Texto tinta azulada `#1F2633` (≥ 12:1
 sobre cualquier pastel) y secundario `#4A5363` (≥ 6,5:1).
 
-| Servicio | Fondo | Borde izquierdo 4 px |
-|---|---|---|
-| Corte y peinado | `#DDEBFB` | `#5B8FD6` |
-| Tinte | `#EAE3FB` | `#8E76D8` |
-| Mechas / balayage | `#D7F2E6` | `#3EA67C` |
-| Peinado de novia | `#FCE4ED` | `#D9728F` |
-| Recogido de evento | `#FEE8D8` | `#E08A50` |
-| Tratamiento capilar | `#FBF2CB` | `#C8A21F` |
+| Servicio            | Fondo     | Borde izquierdo 4 px |
+| ------------------- | --------- | -------------------- |
+| Corte y peinado     | `#DDEBFB` | `#5B8FD6`            |
+| Tinte               | `#EAE3FB` | `#8E76D8`            |
+| Mechas / balayage   | `#D7F2E6` | `#3EA67C`            |
+| Peinado de novia    | `#FCE4ED` | `#D9728F`            |
+| Recogido de evento  | `#FEE8D8` | `#E08A50`            |
+| Tratamiento capilar | `#FBF2CB` | `#C8A21F`            |
 
 Estructura: líneas `#E8ECF2` (hora) y `#F2F4F8` (media hora), separador entre profesionales
 `#D3DAE5` de 2 px, cabeceras `#F7F9FC`. «Ahora»: línea añil `#3B5BDB` de 2 px con píldora de la
@@ -76,16 +97,16 @@ leyenda de Hoy y para «Servicios y precios».
 
 ## Tipografía (roles)
 
-| Rol | Fuente | Peso | Tamaño | Dónde |
-|---|---|---|---|---|
-| Display | Fraunces | 500 | 32 px (26 en móvil) | Solo el saludo de Hoy, el nombre de la clienta en su ficha y el de la profesional |
-| Título de página | Manrope | 800 | 32 / 26 px | «Clientas», «Viernes, 25 de septiembre», «Nueva cita» (24) |
-| Título de tarjeta | Manrope | 800 | 16 px | Cabecera de cada tarjeta |
-| Cuerpo | Manrope | 400–600 | 14 px, interlínea 1,45 | Todo el texto |
-| Secundario | Manrope | 400–600 | 12,5 px | Subtítulos, descripciones, chips |
-| Etiqueta | Manrope | 700 | 11 px, mayúsculas, tracking 0,06 em | Cabeceras de tabla, títulos de bloque del menú, fecha del saludo. Es la única mayúscula permitida |
-| Números | Manrope | 700–800 | según contexto | Horas, importes, contadores, siempre con `tabular-nums` |
-| Cifra grande | Manrope | 800 | 26 px (22 móvil) | Los cuatro indicadores de Hoy, el total de «Nueva cita» (28) |
+| Rol               | Fuente   | Peso    | Tamaño                              | Dónde                                                                                             |
+| ----------------- | -------- | ------- | ----------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Display           | Fraunces | 500     | 32 px (26 en móvil)                 | Solo el saludo de Hoy, el nombre de la clienta en su ficha y el de la profesional                 |
+| Título de página  | Manrope  | 800     | 32 / 26 px                          | «Clientas», «Viernes, 25 de septiembre», «Nueva cita» (24)                                        |
+| Título de tarjeta | Manrope  | 800     | 16 px                               | Cabecera de cada tarjeta                                                                          |
+| Cuerpo            | Manrope  | 400–600 | 14 px, interlínea 1,45              | Todo el texto                                                                                     |
+| Secundario        | Manrope  | 400–600 | 12,5 px                             | Subtítulos, descripciones, chips                                                                  |
+| Etiqueta          | Manrope  | 700     | 11 px, mayúsculas, tracking 0,06 em | Cabeceras de tabla, títulos de bloque del menú, fecha del saludo. Es la única mayúscula permitida |
+| Números           | Manrope  | 700–800 | según contexto                      | Horas, importes, contadores, siempre con `tabular-nums`                                           |
+| Cifra grande      | Manrope  | 800     | 26 px (22 móvil)                    | Los cuatro indicadores de Hoy, el total de «Nueva cita» (28)                                      |
 
 Escala completa: 11 · 12,5 · 14 (base) · 16 · 20 · 26 · 32 px. Manrope se carga en 400–800 y
 Fraunces en 400–500 desde Google Fonts; sin conexión, sans del sistema y Georgia.
@@ -164,30 +185,30 @@ Referencias: las doce imágenes de inspiración de Tomás del 24 de septiembre.
 
 ### Fondos (nombres y roles)
 
-| Nombre | Token | Hex | Uso |
-|---|---|---|---|
-| Página | `--pagina` | `#EFE7DB` | Fondo de toda la aplicación |
-| Tarjeta | `--superficie` (`--card`) | `#F7F2EA` | Bloques y tarjetas, siempre con borde lino |
-| Beige | `--beige` | `#E9DFD1` | Cabecera, superficie hundida, hover, segmento |
-| Menú | `--nata` (`--sidebar`) | `#E4D8C8` | Menú lateral |
-| Taupe claro | `--taupe-claro` | `#DDCFBD` | Chips neutros. **Sin texto secundario ni moca encima** |
-| Lino / lino fuerte | `--lino` / `--lino-fuerte` | `#D9CBB8` / `#C9B8A2` | Bordes visibles / bordes de campo y caja del calendario |
-| Salvia suave / clara | `--salvia-suave` / `--salvia-clara` | `#DCE7DA` / `#CFDFCF` | Hoy en el calendario, contadores, «Primeros pasos» |
-| Melocotón | `--melocoton` | `#F1D9C8` | Avisos suaves |
-| Profesionales | `--pro-1…4` | `#F2D8C6` `#D5E4D2` `#E3DAEE` `#D6E4EF` | Citas en la semana «Todas» |
-| Blanco | `--blanco` | `#FFFFFF` | **Solo campos de texto** |
-| Café · medio · suave | `--cafe` · `--cafe-medio` · `--cafe-suave` | `#3B2F2A` · `#5E4F48` · `#62534C` | Texto · texto sobre pastel · secundario |
-| Moca fuerte | `--moca-fuerte` | `#7A5539` | Acción principal |
+| Nombre               | Token                                      | Hex                                     | Uso                                                     |
+| -------------------- | ------------------------------------------ | --------------------------------------- | ------------------------------------------------------- |
+| Página               | `--pagina`                                 | `#EFE7DB`                               | Fondo de toda la aplicación                             |
+| Tarjeta              | `--superficie` (`--card`)                  | `#F7F2EA`                               | Bloques y tarjetas, siempre con borde lino              |
+| Beige                | `--beige`                                  | `#E9DFD1`                               | Cabecera, superficie hundida, hover, segmento           |
+| Menú                 | `--nata` (`--sidebar`)                     | `#E4D8C8`                               | Menú lateral                                            |
+| Taupe claro          | `--taupe-claro`                            | `#DDCFBD`                               | Chips neutros. **Sin texto secundario ni moca encima**  |
+| Lino / lino fuerte   | `--lino` / `--lino-fuerte`                 | `#D9CBB8` / `#C9B8A2`                   | Bordes visibles / bordes de campo y caja del calendario |
+| Salvia suave / clara | `--salvia-suave` / `--salvia-clara`        | `#DCE7DA` / `#CFDFCF`                   | Hoy en el calendario, contadores, «Primeros pasos»      |
+| Melocotón            | `--melocoton`                              | `#F1D9C8`                               | Avisos suaves                                           |
+| Profesionales        | `--pro-1…4`                                | `#F2D8C6` `#D5E4D2` `#E3DAEE` `#D6E4EF` | Citas en la semana «Todas»                              |
+| Blanco               | `--blanco`                                 | `#FFFFFF`                               | **Solo campos de texto**                                |
+| Café · medio · suave | `--cafe` · `--cafe-medio` · `--cafe-suave` | `#3B2F2A` · `#5E4F48` · `#62534C`       | Texto · texto sobre pastel · secundario                 |
+| Moca fuerte          | `--moca-fuerte`                            | `#7A5539`                               | Acción principal                                        |
 
 Contraste medido (WCAG 2.1, texto normal ≥ 4,5):
 
-| Texto | Página | Tarjeta | Beige | Menú | Taupe claro | Salvia suave | Melocotón |
-|---|---|---|---|---|---|---|---|
-| Café | 10,5 | 11,6 | 9,8 | 9,2 | 8,4 | 10,1 | 9,5 |
-| Café medio | 6,4 | 7,0 | 5,9 | 5,6 | 5,1 | 6,1 | 5,8 |
-| Café suave | 6,0 | 6,6 | 5,6 | 5,2 | 4,8 | 5,8 | 5,4 |
-| Moca fuerte | 5,4 | 5,9 | 5,0 | 4,7 | **4,3** | 5,2 | 4,9 |
-| Hoja tinta | 6,2 | 6,8 | 5,8 | 5,4 | 5,0 | 6,0 | 5,6 |
+| Texto       | Página | Tarjeta | Beige | Menú | Taupe claro | Salvia suave | Melocotón |
+| ----------- | ------ | ------- | ----- | ---- | ----------- | ------------ | --------- |
+| Café        | 10,5   | 11,6    | 9,8   | 9,2  | 8,4         | 10,1         | 9,5       |
+| Café medio  | 6,4    | 7,0     | 5,9   | 5,6  | 5,1         | 6,1          | 5,8       |
+| Café suave  | 6,0    | 6,6     | 5,6   | 5,2  | 4,8         | 5,8          | 5,4       |
+| Moca fuerte | 5,4    | 5,9     | 5,0   | 4,7  | **4,3**     | 5,2          | 4,9       |
+| Hoja tinta  | 6,2    | 6,8     | 5,8   | 5,4  | 5,0         | 6,0          | 5,6       |
 
 Blanco sobre moca fuerte: 6,6. El moca como texto no va sobre taupe claro ni sobre lino.
 
