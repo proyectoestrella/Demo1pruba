@@ -74,7 +74,9 @@ export function AgendaColumns() {
     );
   }, [employees]);
   const { abrirCita } = useFichas();
-  const setSelected = (a: Appointment | null) => { if (a) abrirCita(a.id); };
+  const setSelected = (a: Appointment | null) => {
+    if (a) abrirCita(a.id);
+  };
   const [slotPrefill, setSlotPrefill] = useState<{ date: Date; employeeId: EmployeeId } | null>(
     null,
   );
@@ -123,30 +125,31 @@ export function AgendaColumns() {
     const emp = employees.find((e) => e.id === employeeId)!;
     const own = dayAppts.filter((a) => a.employeeId === employeeId);
     return (
-      <div className="relative border-l border-border/60 first:border-l-0">
+      <div className="relative border-l border-k-linea first:border-l-0">
         {HOURS.map((h) => {
-          const trabaja = franjasProfesionalEnFecha(emp, fechaISO(anchor), profile.diasEspeciales).some(
-            (franja) => h * 60 >= franja.start && h * 60 + 30 <= franja.end,
+          const trabaja = franjasProfesionalEnFecha(
+            emp,
+            fechaISO(anchor),
+            profile.diasEspeciales,
+          ).some((franja) => h * 60 >= franja.start && h * 60 + 30 <= franja.end);
+          return (
+            <button
+              key={h}
+              type="button"
+              disabled={!trabaja}
+              onClick={() => openSlot(employeeId, h)}
+              className={cn(
+                "block h-16 w-full border-b border-k-linea transition-colors",
+                trabaja ? "hover:bg-beige/50" : "cursor-default bg-muted/35",
+              )}
+              aria-label={
+                trabaja
+                  ? `Crear cita con ${emp.name} el ${anchor.toLocaleDateString("es")} a las ${h}:00`
+                  : `${emp.name} no trabaja a las ${h}:00`
+              }
+            />
           );
-          return <button
-            key={h}
-            type="button"
-            disabled={!trabaja}
-            onClick={() => openSlot(employeeId, h)}
-            className={cn("block h-16 w-full border-b border-border/50 transition-colors", trabaja ? "hover:bg-primary/5" : "cursor-default bg-muted/50")}
-            aria-label={trabaja ? `Crear cita con ${emp.name} el ${anchor.toLocaleDateString("es")} a las ${h}:00` : `${emp.name} no trabaja a las ${h}:00`}
-          />;
         })}
-        {showNowLine && (
-          <div
-            className="pointer-events-none absolute left-0 right-0 z-10 flex items-center"
-            style={{ top: nowTop }}
-            aria-hidden="true"
-          >
-            <span className="-ml-1 size-2 shrink-0 rounded-full bg-destructive" />
-            <span className="h-px flex-1 bg-destructive/70" />
-          </div>
-        )}
         {own.map((a) => {
           const start = new Date(a.start);
           const minutes = (start.getHours() - HOURS[0]) * 60 + start.getMinutes();
@@ -162,19 +165,19 @@ export function AgendaColumns() {
               type="button"
               onClick={() => setSelected(a)}
               className={cn(
-                "absolute left-1 right-1 overflow-hidden rounded-lg border-l-[3px] px-2 py-1 text-left text-[11px] shadow-sm transition-transform hover:-translate-y-0.5 hover:shadow-md",
-                isNoShow && "border-dashed line-through decoration-cafe/60",
+                "absolute left-1 right-1 z-[3] overflow-hidden rounded-[5px] border border-transparent px-1.5 py-1 text-left text-[11.5px] leading-[1.2] transition-colors",
+                isNoShow && "border-dashed border-cafe/50 line-through decoration-cafe/60",
                 started && a.status === "confirmed" && "ring-1 ring-primary/40",
               )}
               style={{
                 top,
                 height: Math.max(30, height - 2),
                 background: `color-mix(in oklch, var(${emp.colorVar}) 18%, var(--color-card))`,
-                borderLeftColor: `var(${emp.colorVar})`,
+                color: `var(${emp.colorVar}-tinta)`,
               }}
             >
-              <p className="truncate font-medium leading-tight text-foreground">{a.clientName}</p>
-              <p className="truncate text-muted-foreground">{serviceLabelOf(a, carta)}</p>
+              <p className="truncate font-semibold leading-[1.2]">{a.clientName}</p>
+              <p className="truncate leading-[1.2]">{serviceLabelOf(a, carta)}</p>
             </button>
           );
         })}
@@ -251,7 +254,7 @@ export function AgendaColumns() {
         </Select>
       </div>
 
-      <div className="min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card">
+      <div className="min-w-0 overflow-hidden tarjeta-principal border border-k-linea-f bg-transparent">
         {/* Cabecera con foto/iniciales por profesional — oculta en móvil, ya
             se elige arriba con el selector. */}
         <div
@@ -287,6 +290,12 @@ export function AgendaColumns() {
               {employees.map((e) => (
                 <Column key={e.id} employeeId={e.id} />
               ))}
+              {showNowLine && (
+                <LineaAhoraAgenda
+                  top={nowTop}
+                  hora={`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`}
+                />
+              )}
             </div>
 
             <div className="relative grid md:hidden" style={{ gridTemplateColumns: "56px 1fr" }}>
@@ -298,6 +307,12 @@ export function AgendaColumns() {
                 ))}
               </div>
               {mobileEmployee && <Column employeeId={mobileEmployee} />}
+              {showNowLine && (
+                <LineaAhoraAgenda
+                  top={nowTop}
+                  hora={`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -312,6 +327,23 @@ export function AgendaColumns() {
         defaultDate={slotPrefill?.date}
         defaultEmployeeId={slotPrefill?.employeeId}
       />
+    </div>
+  );
+}
+
+function LineaAhoraAgenda({ top, hora }: { top: number; hora: string }) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-x-0 z-[2] flex items-center"
+      style={{ top }}
+      aria-hidden="true"
+    >
+      <span className="relative z-[3] w-[56px] shrink-0 pr-1 text-right">
+        <span className="inline-block rounded-full bg-k-ahora px-2 py-0.5 text-[10px] font-bold leading-4 text-primary-foreground tabular-nums">
+          {hora}
+        </span>
+      </span>
+      <span className="h-px flex-1 bg-k-ahora" />
     </div>
   );
 }

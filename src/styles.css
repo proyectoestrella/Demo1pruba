@@ -343,6 +343,9 @@
   --k-lino: #e7e4d9;
   --k-lino-fuerte: #d8d5c9;
   --k-foco: #8a6b00;
+  --k-pendiente-borde: #8a8a85;
+  --k-raya-1: #ecebe6;
+  --k-raya-2: #f5f4f0;
   --k-rejilla: rgba(48, 48, 48, 0.08);
   --k-rejilla-media: rgba(48, 48, 48, 0.04);
   --k-sombra-suave: rgba(48, 48, 48, 0.16);
@@ -380,6 +383,12 @@
   --pro-5-tinta: #604807;
   --pro-6-tinta: #20595a;
   --pro-7-tinta: #403c37;
+  --stylist-mario-tinta: var(--pro-1-tinta);
+  --stylist-diego-tinta: var(--pro-2-tinta);
+  --stylist-ruben-tinta: var(--pro-5-tinta);
+  --stylist-1-tinta: var(--serv-1-tinta);
+  --stylist-2-tinta: var(--serv-2-tinta);
+  --stylist-3-tinta: var(--serv-3-tinta);
 
   --k-tinta: var(--k-carbon);
   --k-tinta2: var(--k-carbon-suave);
