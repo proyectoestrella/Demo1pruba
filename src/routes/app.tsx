@@ -194,6 +194,17 @@ function useAplicarPrecedenciaDelEnlace() {
 }
 
 function DashboardLayout() {
+  // La capa clara es exclusiva de esta vista previa: los diálogos con portal
+  // la heredan y se restaura al salir hacia la web pública.
+  useEffect(() => {
+    const raiz = document.documentElement;
+    const temaAnterior = raiz.dataset.tema;
+    raiz.dataset.tema = "claro";
+    return () => {
+      if (temaAnterior) raiz.dataset.tema = temaAnterior;
+      else delete raiz.dataset.tema;
+    };
+  }, []);
   // Lote 12: cada acción reversible deja un cambio con «Deshacer» (y Ctrl+Z).
   useEffect(() => {
     instalarRegistro();
@@ -295,61 +306,59 @@ function DashboardLayoutV1() {
   }, [path]);
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
-      <MenuLateral path={path} />
+    <div className="panel-marco flex min-h-screen w-full">
+      <div className="flex min-h-[inherit] min-w-0 flex-1 bg-transparent">
+        <MenuLateral path={path} />
 
-      <div
-        data-panel={conPanel ? "abierto" : "cerrado"}
-        className={cn(
-          "group/panel flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ease-out",
-          conPanel && "lg:pr-[var(--ancho-panel,440px)]",
-        )}
-      >
-        <CabeceraArena
-          onAsistente={() => setAssistantOpen(true)}
-          onNuevaCita={() => setNewApptOpen(true)}
-          onTour={startTour}
-        />
-        {/* Contenido a todo el ancho con gutter de 28 px; en móvil, 16 px y
+        <div
+          data-panel={conPanel ? "abierto" : "cerrado"}
+          className={cn(
+            "group/panel flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ease-out",
+            conPanel && "lg:pr-[var(--ancho-panel,440px)]",
+          )}
+        >
+          <CabeceraArena
+            onAsistente={() => setAssistantOpen(true)}
+            onNuevaCita={() => setNewApptOpen(true)}
+            onTour={startTour}
+          />
+          {/* Contenido a todo el ancho con gutter de 28 px; en móvil, 16 px y
             hueco para la barra inferior. El último bloque de cada pantalla
             puede crecer hasta el borde (flex-1). */}
-        <FranjaVerComo />
-        <main className="flex min-w-0 flex-1 flex-col px-4 pt-5 pb-[100px] md:px-8 md:pt-8 md:pb-8">
-          {/* Lote 16: cada pantalla entra con un fundido y 8 px de desplazamiento
+          <FranjaVerComo />
+          <main className="flex min-w-0 flex-1 flex-col px-4 pt-5 pb-[100px] md:px-8 md:pt-8 md:pb-8">
+            {/* Lote 16: cada pantalla entra con un fundido y 8 px de desplazamiento
               (180 ms). Con la Web Animations API y sin `key`: remontar el
               contenedor en cada ruta costaba el doble de tiempo al navegar. */}
-          <div ref={contenedorRuta} className="flex min-w-0 flex-1 flex-col">
-            {fueraDelBasico ? (
-              <IncluidoEnPlanCompleto />
-            ) : permitida ? (
-              <Outlet />
-            ) : (
-              <SinPermiso seccion={seccion} />
-            )}
-          </div>
-        </main>
+            <div ref={contenedorRuta} className="flex min-w-0 flex-1 flex-col">
+              {fueraDelBasico ? (
+                <IncluidoEnPlanCompleto />
+              ) : permitida ? (
+                <Outlet />
+              ) : (
+                <SinPermiso seccion={seccion} />
+              )}
+            </div>
+          </main>
+        </div>
+
+        <BarraInferior path={path} onNuevaCita={() => setNewApptOpen(true)} />
+
+        <NewAppointmentDialog open={newApptOpen} onOpenChange={setNewApptOpen} />
+
+        <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
+          <SheetContent side="right" panel="asistente" className="flex w-full flex-col gap-0 p-0">
+            <SheetHeader className="border-b border-border/60 px-4 py-4 text-left">
+              <SheetTitle className="text-lg font-extrabold">Asistente del salón</SheetTitle>
+              <SheetDescription>
+                Consulta tus datos en lenguaje natural. Calcula sobre tus reservas reales: no es un
+                modelo de lenguaje y no inventa cifras.
+              </SheetDescription>
+            </SheetHeader>
+            <AssistantPanel className="flex-1" />
+          </SheetContent>
+        </Sheet>
       </div>
-
-      <BarraInferior path={path} onNuevaCita={() => setNewApptOpen(true)} />
-
-      <NewAppointmentDialog open={newApptOpen} onOpenChange={setNewApptOpen} />
-
-      <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
-        <SheetContent
-          side="right"
-          panel="asistente"
-          className="flex w-full flex-col gap-0 p-0"
-        >
-          <SheetHeader className="border-b border-border/60 px-4 py-4 text-left">
-            <SheetTitle className="text-lg font-extrabold">Asistente del salón</SheetTitle>
-            <SheetDescription>
-              Consulta tus datos en lenguaje natural. Calcula sobre tus reservas
-              reales: no es un modelo de lenguaje y no inventa cifras.
-            </SheetDescription>
-          </SheetHeader>
-          <AssistantPanel className="flex-1" />
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }
