@@ -28,10 +28,25 @@ const clave = (texto: string) => sinAcentos(texto)
   .trim();
 const limpiaNombre = (texto: string) => texto.replace(/\s*\((?:caliente|templado|fr[ií]o)\)\s*$/i, "").trim();
 const textoHtml = (html: string) => html
+  .replace(/&#x([0-9a-f]+);/gi, (_m, code: string) => String.fromCodePoint(Number.parseInt(code, 16)))
+  .replace(/&#(\d+);/g, (_m, code: string) => String.fromCodePoint(Number.parseInt(code, 10)))
   .replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").replace(/&#39;|&apos;/g, "'")
   .replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 const contenido = (html: string, clase: string) => textoHtml(html.match(new RegExp(`<[^>]*\\bclass=["'][^"']*\\b${clase}\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/[^>]+>`, "i"))?.[1] ?? "");
 const csv = (valor: unknown) => `"${String(valor ?? "").replaceAll('"', '""')}"`;
+
+// Datos publicados que ya se verificaron para la visita de Nelva (ver el
+// generador de referencia citado en la entrega). No lleva teléfono.
+const NELVA: Partial<DemoProfile> = {
+  tagline: "Peluquería, Estética y Bienestar",
+  address: "Av. de la Ermita, 2, Loc 5, 28108 Alcobendas, Madrid, España",
+  rating: 4.9,
+  reviewCount: 142,
+  openingHours: ["09:00–21:00", "09:00–21:00", "09:00–21:00", "09:00–21:00", "09:00–21:00", "09:00–15:00", "Cerrado"],
+  team: ["Nelva~Estilista y Esteticista", "Natalia~Estilista y Manicurista", "Fátima~Estilista"],
+  menu: ["Champú + Corte + Peinado~45~43~Peluquería", "Champú + Corte~30~25~Peluquería", "Champú + Peinado~30~22~Peluquería", "Champú + Color~60~38~Color", "Champú + Barros (color vegetal)~90~58~Color", "100% Gloss~30~20~Color", "Alisado con Keratina~120~100~Forma", "Corte Él (champú + corte)~30~21~Para Él", "Oxigenante VIP O2 con Remodeling~60~90~Estética", "Iluminador Pigm 400~60~90~Estética", "Booster VIP O2~60~90~Estética", "Inyección de Colágeno~30~30~Estética"],
+  modulosOcultos: ["equipo"],
+};
 
 /** La parte HTML del parser del cuadro de mandos, copiada para no importar su aplicación. */
 function leerRutero(html: string): Parada[] {
@@ -89,8 +104,10 @@ function perfilDe(parada: Parada, lead: Lead | undefined, demo: DemoSemilla | un
     : {};
   const nombre = limpiaNombre(parada.negocio);
   const tipo = tipoDesde(nombre, String(demo?.tipo ?? lead?.tipo ?? ""));
+  const esNelva = clave(nombre) === "nelva ortiz";
   const profile: Partial<DemoProfile> = {
     ...delEnlace,
+    ...(esNelva ? NELVA : {}),
     name: nombre,
     tagline: tipo,
     address: String(delEnlace.address || parada.direccion || lead?.direccion || "").trim(),
