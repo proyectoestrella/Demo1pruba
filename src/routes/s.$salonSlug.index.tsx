@@ -409,9 +409,12 @@ function SalonHome() {
   // iniciales (ver `fotoDeProfesional`).
   const fotoDe = (e: (typeof employees)[number]) =>
     fotoDeProfesional(e.name, e.id, e.photo, tipo, protegerContenidoReal);
-  const experienciaEquipo = experienciaEquipoEnWeb(employees, protegerContenidoReal);
+  // Los años del catálogo de prueba no son los del salón que abre una demo.
+  const experienciaEquipo = experienciaEquipoEnWeb(employees, conEnlaceDemo || protegerContenidoReal);
   const especialidades = listaConY(profile.specialties);
   const telefono = profile.phone.replace(/\s/g, "");
+  const tieneTelefono = telefono.length > 0;
+  const serviciosDeEjemplo = activeServices.length > 0 && activeServices.every((service) => /\(ejemplo\)/i.test(service.name));
   // Lote 18.4: WhatsApp (del perfil o, si no hay, el teléfono) y enlaces del salón.
   const whatsappUrl = enlaceWhatsApp(profile);
   const enlaces = enlacesDelSalon(profile);
@@ -465,7 +468,7 @@ function SalonHome() {
           fetchPriority="high"
           decoding="async"
         />}
-        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-cafe/90 via-cafe/60 to-cafe/25" aria-hidden="true" />
+        <div className="absolute inset-0 -z-10 bg-cafe/80" aria-hidden="true" />
 
         <div className={cn(CONTENEDOR_SALON, "flex min-h-[520px] flex-col justify-end pb-12 pt-20 md:min-h-[600px] md:justify-center md:py-24")}>
           <div className="entrada-portada max-w-2xl">
@@ -542,7 +545,7 @@ function SalonHome() {
                   Reservar cita <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </Button>
-              {isV2 ? (
+              {isV2 && tieneTelefono ? (
                 <Button
                   asChild
                   size="lg"
@@ -596,9 +599,9 @@ function SalonHome() {
       <section id="servicios" className="bg-ws-crema">
         <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
           <SectionHeading
-            eyebrow="Lo más pedido"
-            title="Servicios destacados"
-            intro="Toca uno para reservarlo directamente."
+            eyebrow={serviciosDeEjemplo ? "Reserva de prueba" : "Lo más pedido"}
+            title={serviciosDeEjemplo ? "Servicios de ejemplo" : "Servicios destacados"}
+            intro={serviciosDeEjemplo ? "Carta de ejemplo para probar la reserva. El salón podrá sustituirla por sus servicios." : "Toca uno para reservarlo directamente."}
           />
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {featuredIds.map((id, i) => {
@@ -640,8 +643,8 @@ function SalonHome() {
         <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
           <SectionHeading
             eyebrow="Precios"
-            title="Carta completa"
-            intro={introCartaSenal(reglaDeSenal)}
+            title={serviciosDeEjemplo ? "Carta de ejemplo" : "Carta completa"}
+            intro={serviciosDeEjemplo ? "Estos precios y duraciones son ejemplos, no datos publicados por el salón." : introCartaSenal(reglaDeSenal)}
           />
           <Reveal>
             <CartaServicios
