@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Loader2, TriangleAlert } from "lucide-react";
 
+import { DEMO_PARAM, decodeDemoProfile } from "@/lib/demo-profile";
 import { demoPorSlug } from "@/lib/demos";
 import { cargarDemoRegistrada } from "@/lib/demos/aplicar";
 import { entrarEnVistaDemo } from "@/lib/vista-demo";
@@ -27,22 +28,30 @@ export const Route = createFileRoute("/demo/$slug")({
     };
   },
   // `?cliente=1` (vista de la dueña, sin selector de plan) o `?prospecto=1` (con selector).
-  validateSearch: (search: Record<string, unknown>): { cliente?: string; prospecto?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { cliente?: string; prospecto?: string; d?: string } => ({
     ...(search.cliente !== undefined ? { cliente: String(search.cliente) } : {}),
     ...(search.prospecto !== undefined ? { prospecto: String(search.prospecto) } : {}),
+    ...(search[DEMO_PARAM] !== undefined ? { d: String(search[DEMO_PARAM]) } : {}),
   }),
   component: EntrarEnDemo,
 });
 
 function EntrarEnDemo() {
   const { slug } = Route.useParams();
-  const { cliente, prospecto } = Route.useSearch();
+  const { cliente, prospecto, d } = Route.useSearch();
   const navigate = useNavigate();
-  const perfil = demoPorSlug(slug);
+  // Una demo de visita no se registra en código: su perfil viaja en el mismo
+  // enlace autocontenido que usa la página pública. Las demos históricas sin
+  // `d` mantienen su atajo registrado (PeluChic).
+  const perfil = decodeDemoProfile(d) ?? demoPorSlug(slug);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!perfil) return;
+    if (d && decodeDemoProfile(d)) {
+      void navigate({ to: "/app", search: { [DEMO_PARAM]: d, acceso: "demo" }, replace: true });
+      return;
+    }
     try {
       entrarEnVistaDemo(slug, { cliente, prospecto });
       cargarDemoRegistrada(slug, { panel: true });
@@ -51,7 +60,7 @@ function EntrarEnDemo() {
       console.error("No se pudo preparar la demo:", err);
       setError(true);
     }
-  }, [slug, perfil, navigate, cliente, prospecto]);
+  }, [slug, perfil, navigate, cliente, prospecto, d]);
 
   if (!perfil || error) {
     return (

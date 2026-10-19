@@ -1,0 +1,158 @@
+/**
+ * Genera enlaces de demostración para el rutero del 20 y 22 de octubre.
+ *
+ * Lee exclusivamente los datos visibles del rutero y las dos semillas indicadas
+ * en la entrega. No copia teléfonos: ni al repositorio ni a los enlaces.
+ *
+ * Uso: bun scripts/generar-demos-rutero.ts
+ */
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { decodeDemoProfile, encodeDemoProfile, slugify, type DemoProfile } from "../src/lib/demo-profile";
+
+const RUTERO = "/home/tomi/Documents/logibro/AlmacenExterno/siShow-prospeccion-whatsapp/rutero-20-22-oct-artifact.html";
+const LEADS = "/home/tomi/Documents/siShow-interno-funnel/src/seed/leads.json";
+const DEMOS = "/home/tomi/Documents/siShow-interno-funnel/src/seed/demos.json";
+const OUTPUT = "/home/tomi/Documents/logibro/AlmacenExterno/starproyect-demos-2026-10-20";
+const LOCAL = "http://localhost:8130";
+const PRODUCCION = "https://prueba28juliokt.vercel.app";
+
+type Parada = { bloque: string; fecha: string; hora: string; tipo: string; negocio: string; direccion: string; nota: string };
+type Lead = Record<string, unknown>;
+type DemoSemilla = Record<string, unknown>;
+
+const sinAcentos = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const clave = (texto: string) => sinAcentos(texto)
+  .replace(/\([^)]*\)/g, " ")
+  .replace(/[^a-z0-9]+/g, " ")
+  .trim();
+const limpiaNombre = (texto: string) => texto.replace(/\s*\((?:caliente|templado|fr[ií]o)\)\s*$/i, "").trim();
+const textoHtml = (html: string) => html
+  .replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").replace(/&#39;|&apos;/g, "'")
+  .replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+const contenido = (html: string, clase: string) => textoHtml(html.match(new RegExp(`<[^>]*\\bclass=["'][^"']*\\b${clase}\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/[^>]+>`, "i"))?.[1] ?? "");
+const csv = (valor: unknown) => `"${String(valor ?? "").replaceAll('"', '""')}"`;
+
+/** La parte HTML del parser del cuadro de mandos, copiada para no importar su aplicación. */
+function leerRutero(html: string): Parada[] {
+  const limpio = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>|<style\b[^>]*>[\s\S]*?<\/style>/gi, "");
+  const paneles = [...limpio.matchAll(/<div\b[^>]*\bid=["']p-(martes|jueves)["'][^>]*>([\s\S]*?)(?=<div\b[^>]*\bid=["']p-|<section(?![^>]*\bclass=["'][^"']*\bcar\b)|$)/gi)];
+  const paradas: Parada[] = [];
+  for (const panel of paneles) {
+    const fecha = panel[1].toLowerCase() === "jueves" ? "2026-10-22" : "2026-10-20";
+    const coches = [...panel[2].matchAll(/<section\b[^>]*\bclass=["'][^"']*\bcar\b[^"']*["'][^>]*>([\s\S]*?)<\/section>/gi)];
+    for (const coche of coches) {
+      const quien = contenido(coche[1], "who") || "Rutero";
+      const listas = [...coche[1].matchAll(/<ol\b[^>]*\bclass=["'][^"']*\bstops\b[^"']*["'][^>]*>([\s\S]*?)<\/ol>/gi)];
+      for (const lista of listas) {
+        const items = [...lista[1].matchAll(/<li\b([^>]*)>([\s\S]*?)<\/li>/gi)];
+        for (const item of items) {
+          const clases = item[1]; const cuerpo = item[2];
+          if (!/\bstop\b/i.test(clases)) continue;
+          const tipo = /\bcita\b/i.test(clases) ? "Cita" : /\brevisita\b/i.test(clases) ? "Revisita" : /\bnueva\b/i.test(clases) ? "Nueva" : /\blibre\b/i.test(clases) ? "Hueco" : "";
+          const negocio = contenido(cuerpo, "name");
+          if (!negocio) continue;
+          paradas.push({ bloque: `${fecha} · ${quien}`, fecha, hora: contenido(cuerpo, "time"), tipo: /si sobra/i.test(contenido(cuerpo, "time")) ? "Si sobra" : tipo, negocio, direccion: contenido(cuerpo, "addr"), nota: contenido(cuerpo, "txt") });
+        }
+      }
+    }
+  }
+  return paradas;
+}
+
+function tipoDesde(nombre: string, tipo?: string): string {
+  const t = `${tipo ?? ""} ${nombre}`.toLowerCase();
+  if (/barber|\bmen\b|caballero/.test(t)) return "Barbería";
+  if (/est[ée]tica|belleza|nails|uñas|solarium/.test(t)) return "Peluquería y estética";
+  if (/unisex/.test(t)) return "Peluquería unisex";
+  return "Peluquería";
+}
+
+function menuDeEjemplo(tipo: string): string[] {
+  if (/barber/i.test(tipo)) return ["Corte (ejemplo)~30~15~Servicios de ejemplo", "Corte y barba (ejemplo)~45~23~Servicios de ejemplo", "Arreglo de barba (ejemplo)~20~10~Servicios de ejemplo"];
+  if (/estética/i.test(tipo)) return ["Corte y peinado (ejemplo)~55~32~Servicios de ejemplo", "Color (ejemplo)~90~45~Servicios de ejemplo", "Manicura (ejemplo)~45~22~Servicios de ejemplo"];
+  return ["Corte y peinado (ejemplo)~55~32~Servicios de ejemplo", "Color (ejemplo)~90~45~Servicios de ejemplo", "Peinado (ejemplo)~40~25~Servicios de ejemplo"];
+}
+
+function buscar<T extends Record<string, unknown>>(filas: T[], nombre: string, direccion: string): T | undefined {
+  const n = clave(nombre); const d = clave(direccion);
+  return filas.find((fila) => clave(String(fila.nombre ?? "")) === n)
+    ?? filas.find((fila) => {
+      const fn = clave(String(fila.nombre ?? "")); const fd = clave(String(fila.direccion ?? ""));
+      return fn && (n.includes(fn) || fn.includes(n)) && (!d || !fd || d.includes(fd) || fd.includes(d));
+    });
+}
+
+function perfilDe(parada: Parada, lead: Lead | undefined, demo: DemoSemilla | undefined): { profile: Partial<DemoProfile>; reales: string[]; faltan: string[]; minima: boolean } {
+  const delEnlace = typeof demo?.url_demo === "string"
+    ? decodeDemoProfile(new URL(demo.url_demo).searchParams.get("d") ?? undefined) ?? {}
+    : {};
+  const nombre = limpiaNombre(parada.negocio);
+  const tipo = tipoDesde(nombre, String(demo?.tipo ?? lead?.tipo ?? ""));
+  const profile: Partial<DemoProfile> = {
+    ...delEnlace,
+    name: nombre,
+    tagline: tipo,
+    address: String(delEnlace.address || parada.direccion || lead?.direccion || "").trim(),
+    // Nunca se propaga el teléfono de una semilla ni del enlace anterior.
+    phone: "",
+  };
+  const reales = ["nombre", profile.address ? "dirección" : ""].filter(Boolean) as string[];
+  if (profile.rating && profile.reviewCount) reales.push("valoración y reseñas");
+  if (profile.openingHours?.some((h) => h && h !== "Cerrado")) reales.push("horario");
+  if (profile.team?.length) reales.push("equipo");
+  if (profile.menu?.length) reales.push("servicios");
+  const faltan: string[] = [];
+  if (!(profile.rating && profile.reviewCount)) faltan.push("valoración y reseñas");
+  if (!profile.openingHours?.some((h) => h && h !== "Cerrado")) faltan.push("horario");
+  if (!profile.team?.length) faltan.push("equipo");
+  if (!profile.menu?.length) {
+    profile.menu = menuDeEjemplo(tipo);
+    faltan.push("servicios reales (carta marcada como ejemplo)");
+  }
+  const minima = parada.tipo === "Nueva" || reales.length <= 2;
+  return { profile, reales, faltan, minima };
+}
+
+const rutero = leerRutero(readFileSync(RUTERO, "utf8"));
+const leads = JSON.parse(readFileSync(LEADS, "utf8")) as Lead[];
+const demosJson = JSON.parse(readFileSync(DEMOS, "utf8")) as { demos?: DemoSemilla[] };
+const demos = demosJson.demos ?? [];
+if (rutero.length !== 58) throw new Error(`Se esperaban 58 paradas y se encontraron ${rutero.length}.`);
+
+const filas = rutero.map((parada) => {
+  const nombre = limpiaNombre(parada.negocio);
+  const lead = buscar(leads, nombre, parada.direccion);
+  const demo = buscar(demos, nombre, parada.direccion);
+  const { profile, reales, faltan, minima } = perfilDe(parada, lead, demo);
+  const slug = slugify(profile.name ?? nombre);
+  const d = encodeDemoProfile(profile);
+  const publicaLocal = `${LOCAL}/s/${slug}?d=${d}`;
+  const publicaProduccion = `${PRODUCCION}/s/${slug}?d=${d}`;
+  const panel = `${LOCAL}/demo/${slug}?d=${d}`;
+  return { parada, slug, publicaLocal, publicaProduccion, panel, reales, faltan, minima, nota: minima ? "Demo mínima honesta: servicios de ejemplo." : "Demo con los datos disponibles en las fuentes." };
+});
+
+mkdirSync(OUTPUT, { recursive: true, mode: 0o700 });
+const cabecera = ["bloque", "hora", "tipo", "negocio", "slug", "url_demo_local_8130", "url_demo_produccion", "url_panel_local", "datos_reales", "sin_dato", "nota"];
+const contenidoCsv = [cabecera, ...filas.map((f) => [f.parada.bloque, f.parada.hora, f.parada.tipo, limpiaNombre(f.parada.negocio), f.slug, f.publicaLocal, f.publicaProduccion, f.panel, f.reales.join("; ") || "sin dato", f.faltan.join("; ") || "sin dato", f.nota])].map((fila) => fila.map(csv).join(",")).join("\n") + "\n";
+const porBloque = new Map<string, typeof filas>();
+for (const fila of filas) porBloque.set(fila.parada.bloque, [...(porBloque.get(fila.parada.bloque) ?? []), fila]);
+const contenidoMd = ["# Demos de visitas · 20 y 22 de octubre de 2026", "", `Total: ${filas.length}. Completas: ${filas.filter((f) => !f.minima).length}. Mínimas honestas: ${filas.filter((f) => f.minima).length}.`, "", "Los servicios que no constan en las fuentes se presentan como «ejemplo». Los enlaces no contienen teléfonos.", "", ...[...porBloque.entries()].flatMap(([bloque, grupo]) => [
+  `## ${bloque}`,
+  "",
+  ...grupo.flatMap((f) => [
+    `### ${f.parada.hora} · ${limpiaNombre(f.parada.negocio)} · ${f.parada.tipo || "sin tipo"}`,
+    "",
+    `- Pública local: ${f.publicaLocal}`,
+    `- Producción actual: ${f.publicaProduccion}`,
+    `- Panel local: ${f.panel}`,
+    `- Datos reales: ${f.reales.join(", ") || "sin dato"}.`,
+    `- Sin dato: ${f.faltan.join(", ") || "ninguno"}. ${f.nota}`,
+    "",
+  ]),
+])].join("\n");
+const ficheroCsv = join(OUTPUT, "demos-visitas.csv"); const ficheroMd = join(OUTPUT, "demos-visitas.md");
+writeFileSync(ficheroCsv, contenidoCsv, { mode: 0o600 }); writeFileSync(ficheroMd, contenidoMd, { mode: 0o600 });
+chmodSync(ficheroCsv, 0o600); chmodSync(ficheroMd, 0o600);
+console.log(JSON.stringify({ total: filas.length, completas: filas.filter((f) => !f.minima).length, minimas: filas.filter((f) => f.minima).length, csv: ficheroCsv, markdown: ficheroMd }, null, 2));
