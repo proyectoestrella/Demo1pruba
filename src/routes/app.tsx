@@ -33,6 +33,7 @@ import { rutaSoloCompleto } from "@/lib/plan-basico";
 import { useRedirigirSiRutaSinPermiso } from "@/lib/route-guards";
 import { IncluidoEnPlanCompleto } from "@/components/IncluidoEnPlanCompleto";
 import { useHayPanelLateral } from "@/lib/panel-lateral";
+import { slugResolvibleDelPanel } from "@/lib/slug-panel";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -63,6 +64,16 @@ export const Route = createFileRoute("/app")({
     if (typeof window === "undefined") return;
     // La URL manda sobre lo guardado: un ?s= de otro salón descarta la demo anterior.
     aplicarPrecedenciaDeEnlace(location.search as Record<string, unknown>);
+    // Un perfil de demo es autocontenido: jamás se consulta el slug que
+    // quedara guardado (p. ej. PeluChic) antes de aplicarlo. De otro modo una
+    // respuesta tardía de esa consulta podría pisar el equipo y la carta del
+    // enlace con datos de la demo anterior.
+    const demo = decodeDemoProfile(
+      typeof (location.search as Record<string, unknown>)?.[DEMO_PARAM] === "string"
+        ? ((location.search as Record<string, unknown>)[DEMO_PARAM] as string)
+        : undefined,
+    );
+    if (demo) return;
     const desdeUrl = (location.search as Record<string, unknown>)?.s;
     const slug =
       typeof desdeUrl === "string" && desdeUrl
@@ -156,8 +167,15 @@ function useSalonSlugDelPanel(): string | undefined {
   const desdeUrl = useRouterState({
     select: (s) => (s.location.search as Record<string, unknown>)?.s,
   });
+  const demoRaw = useRouterState({
+    select: (s) => (s.location.search as Record<string, unknown>)?.[DEMO_PARAM],
+  });
   const guardado = useSalonStore((s) => s.salonProfile.slug);
-  return typeof desdeUrl === "string" && desdeUrl ? desdeUrl : guardado || undefined;
+  return slugResolvibleDelPanel({
+    slugDesdeUrl: desdeUrl,
+    demoRaw,
+    slugGuardado: guardado,
+  });
 }
 
 /**
