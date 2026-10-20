@@ -1,6 +1,6 @@
 import { useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "./demo-profile";
+import { DEMO_PARAM, decodeDemoProfile, perfilConEnlace } from "./demo-profile";
 import { useSalonStore } from "./store";
 import type { SalonProfile } from "./mock/types";
 import { inferBusinessType, type BusinessType } from "./business-type";
@@ -86,7 +86,7 @@ export function useDisplayProfile(): SalonProfile {
     // profesionales" y con las especialidades del salón de ejemplo: los datos
     // eran suyos y el discurso de otro, que es peor que no decir nada.
     const delEnlace = completar && conEnlace ? completarConDemoRegistrada(slug, fromUrl) : fromUrl;
-    return { ...stored, ...blankDemoProfile(), teamHours: undefined, teamIds: undefined, ...delEnlace };
+    return perfilConEnlace(stored, delEnlace);
   }, [stored, raw, slug, realSalonSlug, conEnlace]);
 }
 
