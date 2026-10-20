@@ -113,7 +113,6 @@ export function HoyArena() {
   const appointments = useCitasVisibles();
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
-  const salonName = useSalonStore((s) => s.salonProfile.name);
   const miembro = useMiembroActual();
   const permisos = usePermisos();
   // Dinero: el del salón (gerente), el suyo (estilista) o ninguno (recepción, subencargada).
@@ -239,7 +238,7 @@ export function HoyArena() {
           <h1 className="mt-1 font-display text-[28px] leading-[1.1] font-medium tracking-[-0.02em] md:text-[34px]">
             {miembro?.displayName
               ? saludo(miembro.displayName, ahora.getHours())
-              : `${saludoPara(ahora.getHours())}, ${salonName}`}
+              : saludoPara(ahora.getHours())}
           </h1>
         </div>
         <Button variant="ghost" asChild className="text-cafe-medio md:ml-auto">

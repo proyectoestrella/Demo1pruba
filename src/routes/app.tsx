@@ -319,6 +319,9 @@ function DashboardLayoutV1() {
   // el contenido esté asentado antes de enfocar nada.
   useEffect(() => {
     if (path !== "/app" || hasSeenTour()) return;
+    // En una demo abierta por enlace (?d=) el tour taparía la cabecera
+    // mientras se enseña el panel: no se lanza solo.
+    if (new URLSearchParams(window.location.search).has("d")) return;
     const t = setTimeout(startTour, 1900);
     return () => clearTimeout(t);
   }, [path]);

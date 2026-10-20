@@ -595,7 +595,9 @@ function SalonHome() {
         </div>
       </section>
 
-      {/* Servicios destacados */}
+      {/* Servicios destacados (con la carta de ejemplo no se repite: ya está
+          la «Carta de ejemplo» justo debajo) */}
+      {!serviciosDeEjemplo && (
       <section id="servicios" className="bg-ws-crema">
         <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
           <SectionHeading
@@ -637,6 +639,8 @@ function SalonHome() {
           </div>
         </div>
       </section>
+      )}
+      {serviciosDeEjemplo && <span id="servicios" aria-hidden="true" />}
 
       {/* Carta completa */}
       <section id="carta" className="bg-ws-arena">
