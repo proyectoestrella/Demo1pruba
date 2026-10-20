@@ -69,13 +69,13 @@ function demoSessionKey(salonSlug: string): string {
  * de móvil. Con un solo profesional no hay sección "Equipo" en la página, así
  * que tampoco puede haber un enlace del menú que lleve a un ancla vacía.
  */
-function navLinks(soloUno: boolean) {
+function navLinks(soloUno: boolean, sinResenas = false) {
   return [
     { href: "#servicios", label: "Servicios" },
     { href: "#carta", label: "Precios" },
     ...(soloUno ? [] : [{ href: "#equipo", label: "Equipo" }]),
     { href: "#galeria", label: "Galería" },
-    { href: "#resenas", label: "Reseñas" },
+    ...(sinResenas ? [] : [{ href: "#resenas", label: "Reseñas" }]),
     { href: "#faq", label: "Preguntas" },
     { href: "#ubicacion", label: "Cómo llegar" },
   ];
@@ -135,8 +135,14 @@ function SalonLayout() {
   // Un solo profesional: sin sección "Equipo" en la home, sin enlace en el
   // menú (ver `navLinks`). Se deriva del equipo activo, no de un flag.
   const NAV_LINKS = useMemo(
-    () => navLinks(esSoloUnProfesional(employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds))),
-    [tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds],
+    () =>
+      navLinks(
+        esSoloUnProfesional(employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds)),
+        // Demo por enlace sin nota real: la home no pinta «Reseñas» (ver
+        // `seccionResenasPublicas`), así que el menú tampoco la enlaza.
+        conEnlaceDemo && !(profile.rating > 0 && profile.reviewCount > 0),
+      ),
+    [tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds, conEnlaceDemo, profile.rating, profile.reviewCount],
   );
 
   // Auditoría de UX, hallazgo C2: los `Link` del flujo de reserva no
