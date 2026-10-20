@@ -210,9 +210,9 @@ function Marca({ compacta = false }: { compacta?: boolean }) {
           {name}
         </strong>
         {!compacta && (
-          <span className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
-            <LetrasSiShow className="h-3.5" />
-            {ciudad ? `· ${ciudad}` : ""}
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+            <LetrasSiShow className="h-3.5 shrink-0" />
+            {ciudad ? <span className="min-w-0 break-words">· {ciudad}</span> : null}
           </span>
         )}
         {compacta && <LetrasSiShow className="mt-0.5 h-3" />}
@@ -283,7 +283,7 @@ function ProgresoPrimerosPasos() {
     <Link
       to="/app/settings"
       title={`Te faltan ${faltan}`}
-      className="mb-2 block rounded-2xl bg-salvia-clara px-3 py-2 text-xs hover:text-foreground"
+      className="mb-2 block rounded-2xl bg-salvia-clara px-3 py-2 text-xs hover:text-foreground [@media(max-height:820px)]:hidden"
     >
       <b className="block text-hoja-tinta">
         Primeros pasos · {progreso} de {TOTAL_PASOS}
@@ -399,6 +399,8 @@ export function MenuLateral({ path }: { path: string }) {
       </nav>
       <div className="mt-auto shrink-0 pt-3">
         <ProgresoPrimerosPasos />
+        {/* D1/D2: «Ver como» y plan de la demo, con sitio fijo en todos los anchos (antes flotaba sobre «Nueva cita» o no existía). */}
+        <VerComo apilado className="mb-2 flex" />
         <BloqueUsuario />
       </div>
     </aside>
@@ -449,7 +451,7 @@ function BotonAvisos({ className }: { className?: string }) {
 /** Cabecera de píldoras: búsqueda y cita al centro; nunca elimina plan ni asistente. */
 export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraArenaProps) {
   return (
-    <header className="relative grid grid-cols-1 items-center gap-2 px-4 py-2.5 md:sticky md:top-0 md:z-20 md:h-[71px] md:px-0 md:py-0 md:pointer-events-none">
+    <header className="relative grid grid-cols-1 items-center gap-2 px-4 py-2.5 md:sticky md:top-0 md:z-20 md:h-[71px] md:border-b md:border-border/50 md:bg-[var(--k-crema,var(--background))]/85 md:px-0 md:py-0 md:backdrop-blur">
       <div className="flex items-center justify-between md:hidden">
         <Marca compacta />
         <div className="flex items-center gap-2">
@@ -481,7 +483,6 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
         </Button>
       </div>
       <div className="pointer-events-auto absolute right-8 top-1/2 z-30 hidden -translate-y-1/2 items-center gap-2 md:flex">
-        <VerComo className="hidden 2xl:flex 2xl:group-data-[panel=abierto]/panel:hidden" />
         <PlanContratado className="hidden 2xl:inline-flex 2xl:group-data-[panel=abierto]/panel:hidden" />
         <Button
           data-tour="assistant"
