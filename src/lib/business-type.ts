@@ -1,4 +1,5 @@
 import type { Client, Employee, EmployeeId, Service } from "./mock/types";
+import { avatarDiceBearUri } from "./avatar-dicebear";
 
 /**
  * Vocabulario y catálogos por tipo de negocio.
@@ -507,31 +508,9 @@ export function fotoDeProfesional(
   return fotoDeEjemplo;
 }
 
-// Pasteles «Arena» (DESIGN.md: taupe claro, salvia clara, nata tostada) con
-// las iniciales en café: nunca texto blanco sobre un color fuerte.
-const AVATAR_COLOR_HEX: Record<EmployeeId, string> = {
-  mario: "#EDE2D6",
-  diego: "#DDE8DD",
-  ruben: "#F1E4CF",
-};
-
-function initialsOf(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
-/** Avatar de iniciales como data-URI, para cuando no hay foto real que mostrar. */
+/** Avatar DiceBear local para cuando no hay una foto real que mostrar. */
 export function placeholderAvatar(name: string, employeeId: EmployeeId): string {
-  const hex = AVATAR_COLOR_HEX[employeeId] ?? "#EADFD2";
-  const label = initialsOf(name);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240"><rect width="240" height="240" rx="120" fill="${hex}"/><text x="120" y="136" font-family="Manrope,system-ui,-apple-system,sans-serif" font-size="84" font-weight="800" fill="#3B2F2A" text-anchor="middle">${label}</text></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  return avatarDiceBearUri(`${employeeId}:${name}`, 96);
 }
 
 /* ---------------------------------------------------------------------- */

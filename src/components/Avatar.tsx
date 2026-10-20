@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { useSalonStore } from "@/lib/store";
 import { employeeMap } from "@/lib/mock/salon";
 import { hashTexto, iniciales, resolverAvatar } from "@/lib/avatar";
-import { uriDeAvatar } from "@/lib/avatar-svg";
+import { avatarDiceBearUri } from "@/lib/avatar-dicebear";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
@@ -40,7 +40,8 @@ export interface AvatarProps {
 /**
  * El avatar de una persona, en un solo sitio.
  * Prioridad: foto > avatar elegido > avatar por defecto según el id > iniciales.
- * Se dibuja en el navegador, sin red.
+ * Todos los dibujos automáticos salen de DiceBear Notionists, generado en el
+ * bundle sin llamadas de red. Este es el único punto de render de avatar.
  */
 export function Avatar({
   nombre,
@@ -58,15 +59,8 @@ export function Avatar({
       ? { px: size, texto: size >= 40 ? "text-sm" : "text-[11px]" }
       : TAMANOS[size];
   const [fotoRota, setFotoRota] = useState<string | null>(null);
-  let r = resolverAvatar({ id, foto: foto && foto !== fotoRota ? foto : undefined, elegido });
-  let uri: string | undefined;
-  if (r.avatar !== undefined) {
-    try {
-      uri = uriDeAvatar(r.avatar, t.px);
-    } catch {
-      r = { origen: "iniciales" };
-    }
-  }
+  const r = resolverAvatar({ id, foto: foto && foto !== fotoRota ? foto : undefined, elegido });
+  const uri = r.avatar !== undefined ? avatarDiceBearUri(r.avatar, t.px) : undefined;
   const caja = cn("relative block shrink-0 overflow-hidden rounded-full select-none", className);
   const estilo = {
     width: t.px,

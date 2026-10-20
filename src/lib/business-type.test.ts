@@ -94,10 +94,11 @@ describe("equipo de ejemplo por tipo", () => {
     expect(showsRealPhotos("unisex")).toBe(false);
   });
 
-  it("un salón REAL nunca enseña una foto de stock: avatar de iniciales", () => {
+  it("un salón REAL nunca enseña una foto de stock: avatar local", () => {
     const foto = fotoDeProfesional("Adam", "mario", "/stock/mario.jpg", "barberia", true);
     expect(foto.startsWith("data:image/svg+xml")).toBe(true);
-    expect(decodeURIComponent(foto)).toContain(">A<");
+    expect(foto).not.toContain("/stock/mario.jpg");
+    expect(decodeURIComponent(foto)).toContain("Notionists");
   });
 
   it("una demo de barbería sigue enseñando la foto de ejemplo de siempre", () => {

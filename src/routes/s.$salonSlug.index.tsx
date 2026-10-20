@@ -686,13 +686,13 @@ function SalonHome() {
                 {employees.map((e, i) => (
                   <li key={e.id} className="h-full">
                   <Reveal delay={i * 60} className="flex h-full items-center gap-4 rounded-[20px] border border-lino bg-card p-5">
-                      <span
-                        className="grid size-16 shrink-0 place-items-center rounded-full font-display text-2xl text-cafe"
-                        style={{ background: `var(--pro-${(i % 4) + 1})` }}
-                        aria-hidden="true"
-                      >
-                        {e.name.trim().charAt(0).toUpperCase()}
-                      </span>
+                      <StylistAvatar
+                        name={e.name}
+                        employeeId={e.id}
+                        photo={fotoDe(e)}
+                        size="lg"
+                        className="size-16"
+                      />
                       <span className="min-w-0">
                         <b className="block font-display text-xl font-medium">{e.name}</b>
                         <span className="block text-sm text-muted-foreground">{e.specialty}</span>
