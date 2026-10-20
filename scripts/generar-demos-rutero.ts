@@ -115,6 +115,16 @@ const NELVA: Partial<DemoProfile> = {
     "Inyección de Colágeno~30~30~Estética",
   ],
   modulosOcultos: ["equipo"],
+  // Fotos propias del salón, de su web pública (nelvaortiz.com). Se piden
+  // reducidas (?w=) para que carguen rápido en el móvil.
+  heroImage: "https://nelvaortiz.com/wp-content/uploads/2026/03/img_5185.jpeg?w=1600",
+  galeriaPropia: [
+    { url: "https://nelvaortiz.com/wp-content/uploads/2026/03/img_5193.png?w=1200", alt: "Zona de lavado del salón Nelva Ortiz" },
+    { url: "https://nelvaortiz.com/wp-content/uploads/2026/03/img_5155.jpeg?w=1200", alt: "Cabina de estética del salón Nelva Ortiz" },
+    { url: "https://nelvaortiz.com/wp-content/uploads/2026/03/img_5210.jpeg?w=1200", alt: "Puestos de peluquería del salón Nelva Ortiz" },
+    { url: "https://nelvaortiz.com/wp-content/uploads/2026/03/img_5202.jpeg?w=1200", alt: "Productos del salón Nelva Ortiz" },
+    { url: "https://nelvaortiz.com/wp-content/uploads/2026/03/img_5165.jpeg?w=1200", alt: "Tratamientos de estética del salón Nelva Ortiz" },
+  ],
 };
 
 /** La parte HTML del parser del cuadro de mandos, copiada para no importar su aplicación. */
@@ -223,6 +233,54 @@ function buscar<T extends Record<string, unknown>>(
   );
 }
 
+// Fotos de la ficha de Google del propio negocio (id y posiciones sacados con
+// scripts/buscar-fotos-places.ts y elegidos a ojo). Salen por el proxy
+// /api/foto de producción, que tiene la clave de Places.
+const FOTOS_PLACES: Record<string, { place: string; hero: number; galeria: [number, string][] }> = {
+  "dhf estilistas": {
+    place: "ChIJeyAfNQAtQg0RnZXzn0_Lg2Y",
+    hero: 0,
+    galeria: [
+      [1, "Fachada de DHF Estilistas"],
+      [3, "Ondas con balayage, trabajo de DHF Estilistas"],
+      [5, "Rubio ceniza, trabajo de DHF Estilistas"],
+      [7, "Ondas castañas, trabajo de DHF Estilistas"],
+      [8, "Degradado rubio, trabajo de DHF Estilistas"],
+    ],
+  },
+  "the heirs peluqueros": {
+    place: "ChIJGVUGmMIpQg0RkM1rEXdqNZw",
+    hero: 0,
+    galeria: [
+      [3, "Zona de lavado y Color Bar de The Heirs Peluqueros"],
+      [4, "Recepción de The Heirs Peluqueros"],
+      [5, "Fachada de The Heirs Peluqueros"],
+      [8, "Color Bar de The Heirs Peluqueros"],
+    ],
+  },
+  "mino barber shop": {
+    place: "ChIJLZ1wkqIpQg0RJeZVrIlbceg",
+    hero: 5,
+    galeria: [
+      [8, "Interior de Mino Barber Shop"],
+      [3, "Puesto de trabajo en Mino Barber Shop"],
+      [9, "Afeitado clásico en Mino Barber Shop"],
+      [2, "Fachada de Mino Barber Shop"],
+    ],
+  },
+  "peluqueria unisex latin fire": {
+    place: "ChIJg0vr4iYtQg0R7ZTX4tqSCyc",
+    hero: 0,
+    galeria: [
+      [3, "Rubios, trabajo de Latín Fire"],
+      [5, "Antes y después, trabajo de Latín Fire"],
+      [6, "Color fantasía, trabajo de Latín Fire"],
+      [7, "Mechas, trabajo de Latín Fire"],
+      [9, "Alisado, trabajo de Latín Fire"],
+    ],
+  },
+};
+
 function perfilDe(
   parada: Parada,
   lead: Lead | undefined,
@@ -246,6 +304,12 @@ function perfilDe(
     // Nunca se propaga el teléfono de una semilla ni del enlace anterior.
     phone: "",
   };
+  const fotos = FOTOS_PLACES[clave(nombre)];
+  if (fotos && !profile.heroImage) {
+    const u = (i: number) => `/api/foto?place=${fotos.place}&i=${i}`;
+    profile.heroImage = u(fotos.hero);
+    profile.galeriaPropia = fotos.galeria.map(([i, alt]) => ({ url: u(i), alt }));
+  }
   const reales = ["nombre", profile.address ? "dirección" : ""].filter(Boolean) as string[];
   if (profile.rating && profile.reviewCount) reales.push("valoración y reseñas");
   if (profile.openingHours?.some((h) => h && h !== "Cerrado")) reales.push("horario");
