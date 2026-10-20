@@ -792,15 +792,14 @@ export function moduloVisible(
 }
 
 /**
- * Lo mismo que `moduloVisible`, pero para el PANEL de la dueña: la página
- * Equipo se ve siempre ahí (6-oct), aunque el enlace la oculte con `mo`.
- * `mo: ["equipo"]` sigue ocultando la sección de equipo de la web pública.
+ * Igual que `moduloVisible`, aplicado al panel. Una demo que pide ocultar el
+ * equipo no debe convertir los nombres de muestra en supuestos datos reales.
  */
 export function moduloVisibleEnPanel(
   profile: Pick<DemoProfile, "modulosOcultos">,
   clave: ModuloOcultable,
 ): boolean {
-  return clave === "equipo" || moduloVisible(profile, clave);
+  return moduloVisible(profile, clave);
 }
 
 /** Construye el enlace público completo para una demo. */
