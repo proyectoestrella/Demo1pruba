@@ -556,8 +556,8 @@
   background-image:
     radial-gradient(
       ellipse 76% 88% at 104% 48%,
-      color-mix(in srgb, var(--k-amarillo, var(--moca)) 50%, transparent) 0%,
-      color-mix(in srgb, var(--k-amarillo, var(--moca)) 28%, transparent) 43%,
+      color-mix(in srgb, var(--k-amarillo, var(--moca)) 30%, transparent) 0%,
+      color-mix(in srgb, var(--k-amarillo, var(--moca)) 16%, transparent) 43%,
       transparent 78%
     ),
     radial-gradient(

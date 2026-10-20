@@ -354,15 +354,20 @@ export function CalendarioArena({
             onCabecera: () => abrirDia(d),
             cabecera: (
               <span
-                className={cn(
-                  "flex min-h-[30px] w-full items-center justify-center gap-1 rounded-full text-[12px] font-semibold leading-none",
-                  hoy ? "bg-primary text-primary-foreground" : "text-k-gris",
-                )}
+                className="flex min-h-[34px] w-full items-center justify-center gap-1.5 leading-none"
                 aria-label={`Abrir el ${DIAS[d.getDay()]} ${d.getDate()}`}
               >
-                <span>{d.getDate()}</span>
-                <span aria-hidden="true">·</span>
-                <span>{DCORTO[d.getDay()]}</span>
+                <span className="text-[11px] font-bold tracking-[0.04em] text-k-gris uppercase">
+                  {DCORTO[d.getDay()]}
+                </span>
+                <span
+                  className={cn(
+                    "grid size-[28px] place-items-center rounded-full text-[15px] font-extrabold tabular-nums",
+                    hoy ? "bg-primary text-primary-foreground" : "text-k-tinta",
+                  )}
+                >
+                  {d.getDate()}
+                </span>
                 {cerrado && <span className="sr-only">Cerrado</span>}
                 {especial && <span className="sr-only">Horario especial</span>}
               </span>

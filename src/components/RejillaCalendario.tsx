@@ -17,6 +17,7 @@ import { esBloqueExterno } from "@/lib/calendarios-panel";
 import {
   carrilesSolapados,
   citasPorDia,
+  iniciales,
   minutosDe,
   mismoDia,
   pausasDe,
@@ -293,7 +294,7 @@ export function RejillaCalendario({
   return (
     <div
       ref={ref}
-      className="relative min-h-0 flex-1 overflow-auto overscroll-contain [scrollbar-gutter:stable]"
+      className="relative min-h-0 flex-1 overflow-auto overscroll-contain bg-card/70 [scrollbar-gutter:stable]"
     >
       <div
         ref={lienzo}
@@ -721,6 +722,15 @@ export function CitaRejilla({
       {/* En carriles de menos de 20 px de texto (la semana en el móvil) no cabe ni una
           letra: solo el bloque de color; al pulsarlo sale el detalle. */}
       <span className="flex min-w-0 items-center gap-1 @max-[20px]:hidden">
+        {pro && !compacta && (
+          // Quién atiende: con tres profesionales a la vez, el color solo no basta (D6).
+          <i
+            aria-hidden="true"
+            className="grid h-[15px] min-w-[15px] shrink-0 place-items-center rounded-full bg-white/60 px-[3px] text-[9px] font-extrabold not-italic leading-none"
+          >
+            {estrecha ? iniciales(pro).slice(0, 1) : iniciales(pro)}
+          </i>
+        )}
         <b
           className={cn(
             nombreEnDosLineas ? "line-clamp-2 leading-[1.15]" : "truncate",
