@@ -279,6 +279,307 @@ const FOTOS_PLACES: Record<string, { place: string; hero: number; galeria: [numb
       [9, "Alisado, trabajo de Latín Fire"],
     ],
   },
+  "ykono hair studio": {
+    place: "ChIJX59atZctQg0RLHvCM0wz6xM",
+    hero: 1,
+    galeria: [
+      [2, "Interior de Ykono Hair Studio"],
+      [5, "Interior de Ykono Hair Studio"],
+      [6, "Productos en Ykono Hair Studio"],
+      [0, "Fachada de Ykono Hair Studio"],
+    ],
+  },
+  "esencia peluqueria organica": {
+    place: "ChIJXeURQpMtQg0RQD_qxolFNsA",
+    hero: 3,
+    galeria: [
+      [1, "Fachada de Esencia Peluquería Orgánica"],
+      [2, "Trabajo de Esencia Peluquería Orgánica"],
+      [4, "Trabajo de Esencia Peluquería Orgánica"],
+      [6, "Trabajo de Esencia Peluquería Orgánica"],
+    ],
+  },
+  "salon madrid": {
+    place: "ChIJk4y2VQAtQg0RVGQwtG2WWSI",
+    hero: 1,
+    galeria: [
+      [0, "Fachada de Salón Madrid"],
+      [3, "Fachada de Salón Madrid"],
+    ],
+  },
+  "peluqueria ainos estilistas": {
+    place: "ChIJbRc-TfIsQg0RKz-zMlK65sQ",
+    hero: 2,
+    galeria: [
+      [0, "Trabajo de Peluquería Ainos Estilistas"],
+      [3, "Trabajo de Peluquería Ainos Estilistas"],
+      [4, "Trabajo de Peluquería Ainos Estilistas"],
+      [6, "Trabajo de Peluquería Ainos Estilistas"],
+    ],
+  },
+  "peluqueria unisex yonitami": {
+    place: "ChIJO4hZPI0sQg0RaugH7vPf4Nw",
+    hero: 0,
+    galeria: [
+
+    ],
+  },
+  "aqua estilistas": {
+    place: "ChIJw3PUNNYtQg0R8_TC5fIX-HQ",
+    hero: 0,
+    galeria: [
+
+    ],
+  },
+  "ares peluqueria": {
+    place: "ChIJt9EkipIsQg0R45aS3lg5RtA",
+    hero: 5,
+    galeria: [
+      [4, "Fachada de Ares Peluquería"],
+      [7, "Trabajo de Ares Peluquería"],
+      [8, "Trabajo de Ares Peluquería"],
+      [3, "Trabajo de Ares Peluquería"],
+    ],
+  },
+  "david y jorge peluqueros": {
+    place: "ChIJVVVFDu0sQg0R7DsAhPp8qBg",
+    hero: 4,
+    galeria: [
+      [0, "Interior de David y Jorge Peluqueros"],
+      [5, "Interior de David y Jorge Peluqueros"],
+      [1, "Trabajo de David y Jorge Peluqueros"],
+      [8, "Trabajo de David y Jorge Peluqueros"],
+      [7, "Trabajo de David y Jorge Peluqueros"],
+    ],
+  },
+  "mario s peluqueros": {
+    place: "ChIJ8y6mH50sQg0R3e_H7GSf1Mo",
+    hero: 4,
+    galeria: [
+      [1, "Interior de Mario's Peluqueros"],
+      [0, "Trabajo de Mario's Peluqueros"],
+      [6, "Trabajo de Mario's Peluqueros"],
+      [3, "Trabajo de Mario's Peluqueros"],
+    ],
+  },
+  "peluqueria g rey": {
+    place: "ChIJlTPNdQotQg0R33S_4x8nMmI",
+    hero: 1,
+    galeria: [
+      [2, "Trabajo de Peluquería G & Rey"],
+      [3, "Trabajo de Peluquería G & Rey"],
+      [5, "Trabajo de Peluquería G & Rey"],
+      [9, "Trabajo de Peluquería G & Rey"],
+    ],
+  },
+  "higueras peluqueros": {
+    place: "ChIJaR5MMJIsQg0RcH51tFURa-s",
+    hero: 7,
+    galeria: [
+      [1, "Fachada de Higueras Peluqueros"],
+      [3, "Interior de Higueras Peluqueros"],
+      [4, "Interior de Higueras Peluqueros"],
+      [8, "Interior de Higueras Peluqueros"],
+      [6, "Interior de Higueras Peluqueros"],
+    ],
+  },
+  "peluqueria rafael y juan carlos": {
+    place: "ChIJFS7aWt4pQg0RkWYfSlrWwEA",
+    hero: 0,
+    galeria: [
+      [1, "Trabajo de Peluquería Rafael y Juan Carlos"],
+      [3, "Trabajo de Peluquería Rafael y Juan Carlos"],
+    ],
+  },
+  "a r peluqueros": {
+    place: "ChIJuVoqiHUpQg0RWZ6CfuygMAE",
+    hero: 1,
+    galeria: [
+      [3, "Trabajo de A & R Peluqueros"],
+      [7, "Trabajo de A & R Peluqueros"],
+      [8, "Trabajo de A & R Peluqueros"],
+      [9, "Trabajo de A & R Peluqueros"],
+      [5, "Productos en A & R Peluqueros"],
+    ],
+  },
+  "nova peluqueria y estetica": {
+    place: "ChIJQ4DAM-0pQg0R3juSU8z29yc",
+    hero: 2,
+    galeria: [
+      [1, "Fachada de Nova Peluquería y Estética"],
+      [3, "Trabajo de Nova Peluquería y Estética"],
+    ],
+  },
+  "yolanda orgaz": {
+    place: "ChIJEXqE0-wpQg0R3Rdnz2GEVnk",
+    hero: 1,
+    galeria: [
+      [0, "Fachada de Yolanda Orgaz"],
+      [3, "Trabajo de Yolanda Orgaz"],
+      [4, "Trabajo de Yolanda Orgaz"],
+    ],
+  },
+  "raquel guirao peluqueria": {
+    place: "ChIJBVtVqPIpQg0RoOom0t05Gis",
+    hero: 1,
+    galeria: [
+      [2, "Trabajo de Raquel Guirao Peluquería"],
+      [5, "Trabajo de Raquel Guirao Peluquería"],
+      [7, "Trabajo de Raquel Guirao Peluquería"],
+    ],
+  },
+  "mon peluqueros": {
+    place: "ChIJf_TIqfssQg0RXup2Irs7i14",
+    hero: 1,
+    galeria: [
+      [0, "Trabajo de MON Peluqueros"],
+    ],
+  },
+  "dlady peluqueria": {
+    place: "ChIJZdw-JLotQg0R-pFUcd8Kpy8",
+    hero: 1,
+    galeria: [
+      [2, "Trabajo de Dlady peluquería"],
+      [5, "Trabajo de Dlady peluquería"],
+      [8, "Trabajo de Dlady peluquería"],
+      [3, "Trabajo de Dlady peluquería"],
+    ],
+  },
+  "dh salon": {
+    place: "ChIJh8kaofssQg0RURSq84Rg1qQ",
+    hero: 0,
+    galeria: [
+      [5, "Interior de DH Salon"],
+      [6, "Interior de DH Salon"],
+      [7, "Interior de DH Salon"],
+      [3, "Trabajo de DH Salon"],
+    ],
+  },
+  "peluqueria quinzanos": {
+    place: "ChIJcUnOrfosQg0R9WoLlGRTTPU",
+    hero: 6,
+    galeria: [
+      [4, "Trabajo de Peluquería Quinzaños"],
+    ],
+  },
+  "peluqueria platino": {
+    place: "ChIJBZDdgygtQg0RTeaxjJvHHzI",
+    hero: 0,
+    galeria: [
+      [3, "Trabajo de Peluquería Platino"],
+      [4, "Trabajo de Peluquería Platino"],
+      [5, "Trabajo de Peluquería Platino"],
+      [7, "Trabajo de Peluquería Platino"],
+    ],
+  },
+  "sanse estilo": {
+    place: "ChIJUbA6SKstQg0R6cN6D6aW-QE",
+    hero: 2,
+    galeria: [
+      [3, "Interior de Sanse Estilo"],
+      [9, "Trabajo de Sanse Estilo"],
+      [6, "Trabajo de Sanse Estilo"],
+      [4, "Trabajo de Sanse Estilo"],
+    ],
+  },
+  "wellpel": {
+    place: "ChIJBZrt2-UsQg0R2Quy8iZVAGc",
+    hero: 0,
+    galeria: [
+      [2, "Trabajo de WellPel"],
+      [4, "Trabajo de WellPel"],
+    ],
+  },
+  "peluqueria hermanos garcia": {
+    place: "ChIJAQAMiuQsQg0RnMmXRzC35Hs",
+    hero: 2,
+    galeria: [
+      [3, "Interior de Peluquería Hermanos García"],
+      [7, "Interior de Peluquería Hermanos García"],
+      [9, "Trabajo de Peluquería Hermanos García"],
+      [1, "Fachada de Peluquería Hermanos García"],
+    ],
+  },
+  "la rivera peluqueros": {
+    place: "ChIJ9c3p0vwsQg0RhqeTgTSqWL0",
+    hero: 0,
+    galeria: [
+      [2, "Trabajo de La Rivera Peluqueros"],
+      [3, "Trabajo de La Rivera Peluqueros"],
+    ],
+  },
+  "color real": {
+    place: "ChIJ6a_47eIsQg0RLxrvVWL6y7Q",
+    hero: 0,
+    galeria: [
+      [3, "Trabajo de Color Real"],
+      [5, "Trabajo de Color Real"],
+      [1, "Fachada de Color Real"],
+    ],
+  },
+  "v r peluqueros estilistas": {
+    place: "ChIJRdra4e4sQg0RkY9vpiAhlb0",
+    hero: 0,
+    galeria: [
+      [3, "Interior de V.R. Peluqueros Estilistas"],
+      [1, "Fachada de V.R. Peluqueros Estilistas"],
+      [5, "Trabajo de V.R. Peluqueros Estilistas"],
+      [8, "Trabajo de V.R. Peluqueros Estilistas"],
+    ],
+  },
+  "noah asesores de imagen": {
+    place: "ChIJz7JGuO8sQg0RP23JuBUuhPY",
+    hero: 1,
+    galeria: [
+      [2, "Interior de Noah Asesores de Imagen"],
+      [3, "Interior de Noah Asesores de Imagen"],
+    ],
+  },
+  "ilussion peluqueros": {
+    place: "ChIJkW0b5-4tQg0RR8BXsFPOkE8",
+    hero: 8,
+    galeria: [
+      [0, "Interior de Ilussion Peluqueros"],
+      [7, "Interior de Ilussion Peluqueros"],
+      [3, "Trabajo de Ilussion Peluqueros"],
+      [5, "Interior de Ilussion Peluqueros"],
+    ],
+  },
+  "peluqueria unisex ana rodriguez": {
+    place: "ChIJKUtR6SQtQg0RS_hNsSpBS4o",
+    hero: 0,
+    galeria: [
+      [3, "Interior de Peluquería Unisex Ana Rodríguez"],
+      [1, "Fachada de Peluquería Unisex Ana Rodríguez"],
+    ],
+  },
+  "rodriguez peluqueros": {
+    place: "ChIJHTxQDuYsQg0RSLL67HqnYEQ",
+    hero: 9,
+    galeria: [
+      [0, "Interior de Rodríguez Peluqueros"],
+      [3, "Fachada de Rodríguez Peluqueros"],
+      [5, "Interior de Rodríguez Peluqueros"],
+      [8, "Interior de Rodríguez Peluqueros"],
+    ],
+  },
+  "f p peluqueros": {
+    place: "ChIJU5wDGPAsQg0RdCTowVohLwM",
+    hero: 5,
+    galeria: [
+      [0, "Fachada de F P Peluqueros"],
+    ],
+  },
+  "peluqueria a tu estilo": {
+    place: "ChIJ3YutwyAtQg0Rl6bwgU4ps24",
+    hero: 0,
+    galeria: [
+      [2, "Fachada de Peluquería A Tu Estilo"],
+      [8, "Trabajo de Peluquería A Tu Estilo"],
+      [7, "Trabajo de Peluquería A Tu Estilo"],
+      [3, "Trabajo de Peluquería A Tu Estilo"],
+    ],
+  },
 };
 
 function perfilDe(
