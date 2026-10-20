@@ -115,6 +115,16 @@ const NELVA: Partial<DemoProfile> = {
     "Inyección de Colágeno~30~30~Estética",
   ],
   modulosOcultos: ["equipo"],
+  // Fotos propias del salón, de su web pública (nelvaortiz.com). Se piden
+  // reducidas (?w=) para que carguen rápido en el móvil.
+  heroImage: "https://nelvaortiz.com/wp-content/uploads/2026/03/img_5185.jpeg?w=1600",
+  galeriaPropia: [
+    { url: "https://nelvaortiz.com/wp-content/uploads/2026/03/img_5193.png?w=1200", alt: "Zona de lavado del salón Nelva Ortiz" },
+    { url: "https://nelvaortiz.com/wp-content/uploads/2026/03/img_5155.jpeg?w=1200", alt: "Cabina de estética del salón Nelva Ortiz" },
+    { url: "https://nelvaortiz.com/wp-content/uploads/2026/03/img_5210.jpeg?w=1200", alt: "Puestos de peluquería del salón Nelva Ortiz" },
+    { url: "https://nelvaortiz.com/wp-content/uploads/2026/03/img_5202.jpeg?w=1200", alt: "Productos del salón Nelva Ortiz" },
+    { url: "https://nelvaortiz.com/wp-content/uploads/2026/03/img_5165.jpeg?w=1200", alt: "Tratamientos de estética del salón Nelva Ortiz" },
+  ],
 };
 
 /** La parte HTML del parser del cuadro de mandos, copiada para no importar su aplicación. */
