@@ -45,8 +45,21 @@ const clave = (texto: string) =>
     .replace(/\([^)]*\)/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+// Quita las notas internas del rutero: lo que va entre paréntesis (estado del
+// lead, dirección alternativa) y los comentarios tras « · «…»» o « · ».
 const limpiaNombre = (texto: string) =>
-  texto.replace(/\s*\((?:caliente|templado|fr[ií]o)\)\s*$/i, "").trim();
+  texto
+    .replace(/\s*\([^)]*\)/g, "")
+    .replace(/\s*[·|]\s*[«"“].*$/u, "")
+    .replace(/\s+/g, " ")
+    .trim();
+// Deja la mejor dirección: sin paréntesis ni alternativas «(o …)» / « o …».
+const limpiaDireccion = (texto: string) =>
+  texto
+    .replace(/\s*\([^)]*\)/g, "")
+    .replace(/\s+o\s+.*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
 const textoHtml = (html: string) =>
   html
     .replace(/&#x([0-9a-f]+);/gi, (_m, code: string) =>
@@ -227,7 +240,9 @@ function perfilDe(
     ...(esNelva ? NELVA : {}),
     name: nombre,
     tagline: tipo,
-    address: String(delEnlace.address || parada.direccion || lead?.direccion || "").trim(),
+    address: limpiaDireccion(
+      String(delEnlace.address || parada.direccion || lead?.direccion || ""),
+    ),
     // Nunca se propaga el teléfono de una semilla ni del enlace anterior.
     phone: "",
   };
@@ -245,6 +260,13 @@ function perfilDe(
     faltan.push("servicios reales (carta marcada como ejemplo)");
   }
   const minima = parada.tipo === "Nueva" || reales.length <= 2;
+  if (minima && !profile.team?.length) {
+    // Nada inventado delante de una dueña: sin equipo ficticio. Una sola
+    // profesional con el nombre del salón (no hay selector ni nombres de
+    // persona) y la sección Equipo oculta en la web pública.
+    profile.team = [`${nombre}~Profesional`];
+    profile.modulosOcultos = ["equipo"];
+  }
   return { profile, reales, faltan, minima };
 }
 
@@ -255,7 +277,7 @@ const demos = demosJson.demos ?? [];
 if (rutero.length !== 58)
   throw new Error(`Se esperaban 58 paradas y se encontraron ${rutero.length}.`);
 
-const filas = rutero.map((parada) => {
+const filas = rutero.filter((p) => p.tipo !== "Hueco").map((parada) => {
   const nombre = limpiaNombre(parada.negocio);
   const lead = buscar(leads, nombre, parada.direccion);
   const demo = buscar(demos, nombre, parada.direccion);
@@ -265,12 +287,14 @@ const filas = rutero.map((parada) => {
   const publicaLocal = `${LOCAL}/s/${slug}?d=${d}`;
   const publicaProduccion = `${PRODUCCION}/s/${slug}?d=${d}`;
   const panel = `${LOCAL}/demo/${slug}?d=${d}`;
+  const panelProduccion = `${PRODUCCION}/app?d=${d}`;
   return {
     parada,
     slug,
     publicaLocal,
     publicaProduccion,
     panel,
+    panelProduccion,
     reales,
     faltan,
     minima,
@@ -290,6 +314,7 @@ const cabecera = [
   "url_demo_local_8130",
   "url_demo_produccion",
   "url_panel_local",
+  "url_panel_produccion",
   "datos_reales",
   "sin_dato",
   "nota",
@@ -306,6 +331,7 @@ const contenidoCsv =
       f.publicaLocal,
       f.publicaProduccion,
       f.panel,
+      f.panelProduccion,
       f.reales.join("; ") || "sin dato",
       f.faltan.join("; ") || "sin dato",
       f.nota,
@@ -332,6 +358,7 @@ const contenidoMd = [
       `- Pública local: ${f.publicaLocal}`,
       `- Producción actual: ${f.publicaProduccion}`,
       `- Panel local: ${f.panel}`,
+      `- Panel producción: ${f.panelProduccion}`,
       `- Datos reales: ${f.reales.join(", ") || "sin dato"}.`,
       `- Sin dato: ${f.faltan.join(", ") || "ninguno"}. ${f.nota}`,
       "",
