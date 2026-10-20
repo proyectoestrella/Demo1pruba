@@ -90,6 +90,16 @@ function SalonLayout() {
   // Logo del salón en la barra y el pie; en demo, el de la lista de demos (ver logo-salon.ts).
   const sinSalonReal = useSalonStore((st) => !st.realSalonSlug);
   const conEnlaceDemo = useRouterState({ select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string" });
+  const demoParam = useRouterState({
+    select: (st) => {
+      const v = (st.location.search as Record<string, unknown>)[DEMO_PARAM];
+      return typeof v === "string" ? v : "";
+    },
+  });
+  // Con enlace de demo, el panel debe abrir ESE salón (no la demo genérica).
+  const hrefPanel = demoParam
+    ? `/app?${DEMO_PARAM}=${encodeURIComponent(demoParam)}`
+    : `/app?acceso=demo&s=${encodeURIComponent(salonSlug)}`;
   const resolucionPublica = useSalonStore((s) =>
     s.publicBookingResolution?.slug === salonSlug ? s.publicBookingResolution.status : "resolviendo",
   );
@@ -303,7 +313,7 @@ function SalonLayout() {
                 // entrar a SU agenda desde un móvil recién estrenado, sin nada
                 // guardado. Para una demo de venta el parámetro no existe en
                 // `salons` y el panel se comporta exactamente como siempre.
-                href={`/app?acceso=demo&s=${encodeURIComponent(salonSlug)}`}
+                href={hrefPanel}
                 className="ml-1 hidden h-9 items-center gap-1.5 rounded-full border border-lino-fuerte bg-card px-3 text-xs font-medium text-cafe-medio hover:bg-beige sm:inline-flex"
               >
                 <Lock className="h-3 w-3" />
@@ -378,7 +388,7 @@ function SalonLayout() {
                       ))}
                       {(publicV2 || conEnlaceDemo) && (
                         <a
-                          href={`/app?acceso=demo&s=${encodeURIComponent(salonSlug)}`}
+                          href={hrefPanel}
                           className="mt-3 flex min-h-12 items-center gap-2 rounded-xl border border-lino-fuerte bg-card px-3 text-base font-semibold text-foreground transition-colors hover:bg-muted"
                         >
                           <Lock className="h-4 w-4" aria-hidden="true" /> Panel del salón (agenda)

@@ -40,8 +40,9 @@ export interface AvatarProps {
 /**
  * El avatar de una persona, en un solo sitio.
  * Prioridad: foto > avatar elegido > avatar por defecto según el id > iniciales.
- * Todos los dibujos automáticos salen de DiceBear Notionists, generado en el
- * bundle sin llamadas de red. Este es el único punto de render de avatar.
+ * Sin foto ni avatar elegido, iniciales en círculo Arena. Los dibujos DiceBear
+ * Notionists (en el bundle, sin red) solo se usan si alguien los eligió.
+ * Este es el único punto de render de avatar.
  */
 export function Avatar({
   nombre,
@@ -60,7 +61,11 @@ export function Avatar({
       : TAMANOS[size];
   const [fotoRota, setFotoRota] = useState<string | null>(null);
   const r = resolverAvatar({ id, foto: foto && foto !== fotoRota ? foto : undefined, elegido });
-  const uri = r.avatar !== undefined ? avatarDiceBearUri(r.avatar, t.px) : undefined;
+  // Por defecto, iniciales en círculo Arena: legibles a 24 px, sin riesgo de
+  // poner barba a «Fátima» ni gestos raros (los dibujos aleatorios no saben el
+  // género ni el oficio). El dibujo DiceBear solo sale si se eligió a propósito.
+  const uri =
+    r.origen === "elegido" && r.avatar !== undefined ? avatarDiceBearUri(r.avatar, t.px) : undefined;
   const caja = cn("relative block shrink-0 overflow-hidden rounded-full select-none", className);
   const estilo = {
     width: t.px,
@@ -93,7 +98,7 @@ export function Avatar({
   const color = PALETA[hashTexto(id ?? nombre) % PALETA.length];
   return (
     <span
-      className={cn(caja, "!flex items-center justify-center font-extrabold text-cafe", t.texto)}
+      className={cn(caja, "!flex items-center justify-center font-display font-semibold tracking-tight text-cafe", t.texto)}
       style={{ ...estilo, backgroundColor: `var(${color})` }}
       {...accesible}
       data-avatar="iniciales"

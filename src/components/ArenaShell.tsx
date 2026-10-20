@@ -48,6 +48,7 @@ import {
 } from "@/lib/accesos-panel";
 import { rutaSoloCompleto } from "@/lib/plan-basico";
 import { NOMBRE_ROL } from "@/lib/accesos-maqueta";
+import { useBusinessType } from "@/lib/use-display-profile";
 import {
   Sheet,
   SheetContent,
@@ -105,6 +106,12 @@ export const GRUPOS_NAV: { label: string | null; items: NavItem[] }[] = [
     ],
   },
 ];
+
+/** En una barbería se habla de «clientes», no de «clientas». */
+function EtiquetaNav({ label }: { label: string }) {
+  const tipo = useBusinessType();
+  return <>{tipo === "barberia" && label === "Clientas" ? "Clientes" : label}</>;
+}
 
 /** Los cuatro apartados con sitio en la barra inferior del móvil; el resto va en «Más». */
 const BARRA_MOVIL: NavItem[] = [
@@ -258,7 +265,7 @@ function EnlaceNav({
       )}
     >
       <item.icon className="size-[18px] shrink-0" strokeWidth={1.6} />
-      {item.label}
+      <EtiquetaNav label={item.label} />
       {insignia && <InsigniaPlan nombre={insignia} />}
       {!!contador && (
         <span className="ml-auto rounded-full bg-salvia-clara px-2 text-[11px] font-bold tabular-nums text-hoja-tinta">
@@ -595,7 +602,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
                 className={cn("size-[22px]", active && "text-hoja-tinta")}
                 strokeWidth={1.6}
               />
-              {item.label}
+              <EtiquetaNav label={item.label} />
             </Link>
           );
         })}
@@ -638,7 +645,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
                     )}
                   >
                     <item.icon className="size-5" strokeWidth={1.6} />
-                    {item.label}
+                    <EtiquetaNav label={item.label} />
                     {insigniaDeRuta(item.to, plan) && (
                       <span className="rounded-full bg-arena px-2 py-0.5 text-[10px] font-bold text-cafe-medio">
                         {insigniaDeRuta(item.to, plan)}

@@ -8,6 +8,7 @@ import { puede } from "@/lib/permisos";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { usaTpv123 } from "@/lib/plan-basico";
 import { clientFrequency } from "@/lib/derive";
+import { useBusinessType } from "@/lib/use-display-profile";
 import { buscarClientas } from "@/lib/buscar-clientas";
 import { useEquipo } from "@/lib/use-equipo";
 import { toDateKey } from "@/lib/reparto";
@@ -92,6 +93,7 @@ function Clients() {
   // Lote 11: sin «ver todas», sus clientas (las que tienen o tuvieron cita con
   // ella), empezando por las de hoy; el buscador encuentra a cualquiera para darle cita.
   const permisos = usePermisos();
+  const esBarberia = useBusinessType() === "barberia";
   const todasLasClientas = puede(permisos, "clienta.ver-todas");
   const appointments = useCitasVisibles();
   const todasLasCitas = useSalonStore((s) => s.appointments);
@@ -235,7 +237,7 @@ function Clients() {
       chipFila = <span className={cn(chip, "bg-melocoton text-melocoton-tinta")}><IconoAviso />Debe {eur(c.penaltyEur!)}</span>;
     } else if (hoy) {
       chipFila = <span className={cn(chip, "bg-salvia-clara text-hoja-tinta tabular-nums")}>Hoy {hora(hoy.start)}</span>;
-    } else if (colorPendiente.has(c.id)) {
+    } else if (!esBarberia && colorPendiente.has(c.id)) {
       chipFila = <span className={cn(chip, "bg-melocoton text-melocoton-tinta")}><IconoAviso />Color pendiente</span>;
     } else if (c.tag === "inactivo" && sem !== null) {
       chipFila = <span className={cn(chip, "bg-arena text-cafe-medio tabular-nums")}>{sem} sem. sin venir</span>;
@@ -249,10 +251,10 @@ function Clients() {
     <div className="flex flex-1 flex-col gap-5">
       <div className="flex flex-wrap items-end gap-4">
         <div className="min-w-0">
-          <h1 className="text-[26px] leading-[1.1] font-extrabold tracking-[-0.02em] md:text-[32px]">Clientas</h1>
+          <h1 className="text-[26px] leading-[1.1] font-extrabold tracking-[-0.02em] md:text-[32px]">{esBarberia ? "Clientes" : "Clientas"}</h1>
           {/* La cartera en una línea de texto, como las cifras de Hoy. */}
           <p className="mt-2 flex flex-wrap items-baseline gap-x-2 text-[15px] text-cafe-medio">
-            <span className="whitespace-nowrap"><b className="text-foreground tabular-nums">{kpis.total}</b> clientas</span>
+            <span className="whitespace-nowrap"><b className="text-foreground tabular-nums">{kpis.total}</b> {esBarberia ? "clientes" : "clientas"}</span>
             <span className="text-taupe" aria-hidden="true">·</span>
             <span className="whitespace-nowrap" title="Dadas de alta en 30 días"><b className="text-foreground tabular-nums">{kpis.nuevos}</b> nuevas este mes</span>
             <span className="text-taupe" aria-hidden="true">·</span>
@@ -269,7 +271,7 @@ function Clients() {
         </div>
         {puede(permisos, "clienta.importar") && <Button type="button" variant="outline" className="md:ml-auto" onClick={() => setImportarAbierto(true)}>
           <Download className="size-[18px]" strokeWidth={1.6} />
-          {origenTpv123 ? "Importar desde TPV 123" : "Importar clientas"}
+          {origenTpv123 ? "Importar desde TPV 123" : esBarberia ? "Importar clientes" : "Importar clientas"}
         </Button>}
       </div>
 
@@ -283,10 +285,10 @@ function Clients() {
           {[
             { id: "todos", etiqueta: "Todas" },
             { id: "hoy", etiqueta: <>Vienen hoy <span className="ml-1 tabular-nums text-muted-foreground">{citaDeHoy.size}</span></> },
-            { id: "nuevo", etiqueta: "Nuevas" },
+            { id: "nuevo", etiqueta: esBarberia ? "Nuevos" : "Nuevas" },
             { id: "habitual", etiqueta: "Habituales" },
-            { id: "inactivo", etiqueta: "Inactivas" },
-            { id: "color", etiqueta: <>Color pendiente <span className="ml-1 tabular-nums text-muted-foreground">{proximasSinColor.length}</span></> },
+            { id: "inactivo", etiqueta: esBarberia ? "Inactivos" : "Inactivas" },
+            ...(esBarberia ? [] : [{ id: "color", etiqueta: <>Color pendiente <span className="ml-1 tabular-nums text-muted-foreground">{proximasSinColor.length}</span></> }]),
             ...(hayPenalizados ? [{ id: "penalizado", etiqueta: "Me deben" }] : []),
           ].map(({ id, etiqueta }) => (
             <button
@@ -346,7 +348,7 @@ function Clients() {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Clienta</TableHead>
+                  <TableHead>{esBarberia ? "Cliente" : "Clienta"}</TableHead>
                   <TableHead className="@max-[520px]:hidden">Última visita</TableHead>
                   <TableHead className="text-right @max-[420px]:hidden">Visitas</TableHead>
                   <TableHead className="group-data-[panel=abierto]/panel:hidden">Frecuencia</TableHead>

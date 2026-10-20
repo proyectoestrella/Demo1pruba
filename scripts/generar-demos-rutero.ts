@@ -23,6 +23,22 @@ const OUTPUT = "/home/tomi/Documents/logibro/AlmacenExterno/starproyect-demos-20
 const LOCAL = "http://localhost:8130";
 const PRODUCCION = "https://prueba28juliokt.vercel.app";
 
+/** Lee `--nombre valor` o `--nombre=valor` de la línea de órdenes. */
+function opcion(nombre: string): string | undefined {
+  const args = process.argv.slice(2);
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === `--${nombre}`) return args[i + 1];
+    if (args[i].startsWith(`--${nombre}=`)) return args[i].slice(nombre.length + 3);
+  }
+  return undefined;
+}
+const quitaBarra = (h: string) => h.replace(/\/+$/, "");
+// Host absoluto para las fotos de /api/foto: una vista previa sin la clave de
+// Google las carga igual desde producción (son <img>, no necesitan CORS).
+const HOST_FOTOS = quitaBarra(opcion("host-fotos") ?? "");
+// Host del diseño nuevo (vista previa en la red de casa).
+const HOST_NUEVO = quitaBarra(opcion("host-nuevo") ?? "http://192.168.1.64:8133");
+
 type Parada = {
   bloque: string;
   fecha: string;
@@ -607,7 +623,7 @@ function perfilDe(
   };
   const fotos = FOTOS_PLACES[clave(nombre)];
   if (fotos && !profile.heroImage) {
-    const u = (i: number) => `/api/foto?place=${fotos.place}&i=${i}`;
+    const u = (i: number) => `${HOST_FOTOS}/api/foto?place=${fotos.place}&i=${i}`;
     profile.heroImage = u(fotos.hero);
     profile.galeriaPropia = fotos.galeria.map(([i, alt]) => ({ url: u(i), alt }));
   }
@@ -653,6 +669,8 @@ const filas = rutero.filter((p) => p.tipo !== "Hueco").map((parada) => {
   const publicaProduccion = `${PRODUCCION}/s/${slug}?d=${d}`;
   const panel = `${LOCAL}/demo/${slug}?d=${d}`;
   const panelProduccion = `${PRODUCCION}/app?d=${d}`;
+  const publicaNuevo = `${HOST_NUEVO}/s/${slug}?d=${d}`;
+  const panelNuevo = `${HOST_NUEVO}/app?d=${d}`;
   return {
     parada,
     slug,
@@ -660,6 +678,8 @@ const filas = rutero.filter((p) => p.tipo !== "Hueco").map((parada) => {
     publicaProduccion,
     panel,
     panelProduccion,
+    publicaNuevo,
+    panelNuevo,
     reales,
     faltan,
     minima,
@@ -680,6 +700,8 @@ const cabecera = [
   "url_demo_produccion",
   "url_panel_local",
   "url_panel_produccion",
+  "url_demo_nuevo",
+  "url_panel_nuevo",
   "datos_reales",
   "sin_dato",
   "nota",
@@ -697,6 +719,8 @@ const contenidoCsv =
       f.publicaProduccion,
       f.panel,
       f.panelProduccion,
+      f.publicaNuevo,
+      f.panelNuevo,
       f.reales.join("; ") || "sin dato",
       f.faltan.join("; ") || "sin dato",
       f.nota,
@@ -724,12 +748,40 @@ const contenidoMd = [
       `- Producción actual: ${f.publicaProduccion}`,
       `- Panel local: ${f.panel}`,
       `- Panel producción: ${f.panelProduccion}`,
+      `- Diseño nuevo · web: ${f.publicaNuevo}`,
+      `- Diseño nuevo · panel: ${f.panelNuevo}`,
       `- Datos reales: ${f.reales.join(", ") || "sin dato"}.`,
       `- Sin dato: ${f.faltan.join(", ") || "ninguno"}. ${f.nota}`,
       "",
     ]),
   ]),
 ].join("\n");
+const esc = (t: string) =>
+  t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+const enlace = (href: string, texto: string) => `<a href="${esc(href)}">${texto}</a>`;
+const contenidoHtml =
+  '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Abrir demos</title><style>body{font-family:system-ui;max-width:640px;margin:16px auto;padding:0 16px}a{display:block;margin:6px 0;padding:10px;border:1px solid #bbb;border-radius:8px;text-decoration:none}h2{margin-top:22px}small{color:#666}h3{margin:14px 0 4px;font-size:1rem}</style>' +
+  "<h1>Demos de visitas</h1>" +
+  `<p><small>Abre en ventana de incógnito. «Producción» funciona desde cualquier sitio (diseño actual). «Diseño nuevo» (${esc(HOST_NUEVO)}) solo desde la misma red y con el PC encendido.</small></p>` +
+  [...porBloque.entries()]
+    .map(
+      ([bloque, grupo]) =>
+        `<h2>${esc(bloque)}</h2>` +
+        grupo
+          .map(
+            (f) =>
+              `<h3>${esc(f.parada.hora)} · ${esc(limpiaNombre(f.parada.negocio))}</h3>` +
+              enlace(f.publicaProduccion, "Producción · web de reservas") +
+              enlace(f.panelProduccion, "Producción · panel del salón") +
+              enlace(f.publicaNuevo, "Diseño nuevo · web") +
+              enlace(f.panelNuevo, "Diseño nuevo · panel"),
+          )
+          .join(""),
+    )
+    .join("") +
+  "\n";
+const ficheroHtml = join(OUTPUT, "abrir-demos.html");
+writeFileSync(ficheroHtml, contenidoHtml, { mode: 0o600 });
 const ficheroCsv = join(OUTPUT, "demos-visitas.csv");
 const ficheroMd = join(OUTPUT, "demos-visitas.md");
 writeFileSync(ficheroCsv, contenidoCsv, { mode: 0o600 });
