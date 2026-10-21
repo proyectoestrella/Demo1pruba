@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import {
   borradorDesdePerfil,
+  entero,
   hayCambios,
   perfilDesdeBorrador,
   validarBorrador,
@@ -323,5 +324,45 @@ describe("logo del salón en el editor", () => {
   it("rechaza lo que no es un enlace o no es una imagen", () => {
     expect(erroresLogo(conLogo("logo.png"))).toHaveLength(1);
     expect(erroresLogo(conLogo("https://misalon.es/"))).toHaveLength(1);
+  });
+});
+
+describe("Mi página: límites y números (auditoría)", () => {
+  it("rechaza textos que no caben y un Instagram con espacios", () => {
+    const campos = (b: BorradorLanding) => validarBorrador(b).map((e) => e.campo);
+    expect(campos(borradorValido({ name: "x".repeat(81) }))).toContain("name");
+    expect(campos(borradorValido({ about: "x".repeat(1501) }))).toContain("about");
+    expect(campos(borradorValido({ address: "x".repeat(201) }))).toContain("address");
+    expect(campos(borradorValido({ instagram: "mi salon" }))).toContain("instagram");
+    expect(campos(borradorValido({ specialties: "corte, " + "y".repeat(41) }))).toContain("specialties");
+    expect(campos(borradorValido({ heroImage: "https://x.es/" + "a".repeat(500) + ".jpg" }))).toContain("heroImage");
+    expect(validarBorrador(borradorValido({ name: "x".repeat(80), about: "y".repeat(1500) }))).toEqual([]);
+  });
+  it("las reseñas son un entero: 1.200 y 1 200 valen 1200; 1,5 y 12.5 no", () => {
+    expect(entero("214")).toBe(214);
+    expect(entero("1.200")).toBe(1200);
+    expect(entero("1 200")).toBe(1200);
+    expect(entero("12.5")).toBeNull();
+    expect(entero("1,5")).toBeNull();
+    expect(entero("-3")).toBeNull();
+    expect(entero("")).toBeNull();
+    expect(perfilDesdeBorrador(borradorValido({ reviewCount: "1.200" })).reviewCount).toBe(1200);
+    expect(validarBorrador(borradorValido({ reviewCount: "12.5" })).map((e) => e.campo)).toContain("reviewCount");
+  });
+  it("la nota vacía no se publica como 0 en silencio", () => {
+    expect(validarBorrador(borradorValido({ rating: "" })).map((e) => e.campo)).toContain("rating");
+    expect(validarBorrador(borradorValido({ rating: "4,8" }))).toEqual([]);
+    expect(perfilDesdeBorrador(borradorValido({ rating: "4,8" })).rating).toBe(4.8);
+  });
+  it("lo publicado vuelve a un borrador idéntico (no queda «sin publicar» recién publicado)", () => {
+    const b = borradorValido({ rating: "4,8", phone: " 612 345 678 ", name: " The Best Shave " });
+    const publicado = { ...PERFIL_BASE, ...perfilDesdeBorrador(b) } as SalonProfile;
+    expect(hayCambios(borradorDesdePerfil(publicado), borradorDesdePerfil({ ...publicado, ...perfilDesdeBorrador(borradorDesdePerfil(publicado)) } as SalonProfile))).toBe(false);
+  });
+  it("vaciar WhatsApp, enlaces, boletín y galería los deja a undefined en el parche", () => {
+    const p = perfilDesdeBorrador(borradorValido({ whatsapp: "", boletinTexto: "", boletinUrl: "", galeria: [] }));
+    expect("whatsapp" in p && p.whatsapp === undefined).toBe(true);
+    expect("boletin" in p && p.boletin === undefined).toBe(true);
+    expect("galeriaPropia" in p && p.galeriaPropia === undefined).toBe(true);
   });
 });

@@ -51,6 +51,17 @@ export function webDe(perfil: Partial<SalonProfile>): WebPublicada {
   return Object.fromEntries(CAMPOS_WEB.filter((k) => k in p).map((k) => [k, p[k]])) as WebPublicada;
 }
 
+/**
+ * Lo que hay que aplicar para que la web quede EXACTAMENTE como `web`: cada
+ * campo de Mi página aparece en el parche, y los que esa versión no tenía
+ * (WhatsApp, galería…) van a `undefined` para que se borren al restaurar en
+ * vez de quedarse pegados de una versión posterior.
+ */
+export function parcheDeWeb(web: WebPublicada): Record<string, unknown> {
+  const w = web as Record<string, unknown>;
+  return Object.fromEntries(CAMPOS_WEB.map((k) => [k, w[k]]));
+}
+
 interface EstadoVersiones {
   porSalon: Record<string, VersionWeb[]>;
   guardar: (slug: string, web: WebPublicada, autorNombre: string | null, fecha?: string) => void;

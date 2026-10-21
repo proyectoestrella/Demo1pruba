@@ -1,5 +1,6 @@
 import { VersionesWeb } from "@/components/VersionesWeb";
-import { useVersiones, webDe } from "@/lib/versiones-maqueta";
+import { useVersiones, webDe, parcheDeWeb } from "@/lib/versiones-maqueta";
+import { aParcheServidor } from "@/lib/perfil-parche";
 import { restaurarVersionReal, type VersionPanel } from "@/lib/versiones-panel";
 import { conCambio, guardarPerfil } from "@/lib/deshacer-maqueta";
 import { miembroAhora, usePermisos } from "@/lib/accesos-panel";
@@ -7,7 +8,7 @@ import { puede } from "@/lib/permisos";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { usePlegado } from "@/lib/use-plegado";
 import { AvatarSalon } from "@/components/AvatarSalon";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useBlocker } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
   Copy,
@@ -33,6 +34,7 @@ import { encodeDemoProfile } from "@/lib/demo-profile";
 import { guardarPrevia, huellaPrevia } from "@/lib/vista-previa";
 import {
   CAMPOS_ENLACES,
+  LIMITES,
   MAX_FOTOS_GALERIA,
   borradorDesdePerfil,
   hayCambios,
@@ -138,6 +140,16 @@ function MiWebHidratada() {
   );
   const sucioRef = useRef(sucio);
   sucioRef.current = sucio;
+
+  // Nada escrito se pierde sin avisar: ni al cambiar de apartado del panel ni
+  // al cerrar o recargar la pestaña.
+  useBlocker({
+    shouldBlockFn: () => {
+      if (!sucioRef.current) return false;
+      return !window.confirm("Tienes cambios sin publicar en Mi página. Si sales ahora se pierden. ¿Salir de todos modos?");
+    },
+    enableBeforeUnload: () => sucioRef.current,
+  });
   useEffect(() => {
     if (sucioRef.current) return;
     setPublicado(salonProfile);
@@ -309,6 +321,9 @@ function MiWebHidratada() {
       // NO se promete nada que no sea cierto.
       publicarEnPanel(parcheWeb, previo, tipo);
       setPublicado(nuevo);
+      // El borrador vuelve a la forma canónica de lo publicado («4,8» → «4.8»,
+      // espacios fuera): si no, quedaría «Cambios sin publicar» recién publicado.
+      setBorrador(borradorDesdePerfil(nuevo));
       setAnterior(previo);
       toast.success(
         tipo === "perfil.restaurar"
@@ -326,13 +341,17 @@ function MiWebHidratada() {
       // Se espera al servidor ANTES de tocar nada local: si esto falla, lo
       // escrito sigue en su caja y la web pública no se ha movido.
       const res = await patchSalonProfile({
-        data: { slug: realSlug, patch: parcheWeb as Record<string, unknown> },
+        data: { slug: realSlug, patch: aParcheServidor(parcheWeb as Record<string, unknown>) },
       });
       if (!res.synced) {
         toast.error(
           res.motivo === "sin-backend"
             ? "No se ha publicado: este siShow todavía no está conectado a su base de datos."
-            : "No se ha publicado: falta aplicar una parte de la base de datos.",
+            : res.motivo === "sin-salon"
+              ? "No se ha publicado: este salón todavía no está dado de alta."
+              : res.motivo === "limite-profesionales"
+                ? "No se ha publicado: el equipo supera lo que incluye tu plan. Ajústalo en Equipo."
+                : "No se ha publicado: falta aplicar una parte de la base de datos.",
           { description: "Lo que has escrito sigue aquí. Avísanos y lo dejamos listo." },
         );
         return;
@@ -342,6 +361,9 @@ function MiWebHidratada() {
       // que esta pantalla sobrescriba ajustes que no edita.
       publicarEnPanel(parcheWeb, previo, tipo);
       setPublicado(nuevo);
+      // El borrador vuelve a la forma canónica de lo publicado («4,8» → «4.8»,
+      // espacios fuera): si no, quedaría «Cambios sin publicar» recién publicado.
+      setBorrador(borradorDesdePerfil(nuevo));
       setAnterior(previo);
       toast.success(
         tipo === "perfil.restaurar"
@@ -369,7 +391,7 @@ function MiWebHidratada() {
       setGuardando(true);
       try {
         const res = await patchSalonProfile({
-          data: { slug: realSlug, patch: webDe(volver) },
+          data: { slug: realSlug, patch: aParcheServidor(parcheDeWeb(webDe(volver))) },
         });
         if (!res.synced) {
           toast.error("No se ha podido deshacer: tu web sigue con el último cambio publicado.");
@@ -385,7 +407,7 @@ function MiWebHidratada() {
         setGuardando(false);
       }
     }
-    updateSalonProfile(volver);
+    updateSalonProfile({ ...volver, ...parcheDeWeb(webDe(volver)) } as SalonProfile);
     setPublicado(volver);
     setBorrador(borradorDesdePerfil(volver));
     setErrores([]);
@@ -416,7 +438,7 @@ function MiWebHidratada() {
         });
         return;
       }
-      const nuevo: SalonProfile = { ...salonProfile, ...res.profile };
+      const nuevo: SalonProfile = { ...salonProfile, ...parcheDeWeb(webDe(res.profile)), ...res.profile };
       setPublicado(nuevo);
       setBorrador(borradorDesdePerfil(nuevo));
       setErrores([]);
@@ -528,7 +550,7 @@ function MiWebHidratada() {
           puedeRestaurar={puede(permisosWeb, "web.restaurar-version")}
           onVer={(web) => {
             // Solo en la vista previa: no se publica hasta darle a Publicar.
-            setBorrador(borradorDesdePerfil({ ...publicado, ...web } as SalonProfile));
+            setBorrador(borradorDesdePerfil({ ...publicado, ...parcheDeWeb(web) } as SalonProfile));
             setErrores([]);
           }}
           onRestaurar={(version) => {
@@ -539,7 +561,7 @@ function MiWebHidratada() {
             // Demo: no hay servidor que restaurar, se aplica como cualquier
             // otro cambio de Mi página (deja su fila local y su versión).
             if (!version.web) return;
-            const b = borradorDesdePerfil({ ...publicado, ...version.web } as SalonProfile);
+            const b = borradorDesdePerfil({ ...publicado, ...parcheDeWeb(version.web) } as SalonProfile);
             setBorrador(b);
             void publicar(b, "perfil.restaurar");
           }}
@@ -578,12 +600,14 @@ function MiWebHidratada() {
           <Bloque titulo="Lo primero que se ve" abierto forzar={errores.length > 0}>
             <Campo
               etiqueta="Nombre del salón"
+              maxLength={LIMITES.name}
               valor={borrador.name}
               onChange={(v) => campo("name", v)}
               errores={errorDe("name")}
             />
             <Campo
               etiqueta="Tipo de negocio"
+              maxLength={LIMITES.tagline}
               valor={borrador.tagline}
               onChange={(v) => campo("tagline", v)}
               pista="El rótulo bajo el nombre: «Barbería clásica», «Peluquería y estética»."
@@ -631,6 +655,7 @@ function MiWebHidratada() {
           <Bloque titulo="Cómo te encuentran" forzar={errores.length > 0}>
             <Campo
               etiqueta="Dirección"
+              maxLength={LIMITES.address}
               valor={borrador.address}
               onChange={(v) => campo("address", v)}
               pista="Mueve también el mapa de «Cómo llegar»."
@@ -660,6 +685,7 @@ function MiWebHidratada() {
             />
             <Campo
               etiqueta="Instagram"
+              maxLength={LIMITES.instagram}
               valor={borrador.instagram}
               onChange={(v) => campo("instagram", v)}
               pista="Tu usuario, como se ve: @tusalon."
@@ -703,6 +729,7 @@ function MiWebHidratada() {
             />
             <Campo
               etiqueta="Letra pequeña (opcional)"
+              maxLength={LIMITES.boletinCondiciones}
               valor={borrador.boletinCondiciones}
               onChange={(v) => campo("boletinCondiciones", v)}
             />

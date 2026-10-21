@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { fusionarPerfil } from "./perfil-parche";
+import { aParcheServidor, fusionarPerfil } from "./perfil-parche";
 
 /**
  * La garantía del arreglo: un campo que este navegador NO ha tocado no puede
@@ -43,5 +43,21 @@ describe("fusionarPerfil", () => {
   it("un parche vacío deja el perfil exactamente igual", () => {
     const servidor = { a: 1, b: [2], c: { d: 3 } };
     expect(fusionarPerfil(servidor, {})).toEqual(servidor);
+  });
+});
+
+describe("vaciar campos opcionales de Mi página", () => {
+  it("null borra la clave de las borrables; undefined sigue sin tocar", () => {
+    const servidor = { whatsapp: "+34 600", boletin: { texto: "a", url: "/x" }, phone: "600" };
+    const f = fusionarPerfil(servidor, aParcheServidor({ whatsapp: undefined, boletin: undefined, phone: "700" }));
+    expect("whatsapp" in f).toBe(false);
+    expect("boletin" in f).toBe(false);
+    expect(f.phone).toBe("700");
+  });
+  it("aParcheServidor solo toca claves presentes y borrables", () => {
+    const p = aParcheServidor({ whatsapp: undefined, instagram: undefined });
+    expect(p.whatsapp).toBeNull();
+    expect("instagram" in p && p.instagram === undefined).toBe(true);
+    expect("galeriaPropia" in p).toBe(false);
   });
 });

@@ -14,10 +14,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { listarVersiones, restaurarVersion } from "./api/salons.functions";
 import { conRegistroEnPausa, useSalonStore } from "./store";
-import { useVersiones, webDe, diferenciasWeb, type WebPublicada, type Diferencia } from "./versiones-maqueta";
+import { useVersiones, webDe, parcheDeWeb, diferenciasWeb, type WebPublicada, type Diferencia } from "./versiones-maqueta";
 import type { SalonProfile } from "./mock/types";
 
-export { webDe, diferenciasWeb };
+export { webDe, parcheDeWeb, diferenciasWeb };
 export type { WebPublicada, Diferencia };
 
 /**
@@ -101,7 +101,8 @@ export type ResultadoRestaurar = { ok: true; profile: Partial<SalonProfile> } | 
 export async function restaurarVersionReal(slug: string, versionId: string): Promise<ResultadoRestaurar> {
   const res = await restaurarVersion({ data: { slug, versionId } });
   if (!res.ok) return res;
-  const perfil = res.profile as Partial<SalonProfile>;
+  // Lo que esa versión no tenía se borra también del panel (parcheDeWeb), no se queda pegado.
+  const perfil = { ...parcheDeWeb(webDe(res.profile as Partial<SalonProfile>)), ...res.profile } as Partial<SalonProfile>;
   conRegistroEnPausa(() => useSalonStore.getState().updateSalonProfile(perfil));
   return { ok: true, profile: perfil };
 }

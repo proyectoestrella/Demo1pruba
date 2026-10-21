@@ -77,6 +77,31 @@ export const MAX_FOTOS_GALERIA = 12;
 /** Largo máximo de la descripción de un servicio. */
 export const MAX_DESCRIPCION_SERVICIO = 400;
 
+/** Largos máximos de lo que se teclea: más allá no cabe en la web ni tiene sentido. */
+export const LIMITES = {
+  name: 80,
+  tagline: 80,
+  about: 1500,
+  address: 200,
+  instagram: 60,
+  url: 500,
+  specialty: 40,
+  boletinTexto: 200,
+  boletinCondiciones: 300,
+  alt: 150,
+  linea: 300,
+} as const;
+
+/**
+ * Número de reseñas tal y como se teclea: «214», «1 200» o «1.200» (punto de
+ * millares, a la española). `null` si no es un entero de 0 para arriba.
+ */
+export function entero(texto: string): number | null {
+  const t = texto.replace(/\s/g, "");
+  const limpio = /^\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, "") : t;
+  return /^\d{1,9}$/.test(limpio) ? Number(limpio) : null;
+}
+
 /** Un fallo concreto, con el campo al que pertenece para poder resaltarlo. */
 export interface ErrorCampo {
   campo: keyof BorradorLanding;
@@ -173,6 +198,33 @@ export function validarBorrador(b: BorradorLanding): ErrorCampo[] {
     errores.push({ campo: "name", mensaje: "El nombre del salón no puede quedar vacío: es lo primero que se lee en la web." });
   }
 
+  const largos: Array<[keyof BorradorLanding, string, number, string]> = [
+    ["name", b.name, LIMITES.name, "El nombre"],
+    ["tagline", b.tagline, LIMITES.tagline, "El tipo de negocio"],
+    ["about", b.about, LIMITES.about, "La presentación"],
+    ["address", b.address, LIMITES.address, "La dirección"],
+    ["instagram", b.instagram, LIMITES.instagram, "El Instagram"],
+    ["heroImage", b.heroImage, LIMITES.url, "El enlace de la foto de portada"],
+    ["logoUrl", b.logoUrl, LIMITES.url, "El enlace del logo"],
+    ["boletinTexto", b.boletinTexto, LIMITES.boletinTexto, "La invitación del boletín"],
+    ["boletinUrl", b.boletinUrl, LIMITES.url, "El enlace del boletín"],
+    ["boletinCondiciones", b.boletinCondiciones, LIMITES.boletinCondiciones, "La letra pequeña del boletín"],
+  ];
+  for (const [campo, valor, max, quien] of largos) {
+    if (valor.trim().length > max) {
+      errores.push({ campo, mensaje: `${quien} pasa de ${max} letras (tiene ${valor.trim().length}). Acórtalo.` });
+    }
+  }
+  if (/\s/.test(b.instagram.trim()) && b.instagram.trim()) {
+    errores.push({ campo: "instagram", mensaje: "El Instagram es solo tu usuario, sin espacios: @tusalon." });
+  }
+  for (const e of b.specialties.split(",")) {
+    if (e.trim().length > LIMITES.specialty) {
+      errores.push({ campo: "specialties", mensaje: `«${e.trim().slice(0, 20)}…» es demasiado larga para una especialidad (máximo ${LIMITES.specialty} letras).` });
+      break;
+    }
+  }
+
   const tel = digitos(b.phone);
   if (b.phone.trim() && (tel.length < 9 || tel.length > 15)) {
     errores.push({
@@ -212,14 +264,13 @@ export function validarBorrador(b: BorradorLanding): ErrorCampo[] {
 
   // Nota y reseñas. Una nota fuera de escala se ve a la legua en el hero.
   const nota = Number(b.rating.replace(",", "."));
-  if (!Number.isFinite(nota) || nota < 0 || nota > 5) {
+  if (!b.rating.trim() || !Number.isFinite(nota) || nota < 0 || nota > 5) {
     errores.push({ campo: "rating", mensaje: "La nota tiene que ser un número entre 0 y 5." });
   }
-  const resenas = Number(b.reviewCount.replace(/\s/g, ""));
-  if (!Number.isFinite(resenas) || resenas < 0) {
+  if (entero(b.reviewCount) === null) {
     errores.push({
       campo: "reviewCount",
-      mensaje: "El número de reseñas tiene que ser un número de 0 para arriba.",
+      mensaje: "El número de reseñas tiene que ser un número entero de 0 para arriba, por ejemplo 214.",
     });
   }
 
@@ -265,6 +316,10 @@ export function validarBorrador(b: BorradorLanding): ErrorCampo[] {
     });
   }
   servicios.forEach((linea) => {
+    if (linea.length > LIMITES.linea) {
+      errores.push({ campo: "menu", mensaje: `«${linea.slice(0, 30)}…»: la línea es demasiado larga (máximo ${LIMITES.linea} letras).` });
+      return;
+    }
     const partes = linea.split(SEPARADOR_VISIBLE).map((p) => p.trim());
     if (partes.length < 3 || !partes[0]) {
       errores.push({
@@ -317,6 +372,10 @@ export function validarBorrador(b: BorradorLanding): ErrorCampo[] {
     });
   }
   faqs.forEach((linea) => {
+    if (linea.length > 1000) {
+      errores.push({ campo: "faq", mensaje: `«${linea.slice(0, 30)}…»: la pregunta con su respuesta pasa de 1000 letras.` });
+      return;
+    }
     const partes = linea.split(SEPARADOR_VISIBLE);
     const q = partes[0]?.trim();
     const a = partes.slice(1).join(SEPARADOR_VISIBLE).trim();
@@ -357,7 +416,7 @@ export function validarBorrador(b: BorradorLanding): ErrorCampo[] {
   // Enlaces: completos, para que el botón lleve a algún sitio.
   for (const campo of CAMPOS_ENLACES) {
     const v = b.enlaces[campo].trim();
-    if (v && !/^https?:\/\/\S+$/i.test(v)) {
+    if (v && (v.length > LIMITES.url || !/^https?:\/\/\S+$/i.test(v))) {
       errores.push({ campo: "enlaces", mensaje: `El enlace de ${ETIQUETA_ENLACE[campo]} tiene que ser la dirección completa, empezando por https://.` });
     }
   }
@@ -378,6 +437,9 @@ export function validarBorrador(b: BorradorLanding): ErrorCampo[] {
     const url = f.url.trim();
     if (!/^(https?:\/\/\S+|\/(?!\/)\S*)$/i.test(url) || !EXT_FOTO.test(url)) {
       errores.push({ campo: "galeria", mensaje: `Foto ${i + 1}: la dirección tiene que empezar por https:// (o /) y acabar en .jpg, .png, .webp o .avif.` });
+    }
+    if (f.alt.trim().length > LIMITES.alt) {
+      errores.push({ campo: "galeria", mensaje: `Foto ${i + 1}: el texto alternativo pasa de ${LIMITES.alt} letras.` });
     }
     if (f.alt.trim().length < 3) {
       errores.push({ campo: "galeria", mensaje: `Foto ${i + 1}: falta el texto alternativo. Describe en una frase lo que se ve, por ejemplo «Recogido de novia con trenzas».` });
@@ -426,7 +488,7 @@ export function perfilDesdeBorrador(b: BorradorLanding): Partial<SalonProfile> {
     heroImage: b.heroImage.trim(),
     logoUrl: b.logoUrl.trim(),
     rating: Number(b.rating.replace(",", ".")) || 0,
-    reviewCount: Math.round(Number(b.reviewCount.replace(/\s/g, "")) || 0),
+    reviewCount: entero(b.reviewCount) ?? 0,
     specialties: b.specialties
       .split(",")
       .map((w) => w.trim())
