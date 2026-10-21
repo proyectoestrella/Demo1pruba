@@ -44,7 +44,7 @@ export function CartaServicios({
               to="/s/$salonSlug/book"
               params={{ salonSlug }}
               search={(prev) => ({ ...prev, service: s.id })}
-              className="elevar group flex h-full min-h-[76px] flex-col rounded-2xl border border-lino bg-card px-4 py-3.5 hover:border-lino-fuerte sm:px-5"
+              className="elevar tarjeta-secundaria group flex h-full min-h-[76px] flex-col border border-lino bg-card px-4 py-3.5 hover:border-lino-fuerte sm:px-5"
             >
               <span className="flex items-start justify-between gap-4">
                 <span className="min-w-0 font-semibold leading-snug text-foreground">{s.name}</span>

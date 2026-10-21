@@ -1,5 +1,5 @@
 import type { Client, Employee, EmployeeId, Service } from "./mock/types";
-import { avatarDiceBearUri } from "./avatar-dicebear";
+import { avatarInicialesUri } from "./avatar-placeholder";
 
 /**
  * Vocabulario y catálogos por tipo de negocio.
@@ -508,9 +508,9 @@ export function fotoDeProfesional(
   return fotoDeEjemplo;
 }
 
-/** Avatar DiceBear local para cuando no hay una foto real que mostrar. */
+/** Iniciales locales para APIs antiguas que todavía reciben una URL de imagen. */
 export function placeholderAvatar(name: string, employeeId: EmployeeId): string {
-  return avatarDiceBearUri(`${employeeId}:${name}`, 96);
+  return avatarInicialesUri(name, `${employeeId}:${name}`);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -618,7 +618,8 @@ export function parseMenuEntry(raw: string): MenuOverrideEntry | null {
 /** Cadena canónica de una entrada de carta, para guardar en el perfil/enlace. */
 export function formatMenuEntry(entry: MenuOverrideEntry): string {
   const base = `${entry.name}~${entry.durationMin}~${entry.priceEur}`;
-  if (entry.id) return `${base}~${entry.category ?? ""}~${entry.active === false ? "off" : ""}~${entry.id}`;
+  if (entry.id)
+    return `${base}~${entry.category ?? ""}~${entry.active === false ? "off" : ""}~${entry.id}`;
   if (entry.active === false) return `${base}~${entry.category ?? ""}~off`;
   return entry.category ? `${base}~${entry.category}` : base;
 }
@@ -631,12 +632,21 @@ export function formatMenuEntry(entry: MenuOverrideEntry): string {
  * escribe, para no ensuciar las entradas.
  */
 export function menuDesdeServicios(
-  services: Array<{ id: string; name: string; durationMin: number; priceEur: number; category?: string; active?: boolean }>,
+  services: Array<{
+    id: string;
+    name: string;
+    durationMin: number;
+    priceEur: number;
+    category?: string;
+    active?: boolean;
+  }>,
 ): string[] {
   // Nada de recortar en silencio: si el panel tiene más servicios de los
   // que caben, se dice y no se guarda una carta a la que le faltan.
   if (services.length > MAX_MENU_ENTRIES_SALON) {
-    throw new Error(`La carta admite como mucho ${MAX_MENU_ENTRIES_SALON} servicios y hay ${services.length}.`);
+    throw new Error(
+      `La carta admite como mucho ${MAX_MENU_ENTRIES_SALON} servicios y hay ${services.length}.`,
+    );
   }
   return services.map((s) =>
     formatMenuEntry({

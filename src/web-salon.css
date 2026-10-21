@@ -4,20 +4,14 @@
  * cuelga de `.web-salon`, la clase del envoltorio de `s.$salonSlug.tsx`.
  */
 
-/* ---- Maquetación fluida (18.1) --------------------------------------------
- * Antes: `max-w-6xl` (1152 px) para todo. A 1920 px quedaba el 43 % del ancho
- * en bandas vacías a los lados y a 2560 px el 57 %.
- *
- * Ahora el contenido llega hasta el borde con un margen lateral que crece con
- * la pantalla (16 px en móvil, 72 px desde 1800 px) y un ancho útil que no
- * baja de 1600 px ni pasa de 2048: a 1920 px quedan 160 px por lado y a
- * 2560 px, 256. Los fondos de sección van a sangre (la sección no lleva
- * contenedor; lo lleva su hijo), así que esos márgenes nunca se ven como
- * bandas de otro color.
+/* ---- Maquetación compartida con Arena -------------------------------------
+ * La web pública replica la regla única del panel: gutter de 16 / 24 / 32 px,
+ * contenido centrado y 1200 px de ancho útil máximo. Las secciones conservan
+ * el fondo a sangre, mientras el contenido nunca crea scroll horizontal.
  * ------------------------------------------------------------------------- */
 :root {
-  --ws-gutter: clamp(16px, 4vw, 72px);
-  --ws-ancho-util: min(2048px, max(1600px, 80vw));
+  --ws-gutter: 16px;
+  --ws-ancho-util: 1200px;
 }
 .contenedor-salon {
   width: 100%;
@@ -25,39 +19,39 @@
   margin-inline: auto;
   padding-inline: var(--ws-gutter);
 }
+@media (min-width: 48rem) {
+  :root { --ws-gutter: 24px; }
+}
+@media (min-width: 64rem) {
+  :root { --ws-gutter: 32px; }
+}
 
 /* ---- Paleta de la web del salón (18.2) -----------------------------------
  * La landing comparte los roles Arena del panel, sin adoptar la identidad de
  * una demo anterior. El salón se reconoce por sus propios datos del perfil.
  *
- * Contraste medido (WCAG 2.1, texto normal ≥ 4,5:1):
- *   tinta #402C1E ........ 12,1 crema · 10,5 arena · 10,2 caramelo claro · 10,9 salvia clara
- *   texto suave #6A5242 ..  6,7 crema ·  5,8 arena ·  5,6 caramelo claro ·  6,0 salvia clara
- *   eucalipto #3A6553 ....  6,1 crema ·  5,3 arena ·  5,1 caramelo claro ·  5,5 salvia clara
- *   acción #85593A .......  5,6 crema ·  4,8 arena · blanco sobre acción 6,0
- *   sobre chocolate oscuro: crema 12,1 · caramelo 6,0 · salvia 6,7
- * Canela #9C6C49 (4,2 sobre crema) y caramelo #DEA378 (2,0) son decorativos:
- * trazos, estrellas, puntos y bordes; nunca texto pequeño.
+ * Carbón #303030 y gris #555 mantienen contraste AA sobre crema, blanco,
+ * mantequilla y salvia. El amarillo se reserva para acentos y fondos.
  * ------------------------------------------------------------------------- */
 :root {
-  --ws-crema: #FCFAF7;
+  --ws-crema: #FBF7EC;
   --ws-tarjeta: #FFFFFF;
-  --ws-arena: #EADFD2;
-  --ws-lino: #EAE1D8;
-  --ws-lino-fuerte: #DCCFC1;
-  --ws-taupe: #D9C7B5;
-  --ws-caramelo-claro: #F6F1EA;
-  --ws-caramelo: #D9C7B5;
-  --ws-canela: #A47B5C;
-  --ws-accion: #8A6446;
-  --ws-chocolate: #6B5B52;
-  --ws-tinta: #3B2F2A;
-  --ws-texto-suave: #7A6A60;
-  --ws-salvia-clara: #DDE8DD;
-  --ws-eucalipto-claro: #DDE8DD;
-  --ws-salvia: #9FB8A3;
-  --ws-oliva: #4F6F58;
-  --ws-eucalipto: #45624E;
+  --ws-arena: #F5EFCD;
+  --ws-lino: #E7E4D9;
+  --ws-lino-fuerte: #D8D5C9;
+  --ws-taupe: #D8D5C9;
+  --ws-caramelo-claro: #FFF4C8;
+  --ws-caramelo: #FFD960;
+  --ws-canela: #8A6B00;
+  --ws-accion: #303030;
+  --ws-chocolate: #4C4C4C;
+  --ws-tinta: #303030;
+  --ws-texto-suave: #555555;
+  --ws-salvia-clara: #CFDFCF;
+  --ws-eucalipto-claro: #CFDFCF;
+  --ws-salvia: #8DA88F;
+  --ws-oliva: #3E6547;
+  --ws-eucalipto: #3E6547;
 }
 
 @theme inline {
@@ -127,6 +121,31 @@ body:has(.web-salon) {
   --pro-2: var(--ws-eucalipto-claro);
   --pro-3: var(--ws-arena);
   --pro-4: var(--ws-salvia-clara);
+  --radio-tarjeta: 30px;
+  --radio-tarjeta-sm: 23px;
+  --sombra-tarjeta: 0 18px 40px -18px rgba(48,48,48,.16), 0 2px 8px rgba(48,48,48,.04);
+  --sombra-tarjeta-sm: 0 12px 28px -16px rgba(48,48,48,.12), 0 1px 5px rgba(48,48,48,.035);
+}
+
+/* El degradado Arena empieza después del hero: la primera sección conserva
+ * su fotografía y su contraste, mientras el resto enlaza visualmente con el panel. */
+.web-salon main {
+  overflow-x: clip;
+  background-color: var(--ws-crema);
+  background-image:
+    radial-gradient(ellipse 72% 42% at 102% 42%, rgba(255, 244, 200, .78), transparent 72%),
+    radial-gradient(ellipse 62% 38% at -4% 72%, rgba(245, 239, 205, .82), transparent 74%);
+}
+.web-salon .ws-falta { color: #B42318; }
+
+@keyframes ws-cambio-paso {
+  from { opacity: .6; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.web-salon .ws-paso { animation: ws-cambio-paso 180ms var(--curva-salida) both; }
+
+@media (max-width: 47.999rem) {
+  .web-salon .ws-reserva { padding-inline: 16px; }
 }
 
 /* Etiqueta de sección (la mayúscula pequeña de encima del título), en eucalipto. */
@@ -219,4 +238,5 @@ body:has(.web-salon) [role="dialog"] .font-display {
 @media (prefers-reduced-motion: reduce) {
   .web-salon .ws-portada-foto { animation: none; }
   .web-salon .ws-trazo path { transition: none; stroke-dashoffset: 0; }
+  .web-salon .ws-paso { animation: none; }
 }

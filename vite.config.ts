@@ -14,6 +14,9 @@ export default defineConfig({
   },
   nitro: {
     preset: "vercel",
+    // Mantiene los temporales en el proyecto. Además de ser fácil de limpiar,
+    // permite compilar cuando node_modules es compartido o de solo lectura.
+    buildDir: ".nitro",
     // @lovable.dev/vite-tanstack-config hardcodes output.{dir,serverDir,publicDir}
     // to a plain dist/ folder regardless of preset — that layout isn't the Vercel
     // Build Output API (v3), so Vercel had nothing to run as a function (404s on

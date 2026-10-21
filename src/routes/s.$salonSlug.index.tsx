@@ -33,7 +33,7 @@ import { StylistAvatar } from "@/components/StylistAvatar";
 import type { EmployeeId } from "@/lib/mock/types";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useMemo, useState } from "react";
-import { DEFAULT_OPENING_HOURS, isOpenNow, todayOpenInfo, weekSchedule } from "@/lib/opening-hours";
+import { DEFAULT_OPENING_HOURS, weekSchedule } from "@/lib/opening-hours";
 import { useClientNow } from "@/lib/use-client-now";
 import { conAncho } from "@/lib/demo-photos";
 import { fotoConAnchos, fotosDeGaleria, portadaConAnchos } from "@/lib/galeria-salon";
@@ -189,7 +189,7 @@ function Estrellas({ nota, className }: { nota: number; className?: string }) {
 /** Tarjeta de reseña: rejilla fija, sin marquesina ni máscaras que la corten. */
 function ReviewCard({ name, rating, quote, ejemplo }: Review & { ejemplo: boolean }) {
   return (
-    <figure className="flex h-full flex-col rounded-[20px] border border-lino bg-card p-5 sm:p-6">
+    <figure className="tarjeta-principal flex h-full flex-col border border-lino bg-card p-5 sm:p-6">
       <Estrellas nota={rating} />
       <blockquote className="mt-4 flex-1 text-[15px] leading-relaxed text-foreground">
         «{quote}»
@@ -259,18 +259,18 @@ function SectionHeading({
   intro,
   className,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   intro?: string;
   className?: string;
 }) {
   return (
     <Reveal className={cn("mb-8 md:mb-10", className)}>
-      <p className="ws-etiqueta">{eyebrow}</p>
-      <h2 className="mt-2 ws-titulo text-[28px] text-foreground md:text-[38px]">
+      {eyebrow && <p className="ws-etiqueta">{eyebrow}</p>}
+      <h2 className={cn("ws-titulo text-[28px] text-foreground md:text-[38px]", eyebrow && "mt-2")}>
         {title}
       </h2>
-      <TrazoTitulo className="mt-2" />
+      <TrazoTitulo className="mt-2" centrado={className?.includes("text-center")} />
       {intro && <p className="mt-2 max-w-xl text-[15px] text-muted-foreground">{intro}</p>}
     </Reveal>
   );
@@ -398,10 +398,8 @@ function SalonHome() {
   }));
   // Hora del navegador: en el servidor no se sabe qué hora es en el salón.
   const now = useClientNow();
-  const openNow = now ? isOpenNow(profile.openingHours, now) : false;
-  const estadoHoy = now ? todayOpenInfo(profile.openingHours, now) : "Horario";
-  // Ni una demo enlazada ni un salón real sin horario propio dicen «Abierto
-  // · cierra a las…» con el horario estático de ejemplo.
+  // Ni una demo enlazada ni un salón real sin horario propio publican el
+  // horario estático de ejemplo en la sección «Cómo llegar».
   const horarioDeEjemplo =
     (conEnlaceDemo || protegerContenidoReal) && JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS);
   // Las fotos del equipo: la de stock solo en una DEMO de barbería. En un
@@ -470,18 +468,9 @@ function SalonHome() {
         />}
         <div className="absolute inset-0 -z-10 bg-cafe/80" aria-hidden="true" />
 
-        <div className={cn(CONTENEDOR_SALON, "flex min-h-[520px] flex-col justify-end pb-12 pt-20 md:min-h-[600px] md:justify-center md:py-24")}>
-          <div className="entrada-portada max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              {!horarioDeEjemplo && (
-                <span className="inline-flex h-8 items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 text-[13px] font-medium backdrop-blur-sm">
-                  <span
-                    className={cn("size-2 rounded-full", openNow ? "bg-salvia" : "bg-white/60")}
-                    aria-hidden="true"
-                  />
-                  {estadoHoy}
-                </span>
-              )}
+        <div className={cn(CONTENEDOR_SALON, "flex min-h-[560px] flex-col items-center justify-center py-20 text-center md:min-h-[620px] md:py-24")}>
+          <div className="entrada-portada flex max-w-3xl flex-col items-center">
+            <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
               {profile.rating > 0 && (
                 <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 text-[13px] backdrop-blur-sm">
                   <Star className="h-3.5 w-3.5 fill-white text-white" aria-hidden="true" />
@@ -495,11 +484,11 @@ function SalonHome() {
 
             {logotipoPortada ? (
               // El logotipo real, en blanco sobre la foto: es el título de la página.
-              <h1 className="mt-6">
+              <h1 className="mt-6 flex justify-center">
                 <img src={logotipoPortada} alt={profile.name} width={1455} height={432} className="ws-logotipo h-auto w-[min(88vw,420px)] drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)] md:w-[480px]" />
               </h1>
             ) : (
-            <div className="mt-6 flex items-center gap-4">
+            <div className="mt-6 flex flex-col items-center justify-center gap-4 sm:flex-row">
                 {logoPortada && (
                     <span className="block size-16 shrink-0 overflow-hidden rounded-2xl border border-white/50 bg-white p-1 shadow-lg md:size-[72px]">
                     <img
@@ -532,57 +521,30 @@ function SalonHome() {
                 Especialistas en <span className="font-semibold">{especialidades}</span>
               </p>
             )}
-            {profile.about ? <p className="mt-3 max-w-md text-[15px] text-white/90">{profile.about}</p> : null}
+            {profile.about ? <p className="mt-3 max-w-2xl text-[15px] text-white/90">{profile.about}</p> : null}
 
-            <p className="mt-4 flex items-start gap-2 text-[15px] text-white/90">
+            <p className="mt-4 flex items-start justify-center gap-2 text-[15px] text-white/90">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <span>{profile.address}</span>
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button asChild size="lg" className="h-12 rounded-full px-7 text-[15px] font-semibold">
                 <Link to="/s/$salonSlug/book" params={{ salonSlug }} search={(prev) => prev} className="gap-2">
                   Reservar cita <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </Button>
-              {isV2 && tieneTelefono ? (
+              {whatsappUrl && (
                 <Button
                   asChild
                   size="lg"
                   variant="outline"
-                  className="h-12 rounded-full border-white/60 bg-transparent px-6 text-[15px] text-white hover:bg-white/10 hover:text-white"
+                  className="h-12 rounded-full border-white/60 bg-white/10 px-6 text-[15px] text-white hover:bg-white/20 hover:text-white"
                 >
-                  <a href={`tel:${telefono}`} className="gap-2">
-                    <Phone className="h-4 w-4" aria-hidden="true" /> Llamar
+                  <a href={whatsappUrl} {...FUERA} className="gap-2">
+                    <IconoWhatsApp className="h-4 w-4" /> WhatsApp
                   </a>
                 </Button>
-              ) : (
-                <>
-                  {whatsappUrl && (
-                    <Button
-                      asChild
-                      size="lg"
-                      variant="outline"
-                      className="h-12 rounded-full border-white/60 bg-white/10 px-6 text-[15px] text-white hover:bg-white/20 hover:text-white"
-                    >
-                      <a href={whatsappUrl} {...FUERA} className="gap-2">
-                        <IconoWhatsApp className="h-4 w-4" /> WhatsApp
-                      </a>
-                    </Button>
-                  )}
-                  {/* En móvil, con WhatsApp al lado, «Ver precios» sobra: la carta llega en un gesto. */}
-                  <Button
-                    asChild
-                    size="lg"
-                    variant="outline"
-                    className={cn(
-                      "h-12 rounded-full border-white/60 bg-transparent px-6 text-[15px] text-white hover:bg-white/10 hover:text-white",
-                      whatsappUrl && "hidden sm:inline-flex",
-                    )}
-                  >
-                    <a href="#carta">Ver precios</a>
-                  </Button>
-                </>
               )}
             </div>
             {isV2 && (
@@ -598,12 +560,12 @@ function SalonHome() {
       {/* Servicios destacados (con la carta de ejemplo no se repite: ya está
           la «Carta de ejemplo» justo debajo) */}
       {!serviciosDeEjemplo && (
-      <section id="servicios" className="bg-ws-crema">
+      <section id="servicios" className="bg-transparent">
         <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
           <SectionHeading
             eyebrow={serviciosDeEjemplo ? "Reserva de prueba" : "Lo más pedido"}
             title={serviciosDeEjemplo ? "Servicios de ejemplo" : "Servicios destacados"}
-            intro={serviciosDeEjemplo ? "Carta de ejemplo para probar la reserva. El salón podrá sustituirla por sus servicios." : "Toca uno para reservarlo directamente."}
+            intro={serviciosDeEjemplo ? "Carta de ejemplo para probar la reserva. El salón podrá sustituirla por sus servicios." : undefined}
           />
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {featuredIds.map((id, i) => {
@@ -615,7 +577,7 @@ function SalonHome() {
                     to="/s/$salonSlug/book"
                     params={{ salonSlug }}
                     search={(prev) => ({ ...prev, service: id })}
-                    className="elevar group flex h-full min-w-0 flex-col rounded-[20px] border border-lino bg-card p-5 shadow-[0_4px_16px_rgba(59,47,42,0.055)] sm:min-h-[148px]"
+                    className="elevar tarjeta-secundaria group flex h-full min-w-0 flex-col border border-lino bg-card p-5 sm:min-h-[148px]"
                   >
                     <div className="flex min-w-0 items-start justify-between gap-3">
                       <h3 className="min-w-0 break-words text-base font-bold leading-snug text-foreground">{s.name}</h3>
@@ -646,9 +608,8 @@ function SalonHome() {
       <section id="carta" className="bg-ws-arena">
         <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
           <SectionHeading
-            eyebrow="Precios"
             title={serviciosDeEjemplo ? "Carta de ejemplo" : "Carta completa"}
-            intro={serviciosDeEjemplo ? "Estos precios y duraciones son ejemplos, no datos publicados por el salón." : introCartaSenal(reglaDeSenal)}
+            className="text-center"
           />
           <Reveal>
             <CartaServicios
@@ -659,6 +620,14 @@ function SalonHome() {
               conSenal={(s) => servicioLlevaSenal(reglaDeSenal, s)}
             />
           </Reveal>
+          <div className="mx-auto mt-7 max-w-2xl space-y-1 text-center text-sm text-muted-foreground">
+            <p>(Toca uno para reservarlo directamente.)</p>
+            {serviciosDeEjemplo ? (
+              <p>(Estos precios y duraciones son ejemplos, no datos publicados por el salón.)</p>
+            ) : introCartaSenal(reglaDeSenal) ? (
+              <p>({introCartaSenal(reglaDeSenal)})</p>
+            ) : null}
+          </div>
         </div>
       </section>
 
@@ -689,7 +658,7 @@ function SalonHome() {
               <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {employees.map((e, i) => (
                   <li key={e.id} className="h-full">
-                  <Reveal delay={i * 60} className="flex h-full items-center gap-4 rounded-[20px] border border-lino bg-card p-5">
+                  <Reveal delay={i * 60} className="tarjeta-secundaria flex h-full items-center gap-4 border border-lino bg-card p-5">
                       <StylistAvatar
                         name={e.name}
                         employeeId={e.id}
@@ -784,7 +753,7 @@ function SalonHome() {
         <div className={cn(CONTENEDOR_SALON, SECCION_WEB, "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-12")}>
           <SectionHeading eyebrow="Antes de venir" title="Preguntas frecuentes" className="lg:mb-0" />
           <Reveal>
-            <Accordion type="single" collapsible className="divide-y divide-lino rounded-[20px] border border-lino bg-card px-4 sm:px-5">
+            <Accordion type="single" collapsible className="tarjeta-principal divide-y divide-lino border border-lino bg-card px-4 sm:px-5">
               {faq.map((item) => (
                 <AccordionItem key={item.q} value={item.q} className="border-b-0">
                   <AccordionTrigger className="min-h-14 gap-3 py-3 text-left text-[15px] font-semibold hover:no-underline">
@@ -807,7 +776,7 @@ function SalonHome() {
           <SectionHeading eyebrow="Ubicación y horario" title="Te esperamos aquí" />
           <div className="grid gap-3 md:grid-cols-2">
             <Reveal className="h-full">
-              <div className="flex h-full flex-col rounded-[20px] border border-lino bg-background p-5 sm:p-6">
+              <div className="tarjeta-principal flex h-full flex-col border border-lino bg-background p-5 sm:p-6">
                 <p className="flex items-start gap-3 text-[15px]">
                   <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
                   <span>{profile.address}</span>
@@ -849,7 +818,7 @@ function SalonHome() {
             </Reveal>
             {!horarioDeEjemplo && (
             <Reveal delay={60} className="h-full">
-              <div className="h-full rounded-[20px] border border-lino bg-background p-5 sm:p-6">
+              <div className="tarjeta-principal h-full border border-lino bg-background p-5 sm:p-6">
                 <p className="ws-etiqueta mb-2">Horario</p>
                 <ul className="divide-y divide-lino">
                   {weekSchedule(profile.openingHours).map((d, i) => (

@@ -98,7 +98,7 @@ describe("equipo de ejemplo por tipo", () => {
     const foto = fotoDeProfesional("Adam", "mario", "/stock/mario.jpg", "barberia", true);
     expect(foto.startsWith("data:image/svg+xml")).toBe(true);
     expect(foto).not.toContain("/stock/mario.jpg");
-    expect(decodeURIComponent(foto)).toContain("Notionists");
+    expect(decodeURIComponent(foto)).toContain(">A</text>");
   });
 
   it("una demo de barbería sigue enseñando la foto de ejemplo de siempre", () => {

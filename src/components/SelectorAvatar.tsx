@@ -2,12 +2,34 @@ import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type AvatarElegido } from "@/lib/avatar";
-import { guardarRetrato, peinadosRetrato, retratoGuardado, uriRetrato, type Retrato, type TipoRetrato } from "@/components/retratos-avatar";
-import { Avatar } from "@/components/Avatar";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  EXPRESIONES_RETRATO,
+  PEINADOS_RETRATO,
+  guardarRetrato,
+  retratoGuardado,
+  uriRetrato,
+  type Retrato,
+} from "@/lib/retratos-avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-export function SelectorAvatar({ abierto, onOpenChange, nombre, id, actual, onElegir }: {
+const borradorInicial = (actual: unknown): Retrato =>
+  retratoGuardado(actual) ?? { version: 2, peinado: "largo-liso", expresion: "amable" };
+
+export function SelectorAvatar({
+  abierto,
+  onOpenChange,
+  nombre,
+  id,
+  actual,
+  onElegir,
+}: {
   abierto: boolean;
   onOpenChange: (abierto: boolean) => void;
   nombre: string;
@@ -16,61 +38,111 @@ export function SelectorAvatar({ abierto, onOpenChange, nombre, id, actual, onEl
   onElegir: (avatar: AvatarElegido | null) => void;
   onSubirFoto?: () => void;
 }) {
-  const [borrador, setBorrador] = useState<Retrato | undefined>(() => retratoGuardado(actual));
+  const [borrador, setBorrador] = useState<Retrato>(() => borradorInicial(actual));
   useEffect(() => {
-    if (abierto) setBorrador(retratoGuardado(actual));
+    if (abierto) setBorrador(borradorInicial(actual));
   }, [abierto, actual, id]);
   return (
     <Dialog open={abierto} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-[520px] flex-col gap-0 overflow-hidden bg-card p-0">
         <DialogHeader className="shrink-0 px-5 pt-6 pb-4 text-left">
           <DialogTitle className="pr-7 text-xl font-bold">Avatar de {nombre}</DialogTitle>
-          <DialogDescription>Elige un retrato y el peinado que más se parezca a ti.</DialogDescription>
+          <DialogDescription>
+            Elige un peinado y una sonrisa. Puedes cambiarlo cuando quieras.
+          </DialogDescription>
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
           <div className="mb-5 flex items-center gap-4 rounded-2xl bg-nata/60 p-4">
-            {borrador ? <img src={uriRetrato(borrador)} alt={`Vista previa del avatar de ${nombre}`} className="size-20 shrink-0 rounded-full" />
-              : <Avatar nombre={nombre} id={id} elegido={actual} size={80} />}
-            <div><p className="text-sm font-semibold">Tu avatar</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">La vista previa se actualiza al elegir. Guarda cuando esté a tu gusto.</p></div>
+            <img
+              src={uriRetrato(borrador)}
+              alt={`Vista previa del avatar de ${nombre}`}
+              className="size-20 shrink-0 rounded-full"
+            />
+            <div>
+              <p className="text-sm font-semibold">Tu avatar</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                La vista previa se actualiza al elegir. Guarda cuando esté a tu gusto.
+              </p>
+            </div>
           </div>
           <fieldset>
-            <legend className="mb-3 text-sm font-bold">Elige tu retrato</legend>
-            <div className="grid grid-cols-2 gap-3">
-              {(["mujer", "hombre"] as TipoRetrato[]).map((tipo) => {
-                const activo = borrador?.tipo === tipo;
-                return <button key={tipo} type="button" aria-pressed={activo} aria-label={tipo === "mujer" ? "Mujer" : "Hombre"}
-                  onClick={() => setBorrador({ version: 1, tipo, peinado: 0 })}
-                  className={cn("relative flex min-h-28 items-center justify-center rounded-2xl p-3 transition-colors",
-                    activo ? "bg-miel ring-2 ring-cafe/50" : "bg-nata/40 hover:bg-nata")}>
-                  <img src={uriRetrato({ version: 1, tipo, peinado: 0 })} alt="" draggable={false} className="size-24 rounded-full" />
-                  {activo && <Check className="absolute top-3 right-3 size-4 text-cafe" aria-hidden="true" />}
-                </button>;
+            <legend className="mb-3 text-sm font-bold">Peinado</legend>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {PEINADOS_RETRATO.map((peinado) => {
+                const activo = borrador.peinado === peinado.id;
+                return (
+                  <button
+                    key={peinado.id}
+                    type="button"
+                    aria-pressed={activo}
+                    aria-label={peinado.nombre}
+                    onClick={() => setBorrador({ ...borrador, peinado: peinado.id })}
+                    className={cn(
+                      "relative grid min-h-20 min-w-0 place-items-center rounded-2xl px-1.5 pt-1.5 pb-2 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                      activo ? "bg-miel ring-2 ring-cafe/50" : "bg-nata/40 hover:bg-nata",
+                    )}
+                  >
+                    <img
+                      src={uriRetrato({ ...borrador, peinado: peinado.id })}
+                      alt=""
+                      draggable={false}
+                      className="aspect-square w-full max-w-20 rounded-full"
+                    />
+                    <span className="mt-1 line-clamp-2 text-center text-[11px] leading-tight font-medium">
+                      {peinado.nombre}
+                    </span>
+                    {activo && (
+                      <span className="absolute right-1 bottom-1 rounded-full bg-cafe p-1 text-white">
+                        <Check className="size-3" aria-hidden="true" />
+                      </span>
+                    )}
+                  </button>
+                );
               })}
             </div>
           </fieldset>
-          {borrador && <fieldset className="mt-5">
-            <legend className="mb-3 text-sm font-bold">Elige el peinado</legend>
-            <div className="grid grid-cols-4 gap-2">
-              {peinadosRetrato(borrador.tipo).map((indice) => {
-                const activo = borrador.peinado === indice;
-                return <button key={indice} type="button" aria-pressed={activo} aria-label={`Peinado ${indice + 1}`}
-                  onClick={() => setBorrador({ ...borrador, peinado: indice })}
-                  className={cn("relative grid aspect-square min-h-11 min-w-0 place-items-center rounded-2xl p-1.5 transition-colors",
-                    activo ? "bg-miel ring-2 ring-cafe/50" : "bg-nata/40 hover:bg-nata")}>
-                  <img src={uriRetrato({ ...borrador, peinado: indice })} alt="" draggable={false} className="aspect-square w-full rounded-full" />
-                  {activo && <span className="absolute right-1 bottom-1 rounded-full bg-cafe p-1 text-white"><Check className="size-3" aria-hidden="true" /></span>}
-                </button>;
+          <fieldset className="mt-5">
+            <legend className="mb-3 text-sm font-bold">Sonrisa</legend>
+            <div className="grid grid-cols-3 gap-2">
+              {EXPRESIONES_RETRATO.map((expresion) => {
+                const activo = borrador.expresion === expresion.id;
+                return (
+                  <button
+                    key={expresion.id}
+                    type="button"
+                    aria-pressed={activo}
+                    onClick={() => setBorrador({ ...borrador, expresion: expresion.id })}
+                    className={cn(
+                      "relative min-h-11 rounded-xl px-3 py-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                      activo ? "bg-miel ring-2 ring-cafe/50" : "bg-nata/40 hover:bg-nata",
+                    )}
+                  >
+                    {expresion.nombre}
+                  </button>
+                );
               })}
             </div>
-          </fieldset>}
+          </fieldset>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 bg-nata/50 px-5 py-4">
-          <Button type="button" variant="ghost" className="min-h-11" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button type="button" className="min-h-11" disabled={!borrador} onClick={() => {
-            if (!borrador) return;
-            onElegir(guardarRetrato(borrador));
-            onOpenChange(false);
-          }}>Guardar avatar</Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="min-h-11"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            className="min-h-11"
+            onClick={() => {
+              onElegir(guardarRetrato(borrador));
+              onOpenChange(false);
+            }}
+          >
+            Guardar avatar
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

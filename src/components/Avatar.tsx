@@ -3,8 +3,9 @@ import { cn } from "@/lib/utils";
 import { useSalonStore } from "@/lib/store";
 import { employeeMap } from "@/lib/mock/salon";
 import { hashTexto, iniciales, resolverAvatar } from "@/lib/avatar";
-import { avatarDiceBearUri } from "@/lib/avatar-dicebear";
-import { retratoGuardado, uriRetrato } from "@/components/retratos-avatar";
+import { uriDeAvatar } from "@/lib/avatar-svg";
+import { retratoGuardado, uriRetrato } from "@/lib/retratos-avatar";
+import { useFotoActiva } from "@/hooks/use-foto-persona";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
@@ -41,8 +42,8 @@ export interface AvatarProps {
 /**
  * El avatar de una persona, en un solo sitio.
  * Prioridad: foto > avatar elegido > avatar por defecto según el id > iniciales.
- * Sin foto ni avatar elegido, iniciales en círculo Arena. Los dibujos DiceBear
- * Notionists (en el bundle, sin red) solo se usan si alguien los eligió.
+ * Sin foto ni avatar elegido, iniciales en círculo Arena. Los retratos elegidos
+ * se generan con SVG propios, sin descargar ni cargar una librería externa.
  * Este es el único punto de render de avatar.
  */
 export function Avatar({
@@ -63,12 +64,15 @@ export function Avatar({
   const [fotoRota, setFotoRota] = useState<string | null>(null);
   const r = resolverAvatar({ id, foto: foto && foto !== fotoRota ? foto : undefined, elegido });
   // Por defecto, iniciales en círculo Arena: legibles a 24 px, sin riesgo de
-  // poner barba a «Fátima» ni gestos raros (los dibujos aleatorios no saben el
-  // género ni el oficio). El dibujo DiceBear solo sale si se eligió a propósito.
+  // poner barba a «Fátima» ni gestos raros (los dibujos automáticos no saben el
+  // género ni el oficio). El retrato de línea solo sale si se eligió a propósito.
   const retrato = retratoGuardado(elegido);
-  const uri = r.origen === "elegido" && r.avatar !== undefined
-    ? retrato ? uriRetrato(retrato, t.px) : avatarDiceBearUri(r.avatar, t.px)
-    : undefined;
+  const uri =
+    r.origen === "elegido" && r.avatar !== undefined
+      ? retrato
+        ? uriRetrato(retrato, t.px)
+        : uriDeAvatar(r.avatar, t.px)
+      : undefined;
   const caja = cn("relative block shrink-0 overflow-hidden rounded-full select-none", className);
   const estilo = {
     width: t.px,
@@ -103,7 +107,11 @@ export function Avatar({
   const color = PALETA[hashTexto(id ?? nombre) % PALETA.length];
   return (
     <span
-      className={cn(caja, "!flex items-center justify-center font-display font-semibold tracking-tight text-cafe", t.texto)}
+      className={cn(
+        caja,
+        "!flex items-center justify-center font-display font-semibold tracking-tight text-cafe",
+        t.texto,
+      )}
       style={{ ...estilo, backgroundColor: `var(${color})` }}
       {...accesible}
       data-avatar="iniciales"
@@ -128,11 +136,13 @@ export function AvatarClienta({
   className?: string;
 }) {
   const elegido = useSalonStore((s) => (id ? s.salonProfile.avataresClientas?.[id] : undefined));
+  // Una foto subida a propósito manda sobre todo; si falla la carga, Avatar cae al dibujado.
+  const subida = useFotoActiva("clienta", id);
   return (
     <Avatar
       nombre={nombre}
       id={id}
-      foto={foto}
+      foto={subida ?? foto}
       elegido={elegido}
       size={size}
       className={className}
@@ -159,16 +169,15 @@ export function AvatarProfesional({
   className?: string;
 }) {
   const elegido = useSalonStore((s) => s.salonProfile.avataresEquipo?.[id]);
+  const subida = useFotoActiva("equipo", id);
   const variable = colorVar ?? employeeMap[id]?.colorVar;
   const aro = variable ? (variable.startsWith("--") ? variable : `--${variable}`) : undefined;
-  // Hoy no hay subida de fotos de personas: la única «foto» del equipo es la de
-  // stock de las demos de barbería. Un avatar elegido a propósito gana a esa foto
-  // (cuando exista la subida real, la foto subida mandará: ver lib/avatar.ts).
+  // Foto subida (activa) > avatar elegido > foto de stock de las demos de barbería.
   return (
     <Avatar
       nombre={nombre}
       id={id}
-      foto={elegido ? undefined : foto}
+      foto={subida ?? (elegido ? undefined : foto)}
       elegido={elegido}
       size={size}
       aro={aroColor ? undefined : aro}
