@@ -22,7 +22,9 @@ instalarDobleStart();
 const S = await import("./salons.functions" + "?acceso-app");
 const P = await import("./pagos.functions" + "?acceso-app");
 const A = await import("./accesos.functions" + "?acceso-app");
+const AUT = await import("./autorizacion.server");
 beforeEach(() => {
+  AUT.olvidarCachesDeAutorizacion();
   cabecera = `Bearer ${tokenConSesion("estilista")}`;
   db = crearDobleSupabase(
     {
@@ -99,6 +101,9 @@ test("dos dispositivos conviven y cerrar sesiones invalida ambos sin esperar al 
     expect(await llamar(S.accesoAlPanel, { slug: "peluchic" })).toMatchObject({ permitido: true });
   }
   await db.rpc("cerrar_sesiones_usuario", { usuario: "maria" });
+  // Cerrado directamente en la base (otra instancia): esta lo nota al caducar
+  // su caché de sesión (SESION_TTL_MS, rendimiento 21-oct). Se simula esa caducidad.
+  AUT.olvidarCachesDeAutorizacion();
   for (const dispositivo of ["maria", "maria-ipad"]) {
     cabecera = `Bearer ${tokenConSesion(dispositivo)}`;
     expect(await llamar(S.accesoAlPanel, { slug: "peluchic" })).toMatchObject({ permitido: false });
@@ -114,4 +119,23 @@ test("el servidor deniega las rutas de ajustes y accesos a la estilista", async 
   expect(await llamar(S.accesoAlPanel, { slug: "peluchic", pagina: "calendario" })).toMatchObject({
     permitido: true,
   });
+});
+
+test("cerrar sesiones desde Accesos corta al momento en la misma instancia", async () => {
+  cabecera = `Bearer ${tokenConSesion("maria")}`;
+  expect(await llamar(S.accesoAlPanel, { slug: "peluchic" })).toMatchObject({ permitido: true });
+  AUT.olvidarSesionesDe("maria");
+  await db.rpc("cerrar_sesiones_usuario", { usuario: "maria" });
+  expect(await llamar(S.accesoAlPanel, { slug: "peluchic" })).toMatchObject({ permitido: false });
+});
+
+test("la sesión validada se reutiliza: menos viajes a Auth en la segunda petición", async () => {
+  cabecera = `Bearer ${tokenConSesion("maria")}`;
+  await llamar(S.accesoAlPanel, { slug: "peluchic" });
+  const antes = db.consultas.length;
+  await llamar(S.accesoAlPanel, { slug: "peluchic" });
+  const segunda = db.consultas.slice(antes);
+  // Solo la membresía (una lectura, no dos): ni salón, ni getUser, ni RPC.
+  expect(segunda.filter((c) => c.tabla === "salon_members").length).toBe(1);
+  expect(segunda.filter((c) => c.tabla === "salons").length).toBe(0);
 });

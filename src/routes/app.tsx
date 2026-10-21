@@ -15,8 +15,7 @@ import { inferBusinessType } from "@/lib/business-type";
 import { useDemoRegistradaAlDia } from "@/lib/demos/aplicar";
 import { GuardiaDelPanel } from "@/components/GuardiaDelPanel";
 import { FichasGlobales } from "@/components/FichasGlobales";
-import { accesoAlPanel } from "@/lib/api/salons.functions";
-import { paginaDeRutaPanel } from "@/lib/ruta-panel-permiso";
+import { accesoPanel, permitidoEnRuta, salirPorRevocacion } from "@/lib/acceso-actual-panel";
 import { hasSeenTour, startTour } from "@/lib/tour";
 import {
   BarraInferior,
@@ -92,13 +91,14 @@ export const Route = createFileRoute("/app")({
     });
     if (!slug) return;
     try {
-      // Cada navegación exige el rol vigente EN ESTE salón en el servidor.
-      const { real, permitido, miembro } = await accesoAlPanel({ data: {
-        slug, pagina: paginaDeRutaPanel(location.pathname) ?? undefined,
-      } });
-      if (real && !permitido) {
-        if (miembro) throw redirect({ to: "/app", search: { s: slug }, replace: true });
-        throw redirect({ to: "/login", search: { s: slug }, replace: true });
+      // Rendimiento (21-oct): el acceso se pregunta una vez por salón y se
+      // reutiliza (refresco de fondo a los 60 s); la pantalla se decide aquí
+      // con la membresía ya cargada. Los DATOS los protege cada función.
+      const acc = await accesoPanel.obtener(slug, () => salirPorRevocacion(slug));
+      const { real, permitido, miembro } = acc;
+      if (real && !permitido) throw redirect({ to: "/login", search: { s: slug }, replace: true });
+      if (!permitidoEnRuta(acc, location.pathname) && location.pathname !== "/app") {
+        throw redirect({ to: "/app", search: { s: slug }, replace: true });
       }
       // Rol y nombre de quien entra (lote 8): para usePermisos() y el saludo.
       // Lote 16: solo si cambia. Cada `set` de la store reescribe entera la
