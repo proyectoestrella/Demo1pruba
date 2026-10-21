@@ -19,14 +19,9 @@
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-/** La URL del proyecto y la clave pública. Públicas a propósito: viajan al navegador. */
-const URL_SUPABASE = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const CLAVE_PUBLICA = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+import { CLAVE_PUBLICA, URL_SUPABASE, hayAuthConfigurada } from "./supabase-browser";
 
-/** ¿Está la sesión configurada en este despliegue? */
-export function hayAuthConfigurada(): boolean {
-  return Boolean(URL_SUPABASE && CLAVE_PUBLICA);
-}
+export { hayAuthConfigurada };
 
 let cliente: SupabaseClient | null = null;
 

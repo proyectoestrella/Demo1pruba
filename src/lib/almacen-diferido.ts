@@ -39,13 +39,14 @@ export function cancelarEscrituraDiferida(): void {
 
 /** Escribe ya lo pendiente (pruebas, y antes de navegar fuera). */
 export function volcarEscrituraDiferida(): void {
-  volcar();
+ 
 }
 
 function escuchar(): void {
   if (escuchando || typeof window === "undefined") return;
   escuchando = true;
   window.addEventListener("pagehide", volcar);
+  window.addEventListener("beforeunload", volcar);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") volcar();
   });
@@ -65,6 +66,13 @@ export function crearAlmacenDiferido<S>(opciones?: { puedeEscribir?: () => boole
       escuchar();
       pendiente = { clave, valor: valor as StorageValue<unknown> };
       if (temporizador !== undefined) clearTimeout(temporizador);
+      // Un marco (la vista previa de «Mi página» es la web real en un iframe del
+      // mismo origen) escribe al instante, como siempre: si difiriera, su copia
+      // vieja podría pisar al volcar la que acaba de guardar la ventana de arriba.
+      if (window.top !== window.self) {
+        volcar();
+        return;
+      }
       temporizador = setTimeout(volcar, ESPERA_MS);
     },
     removeItem: (clave) => {

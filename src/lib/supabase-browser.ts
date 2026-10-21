@@ -6,10 +6,13 @@
  * cargarlo (hay sesión guardada o se vuelve de un enlace mágico) y se importa
  * en dinámico; el resto de la lógica vive en `supabase-cliente.ts`.
  */
+/** La URL del proyecto y la clave pública. Públicas a propósito: viajan al navegador. */
+export const URL_SUPABASE = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+export const CLAVE_PUBLICA = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+
+/** ¿Está la sesión configurada en este despliegue? */
 export function hayAuthConfigurada(): boolean {
-  return Boolean(
-    import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY,
-  );
+  return Boolean(URL_SUPABASE && CLAVE_PUBLICA);
 }
 
 function puedeHaberSesion(): boolean {
