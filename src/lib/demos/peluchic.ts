@@ -459,7 +459,7 @@ export const PELUCHIC: SalonProfile = {
   depositMode: "hora",
   depositHourlyRateEur: 5,
   // PREVIEW opción B: número ficticio; el real lo confirma María
-  depositBizumPhone: "600 000 000",
+  depositBizumPhone: "666 77 67 31",
   depositDeadlineHours: 4,
   depositAuto: false,
   depositAutoRelease: false,
