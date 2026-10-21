@@ -86,7 +86,7 @@ function fechaDeHoy(ahora: Date) {
     day: "numeric",
     month: "long",
   });
-  return `${texto.charAt(0).toUpperCase()}${texto.slice(1)} · ${hora(ahora)}`;
+  return `${texto.charAt(0).toUpperCase()}${texto.slice(1)}`;
 }
 
 function BotonMas({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
@@ -799,7 +799,7 @@ function EstoTeEspera({
   };
 
   return (
-    <section id="espera" data-tour="pending-requests" className="tarjeta-principal border border-salvia/60 bg-[#F7F8F3] p-5 md:p-7">
+    <section id="espera" data-tour="pending-requests" className="tarjeta-principal bg-[#F7F8F3] p-5 md:p-7">
       <div className="flex items-baseline gap-3">
         <h2 className={tituloBloque}>Esto te espera</h2>
         <span className="inline-flex h-6 items-center rounded-full border-0 bg-miel px-2.5 text-[12.5px] font-bold text-primary tabular-nums shadow-[0_6px_18px_-6px_rgba(48,48,48,0.18)]">
@@ -1263,7 +1263,7 @@ function Manana({
           )}
         </p>
         {pendientes > 0 && (
-          <Button asChild className="sm:ml-auto">
+          <Button asChild className="mt-3 sm:ml-auto">
             <Link to="/app/hoja" search={{ dia: "manana" }}>
               Enviar recordatorios
             </Link>

@@ -243,11 +243,6 @@ export function AppointmentDetailSheet({
   }
 
   const profesional = appointment ? employeeMap[appointment.employeeId] : undefined;
-  const variablePro = profesional?.colorVar
-    ? profesional.colorVar.startsWith("--")
-      ? profesional.colorVar
-      : `--${profesional.colorVar}`
-    : "--arena";
   const ahoraMs = Date.now();
   const iniMs = start ? +start : 0;
   const finMs = appointment ? iniMs + appointment.duration * 60_000 : 0;
@@ -271,28 +266,12 @@ export function AppointmentDetailSheet({
       >
         {appointment && start && fin && (
           <>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              {/* Cabecera de EVENTO: hora grande y barra del color de la profesional.
-                Nada de círculos aquí: el círculo es de las personas. */}
+            <div className="detalle-cita min-h-0 flex-1 overflow-y-auto bg-background">
+              {/* Resumen de la cita: fecha, horario y servicio, en ese orden. */}
               <header
-                className="border-l-[6px] px-5 py-5 sm:px-7 sm:py-6"
-                style={{
-                  backgroundColor: `var(${variablePro})`,
-                  borderLeftColor: `color-mix(in srgb, var(${variablePro}) 35%, var(--cafe-medio))`,
-                }}
+                className="m-4 mb-0 rounded-[24px] bg-card px-5 py-5 shadow-[0_6px_20px_-8px_rgba(59,47,42,0.18)] sm:mx-5"
               >
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-[36px] leading-none font-extrabold tracking-tight text-cafe tabular-nums sm:text-[40px]">
-                    {horaDe(start)}
-                  </p>
-                  <p className="self-end pb-0.5 text-[14px] font-bold text-cafe-medio tabular-nums">
-                    a las {horaDe(fin)} · {appointment.duration} min
-                  </p>
-                  <span className="ml-auto">
-                    <StatusBadge status={appointment.status} />
-                  </span>
-                </div>
-                <p className="mt-2 flex flex-wrap items-center gap-2 text-[14px] font-bold text-cafe-medio">
+                <p className="mb-3 flex flex-wrap items-center gap-2 text-[14px] font-bold text-cafe-medio">
                   <span className="first-letter:uppercase">
                     {start.toLocaleDateString("es", {
                       weekday: "long",
@@ -301,18 +280,30 @@ export function AppointmentDetailSheet({
                     })}
                   </span>
                   {esAhora ? (
-                    <span className="rounded-full bg-terracota px-2.5 py-0.5 text-[12px] font-extrabold text-white">
+                    <span className="rounded-full bg-nata px-2.5 py-0.5 text-[12px] font-bold text-cafe-medio">
                       Ahora
                     </span>
                   ) : esHoy ? (
-                    <span className="rounded-full border border-terracota px-2.5 py-0.5 text-[12px] font-extrabold text-terracota">
+                    <span className="rounded-full bg-nata px-2.5 py-0.5 text-[12px] font-bold text-cafe-medio">
                       Hoy
                     </span>
                   ) : null}
                 </p>
-                <p className="mt-3 text-[20px] leading-snug font-extrabold text-cafe">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-[30px] leading-none font-extrabold tracking-tight text-cafe tabular-nums sm:text-[34px]">
+                    {horaDe(start)}
+                  </p>
+                  <p className="self-end pb-0.5 text-[14px] font-bold text-cafe-medio tabular-nums">
+                    – {horaDe(fin)}
+                  </p>
+                  <span className="ml-auto">
+                    <StatusBadge status={appointment.status} />
+                  </span>
+                </div>
+                <p className="mt-3 text-[17px] leading-snug font-bold text-cafe">
                   {serviceNames.length ? serviceNames.join(" + ") : "Servicio"}
                 </p>
+                <p className="mt-1 text-xs font-medium text-cafe-medio tabular-nums">{appointment.duration} minutos</p>
                 {/* "Quién atiende" con un solo profesional es el dueño mirándose
                   en el espejo: solo se enseña si hay equipo. */}
                 {!soloUno && profesional && (
@@ -327,14 +318,14 @@ export function AppointmentDetailSheet({
                 )}
               </header>
 
-              <div className="space-y-6 px-5 pt-5 pb-7 sm:px-7 sm:pt-7 sm:pb-8">
+              <div className="space-y-4 px-4 pt-4 pb-6 sm:px-5">
                 {/* La clienta: avatar, nombre y enlace a su ficha. */}
                 {client ? (
                   <button
                     type="button"
                     onClick={() => abrirClienta(client.id)}
                     aria-label={`Abrir la ficha de ${client.name}`}
-                    className="group flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 text-left hover:bg-nata focus-visible:outline-2 focus-visible:outline-primary"
+                    className="group flex w-full items-center gap-3 rounded-2xl bg-card px-4 py-3.5 shadow-[0_2px_8px_rgba(59,47,42,0.05)] text-left hover:bg-nata focus-visible:outline-2 focus-visible:outline-primary"
                   >
                     <AvatarClienta id={client.id} nombre={client.name} size="md" />
                     <span className="min-w-0 flex-1">
@@ -357,7 +348,7 @@ export function AppointmentDetailSheet({
                     </span>
                   </button>
                 ) : (
-                  <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3">
+                  <div className="flex items-center gap-3 rounded-2xl bg-card px-4 py-3.5 shadow-[0_2px_8px_rgba(59,47,42,0.05)]">
                     <AvatarClienta nombre={appointment.clientName} size="md" />
                     <span className="truncate font-display text-[19px] leading-tight font-medium">
                       {appointment.clientName}
@@ -366,10 +357,11 @@ export function AppointmentDetailSheet({
                 )}
 
                 {(appointment.note || appointment.bookingAnswers) && (
-                  <div className="space-y-1 text-[13.5px] text-cafe-medio">
+                  <section className="space-y-2 rounded-2xl bg-card px-4 py-3.5 text-[13px] leading-relaxed text-cafe-medio">
+                    <h3 className="text-sm font-bold text-foreground">Para esta cita</h3>
                     {appointment.note && <p>{appointment.note}</p>}
                     <BookingAnswersSummary answers={appointment.bookingAnswers} />
-                  </div>
+                  </section>
                 )}
 
                 {/* Lo que debe, con las tres salidas al lado. Va arriba a propósito:
@@ -380,7 +372,7 @@ export function AppointmentDetailSheet({
                 {/* La pregunta, en el sitio donde ocurre: esta cita ya pasó y nadie
                   ha dicho si la persona apareció. */}
                 {porResolver && (
-                  <div className="space-y-2 rounded-xl border border-[var(--warning)]/50 bg-[var(--warning)]/10 p-4">
+                  <div className="space-y-3 rounded-2xl bg-card p-4 shadow-[0_4px_12px_rgba(59,47,42,0.06)]">
                     <p className="text-sm font-medium">¿Qué pasó con esta cita?</p>
                     <BotonesDesenlace
                       actual={appointment.status}
@@ -397,9 +389,9 @@ export function AppointmentDetailSheet({
 
                 {/* Plantones del cliente: contexto antes de decidir si le guarda el hueco. */}
                 {plantones && (
-                  <div className="flex items-center gap-2 rounded-lg border border-[var(--warning)]/40 bg-[var(--warning)]/10 px-3 py-2 text-sm">
+                  <div className="flex items-start gap-2 rounded-2xl bg-melocoton/50 px-4 py-3 text-[13px] leading-relaxed text-melocoton-tinta">
                     <TriangleAlert
-                      className="size-4 shrink-0 text-[var(--warning)]"
+                      className="size-4 shrink-0 text-melocoton-tinta"
                       aria-hidden="true"
                     />
                     <span>{plantones}</span>
@@ -408,7 +400,7 @@ export function AppointmentDetailSheet({
 
                 {/* Recargo pendiente: lo que hay que ver antes de confirmar. */}
                 {conRecargo && (client?.penaltyEur ?? 0) > 0 && (
-                  <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  <div className="flex items-center gap-2 rounded-2xl bg-melocoton/50 px-4 py-3 text-[13px] text-melocoton-tinta">
                     <TriangleAlert className="size-4 shrink-0" aria-hidden="true" />
                     <span>
                       Este cliente tiene un recargo pendiente de {eur(client!.penaltyEur ?? 0)}
@@ -419,6 +411,8 @@ export function AppointmentDetailSheet({
                   </div>
                 )}
 
+                <section className="space-y-3 rounded-2xl bg-card p-4">
+                  <h3 className="text-sm font-bold">Gestionar cita</h3>
                 {/* UNA acción primaria: confirmar si es solicitud; si no, cobrar. */}
                 {appointment.status === "pending" ? (
                   <Button onClick={abrirVentana} className="h-11 w-full rounded-full font-bold">
@@ -464,6 +458,8 @@ export function AppointmentDetailSheet({
                     )}
                   </div>
                 )}
+
+                </section>
 
                 {panelAbierto === "mover" && (puedeEn("cita.mover") || puedeEn("cita.editar")) && (
                   <div className="space-y-2 rounded-2xl bg-nata/60 p-3.5">
@@ -512,7 +508,7 @@ export function AppointmentDetailSheet({
                 )}
 
                 {/* Lo demás, plegado y con su resumen. */}
-                <div className="-mb-2">
+                <div className="space-y-3">
                   {!puedeEn("cita.cobrar") ? (
                     <p className="rounded-xl border border-lino bg-superficie px-3 py-2 text-[13px] text-cafe-medio">
                       Cobro: lo marca quien atiende la cita.
@@ -520,6 +516,7 @@ export function AppointmentDetailSheet({
                   ) : (
                     <Desplegable
                       titulo="Cobro"
+                    className="rounded-2xl border-0 bg-card px-4 py-1"
                       resumen={
                         pagada
                           ? `Cobrada${appointment.paymentMethod ? ` en ${PAYMENT_METHOD_LABELS[appointment.paymentMethod].toLowerCase()}` : ""}`
@@ -594,6 +591,7 @@ export function AppointmentDetailSheet({
 
                   <Desplegable
                     titulo="Ficha técnica de esta visita"
+                    className="rounded-2xl border-0 bg-card px-4 py-1"
                     resumen={
                       appointment.colorFormula ||
                       appointment.technicalNotes ||
@@ -633,6 +631,7 @@ export function AppointmentDetailSheet({
 
                   <Desplegable
                     titulo="Estado y confirmación de la clienta"
+                    className="rounded-2xl border-0 bg-card px-4 py-1"
                     resumen={`${STATUS_OPTIONS.find((o) => o.value === appointment.status)?.label ?? ""} · ${appointment.clientConfirmedAt ? "confirmó ella" : "sin confirmar por ella"}`}
                   >
                     <div className="space-y-4">
@@ -715,7 +714,7 @@ export function AppointmentDetailSheet({
             </div>
 
             {puedeEn("cita.cancelar") && (
-              <footer className="shrink-0 border-t border-border bg-perla px-5 py-3 sm:px-7 sm:py-4">
+              <footer className="shrink-0 bg-card px-5 py-3 sm:px-7 sm:py-4">
                 {/* Lote 12: sin «¿Seguro?»: se cancela al momento y se deshace desde el aviso o el historial. */}
                 <Button
                   variant="ghost"

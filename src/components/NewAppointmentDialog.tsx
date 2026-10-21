@@ -98,10 +98,8 @@ export interface NewAppointmentDialogProps {
 }
 
 /**
- * «Nueva cita» a lo grande (identidad «Arena», DESIGN.md): una capa blanca
- * que cubre todo salvo el menú lateral, con tres columnas — clienta;
- * servicio, profesional, día, hora y duración; y el resumen con «Guardar
- * cita». La página de debajo no se toca. Si la cita ya tiene algo tocado,
+ * «Nueva cita» (identidad «Arena», DESIGN.md): una capa clara con clienta,
+ * servicios, día y hora y revisión, mostrados paso a paso. Si la cita ya tiene algo tocado,
  * cualquier salida (Cerrar, Escape, un enlace del menú) pregunta antes.
  *
  * Misma API y mismo guardado que el diálogo de siempre: la abren la
@@ -154,6 +152,18 @@ function FormularioNuevaCita({
   const activeServices = services.filter((s) => s.active !== false);
   const serviceMap = selectServiceMap(services);
 
+  const [paso, setPaso] = useState(0);
+  const [busquedaServicio, setBusquedaServicio] = useState("");
+  const [categoriaServicio, setCategoriaServicio] = useState<string | null>(null);
+  const [paginaServicios, setPaginaServicios] = useState(0);
+  const tituloPaso = useRef<HTMLHeadingElement>(null);
+  const pasos = ["Clienta", "Servicios", "Día y hora", "Revisar"];
+  useEffect(() => {
+    if (open) {
+      tituloPaso.current?.focus();
+      tituloPaso.current?.closest("form")?.scrollTo({ top: 0 });
+    }
+  }, [paso, open]);
   const [clientChoice, setClientChoice] = useState<string>("__new");
   const [busqueda, setBusqueda] = useState("");
   const [newName, setNewName] = useState(defaultClientName ?? "");
@@ -195,6 +205,10 @@ function FormularioNuevaCita({
     const existente = defaultPhone
       ? clients.find((c) => c.phone && soloDigitos(c.phone) === soloDigitos(defaultPhone))
       : undefined;
+    setPaso(0);
+    setBusquedaServicio("");
+    setCategoriaServicio(null);
+    setPaginaServicios(0);
     setClientChoice(existente?.id ?? "__new");
     setBusqueda("");
     setNewName(existente ? "" : (defaultClientName ?? ""));
@@ -502,6 +516,7 @@ function FormularioNuevaCita({
       // Se queda abierto y en blanco, con la fecha puesta donde estaba: es la
       // diferencia entre 60 llamadas de un sábado y 60 idas y venidas a la
       // agenda. Solo se limpia lo que cambia de un cliente al siguiente.
+      setPaso(0);
       setEncadenadas((n) => n + 1);
       setClientChoice("__new");
       setBusqueda("");
@@ -519,16 +534,16 @@ function FormularioNuevaCita({
 
   // ---- Piezas ----
   const etiquetaCol =
-    "mb-4.5 text-xs font-extrabold tracking-[0.06em] text-muted-foreground uppercase";
+    "mb-4 text-[17px] font-bold tracking-[-0.02em] text-foreground";
   const etiquetaCampo = "mb-3 block text-[12.5px] font-bold text-cafe-medio";
   const opcion = (on: boolean) =>
     cn(
-      "inline-flex h-10 items-center gap-2 rounded-full border px-[15px] text-[13.5px] font-bold transition-colors",
+      "inline-flex min-h-11 items-center gap-2 rounded-2xl border px-3.5 py-2 text-left text-[13.5px] font-semibold transition-colors",
       on
-        ? "border-salvia bg-salvia-clara text-hoja-tinta"
+        ? "border-transparent bg-salvia-clara text-hoja-tinta shadow-sm"
         : "border-input bg-card text-cafe-medio hover:bg-nata",
     );
-  const columna = "flex min-w-0 flex-col tarjeta-principal border border-border bg-card p-5 md:p-7";
+  const columna = "flex min-w-0 flex-col tarjeta-principal bg-card p-5 md:p-7";
   const fechaLarga = fechaElegida.toLocaleDateString("es-ES", {
     weekday: "long",
     day: "numeric",
@@ -554,6 +569,27 @@ function FormularioNuevaCita({
     profesional: empleado?.name,
   });
 
+  const normalizarServicio = (texto: string) =>
+    texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const categoriaDe = (servicio: (typeof activeServices)[number]) => servicio.category?.trim() || "Otros";
+  const categoriasServicios = [...new Set(activeServices.map(categoriaDe))]
+    .sort((a, b) => a.localeCompare(b, "es"));
+  const serviciosFiltrados = activeServices.filter((servicio) =>
+    (categoriaServicio === null || categoriaDe(servicio) === categoriaServicio) &&
+    normalizarServicio(servicio.name).includes(normalizarServicio(busquedaServicio.trim())),
+  );
+  const totalPaginas = Math.max(1, Math.ceil(serviciosFiltrados.length / 6));
+  const paginaActual = Math.min(paginaServicios, totalPaginas - 1);
+  const serviciosVisibles = serviciosFiltrados.slice(paginaActual * 6, paginaActual * 6 + 6);
+  const puedeContinuar = paso === 0
+    ? !!elegida || !!newName.trim()
+    : paso === 1
+      ? hayServicioElegido && (!otro || (!!otro.nombre.trim() && precioOtroValido))
+      : !!date && !!time && Number.isFinite(fechaElegida.getTime()) && duracionElegida(totalMin) !== null;
+  function avanzar() {
+    if (puedeContinuar) setPaso((actual) => Math.min(3, actual + 1));
+  }
+
   return (
     <>
       {/* No modal: el menú lateral sigue vivo para que un enlace pueda
@@ -568,7 +604,7 @@ function FormularioNuevaCita({
         <DialogPrimitive.Portal>
           <DialogPrimitive.Content
             ref={capa}
-            aria-describedby={undefined}
+            aria-describedby="na-description"
             {...focoDeVuelta}
             onEscapeKeyDown={(e) => {
               e.preventDefault();
@@ -580,7 +616,7 @@ function FormularioNuevaCita({
               e.preventDefault();
             }}
             onInteractOutside={(e) => e.preventDefault()}
-            className="fixed top-[max(12px,env(safe-area-inset-top))] right-[max(12px,env(safe-area-inset-right))] bottom-[max(12px,env(safe-area-inset-bottom))] left-[max(12px,env(safe-area-inset-left))] z-50 flex flex-col overflow-hidden rounded-[var(--radio-tarjeta)] bg-background outline-none md:top-6 md:right-6 md:bottom-6 md:left-[268px] md:shadow-[var(--sombra-flotante)]"
+            className="nueva-cita fixed top-[max(12px,env(safe-area-inset-top))] right-[max(12px,env(safe-area-inset-right))] bottom-[max(12px,env(safe-area-inset-bottom))] left-[max(12px,env(safe-area-inset-left))] z-50 flex flex-col overflow-hidden rounded-[var(--radio-tarjeta)] bg-background outline-none md:top-6 md:right-6 md:bottom-6 md:left-[268px] md:shadow-[var(--sombra-flotante)]"
           >
             {/* Cabecera de la capa */}
             <div className="flex flex-none items-center gap-3.5 border-b border-border bg-card px-5 py-3 md:px-8 md:py-4">
@@ -591,16 +627,19 @@ function FormularioNuevaCita({
                 <DialogPrimitive.Title className="text-xl font-extrabold tracking-[-0.02em] md:text-2xl">
                   Nueva cita
                 </DialogPrimitive.Title>
+                <DialogPrimitive.Description id="na-description" className="mt-1 text-[13px] text-muted-foreground">
+                  Completa la cita paso a paso. Puedes volver atrás cuando quieras.
+                </DialogPrimitive.Description>
               </div>
               <span
                 className={cn(
                   "ml-auto hidden h-6 items-center rounded-full px-2.5 text-[12.5px] font-bold md:inline-flex",
                   tocada
-                    ? "border-[1.5px] border-dashed border-moca bg-card text-primary"
+                    ? "border-0 bg-miel text-cafe"
                     : "bg-nata text-cafe-medio",
                 )}
               >
-                {tocada ? "Sin guardar" : "Sin cambios"}
+                {tocada ? "Borrador sin guardar" : "Vamos a reservar un hueco"}
               </span>
               {encadenadas > 0 && (
                 <span className="hidden text-[12.5px] text-muted-foreground md:inline">
@@ -620,16 +659,31 @@ function FormularioNuevaCita({
             </div>
 
             <form
-              className="flex min-h-0 flex-1 overflow-auto bg-background p-4 pb-28 md:px-7 md:py-6 lg:pb-6"
+              className="flex min-h-0 flex-1 overflow-auto bg-background p-4 pb-28 md:px-7 md:pt-6 md:pb-28"
               onSubmit={(e) => {
                 e.preventDefault();
-                handleSubmit(false);
+                if (paso < 3) avanzar();
+                else handleSubmit(false);
               }}
             >
-              <div className="grid min-h-full flex-1 grid-cols-1 items-stretch gap-4 md:gap-5 lg:grid-cols-[minmax(260px,1fr)_minmax(360px,1.5fr)_minmax(260px,0.9fr)]">
+              <div className="na-pasos-contenido mx-auto grid h-fit w-full max-w-[760px] gap-5">
+                <nav aria-label="Pasos de nueva cita" className="grid grid-cols-4 gap-2">
+                  {pasos.map((nombre, indice) => (
+                    <button key={nombre} type="button" disabled={indice > paso}
+                      aria-current={indice === paso ? "step" : undefined}
+                      onClick={() => setPaso(indice)}
+                      className={cn("flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-xs font-semibold sm:flex-row sm:gap-2",
+                        indice === paso ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground disabled:opacity-50")}>
+                      <span aria-hidden="true">{indice < paso ? "✓" : indice + 1}</span>{nombre}
+                    </button>
+                  ))}
+                </nav>
+                <h2 ref={tituloPaso} tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none">
+                  Paso {paso + 1} de 4 · {pasos[paso]}
+                </h2>
                 {/* 1 · Clienta */}
-                <section className={columna} aria-label="Clienta">
-                  <h3 className={etiquetaCol}>1 · Clienta</h3>
+                <section style={{ display: paso === 0 ? undefined : "none" }} className={columna} aria-label="Clienta">
+                  <h3 className={etiquetaCol}>1. ¿Para quién es la cita?</h3>
                   {elegida && fichaRapida ? (
                     <div className="rounded-2xl bg-nata p-3.5 text-[13px]">
                       <div className="flex items-start justify-between gap-2">
@@ -683,10 +737,9 @@ function FormularioNuevaCita({
                       <label className="na-buscador flex h-12 items-center gap-2 rounded-xl border border-input bg-card px-3 text-muted-foreground">
                         <Search className="size-[18px] shrink-0" strokeWidth={1.6} />
                         <input
-                          autoFocus
                           value={busqueda}
                           onChange={(e) => setBusqueda(e.target.value)}
-                          placeholder="Nombre o teléfono"
+                          placeholder="Busca por nombre o teléfono"
                           aria-label="Buscar clienta por nombre o teléfono"
                           className="min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
                         />
@@ -694,7 +747,7 @@ function FormularioNuevaCita({
                       <p className="mt-4 mb-1.5 text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase">
                         {busqueda.trim() ? "Resultados" : "Vienen a menudo"}
                       </p>
-                      <div className="flex flex-col">
+                      <div className="grid gap-1 sm:grid-cols-2">
                         {(busqueda.trim()
                           ? resultados.map((c) => ({ client: c, detalle: c.phone }))
                           : frecuentes.map((f) => ({
@@ -733,12 +786,12 @@ function FormularioNuevaCita({
                           </p>
                         )}
                       </div>
-                      <div className="mt-5">
+                      <div className="mt-5 rounded-2xl bg-background p-4">
                         <p className="mb-2.5 flex items-center gap-1.5 text-[12.5px] font-bold text-cafe-medio">
                           <UserPlus className="size-[15px]" strokeWidth={1.6} />
                           Clienta nueva
                         </p>
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           <Input
                             value={newName}
                             onChange={(e) => setNewName(e.target.value)}
@@ -763,11 +816,33 @@ function FormularioNuevaCita({
                 </section>
 
                 {/* 2 · Servicio, profesional y hora */}
-                <section className={columna} aria-label="Servicio, profesional y hora">
-                  <h3 className={etiquetaCol}>2 · Servicio, profesional y hora</h3>
-                  <span className={etiquetaCampo}>Servicio</span>
+                <section style={{ display: paso === 1 ? undefined : "none" }} className={columna} aria-label="Servicios">
+                  <h3 className={etiquetaCol}>2. ¿Qué le apetece hacerse?</h3>
+                  <div role="group" aria-label="Filtrar servicios por tipo" className="mb-5 flex flex-wrap gap-2">
+                    <button type="button" aria-pressed={categoriaServicio === null} className={opcion(categoriaServicio === null)}
+                      onClick={() => { setCategoriaServicio(null); setPaginaServicios(0); }}>
+                      Todos los tipos ({activeServices.length})
+                    </button>
+                    {categoriasServicios.map((categoria) => (
+                      <button key={categoria} type="button" aria-pressed={categoriaServicio === categoria}
+                        className={opcion(categoriaServicio === categoria)}
+                        onClick={() => { setCategoriaServicio(categoria); setPaginaServicios(0); }}>
+                        {categoria} ({activeServices.filter((servicio) => categoriaDe(servicio) === categoria).length})
+                      </button>
+                    ))}
+                  </div>
+                  <label htmlFor="na-buscar-servicio" className={etiquetaCampo}>Busca un servicio</label>
+                  <Input id="na-buscar-servicio" value={busquedaServicio}
+                    placeholder="Por ejemplo, corte, color o peinado"
+                    onChange={(e) => { setBusquedaServicio(e.target.value); setPaginaServicios(0); }} />
+                  <div className="my-4 flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Puedes elegir varios servicios</span>
+                  </div>
+                  {serviciosVisibles.length === 0 && <p role="status" className="mb-3 text-sm text-muted-foreground">
+                    No encontramos ese servicio. Prueba otro nombre o elige «Otro…».
+                  </p>}
                   <div className="flex flex-wrap gap-1.5">
-                    {activeServices.map((s) => {
+                    {serviciosVisibles.map((s) => {
                       const on = serviceIds.includes(s.id);
                       return (
                         <button
@@ -801,6 +876,18 @@ function FormularioNuevaCita({
                       Otro…
                     </button>
                   </div>
+                  {totalPaginas > 1 && (
+                    <div className="mt-4 flex items-center justify-between gap-2">
+                      <Button type="button" variant="ghost" disabled={paginaActual === 0}
+                        onClick={() => setPaginaServicios(paginaActual - 1)}>Anteriores</Button>
+                      <span role="status" className="text-xs text-muted-foreground">{paginaActual + 1} de {totalPaginas}</span>
+                      <Button type="button" variant="ghost" disabled={paginaActual === totalPaginas - 1}
+                        onClick={() => setPaginaServicios(paginaActual + 1)}>Ver más</Button>
+                    </div>
+                  )}
+                  {chosen.length > 0 && <p className="mt-4 rounded-2xl bg-salvia-suave p-3 text-sm text-hoja-tinta">
+                    <b>Tu selección:</b> {serviceLabelOf({ serviceIds }, serviceMap)}
+                  </p>}
                   {otro && (
                     <div className="mt-3 grid gap-3 rounded-2xl border border-lino bg-card p-3.5">
                       <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
@@ -842,6 +929,9 @@ function FormularioNuevaCita({
                     </div>
                   )}
 
+                </section>
+                <section style={{ display: paso === 2 ? undefined : "none" }} className={columna} aria-label="Día y hora">
+                  <h3 className={etiquetaCol}>3. Encuentra su hueco</h3>
                   {!soloUno && (
                     <>
                       <span className={cn(etiquetaCampo, "mt-5")}>Profesional</span>
@@ -1021,21 +1111,26 @@ function FormularioNuevaCita({
                     </p>
                   )}
 
-                  <label className={cn(etiquetaCampo, "mt-5")} htmlFor="na-note">
-                    Nota <span className="font-normal text-muted-foreground">· opcional</span>
-                  </label>
-                  <Textarea
-                    id="na-note"
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="Alergias, preferencias…"
-                    rows={2}
-                  />
+                  <details className="mt-5 rounded-2xl bg-background p-4">
+                    <summary className="cursor-pointer text-[13px] font-semibold text-cafe-medio">
+                      Añadir una nota · opcional
+                    </summary>
+                    <label className="mt-3 mb-2 block text-[12.5px] text-muted-foreground" htmlFor="na-note">
+                      ¿Algo que debamos recordar?
+                    </label>
+                    <Textarea
+                      id="na-note"
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      placeholder="Alergias, preferencias…"
+                      rows={2}
+                    />
+                  </details>
                 </section>
 
                 {/* 3 · Resumen */}
-                <section className={columna} aria-label="Resumen">
-                  <h3 className={etiquetaCol}>3 · Resumen</h3>
+                <section style={{ display: paso === 3 ? undefined : "none" }} className={cn(columna, "bg-[#F7F8F3]")} aria-label="Resumen">
+                  <h3 className={etiquetaCol}>Tu cita, de un vistazo</h3>
                   <dl className="flex flex-col text-sm">
                     {[
                       ["Clienta", elegida?.name ?? (newName.trim() || "Sin elegir")],
@@ -1081,8 +1176,7 @@ function FormularioNuevaCita({
                   )}
                   <p className="mt-3 flex gap-2 rounded-2xl bg-salvia-clara px-3.5 py-3 text-[12.5px] text-hoja-tinta">
                     <MessageCircle className="mt-px size-[15px] shrink-0" strokeWidth={1.6} />
-                    Queda confirmada en tu agenda al guardar. Si quieres avisarla, hazlo por
-                    WhatsApp desde su ficha.
+                    Al guardar, la cita queda confirmada. Después puedes avisar por WhatsApp desde su ficha.
                   </p>
                   {decisionGuardado.aviso && (
                     <p className="mt-3 flex gap-2 rounded-2xl bg-melocoton px-3.5 py-3 text-[12.5px] text-melocoton-tinta">
@@ -1091,14 +1185,6 @@ function FormularioNuevaCita({
                     </p>
                   )}
                   <div className="mt-auto flex flex-col gap-2 pt-5">
-                    <Button
-                      type="submit"
-                      disabled={!hayServicioElegido}
-                      className="h-[54px] w-full text-base"
-                    >
-                      <Check className="size-5" strokeWidth={1.8} />
-                      {decisionGuardado.etiqueta}
-                    </Button>
                     {allowChaining && (
                       <Button
                         type="button"
@@ -1121,32 +1207,21 @@ function FormularioNuevaCita({
                   </div>
                 </section>
               </div>
-              {/* Móvil: el precio y «Guardar cita» siempre a mano, abajo. */}
-              <div className="fixed inset-x-0 bottom-0 z-10 flex items-center gap-3 border-t border-border bg-card px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom,0px))] lg:hidden">
-                {hayServicioElegido ? (
-                  <span className="min-w-0 flex-1 leading-tight">
-                    <b className="block text-xl tabular-nums">
-                      {otro
-                        ? eur(total).replace(",00", "")
-                        : textoTotalServicios(chosen, total, eur)}
-                    </b>
-                    <span className="block truncate text-[12.5px] text-muted-foreground tabular-nums">
-                      {time} · {duracionLegible(totalMin)}
-                      {soloUno ? "" : ` · ${empleado?.name ?? ""}`}
-                    </span>
-                  </span>
+              <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-between gap-3 border-t border-border bg-card px-5 pt-3 pb-[calc(12px+env(safe-area-inset-bottom,0px))] md:px-8">
+                <Button type="button" variant="outline" disabled={paso === 0}
+                  onClick={() => setPaso((actual) => Math.max(0, actual - 1))}>Atrás</Button>
+                <span className="hidden text-[13px] text-muted-foreground sm:block">
+                  {paso === 3 ? "Revisa los datos antes de guardar" : "Tus elecciones se conservan al volver atrás"}
+                </span>
+                {paso < 3 ? (
+                  <Button key="continuar" type="button" className="min-h-11 px-6" disabled={!puedeContinuar} onClick={avanzar}>
+                    {paso === 2 ? "Revisar cita" : "Continuar"}
+                  </Button>
                 ) : (
-                  <span className="min-w-0 flex-1 text-[12.5px] font-bold text-muted-foreground">
-                    Elige un servicio para guardar.
-                  </span>
+                  <Button key="guardar" type="submit" className="min-h-11 gap-2 px-6" disabled={!hayServicioElegido}>
+                    <Check className="size-4" />{decisionGuardado.etiqueta}
+                  </Button>
                 )}
-                <Button
-                  type="submit"
-                  disabled={!hayServicioElegido}
-                  className="h-12 px-6 text-base"
-                >
-                  {decisionGuardado.etiqueta}
-                </Button>
               </div>
             </form>
           </DialogPrimitive.Content>

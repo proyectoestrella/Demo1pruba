@@ -48,7 +48,7 @@ const METODOS: { id: MetodoSenal; texto: string }[] = [
   { id: "transferencia", texto: "Transferencia" },
 ];
 
-export function SenalCita({ cita, compacta = false }: { cita: Appointment; compacta?: boolean }) {
+export function SenalCita({ cita, compacta = false, className }: { cita: Appointment; compacta?: boolean; className?: string }) {
   const perfil = useSalonStore((s) => s.salonProfile);
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
@@ -122,7 +122,7 @@ export function SenalCita({ cita, compacta = false }: { cita: Appointment; compa
   const btn = "h-8 rounded-full px-3 text-[12.5px]";
 
   return (
-    <div className={cn("space-y-2.5 rounded-2xl border border-lino bg-card", compacta ? "px-3 py-2.5" : "p-3.5")}>
+    <div className={cn("space-y-2.5 rounded-2xl border border-lino bg-card", compacta ? "px-3 py-2.5" : "p-3.5", className)}>
       <div className="flex flex-wrap items-center gap-2">
         <b className="text-[13.5px]">Señal</b>
         <span className={cn("inline-flex h-6 items-center rounded-full px-2.5 text-[12px] font-bold", etiqueta.clase)}>{etiqueta.texto}</span>

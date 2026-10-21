@@ -13,6 +13,7 @@ import { agruparCarta } from "@/lib/servicios-panel";
 import { duracionEstimada } from "@/lib/demos";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { ColumnasServicios } from "@/components/ColumnasServicios";
 import { ServiceFormSheet } from "@/components/ServiceFormSheet";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -32,8 +33,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Clock, MoreHorizontal, Plus, Scissors, Search } from "lucide-react";
+import { Clock, MoreHorizontal, Plus, Scissors, Search, SlidersHorizontal, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export const Route = createFileRoute("/app/services")({ component: ServicesPage });
 
@@ -86,18 +88,18 @@ function ServicesPage() {
 
   // Secciones de SU carta, con buscador y filtro por sección.
   const [texto, setTexto] = useState("");
-  const [seccion, setSeccion] = useState<string | null>(null);
+  const [secciones, setSecciones] = useState<string[]>([]);
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
   const todas = useMemo(() => agruparCarta(services), [services]);
   const grupos = useMemo(
-    () => agruparCarta(services, { categoria: seccion, texto }),
-    [services, seccion, texto],
+    () => agruparCarta(services, { texto }).filter((grupo) => !secciones.length || secciones.includes(grupo.categoria)),
+    [services, secciones, texto],
   );
   const conSecciones = todas.length > 1;
   // Duraciones que su web no da y estimamos nosotros (demo registrada).
   const slugDemo = useSalonStore((s) =>
     s.demoActive && !s.realSalonSlug ? s.salonProfile.slug : undefined,
   );
-  const hayEstimadas = services.some((s) => duracionEstimada(slugDemo, s.id, s.durationMin));
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
@@ -137,66 +139,60 @@ function ServicesPage() {
         <>
           {(services.length > 8 || conSecciones) && (
             <div className="flex flex-col gap-3">
-              <label className="relative block max-w-md">
-                <span className="sr-only">Buscar servicio</span>
-                <Search
-                  className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-cafe-suave"
-                  strokeWidth={1.6}
-                  aria-hidden="true"
-                />
-                <Input
-                  value={texto}
-                  onChange={(e) => setTexto(e.target.value)}
-                  placeholder={`Buscar entre tus ${services.length} servicios`}
-                  className="h-11 rounded-full pl-10"
-                />
-              </label>
-              {conSecciones && (
-                // En el móvil, una tira que se desliza: siete secciones en fila
-                // se comían media pantalla antes del primer servicio.
-                <div
-                  className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
-                  role="group"
-                  aria-label="Secciones de tu carta"
-                >
-                  {[
-                    { categoria: null as string | null, n: services.length, etiqueta: "Todas" },
-                    ...todas.map((g) => ({
-                      categoria: g.categoria as string | null,
-                      n: g.servicios.length,
-                      etiqueta: g.categoria,
-                    })),
-                  ].map((c) => (
-                    <button
-                      key={c.etiqueta}
-                      type="button"
-                      aria-pressed={seccion === c.categoria}
-                      onClick={() => setSeccion(c.categoria)}
-                      className={cn(
-                        "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-bold whitespace-nowrap",
-                        seccion === c.categoria
-                          ? "border-cafe bg-cafe text-white"
-                          : "border-border bg-card text-cafe-medio hover:bg-nata",
-                      )}
-                    >
-                      {c.etiqueta}
-                      <span
-                        className={cn(
-                          "tabular-nums",
-                          seccion === c.categoria ? "text-white/80" : "text-cafe-suave",
-                        )}
-                      >
-                        {c.n}
-                      </span>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <label className="relative block min-w-0 flex-1 sm:max-w-md">
+                  <span className="sr-only">Buscar servicio</span>
+                  <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-cafe-suave" strokeWidth={1.6} aria-hidden="true" />
+                  <Input value={texto} onChange={(e) => setTexto(e.target.value)}
+                    placeholder={`Buscar entre tus ${services.length} servicios`} className="h-11 rounded-full pl-10" />
+                </label>
+                {conSecciones && (
+                  <Popover open={filtrosAbiertos} onOpenChange={setFiltrosAbiertos}>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="outline" className="h-11 shrink-0 gap-2 rounded-full">
+                        <SlidersHorizontal className="size-4" strokeWidth={1.6} />Filtrar
+                        {secciones.length > 0 && <span className="rounded-full bg-miel px-2 text-xs">{secciones.length}</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="sin-scrollbar max-h-[65dvh] w-[min(360px,calc(100vw-2rem))] overflow-y-auto">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <p className="text-sm font-bold">Tipo de servicio</p>
+                        <Button type="button" variant="ghost" className="min-h-11 gap-1 px-2" onClick={() => setFiltrosAbiertos(false)}>
+                          <X className="size-4" aria-hidden="true" />Cerrar
+                        </Button>
+                      </div>
+                      <p className="mb-3 text-xs text-muted-foreground">Puedes seleccionar varias secciones.</p>
+                      <Button type="button" variant="ghost" className="mb-2 w-full justify-start" onClick={() => setSecciones([])}>
+                        {secciones.length ? "Quitar todos los filtros" : "Mostrando todas las secciones"}
+                      </Button>
+                      <div role="group" aria-label="Secciones de tu carta" className="grid gap-1.5">
+                        {todas.map((grupo) => (
+                          <label key={grupo.categoria} className={cn("flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-sm",
+                            secciones.includes(grupo.categoria) ? "bg-salvia-suave font-semibold text-hoja-tinta" : "text-cafe-medio hover:bg-nata")}>
+                            <input type="checkbox" checked={secciones.includes(grupo.categoria)}
+                              className="size-4 shrink-0 accent-[var(--hoja)]"
+                              onChange={() => setSecciones((actuales) => actuales.includes(grupo.categoria)
+                                ? actuales.filter((categoria) => categoria !== grupo.categoria)
+                                : [...actuales, grupo.categoria])} />
+                            <span className="flex-1">{grupo.categoria}</span>
+                            <span className="text-xs tabular-nums">{grupo.servicios.length}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </div>
+              {secciones.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {secciones.map((categoria) => (
+                    <button key={categoria} type="button" onClick={() => setSecciones((actuales) => actuales.filter((c) => c !== categoria))}
+                      aria-label={`Quitar filtro: ${categoria}`}
+                      className="inline-flex min-h-11 items-center gap-2 rounded-full bg-miel px-3.5 text-[13px] font-semibold text-cafe">
+                      {categoria}<X className="size-3.5" aria-hidden="true" />
                     </button>
                   ))}
                 </div>
-              )}
-              {hayEstimadas && (
-                <p className="text-[12.5px] text-muted-foreground">
-                  Las duraciones con <b className="text-cafe-medio">≈</b> son una estimación
-                  nuestra: tu web no las dice. Cámbialas en «Editar» y dejan de estarlo.
-                </p>
               )}
             </div>
           )}
@@ -219,24 +215,19 @@ function ServicesPage() {
                 {conSecciones && (
                   <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 pt-1">
                     <h2 className="text-lg font-extrabold tracking-[-0.01em]">{grupo.categoria}</h2>
-                    <span className="text-[12.5px] text-muted-foreground tabular-nums">
-                      {grupo.servicios.length}{" "}
-                      {grupo.servicios.length === 1 ? "servicio" : "servicios"} ·{" "}
-                      {grupo.desde === grupo.hasta
-                        ? eur(grupo.desde).replace(",00", "")
-                        : `de ${eur(grupo.desde).replace(",00", "")} a ${eur(grupo.hasta).replace(",00", "")}`}
-                    </span>
+
                   </div>
                 )}
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 xl:group-data-[panel=abierto]/panel:grid-cols-1">
+                <ColumnasServicios>
                   {grupo.servicios.map((s) => {
                     const n = indiceColorServicio(s.id, services);
                     const veces = uso.get(s.id)?.veces ?? 0;
                     return (
                       <div
                         key={s.id}
+                        tabIndex={s.description ? 0 : undefined}
                         className={cn(
-                          "flex flex-col tarjeta-secundaria border border-l-4 bg-card px-5 py-4",
+                          "tarjeta-servicio flex w-full flex-col tarjeta-secundaria border border-l-4 bg-card px-5 py-2.5",
                           s.active === false && "opacity-60",
                         )}
                         style={{ borderLeftColor: `var(--serv-${n}-borde)` }}
@@ -291,14 +282,13 @@ function ServicesPage() {
                           )}
                         </div>
                         {s.description && (
-                          <p
-                            className="mt-1 line-clamp-3 text-[13px] text-muted-foreground"
-                            title={s.description}
-                          >
-                            {s.description}
-                          </p>
+                          <div className="descripcion-servicio">
+                            <div className="min-h-0 overflow-hidden">
+                              <p className="pt-2 text-[13px] leading-relaxed text-muted-foreground">{s.description}</p>
+                            </div>
+                          </div>
                         )}
-                        <div className="mt-3 mb-4 flex flex-wrap items-center gap-1.5">
+                        <div className="mt-1.5 mb-2 flex flex-wrap items-center gap-1.5">
                           <span className="inline-flex h-6 items-center gap-1 rounded-full bg-nata px-2.5 text-[12.5px] font-bold text-cafe-medio tabular-nums">
                             <Clock className="size-3.5" strokeWidth={1.6} />
                             {duracionEstimada(slugDemo, s.id, s.durationMin) ? (
@@ -328,7 +318,7 @@ function ServicesPage() {
                             </span>
                           )}
                         </div>
-                        <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-3">
+                        <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
                           <span className="text-[12.5px] text-muted-foreground tabular-nums">
                             {veces
                               ? `${veces} ${veces === 1 ? "vez" : "veces"} en 30 días`
@@ -350,7 +340,7 @@ function ServicesPage() {
                       </div>
                     );
                   })}
-                </div>
+                </ColumnasServicios>
               </section>
             ))
           )}

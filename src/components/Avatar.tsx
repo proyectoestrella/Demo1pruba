@@ -4,6 +4,7 @@ import { useSalonStore } from "@/lib/store";
 import { employeeMap } from "@/lib/mock/salon";
 import { hashTexto, iniciales, resolverAvatar } from "@/lib/avatar";
 import { avatarDiceBearUri } from "@/lib/avatar-dicebear";
+import { retratoGuardado, uriRetrato } from "@/components/retratos-avatar";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
@@ -64,8 +65,10 @@ export function Avatar({
   // Por defecto, iniciales en círculo Arena: legibles a 24 px, sin riesgo de
   // poner barba a «Fátima» ni gestos raros (los dibujos aleatorios no saben el
   // género ni el oficio). El dibujo DiceBear solo sale si se eligió a propósito.
-  const uri =
-    r.origen === "elegido" && r.avatar !== undefined ? avatarDiceBearUri(r.avatar, t.px) : undefined;
+  const retrato = retratoGuardado(elegido);
+  const uri = r.origen === "elegido" && r.avatar !== undefined
+    ? retrato ? uriRetrato(retrato, t.px) : avatarDiceBearUri(r.avatar, t.px)
+    : undefined;
   const caja = cn("relative block shrink-0 overflow-hidden rounded-full select-none", className);
   const estilo = {
     width: t.px,

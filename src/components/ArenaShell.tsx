@@ -193,17 +193,8 @@ export function AvatarPersona({ nombre, size = 34 }: { nombre: string; size?: nu
   );
 }
 
-/** «siShow · Madrid»: la ciudad sale de la dirección del salón, si la hay. */
-function ciudadDe(direccion: string | undefined): string {
-  const ultimo = (direccion ?? "").split(",").pop()?.trim() ?? "";
-  const sinCp = ultimo.replace(/^\d{4,5}\s+/, "").trim();
-  return sinCp;
-}
-
 function Marca({ compacta = false }: { compacta?: boolean }) {
   const name = useSalonStore((s) => s.salonProfile.name);
-  const address = useSalonStore((s) => s.salonProfile.address);
-  const ciudad = ciudadDe(address);
   return (
     <Link to="/app" className="flex items-center gap-2.5 hover:text-foreground">
       <AvatarSalon
@@ -219,7 +210,6 @@ function Marca({ compacta = false }: { compacta?: boolean }) {
         {!compacta && (
           <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
             <LetrasSiShow className="h-3.5 shrink-0" />
-            {ciudad ? <span className="min-w-0 break-words">· {ciudad}</span> : null}
           </span>
         )}
         {compacta && <LetrasSiShow className="mt-0.5 h-3" />}
@@ -314,31 +304,21 @@ function ProgresoPrimerosPasos() {
  */
 function BloqueUsuario() {
   const name = useSalonStore((s) => s.salonProfile.name);
-  const publicLink = usePanelPublicLink();
   const miembro = useMiembroActual();
   const permisos = usePermisos();
   const nombre = miembro?.displayName ?? null;
-  const verWeb = veRuta(permisos, "/app/web");
   const calendarios = useCalendariosActivos();
   const [miCalendario, setMiCalendario] = useState(false);
   return (
-    <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2.5">
-      {nombre ? <AvatarPersona nombre={nombre} /> : <AvatarSalon size={34} />}
-      <div className="min-w-0 flex-1 leading-tight">
-        <b className="block truncate text-[13px]">{nombre ?? name}</b>
-        {miembro && (
-          <span className="block truncate text-xs text-muted-foreground">
-            {NOMBRE_ROL[miembro.rol]} · {name}
+    <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2.5">
+      <div className="min-w-0 flex-1">
+        <div className="flex w-full min-w-0 items-center gap-2.5 rounded-xl text-left">
+          {nombre ? <AvatarPersona nombre={nombre} /> : <AvatarSalon size={34} />}
+          <span className="min-w-0 flex-1 leading-tight">
+            <b className="block truncate text-[13px]">{nombre ?? name}</b>
+            {miembro && <span className="block truncate text-xs text-muted-foreground">{NOMBRE_ROL[miembro.rol]}</span>}
           </span>
-        )}
-        {verWeb && (
-          <a
-            href={publicLink}
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
-          >
-            Ver tu web <ArrowUpRight className="size-3" />
-          </a>
-        )}
+        </div>
         {/* 14c: la estilista gestiona su calendario desde aquí (no ve Ajustes). */}
         {calendarios.activo && calendarios.slug && alcanceCalendario(permisos) === "propio" && (
           <button
@@ -374,6 +354,7 @@ function BloqueUsuario() {
 export function MenuLateral({ path }: { path: string }) {
   const grupos = useGruposVisibles();
   const pendientes = useSolicitudesPendientes();
+  const publicLink = usePanelPublicLink();
   return (
     <aside className="sticky top-0 hidden h-screen w-[244px] shrink-0 flex-col border-r border-transparent bg-transparent px-3 py-4 md:flex">
       <div className="px-2 pb-3">
@@ -394,6 +375,11 @@ export function MenuLateral({ path }: { path: string }) {
                   active={estaActivo(item, path)}
                   contador={item.to === "/app" ? pendientes : undefined}
                 />
+                {item.to === "/app/web" && (
+                  <a href={publicLink} className="ml-10 flex min-h-9 items-center gap-1.5 text-xs text-muted-foreground hover:text-primary">
+                    Ver tu web <ArrowUpRight className="size-3" />
+                  </a>
+                )}
                 {item.hijos &&
                   estaActivoConHijos(item, path) &&
                   item.hijos.map((h) => (
@@ -406,7 +392,6 @@ export function MenuLateral({ path }: { path: string }) {
       </nav>
       <div className="mt-auto shrink-0 pt-3">
         <ProgresoPrimerosPasos />
-        {/* D1/D2: «Ver como» y plan de la demo, con sitio fijo en todos los anchos (antes flotaba sobre «Nueva cita» o no existía). */}
         <VerComo apilado className="mb-2 flex" />
         <BloqueUsuario />
       </div>
@@ -475,18 +460,19 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
           <BotonAvisos className="size-11" />
         </div>
       </div>
-      <div className="flex w-full min-w-0 items-center gap-2 md:absolute md:left-1/2 md:top-1/2 md:z-30 md:w-[min(540px,calc(100%_-_276px))] md:-translate-x-1/2 md:-translate-y-1/2 md:pointer-events-auto">
+      <div className="flex w-full min-w-0 items-center gap-2 md:absolute md:left-1/2 md:top-1/2 md:z-30 md:w-[min(540px,calc(100%_-_276px))] md:-translate-x-1/2 md:-translate-y-1/2 md:pointer-events-auto md:group-data-[panel=abierto]/panel:left-4 md:group-data-[panel=abierto]/panel:w-[min(360px,calc(100%_-_196px))] md:group-data-[panel=abierto]/panel:translate-x-0">
         <div className="min-w-0 flex-1 md:max-w-[420px]">
           <BuscadorGlobal variante="campo" />
         </div>
         <Button
           data-tour="new-appointment"
           aria-label="Nueva cita"
+          title="Nueva cita"
           onClick={onNuevaCita}
-          className="hidden h-9 min-w-0 max-w-full shrink gap-1.5 rounded-full px-3 text-[13px] font-bold md:inline-flex"
+          className="hidden h-9 min-w-0 max-w-full shrink gap-1.5 rounded-full px-3 text-[13px] font-bold md:inline-flex md:group-data-[panel=abierto]/panel:size-9 md:group-data-[panel=abierto]/panel:shrink-0 md:group-data-[panel=abierto]/panel:px-0"
         >
           <Plus className="size-4" strokeWidth={1.6} />
-          <span className="truncate">Nueva cita</span>
+          <span className="truncate md:group-data-[panel=abierto]/panel:hidden">Nueva cita</span>
         </Button>
       </div>
       <div className="pointer-events-auto absolute right-8 top-1/2 z-30 hidden -translate-y-1/2 items-center gap-2 md:flex">
@@ -561,8 +547,6 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
   const grupos = useGruposVisibles();
   const barra = useBarraMovil(grupos);
   const publicLink = usePanelPublicLink();
-  const permisos = usePermisos();
-  const esDemo = useEsDemo();
   const plan = usePlanSalon();
   const [masAbierto, setMasAbierto] = useState(false);
   const apartado = useFabApartado();
@@ -626,15 +610,15 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
             </SheetHeader>
             <div className="space-y-3 px-4 pb-3">
               <BloqueUsuario />
-              {esDemo && <VerComo className="flex w-full" />}
+              <VerComo apilado className="flex w-full" />
               <PlanContratado />
             </div>
             <div className="grid grid-cols-3 gap-2 px-4 pb-6">
               {restantes.map((item) => {
                 const active = estaActivo(item, path);
                 return (
+                  <div key={item.to} className="flex flex-col gap-1">
                   <Link
-                    key={item.to}
                     to={item.to}
                     onClick={() => setMasAbierto(false)}
                     className={cn(
@@ -652,18 +636,16 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
                       </span>
                     )}
                   </Link>
+                  {item.to === "/app/web" && (
+                    <a href={publicLink} onClick={() => setMasAbierto(false)}
+                      className="flex min-h-11 items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary">
+                      Ver tu web <ArrowUpRight className="size-3" />
+                    </a>
+                  )}
+                  </div>
                 );
               })}
-              {veRuta(permisos, "/app/web") && (
-                <a
-                  href={publicLink}
-                  onClick={() => setMasAbierto(false)}
-                  className="flex flex-col items-center gap-2 rounded-2xl border border-border px-3 py-4 text-center text-xs font-semibold text-cafe-medio hover:bg-nata"
-                >
-                  <ArrowUpRight className="size-5" strokeWidth={1.6} />
-                  Ver tu web
-                </a>
-              )}
+
             </div>
           </SheetContent>
         </Sheet>
