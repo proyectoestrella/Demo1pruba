@@ -60,7 +60,7 @@ function HojaDelDia() {
         <Button variant="outline" onClick={() => window.print()}><Printer className="size-[18px]" strokeWidth={1.6} />Imprimir</Button>
       </div>
     </header>
-    {manana && <section className="hoja-recordatorios overflow-hidden rounded-[20px] border border-border bg-card">
+    {manana && <section className="hoja-recordatorios overflow-hidden tarjeta-principal bg-card">
       <div className="px-5 py-4">
         <h2 className="text-base font-extrabold tracking-[-0.01em]">Recordatorios para mañana</h2>
         <p className="text-[12.5px] text-muted-foreground">Se abren en tu WhatsApp con el mensaje escrito; lo envías tú.</p>
@@ -91,10 +91,10 @@ function HojaDelDia() {
         </div>;
       })}
     </section>}
-    {grupos.length === 0 && <p className="rounded-[20px] border border-border p-6 text-[12.5px] text-muted-foreground">No hay citas para este día.</p>}
+    {grupos.length === 0 && <p className="tarjeta-principal border border-border p-6 text-[12.5px] text-muted-foreground">No hay citas para este día.</p>}
     {grupos.map(({ profesional, visitas }, gi) => {
       const jornadas = franjasProfesional(profesional, fecha.getDay()).map((r) => `${hhmm(r.start)}–${hhmm(r.end)}`);
-      return <section key={profesional.id} className="hoja-grupo overflow-hidden rounded-[20px] border border-border bg-card">
+      return <section key={profesional.id} className="hoja-grupo overflow-hidden tarjeta-principal bg-card">
       <h2 className="flex flex-wrap items-center gap-2.5 border-b border-border bg-perla px-5 py-3">
         <span className="grid size-8 place-items-center rounded-full text-xs font-extrabold" style={{ background: tinteProfesional(gi) }} aria-hidden="true">{profesional.name.slice(0, 2).toUpperCase()}</span>
         <span className="text-base font-extrabold">{profesional.name}</span>

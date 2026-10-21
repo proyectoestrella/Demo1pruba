@@ -1,7 +1,6 @@
-import { bordeProfesional, tinteProfesional } from "@/lib/colores-elegidos";
+import { bordeProfesional } from "@/lib/colores-elegidos";
 import { tituloCalendario } from "@/lib/calendario-titulo-panel";
 import { useFichas } from "@/lib/use-fichas";
-import { AvatarProfesional } from "@/components/Avatar";
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
 import { useOcupadoExterno, useSincronizarCalendarios } from "@/lib/calendarios-panel";
 import {
@@ -135,8 +134,6 @@ const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "
 const DCORTO = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 const capital = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
-/** Pasteles de profesional para los avatares (taupe, salvia, nata tostada). */
-const colorPro = (i: number) => tinteProfesional(i);
 /** Color de la barra de ocupación de la profesional, por orden del equipo. */
 const barraPro = (i: number) => bordeProfesional(i);
 
@@ -288,12 +285,7 @@ export function CalendarioArena({
         : [];
   const variosDias = vista === "semana" || vista === "tres" || vista === "rango";
   // Lote 16: siempre con el año, en todas las vistas.
-  const titulo = tituloCalendario(
-    vista === "mes" ? "mes" : variosDias ? "varios" : "dia",
-    diasRejilla,
-    anchor,
-  );
-  const porConfirmar = citasDia.filter((a) => a.status === "pending").length;
+  const titulo = tituloCalendario(vista === "mes" ? "mes" : variosDias ? "varios" : "dia", diasRejilla, anchor);
   const numCitas = citasDia.filter((a) => a.status !== "blocked").length;
 
   // Columnas de la rejilla: en Día, una por profesional; en 3 días y Semana,
@@ -330,7 +322,6 @@ export function CalendarioArena({
             equipo: [e],
             cabecera: (
               <span className="flex items-center gap-2">
-                {!soloUno && <AvatarPro e={e} i={i} size={30} />}
                 <span className="min-w-0 leading-tight">
                   <b className="block truncate text-[14px]">{e.name}</b>
                   <small className="block text-[12px] font-semibold text-cafe-suave tabular-nums">
@@ -352,24 +343,13 @@ export function CalendarioArena({
             dia: d,
             equipo: equipoFiltrado,
             onCabecera: () => abrirDia(d),
-            cabecera: (
-              <span
-                className="flex min-h-[34px] w-full items-center justify-center gap-1.5 leading-none"
-                aria-label={`Abrir el ${DIAS[d.getDay()]} ${d.getDate()}`}
-              >
-                <span className="text-[11px] font-bold tracking-[0.04em] text-k-gris uppercase">
-                  {DCORTO[d.getDay()]}
-                </span>
-                <span
-                  className={cn(
-                    "grid size-[28px] place-items-center rounded-full text-[15px] font-extrabold tabular-nums",
-                    hoy ? "bg-primary text-primary-foreground" : "text-k-tinta",
-                  )}
-                >
-                  {d.getDate()}
-                </span>
-                {cerrado && <span className="sr-only">Cerrado</span>}
-                {especial && <span className="sr-only">Horario especial</span>}
+              cabecera: (
+              <span className={cn("flex min-h-[30px] w-full items-center justify-center gap-1 text-[12px] font-medium leading-none", hoy && "min-h-[30px] bg-[#303030] text-white")} aria-label={`Abrir el ${DIAS[d.getDay()]} ${d.getDate()}`}>
+                <span className={hoy ? "text-white" : "text-[#555550]"}>{d.getDate()}</span>
+                <span className={hoy ? "text-white/80" : "text-[#555550]"}>·</span>
+                <span className={hoy ? "text-white" : "text-[#555550]"}>{DCORTO[d.getDay()]}</span>
+                {cerrado && <span className="sr-only" role="img" aria-label="Cerrado">—</span>}
+                {especial && <span className="sr-only">Especial</span>}
               </span>
             ),
           };
@@ -399,9 +379,8 @@ export function CalendarioArena({
     // cada profesional conserva sus 110 px y el pie no aplasta la rejilla.
     <div
       className={cn(
-        "flex flex-col md:h-[calc(100dvh-71px-64px)] md:min-h-[620px]",
+        "flex min-h-0 flex-1 flex-col bg-transparent",
         vista === "cronograma" && "md:[@media(max-height:879px)]:h-auto",
-        esRejilla && "h-[calc(100dvh-190px)] min-h-[520px]",
       )}
     >
       {/* Controles: navegar, qué periodo es, profesional, colores, vista y ajustes. */}
@@ -409,58 +388,23 @@ export function CalendarioArena({
           sea el título (eso subía o bajaba la rejilla al cambiar de semana):
           en PC, título a la izquierda con el ancho que quede y controles fijos
           a la derecha; en móvil, navegación, título y vistas en filas fijas. */}
-      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-k-linea-f px-1 pb-3 lg:flex-nowrap">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[#ECEBE6] bg-transparent px-3 py-2 lg:flex-nowrap">
         <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={() => {
-              setAnchor(inicioDelDia(new Date()));
-              setIrAAhora((n) => n + 1);
-            }}
-            className="mr-1 h-10 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground hover:bg-primary/90"
-          >
+          <button type="button" onClick={() => { setAnchor(inicioDelDia(new Date())); setIrAAhora((n) => n + 1); }} className="mr-1 h-10 rounded-full bg-cafe px-4 text-sm font-bold text-white hover:bg-cafe/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             Hoy
           </button>
-          <button
-            type="button"
-            onClick={() => mover(-1)}
-            aria-label="Anterior"
-            className="grid size-10 place-items-center rounded-full bg-perla text-cafe-medio hover:bg-nata"
-          >
+          <button type="button" onClick={() => mover(-1)} aria-label="Anterior" className="grid size-11 place-items-center rounded-full bg-[#F3F2EE] text-[#5A5A56] hover:bg-[#ECEBE6] md:size-10">
             <ChevronLeft className="size-5" strokeWidth={1.6} />
           </button>
-          <button
-            type="button"
-            onClick={() => mover(1)}
-            aria-label="Siguiente"
-            className="grid size-10 place-items-center rounded-full bg-perla text-cafe-medio hover:bg-nata"
-          >
+          <button type="button" onClick={() => mover(1)} aria-label="Siguiente" className="grid size-11 place-items-center rounded-full bg-[#F3F2EE] text-[#5A5A56] hover:bg-[#ECEBE6] md:size-10">
             <ChevronRight className="size-5" strokeWidth={1.6} />
           </button>
-          <button
-            type="button"
-            onClick={() => setBloqueoAbierto(true)}
-            className="ml-1 h-10 rounded-full bg-perla px-3 text-[13px] font-bold text-cafe-medio hover:bg-nata"
-          >
+          <button type="button" onClick={() => setBloqueoAbierto(true)} className="ml-1 h-11 rounded-full bg-[#F3F2EE] px-3 text-[13px] font-bold text-[#5A5A56] hover:bg-[#ECEBE6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-10">
             Bloquear tiempo
           </button>
         </div>
         <div className="order-last w-full min-w-0 lg:order-2 lg:w-auto lg:flex-1">
-          <h1
-            className="truncate text-[24px] leading-[1.1] font-bold tracking-[-0.04em] md:text-[32px]"
-            title={titulo}
-          >
-            {titulo}
-          </h1>
-          {(vista === "dia" || vista === "cronograma") && (
-            <p className="text-[13.5px] text-muted-foreground tabular-nums">
-              {numCitas} {numCitas === 1 ? "cita" : "citas"} · {huecosDia.length}{" "}
-              {huecosDia.length === 1 ? "hueco libre" : "huecos libres"}
-              {porConfirmar > 0 && (
-                <span className="text-primary"> · {porConfirmar} por confirmar</span>
-              )}
-            </p>
-          )}
+          <h1 className="text-[27px] leading-[1.1] font-normal tracking-[-0.04em] text-[#303030] sm:truncate sm:text-[28px] sm:leading-tight md:text-[36px]" title={titulo}>{titulo}</h1>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1 lg:order-3">
           <Popover>
@@ -474,16 +418,39 @@ export function CalendarioArena({
                 <span className="hidden sm:inline">Colores</span>
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-[min(360px,calc(100vw-2rem))] rounded-2xl p-0">
-              <Leyenda
-                vista={vista}
-                porPro={variosDias && filtroPro === "todas" && !soloUno}
-                services={services}
-                equipo={equipo}
-              />
-              <p className="px-4 py-3 text-[12.5px] text-muted-foreground">
-                Pulsa una cita para ver su detalle, o un hueco vacío para dar una cita a esa hora.
+            <PopoverContent align="end" className="w-[min(390px,calc(100vw-2rem))] rounded-2xl p-4">
+              <h2 className="text-[15px] font-extrabold">Cómo leer el calendario</h2>
+              <p className="mt-1 text-[12.5px] text-muted-foreground">
+                {vista === "mes"
+                  ? "Las barras muestran cuánto trabaja cada profesional."
+                  : variosDias && filtroPro === "todas" && !soloUno
+                    ? "El color de cada cita identifica a la profesional."
+                    : "El color de cada cita identifica el servicio."}
               </p>
+              <Leyenda vista={vista} porPro={variosDias && filtroPro === "todas" && !soloUno} services={services} equipo={equipo} />
+              {vista !== "mes" && (
+                <div className="mt-4 border-t border-border pt-3">
+                  <p className="mb-2 text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase">Estados y espacios</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-xl bg-perla p-2.5">
+                      <span className="mb-1.5 block h-5 rounded-md border border-dashed border-cafe-medio bg-card" aria-hidden="true" />
+                      <b className="block text-[11.5px]">Por confirmar</b>
+                      <span className="text-[11px] text-muted-foreground">Falta confirmarla</span>
+                    </div>
+                    <div className="rounded-xl bg-perla p-2.5">
+                      <span className="mb-1.5 block h-5 rounded-md border border-lino" style={{ background: RAYADO }} aria-hidden="true" />
+                      <b className="block text-[11.5px]">Pausa</b>
+                      <span className="text-[11px] text-muted-foreground">No se puede reservar</span>
+                    </div>
+                    <div className="rounded-xl bg-perla p-2.5">
+                      <span className="mb-1.5 block h-5 rounded-md border border-dashed border-k-libre-b bg-k-libre" aria-hidden="true" />
+                      <b className="block text-[11.5px]">Hueco libre</b>
+                      <span className="text-[11px] text-muted-foreground">Pulsa para reservar</span>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-[12px] text-muted-foreground">Pulsa una cita para ver sus detalles.</p>
+                </div>
+              )}
             </PopoverContent>
           </Popover>
           <Popover>
@@ -505,83 +472,76 @@ export function CalendarioArena({
         </div>
       </div>
       {/* Segunda fila fija: profesional y vista. */}
-      <div className="mb-4 flex flex-wrap items-center gap-2 px-1">
-        {variosDias && !soloUno && (
-          <label className="relative">
-            <span className="sr-only">Profesional</span>
-            <select
-              aria-label="Filtrar agenda por profesional"
-              value={filtroPro}
-              onChange={(ev) => setFiltroPro(ev.target.value)}
-              className="h-10 appearance-none rounded-full bg-perla pr-9 pl-4 text-[13px] font-bold text-cafe hover:bg-nata"
-            >
-              <option value="todas">Todas</option>
-              {equipo.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-cafe-medio"
-              strokeWidth={1.6}
-            />
-          </label>
-        )}
-        <div
-          role="tablist"
-          aria-label="Vista del calendario"
-          className="order-last grid w-full grid-cols-5 gap-0.5 rounded-full bg-transparent p-1 md:order-none md:ml-auto md:inline-flex md:w-auto"
-        >
-          {VISTAS_CALENDARIO.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              role="tab"
-              aria-selected={vista === v.id}
-              onClick={() => elegirVista(v.id)}
-              className={cn(
-                "h-10 rounded-full bg-perla px-1 text-[12.5px] font-bold whitespace-nowrap text-cafe-medio hover:bg-nata md:px-[13px] md:text-[13px]",
-                vista === v.id && "bg-primary text-primary-foreground hover:bg-primary",
-              )}
-            >
-              {v.id === "cronograma" ? (
-                <>
-                  <span className="sm:hidden">Crono</span>
-                  <span className="hidden sm:inline">{v.label}</span>
-                </>
-              ) : (
-                v.label
-              )}
-            </button>
-          ))}
-          <Popover open={rangoAbierto} onOpenChange={setRangoAbierto}>
-            <PopoverTrigger asChild>
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#ECEBE6] bg-transparent px-3 pb-3">
+          {variosDias && !soloUno && (
+            <label className="relative">
+              <span className="sr-only">Profesional</span>
+              <select
+                aria-label="Filtrar agenda por profesional"
+                value={filtroPro}
+                onChange={(ev) => setFiltroPro(ev.target.value)}
+                className="h-11 appearance-none rounded-full bg-[#F3F2EE] px-4 pr-9 text-[13px] font-semibold text-[#5A5A56] hover:bg-[#ECEBE6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-10"
+              >
+                <option value="todas">Todas</option>
+                {equipo.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-cafe-medio" strokeWidth={1.6} />
+            </label>
+          )}
+          <div role="tablist" aria-label="Vista del calendario" className="order-last grid w-full grid-cols-5 gap-0.5 rounded-full bg-transparent p-1 md:order-none md:ml-auto md:inline-flex md:w-auto">
+            {VISTAS_CALENDARIO.map((v) => (
               <button
+                key={v.id}
                 type="button"
                 role="tab"
-                aria-selected={vista === "rango"}
+                aria-selected={vista === v.id}
+                onClick={() => elegirVista(v.id)}
                 className={cn(
-                  "col-span-5 h-10 rounded-full bg-perla px-1 text-[12.5px] font-bold whitespace-nowrap text-cafe-medio hover:bg-nata md:col-span-1 md:px-[13px] md:text-[13px]",
-                  vista === "rango" && "bg-primary text-primary-foreground hover:bg-primary",
+                  "h-11 rounded-full bg-[#F3F2EE] px-1 text-[12.5px] font-semibold whitespace-nowrap text-[#5A5A56] transition-colors hover:bg-[#ECEBE6] md:h-10 md:px-[13px] md:text-[13px]",
+                  vista === v.id && "bg-cafe text-white shadow-sm hover:bg-cafe",
                 )}
               >
-                Elegir días
+                {v.id === "cronograma" ? (
+                  <>
+                    <span className="sm:hidden">Crono</span>
+                    <span className="hidden sm:inline">{v.label}</span>
+                  </>
+                ) : (
+                  v.label
+                )}
               </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-[min(320px,calc(100vw-2rem))] rounded-2xl p-4">
-              <FormRango
-                inicial={rango}
-                anchor={anchor}
-                onVer={(r) => {
-                  setRango(r);
-                  setVista("rango");
-                  setRangoAbierto(false);
-                }}
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
+            ))}
+            <Popover open={rangoAbierto} onOpenChange={setRangoAbierto}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={vista === "rango"}
+                  className={cn(
+                    "col-span-5 h-11 rounded-full bg-[#F3F2EE] px-1 text-[12.5px] font-semibold whitespace-nowrap text-[#5A5A56] hover:bg-[#ECEBE6] md:col-span-1 md:h-10 md:px-[13px] md:text-[13px]",
+                    vista === "rango" && "bg-cafe text-white shadow-sm hover:bg-cafe",
+                  )}
+                >
+                  Elegir días
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-[min(320px,calc(100vw-2rem))] rounded-2xl p-4">
+                <FormRango
+                  inicial={rango}
+                  anchor={anchor}
+                  onVer={(r) => {
+                    setRango(r);
+                    setVista("rango");
+                    setRangoAbierto(false);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
       </div>
 
       {/* Caja del calendario: la vista, con scroll interno. */}
@@ -718,79 +678,47 @@ function Leyenda({
   equipo: Employee[];
 }) {
   const activos = services.filter((s) => s.active !== false).slice(0, 6);
-  const muestra = "inline-block size-3.5 rounded-[4px] border border-cafe";
   if (vista === "mes") {
     return (
-      <div className="flex flex-none flex-wrap items-center gap-x-3.5 gap-y-1.5 border-b border-lino px-4 py-3 text-[12.5px] font-semibold text-k-tinta2">
-        <b className="text-k-tinta">Barras = ocupación de cada profesional</b>
+      <div className="mt-3 grid gap-1.5">
         {equipo.map((e, i) => (
-          <span key={e.id} className="flex items-center gap-1.5">
-            <i
-              className="inline-block size-3.5 rounded-[4px]"
-              style={{ background: barraPro(i) }}
-            />
-            {e.name}
-          </span>
+          <div key={e.id} className="flex items-center gap-2 rounded-lg px-2 py-1 text-[12.5px]">
+            <i className="h-2.5 w-8 rounded-full" style={{ background: barraPro(i) }} aria-hidden="true" />
+            <span>{e.name}</span>
+            <span className="ml-auto text-[11px] text-muted-foreground">barra = horas ocupadas</span>
+          </div>
         ))}
-        <span className="basis-full">
-          El número de la derecha son sus citas · pulsa un día para abrirlo
-        </span>
       </div>
     );
   }
   if (porPro) {
     return (
-      <div className="flex flex-none flex-wrap items-center gap-x-3.5 gap-y-1.5 border-b border-lino px-4 py-3 text-[12.5px] font-semibold text-k-tinta2">
-        <b className="text-k-tinta">Profesional:</b>
+      <div className="mt-3 grid grid-cols-2 gap-1.5">
         {equipo.map((e, i) => (
-          <span key={e.id} className="flex items-center gap-1.5">
-            <i
-              className="inline-block size-3.5 rounded-[4px] border border-cafe"
-              style={{ background: colorProfesional(i, e.id) }}
-            />
+          <span key={e.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[12.5px]">
+            <i className="size-4 shrink-0 rounded-[4px] border border-cafe/20" style={{ background: colorProfesional(i, e.id) }} aria-hidden="true" />
             {e.name}
           </span>
         ))}
-        <span className="basis-full">
-          Elige una profesional arriba para ver sus citas por color de servicio.
-        </span>
       </div>
     );
   }
   return (
-    <div className="flex flex-none flex-wrap items-center gap-x-3.5 gap-y-1.5 border-b border-lino px-4 py-3 text-[12.5px] font-semibold text-k-tinta2">
-      <b className="text-k-tinta">Servicio:</b>
+    <div className="mt-3 grid grid-cols-2 gap-1.5">
       {activos.map((s) => {
         const n = indiceColorServicio(s.id, services);
         return (
-          <span key={s.id} className="flex items-center gap-1.5">
-            <i className={muestra} style={{ background: `var(--serv-${n})` }} />
-            {s.name.split(/ y | \/ /)[0]}
+          <span key={s.id} className="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 text-[12px]">
+            <i className="size-4 shrink-0 rounded-[4px] border border-cafe/20" style={{ background: `var(--serv-${n})` }} aria-hidden="true" />
+            <span className="truncate">{s.name}</span>
           </span>
         );
       })}
-      <>
-        <span className="flex items-center gap-1.5">
-          <i className="inline-block size-3.5 rounded-[4px] border border-dashed border-cafe bg-superficie" />
-          Por confirmar
-        </span>
-        <span className="flex items-center gap-1.5">
-          <i
-            className="inline-block size-3.5 rounded-[4px] border border-k-linea"
-            style={{ background: RAYADO }}
-          />
-          Comida
-        </span>
-        <span className="flex items-center gap-1.5">
-          <i className="inline-block size-3.5 rounded-[4px] border-[1.5px] border-dashed border-k-libre-b bg-k-libre" />
-          Libre
-        </span>
-      </>
     </div>
   );
 }
 
-const RAYADO = "repeating-linear-gradient(135deg,var(--k-raya-1) 0 7px,var(--k-raya-2) 7px 14px)";
+const RAYADO = "repeating-linear-gradient(135deg,#ECEBE6 0 7px,#F5F4F0 7px 14px)";
 
 /* ---------- Piezas: cita, pausa, hueco ---------- */
 
@@ -827,19 +755,20 @@ function BloqueCita({
       onClick={onClick}
       title={`${a.clientName} · ${nombreServicio} · ${hora(a.start)}–${minutosAHora(ini + a.duration)}${pendiente ? " · por confirmar" : ""}`}
       className={cn(
-        "absolute flex flex-col overflow-hidden rounded-[5px] border border-transparent text-left leading-[1.2] transition-colors duration-150 hover:shadow-[var(--sombra-tarjeta-sm)] [&>*]:shrink-0",
-        variante === "semana" ? "px-1.5 py-1 text-[11.5px]" : "px-2 py-1.5 text-[13px]",
+        "absolute flex flex-col overflow-hidden text-left leading-[1.2] [&>*]:shrink-0",
+        "rounded-[5px] border border-transparent transition-colors duration-150",
+        variante === "semana" ? "px-[5px] py-1 text-[11.5px]" : "px-[5px] py-1 text-[12px]",
         variante !== "crono" && corta && "py-[3px]",
-        variante === "crono" && corta && "px-[7px] py-[7px]",
-        pendiente && "border-dashed border-cafe/55",
+        variante === "crono" && corta && "px-[5px] py-1",
+        pendiente && "border-dashed",
         noVino && "line-through decoration-cafe/60",
         seleccionada && "z-[6] ring-2 ring-primary ring-offset-1 ring-offset-card",
       )}
       style={{
         ...style,
         background: pendiente ? "var(--superficie)" : `var(--serv-${n})`,
-        color: pendiente ? "var(--k-tinta)" : `var(--serv-${n}-tinta)`,
-        borderLeft: pendiente ? "1px dashed var(--k-pendiente-borde)" : "0",
+        color: `var(--serv-${n}-tinta)`,
+        borderLeft: pendiente ? "1px dashed #8A8A85" : "0",
       }}
     >
       <IconoEstado status={a.status} className="top-1.5 right-1.5" />
@@ -847,31 +776,14 @@ function BloqueCita({
           dos líneas —nombre y apellido— cortadas cada una, sin servicio: el
           color ya lo dice y el nombre entero sale al pasar el ratón. */}
       {corta || variante === "semana" ? (
-        <b
-          className={cn(
-            "font-semibold",
-            variante === "semana" || variante === "crono"
-              ? "text-[11.5px] leading-[1.2]"
-              : "text-[13px]",
-            (vino || pendiente) && "pr-4",
-          )}
-        >
+        <b className={cn("font-semibold", variante === "semana" || variante === "crono" ? "text-[11.5px] leading-[1.2]" : "text-[12px]", (vino || pendiente) && "pr-4")}>
           <span className="block truncate">{nombre}</span>
           {apellido && <span className="block truncate">{apellido}</span>}
         </b>
       ) : (
-        <b className={cn("line-clamp-2 text-[13px] font-semibold", (vino || pendiente) && "pr-4")}>
-          {a.clientName || "Sin nombre"}
-        </b>
+        <b className={cn("line-clamp-2 text-[12px] font-semibold", (vino || pendiente) && "pr-4")}>{a.clientName || "Sin nombre"}</b>
       )}
-      <span
-        className={cn(
-          "font-medium tabular-nums",
-          variante === "semana" ? "text-[10.5px]" : corta ? "text-[11px]" : "text-xs",
-        )}
-      >
-        {rango}
-      </span>
+      <span className={cn("font-normal tabular-nums", variante === "semana" ? "text-[10.5px]" : corta ? "text-[11px]" : "text-[11px]")}>{rango}</span>
     </button>
   );
 }
@@ -915,10 +827,6 @@ function BloqueHueco({
       </span>
     </button>
   );
-}
-
-function AvatarPro({ e, i, size = 40 }: { e: Employee; i: number; size?: number }) {
-  return <AvatarProfesional id={e.id} nombre={e.name} size={size} aroColor={colorPro(i)} />;
 }
 
 function VacioDia({ dia }: { dia: Date }) {
@@ -1015,26 +923,12 @@ function Cronograma({
           width: `max(calc(var(--izq) + (100% - var(--izq)) * ${24 / horasJornada}), calc(var(--izq) + ${24 * 60}px))`,
         }}
       >
-        <div
-          className="sticky left-0 z-[8] grid border-r border-k-linea-f bg-card"
-          style={{ gridTemplateRows: filas }}
-        >
-          <div className="flex items-center border-b border-k-linea-f bg-k-cab pl-4 text-[11px] font-bold tracking-[0.06em] text-k-tinta2 uppercase">
-            Profesional
-          </div>
+        <div className="sticky left-0 z-[8] grid border-r border-k-linea-f bg-transparent" style={{ gridTemplateRows: filas }}>
+          <div className="flex items-center border-b border-k-linea-f bg-transparent pl-4 text-[11px] font-bold tracking-[0.06em] text-k-tinta2 uppercase">Profesional</div>
           {equipo.map((e, i) => {
             const mias = citas.filter((a) => a.employeeId === e.id && a.status !== "blocked");
             return (
-              <div
-                key={e.id}
-                className="flex items-center gap-1.5 border-b border-k-linea px-2 last:border-b-0 md:gap-3 md:px-4"
-              >
-                <span className="hidden md:block">
-                  <AvatarPro e={e} i={i} />
-                </span>
-                <span className="md:hidden">
-                  <AvatarPro e={e} i={i} size={28} />
-                </span>
+              <div key={e.id} className="flex items-center gap-1.5 border-b border-k-linea px-2 last:border-b-0 md:gap-3 md:px-4">
                 <div className="min-w-0">
                   <b className="block truncate text-xs md:text-[15px]">{e.name}</b>
                   <small className="block text-[11px] leading-tight text-muted-foreground tabular-nums">
@@ -1046,7 +940,7 @@ function Cronograma({
           })}
         </div>
         <div ref={derecha} className="relative grid min-w-0" style={{ gridTemplateRows: filas }}>
-          <div className="relative border-b border-k-linea-f bg-k-cab">
+          <div className="relative border-b border-k-linea-f bg-transparent">
             {Array.from({ length: horas }, (_, i) => (
               <span
                 key={i}
@@ -1188,10 +1082,7 @@ function VistaMes({
         style={{ gridTemplateRows: `auto repeat(${filas}, minmax(88px, 1fr))` }}
       >
         {cabeceras.map((d) => (
-          <div
-            key={d}
-            className="border-b border-k-linea-f bg-k-cab p-2.5 text-[11px] font-bold tracking-[0.06em] text-k-tinta2 uppercase"
-          >
+          <div key={d} className="border-b border-k-linea-f bg-[rgba(255,255,255,.35)] p-2.5 text-[11px] font-bold tracking-[0.06em] text-k-tinta2 uppercase backdrop-blur-[8px]">
             {d}
           </div>
         ))}
@@ -1210,21 +1101,12 @@ function VistaMes({
               onClick={() => onDia(d)}
               aria-label={`${d.getDate()} de ${MESES[d.getMonth()]}, ${citas.length} citas`}
               className={cn(
-                "flex flex-col gap-1.5 border-r border-b border-k-linea p-2 text-left text-k-tinta [&:nth-child(7n)]:border-r-0",
-                fuera ? "bg-beige/60 text-cafe-suave" : "hover:bg-card/60",
-                especial && "bg-salvia-suave/35",
-                hoy && "bg-secondary/45",
+                "flex flex-col gap-1.5 border-r border-b border-k-linea-f bg-transparent p-2 text-left text-k-tinta [&:nth-child(7n)]:border-r-0",
+                fuera ? "text-cafe-suave" : "hover:bg-[#fafaf8]",
               )}
             >
               <span className="flex items-center justify-between">
-                <span
-                  className={cn(
-                    "grid size-[26px] place-items-center rounded-full text-[13px] font-extrabold tabular-nums",
-                    hoy && "bg-primary text-primary-foreground",
-                  )}
-                >
-                  {d.getDate()}
-                </span>
+                <span className={cn("grid size-[26px] place-items-center rounded-full text-[13px] font-medium tabular-nums", hoy && "bg-[#303030] text-white")}>{d.getDate()}</span>
                 {citas.length > 0 && (
                   <span className="text-xs font-extrabold text-k-tinta tabular-nums">
                     {citas.length} {citas.length === 1 ? "cita" : "citas"}
@@ -1320,7 +1202,6 @@ function PieCronograma({
           const pct = ocupacionDe(citas, e, dia.getDay());
           return (
             <div key={e.id} className="flex items-center gap-2.5 py-2">
-              <AvatarPro e={e} i={i} size={28} />
               <b className="w-16 truncate">{e.name}</b>
               <span className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-nata">
                 <i className="block" style={{ width: `${pct}%`, background: barraPro(i) }} />

@@ -210,7 +210,7 @@ export function AjustesAccesos() {
         </Button>
       </div>
 
-      <ul className="divide-y divide-lino overflow-hidden rounded-2xl border border-lino">
+      <ul className="divide-y divide-lino overflow-hidden tarjeta-anidada">
         {lista.map((m) => {
           const vinculo = nombreDe(m.employeeId);
           const puedeEditar = esDemo || m.estado === "activa";

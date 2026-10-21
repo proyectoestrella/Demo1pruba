@@ -128,7 +128,7 @@ const sheetVariants = cva(
         // Paneles laterales «Arena»: opacos, borde lino, sombra suave en café
         // y 440 px en PC, donde empujan el contenido (sin sombra).
         right:
-          "panel-flotante-lateral inset-y-0 right-0 h-full w-full border-l border-border data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-[var(--ancho-panel,440px)] lg:shadow-none",
+          "panel-flotante-lateral inset-y-0 right-0 h-full w-full border-0 data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-[var(--ancho-panel,440px)]",
       },
     },
     defaultVariants: {

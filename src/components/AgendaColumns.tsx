@@ -10,7 +10,6 @@ import type { Appointment, EmployeeId } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import { franjasProfesionalEnFecha } from "@/lib/horario-equipo";
 import { TiraScroll } from "@/components/TiraScroll";
-import { AvatarProfesional } from "@/components/Avatar";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -165,7 +164,7 @@ export function AgendaColumns() {
               type="button"
               onClick={() => setSelected(a)}
               className={cn(
-                "absolute left-1 right-1 z-[3] overflow-hidden rounded-[5px] border border-transparent px-1.5 py-1 text-left text-[11.5px] leading-[1.2] transition-colors",
+                "absolute left-1 right-1 z-[3] overflow-hidden rounded-[5px] border border-transparent px-[5px] py-1 text-left text-[11.5px] leading-[1.2] transition-colors",
                 isNoShow && "border-dashed border-cafe/50 line-through decoration-cafe/60",
                 started && a.status === "confirmed" && "ring-1 ring-primary/40",
               )}
@@ -174,6 +173,7 @@ export function AgendaColumns() {
                 height: Math.max(30, height - 2),
                 background: `color-mix(in oklch, var(${emp.colorVar}) 18%, var(--color-card))`,
                 color: `var(${emp.colorVar}-tinta)`,
+                borderLeftWidth: 0,
               }}
             >
               <p className="truncate font-semibold leading-[1.2]">{a.clientName}</p>
@@ -226,7 +226,7 @@ export function AgendaColumns() {
                 "flex shrink-0 flex-col items-center rounded-xl border px-3.5 py-2 text-xs transition-colors",
                 active
                   ? "border-primary bg-primary/10 text-primary"
-                  : "border-border/60 bg-card text-muted-foreground",
+                  : "border-border/60 bg-[#F3F2EE] text-[#555550]",
               )}
             >
               <span className="uppercase tracking-wide">
@@ -254,7 +254,7 @@ export function AgendaColumns() {
         </Select>
       </div>
 
-      <div className="min-w-0 overflow-hidden tarjeta-principal border border-k-linea-f bg-transparent">
+      <div className="min-w-0 overflow-hidden rounded-[26px] border border-k-linea-f bg-transparent shadow-[0_10px_32px_rgba(48,48,48,0.08)]">
         {/* Cabecera con foto/iniciales por profesional — oculta en móvil, ya
             se elige arriba con el selector. */}
         <div
@@ -267,7 +267,6 @@ export function AgendaColumns() {
               key={e.id}
               className="flex flex-col items-center gap-1.5 border-l border-border/60 px-2 py-3"
             >
-              <AvatarProfesional id={e.id} nombre={e.name} size="sm" />
               <span className="truncate text-xs font-medium">{e.name}</span>
             </div>
           ))}
@@ -333,15 +332,9 @@ export function AgendaColumns() {
 
 function LineaAhoraAgenda({ top, hora }: { top: number; hora: string }) {
   return (
-    <div
-      className="pointer-events-none absolute inset-x-0 z-[2] flex items-center"
-      style={{ top }}
-      aria-hidden="true"
-    >
+    <div className="pointer-events-none absolute inset-x-0 z-[2] flex items-center" style={{ top }} aria-hidden="true">
       <span className="relative z-[3] w-[56px] shrink-0 pr-1 text-right">
-        <span className="inline-block rounded-full bg-k-ahora px-2 py-0.5 text-[10px] font-bold leading-4 text-primary-foreground tabular-nums">
-          {hora}
-        </span>
+        <span className="inline-block rounded-full bg-k-ahora px-2 py-0.5 text-[10px] font-bold leading-4 text-white tabular-nums">{hora}</span>
       </span>
       <span className="h-px flex-1 bg-k-ahora" />
     </div>

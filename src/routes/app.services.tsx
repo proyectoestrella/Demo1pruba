@@ -115,7 +115,6 @@ function ServicesPage() {
     <div className="flex flex-1 flex-col gap-5">
       <PageHeader
         title="Servicios y precios"
-        description="Tu carta: lo que ofreces, cuánto dura y cuánto cuesta. El color es el que tiene en la agenda."
         actions={
           edita ? (
             <Button className="gap-1.5" onClick={openCreate}>

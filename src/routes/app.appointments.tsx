@@ -1,5 +1,4 @@
 import { bordeProfesional } from "@/lib/colores-elegidos";
-import { BotonConPlan } from "@/components/BotonConPlan";
 import { useFichas } from "@/lib/use-fichas";
 import { EnlaceClienta } from "@/components/EnlaceClienta";
 import { usePermisos } from "@/lib/accesos-panel";
@@ -186,13 +185,11 @@ function Appointments() {
         actions={
           <>
             {puedeExportar && (
-              <BotonConPlan funcion="exportar" etiqueta="Exportar a Excel (CSV)">
-                <ExportCsvButtons
-                  appointments={appointments}
-                  services={services}
-                  employees={employees}
-                />
-              </BotonConPlan>
+              <ExportCsvButtons
+                appointments={appointments}
+                services={services}
+                employees={employees}
+              />
             )}
           </>
         }
@@ -415,7 +412,7 @@ function Appointments() {
               return (
                 <Fragment key={a.id}>
                   {indice === indiceAnteriores && (
-                    <p className="border-y border-border bg-nata px-4 py-2 text-xs font-extrabold tracking-[0.06em] text-cafe-medio uppercase">
+                    <p className="border-y border-[#E6E4DC] bg-white/30 px-4 py-2 text-[10.5px] font-bold tracking-[0.08em] text-[#555650] uppercase">
                       Anteriores
                     </p>
                   )}

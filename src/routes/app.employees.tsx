@@ -121,12 +121,12 @@ function Team() {
   });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employees, appointments, serviciosCarta, semana[0]?.toDateString()]);
-  const etiqueta = "text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase";
+  const etiqueta = "text-[10.5px] font-bold tracking-[0.08em] text-[#555650] uppercase";
   const selectHora = "h-9 rounded-xl border border-input bg-card px-2 text-[13px] tabular-nums";
 
   return (
     <div className="flex flex-1 flex-col gap-5">
-      <PageHeader title="Equipo" description="Cada profesional con su horario y los servicios que hace." />
+      <PageHeader title="Equipo" />
       {limitePlan !== null && employees.length > limitePlan && (
         <p role="note" className="flex items-start gap-2 rounded-2xl border border-lino-fuerte bg-nata/60 px-4 py-3 text-[13.5px] text-cafe-medio">
           <Lock className="mt-0.5 size-4 shrink-0" strokeWidth={1.7} aria-hidden="true" />
@@ -139,7 +139,7 @@ function Team() {
           const asignados = configurados?.length ? configurados : serviciosCarta.map((s) => s.id);
           const tramosResumen = resumenHorario(DAY_LABELS_ES.map((_, d) => profile.teamHours?.[i]?.[d] ?? profile.openingHours[d] ?? "Cerrado")).split(" · ");
           return (
-            <section key={e.id} className="flex min-w-0 flex-col overflow-hidden rounded-[20px] border border-border bg-card" style={{ borderLeft: `4px solid ${bordeProfesional(i, e.id)}` }}>
+            <section key={e.id} className="flex min-w-0 flex-col overflow-hidden tarjeta-principal border border-border bg-card shadow-[0_8px_24px_rgba(59,47,42,.14)]">
               <div className="flex items-start gap-3 px-5 pt-5 pb-4" style={{ background: tinteProfesional(i, e.id) }}>
                 <span className="shrink-0 rounded-full bg-card p-1 shadow-[var(--sombra-tarjeta)]"><EditarAvatar tipo="profesional" id={e.id} nombre={e.name} foto={fotoDeProfesional(e.name, e.id, e.photo, tipo, esSalonReal)} size="xl" /></span>
                 <div className="grid min-w-0 flex-1 gap-1.5">
@@ -212,7 +212,7 @@ function Team() {
             <span className="max-w-[30ch] text-[12.5px] text-muted-foreground">Tu plan {NOMBRE_PLAN[plan]} incluye hasta {limitePlan} profesionales. Para añadir más, el plan {planSiguiente}.</span>
           </div>
         ) : (
-          <button type="button" disabled={employees.length >= limite} onClick={añadir} className="flex min-h-[180px] flex-col items-center justify-center gap-2 rounded-[20px] border-[1.5px] border-dashed border-lino-fuerte bg-card text-cafe-medio hover:bg-nata disabled:cursor-not-allowed disabled:opacity-50">
+          <button type="button" disabled={employees.length >= limite} onClick={añadir} className="flex min-h-[180px] flex-col items-center justify-center gap-2 rounded-[var(--radio-tarjeta-sm)] bg-card text-cafe-medio hover:bg-nata disabled:cursor-not-allowed disabled:opacity-50">
             <Plus className="size-6" strokeWidth={1.6} />
             <b>Añadir profesional</b>
             <span className="text-[12.5px] text-muted-foreground tabular-nums">{limitePlan === null ? `${employees.length} · sin límite en tu plan` : `${employees.length} de ${limite}`}</span>
@@ -220,14 +220,14 @@ function Team() {
         )}
       </div>
 
-      <section className="flex-1 overflow-hidden rounded-[20px] border border-border bg-card">
+      <section className="flex-1 overflow-hidden tarjeta-principal bg-card">
         <div className="flex flex-wrap items-baseline gap-x-2.5 px-5 py-4">
           <h2 className="text-base font-extrabold tracking-[-0.01em]">Esta semana</h2>
           <span className="text-[12.5px] text-muted-foreground">Del {semana[0]?.getDate()} al {semana[semana.length - 1]?.toLocaleDateString("es-ES", { day: "numeric", month: "long" })}, según la agenda</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
-            <thead><tr className="bg-perla text-left">{["Profesional", "Citas", "Horas en agenda", "Ocupación", "Lo más pedido"].map((t) => <th key={t} className={cn(etiqueta, "px-5 py-2.5")}>{t}</th>)}</tr></thead>
+            <thead><tr className="border-b border-[#DAD8CF] bg-white/25 text-left">{["Profesional", "Citas", "Horas en agenda", "Ocupación", "Lo más pedido"].map((t) => <th key={t} className={cn(etiqueta, "px-5 py-2.5")}>{t}</th>)}</tr></thead>
             <tbody>
               {resumenSemana.map(({ e, citas, horas: h, ocupacion, top }, i) => (
                 <tr key={e.id} className="border-t border-border">

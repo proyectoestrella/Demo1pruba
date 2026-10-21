@@ -59,7 +59,7 @@ export function IconoCalendarioApple({
           {diaMes}
         </text>
       </g>
-      <rect x="0.5" y="0.5" width="39" height="39" rx="9" fill="none" stroke="#E3DCD3" />
+      <rect x="0.5" y="0.5" width="39" height="39" rx="9" fill="none" stroke="#D3D0C5" />
     </svg>
   );
 }
@@ -92,7 +92,7 @@ export function IconoCalendarioGoogle({ diaMes, className }: IconoBaldosaProps &
           {diaMes}
         </text>
       </g>
-      <rect x="0.5" y="0.5" width="39" height="39" rx="9" fill="none" stroke="#E3DCD3" />
+      <rect x="0.5" y="0.5" width="39" height="39" rx="9" fill="none" stroke="#D3D0C5" />
     </svg>
   );
 }

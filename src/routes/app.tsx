@@ -327,8 +327,8 @@ function DashboardLayoutV1() {
   }, [path]);
 
   return (
-    <div className="panel-marco flex min-h-screen w-full">
-      <div className="flex min-h-[inherit] min-w-0 flex-1 bg-transparent">
+    <div className="panel-marco flex w-auto min-w-0">
+      <div className={cn("flex min-h-[inherit] min-w-0 flex-1 overflow-visible rounded-[inherit] bg-transparent", path === "/app/calendar" && "h-dvh")}>
         <MenuLateral path={path} />
 
         <div
@@ -347,11 +347,16 @@ function DashboardLayoutV1() {
             hueco para la barra inferior. El último bloque de cada pantalla
             puede crecer hasta el borde (flex-1). */}
           <FranjaVerComo />
-          <main className="flex min-w-0 flex-1 flex-col px-4 pt-5 pb-[100px] md:px-8 md:pt-8 md:pb-8">
+          <main className={cn(
+            "flex min-w-0 flex-1 flex-col",
+            path === "/app/calendar"
+              ? "min-h-0 overflow-hidden bg-transparent p-0 pb-[100px] md:pb-0"
+              : "px-4 pt-5 pb-[100px] md:px-8 md:pt-8 md:pb-8",
+          )}>
             {/* Lote 16: cada pantalla entra con un fundido y 8 px de desplazamiento
               (180 ms). Con la Web Animations API y sin `key`: remontar el
               contenedor en cada ruta costaba el doble de tiempo al navegar. */}
-            <div ref={contenedorRuta} className="flex min-w-0 flex-1 flex-col">
+            <div ref={contenedorRuta} className={cn("flex min-w-0 flex-1 flex-col", path === "/app/calendar" && "min-h-0")}>
               {fueraDelBasico ? (
                 <IncluidoEnPlanCompleto />
               ) : permitida ? (

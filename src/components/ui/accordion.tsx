@@ -5,7 +5,10 @@ import { ChevronDown } from "lucide-react";
 import { debeAnimarAcordeon } from "@/lib/accordion-animation";
 import { cn } from "@/lib/utils";
 
-const AccordionAnimationContext = React.createContext({
+const AccordionAnimationContext = React.createContext<{
+  animar: boolean;
+  registrarInteraccion: () => void;
+}>({
   animar: false,
   registrarInteraccion: () => undefined,
 });

@@ -498,7 +498,7 @@ function MiWebHidratada() {
 
       {/* Barra de acciones. Pegajosa arriba: en un iPad, con el editor largo,
           el botón de publicar tiene que estar siempre a un dedo. */}
-      <div className="sticky top-[71px] z-10 flex flex-wrap items-center gap-2 rounded-[20px] border border-border bg-card/95 p-2.5 backdrop-blur max-md:top-[118px]">
+      <div className="sticky top-[71px] z-10 flex flex-wrap items-center gap-2 rounded-[var(--radio-tarjeta-sm)] border border-border bg-card/95 p-2.5 backdrop-blur max-md:top-[118px]">
         <Button
           onClick={() => publicar()}
           disabled={guardando || !sucio}
@@ -971,7 +971,7 @@ function Marco({ ancho, children }: { ancho: number; children: React.ReactNode }
           centra. Dentro va el marco a su tamaño real, escalado desde la
           esquina — centrar un elemento más ancho que su hueco no funciona. */}
       <div
-        className="mx-auto h-full overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--sombra-tarjeta)]"
+        className="mx-auto h-full overflow-hidden tarjeta-principal bg-card"
         style={{ width: ancho * escala }}
       >
         <div
@@ -1007,7 +1007,7 @@ function Bloque({
   const [abierto, alternar] = usePlegado(`mi-pagina:${titulo}`, porDefecto);
   const visible = abierto || forzar;
   return (
-    <section className="rounded-[20px] border border-border bg-card">
+    <section className="tarjeta-secundaria bg-card">
       <h2>
         <button
           type="button"
@@ -1192,7 +1192,7 @@ function EditorDescripciones({
       {grupos.map((g) => {
         const escritas = g.servicios.filter((sv) => (valores[sv.id] ?? "").trim()).length;
         return (
-          <details key={g.categoria} className="rounded-2xl border border-border bg-card">
+          <details key={g.categoria} className="tarjeta-secundaria bg-card">
             <summary className="flex cursor-pointer items-baseline justify-between gap-3 px-4 py-3 text-[13.5px] font-bold">
               <span>{g.categoria}</span>
               <span className="text-[12px] font-semibold text-cafe-suave tabular-nums">

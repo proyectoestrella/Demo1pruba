@@ -519,8 +519,8 @@ function FormularioNuevaCita({
 
   // ---- Piezas ----
   const etiquetaCol =
-    "mb-3.5 text-xs font-extrabold tracking-[0.06em] text-muted-foreground uppercase";
-  const etiquetaCampo = "mb-2 block text-[12.5px] font-bold text-cafe-medio";
+    "mb-4.5 text-xs font-extrabold tracking-[0.06em] text-muted-foreground uppercase";
+  const etiquetaCampo = "mb-3 block text-[12.5px] font-bold text-cafe-medio";
   const opcion = (on: boolean) =>
     cn(
       "inline-flex h-10 items-center gap-2 rounded-full border px-[15px] text-[13.5px] font-bold transition-colors",
@@ -580,7 +580,7 @@ function FormularioNuevaCita({
               e.preventDefault();
             }}
             onInteractOutside={(e) => e.preventDefault()}
-            className="fixed top-[max(12px,env(safe-area-inset-top))] right-[max(12px,env(safe-area-inset-right))] bottom-[max(12px,env(safe-area-inset-bottom))] left-[max(12px,env(safe-area-inset-left))] z-50 flex flex-col overflow-hidden rounded-[var(--radio-tarjeta)] bg-background shadow-[var(--sombra-flotante)] outline-none md:top-6 md:right-6 md:bottom-6 md:left-[268px]"
+            className="fixed top-[max(12px,env(safe-area-inset-top))] right-[max(12px,env(safe-area-inset-right))] bottom-[max(12px,env(safe-area-inset-bottom))] left-[max(12px,env(safe-area-inset-left))] z-50 flex flex-col overflow-hidden rounded-[var(--radio-tarjeta)] bg-background outline-none md:top-6 md:right-6 md:bottom-6 md:left-[268px] md:shadow-[var(--sombra-flotante)]"
           >
             {/* Cabecera de la capa */}
             <div className="flex flex-none items-center gap-3.5 border-b border-border bg-card px-5 py-3 md:px-8 md:py-4">
@@ -680,7 +680,7 @@ function FormularioNuevaCita({
                     </div>
                   ) : (
                     <>
-                      <label className="flex h-12 items-center gap-2 rounded-xl border border-input bg-card px-3 text-muted-foreground focus-within:border-moca focus-within:ring-3 focus-within:ring-moca/15">
+                      <label className="na-buscador flex h-12 items-center gap-2 rounded-xl border border-input bg-card px-3 text-muted-foreground">
                         <Search className="size-[18px] shrink-0" strokeWidth={1.6} />
                         <input
                           autoFocus
@@ -733,7 +733,7 @@ function FormularioNuevaCita({
                           </p>
                         )}
                       </div>
-                      <div className="mt-4 rounded-2xl border border-dashed border-lino-fuerte p-3.5">
+                      <div className="mt-5">
                         <p className="mb-2.5 flex items-center gap-1.5 text-[12.5px] font-bold text-cafe-medio">
                           <UserPlus className="size-[15px]" strokeWidth={1.6} />
                           Clienta nueva

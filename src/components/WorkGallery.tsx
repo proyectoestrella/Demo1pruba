@@ -304,7 +304,7 @@ function FotoAmpliada({
       />
       <figcaption className="mt-3 flex max-w-full items-baseline gap-3 text-center text-sm text-ws-crema">
         <span className="min-w-0">{foto.alt}</span>
-        <span className="shrink-0 tabular-nums text-[#D9C6B3]">{posicion}</span>
+        <span className="shrink-0 tabular-nums text-[#666660]">{posicion}</span>
       </figcaption>
     </figure>
   );

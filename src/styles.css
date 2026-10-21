@@ -165,89 +165,79 @@
 
 :root {
   /* Radios: 8 · 12 (campos, citas) · 16 · 20 (tarjetas) · 999 (píldoras). */
-  --radius: 0.75rem;
+  --radius: 1.25rem;
 
   /* ---- Identidad «Arena»: los tokens con nombre (DESIGN.md) ---- */
   /* «Arena · calma» (lote 8c): un escalón más pastel. Página crema, menú y
      cabecera en taupe claro, tarjetas nata claras con borde lino visible, y
      el blanco puro solo en campos de texto. Contrastes medidos: DESIGN.md. */
-  --pagina: #efe7db;
-  --superficie: #f7f2ea;
-  --beige: #e9dfd1;
-  --taupe-claro: #ddcfbd;
-  --blanco: #ffffff;
-  --perla: #f2ebe0;
-  --nata: #e4d8c8;
-  --arena: #e0d2c0;
-  --taupe: #cdb9a4;
-  --lino: #d9cbb8;
-  --lino-fuerte: #c9b8a2;
-  --cafe: #3b2f2a;
-  --cafe-medio: #5e4f48;
-  --cafe-suave: #62534c;
-  --moca: #a47b5c;
-  --moca-fuerte: #7a5539;
-  --salvia-clara: #cfdfcf;
-  --salvia-suave: #dce7da;
-  --salvia: #9fb8a3;
-  --hoja: #4f6f58;
-  --hoja-tinta: #3f5a47;
+  --pagina: #FBF7EC;
+  --superficie: #FFFFFF;
+  --beige: #F7F4E9;
+  --taupe-claro: #E7E7E9;
+  --blanco: #FFFFFF;
+  --perla: #E5E5E7;
+  --nata: #F7F6F1;
+  --arena: #F5EFCD;
+  --taupe: #D8D5C9;
+  --lino: #E7E4D9;
+  --lino-fuerte: #D8D5C9;
+  --cafe: #303030;
+  --cafe-medio: #4C4C4C;
+  --cafe-suave: #555555;
+  --moca: #FFD960;
+  --moca-fuerte: #303030;
+  --salvia-clara: #CFDFCF;
+  --salvia-suave: #DCE7DA;
+  --salvia: #9FB8A3;
+  --hoja: #4F6F58;
+  --hoja-tinta: #3F5A47;
   /* Terracota de la marca siShow: solo acento («ahora», destacados). La acción sigue siendo moca fuerte. */
-  --terracota: #a44c20;
-  --melocoton: #f1d9c8;
+  --terracota: #A44C20;
+  --melocoton: #F9E2D3;
   /* Pastel miel: lo que está pendiente de la dueña en Hoy (café 10,4:1). */
-  --miel: #f3e6c4;
-  --miel-borde: #dcc68f;
-  --melocoton-borde: #ddb9a2;
-  --melocoton-tinta: #74462b;
+  --miel: #FFF4C8;
+  --miel-borde: #D6B94D;
+  --melocoton-borde: #DDB9A2;
+  --melocoton-tinta: #74462B;
 
   /* Paleta del calendario: un pastel frío por servicio (fondo · borde). */
-  --serv-1: #ddebfb;
-  --serv-1-borde: #5b8fd6;
-  --serv-2: #eae3fb;
-  --serv-2-borde: #8e76d8;
-  --serv-3: #d7f2e6;
-  --serv-3-borde: #3ea67c;
-  --serv-4: #fce4ed;
-  --serv-4-borde: #d9728f;
-  --serv-5: #fee8d8;
-  --serv-5-borde: #e08a50;
-  --serv-6: #fbf2cb;
-  --serv-6-borde: #c8a21f;
+  --serv-1: #DDEBFB; --serv-1-borde: #5B8FD6; --serv-1-tinta: #31577D;
+  --serv-2: #EAE3FB; --serv-2-borde: #8E76D8; --serv-2-tinta: #55467E;
+  --serv-3: #D7F2E6; --serv-3-borde: #3EA67C; --serv-3-tinta: #28684F;
+  --serv-4: #FCE4ED; --serv-4-borde: #D9728F; --serv-4-tinta: #8B3E56;
+  --serv-5: #FEE8D8; --serv-5-borde: #E08A50; --serv-5-tinta: #81481F;
+  --serv-6: #FBF2CB; --serv-6-borde: #C8A21F; --serv-6-tinta: #66520F;
 
-  /* Estructura del calendario: tinta azulada, líneas frías, «ahora» añil. */
-  --k-tinta: #1f2633;
-  --k-tinta2: #4a5363;
-  --k-gris: #5a6372;
-  --k-linea: #e3d8c9;
-  --k-linea-media: #eae1d5;
-  --k-linea-f: #cdbfac;
-  --k-cab: #e9dfd1;
-  --k-cab-hoy: #dce7da;
-  --k-ahora: #c0503a;
+  /* Estructura del calendario: carbón, rejilla perla y «ahora» carbón. */
+  --k-tinta: #303030;
+  --k-tinta2: #66645F;
+  --k-gris: #5A5A56;
+  --k-linea: rgba(48,48,48,.08);
+  --k-linea-media: rgba(48,48,48,.04);
+  --k-linea-f: #ECEBE6;
+  --k-cab: #FFFFFF;
+  --k-cab-hoy: #303030;
+  --k-ahora: #303030;
   /* Horas en que no trabaja nadie de la columna: rayado muy suave. */
-  --k-cerrado: rgba(122, 96, 72, 0.07);
+  --k-cerrado: rgba(95, 91, 82, 0.045);
   /* Profesionales (guía de diseño del panel, §2): hasta 7 hues, cada uno con tinte
      de fondo (texto SIEMPRE café encima, ≥ 11:1) y borde saturado de 4 px (≥ 3:1
      contra la página). La terracota no se asigna a nadie: es de acción y «ahora». */
-  --pro-1: #f6dde3;
-  --pro-1-borde: #b24a63; /* rosa viejo */
-  --pro-2: #ddebdd;
-  --pro-2-borde: #4f7a5a; /* salvia */
-  --pro-3: #eeddea;
-  --pro-3-borde: #8a4a78; /* ciruela */
-  --pro-4: #dce8f2;
-  --pro-4-borde: #3f6c94; /* azul pizarra */
-  --pro-5: #f5e8c4;
-  --pro-5-borde: #8f6a0e; /* ocre */
-  --pro-6: #d6eceb;
-  --pro-6-borde: #2f7f80; /* verde azulado */
-  --pro-7: #e6e1da;
-  --pro-7-borde: #5d5750; /* grafito */
-  --k-libre: #f1faf6;
-  --k-libre-b: #8ccfb2;
-  --k-libre-t: #23694e;
-  --k-vino: #2f7a5b;
+  --pro-1: #F6DDE3; --pro-1-borde: #B24A63; --pro-1-tinta: #713040; /* rosa viejo */
+  --pro-2: #DDEBDD; --pro-2-borde: #4F7A5A; --pro-2-tinta: #35543D; /* salvia */
+  --pro-3: #EEDDEA; --pro-3-borde: #8A4A78; --pro-3-tinta: #603451; /* ciruela */
+  --pro-4: #DCE8F2; --pro-4-borde: #3F6C94; --pro-4-tinta: #2B4D6B; /* azul pizarra */
+  --pro-5: #F5E8C4; --pro-5-borde: #8F6A0E; --pro-5-tinta: #604807; /* ocre */
+  --pro-6: #D6ECEB; --pro-6-borde: #2F7F80; --pro-6-tinta: #20595A; /* verde azulado */
+  --pro-7: #E6E1DA; --pro-7-borde: #5D5750; --pro-7-tinta: #403C37; /* grafito */
+  --stylist-mario-tinta: var(--pro-1-tinta);
+  --stylist-diego-tinta: var(--pro-2-tinta);
+  --stylist-ruben-tinta: var(--pro-5-tinta);
+  --k-libre: #F1FAF6;
+  --k-libre-b: #8CCFB2;
+  --k-libre-t: #23694E;
+  --k-vino: #2F7A5B;
   /* Barras de ocupación por profesional (vista Mes y pie): el tono fuerte de --pro-N. */
   --k-pro-1: var(--pro-1-borde);
   --k-pro-2: var(--pro-2-borde);
@@ -261,22 +251,22 @@
   --background: var(--pagina);
   --foreground: var(--cafe);
 
-  --card: var(--superficie);
+  --card: #FFFFFF;
   --card-foreground: var(--cafe);
-  --popover: var(--superficie);
+  --popover: #FFFFFF;
   --popover-foreground: var(--cafe);
 
   /* Acción: moca fuerte, 5,3:1 con blanco. */
-  --primary: var(--moca-fuerte);
-  --primary-foreground: #ffffff;
+  --primary: #303030;
+  --primary-foreground: #FFFFFF;
 
-  --secondary: var(--beige);
+  --secondary: #F5EFCD;
   --secondary-foreground: var(--cafe);
 
   --muted: var(--beige);
   --muted-foreground: var(--cafe-suave);
 
-  --accent: var(--arena);
+  --accent: #F5EFCD;
   --accent-foreground: var(--cafe);
 
   /* Nunca rojo saturado: lo destructivo va en la tinta del melocotón. */
@@ -289,7 +279,7 @@
 
   --border: var(--lino);
   --input: var(--lino-fuerte);
-  --ring: var(--moca);
+  --ring: #8A6B00;
 
   /* Profesionales: pasteles con texto café (StylistAvatar ya no usa texto blanco). */
   --stylist-mario: var(--pro-1);
@@ -306,18 +296,25 @@
   --chart-4: var(--hoja);
   --chart-5: var(--taupe);
 
-  --sidebar: var(--nata);
+  --sidebar: transparent;
   --sidebar-foreground: var(--cafe);
-  --sidebar-primary: var(--moca-fuerte);
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: var(--arena);
+  --sidebar-primary: #303030;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F5EFCD;
   --sidebar-accent-foreground: var(--cafe);
   --sidebar-border: var(--lino);
   --sidebar-ring: var(--moca);
 
-  --sombra-tarjeta: 0 1px 2px rgba(59, 47, 42, 0.05);
-  --sombra-panel: -12px 0 40px rgba(59, 47, 42, 0.1);
-  --sombra-flotante: 0 12px 32px rgba(59, 47, 42, 0.12);
+  --radio-tarjeta: 30px;
+  --radio-tarjeta-sm: 23px;
+  --sombra-tarjeta: 0 18px 40px -18px rgba(48,48,48,.16), 0 2px 8px rgba(48,48,48,.04);
+  --sombra-tarjeta-sm: 0 12px 28px -16px rgba(48,48,48,.12), 0 1px 5px rgba(48,48,48,.035);
+  --sombra-panel: -12px 0 40px rgba(40,44,58,.14);
+  --sombra-flotante: 0 22px 56px -20px rgba(48,48,48,.22), 0 4px 14px rgba(48,48,48,.06);
+  --fondo-exterior: #A4AAB6;
+  --acento-mantequilla: #FFD960;
+  --radio-marco: 42px;
+  --sombra-marco: 0 40px 80px -20px rgba(40,44,58,.45), 0 10px 30px rgba(40,44,58,.18);
 }
 
 /*
@@ -519,10 +516,12 @@
   html {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    background: #F4F1E4;
   }
 
   body {
-    background-color: var(--color-background);
+    min-height: 100%;
+    background: #F4F1E4;
     color: var(--color-foreground);
   }
 
@@ -537,86 +536,42 @@
     font-variant-numeric: tabular-nums;
   }
 
-  html[data-tema="claro"],
-  html[data-tema="claro"] body {
-    background: var(--k-crema);
-  }
-
-  [data-tema="claro"] :focus-visible {
-    outline: 3px solid var(--k-foco);
-    outline-offset: 2px;
-  }
+  :focus-visible { outline: 3px solid #8A6B00; outline-offset: 2px; }
 }
 
-/* El degradado exterior se limita al panel: la web pública conserva Arena. */
 .panel-marco {
   min-height: 100vh;
   min-height: 100dvh;
-  background-color: var(--k-crema, var(--pagina));
+  margin: 0;
+  border-radius: 0;
+  background-color: #FBF7EC;
   background-image:
-    radial-gradient(
-      ellipse 76% 88% at 104% 48%,
-      color-mix(in srgb, var(--k-amarillo, var(--moca)) 30%, transparent) 0%,
-      color-mix(in srgb, var(--k-amarillo, var(--moca)) 16%, transparent) 43%,
-      transparent 78%
-    ),
-    radial-gradient(
-      ellipse 68% 55% at 0% 105%,
-      color-mix(in srgb, var(--arena) 82%, transparent) 0%,
-      transparent 74%
-    ),
-    linear-gradient(
-      125deg,
-      var(--k-perla, var(--perla)) 0%,
-      var(--k-crema, var(--pagina)) 52%,
-      var(--k-crema-suave, var(--beige)) 100%
-    );
+    radial-gradient(ellipse 76% 88% at 104% 48%, rgba(251,235,183,1) 0%, rgba(245,239,205,.92) 43%, transparent 78%),
+    radial-gradient(ellipse 68% 55% at 0% 105%, rgba(240,232,195,.96) 0%, transparent 74%),
+    radial-gradient(ellipse 60% 46% at 54% 108%, rgba(251,249,234,.98) 0%, transparent 78%),
+    linear-gradient(125deg, #E4E4E6 0%, #E7E7E9 16%, #FBF7EC 52%, #FCF7F1 100%);
   overflow: clip;
 }
 
-.tarjeta-principal {
-  border-radius: var(--radio-tarjeta, var(--radius-2xl));
-  box-shadow: var(--sombra-tarjeta);
-}
-
-.tarjeta-secundaria {
-  border-radius: var(--radio-tarjeta-sm, var(--radius-xl));
-  box-shadow: var(--sombra-tarjeta-sm, var(--sombra-tarjeta));
-}
-
-.tarjeta-anidada {
-  border-radius: var(--radio-tarjeta-sm, var(--radius-xl));
-}
-
-.contenedor-flotante {
-  border-radius: var(--radio-tarjeta, var(--radius-2xl));
-  box-shadow: var(--sombra-flotante);
-}
-
-.panel-flotante-lateral {
-  border-radius: var(--radio-tarjeta, var(--radius-2xl)) 0 0 var(--radio-tarjeta, var(--radius-2xl));
-  box-shadow: var(--sombra-flotante);
-}
-
-[data-tema="claro"] [role="tablist"] [role="tab"] {
-  border-radius: 999px;
-  transition:
-    background-color 180ms ease,
-    color 180ms ease;
-}
-
-[data-tema="claro"] [role="tablist"] [role="tab"][aria-selected="true"] {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  box-shadow: 0 1px 3px var(--k-sombra-aire);
-}
-
+/* Cromo y utilidades explícitas para contenedores. */
+.panel-marco aside.sticky { background: transparent !important; border-color: transparent !important; }
+.panel-marco [data-panel] main { scroll-margin-top: 5rem; }
+.tarjeta-principal { border-radius: var(--radio-tarjeta); box-shadow: var(--sombra-tarjeta); }
+.tarjeta-secundaria { border-radius: var(--radio-tarjeta-sm); box-shadow: var(--sombra-tarjeta-sm); }
+.tarjeta-anidada { border-radius: var(--radio-tarjeta-sm); }
+.contenedor-flotante { border-radius: var(--radio-tarjeta); box-shadow: var(--sombra-flotante); }
+.panel-flotante-lateral { border-radius: var(--radio-tarjeta) 0 0 var(--radio-tarjeta); box-shadow: var(--sombra-flotante); }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid #6B5600; outline-offset: 2px; }
+.panel-marco [role="tablist"] [role="tab"][aria-selected="true"] { background: #303030 !important; color: #fff !important; box-shadow: 0 1px 3px rgba(40,44,58,.18); }
+.panel-marco [role="tablist"] [role="tab"] { border-radius: 999px; transition: background-color .18s ease, color .18s ease; }
+.panel-marco main h1:not(.font-display) { font-weight: 500; letter-spacing: -.035em; }
+.panel-marco main h2:not(.font-display) { letter-spacing: -.02em; }
 @media (max-width: 1023px) {
-  [data-tema="claro"] input:not([type="checkbox"]):not([type="radio"]),
-  [data-tema="claro"] select,
-  [data-tema="claro"] textarea {
-    min-height: 44px;
-  }
+  .panel-marco input:not([type="checkbox"]):not([type="radio"]), .panel-marco select, .panel-marco textarea { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 
 @layer components {
@@ -1037,17 +992,14 @@
 .entrada-portada > * {
   animation: entrar-portada 520ms var(--curva-salida) both;
 }
-.entrada-portada > :nth-child(2) {
-  animation-delay: 60ms;
-}
-.entrada-portada > :nth-child(3) {
-  animation-delay: 120ms;
-}
-.entrada-portada > :nth-child(4) {
-  animation-delay: 180ms;
-}
-.entrada-portada > :nth-child(n + 5) {
-  animation-delay: 240ms;
+.entrada-portada > :nth-child(2) { animation-delay: 60ms; }
+.entrada-portada > :nth-child(3) { animation-delay: 120ms; }
+.entrada-portada > :nth-child(4) { animation-delay: 180ms; }
+.entrada-portada > :nth-child(n + 5) { animation-delay: 240ms; }
+.na-buscador input:focus,
+.na-buscador input:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .entrada-portada > * {

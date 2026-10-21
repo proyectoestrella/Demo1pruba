@@ -260,11 +260,11 @@ function EnlaceNav({
         "flex h-[40px] shrink-0 items-center gap-[11px] rounded-full border px-3 text-sm font-semibold transition-colors",
         hijo && "ml-7 h-9 text-[13px]",
         active
-          ? "border-transparent bg-primary text-primary-foreground"
-          : "border-transparent text-cafe-medio hover:bg-card/75 hover:text-cafe",
+          ? "border-transparent bg-[#303030] text-white"
+          : "border-transparent text-cafe-medio hover:bg-white/70 hover:text-cafe",
       )}
     >
-      <item.icon className="size-[18px] shrink-0" strokeWidth={1.6} />
+      <item.icon className={cn("size-[18px] shrink-0", active && "text-white")} strokeWidth={1.6} />
       <EtiquetaNav label={item.label} />
       {insignia && <InsigniaPlan nombre={insignia} />}
       {!!contador && (
@@ -375,7 +375,7 @@ export function MenuLateral({ path }: { path: string }) {
   const grupos = useGruposVisibles();
   const pendientes = useSolicitudesPendientes();
   return (
-    <aside className="sticky top-0 hidden h-screen w-[244px] shrink-0 flex-col border-r border-transparent bg-sidebar px-3 py-4 md:flex">
+    <aside className="sticky top-0 hidden h-screen w-[244px] shrink-0 flex-col border-r border-transparent bg-transparent px-3 py-4 md:flex">
       <div className="px-2 pb-3">
         <Marca />
       </div>
@@ -429,7 +429,7 @@ function BotonTour({ onTour, className }: { onTour?: () => void; className?: str
       title="Ver el tour guiado del panel"
       aria-label="Ver el tour guiado del panel"
       className={cn(
-        "grid size-9 shrink-0 place-items-center rounded-full border border-input bg-card/80 text-cafe-medio hover:bg-card",
+        "grid size-9 shrink-0 place-items-center rounded-full border border-input/70 bg-card/70 text-cafe-medio hover:bg-nata",
         className,
       )}
     >
@@ -446,7 +446,7 @@ function BotonAvisos({ className }: { className?: string }) {
       title="Avisos"
       aria-label="Avisos"
       className={cn(
-        "grid size-9 shrink-0 place-items-center rounded-full border border-input bg-card/80 text-cafe-medio hover:bg-card",
+        "grid size-9 shrink-0 place-items-center rounded-full border border-input/70 bg-card/70 text-cafe-medio hover:bg-nata",
         className,
       )}
     >
@@ -458,7 +458,7 @@ function BotonAvisos({ className }: { className?: string }) {
 /** Cabecera de píldoras: búsqueda y cita al centro; nunca elimina plan ni asistente. */
 export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraArenaProps) {
   return (
-    <header className="relative grid grid-cols-1 items-center gap-2 px-4 py-2.5 md:sticky md:top-0 md:z-20 md:h-[71px] md:border-b md:border-border/50 md:bg-[var(--k-crema,var(--background))]/85 md:px-0 md:py-0 md:backdrop-blur">
+    <header className="relative grid grid-cols-1 items-center gap-2 px-4 py-2.5 md:sticky md:top-0 md:z-20 md:h-[71px] md:px-0 md:py-0 md:pointer-events-none">
       <div className="flex items-center justify-between md:hidden">
         <Marca compacta />
         <div className="flex items-center gap-2">
@@ -466,7 +466,7 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
             data-tour="assistant"
             variant="outline"
             onClick={onAsistente}
-            className="size-11 rounded-full border-input bg-card/80 px-0 text-cafe-medio hover:bg-card"
+            className="size-11 rounded-full border-input/70 bg-card/70 px-0 text-cafe-medio hover:bg-nata"
             aria-label="Asistente"
           >
             <Sparkles className="size-[18px]" strokeWidth={1.6} />
@@ -475,18 +475,18 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
           <BotonAvisos className="size-11" />
         </div>
       </div>
-      <div className="flex w-full min-w-0 items-center gap-2 md:absolute md:left-1/2 md:top-1/2 md:z-30 md:w-[min(470px,calc(100%_-_22rem))] md:-translate-x-1/2 md:-translate-y-1/2 md:pointer-events-auto">
-        <div className="min-w-0 flex-1">
+      <div className="flex w-full min-w-0 items-center gap-2 md:absolute md:left-1/2 md:top-1/2 md:z-30 md:w-[min(540px,calc(100%_-_276px))] md:-translate-x-1/2 md:-translate-y-1/2 md:pointer-events-auto">
+        <div className="min-w-0 flex-1 md:max-w-[420px]">
           <BuscadorGlobal variante="campo" />
         </div>
         <Button
           data-tour="new-appointment"
           aria-label="Nueva cita"
           onClick={onNuevaCita}
-          className="hidden h-10 shrink-0 gap-1.5 rounded-full px-4 text-[13px] font-bold md:inline-flex"
+          className="hidden h-9 min-w-0 max-w-full shrink gap-1.5 rounded-full px-3 text-[13px] font-bold md:inline-flex"
         >
           <Plus className="size-4" strokeWidth={1.6} />
-          <span>Nueva cita</span>
+          <span className="truncate">Nueva cita</span>
         </Button>
       </div>
       <div className="pointer-events-auto absolute right-8 top-1/2 z-30 hidden -translate-y-1/2 items-center gap-2 md:flex">
@@ -495,7 +495,7 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
           data-tour="assistant"
           variant="outline"
           onClick={onAsistente}
-          className="size-9 rounded-full border-input bg-card/80 px-0 text-cafe-medio hover:bg-card xl:h-9 xl:w-auto xl:gap-2 xl:px-3 xl:group-data-[panel=abierto]/panel:size-9 xl:group-data-[panel=abierto]/panel:px-0"
+          className="size-9 rounded-full border-input/70 bg-card/70 px-0 text-cafe-medio hover:bg-nata xl:h-9 xl:w-auto xl:gap-2 xl:px-3 xl:group-data-[panel=abierto]/panel:size-9 xl:group-data-[panel=abierto]/panel:px-0"
           aria-label="Asistente"
         >
           <Sparkles className="size-[18px]" strokeWidth={1.6} />
@@ -591,7 +591,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
         <Plus className="size-6" strokeWidth={1.6} />
       </button>
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/70 bg-card/80 px-1.5 pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom,0px))] backdrop-blur-md md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-[rgba(48,48,48,.07)] bg-[rgba(255,255,255,.12)] px-1.5 pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom,0px))] backdrop-blur-[12px] md:hidden"
         aria-label="Apartados"
       >
         {barra.map((item) => {

@@ -322,7 +322,7 @@ function Clients() {
       )}
 
       {rows.length === 0 ? (
-        <div className="flex-1 rounded-[20px] border border-border bg-card">
+        <div className="flex-1 tarjeta-principal bg-card">
           {/* Dos vacíos muy distintos, y hasta ahora los dos decían lo mismo.
               Un salón que acaba de empezar, sin ningún cliente todavía y sin
               haber tocado ningún filtro, leía "prueba con otro término de
@@ -344,7 +344,7 @@ function Clients() {
       ) : (
         <>
           {/* PC: tabla */}
-          <div className="@container hidden min-w-0 flex-1 overflow-x-auto rounded-[20px] border border-border bg-card md:block">
+          <div className="@container hidden min-w-0 flex-1 overflow-x-auto tarjeta-principal bg-card md:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -384,7 +384,7 @@ function Clients() {
           </div>
 
           {/* Móvil: tarjetas */}
-          <div className="overflow-hidden rounded-[20px] border border-border bg-card md:hidden">
+          <div className="overflow-hidden tarjeta-principal bg-card md:hidden">
             {rows.slice(0, cuantas).map((c) => {
               const estadoClienta = estado(c);
               return (

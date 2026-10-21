@@ -74,7 +74,7 @@ function FilaConexion({ fila, api, slug, onCambio }: { fila: FilaCalendario; api
   const tieneGoogle = fila.conexiones.some((c) => c.proveedor === "google");
   const tieneApple = fila.conexiones.some((c) => c.proveedor === "apple");
   return (
-    <section className="rounded-2xl border border-lino bg-card px-4 py-3.5">
+    <section className="tarjeta-anidada bg-card px-4 py-3.5">
       <h4 className="flex items-center gap-2 text-[14.5px] font-extrabold">
         <CalendarCheck className="size-4 text-hoja-tinta" strokeWidth={1.7} aria-hidden="true" /> {fila.titulo}
       </h4>

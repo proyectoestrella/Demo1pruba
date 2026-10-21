@@ -21,7 +21,6 @@ import { AjustesSenal } from "@/components/AjustesSenal";
 import { AjustesPrivacidad } from "@/components/AjustesPrivacidad";
 import { AjustesPreguntas } from "@/components/AjustesPreguntas";
 import { AjustesDiasEspeciales } from "@/components/AjustesDiasEspeciales";
-import { GuiaAsistente } from "@/components/GuiaAsistente";
 import { GuiaUso } from "@/components/GuiaUso";
 import { AjustesAccesos } from "@/components/AjustesAccesos";
 import { enlacesSuscripcion } from "@/lib/calendario-ics";
@@ -33,7 +32,7 @@ import {
   useCalendariosActivos,
 } from "@/lib/calendarios-panel";
 import { HistorialCambios } from "@/components/HistorialCambios";
-import { usePermisos, useTienePlan } from "@/lib/accesos-panel";
+import { useEsDemo, usePermisos, useTienePlan } from "@/lib/accesos-panel";
 import { LlegaConPlan, ResumenPlanSuperior } from "@/components/LlegaConPlan";
 import { puede } from "@/lib/permisos";
 import { useSalonStore } from "@/lib/store";
@@ -56,6 +55,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { PrimerosPasos } from "@/components/PrimerosPasos";
+import { VerComo } from "@/components/VerComo";
 
 export const Route = createFileRoute("/app/settings")({ component: Settings });
 
@@ -71,6 +71,7 @@ export const Route = createFileRoute("/app/settings")({ component: Settings });
  * discrepando, y el que gana es el último que guardó.
  */
 function Settings() {
+  const esDemo = useEsDemo();
   const permisos = usePermisos();
   const calendarios = useCalendariosActivos();
   const puedeGestionarReservas = puede(permisos, "reservas.editar");
@@ -112,7 +113,6 @@ function Settings() {
     else toast.error(aviso.texto);
     window.history.replaceState(null, "", window.location.pathname);
   }, []);
-  const tieneAsistente = useTienePlan("asistente");
   const salonProfile = useSalonStore((s) => s.salonProfile);
   const realSlug = useSalonStore((s) => s.realSalonSlug);
   const equipo = useEquipo();
@@ -248,6 +248,16 @@ function Settings() {
         description="Cómo funciona tu salón: agenda, reservas, mensajes, plantones, fianza y colores."
       />
       <PrimerosPasos enAjustes />
+
+      {esDemo && (
+        <section className="min-w-0 rounded-[20px] border border-lino bg-card p-4 sm:p-5">
+          <h2 className="text-[15px] font-bold text-foreground">Ver como</h2>
+          <p className="mt-1 mb-3 text-[13px] text-muted-foreground">
+            Solo en la demo: mira el panel como lo vería cada persona del salón
+          </p>
+          <VerComo className="flex min-h-11 w-full max-w-full" />
+        </section>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start">
         <IndiceAjustes
@@ -633,17 +643,6 @@ function Settings() {
           )}
 
           <SeccionAjustes
-            id="asistente"
-            oculta={!visibles.includes("asistente")}
-            abrir={abrir}
-            valor={valorActual("asistente", salonProfile)}
-            titulo="Cómo usar el asistente"
-            resumen="Todo lo que le puedes preguntar, con ejemplos, y lo que no hace"
-          >
-            {tieneAsistente ? <GuiaAsistente /> : <LlegaConPlan funcion="asistente" compacta />}
-          </SeccionAjustes>
-
-          <SeccionAjustes
             id="colores"
             oculta={!visibles.includes("colores")}
             abrir={abrir}
@@ -691,7 +690,7 @@ function SeccionAjustes({
   return (
     <section
       id={`ajuste-${id}`}
-      className="entrada-lista scroll-mt-24 overflow-hidden rounded-[20px] border border-border bg-card"
+      className="entrada-lista scroll-mt-24 overflow-hidden tarjeta-principal bg-card"
     >
       <h2>
         <button

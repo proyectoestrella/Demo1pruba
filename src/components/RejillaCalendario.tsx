@@ -14,14 +14,7 @@ import { serviceLabelOf } from "@/lib/appointment-services";
 import { franjasProfesionalEnFecha } from "@/lib/horario-equipo";
 import { indiceColorServicio, minutosAHora } from "@/lib/hoy-arena";
 import { esBloqueExterno } from "@/lib/calendarios-panel";
-import {
-  carrilesSolapados,
-  citasPorDia,
-  iniciales,
-  minutosDe,
-  mismoDia,
-  pausasDe,
-} from "@/lib/calendario-arena";
+import { carrilesSolapados, citasPorDia, minutosDe, mismoDia, pausasDe } from "@/lib/calendario-arena";
 import { toDateKey } from "@/lib/reparto";
 import type { Appointment, DiaEspecial, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
@@ -308,10 +301,7 @@ export function RejillaCalendario({
         }
       >
         {/* Cabecera fija: esquina vacía y un encabezado por columna. */}
-        <div
-          ref={cabecera}
-          className="sticky top-0 left-0 z-[12] border-r border-b border-k-linea-f bg-card/50 backdrop-blur-sm"
-        />
+        <div ref={cabecera} className="sticky top-0 left-0 z-[12] border-r border-b border-k-linea-f bg-[rgba(255,255,255,.35)] backdrop-blur-[8px]" />
         {columnas.map((c) => {
           const cerrado = c.equipo.every(
             (e) => franjasProfesionalEnFecha(e, toDateKey(c.dia), diasEspeciales).length === 0,
@@ -322,7 +312,7 @@ export function RejillaCalendario({
               key={c.clave}
               {...(c.onCabecera ? { type: "button" as const, onClick: c.onCabecera } : {})}
               className={cn(
-                "sticky top-0 z-[10] flex min-h-[42px] flex-col justify-center border-b border-l border-k-linea-f bg-card/50 px-2 py-1 text-left text-k-tinta backdrop-blur-sm transition-colors",
+                "sticky top-0 z-[10] flex min-h-[38px] flex-col justify-center border-b border-l border-k-linea-f bg-[rgba(255,255,255,.35)] px-2 py-1 text-left text-k-tinta backdrop-blur-[8px] transition-colors",
                 c.onCabecera && "hover:bg-beige",
                 cerrado && "text-cafe-suave",
               )}
@@ -344,7 +334,7 @@ export function RejillaCalendario({
                 key={i}
                 data-top={i * px}
                 className={cn(
-                  "absolute right-2 -translate-y-1/2 text-[12px] font-medium text-k-gris tabular-nums",
+                  "absolute right-2 -translate-y-1/2 text-[12px] font-medium text-[#555550] tabular-nums",
                   // El punto rojo de «ahora» no pisa la etiqueta de su hora.
                   minAhoraVisible !== null &&
                     Math.abs(minAhoraVisible - i * 60) < 12 &&
@@ -494,7 +484,7 @@ const ColumnaDia = memo(function ColumnaDia({
   const fondo: CSSProperties = {
     height: horas * px,
     // Hora: línea fina; media hora: aún más tenue, como en Google Calendar.
-    backgroundImage: `linear-gradient(var(--k-linea) 1px, transparent 1px), linear-gradient(color-mix(in srgb, var(--k-linea-media) 55%, transparent) 1px, transparent 1px)`,
+    backgroundImage: `linear-gradient(rgba(48,48,48,.08) 1px, transparent 1px), linear-gradient(rgba(48,48,48,.04) 1px, transparent 1px)`,
     backgroundSize: `100% ${px}px, 100% ${px / 2}px`,
   };
 
@@ -563,15 +553,7 @@ const ColumnaDia = memo(function ColumnaDia({
               data-cita
               className="absolute z-[4] grid place-items-center overflow-hidden rounded-md border border-cafe/60 bg-beige text-[11px] font-semibold text-cafe-suave"
               // 14c: lo ocupado en un calendario externo va rayado, como la pausa.
-              style={
-                esBloqueExterno(a)
-                  ? {
-                      ...style,
-                      background:
-                        "repeating-linear-gradient(135deg,var(--k-raya-1) 0 7px,var(--k-raya-2) 7px 14px)",
-                    }
-                  : style
-              }
+              style={esBloqueExterno(a) ? { ...style, background: "repeating-linear-gradient(135deg,#ECEBE6 0 7px,#F5F4F0 7px 14px)" } : style}
             >
               {a.note || "Bloqueado"}
             </div>
@@ -616,29 +598,11 @@ const ColumnaDia = memo(function ColumnaDia({
   );
 }, mismaColumna);
 
-function LineaAhora({
-  y,
-  alto,
-  ahora,
-  conPildora,
-}: {
-  y: number;
-  alto: number;
-  ahora: Date;
-  conPildora: boolean;
-}) {
+function LineaAhora({ y, alto, ahora, conPildora = true }: { y: number; alto: number; ahora: Date; conPildora?: boolean }) {
   if (y < 0 || y > alto) return null;
   return (
-    <div
-      className="pointer-events-none absolute inset-x-0 z-[6]"
-      style={{ top: y }}
-      aria-hidden="true"
-    >
-      {conPildora && (
-        <span className="absolute -top-3 -left-[52px] z-[1] rounded-full bg-k-ahora px-2 py-0.5 text-[10px] font-bold leading-4 text-primary-foreground tabular-nums">
-          {minutosAHora(ahora.getHours() * 60 + ahora.getMinutes())}
-        </span>
-      )}
+    <div className="pointer-events-none absolute inset-x-0 z-[6]" style={{ top: y }} aria-hidden="true">
+      <span className={cn("absolute -top-3 -left-[52px] z-[1] rounded-full bg-k-ahora px-2 py-0.5 text-[10px] font-bold leading-4 text-white tabular-nums", !conPildora && "max-sm:hidden")}>{minutosAHora(ahora.getHours() * 60 + ahora.getMinutes())}</span>
       <span className="block h-0.5 bg-k-ahora" />
     </div>
   );
@@ -687,9 +651,12 @@ export function CitaRejilla({
   const nombre = (a.clientName || "Sin nombre").trim();
   const pila = nombre.split(/\s+/)[0];
   const cabeHora = !compacta && (estrecha ? alto >= 40 : alto >= 30);
-  const dosLineas = !estrecha && !compacta && alto >= 34;
-  const nombreEnDosLineas = dosLineas && alto >= 48;
-  const cabeServicio = !estrecha && !compacta && alto >= 52;
+  // Solo apilamos contenido cuando cabe completo dentro de la altura fijada:
+  // nombre y hora desde 32 px, el rango de la cita desde 56 px y el servicio
+  // desde 74 px. Por debajo de 32 px, nombre y hora comparten una fila.
+  const dosLineas = !estrecha && !compacta && alto >= 32;
+  const conRango = dosLineas && alto >= 56;
+  const cabeServicio = !estrecha && !compacta && alto >= 74;
   return (
     <button
       type="button"
@@ -698,53 +665,25 @@ export function CitaRejilla({
       aria-pressed={seleccionada}
       title={`${a.clientName} · ${nombreServicio} · ${hora(a.start)}–${minutosAHora(ini + a.duration)}${pro ? ` · ${pro}` : ""}${pendiente ? " · por confirmar" : ""}${vino ? " · vino" : ""}${noVino ? " · no vino" : ""}`}
       className={cn(
-        "@container absolute z-[4] flex flex-col overflow-hidden rounded-[5px] border border-transparent text-left text-[12px] leading-[1.2] transition-colors duration-150 hover:z-[7] focus-visible:z-[7] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
-        compacta
-          ? "px-1 py-0.5 text-[10.5px]"
-          : estrecha
-            ? "px-1 py-0.5 text-[11px]"
-            : dosLineas
-              ? "px-1.5 py-1"
-              : "flex-row items-center gap-1.5 px-1.5 py-0",
+        "@container absolute z-[4] flex flex-col overflow-hidden rounded-[5px] border border-transparent text-left text-[12px] leading-[1.2] text-[#303030] transition-colors duration-150 hover:z-[7] focus-visible:z-[7] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
+        compacta ? "px-[4px] py-0.5 text-[10.5px]" : estrecha ? "px-1 py-0.5 text-[11px]" : dosLineas ? (alto >= 40 ? "px-[5px] py-1" : "px-[5px] py-0.5") : "flex-row items-center gap-1.5 px-[5px] py-0",
         pendiente && "border-dashed border-cafe/55",
         noVino && "line-through decoration-cafe/60",
         seleccionada && "z-[8] ring-2 ring-primary ring-offset-1 ring-offset-card",
         // Sitio para el icono de estado, que no tape la hora.
         conIcono && !compacta && a.status !== "confirmed" && a.status !== "blocked" && "pr-5",
       )}
-      style={{
-        ...style,
-        background: pendiente ? "var(--superficie)" : (fondo ?? `var(--serv-${n})`),
-        color: pendiente ? "var(--k-tinta)" : (tinta ?? `var(--serv-${n}-tinta)`),
-        borderLeft: pendiente ? "1px dashed var(--k-pendiente-borde)" : "0",
-      }}
+      style={{ ...style, background: pendiente ? "var(--superficie)" : (fondo ?? `var(--serv-${n})`), color: pendiente ? "var(--k-tinta)" : (tinta ?? `var(--serv-${n}-tinta)`), borderLeft: pendiente ? "1px dashed #8A8A85" : "0" }}
     >
       {/* En carriles de menos de 20 px de texto (la semana en el móvil) no cabe ni una
           letra: solo el bloque de color; al pulsarlo sale el detalle. */}
       <span className="flex min-w-0 items-center gap-1 @max-[20px]:hidden">
-        {pro && !compacta && (
-          // Quién atiende: con tres profesionales a la vez, el color solo no basta (D6).
-          <i
-            aria-hidden="true"
-            className="grid h-[15px] min-w-[15px] shrink-0 place-items-center rounded-full bg-white/60 px-[3px] text-[9px] font-extrabold not-italic leading-none"
-          >
-            {estrecha ? iniciales(pro).slice(0, 1) : iniciales(pro)}
-          </i>
-        )}
-        <b
-          className={cn(
-            nombreEnDosLineas ? "line-clamp-2 leading-[1.15]" : "truncate",
-            "font-semibold",
-            noVino && "line-through",
-          )}
-        >
-          {estrecha || compacta ? pila : nombre}
-        </b>
+        <b className={cn("truncate font-semibold", noVino && "line-through")}>{estrecha || compacta ? pila : nombre}</b>
       </span>
       {cabeHora && (
-        <span className="shrink-0 truncate text-[11px] font-normal tabular-nums @max-[20px]:hidden">
+        <span className={cn("shrink-0 truncate text-[11px] font-normal tabular-nums @max-[20px]:hidden", !dosLineas && !estrecha && "@max-[90px]:hidden")}>
           {hora(a.start)}
-          {dosLineas && alto >= 50 && ` – ${minutosAHora(ini + a.duration)}`}
+          {conRango && ` – ${minutosAHora(ini + a.duration)}`}
         </span>
       )}
       {cabeServicio && (
