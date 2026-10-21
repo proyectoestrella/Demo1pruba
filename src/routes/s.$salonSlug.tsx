@@ -9,10 +9,10 @@ import { useDemoRegistrada } from "@/lib/demos/aplicar";
 import { leerPrevia } from "@/lib/vista-previa";
 import { DEFAULT_OPENING_HOURS, weekSchedule } from "@/lib/opening-hours";
 import { useBusinessType } from "@/lib/use-display-profile";
-import { BUSINESS_LABEL, inferBusinessType, professionalWord } from "@/lib/business-type";
+import { BUSINESS_LABEL, inferBusinessType } from "@/lib/business-type";
 import { employeesForType } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
-import { MapPin, Phone, Lock, Menu, ShoppingBag, TriangleAlert } from "lucide-react";
+import { MapPin, Phone, Menu, ShoppingBag, TriangleAlert } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { logoDelSalon, logotipoDelSalon } from "@/lib/logo-salon";
 import { Button } from "@/components/ui/button";
@@ -90,16 +90,6 @@ function SalonLayout() {
   // Logo del salón en la barra y el pie; en demo, el de la lista de demos (ver logo-salon.ts).
   const sinSalonReal = useSalonStore((st) => !st.realSalonSlug);
   const conEnlaceDemo = useRouterState({ select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string" });
-  const demoParam = useRouterState({
-    select: (st) => {
-      const v = (st.location.search as Record<string, unknown>)[DEMO_PARAM];
-      return typeof v === "string" ? v : "";
-    },
-  });
-  // Con enlace de demo, el panel debe abrir ESE salón (no la demo genérica).
-  const hrefPanel = demoParam
-    ? `/app?${DEMO_PARAM}=${encodeURIComponent(demoParam)}`
-    : `/app?acceso=demo&s=${encodeURIComponent(salonSlug)}`;
   const resolucionPublica = useSalonStore((s) =>
     s.publicBookingResolution?.slug === salonSlug ? s.publicBookingResolution.status : "resolviendo",
   );
@@ -123,11 +113,6 @@ function SalonLayout() {
   const esPrevia = useRouterState({ select: (s) => (s.location.search as Record<string, unknown>)?.previa !== undefined });
   // El rediseño v2 de la web pública se activa por enlace (`&v=2`), no se
   // guarda: quien abre el mismo enlace sin el parámetro ve la web de siempre.
-  // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
-  // en la cadena "2" — de ahí el `String(...)` antes de comparar.
-  const publicV2 = useRouterState({
-    select: (s) => String((s.location.search as Record<string, unknown>)?.v) === "2",
-  });
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
   const applyBusinessType = useSalonStore((s) => s.applyBusinessType);
   const markDemoActive = useSalonStore((s) => s.markDemoActive);
@@ -310,30 +295,8 @@ function SalonLayout() {
                 ) : null}
               </div>
             </Link>
-            {/* v2: entra directo al panel, sin pasar por /login — es el botón que
-                ayer no respondió en el iPad durante la demo. v1 sigue yendo a
-                /login exactamente igual que siempre. */}
-            {publicV2 || conEnlaceDemo ? (
-              <a
-                // El slug viaja al panel (`?s=`) para que un salón real pueda
-                // entrar a SU agenda desde un móvil recién estrenado, sin nada
-                // guardado. Para una demo de venta el parámetro no existe en
-                // `salons` y el panel se comporta exactamente como siempre.
-                href={hrefPanel}
-                className="ml-1 hidden h-9 items-center gap-1.5 rounded-full border border-lino-fuerte bg-card px-3 text-xs font-medium text-cafe-medio hover:bg-beige sm:inline-flex"
-              >
-                <Lock className="h-3 w-3" />
-                Acceso {professionalWord(tipo)}
-              </a>
-            ) : (
-              <Link
-                to="/login"
-                className="ml-1 hidden h-9 items-center gap-1.5 rounded-full border border-lino-fuerte bg-card px-3 text-xs font-medium text-cafe-medio hover:bg-beige sm:inline-flex"
-              >
-                <Lock className="h-3 w-3" />
-                Acceso {professionalWord(tipo)}
-              </Link>
-            )}
+            {/* Sin «Acceso estilista»: el panel es una app aparte (/login, /app) y
+                no se enlaza desde la web de clientas (feedback PeluChic 21-oct). */}
           </div>
           {!onBooking && (
             <nav className="hidden items-center gap-5 text-sm font-medium lg:flex xl:gap-6" aria-label="Secciones">
@@ -392,14 +355,6 @@ function SalonLayout() {
                           {l.label}
                         </a>
                       ))}
-                      {(publicV2 || conEnlaceDemo) && (
-                        <a
-                          href={hrefPanel}
-                          className="mt-3 flex min-h-12 items-center gap-2 rounded-xl border border-lino-fuerte bg-card px-3 text-base font-semibold text-foreground transition-colors hover:bg-muted"
-                        >
-                          <Lock className="h-4 w-4" aria-hidden="true" /> Panel del salón (agenda)
-                        </a>
-                      )}
                       {enlaces.blog && (
                         <EnlaceFuera
                           href={enlaces.blog}
