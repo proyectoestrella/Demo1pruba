@@ -14,6 +14,7 @@ import { randomUUID } from "node:crypto";
  * role key nunca entra en el bundle del navegador).
  */
 import { createServerFn } from "@tanstack/react-start";
+import { validarTelefono, normalizarTelefonoSiValido } from "../telefono";
 import process from "node:process";
 import { z } from "zod";
 
@@ -61,6 +62,7 @@ import {
   ERROR_BLOQUEO_AGENDA,
   ERROR_DATOS_RESERVA,
   ERROR_RESERVA_PASADA,
+  ERROR_TELEFONO_INVALIDO,
   ERROR_RESERVA_LEJANA,
   ERROR_DEMASIADAS_RESERVAS,
   HORIZONTE_RESERVA_DIAS,
@@ -1128,6 +1130,19 @@ export const syncAppointment = createServerFn({ method: "POST" })
     if (!manda && !haLeidoAvisoPrivacidad(data.privacyNoticeAccepted)) {
       return { synced: false as const, reason: ERROR_PRIVACIDAD_NO_CONFIRMADA };
     }
+    // Teléfono (feedback PeluChic 21-oct): la reserva pública solo entra con
+    // un número válido y se guarda en E.164. El panel no se rechaza (fichas e
+    // importaciones antiguas), pero si el número es válido también se normaliza.
+    // phone_key (últimos 9 dígitos) sale igual, así que el casado no cambia.
+    if (data.clientPhone) {
+      if (!manda) {
+        const tel = validarTelefono(data.clientPhone);
+        if (!tel.ok) return { synced: false as const, reason: ERROR_TELEFONO_INVALIDO };
+        data.clientPhone = tel.e164;
+      } else {
+        data.clientPhone = normalizarTelefonoSiValido(data.clientPhone);
+      }
+    }
     if (!manda && !inicioReservaPublicaEsFuturo(data.startISO)) {
       return { synced: false as const, reason: ERROR_RESERVA_PASADA };
     }
@@ -1882,6 +1897,7 @@ export const saveClient = createServerFn({ method: "POST" })
     exigirAcciones(await exigirAcceso(data.slug), ["clienta.crear"]);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { synced: false as const };
+    data.phone = normalizarTelefonoSiValido(data.phone);
     const key = phoneKey(data.phone);
     let previa: FilaFichaExistente | null = null;
     if (data.tpvCode) {

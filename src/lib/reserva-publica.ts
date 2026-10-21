@@ -27,6 +27,7 @@ export const ERROR_SERVICIO_PROFESIONAL = "RESERVA_SERVICIO_PROFESIONAL";
 export const ERROR_BLOQUEO_AGENDA = "RESERVA_BLOQUEO_AGENDA";
 export const ERROR_DATOS_RESERVA = "RESERVA_DATOS_INVALIDOS";
 export const ERROR_RESERVA_PASADA = "RESERVA_PASADA";
+export const ERROR_TELEFONO_INVALIDO = "TELEFONO_INVALIDO";
 export const ERROR_RESERVA_LEJANA = "RESERVA_LEJANA";
 export const ERROR_DEMASIADAS_RESERVAS = "RESERVA_DEMASIADAS";
 
@@ -104,6 +105,8 @@ export function mensajeErrorReserva(error: unknown): string {
     return "Ese hueco no está disponible. Elige otra hora.";
   if (mensaje.includes(ERROR_DATOS_RESERVA))
     return "Los servicios o su duración han cambiado. Revisa la reserva y vuelve a elegir una hora.";
+  if (mensaje.includes(ERROR_TELEFONO_INVALIDO))
+    return "Ese teléfono no parece válido. Revísalo y vuelve a enviar.";
   if (mensaje.includes(ERROR_RESERVA_PASADA))
     return "Esa hora ya ha pasado. Elige otra hora disponible.";
   if (mensaje.includes(ERROR_RESERVA_LEJANA))

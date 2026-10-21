@@ -22,6 +22,7 @@ import {
   type BusinessType,
 } from "@/lib/business-type";
 import { findClientByPhone, isBookingBlocked } from "@/lib/no-show";
+import { PAISES_TELEFONO, PAIS_OTRO, validarTelefono } from "@/lib/telefono";
 import { profesionalesParaServicios } from "@/lib/servicios-profesional";
 import { ultimaReservaEsRepetible } from "@/lib/reserva-repetida";
 import {
@@ -237,6 +238,8 @@ type WizardData = {
   time?: string; // HH:mm
   name?: string;
   phone?: string;
+  /** País del prefijo (ISO, por defecto ES) o PAIS_OTRO si se escribe con «+». */
+  phoneCountry?: string;
   email?: string;
   note?: string;
   bookingAnswers?: BookingAnswers;
@@ -325,6 +328,10 @@ function BookingWizard() {
     serviceIds: parseServiceIds(search.service, serviceMap),
     employeeId: soloUno ? employees[0]?.id : isV2 ? "any" : undefined,
   }));
+  // Teléfono validado con libphonenumber (lib/telefono.ts); a Supabase viaja en E.164.
+  const telefono = validarTelefono(data.phone, data.phoneCountry ?? "ES");
+  const telefonoE164 = telefono.ok ? telefono.e164 : "";
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const preguntas = useMemo(() => preguntasAplicables(preguntasSalon, data.serviceIds), [preguntasSalon, data.serviceIds]);
   const showBookingQuestions = preguntas.length > 0;
   const requireBookingQuestions = preguntas.some((p) => p.obligatoria);
@@ -551,7 +558,7 @@ function BookingWizard() {
       !data.date ||
       !data.time ||
       !data.name ||
-      !data.phone ||
+      !telefono.ok ||
       !haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged) ||
       (conRecargo && !data.acceptedPolicy) ||
       faltanRespuestas.length > 0
@@ -612,7 +619,7 @@ function BookingWizard() {
     // En un salón real esto es lo que crea (o reconoce) la ficha del cliente
     // en Supabase y engancha la cita. En una demo de venta `realSalonSlug` es
     // null y estos datos no salen del navegador.
-    const cliente = { name: clientName, phone: data.phone, email: data.email };
+    const cliente = { name: clientName, phone: telefonoE164, email: data.email };
     if (resolutionStatus === "real") {
       // La misma solicitud conserva su id entre intentos; si el servidor
       // guardó la cita pero se perdió la respuesta, el reintento la reconoce.
@@ -649,7 +656,7 @@ function BookingWizard() {
         data: {
           salonSlug,
           name: data.name,
-          phone: data.phone,
+          phone: telefonoE164,
           email: data.email,
           serviceIds,
           employeeId,
@@ -692,7 +699,7 @@ function BookingWizard() {
         ? !data.employeeId
         : step === 3
           ? !data.date || !data.time || sinProfesionalParaServicios
-        : !data.name || !data.phone || sinProfesionalParaServicios || !haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged) || (conRecargo && !data.acceptedPolicy) || !!blockedClient ||
+        : !data.name || !telefono.ok || sinProfesionalParaServicios || !haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged) || (conRecargo && !data.acceptedPolicy) || !!blockedClient ||
             faltanRespuestas.length > 0 ||
             sending || resolutionStatus === "resolviendo";
 
@@ -877,13 +884,39 @@ function BookingWizard() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="phone">Teléfono</Label>
-                  <Input
-                    id="phone"
-                    className="h-11 text-[15px]"
-                    value={data.phone ?? ""}
-                    onChange={(e) => setData((d) => ({ ...d, phone: e.target.value }))}
-                    placeholder="600 000 000"
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      aria-label="Prefijo del país"
+                      className="h-11 shrink-0 rounded-md border border-input bg-background px-2 text-[15px]"
+                      value={data.phoneCountry ?? "ES"}
+                      onChange={(e) => setData((d) => ({ ...d, phoneCountry: e.target.value }))}
+                    >
+                      {PAISES_TELEFONO.map((p) => (
+                        <option key={p.code} value={p.code}>
+                          {p.prefix} {p.name}
+                        </option>
+                      ))}
+                      <option value={PAIS_OTRO}>Otro país (+…)</option>
+                    </select>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel-national"
+                      className="h-11 min-w-0 flex-1 text-[15px]"
+                      value={data.phone ?? ""}
+                      onChange={(e) => setData((d) => ({ ...d, phone: e.target.value }))}
+                      onBlur={() => setPhoneTouched(true)}
+                      aria-invalid={phoneTouched && !telefono.ok}
+                      aria-describedby={phoneTouched && !telefono.ok ? "phone-error" : undefined}
+                      placeholder={(data.phoneCountry ?? "ES") === PAIS_OTRO ? "+351 912 345 678" : "600 000 000"}
+                    />
+                  </div>
+                  {phoneTouched && !telefono.ok && (data.phone ?? "").trim() !== "" && (
+                    <p id="phone-error" className="text-xs text-destructive">
+                      {telefono.error}
+                    </p>
+                  )}
                 </div>
 
                 {blockedClient && (

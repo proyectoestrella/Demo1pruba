@@ -54,6 +54,28 @@ describe("A4: la reserva pública no pisa los datos de una clienta existente", (
   });
 });
 
+describe("Teléfono: el servidor valida y guarda en E.164", () => {
+  for (const malo of ["1245", "12345678", "abcdefghi"]) {
+    it(`rechaza «${malo}» sin guardar nada`, async () => {
+      const r = await llamar<{ synced: boolean; reason?: string }>(S.syncAppointment, reserva({ clientPhone: malo, clientName: "X" }));
+      expect(r).toEqual({ synced: false, reason: "TELEFONO_INVALIDO" });
+      expect(doble.escrituras.filter((e) => e.tabla === "appointments")).toHaveLength(0);
+    });
+  }
+  it("una clienta nueva queda con el teléfono en E.164 y su phone_key de 9 cifras", async () => {
+    const r = await llamar<{ synced: boolean }>(S.syncAppointment, reserva({ clientPhone: "+34 699 88 87 77", clientName: "Nueva" }));
+    expect(r.synced).toBe(true);
+    expect(doble.tablas.clients.find((c) => c.phone_key === "699888777")).toMatchObject({ phone: "+34699888777" });
+  });
+  it("una ficha antigua («600 111 222») sigue casando al reservar con +34", async () => {
+    const r = await llamar<{ synced: boolean }>(S.syncAppointment, reserva({ clientPhone: "+34600111222" }));
+    expect(r.synced).toBe(true);
+    expect(doble.tablas.clients.filter((c) => c.phone_key === "600111222")).toHaveLength(1);
+    const cita = doble.escrituras.find((e) => e.tabla === "appointments" && e.op === "upsert");
+    expect(cita?.datos).toMatchObject({ client_id: "c1" });
+  });
+});
+
 describe("A4: una clienta nueva sí se crea con los datos que da", () => {
   it("teléfono desconocido: ficha nueva con su nombre", async () => {
     const r = await llamar<{ synced: boolean }>(S.syncAppointment, reserva({ clientPhone: "699888777", clientName: "Nueva", clientEmail: "n@x.test" }));
