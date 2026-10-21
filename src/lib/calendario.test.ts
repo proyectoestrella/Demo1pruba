@@ -99,6 +99,47 @@ describe("construirIcs", () => {
   });
 });
 
+describe("construirIcs: avisos y formato estricto", () => {
+  const ahora = new Date("2026-09-20T10:00:00Z");
+
+  it("lleva dos VALARM DISPLAY: 1 día y 2 horas antes, con texto en español", () => {
+    const ics = construirIcs(datos, ahora);
+    expect(ics.match(/BEGIN:VALARM/g)).toHaveLength(2);
+    expect(ics.match(/ACTION:DISPLAY/g)).toHaveLength(2);
+    expect(ics).toContain("TRIGGER;RELATED=START:-P1D");
+    expect(ics).toContain("TRIGGER;RELATED=START:-PT2H");
+    const desplegado = ics.replace(/\r\n /g, "");
+    expect(desplegado).toContain("DESCRIPTION:Mañana tienes cita en Barber Hamza for Men a las 10:00");
+    expect(desplegado).toContain("DESCRIPTION:En 2 horas tienes cita en Barber Hamza for Men (10:00)");
+  });
+
+  it("usa CRLF en todas las líneas, termina en CRLF y no pasa de 75 octetos", () => {
+    const largo: DatosCita = { ...datos, servicio: "Mechas balayage con matiz, tratamiento de keratina y peinado de fiesta ñññ" };
+    const ics = construirIcs(largo, ahora);
+    expect(ics.endsWith("\r\n")).toBe(true);
+    expect(/[^\r]\n/.test(ics)).toBe(false);
+    for (const linea of ics.split("\r\n")) {
+      expect(new TextEncoder().encode(linea).length).toBeLessThanOrEqual(75);
+    }
+    expect(ics.replace(/\r\n /g, "")).toContain("SUMMARY:Mechas balayage con matiz\\, tratamiento de keratina y peinado de fiesta ñññ en");
+  });
+
+  it("tiene METHOD:PUBLISH, DTSTAMP y un UID estable", () => {
+    const a = construirIcs(datos, ahora);
+    const b = construirIcs(datos, new Date("2026-09-21T10:00:00Z"));
+    expect(a).toContain("METHOD:PUBLISH");
+    expect(a).toContain("DTSTAMP:20260920T100000Z");
+    const uid = (s: string) => /UID:(.+)\r\n/.exec(s)?.[1];
+    expect(uid(a)).toBe(uid(b));
+    expect(uid(a)).toMatch(/@sishow\.es$/);
+    expect(uid(construirIcs({ ...datos, hora: "11:00" }, ahora))).not.toBe(uid(a));
+  });
+
+  it("escapa saltos de línea en la dirección", () => {
+    expect(construirIcs({ ...datos, direccion: "Calle Mayor 12\nMadrid" }, ahora)).toContain("LOCATION:Calle Mayor 12\\nMadrid");
+  });
+});
+
 describe("construirIcsDataUri", () => {
   it("devuelve un data: URI con text/calendar y el .ics codificado", () => {
     const uri = construirIcsDataUri(datos);

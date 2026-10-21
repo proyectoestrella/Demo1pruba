@@ -85,28 +85,80 @@ function escaparICal(texto: string): string {
     .replace(/\\/g, "\\\\")
     .replace(/;/g, "\\;")
     .replace(/,/g, "\\,")
-    .replace(/\n/g, "\\n");
+    .replace(/\r\n|\r|\n/g, "\\n");
+}
+
+/** Pliega una línea a 75 octetos UTF-8 (RFC 5545 §3.1), sin partir caracteres. */
+export function plegarLineaICal(linea: string): string {
+  const enc = new TextEncoder();
+  const partes: string[] = [];
+  let actual = "";
+  let bytes = 0;
+  for (const caracter of linea) {
+    const n = enc.encode(caracter).length;
+    if (bytes + n > 75) {
+      partes.push(actual);
+      actual = " ";
+      bytes = 1;
+    }
+    actual += caracter;
+    bytes += n;
+  }
+  partes.push(actual);
+  return partes.join("\r\n");
+}
+
+/** Hash FNV-1a de 32 bits en hex: UID estable para la misma cita sin datos personales. */
+function hashEstable(texto: string): string {
+  let h = 0x811c9dc5;
+  for (const b of new TextEncoder().encode(texto)) {
+    h ^= b;
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
 }
 
 const NOTA_ICS = "Reserva pendiente de confirmar por el salón.";
 
-/** Construye el cuerpo del fichero .ics (VCALENDAR/VEVENT) para la cita. */
-export function construirIcs(datos: DatosCita): string {
+/**
+ * Construye el cuerpo del fichero .ics (VCALENDAR/VEVENT) para la cita, con
+ * dos avisos (VALARM DISPLAY): 1 día antes y 2 horas antes. Las fechas van en
+ * UTC con Z (no hace falta VTIMEZONE). El UID sale de los datos de la cita, así
+ * que volver a añadirla actualiza el mismo evento en vez de duplicarlo. No
+ * lleva el nombre ni el teléfono de la clienta.
+ */
+export function construirIcs(datos: DatosCita, ahora: Date = new Date()): string {
   const { inicio, fin } = rangoCita(datos);
   const resumen = `${datos.servicio} en ${datos.salon}`;
-  return [
+  const uid = `${hashEstable([datos.fecha, datos.hora, datos.salon, datos.servicio].join("|"))}-${datos.fecha.replace(/-/g, "")}@sishow.es`;
+  const lineas = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//siShow//Reservas//ES",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
     "BEGIN:VEVENT",
+    `UID:${uid}`,
+    `DTSTAMP:${formatoICal(ahora)}`,
     `DTSTART:${formatoICal(inicio)}`,
     `DTEND:${formatoICal(fin)}`,
     `SUMMARY:${escaparICal(resumen)}`,
     `LOCATION:${escaparICal(datos.direccion)}`,
     `DESCRIPTION:${escaparICal(NOTA_ICS)}`,
+    "BEGIN:VALARM",
+    "ACTION:DISPLAY",
+    "TRIGGER;RELATED=START:-P1D",
+    `DESCRIPTION:${escaparICal(`Mañana tienes cita en ${datos.salon} a las ${datos.hora}: ${datos.servicio}.`)}`,
+    "END:VALARM",
+    "BEGIN:VALARM",
+    "ACTION:DISPLAY",
+    "TRIGGER;RELATED=START:-PT2H",
+    `DESCRIPTION:${escaparICal(`En 2 horas tienes cita en ${datos.salon} (${datos.hora}): ${datos.servicio}.`)}`,
+    "END:VALARM",
     "END:VEVENT",
     "END:VCALENDAR",
-  ].join("\r\n");
+  ];
+  return lineas.map(plegarLineaICal).join("\r\n") + "\r\n";
 }
 
 /** URI `data:` con el .ics, lista para un <a href> que Safari de iOS abre sin descargar nada. */

@@ -87,6 +87,15 @@ describe("contenido del correo", () => {
     expect(correo.html).toContain("&lt;b&gt;");
   });
 
+  it("incluye la fecha en hora de Madrid y cómo cambiar o cancelar por WhatsApp", () => {
+    const correo = emailRecordatorio(datos, undefined, "+34 600 111 222");
+    expect(correo.texto).toContain("a las 10:00 (hora de Madrid)");
+    expect(correo.texto).toContain("WhatsApp al +34 600 111 222");
+    expect(correo.texto).toContain("https://wa.me/34600111222?text=");
+    expect(correo.html).toContain('href="https://wa.me/34600111222?text=');
+    expect(emailRecordatorio(datos).texto).toContain("Avisa al salón cuanto antes.");
+  });
+
   it("menciona la señal solo si está pedida y sin recibir", () => {
     const con = emailRecordatorio({ ...datos, senalPendiente: { importeEur: 10, bizumPhone: "600000000" } });
     expect(con.texto).toContain("10 € por Bizum al 600000000");

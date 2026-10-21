@@ -7,6 +7,7 @@
  * levantar nada, y el criterio de «a quién se avisa» está en un solo sitio.
  */
 import { mensajeRecordatorio, type RecordatorioDeCita } from "./avisos";
+import { whatsappUrl } from "./campanas";
 import { ZONA_HORARIA_SALON, fechaEnZona, horaEnZona } from "./zona-horaria";
 
 export { fechaEnZona } from "./zona-horaria";
@@ -64,13 +65,40 @@ function escaparHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** El mismo texto que el salón manda por WhatsApp, en asunto + cuerpo de correo. */
-export function emailRecordatorio(a: RecordatorioDeCita, timeZone = ZONA_HORARIA_SALON): EmailRecordatorio {
+/**
+ * El mismo texto que el salón manda por WhatsApp, en asunto + cuerpo de correo,
+ * más la fecha completa en hora de Madrid y, si el salón tiene teléfono, cómo
+ * cancelar o cambiar la cita por WhatsApp.
+ */
+export function emailRecordatorio(
+  a: RecordatorioDeCita,
+  timeZone = ZONA_HORARIA_SALON,
+  whatsappSalon?: string,
+): EmailRecordatorio {
   const hora = horaEnZona(a.startISO, timeZone);
-  const texto = mensajeRecordatorio(a);
+  const fechaLarga = new Date(a.startISO).toLocaleDateString("es-ES", {
+    timeZone,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  const principal = mensajeRecordatorio(a);
+  const cuando = `Cita: ${fechaLarga} a las ${hora} (hora de Madrid).`;
+  const telefono = whatsappSalon?.replace(/\D/g, "") ? whatsappSalon.trim() : "";
+  const enlace = telefono
+    ? whatsappUrl(telefono, `Hola, tengo cita en ${a.salonName} el ${fechaLarga} a las ${hora} y querría cambiarla o cancelarla.`)
+    : "";
+  const cambiar = telefono
+    ? `¿No puedes venir o quieres cambiar la hora? Escríbenos por WhatsApp al ${telefono}: ${enlace}`
+    : "¿No puedes venir o quieres cambiar la hora? Avisa al salón cuanto antes.";
+  const texto = [principal, cuando, cambiar].join("\n\n");
+  const p = (t: string) => `<p style="font-family:sans-serif;font-size:16px;line-height:1.5">${t}</p>`;
+  const htmlCambiar = telefono
+    ? `¿No puedes venir o quieres cambiar la hora? <a href="${escaparHtml(enlace)}">Escríbenos por WhatsApp</a> (${escaparHtml(telefono)}).`
+    : escaparHtml(cambiar);
   return {
     asunto: `Recordatorio: tu cita mañana a las ${hora} en ${a.salonName}`,
     texto,
-    html: `<p style="font-family:sans-serif;font-size:16px;line-height:1.5">${escaparHtml(texto)}</p>`,
+    html: p(escaparHtml(principal)) + p(escaparHtml(cuando)) + p(htmlCambiar),
   };
 }

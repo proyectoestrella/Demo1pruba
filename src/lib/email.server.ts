@@ -10,10 +10,16 @@
  *   REMINDER_FROM_EMAIL   remitente verificado en Resend, p. ej.
  *                         "siShow <recordatorios@tudominio.com>".
  *
+ * Alternativa preferente (sin Resend): SMTP propio, p. ej. Hostinger.
+ *   SMTP_HOST, SMTP_PORT (465, TLS implícito), SMTP_USER, SMTP_PASSWORD.
+ *   REMINDER_FROM_EMAIL   «PeluChic <acceso@sishow.es>»; si falta, SMTP_USER.
+ * Ver docs/correo-smtp.md.
+ *
  * Sin las dos variables no se envía nada y se dice por qué: el cron no
  * revienta, simplemente informa de que falta configurar el proveedor.
  */
 import process from "node:process";
+import { enviarSmtp, type Conector } from "./smtp.server";
 
 export interface CorreoSaliente {
   para: string;
@@ -41,7 +47,32 @@ export function remitenteDeCorreo(valor: string | undefined): string | undefined
   return v || undefined;
 }
 
-export function proveedorDeCorreo(fetchImpl: typeof fetch = fetch): ProveedorCorreo | null {
+/** SMTP si están las cuatro SMTP_*; si no, Resend; si no, null. */
+export function proveedorDeCorreo(fetchImpl: typeof fetch = fetch, conectorSmtp?: Conector): ProveedorCorreo | null {
+  const smtp = proveedorSmtp(conectorSmtp);
+  if (smtp) return smtp;
+  return proveedorResend(fetchImpl);
+}
+
+function proveedorSmtp(conector?: Conector): ProveedorCorreo | null {
+  const host = process.env.SMTP_HOST?.trim();
+  const puerto = Number(process.env.SMTP_PORT?.trim() || "465");
+  const usuario = process.env.SMTP_USER?.trim();
+  const contrasena = process.env.SMTP_PASSWORD;
+  if (!host || !usuario || !contrasena || !Number.isInteger(puerto) || puerto <= 0) return null;
+  const de = remitenteDeCorreo(process.env.REMINDER_FROM_EMAIL) ?? usuario;
+  return {
+    nombre: "smtp",
+    enviar: (correo) =>
+      enviarSmtp(
+        { host, puerto, usuario, contrasena },
+        { de, para: correo.para, asunto: correo.asunto, texto: correo.texto, html: correo.html },
+        conector,
+      ),
+  };
+}
+
+function proveedorResend(fetchImpl: typeof fetch): ProveedorCorreo | null {
   const apiKey = process.env.RESEND_API_KEY;
   const from = remitenteDeCorreo(process.env.REMINDER_FROM_EMAIL);
   if (!apiKey || !from) return null;

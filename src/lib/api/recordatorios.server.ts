@@ -175,7 +175,7 @@ export async function enviarRecordatoriosDeManana(
       servicio: cita.service_id.split(",").map((id) => servicios[id] ?? nombreServicioLibre(id) ?? "tu servicio").join(" + "),
       direccion: perfil.address,
       senalPendiente,
-    });
+    }, undefined, perfil.phone);
     try {
       await proveedor.enviar({ para: cita.email!, ...correo });
     } catch (err) {
