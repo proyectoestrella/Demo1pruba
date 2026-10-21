@@ -135,4 +135,25 @@ test.describe("Panel demo", () => {
     ).toBeVisible();
     await audit.revisar("panel-aviso-instalar");
   });
+
+  test("Panel · plan Básico: sin Caja ni asistente", async ({ page, audit }) => {
+    await enPanel(page, audit);
+    // Fuerza el plan Básico en el perfil guardado de la store y recarga el panel.
+    await page.evaluate(() => {
+      const clave = "trimly-salon-store";
+      const guardado = JSON.parse(localStorage.getItem(clave) ?? "{}");
+      guardado.state = guardado.state ?? {};
+      guardado.state.salonProfile = { ...(guardado.state.salonProfile ?? {}), plan: "reservas" };
+      localStorage.setItem(clave, JSON.stringify(guardado));
+    });
+    await page.goto("/app");
+    await expect(page.getByText(/Citas de hoy/).first()).toBeVisible();
+    if (await cerrarVisita(page).isVisible()) await cerrarVisita(page).click();
+    await expect(page.getByRole("button", { name: "Asistente" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /Caja/ })).toHaveCount(0);
+    // Por URL tampoco: vuelve a Inicio sin tarjeta de plan.
+    await page.goto("/app/caja");
+    await expect(page).toHaveURL(/\/app\/?$/);
+    await expect(page.getByText("Caja del día")).toHaveCount(0);
+  });
 });

@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSalonStore } from "./store";
 import { useEquipo } from "./use-equipo";
+import { planDelPanel } from "./plan-basico";
 import {
   accesos as accesosDemo,
   useAccesosDemo,
@@ -31,7 +32,7 @@ import {
   cambiarPermisosExtraMiembro,
 } from "./api/accesos.functions";
 import type { ResultadoAccesos as ResultadoAccesosServidor } from "./api/accesos";
-import { planDe, tienePlan, type FuncionPlan, type PlanSishow } from "./plan";
+import { tienePlan, type FuncionPlan, type PlanSishow } from "./plan";
 import {
   permisosDe,
   puede,
@@ -49,9 +50,9 @@ export function useEsDemo(): boolean {
   return useSalonStore((s) => !s.realSalonSlug);
 }
 
-/** El plan del salón (lote 13): el guardado; sin él, «reservas-asistente» en un salón real y «todo-incluido» en la demo. */
+/** El plan con el que se pinta el panel: ver `planDelPanel` (Básico mientras se resuelve un salón real). */
 export function usePlanSalon(): PlanSishow {
-  return useSalonStore((s) => planDe(s.salonProfile, !s.realSalonSlug));
+  return useSalonStore(planDelPanel);
 }
 
 /** ¿Incluye el plan del salón esta función? */

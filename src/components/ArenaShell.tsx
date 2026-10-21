@@ -40,13 +40,13 @@ import { API_CALENDARIOS, alcanceCalendario, useCalendariosActivos } from "@/lib
 import { insigniaDeRuta } from "@/lib/plan";
 import {
   useCitasVisibles,
-  useEsDemo,
   useMiembroActual,
   usePermisos,
   usePlanSalon,
+  useTienePlan,
   veRuta,
 } from "@/lib/accesos-panel";
-import { rutaSoloCompleto } from "@/lib/plan-basico";
+import { rutaIncluidaEnPlan } from "@/lib/plan-basico";
 import { NOMBRE_ROL } from "@/lib/accesos-maqueta";
 import { useBusinessType } from "@/lib/use-display-profile";
 import {
@@ -140,11 +140,10 @@ function useGruposVisibles() {
   const modulosOcultos = useSalonStore((s) => s.salonProfile.modulosOcultos);
   const permisos = usePermisos();
   const plan = usePlanSalon();
-  const esDemo = useEsDemo();
   const visible = (i: NavItem) =>
     (!i.modulo || moduloVisibleEnPanel({ modulosOcultos }, i.modulo)) &&
     veRuta(permisos, i.to) &&
-    (!esDemo || plan !== "reservas" || !rutaSoloCompleto(i.to));
+    rutaIncluidaEnPlan(i.to, plan);
   return GRUPOS_NAV.map((g) => ({
     ...g,
     items: g.items
@@ -162,9 +161,8 @@ function useSolicitudesPendientes() {
 function useBarraMovil(grupos: { items: NavItem[] }[]): NavItem[] {
   const permisos = usePermisos();
   const plan = usePlanSalon();
-  const esDemo = useEsDemo();
   const fijos = BARRA_MOVIL.filter(
-    (i) => veRuta(permisos, i.to) && (!esDemo || plan !== "reservas" || !rutaSoloCompleto(i.to)),
+    (i) => veRuta(permisos, i.to) && rutaIncluidaEnPlan(i.to, plan),
   );
   const resto = grupos.flatMap((g) => g.items).filter((i) => !fijos.some((f) => f.to === i.to));
   return [...fijos, ...resto].slice(0, 4);
@@ -442,12 +440,14 @@ function BotonAvisos({ className }: { className?: string }) {
 
 /** Cabecera de píldoras: búsqueda y cita al centro; nunca elimina plan ni asistente. */
 export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraArenaProps) {
+  // Sin el plan del asistente (Básico, o mientras se resuelve el salón), el botón no existe.
+  const conAsistente = useTienePlan("asistente");
   return (
     <header className="relative grid grid-cols-1 items-center gap-2 px-4 py-2.5 md:sticky md:top-0 md:z-20 md:h-[71px] md:px-0 md:py-0 md:pointer-events-none">
       <div className="flex items-center justify-between md:hidden">
         <Marca compacta />
         <div className="flex items-center gap-2">
-          <Button
+          {conAsistente && <Button
             data-tour="assistant"
             variant="outline"
             onClick={onAsistente}
@@ -455,7 +455,7 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
             aria-label="Asistente"
           >
             <Sparkles className="size-[18px]" strokeWidth={1.6} />
-          </Button>
+          </Button>}
           <BotonTour onTour={onTour} className="size-11" />
           <BotonAvisos className="size-11" />
         </div>
@@ -477,7 +477,7 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
       </div>
       <div className="pointer-events-auto absolute right-8 top-1/2 z-30 hidden -translate-y-1/2 items-center gap-2 md:flex">
         <PlanContratado className="hidden 2xl:inline-flex 2xl:group-data-[panel=abierto]/panel:hidden" />
-        <Button
+        {conAsistente && <Button
           data-tour="assistant"
           variant="outline"
           onClick={onAsistente}
@@ -488,7 +488,7 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
           <span className="hidden xl:inline xl:group-data-[panel=abierto]/panel:hidden">
             Asistente
           </span>
-        </Button>
+        </Button>}
         <BotonTour onTour={onTour} />
         <BotonAvisos />
       </div>

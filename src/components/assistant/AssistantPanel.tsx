@@ -13,7 +13,8 @@
 import { useFichas } from "@/lib/use-fichas";
 import { HojaFuncionPlan, LlegaConPlan, duradero } from "@/components/LlegaConPlan";
 import { usePlanSalon, useTienePlan } from "@/lib/accesos-panel";
-import { planDe, type FuncionPlan } from "@/lib/plan";
+import { type FuncionPlan } from "@/lib/plan";
+import { planDelPanel } from "@/lib/plan-basico";
 import { descartarFuncionPlan, leerDescubrimientoPlan, puedeOfrecerFuncion } from "@/lib/plan-descubrimiento";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -118,7 +119,7 @@ function PanelDelAsistente({ className }: { className?: string }) {
             return { ...st, appointments: citas, clients: st.clients.filter((c) => suyas.has(c.id)) };
           },
           () => (puede(accesoRef.current.permisos, "cita.ver-todas") ? equipoRef.current : equipoRef.current.filter((e) => e.id === accesoRef.current.mio)),
-          { plan: () => planDe(useSalonStore.getState().salonProfile, !useSalonStore.getState().realSalonSlug), enlace: () => (typeof window === "undefined" ? enlaceRef.current : new URL(enlaceRef.current, window.location.origin).href) },
+          { plan: () => planDelPanel(useSalonStore.getState()), enlace: () => (typeof window === "undefined" ? enlaceRef.current : new URL(enlaceRef.current, window.location.origin).href) },
         ),
       ),
     [],

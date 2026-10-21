@@ -4,7 +4,7 @@ import { conRegistroEnPausa } from "@/lib/store";
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { menosMovimiento } from "@/lib/movimiento-panel";
 import { sincronizarColores } from "@/lib/colores-elegidos";
-import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { useRealSalon } from "@/lib/use-real-salon";
 import { aplicarPrecedenciaDeEnlace } from "@/lib/precedencia-enlace-panel-store";
@@ -28,10 +28,9 @@ import {
 import { FranjaVerComo } from "@/components/VerComo";
 import { SinPermiso } from "@/components/SinPermiso";
 import { instalarAtajoDeshacer, instalarRegistro } from "@/lib/deshacer-maqueta";
-import { useEsDemo, usePlanSalon } from "@/lib/accesos-panel";
-import { rutaSoloCompleto } from "@/lib/plan-basico";
+import { usePlanSalon, useTienePlan } from "@/lib/accesos-panel";
+import { rutaIncluidaEnPlan } from "@/lib/plan-basico";
 import { useRedirigirSiRutaSinPermiso } from "@/lib/route-guards";
-import { IncluidoEnPlanCompleto } from "@/components/IncluidoEnPlanCompleto";
 import { useHayPanelLateral } from "@/lib/panel-lateral";
 import { slugResolvibleDelPanel } from "@/lib/slug-panel";
 import { cn } from "@/lib/utils";
@@ -330,11 +329,16 @@ function DashboardLayoutV1() {
   const conPanel = useHayPanelLateral();
   // Lote 11: una sección que el rol no ve se sustituye por «Esta parte la lleva…».
   const plan = usePlanSalon();
-  const esDemo = useEsDemo();
+  const conAsistente = useTienePlan("asistente");
   const permitida = useRedirigirSiRutaSinPermiso(path);
-  // En una cuenta real las secciones siguen visibles: cada una enseña sus
-  // tarjetas de plan. La demo conserva su conmutador y la puerta visual.
-  const fueraDelBasico = esDemo && plan === "reservas" && rutaSoloCompleto(path);
+  // Una pantalla que el plan no incluye (Caja, Analítica, Marketing, Lista de
+  // espera con el Básico) no existe: ni se pinta ni enseña tarjeta de plan;
+  // una URL escrita a mano vuelve a Inicio. Vale igual en salón real y demo.
+  const fueraDelPlan = !rutaIncluidaEnPlan(path, plan);
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (fueraDelPlan) void navigate({ to: "/app", replace: true });
+  }, [fueraDelPlan, navigate]);
   const seccion = TODOS_LOS_ITEMS.find((i) => estaActivo(i, path))?.label ?? "esta sección";
   // Colores elegidos por la dueña en Ajustes (9h): se sincronizan antes de pintar.
   const coloresServicio = useSalonStore((s) => s.salonProfile.coloresServicio);
@@ -384,9 +388,7 @@ function DashboardLayoutV1() {
               (180 ms). Con la Web Animations API y sin `key`: remontar el
               contenedor en cada ruta costaba el doble de tiempo al navegar. */}
             <div ref={contenedorRuta} className={cn("flex min-w-0 flex-1 flex-col", path === "/app/calendar" && "min-h-0")}>
-              {fueraDelBasico ? (
-                <IncluidoEnPlanCompleto />
-              ) : permitida ? (
+              {fueraDelPlan ? null : permitida ? (
                 <Outlet />
               ) : (
                 <SinPermiso seccion={seccion} />
@@ -403,7 +405,7 @@ function DashboardLayoutV1() {
           </Suspense>
         )}
 
-        <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
+        {conAsistente && <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
           <SheetContent side="right" panel="asistente" className="flex w-full flex-col gap-0 p-0">
             <SheetHeader className="border-b border-border/60 px-4 py-4 text-left">
               <SheetTitle className="text-lg font-extrabold">Asistente del salón</SheetTitle>
@@ -418,7 +420,7 @@ function DashboardLayoutV1() {
               </Suspense>
             )}
           </SheetContent>
-        </Sheet>
+        </Sheet>}
       </div>
     </div>
   );

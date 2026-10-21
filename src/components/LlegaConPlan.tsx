@@ -153,6 +153,7 @@ export function HojaFuncionPlan({ funcion, abierto, onCerrar }: { funcion: Funci
  */
 export function LlegaConPlan({ funcion, compacta = false, className }: { funcion: FuncionPlan; compacta?: boolean; className?: string }) {
   const esDemo = useEsProspecto();
+  const planSalon = usePlanSalon();
   const [abierto, setAbierto] = useState(false);
   const [destacada, setDestacada] = useState(false);
   const plan = FUNCIONES_POR_PLAN[funcion];
@@ -169,6 +170,9 @@ export function LlegaConPlan({ funcion, compacta = false, className }: { funcion
     setDestacada(false);
     setAbierto(false);
   }
+
+  // El Básico no recibe tarjetas de «mejora tu plan» en ningún sitio.
+  if (planSalon === "reservas") return null;
 
   return (
     <>
@@ -211,7 +215,7 @@ export function ResumenPlanSuperior({ className }: { className?: string }) {
   const plan = usePlanSalon();
   const funciones = resumenPlanSuperior(plan);
   const [abierta, setAbierta] = useState<FuncionPlan | null>(null);
-  if (funciones.length === 0) return null;
+  if (funciones.length === 0 || plan === "reservas") return null;
   const siguiente = NOMBRE_PLAN[FUNCIONES_POR_PLAN[funciones[0]]];
   return (
     <section className={cn("overflow-hidden rounded-[20px] border border-lino bg-card", className)} aria-label={`Lo que añade el plan ${siguiente}`}>
