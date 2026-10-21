@@ -1232,6 +1232,8 @@ export const useSalonStore = create<SalonState>()(
               }
               if ("manualBlock" in c.antes) pushManualBlock(slugReal, cliente, !!cliente.manualBlock);
               if ("notes" in c.antes) pushClientNotes(slugReal, cliente);
+              // Otros datos de la ficha (nombre, teléfono, correo…): se sube la ficha entera.
+              if (Object.keys(c.antes).some((k) => k !== "notes" && k !== "manualBlock" && !k.startsWith("penalty"))) pushClient(slugReal, cliente);
             }
           } else if (c.entidad === "servicio") {
             const previo = c.antes.servicio as Service | null | undefined;
@@ -1547,6 +1549,9 @@ function instalarRegistroDeCambios() {
     if (typeof original !== "function") continue;
     envueltas[accion] = (...args: unknown[]) => {
       if (profundidad > 0 || registroEnPausa()) return original(...args);
+      // Solo las notas de la ficha son decisión de una persona; el resto de updateClient son
+      // altas masivas (importar clientas, TPV) y no deben llenar el historial ni sacar avisos.
+      if (accion === "updateClient" && Object.keys((args[1] ?? {}) as object).some((k) => k !== "notes")) return original(...args);
       const id = String(args[0]);
       profundidad++;
       try {

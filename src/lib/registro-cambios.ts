@@ -79,6 +79,7 @@ export function resumenCita(tipo: TipoCambio, antes: Partial<Appointment>, despu
 
 export function tipoCambioClienta(accion: string, args: unknown[], antes: Partial<Client>, despues: Partial<Client>): TipoCambio {
   if (accion === "setManualBlock") return "clienta.bloquear";
+  if (accion === "updateClient") return "clienta.editar";
   if (accion === "clearPenalty") return args[1] === "cobrado" ? "recargo.cobrar" : "recargo.perdonar";
   if ((despues.penaltyEur ?? 0) > 0 && (antes.penaltyEur ?? 0) === 0) return "recargo.aplicar";
   if ((despues.penaltyEur ?? 0) === 0 && (antes.penaltyEur ?? 0) > 0) return "recargo.perdonar";
@@ -87,6 +88,7 @@ export function tipoCambioClienta(accion: string, args: unknown[], antes: Partia
 
 export function resumenClienta(tipo: TipoCambio, c: Partial<Client>): string {
   const nombre = c.name ?? "la clienta";
+  if (tipo === "clienta.editar") return `Editada la ficha de ${nombre}`;
   if (tipo === "clienta.bloquear") return `${c.manualBlock ? "Bloqueada" : "Desbloqueada"} la reserva por internet de ${nombre}`;
   if (tipo === "recargo.cobrar") return `Cobrado el recargo de ${nombre}`;
   if (tipo === "recargo.perdonar") return `Perdonado el recargo de ${nombre}`;
@@ -120,6 +122,7 @@ export const ACCIONES_REGISTRADAS: Array<{ accion: string; entidad: EntidadCambi
   { accion: "extendDepositDeadline", entidad: "cita" },
   { accion: "markDepositReceived", entidad: "cita" },
   { accion: "setManualBlock", entidad: "clienta" },
+  { accion: "updateClient", entidad: "clienta" },
   { accion: "applyPenalty", entidad: "clienta" },
   { accion: "clearPenalty", entidad: "clienta" },
   { accion: "setDeuda", entidad: "clienta" },

@@ -103,3 +103,19 @@ describe("fusionar cambios del servidor", () => {
     expect(useSalonStore.getState().estadoDeshacer(c.id)).toEqual({ puede: false, motivo: "DESHECHO" });
   });
 });
+
+describe("notas de la ficha de la clienta", () => {
+  it("editar las notas se registra y se deshace; una importación masiva no", () => {
+    miembro("gerente", "gerente", null);
+    const cl = useSalonStore.getState().addClient({ name: "Ficha Prueba", phone: "600000001", notes: "antes" } as never);
+    useSalonStore.getState().updateClient(cl.id, { notes: "después" });
+    const c = ultimo();
+    expect(c.tipo).toBe("clienta.editar");
+    expect(c.antes).toEqual({ notes: "antes" });
+    expect(useSalonStore.getState().deshacerCambio(c.id)).toEqual({ ok: true });
+    expect(useSalonStore.getState().clients.find((x) => x.id === cl.id)?.notes).toBe("antes");
+    const n = useSalonStore.getState().cambios.length;
+    useSalonStore.getState().updateClient(cl.id, { taxId: "X1", address: "Calle 1" });
+    expect(useSalonStore.getState().cambios.length).toBe(n);
+  });
+});

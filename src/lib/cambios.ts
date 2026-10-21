@@ -19,7 +19,7 @@ import { accionesDeParchePerfil } from "./api/guardas";
 export const TIPOS_CAMBIO = [
   "cita.cancelar", "cita.rechazar", "cita.confirmar", "cita.marcar-asistencia", "cita.cobrar", "cita.mover", "cita.editar",
   "senal.pedir", "senal.prorrogar", "senal.recibir", "senal.aplicar", "senal.devolver", "senal.retener",
-  "recargo.aplicar", "recargo.perdonar", "recargo.cobrar", "clienta.bloquear",
+  "recargo.aplicar", "recargo.perdonar", "recargo.cobrar", "clienta.bloquear", "clienta.editar",
   "servicio.editar", "servicio.borrar", "profesional.editar", "horario.editar",
   "preguntas.editar", "ajustes.editar", "perfil.publicar", "perfil.restaurar", "perfil.campo",
   // Caja (lote 11). Solo el borrado se registra: un alta no es deshacible por
@@ -180,6 +180,7 @@ export function accionDe(tipo: TipoCambio): AccionId {
     "recargo.perdonar": "recargo.gestionar",
     "recargo.cobrar": "recargo.gestionar",
     "clienta.bloquear": "clienta.bloquear",
+    "clienta.editar": "clienta.editar",
     "servicio.editar": "servicio.editar",
     "servicio.borrar": "servicio.editar",
     "profesional.editar": "equipo.editar",
