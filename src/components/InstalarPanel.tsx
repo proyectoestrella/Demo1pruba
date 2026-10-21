@@ -11,6 +11,8 @@ export function InstalarPanel() {
   const [visible, setVisible] = useState(false);
   const [ios, setIos] = useState(false);
   const [prompt, setPrompt] = useState<InvitacionInstalar | null>(null);
+  const [instalando, setInstalando] = useState(false);
+  const [mensaje, setMensaje] = useState("");
   useEffect(() => {
     const media = window.matchMedia("(display-mode: standalone)");
     const nav = navigator as Navigator & { standalone?: boolean };
@@ -43,7 +45,7 @@ export function InstalarPanel() {
   if (!visible) return null;
   return (
     <details className="mx-4 mb-24 rounded-xl border border-border bg-card p-3 text-sm md:mb-4">
-      <summary className="cursor-pointer font-semibold">
+      <summary className="flex min-h-11 cursor-pointer items-center font-semibold">
         Instalar {salonName} en este dispositivo
       </summary>
       <div className="mt-3 space-y-3">
@@ -60,13 +62,25 @@ export function InstalarPanel() {
             </p>
             {prompt ? (
               <Button
+                disabled={instalando}
                 onClick={async () => {
-                  await prompt.prompt();
-                  await prompt.userChoice;
-                  setPrompt(null);
+                  setInstalando(true);
+                  setMensaje("");
+                  try {
+                    await prompt.prompt();
+                    const eleccion = await prompt.userChoice;
+                    setPrompt(null);
+                    if (eleccion.outcome !== "accepted") {
+                      setMensaje("No se ha instalado. Puedes volver a intentarlo desde el menú del navegador.");
+                    }
+                  } catch {
+                    setMensaje("No se ha podido abrir la instalación. Usa el menú del navegador.");
+                  } finally {
+                    setInstalando(false);
+                  }
                 }}
               >
-                Instalar
+                {instalando ? "Abriendo instalación…" : "Instalar"}
               </Button>
             ) : (
               <p>
@@ -74,6 +88,7 @@ export function InstalarPanel() {
                 pantalla de inicio.
               </p>
             )}
+            {mensaje && <p role="status">{mensaje}</p>}
           </>
         )}
       </div>

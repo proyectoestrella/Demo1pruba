@@ -422,7 +422,7 @@ export async function fromPlaces(key: string, hint: PistaMaps): Promise<MapsLook
 }
 
 export const lookupGoogleMaps = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ url: z.string().min(1) }))
+  .inputValidator(z.object({ url: z.string().min(1).max(2048) }))
   .handler(async ({ data }): Promise<MapsLookup> => {
     const expanded = await expandShortLink(data.url.trim());
     const hint = parseMapsUrl(expanded);

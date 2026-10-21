@@ -29,6 +29,8 @@ import {
 
 const slug = z.string().min(1).max(120);
 const employeeIdOpcional = z.string().min(1).max(120).nullable().optional();
+const conexionId = z.string().min(1).max(120);
+const instante = z.string().datetime();
 
 async function accesoRealMiembro(salonSlug: string): Promise<Extract<Acceso, { tipo: "miembro" }>> {
   const acceso = await exigirAcceso(salonSlug); // lanza AccesoDenegado si es ajeno
@@ -104,7 +106,7 @@ export const conectarApple = createServerFn({ method: "POST" })
 
 export const desconectarCalendario = createServerFn({ method: "POST" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug, conexionId: z.string().min(1) }))
+  .inputValidator(z.object({ slug, conexionId }))
   .handler(async ({ data }) => {
     const acceso = await accesoRealMiembro(data.slug);
     const empleada = await empleadaDeLaConexion(data.slug, data.conexionId);
@@ -117,7 +119,7 @@ export const ajustarConexionCalendario = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       slug,
-      conexionId: z.string().min(1),
+      conexionId,
       bloquearHuecos: z.boolean().optional(),
       escribirCitas: z.boolean().optional(),
     }),
@@ -134,7 +136,7 @@ export const ajustarConexionCalendario = createServerFn({ method: "POST" })
 
 export const listarOcupadoExterno = createServerFn({ method: "GET" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug, desde: z.string().min(1), hasta: z.string().min(1) }))
+  .inputValidator(z.object({ slug, desde: instante, hasta: instante }))
   .handler(async ({ data }) => {
     // No hace falta `calendario-externo.gestionar`: esto es leer la agenda
     // (como las citas), no tocar una conexión. Mismo recorte que las citas:

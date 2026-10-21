@@ -37,6 +37,8 @@ import { exigirAccesoOdemo, usuarioDeLaPeticion } from "./autorizacion.server";
 import { conSesion } from "./sesion.middleware";
 
 const slug = z.string().min(1).max(120);
+const rol = z.enum(["gerente", "subencargado", "recepcion", "estilista"]);
+const id = z.string().min(1).max(120);
 
 function origen(): string {
   return getRequestUrl().origin;
@@ -187,8 +189,8 @@ export const invitarAlSalon = createServerFn({ method: "POST" })
     z.object({
       slug,
       email: z.string().min(3).max(200),
-      rol: z.string(),
-      employeeId: z.string().nullable().optional(),
+      rol,
+      employeeId: id.nullable().optional(),
       displayName: z.string().max(60).nullable().optional(),
     }),
   )
@@ -207,7 +209,7 @@ export const invitarAlSalon = createServerFn({ method: "POST" })
 
 export const aceptarInvitacionAlSalon = createServerFn({ method: "POST" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug, invitacionId: z.string().min(1) }))
+  .inputValidator(z.object({ slug, invitacionId: id }))
   .handler(async ({ data }) => {
     const userId = await usuarioDeLaPeticion();
     if (!userId)
@@ -224,9 +226,9 @@ export const cambiarRolMiembro = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       slug,
-      userId: z.string().min(1),
-      rol: z.string(),
-      employeeId: z.string().nullable().optional(),
+      userId: id,
+      rol,
+      employeeId: id.nullable().optional(),
     }),
   )
   .handler(async ({ data }) =>
@@ -240,28 +242,28 @@ export const cambiarRolMiembro = createServerFn({ method: "POST" })
 
 export const darDeBajaMiembro = createServerFn({ method: "POST" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug, userId: z.string().min(1) }))
+  .inputValidator(z.object({ slug, userId: id }))
   .handler(async ({ data }) =>
     darDeBaja(await accesoReal(data.slug), data.userId, depsDe(data.slug)),
   );
 
 export const revocarInvitacionAlSalon = createServerFn({ method: "POST" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug, invitacionId: z.string().min(1) }))
+  .inputValidator(z.object({ slug, invitacionId: id }))
   .handler(async ({ data }) =>
     revocarInvitacion(await accesoReal(data.slug), data.invitacionId, depsDe(data.slug)),
   );
 
 export const reenviarInvitacionAlSalon = createServerFn({ method: "POST" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug, invitacionId: z.string().min(1) }))
+  .inputValidator(z.object({ slug, invitacionId: id }))
   .handler(async ({ data }) =>
     reenviarInvitacion(await accesoReal(data.slug), data.invitacionId, depsDe(data.slug)),
   );
 
 export const vincularEmpleadaDelSalon = createServerFn({ method: "POST" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug, userId: z.string().min(1), employeeId: z.string().nullable() }))
+  .inputValidator(z.object({ slug, userId: id, employeeId: id.nullable() }))
   .handler(async ({ data }) =>
     vincularEmpleada(await accesoReal(data.slug), data.userId, data.employeeId, depsDe(data.slug)),
   );
@@ -271,7 +273,7 @@ export const cambiarPermisosExtraMiembro = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       slug,
-      userId: z.string().min(1),
+      userId: id,
       permisosExtra: z
         .object({
           verAgendaCompleta: z.boolean().optional(),
@@ -292,7 +294,7 @@ export const cambiarPermisosExtraMiembro = createServerFn({ method: "POST" })
 
 export const reactivarMiembroDelSalon = createServerFn({ method: "POST" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug, userId: z.string().min(1) }))
+  .inputValidator(z.object({ slug, userId: id }))
   .handler(async ({ data }) =>
     reactivarMiembro(await accesoReal(data.slug), data.userId, depsDe(data.slug)),
   );

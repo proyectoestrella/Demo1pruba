@@ -1,7 +1,13 @@
+import { lazy, Suspense } from "react";
 import { useSalonStore } from "@/lib/store";
 import { useFichaAbierta, useFichas } from "@/lib/use-fichas";
-import { ClientHistorySheet } from "@/components/ClientHistorySheet";
-import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
+
+const ClientHistorySheet = lazy(() =>
+  import("@/components/ClientHistorySheet").then((m) => ({ default: m.ClientHistorySheet })),
+);
+const AppointmentDetailSheet = lazy(() =>
+  import("@/components/AppointmentDetailSheet").then((m) => ({ default: m.AppointmentDetailSheet })),
+);
 
 /**
  * Las fichas de clienta y de cita, pintadas UNA vez para todo el panel y
@@ -16,9 +22,9 @@ export function FichasGlobales() {
   const clienta = useSalonStore((s) => (ficha?.tipo === "clienta" ? (s.clients.find((c) => c.id === ficha.id) ?? null) : null));
   const cita = useSalonStore((s) => (ficha?.tipo === "cita" ? (s.appointments.find((a) => a.id === ficha.id) ?? null) : null));
   return (
-    <>
-      <ClientHistorySheet client={clienta} open={!!clienta} onOpenChange={(o) => !o && cerrar()} />
-      <AppointmentDetailSheet appointment={cita} open={!!cita} onOpenChange={(o) => !o && cerrar()} />
-    </>
+    <Suspense fallback={null}>
+      {clienta && <ClientHistorySheet client={clienta} open onOpenChange={(o) => !o && cerrar()} />}
+      {cita && <AppointmentDetailSheet appointment={cita} open onOpenChange={(o) => !o && cerrar()} />}
+    </Suspense>
   );
 }

@@ -32,6 +32,7 @@ import { PermisoDenegado, tienePermiso } from "./autorizacion";
 import { tieneMando, vistaEfectiva } from "./autorizacion";
 import { conSesion } from "./sesion.middleware";
 import { getSupabaseServerClient } from "../supabase.server";
+import { admiteReservaPublicaPorIp } from "./limite-reserva.server";
 import { fusionarPerfil } from "../perfil-parche";
 import { perfilPublico } from "../perfil-publico";
 import { isManualBlockRecord } from "../no-show";
@@ -977,12 +978,12 @@ export const syncWaitlistEntry = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       slug,
-      localId: z.string().min(1),
-      clientName: z.string().min(1),
-      phone: z.string().default(""),
-      serviceId: z.string().default(""),
-      preferredEmployeeId: z.string().default("any"),
-      preferredRange: z.string().default(""),
+      localId: z.string().min(1).max(100),
+      clientName: z.string().min(1).max(100),
+      phone: z.string().max(30).default(""),
+      serviceId: z.string().max(100).default(""),
+      preferredEmployeeId: z.string().max(100).default("any"),
+      preferredRange: z.string().max(100).default(""),
     }),
   )
   .handler(async ({ data }) => {
@@ -1055,16 +1056,16 @@ export const syncAppointment = createServerFn({ method: "POST" })
       importedFromTpv: z.boolean().optional(),
       serviceIds: z.array(z.string().max(100)).max(20).default([]),
       employeeId: z.string().min(1).max(100),
-      startISO: z.string().min(1).max(40),
-      durationMin: z.number().nonnegative(),
-      priceEur: z.number().nonnegative(),
-      status: z.string().min(1),
-      clientConfirmedAt: z.string().nullable().optional(),
+      startISO: z.string().datetime(),
+      durationMin: z.number().nonnegative().max(24 * 60),
+      priceEur: z.number().nonnegative().max(100_000),
+      status: z.string().min(1).max(40),
+      clientConfirmedAt: z.string().datetime().nullable().optional(),
       note: z.string().max(1000).nullable().optional(),
-      paymentMethod: z.string().nullable().optional(),
-      paidAt: z.string().nullable().optional(),
-      depositRequestedAt: z.string().nullable().optional(),
-      depositReceivedAt: z.string().nullable().optional(),
+      paymentMethod: z.string().max(40).nullable().optional(),
+      paidAt: z.string().datetime().nullable().optional(),
+      depositRequestedAt: z.string().datetime().nullable().optional(),
+      depositReceivedAt: z.string().datetime().nullable().optional(),
       depositEur: z.number().nullable().optional(),
       depositStatus: z
         .enum(["por_pedir", "pedida", "recibida", "aplicada", "devuelta", "retenida", "anulada"])
@@ -1075,15 +1076,15 @@ export const syncAppointment = createServerFn({ method: "POST" })
         .nullable()
         .optional(),
       depositReceivedEur: z.number().nonnegative().nullable().optional(),
-      depositAppliedAt: z.string().nullable().optional(),
+      depositAppliedAt: z.string().datetime().nullable().optional(),
       depositAppliedEur: z.number().nonnegative().nullable().optional(),
-      depositRefundedAt: z.string().nullable().optional(),
+      depositRefundedAt: z.string().datetime().nullable().optional(),
       depositRefundedEur: z.number().nonnegative().nullable().optional(),
-      depositRetainedAt: z.string().nullable().optional(),
+      depositRetainedAt: z.string().datetime().nullable().optional(),
       depositNote: z.string().max(500).nullable().optional(),
-      colorFormula: z.string().nullable().optional(),
-      technicalNotes: z.string().nullable().optional(),
-      reminderSentAt: z.string().nullable().optional(),
+      colorFormula: z.string().max(2000).nullable().optional(),
+      technicalNotes: z.string().max(5000).nullable().optional(),
+      reminderSentAt: z.string().datetime().nullable().optional(),
       privacyNoticeAccepted: z.boolean().optional(),
       // Lote 3: lo que antes iba codificado dentro de `note`.
       // Respuestas del formulario de reserva `{ idDePregunta: valor }`. Llegan de
@@ -1093,8 +1094,8 @@ export const syncAppointment = createServerFn({ method: "POST" })
         .refine((r) => Object.keys(r).length <= 40)
         .nullable()
         .optional(),
-      depositDueAt: z.string().nullable().optional(),
-      depositPeriodHours: z.number().nullable().optional(),
+      depositDueAt: z.string().datetime().nullable().optional(),
+      depositPeriodHours: z.number().nonnegative().max(24 * 365).nullable().optional(),
       origen: z.enum(["sishow", "tpv123"]).optional(),
       /** Solo el panel, y solo tras confirmar el aviso de solape (ver lib/solape.ts). */
       permitirSolape: z.boolean().optional(),
@@ -1154,6 +1155,9 @@ export const syncAppointment = createServerFn({ method: "POST" })
     }
     if (!manda && Date.parse(data.startISO) > Date.now() + HORIZONTE_RESERVA_DIAS * 86_400_000) {
       return { synced: false as const, reason: ERROR_RESERVA_LEJANA };
+    }
+    if (!manda && !admiteReservaPublicaPorIp(data.slug)) {
+      return { synced: false as const, reason: ERROR_DEMASIADAS_RESERVAS };
     }
 
     const supabase = getSupabaseServerClient();
@@ -1877,10 +1881,10 @@ export const saveClient = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       slug,
-      name: z.string().min(1),
-      phone: z.string(),
+      name: z.string().min(1).max(100),
+      phone: z.string().max(30),
       email: z.string().email().optional(),
-      notes: z.string().optional(),
+      notes: z.string().max(5000).optional(),
       createdAt: z.string().datetime().optional(),
       tpvCode: z.string().max(40).optional(),
       birthday: z
@@ -2017,10 +2021,10 @@ export const applyClientPenalty = createServerFn({ method: "POST" })
     z.object({
       slug,
       clientId: z.string().optional(),
-      phone: z.string().min(1),
-      name: z.string().optional(),
-      eur: z.number().nonnegative(),
-      note: z.string().optional(),
+      phone: z.string().min(1).max(30),
+      name: z.string().max(100).optional(),
+      eur: z.number().nonnegative().max(100_000),
+      note: z.string().max(1000).optional(),
       /** Cuándo se aplicó: es desde donde cuentan los 30 días de caducidad del bloqueo. */
       penaltyAt: z.string().nullable().optional(),
       /** El dueño mantiene el bloqueo más allá de los 30 días. */
@@ -2068,8 +2072,8 @@ export const clearClientPenalty = createServerFn({ method: "POST" })
       manualBlock: z.boolean().optional(),
       slug,
       clientId: z.string().optional(),
-      phone: z.string().min(1),
-      note: z.string().optional(),
+      phone: z.string().min(1).max(30),
+      note: z.string().max(1000).optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -2100,7 +2104,7 @@ export const clearClientPenalty = createServerFn({ method: "POST" })
 /** Guarda las indicaciones del salón sobre un cliente ("usa el número 8"). */
 export const saveClientNotes = createServerFn({ method: "POST" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug, phone: z.string().min(1), notes: z.string() }))
+  .inputValidator(z.object({ slug, phone: z.string().min(1).max(30), notes: z.string().max(5000) }))
   .handler(async ({ data }) => {
     // Las notas son texto libre del salón sobre una persona con nombre y
     // teléfono. Escribirlas —y leerlas— es del dueño.
@@ -2135,7 +2139,7 @@ export const saveClientNotes = createServerFn({ method: "POST" })
  */
 export const checkClientPenalty = createServerFn({ method: "GET" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug, phone: z.string() }))
+  .inputValidator(z.object({ slug, phone: z.string().max(30) }))
   .handler(async ({ data }): Promise<{ client: Client | null }> => {
     const supabase = getSupabaseServerClient();
     if (!supabase) return { client: null };

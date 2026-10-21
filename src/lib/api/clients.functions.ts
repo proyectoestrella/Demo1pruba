@@ -26,15 +26,15 @@ export const registerBookingClient = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       salonSlug: z.string().min(1).max(120),
-      name: z.string().min(1),
-      phone: z.string().min(1),
-      email: z.string().email().optional(),
-      serviceIds: z.array(z.string().min(1)).min(1),
-      employeeId: z.string().min(1),
-      startISO: z.string().min(1),
-      durationMin: z.number().positive(),
-      priceEur: z.number().nonnegative(),
-      note: z.string().optional(),
+      name: z.string().min(1).max(100),
+      phone: z.string().min(1).max(30),
+      email: z.string().email().max(200).optional(),
+      serviceIds: z.array(z.string().min(1).max(100)).min(1).max(20),
+      employeeId: z.string().min(1).max(100),
+      startISO: z.string().datetime(),
+      durationMin: z.number().positive().max(24 * 60),
+      priceEur: z.number().nonnegative().max(100_000),
+      note: z.string().max(1000).optional(),
     }),
   )
   .handler(async ({ data }) => {

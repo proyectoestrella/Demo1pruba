@@ -1,7 +1,7 @@
 import { hostActual, slugSalonDelHost } from "@/lib/host-actual";
 import { InstalarPanel } from "@/components/InstalarPanel";
 import { conRegistroEnPausa } from "@/lib/store";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { menosMovimiento } from "@/lib/movimiento-panel";
 import { sincronizarColores } from "@/lib/colores-elegidos";
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
@@ -13,9 +13,6 @@ import { useSyncPanelV2FromUrl, usePanelV2 } from "@/lib/use-panel-v2";
 import { DEMO_PARAM, blankDemoProfile, decodeDemoProfile } from "@/lib/demo-profile";
 import { inferBusinessType } from "@/lib/business-type";
 import { useDemoRegistradaAlDia } from "@/lib/demos/aplicar";
-import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
-import { AssistantPanel } from "@/components/assistant/AssistantPanel";
-import { PanelV2Shell } from "@/components/PanelV2Shell";
 import { GuardiaDelPanel } from "@/components/GuardiaDelPanel";
 import { FichasGlobales } from "@/components/FichasGlobales";
 import { accesoAlPanel } from "@/lib/api/salons.functions";
@@ -46,6 +43,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+
+const NewAppointmentDialog = lazy(() =>
+  import("@/components/NewAppointmentDialog").then((m) => ({ default: m.NewAppointmentDialog })),
+);
+const AssistantPanel = lazy(() =>
+  import("@/components/assistant/AssistantPanel").then((m) => ({ default: m.AssistantPanel })),
+);
+const PanelV2Shell = lazy(() =>
+  import("@/components/PanelV2Shell").then((m) => ({ default: m.PanelV2Shell })),
+);
 
 export const Route = createFileRoute("/app")({
   /**
@@ -281,7 +288,11 @@ function PanelAutorizado({ slug }: { slug?: string }) {
 
   return (
     <>
-      {panelV2 && plan !== "reservas" ? <PanelV2Shell /> : <DashboardLayoutV1 />}
+      {panelV2 && plan !== "reservas" ? (
+        <Suspense fallback={<div className="min-h-dvh" aria-busy="true" aria-label="Cargando panel" />}>
+          <PanelV2Shell />
+        </Suspense>
+      ) : <DashboardLayoutV1 />}
       <InstalarPanel />
       <FichasGlobales />
       {refresco && (
@@ -386,7 +397,11 @@ function DashboardLayoutV1() {
 
         <BarraInferior path={path} onNuevaCita={() => setNewApptOpen(true)} />
 
-        <NewAppointmentDialog open={newApptOpen} onOpenChange={setNewApptOpen} />
+        {newApptOpen && (
+          <Suspense fallback={null}>
+            <NewAppointmentDialog open onOpenChange={setNewApptOpen} />
+          </Suspense>
+        )}
 
         <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
           <SheetContent side="right" panel="asistente" className="flex w-full flex-col gap-0 p-0">
@@ -397,7 +412,11 @@ function DashboardLayoutV1() {
                 modelo de lenguaje y no inventa cifras.
               </SheetDescription>
             </SheetHeader>
-            <AssistantPanel className="flex-1" />
+            {assistantOpen && (
+              <Suspense fallback={<p role="status" className="p-4 text-sm text-muted-foreground">Cargando asistente…</p>}>
+                <AssistantPanel className="flex-1" />
+              </Suspense>
+            )}
           </SheetContent>
         </Sheet>
       </div>
