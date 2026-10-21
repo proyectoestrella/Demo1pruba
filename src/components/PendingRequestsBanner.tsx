@@ -7,7 +7,7 @@ import { usePlegado } from "@/lib/use-plegado";
 import { VentanaConfirmar } from "@/components/VentanaConfirmar";
 import { DuracionOtra } from "@/components/DuracionOtra";
 import { toast } from "sonner";
-import { AlertTriangle, Clock, Clock3, MessageCircle } from "lucide-react";
+import { AlertTriangle, CalendarDays, Check, Clock, Clock3, UserRound } from "lucide-react";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { employeeMap } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
@@ -17,8 +17,6 @@ import { duracionRecordada } from "@/lib/derive";
 import { enlaceDeFianza } from "@/lib/avisos";
 import { eur } from "@/lib/copy";
 import type { Appointment } from "@/lib/mock/types";
-import { StatusBadge } from "@/components/StatusBadge";
-import { StylistDot } from "@/components/StylistAvatar";
 import { Button } from "@/components/ui/button";
 import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
 import { SenalCita } from "@/components/SenalCita";
@@ -134,78 +132,29 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
   return (
     <div
       data-tour="pending-requests"
-      className="overflow-hidden rounded-[20px] border-[1.5px] border-dashed border-moca bg-card"
+      className="tarjeta-principal overflow-hidden border-0 bg-miel/85"
     >
       <div
-        className={cn("flex items-center gap-2.5 px-5 py-4", abierto && "border-b border-border", plegable && "cursor-pointer hover:bg-beige/50")}
+        className={cn("flex items-center gap-2.5 px-5 py-4", plegable && "cursor-pointer hover:bg-white/20")}
         {...(plegable ? { role: "button", tabIndex: 0, "aria-expanded": abierto, onClick: alternar, onKeyDown: (e: React.KeyboardEvent) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), alternar()) } : {})}
       >
         <Clock className="size-[18px] shrink-0 text-primary" strokeWidth={1.6} />
         <div className="min-w-0">
           <h2 className="text-base font-extrabold tracking-[-0.01em] text-foreground">
-            {duracionFlexible
-              ? `${pending.length} ${pending.length === 1 ? "solicitud" : "solicitudes"} por confirmar`
-              : `${pending.length} ${
-                  pending.length === 1 ? "solicitud pendiente" : "solicitudes pendientes"
-                } de confirmar`}
+            {pending.length} {pending.length === 1 ? "solicitud" : "solicitudes"} por confirmar
           </h2>
-          {duracionFlexible && abierto && (
-            <p className="text-[12.5px] text-muted-foreground">
-              Ajusta la duración de cada una antes de aceptarla: la decides tú, no la clienta.
-            </p>
-          )}
+          {abierto && <p className="mt-1 text-[13px] leading-relaxed text-cafe-medio">
+            Revisa cada solicitud y confirma su hueco en la agenda.
+          </p>}
         </div>
         {plegable && (
           <ChevronDown className={cn("ml-auto size-5 shrink-0 text-cafe-medio transition-transform", abierto && "rotate-180")} strokeWidth={1.6} aria-hidden="true" />
         )}
       </div>
       {abierto && (
-      <div className="divide-y divide-border">
+      <div className="grid gap-3 px-3 pb-4 sm:px-5 sm:pb-5">
         {pending.map((a) => {
           const emp = employeeMap[a.employeeId];
-
-          if (!duracionFlexible) {
-            return (
-              <div
-                key={a.id}
-                className="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-bold"><EnlaceClienta clientId={a.clientId}>{a.clientName}</EnlaceClienta></p>
-                  <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
-                    <StylistDot employeeId={a.employeeId} className="size-2" />
-                    {serviceLabelOf(a, serviceMap)} ·{" "}
-                    {new Date(a.start).toLocaleString("es", {
-                      day: "numeric",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}{" "}
-                    · con {emp.name}
-                  </p>
-                  <BookingAnswersSummary answers={a.bookingAnswers} />
-                  <SenalCita cita={a} compacta />
-                </div>
-                <div className="flex shrink-0 flex-wrap items-center gap-2">
-                  <Button size="sm" onClick={() => handleConfirm(a)}>
-                    Confirmar
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => onOpenDetail(a)}>
-                    Cambiar fecha/hora
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-melocoton-tinta hover:bg-melocoton hover:text-melocoton-tinta"
-                    onClick={() => handleReject(a)}
-                  >
-                    Rechazar
-                  </Button>
-                  <StatusBadge status={a.status} className="hidden sm:inline-flex" />
-                </div>
-              </div>
-            );
-          }
 
           // --- Caso duración flexible: el salón decide cuánto dura cada cita ---
           const catalogoMin = a.serviceIds.reduce(
@@ -221,37 +170,44 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
           const solape = proximaConSolape(a, duracionElegida);
 
           return (
-            <div key={a.id} className="flex flex-col gap-3 px-5 py-4">
-              <div className="min-w-0">
-                <p className="truncate font-bold"><EnlaceClienta clientId={a.clientId}>{a.clientName}</EnlaceClienta></p>
-                <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
-                  {!soloUno && <StylistDot employeeId={a.employeeId} className="size-2" />}
-                  {serviceLabelOf(a, serviceMap)} ·{" "}
-                  {new Date(a.start).toLocaleString("es", {
-                    day: "numeric",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                  {soloUno ? "" : ` · con ${emp.name}`}
-                </p>
+            <article key={a.id} className="flex min-w-0 flex-col gap-3 rounded-2xl bg-white/65 p-4 shadow-[0_3px_10px_rgba(59,47,42,0.04)]" aria-label={`Solicitud de ${a.clientName}`}>
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="min-w-[68px] shrink-0 rounded-xl bg-nata/70 px-2.5 py-2 text-center tabular-nums">
+                  <p className="text-[11px] font-semibold text-cafe-medio">
+                    {new Date(a.start).toLocaleDateString("es", { day: "numeric", month: "short" })}
+                  </p>
+                  <p className="mt-1 text-lg font-bold leading-tight text-cafe">
+                    {new Date(a.start).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-display text-[20px] font-medium leading-tight text-cafe">
+                    <EnlaceClienta clientId={a.clientId}>{a.clientName}</EnlaceClienta>
+                  </h3>
+                  <p className="mt-1 text-sm leading-snug text-cafe-medio">{serviceLabelOf(a, serviceMap)}</p>
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    {!soloUno && emp && <span className="inline-flex items-center gap-1.5"><UserRound className="size-3.5" aria-hidden="true" />{emp.name}</span>}
+                    <span className="inline-flex items-center gap-1.5"><Clock3 className="size-3.5" aria-hidden="true" />{duracionFlexible ? duracionElegida : a.duration} min</span>
+                    <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-3.5" aria-hidden="true" />
+                      {new Date(a.start).toLocaleDateString("es", { weekday: "long" })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2 empty:hidden">
                 <BookingAnswersSummary answers={a.bookingAnswers} />
-                <SenalCita cita={a} compacta />
+                <SenalCita cita={a} compacta className="space-y-3 border-0 bg-nata/50 px-4 py-4" />
               </div>
 
-              <div className="flex flex-col gap-1.5 rounded-2xl bg-nata px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+              {duracionFlexible && <>
+              <div className="flex flex-col gap-1.5 rounded-xl bg-nata/60 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 space-y-1">
-                  <p className="text-xs font-medium text-foreground">Duración propuesta</p>
+                  <p className="text-xs font-medium text-foreground">¿Cuánto tiempo necesitas?</p>
                   {recordada && (
                     <p className="flex items-start gap-1.5 text-xs text-primary">
                       <Clock3 className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
                       <span>
-                        La última vez tardó {recordada.minutos} min (
-                        {new Date(recordada.cuando).toLocaleDateString("es", {
-                          day: "numeric",
-                          month: "long",
-                        })}
-                        ), no los {catalogoMin} de la carta. Te proponemos {recordada.minutos}.
+                        Última visita: {recordada.minutos} min. Duración de la carta: {catalogoMin} min.
                       </span>
                     </p>
                   )}
@@ -306,23 +262,25 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
                 </p>
               )}
 
-              <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" onClick={() => handleConfirmConDuracion(a, duracionElegida)}>
-                  Confirmar con esta duración
+              </>}
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+                <Button size="sm" className="order-last min-h-11 gap-1.5 sm:order-first"
+                  onClick={() => duracionFlexible ? handleConfirmConDuracion(a, duracionElegida) : handleConfirm(a)}>
+                  <Check className="size-4" aria-hidden="true" />Confirmar cita
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => onOpenDetail(a)}>
-                  Cambiar fecha/hora
+                <Button size="sm" variant="outline" className="min-h-11" onClick={() => onOpenDetail(a)}>
+                  Revisar o cambiar
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-melocoton-tinta hover:bg-melocoton hover:text-melocoton-tinta"
+                  className="min-h-11 text-cafe-medio hover:bg-nata hover:text-cafe"
                   onClick={() => handleReject(a)}
                 >
                   Rechazar
                 </Button>
               </div>
-            </div>
+            </article>
           );
         })}
       </div>

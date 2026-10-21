@@ -167,10 +167,10 @@ export function ClientHistorySheet({
   // Cabecera de PERSONA: avatar grande y nombre en serif. Nada de barras de
   // color ni horas: eso es de las citas.
   const cabecera = (
-    <div className="flex items-center gap-4">
-      <EditarAvatar tipo="clienta" id={client.id} nombre={client.name} size="2xl" />
+    <div className="flex items-center gap-3 rounded-[24px] bg-card p-4 shadow-[0_4px_16px_-6px_rgba(59,47,42,0.14)]">
+      <EditarAvatar tipo="clienta" id={client.id} nombre={client.name} size="lg" />
       <div className="min-w-0">
-        <p className="font-display text-[30px] leading-tight font-medium break-words sm:text-[32px]">
+        <p className="font-display text-[25px] leading-tight font-medium break-words sm:text-[28px]">
           {client.name}
         </p>
         {client.phone && (
@@ -236,10 +236,10 @@ export function ClientHistorySheet({
             type="button"
             onClick={() => abrirCita(proxima.id)}
             aria-label={`Abrir la cita del ${new Date(proxima.start).toLocaleDateString("es", { day: "numeric", month: "long" })}`}
-            className="group flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 text-left hover:bg-nata focus-visible:outline-2 focus-visible:outline-primary"
+            className="group flex w-full flex-wrap items-center gap-3 rounded-2xl bg-card px-4 py-3 shadow-[0_4px_14px_-6px_rgba(59,47,42,0.12)] text-left hover:bg-nata focus-visible:outline-2 focus-visible:outline-primary"
           >
             <span
-              className="grid w-14 shrink-0 place-items-center rounded-lg bg-arena py-1.5 text-cafe"
+              className="grid w-14 shrink-0 place-items-center rounded-xl bg-miel py-1.5 text-cafe"
               aria-hidden="true"
             >
               <span className="text-[11px] font-bold uppercase">
@@ -251,7 +251,7 @@ export function ClientHistorySheet({
                 {new Date(proxima.start).getDate()}
               </span>
             </span>
-            <span className="min-w-0 flex-1">
+            <span className="min-w-[120px] flex-1">
               <span className="flex flex-wrap items-center gap-x-2">
                 <span className="text-[15px] font-extrabold tabular-nums">
                   {hora(proxima.start)}
@@ -266,7 +266,7 @@ export function ClientHistorySheet({
                   </span>
                 )}
               </span>
-              <span className="block truncate text-[13.5px] text-cafe-medio">
+              <span className="mt-0.5 block text-[13px] leading-snug text-cafe-medio">
                 {serviceLabelOf(proxima, carta) || "—"}
                 {!soloUno && empProxima ? ` · con ${empProxima.name}` : ""}
               </span>
@@ -298,7 +298,7 @@ export function ClientHistorySheet({
           alguien ha fallado dos veces en tres meses cambia la decisión aunque
           ya te haya pagado la penalización. */}
         {veDeudas && plantones && (
-          <div className="flex items-center gap-2.5 rounded-2xl border border-melocoton-borde bg-melocoton px-3.5 py-3 text-melocoton-tinta">
+          <div className="flex items-center gap-2.5 rounded-2xl bg-melocoton px-3.5 py-3 text-melocoton-tinta">
             <TriangleAlert className="size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
             <p className="text-[12.5px]">{plantones}</p>
           </div>
@@ -361,22 +361,23 @@ export function ClientHistorySheet({
         antesDelHistorial={
           <>
             {/* Observaciones */}
-            <div>
+            <section className="mt-3 rounded-2xl bg-card px-4 pb-4 pt-1">
               <EtiquetaFicha id="notas-clienta">Notas y preferencias</EtiquetaFicha>
               <Textarea
                 aria-labelledby="notas-clienta"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 onBlur={saveNotes}
-                rows={3}
+                rows={2}
                 placeholder="Usa el número 8 · Le vendimos el champú de árbol de té, preguntar qué tal"
-                className="resize-y text-sm"
+                className="resize-y bg-background text-sm"
               />
-            </div>
+              <p className="mt-2 text-xs text-muted-foreground">Se guardan al salir del campo.</p>
+            </section>
 
             {/* El resto de próximas citas */}
             {masProximas.length > 0 && (
-              <div>
+              <section className="mt-3 rounded-2xl bg-card px-4 pb-2 pt-1">
                 <EtiquetaFicha>Más citas por venir</EtiquetaFicha>
                 <ul className="divide-y divide-border/60">
                   {masProximas.map((a) => (
@@ -400,7 +401,7 @@ export function ClientHistorySheet({
                     </li>
                   ))}
                 </ul>
-              </div>
+              </section>
             )}
 
             {/* Anuladas y plantones: plegado, es historia que casi nunca se mira. */}
@@ -408,6 +409,7 @@ export function ClientHistorySheet({
               <div className="mt-3">
                 <Desplegable
                   titulo="Anuladas y plantones"
+                  className="rounded-2xl border-0 bg-card px-4 py-1"
                   resumen={`${history.length} ${history.length === 1 ? "cita" : "citas"}`}
                 >
                   <ul className="divide-y divide-border/60">
@@ -439,6 +441,7 @@ export function ClientHistorySheet({
         <div className="mt-5">
           <Desplegable
             titulo="Reserva por internet"
+            className="rounded-2xl border-0 bg-card px-4 py-1"
             resumen={client.manualBlock ? "Bloqueada a mano" : "Puede reservar"}
             abiertoAlInicio={!!client.manualBlock}
           >
@@ -473,7 +476,7 @@ export function ClientHistorySheet({
         descripcion={`Contacto, visitas, color y observaciones de ${client.name}.`}
         onVolver={puedeVolver ? volver : undefined}
       >
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-8 sm:px-7 sm:pt-7 sm:pb-10">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-background px-4 pt-4 pb-6 sm:px-5 sm:pb-8">
           {body}
         </div>
       </FichaContenedor>

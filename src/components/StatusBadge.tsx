@@ -3,14 +3,14 @@ import { cn } from "@/lib/utils";
 import type { AppointmentStatus } from "@/lib/mock/types";
 
 /**
- * Chips de estado «Arena» (DESIGN.md): lo pendiente de la dueña va con borde
- * discontinuo moca, lo confirmado y lo resuelto en salvia (acento verde 9c), los avisos en melocotón y el resto
+ * Chips de estado «Arena» (DESIGN.md): lo pendiente de la dueña va en amarillo
+ * sin borde, lo confirmado y lo resuelto en salvia, los avisos en melocotón y el resto
  * en nata. Nunca un color de alarma para lo que solo está pendiente.
  */
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; className: string; Icono?: LucideIcon }> = {
   pending: { Icono: Clock3,
     label: "Por confirmar",
-    className: "border-[1.5px] border-dashed border-moca bg-card text-primary",
+    className: "border-0 bg-miel text-cafe",
   },
   confirmed: { Icono: Check, label: "Confirmada", className: "bg-salvia-suave text-hoja-tinta" },
   "in-progress": { Icono: UserCheck, label: "En el salón", className: "bg-salvia-clara text-hoja-tinta" },

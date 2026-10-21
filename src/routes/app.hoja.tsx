@@ -1,9 +1,8 @@
-import { tinteProfesional } from "@/lib/colores-elegidos";
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
 import { useFichas } from "@/lib/use-fichas";
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Printer, TriangleAlert } from "lucide-react";
+import { ChevronDown, Clock3, History, Printer, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { whatsappUrl } from "@/lib/campanas";
@@ -48,7 +47,6 @@ function HojaDelDia() {
   return <div className="hoja-dia flex flex-1 flex-col gap-5">
     <header className="flex flex-wrap items-end gap-4">
       <div className="min-w-0">
-        <p className="text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase">{salon.name} · Agenda de trabajo</p>
         <h1 className="text-[26px] leading-[1.1] font-extrabold tracking-[-0.02em] md:text-[32px]">Hoja {manana ? "de mañana" : "del día"}</h1>
         <p className="mt-1 text-muted-foreground">{fecha.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
       </div>
@@ -72,7 +70,7 @@ function HojaDelDia() {
         return <div key={cita.id} className="flex flex-wrap items-center gap-3 border-t border-border px-5 py-[11px]">
           <span className="w-[46px] shrink-0 font-extrabold tabular-nums">{new Date(cita.start).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</span>
           <span className="min-w-0 flex-1"><b className="block truncate">{cita.clientName}</b><span className="block truncate text-[12.5px] text-muted-foreground">{serviceLabelOf(cita, carta)}</span></span>
-          {cita.reminderSentAt ? <span className="inline-flex h-6 items-center rounded-full bg-salvia-clara px-2.5 text-[12.5px] font-bold text-hoja-tinta">Enviado</span> : <div className="flex gap-1.5">
+          {cita.reminderSentAt ? <span className="inline-flex h-6 items-center rounded-full bg-nata px-2.5 text-[12.5px] font-bold text-cafe-medio">Enviado</span> : <div className="flex gap-1.5">
             <Button size="sm" disabled={!telefono} onClick={() => {
               if (!telefono) return;
               // El texto de la dueña si lo escribió en Ajustes; si no, el de siempre.
@@ -92,11 +90,11 @@ function HojaDelDia() {
       })}
     </section>}
     {grupos.length === 0 && <p className="tarjeta-principal border border-border p-6 text-[12.5px] text-muted-foreground">No hay citas para este día.</p>}
-    {grupos.map(({ profesional, visitas }, gi) => {
+    {grupos.map(({ profesional, visitas }) => {
       const jornadas = franjasProfesional(profesional, fecha.getDay()).map((r) => `${hhmm(r.start)}–${hhmm(r.end)}`);
       return <section key={profesional.id} className="hoja-grupo overflow-hidden tarjeta-principal bg-card">
       <h2 className="flex flex-wrap items-center gap-2.5 border-b border-border bg-perla px-5 py-3">
-        <span className="grid size-8 place-items-center rounded-full text-xs font-extrabold" style={{ background: tinteProfesional(gi) }} aria-hidden="true">{profesional.name.slice(0, 2).toUpperCase()}</span>
+        <span className="grid size-8 place-items-center rounded-full bg-nata text-xs font-extrabold text-cafe-medio" aria-hidden="true">{profesional.name.slice(0, 2).toUpperCase()}</span>
         <span className="text-base font-extrabold">{profesional.name}</span>
         <span className="inline-flex h-6 items-center rounded-full bg-nata px-2.5 text-[12.5px] font-bold text-cafe-medio tabular-nums">{visitas.length} {visitas.length === 1 ? "cita" : "citas"} · {jornadas.length ? jornadas.join(", ") : "No trabaja"}</span>
       </h2>
@@ -104,25 +102,71 @@ function HojaDelDia() {
       <div className="divide-y divide-border">{visitas.map(({ cita, ultimoColor }) => {
         const ficha = fichaDeClienta(cita.clientId, { citas, clientes, servicios, equipo, ahora: new Date() });
         const anteriores = ficha.visitas.filter((v) => +new Date(v.fecha) < +new Date(cita.start)).slice(0, 3);
-        return <div key={cita.id} className="hoja-visita grid grid-cols-[3.5rem_1fr] gap-x-4 px-5 py-3.5 lg:grid-cols-[3.5rem_15rem_1fr_1fr]">
-          <button type="button" onClick={() => setSelected(cita)} className="col-span-2 grid grid-cols-[3.5rem_1fr] gap-x-4 gap-y-2 text-left focus-visible:outline-2 focus-visible:outline-primary lg:col-span-4 lg:grid-cols-[3.5rem_15rem_1fr_1fr]">
-            <time className="pt-px font-extrabold tabular-nums">{new Date(cita.start).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</time>
-            <div className="min-w-0"><p className="font-bold hover:text-primary">{cita.clientName}</p><p className="text-[12.5px] text-muted-foreground">{serviceLabelOf(cita, carta)} · {cita.duration} min</p></div>
-            <div className="col-start-2 space-y-1 text-[12.5px] lg:col-start-3">
-              {ultimoColor?.colorFormula ? <p className="rounded-xl bg-salvia-clara px-2.5 py-1.5 text-hoja-tinta"><b>Color:</b> {ultimoColor.colorFormula}</p> : <p className="px-2.5 text-muted-foreground">Sin color anotado</p>}
-              {ultimoColor?.technicalNotes && <p className="px-2.5"><b>Notas técnicas:</b> {ultimoColor.technicalNotes}</p>}
-              <BookingAnswersSummary answers={cita.bookingAnswers} />
-              {(cita.depositReceivedAt || cita.depositRequestedAt) && <p className="px-2.5 text-muted-foreground">Señal: {cita.depositReceivedAt ? "recibida" : "pedida, pendiente"}</p>}
+        return <article key={cita.id} className="hoja-visita grid items-start gap-3 px-4 py-3.5 lg:grid-cols-[minmax(220px,0.9fr)_minmax(0,1.2fr)_minmax(190px,0.9fr)] sm:px-5" aria-label={`Cita de ${cita.clientName}`}>
+          <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
+            <time className="grid min-h-10 min-w-[60px] shrink-0 place-items-center rounded-xl bg-nata px-2 text-base font-extrabold text-cafe tabular-nums"
+              dateTime={cita.start}>
+              {new Date(cita.start).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+            </time>
+            <button type="button" onClick={() => setSelected(cita)} className="min-w-0 flex-1 rounded-lg text-left hover:text-primary">
+              <h3 className="font-display text-[18px] leading-tight font-medium">{cita.clientName}</h3>
+              <p className="mt-0.5 text-[12.5px] leading-snug text-cafe-medio">{serviceLabelOf(cita, carta)}</p>
+              <span className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
+                <Clock3 className="size-3.5" aria-hidden="true" />{cita.duration} min
+              </span>
+            </button>
+            <div className="hoja-ficha flex w-full flex-wrap items-center gap-1 lg:pl-[72px]">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setSelected(cita)}>Ver cita</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => abrirClienta(cita.clientId)}>Ficha completa</Button>
             </div>
-            <div className="col-start-2 space-y-1 text-[12.5px] lg:col-start-4">
-            {anteriores.length > 0 && <div><b className="text-muted-foreground">Visitas anteriores</b>
-              {anteriores.map((v, i) => <p key={v.id} className={i === 2 ? "hoja-tercera-visita hidden" : ""}><span className="tabular-nums">{new Date(v.fecha).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}</span> · {v.servicios.join(" + ")}{v.colorFormula ? ` · ${v.colorFormula}` : " · Sin color anotado"}</p>)}
-            </div>}
-            {ficha.avisos.length > 0 && <div className="flex gap-1.5 rounded-xl bg-melocoton px-2.5 py-1.5 text-melocoton-tinta"><TriangleAlert className="mt-px size-3.5 shrink-0" strokeWidth={1.6} /><div>{ficha.avisos.map((a) => <p key={a}>{a}</p>)}</div></div>}
+          </div>
+
+          <div className="min-w-0 space-y-2">
+          {(ultimoColor?.colorFormula || ultimoColor?.technicalNotes || cita.note) && (
+            <div className="grid gap-2">
+              {ultimoColor?.colorFormula && <div className="rounded-xl bg-nata/60 px-3 py-2 text-cafe-medio">
+                <p className="mb-0.5 text-[11px] font-bold">Última fórmula de color</p>
+                <p className="text-[12.5px] leading-snug">{ultimoColor.colorFormula}</p>
+              </div>}
+              {(ultimoColor?.technicalNotes || cita.note) && <div className="rounded-xl bg-nata/60 px-3 py-2">
+                {ultimoColor?.technicalNotes && <div><p className="mb-1 text-xs font-bold text-cafe-medio">Notas técnicas</p>
+                  <p className="text-[12.5px] leading-snug text-cafe-medio">{ultimoColor.technicalNotes}</p></div>}
+                {cita.note && <div className={ultimoColor?.technicalNotes ? "mt-2" : ""}>
+                  <p className="mb-1 text-xs font-bold text-cafe-medio">Para esta cita</p>
+                  <p className="text-[12.5px] leading-snug text-cafe-medio">{cita.note}</p></div>}
+              </div>}
             </div>
-          </button>
-          <Button type="button" variant="outline" size="sm" className="hoja-ficha col-start-2 mt-2 justify-self-start lg:col-start-3" onClick={() => abrirClienta(cita.clientId)}>Ficha completa</Button>
-        </div>;
+          )}
+          <BookingAnswersSummary answers={cita.bookingAnswers} formato="hoja" />
+          {(cita.depositReceivedAt || cita.depositRequestedAt) && <p className="inline-flex rounded-full bg-nata/60 px-2.5 py-1 text-xs font-semibold text-cafe-medio">
+            {cita.depositReceivedAt ? "Señal recibida" : "Señal pendiente"}
+          </p>}
+
+          </div>
+          <div className="min-w-0 space-y-2">
+          {ficha.avisos.length > 0 && <div className="flex items-start gap-2 rounded-xl bg-melocoton/50 px-3 py-2 text-[13px] text-melocoton-tinta">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" strokeWidth={1.6} aria-hidden="true" />
+            <div><p className="mb-1 font-bold">Ten en cuenta</p>{ficha.avisos.map((aviso) => <p key={aviso} className="leading-snug">{aviso}</p>)}</div>
+          </div>}
+
+          {anteriores.length > 0 && <details className="rounded-xl bg-nata/60 px-3 py-2">
+            <summary className="flex min-h-6 cursor-pointer list-none items-center gap-2 text-[13px] font-semibold text-cafe-medio [&::-webkit-details-marker]:hidden">
+              <History className="size-4 shrink-0" aria-hidden="true" />
+              Visitas anteriores <span className="font-normal text-muted-foreground">({anteriores.length})</span>
+              <ChevronDown className="ml-auto size-4" aria-hidden="true" />
+            </summary>
+            <ol className="mt-3 grid gap-3">
+              {anteriores.map((visita) => <li key={visita.id} className="grid gap-1 text-[13px] sm:grid-cols-[100px_1fr] sm:gap-4">
+                <time className="text-xs font-semibold text-muted-foreground tabular-nums">
+                  {new Date(visita.fecha).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
+                </time>
+                <div><p className="font-semibold text-cafe-medio">{visita.servicios.join(" + ")}</p>
+                  {visita.colorFormula && <p className="mt-1 leading-relaxed text-muted-foreground">{visita.colorFormula}</p>}</div>
+              </li>)}
+            </ol>
+          </details>}
+          </div>
+        </article>;
       })}</div>
     </section>;
     })}

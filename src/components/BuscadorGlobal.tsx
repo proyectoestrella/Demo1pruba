@@ -54,8 +54,9 @@ export function BuscadorGlobal({ variante = "icono" }: {
         className="flex h-[42px] w-full min-w-0 items-center gap-2 rounded-full border border-input bg-card px-3.5 text-left text-sm text-muted-foreground hover:bg-nata"
       >
         <Search className="size-[18px] shrink-0" strokeWidth={1.6} />
-        <span className="min-w-0 flex-1 truncate">Buscar clienta por nombre o teléfono</span>
-        <kbd className="hidden rounded-md border border-border px-1.5 text-[11px] font-medium xl:inline">/</kbd>
+        <span className="min-w-0 flex-1 truncate md:group-data-[panel=abierto]/panel:hidden">Buscar clienta por nombre o teléfono</span>
+        <span className="hidden min-w-0 flex-1 truncate md:group-data-[panel=abierto]/panel:block">Buscar clienta</span>
+        <kbd className="hidden rounded-md border border-border px-1.5 text-[11px] font-medium xl:inline md:group-data-[panel=abierto]/panel:hidden">/</kbd>
       </button>
     ) : (
       <Button type="button" variant="outline" size="icon" onClick={() => setOpen(true)} aria-label="Buscar clientas" title="Buscar clientas · / o Ctrl+K">

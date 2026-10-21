@@ -1,4 +1,4 @@
-import { bordeProfesional } from "@/lib/colores-elegidos";
+import { bordeProfesional, tinteProfesional } from "@/lib/colores-elegidos";
 import { tituloCalendario } from "@/lib/calendario-titulo-panel";
 import { useFichas } from "@/lib/use-fichas";
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
@@ -924,15 +924,20 @@ function Cronograma({
         }}
       >
         <div className="sticky left-0 z-[8] grid border-r border-k-linea-f bg-transparent" style={{ gridTemplateRows: filas }}>
-          <div className="flex items-center border-b border-k-linea-f bg-transparent pl-4 text-[11px] font-bold tracking-[0.06em] text-k-tinta2 uppercase">Profesional</div>
+          <div aria-hidden="true" />
           {equipo.map((e, i) => {
             const mias = citas.filter((a) => a.employeeId === e.id && a.status !== "blocked");
             return (
-              <div key={e.id} className="flex items-center gap-1.5 border-b border-k-linea px-2 last:border-b-0 md:gap-3 md:px-4">
+              <div key={e.id} className="relative m-1 flex items-center gap-1.5 rounded-2xl border-0 px-2 text-cafe md:gap-3 md:px-4"
+                style={{
+                  background: `color-mix(in srgb, ${tinteProfesional(i, e.id)} 94%, transparent)`,
+                  boxShadow: "0 4px 12px rgba(59, 47, 42, 0.10)",
+                }}>
                 <div className="min-w-0">
                   <b className="block truncate text-xs md:text-[15px]">{e.name}</b>
                   <small className="block text-[11px] leading-tight text-muted-foreground tabular-nums">
-                    {mias.length} citas · {ocupacionDe(citas, e, dia.getDay())} % ocupada
+                    <span className="block">{mias.length} citas</span>
+                    <span className="block">{ocupacionDe(citas, e, dia.getDay())} % ocupada</span>
                   </small>
                 </div>
               </div>

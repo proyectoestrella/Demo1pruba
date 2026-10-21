@@ -173,12 +173,12 @@ export function CitasPorResolver({ limite = 5, className, plegable }: CitasPorRe
       {pendientes.length > 0 && (
         <div
           className={cn(
-            "overflow-hidden rounded-[20px] border-[1.5px] border-dashed border-moca bg-card",
+            "tarjeta-principal overflow-hidden border-0 bg-miel/85",
             className,
           )}
         >
           <div
-            className={cn("flex items-center gap-2.5 px-5 py-4", plegable && "cursor-pointer hover:bg-beige/50")}
+            className={cn("flex items-center gap-2.5 px-5 py-4", plegable && "cursor-pointer hover:bg-white/20")}
             {...(plegable ? { role: "button", tabIndex: 0, "aria-expanded": abierto, onClick: alternar, onKeyDown: (e: React.KeyboardEvent) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), alternar()) } : {})}
           >
             <HelpCircle className="size-[18px] shrink-0 text-primary" strokeWidth={1.6} aria-hidden="true" />
@@ -198,7 +198,7 @@ export function CitasPorResolver({ limite = 5, className, plegable }: CitasPorRe
           </div>
           {abierto && (
           <>
-          <div className="divide-y divide-border border-t border-border">
+          <div className="space-y-1">
             {visibles.map((a) => (
               <div key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
                 <div className="min-w-0 flex-1">
@@ -225,7 +225,7 @@ export function CitasPorResolver({ limite = 5, className, plegable }: CitasPorRe
             ))}
           </div>
           {pendientes.length > visibles.length && (
-            <p className="border-t border-border px-5 py-2.5 text-[12.5px] text-muted-foreground">
+            <p className="px-5 py-2.5 text-[12.5px] text-muted-foreground">
               Y {pendientes.length - visibles.length} más. Ve marcando: desaparecen solas de aquí.
             </p>
           )}

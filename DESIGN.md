@@ -1,5 +1,11 @@
 # siShow · «Arena» — design brief
 
+## Preferencia vigente: indicadores pendientes
+
+Los indicadores «Por confirmar» y los nuevos elementos equivalentes de estado pendiente
+usan fondo amarillo miel (`bg-miel`), texto café y ningún borde, tampoco discontinuo.
+Esta preferencia sustituye las indicaciones anteriores de borde discontinuo para estos indicadores.
+
 Panel de gestión para peluquerías y salones pequeños (PeluChic: tres profesionales, dueña que
 lo mira entre clienta y clienta, a menudo desde un iPad o el móvil). Su trabajo es uno: que la
 dueña vea de un vistazo qué le espera hoy y lo resuelva con un toque. La interfaz es un salón

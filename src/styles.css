@@ -559,6 +559,29 @@
 .tarjeta-principal { border-radius: var(--radio-tarjeta); box-shadow: var(--sombra-tarjeta); }
 .tarjeta-secundaria { border-radius: var(--radio-tarjeta-sm); box-shadow: var(--sombra-tarjeta-sm); }
 .tarjeta-anidada { border-radius: var(--radio-tarjeta-sm); }
+@media (hover: hover) and (pointer: fine) {
+  .tarjeta-servicio .descripcion-servicio {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: grid-template-rows 260ms var(--curva-salida), opacity 200ms ease;
+  }
+  .tarjeta-servicio:hover .descripcion-servicio,
+  .tarjeta-servicio:focus-within .descripcion-servicio {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+@media screen {
+  .hoja-dia .hoja-grupo {
+    box-shadow: 0 16px 36px -8px rgba(59, 47, 42, 0.28), 0 4px 12px rgba(59, 47, 42, 0.12);
+  }
+}
+.nueva-cita {
+  background: var(--k-crema, var(--pagina));
+  box-shadow: var(--sombra-flotante);
+  animation: entrar-suave 180ms var(--curva-salida) both;
+}
 .contenedor-flotante { border-radius: var(--radio-tarjeta); box-shadow: var(--sombra-flotante); }
 .panel-flotante-lateral { border-radius: var(--radio-tarjeta) 0 0 var(--radio-tarjeta); box-shadow: var(--sombra-flotante); }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid #6B5600; outline-offset: 2px; }

@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Droplet, TriangleAlert } from "lucide-react";
 import { BookingAnswersSummary } from "./BookingAnswersSummary";
 import { eur } from "@/lib/copy";
@@ -31,6 +31,12 @@ export interface DatosColorTPV { fecha: string; producto: string; cantidad: stri
 export function FichaCompleta({ ficha, client, onAddColor, antesDelHistorial, origenTpv123 = false, onAbrirCita }: { ficha: Ficha; client?: Client; onAddColor?: (datos: DatosColorTPV) => void; antesDelHistorial?: ReactNode; origenTpv123?: boolean; onAbrirCita?: (id: string) => void }) {
   const { resumen, avisos, visitas } = ficha;
   const [formularioColor, setFormularioColor] = useState(false);
+  const [verTodoHistorial, setVerTodoHistorial] = useState(false);
+  useEffect(() => {
+    setVerTodoHistorial(false);
+    setFormularioColor(false);
+    setMensajeColor("");
+  }, [client?.id]);
   const [mensajeColor, setMensajeColor] = useState("");
   const [color, setColor] = useState<DatosColorTPV>({ fecha: new Date().toLocaleDateString("sv-SE"), producto: "", cantidad: "", raiz: "", medios: "", puntas: "", tiempo: "", notas: "" });
   function guardarColor() {
@@ -50,17 +56,18 @@ export function FichaCompleta({ ficha, client, onAddColor, antesDelHistorial, or
   const tieneDatosImportados = !!client && !!(client.birthday || client.address || client.taxId || client.tpvAltaDate || ultimaVisitaEsTpv);
 
   return <section aria-label="Ficha completa">
-    {/* Cuatro cifras en una línea de texto, como en Hoy: no se cortan en el móvil. */}
-    <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-2xl bg-nata px-3.5 py-2.5 text-[14px] text-cafe-medio">
-      <Cifra valor={String(resumen.numeroVisitas)} etiqueta={resumen.numeroVisitas === 1 ? "visita" : "visitas"} />
-      <span className="text-taupe" aria-hidden="true">·</span>
-      <Cifra valor={frecuencia} etiqueta="de frecuencia" />
-      <span className="text-taupe" aria-hidden="true">·</span>
-      <Cifra valor={eur(resumen.gastoTotal).replace(",00", "")} etiqueta="de gasto acumulado" />
-      <span className="text-taupe" aria-hidden="true">·</span>
-      <Cifra valor={fechaCorta(ultimaVisita)} etiqueta={ultimaVisitaEsTpv ? "última visita según TPV 123" : "última visita"} delante />
-    </p>
-    <Desplegable titulo="Hábitos y gasto" resumen={`${resumen.servicioHabitual ?? "Sin servicio habitual"} · ${resumen.profesionalHabitual ?? "sin profesional habitual"}`} className="mt-1">
+    <dl className="mt-4 grid grid-cols-2 gap-2">
+      {[
+        [String(resumen.numeroVisitas), resumen.numeroVisitas === 1 ? "Visita" : "Visitas"],
+        [frecuencia, "Frecuencia media"],
+        [eur(resumen.gastoTotal).replace(",00", ""), "Gasto acumulado"],
+        [fechaCorta(ultimaVisita), ultimaVisitaEsTpv ? "Última visita según TPV 123" : "Última visita"],
+      ].map(([valor, etiqueta]) => <div key={etiqueta} className="min-w-0 rounded-2xl bg-card px-4 py-3">
+        <dt className="text-[11.5px] text-muted-foreground">{etiqueta}</dt>
+        <dd className="mt-1 text-lg font-bold text-foreground tabular-nums">{valor}</dd>
+      </div>)}
+    </dl>
+    <Desplegable titulo="Hábitos y gasto" resumen={`${resumen.servicioHabitual ?? "Sin servicio habitual"} · ${resumen.profesionalHabitual ?? "sin profesional habitual"}`} className="mt-3 rounded-2xl border-0 bg-card px-4 py-1">
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12.5px]">
         <Dato etiqueta="Servicio habitual" valor={resumen.servicioHabitual ?? "—"} />
         <Dato etiqueta="Profesional habitual" valor={resumen.profesionalHabitual ?? "—"} />
@@ -69,7 +76,7 @@ export function FichaCompleta({ ficha, client, onAddColor, antesDelHistorial, or
       </dl>
     </Desplegable>
 
-    {tieneDatosImportados && <Desplegable titulo="Datos de la ficha" resumen={client?.address ?? (client?.tpvAltaDate ? `Cliente desde ${fecha(client.tpvAltaDate)}` : "Datos importados de TPV 123")} className="mt-1">
+    {tieneDatosImportados && <Desplegable titulo="Datos de la ficha" resumen={client?.address ?? (client?.tpvAltaDate ? `Cliente desde ${fecha(client.tpvAltaDate)}` : "Datos importados de TPV 123")} className="mt-3 rounded-2xl border-0 bg-card px-4 py-1">
       <dl className="grid grid-cols-1 gap-x-4 gap-y-1.5 text-[12.5px] sm:grid-cols-2">
         {client?.birthday && <Dato etiqueta="Cumpleaños" valor={fecha(client.birthday)} />}
         {client?.address && <Dato etiqueta="Dirección" valor={client.address} />}
@@ -80,11 +87,12 @@ export function FichaCompleta({ ficha, client, onAddColor, antesDelHistorial, or
       </dl>
     </Desplegable>}
 
-    {avisos.length > 0 && <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-melocoton-borde bg-melocoton px-3.5 py-3 text-[12.5px] text-melocoton-tinta">
+    {avisos.length > 0 && <div className="mt-3 flex items-start gap-2.5 rounded-2xl bg-melocoton px-3.5 py-3 text-[12.5px] text-melocoton-tinta">
       <TriangleAlert className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
       <ul className="space-y-0.5">{avisos.map((aviso) => <li key={aviso}>{aviso}</li>)}</ul>
     </div>}
 
+    <section className="mt-3 rounded-2xl bg-card px-4 pb-4 pt-1">
     <EtiquetaFicha>Último color</EtiquetaFicha>
     {resumen.ultimoColor ? <div className="flex gap-2 rounded-xl bg-salvia-clara px-3 py-2.5 text-[12.5px] text-hoja-tinta">
       <Droplet className="mt-px size-[15px] shrink-0" strokeWidth={1.6} aria-hidden="true" />
@@ -108,12 +116,14 @@ export function FichaCompleta({ ficha, client, onAddColor, antesDelHistorial, or
       </div>}
     </div>}
 
+    </section>
+
     {antesDelHistorial}
 
-    {visitas.length > 0 && <>
+    {visitas.length > 0 && <section className="mt-3 rounded-2xl bg-card px-4 pb-4 pt-1">
       <EtiquetaFicha>Historial</EtiquetaFicha>
       <ol className="relative ml-1.5 space-y-3 border-l-2 border-lino pl-5">
-        {visitas.map((v) => <li key={v.id} className="relative before:absolute before:top-1 before:-left-[27px] before:size-3 before:rounded-full before:border-2 before:border-salvia before:bg-card">
+        {(verTodoHistorial ? visitas : visitas.slice(0, 3)).map((v) => <li key={v.id} className="relative before:absolute before:top-1 before:-left-[27px] before:size-3 before:rounded-full before:border-2 before:border-salvia before:bg-card">
           <button type="button" disabled={!onAbrirCita} onClick={() => onAbrirCita?.(v.id)} aria-label={`Abrir la cita del ${fecha(v.fecha)}`} className="-mx-2 flex w-[calc(100%+1rem)] items-start justify-between gap-2 rounded-xl px-2 py-1 text-left enabled:hover:bg-nata focus-visible:outline-2 focus-visible:outline-primary">
             <div className="min-w-0">
               <p className="text-[12.5px] font-bold text-muted-foreground tabular-nums">
@@ -129,18 +139,14 @@ export function FichaCompleta({ ficha, client, onAddColor, antesDelHistorial, or
           <BookingAnswersSummary answers={v.bookingAnswers} />
         </li>)}
       </ol>
-    </>}
+      {visitas.length > 3 && <Button type="button" variant="ghost" className="mt-3 min-h-11 w-full"
+        aria-expanded={verTodoHistorial} onClick={() => setVerTodoHistorial((actual) => !actual)}>
+        {verTodoHistorial ? "Ver solo las últimas 3 visitas" : `Ver las ${visitas.length} visitas`}
+      </Button>}
+    </section>}
   </section>;
 }
 
-function Cifra({ valor, etiqueta, delante = false }: { valor: string; etiqueta: string; delante?: boolean }) {
-  return <span className="whitespace-nowrap">
-    {delante && `${etiqueta} `}
-    <b className="font-extrabold text-foreground tabular-nums">{valor}</b>
-    {!delante && ` ${etiqueta}`}
-  </span>;
-}
-
 function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
-  return <div className="min-w-0"><dt className="text-muted-foreground">{etiqueta}</dt><dd className="truncate font-bold">{valor}</dd></div>;
+  return <div className="min-w-0"><dt className="text-muted-foreground">{etiqueta}</dt><dd className="break-words font-semibold">{valor}</dd></div>;
 }
