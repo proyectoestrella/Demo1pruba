@@ -608,7 +608,7 @@ function rasgos(piel: Piel, simple: boolean, colorPelo: string): string {
     // A 24/28 px, puntos con un brillo se leen como ojos; los óvalos grandes
     // formaban el aspecto de gafas, sobre todo en pieles profundas.
     const ojos = `${circulo(38.5, 49, 3, tintaOjo)}${circulo(57.5, 49, 3, tintaOjo)}${circulo(39.35, 48.15, 0.82, brillo)}${circulo(58.35, 48.15, 0.82, brillo)}`;
-    return `${cejas}${ojos}${trazo("M38.5 61.2q9.5 8.5 19 0", r.boca, 3.8)}`;
+    return `${cejas}${ojos}${trazo("M38.5 60.8q9.5 10 19 0", r.boca, 3.8)}`;
   }
   // En tonos profundos no hay un aro de esclerótica claro alrededor de la
   // pupila: solo tinta y un brillo independiente, para que no parezca gafa.
@@ -616,14 +616,16 @@ function rasgos(piel: Piel, simple: boolean, colorPelo: string): string {
     ? `${ovalo(39, 49, 3.8, 2.9, tintaOjo)}${ovalo(57, 49, 3.8, 2.9, tintaOjo)}${circulo(40.2, 48.1, 1.15, brillo)}${circulo(58.2, 48.1, 1.15, brillo)}`
     : `${circulo(39, 49, 3.5, r.ojo)}${circulo(57, 49, 3.5, r.ojo)}${circulo(40.2, 47.8, 1.1, brillo)}${circulo(58.2, 47.8, 1.1, brillo)}`;
   const nariz = trazo("M45.5 55c-1.5 3-1 5.5 2 6 2 .3 3.3-.6 3.6-1.6", r.nariz, 1.9);
-  const boca = trazo("M41 64.5q7 6 14 0", r.boca, claro ? 2.6 : 2.3);
+  const boca = trazo("M41 63.8q7 8 14 0", r.boca, claro ? 2.6 : 2.3);
   return `${cejas}${ojos}${nariz}${boca}`;
 }
 
 function detalleMayor(edad: EdadAvatar, piel: Piel, simple: boolean): string {
   if (edad !== "mayor" || simple) return "";
   const base = opcion(PIELES, piel).color;
-  const color = RASGOS_POR_PIEL[piel].pupila ? mezclar(base, "#FFFFFF", 0.22) : mezclar(base, "#3A1F10", 0.3);
+  const color = RASGOS_POR_PIEL[piel].pupila
+    ? mezclar(base, "#FFFFFF", 0.22)
+    : mezclar(base, "#3A1F10", 0.3);
   return [
     trazo("M33.5 47c-2 1.800-2.200 4-1.400 5.600", color, 1.5),
     trazo("M62.5 47c2 1.800 2.200 4 1.400 5.600", color, 1.5),
