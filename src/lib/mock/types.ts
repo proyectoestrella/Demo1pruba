@@ -315,6 +315,8 @@ export interface SalonProfile {
   slug: string;
   name: string;
   tagline: string;
+  /** Nombre singular de quien atiende para textos de acceso (p. ej. "terapeuta"). */
+  terminoProfesional?: string;
   about: string;
   address: string;
   /** NIF/CIF de quien responde del tratamiento en la web pública. */

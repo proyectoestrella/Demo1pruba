@@ -1,5 +1,6 @@
 import { createIsomorphicFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { resolverHost } from "./host";
 export const hostActual = createIsomorphicFn()
   .server(() => {
     try {
@@ -10,5 +11,11 @@ export const hostActual = createIsomorphicFn()
   })
   .client(() => window.location.hostname);
 export function esHostPeluchic() {
-  return hostActual().toLowerCase() === "peluchic.sishow.es";
+  return slugSalonDelHost() === "peluchic";
+}
+
+/** Slug del salón del subdominio actual, también en local (`slug.localhost`). */
+export function slugSalonDelHost(): string | undefined {
+  const host = resolverHost(hostActual());
+  return host.tipo === "salon" ? host.slug : undefined;
 }

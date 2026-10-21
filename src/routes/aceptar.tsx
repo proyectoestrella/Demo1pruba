@@ -4,6 +4,10 @@ import { aceptarInvitacionAlSalon } from "@/lib/api/accesos.functions";
 import { MailCheck } from "lucide-react";
 import { IconoSiShow } from "@/components/MarcaSiShow";
 import { Button } from "@/components/ui/button";
+import { hostActual } from "@/lib/host-actual";
+import { useSalonStore } from "@/lib/store";
+import { manifestDelAcceso, perfilInicialDeAcceso, slugDeAcceso } from "@/lib/identidad-acceso";
+import { useIdentidadAcceso } from "@/lib/use-identidad-acceso";
 
 /**
  * Vuelta del correo de invitación al panel (lote 11): `/aceptar?s=<slug>&inv=<id>`.
@@ -16,24 +20,50 @@ export const Route = createFileRoute("/aceptar")({
     s: typeof s.s === "string" ? s.s : undefined,
     inv: typeof s.inv === "string" ? s.inv : undefined,
   }),
-  head: () => ({ meta: [{ title: "Entrar en el panel · siShow" }] }),
+  head: ({ match }) => {
+    const guardado = useSalonStore.getState().salonProfile;
+    const slug = slugDeAcceso({
+      slugDesdeUrl: (match.search as Record<string, unknown>)?.s,
+      hostname: hostActual(),
+      slugGuardado: undefined,
+    });
+    const perfil = perfilInicialDeAcceso(slug, guardado);
+    return {
+      meta: [{ title: `Invitación al panel · ${perfil.name}` }],
+      links: [{ rel: "manifest", href: manifestDelAcceso(slug) }],
+    };
+  },
   component: Aceptar,
 });
 
 function Aceptar() {
-  const { s: slug, inv } = Route.useSearch();
+  const { s: slugDesdeUrl, inv } = Route.useSearch();
+  const slug = slugDeAcceso({ slugDesdeUrl, hostname: hostActual() });
+  const perfil = useIdentidadAcceso(slug);
   const completo = !!slug && !!inv;
-  const [estado, setEstado] = useState<{ fase: "comprobando" } | { fase: "ok" } | { fase: "error"; motivo: string }>({ fase: "comprobando" });
+  const [estado, setEstado] = useState<
+    { fase: "comprobando" } | { fase: "ok" } | { fase: "error"; motivo: string }
+  >({ fase: "comprobando" });
   useEffect(() => {
     if (!completo) return;
     let vivo = true;
     aceptarInvitacionAlSalon({ data: { slug: slug!, invitacionId: inv! } })
       .then((r) => vivo && setEstado(r.ok ? { fase: "ok" } : { fase: "error", motivo: r.motivo }))
-      .catch(() => vivo && setEstado({ fase: "error", motivo: "No hemos podido comprobar la invitación. Vuelve a abrir el enlace del correo." }));
+      .catch(
+        () =>
+          vivo &&
+          setEstado({
+            fase: "error",
+            motivo: "No hemos podido comprobar la invitación. Vuelve a abrir el enlace del correo.",
+          }),
+      );
     return () => {
       vivo = false;
     };
   }, [completo, slug, inv]);
+  useEffect(() => {
+    if (typeof document !== "undefined") document.title = `Invitación al panel · ${perfil.name}`;
+  }, [perfil.name]);
   const valida = completo && estado.fase === "ok";
   if (completo && estado.fase === "comprobando") {
     return (
@@ -46,15 +76,27 @@ function Aceptar() {
     <main className="grid min-h-screen place-items-center bg-background px-4">
       <div className="w-full max-w-sm rounded-3xl border border-lino bg-card px-6 py-8 text-center">
         <div className="flex justify-center">
-          <IconoSiShow size={44} />
+          {perfil.logoUrl ? (
+            <img
+              src={perfil.logoUrl}
+              alt={`Logo de ${perfil.name}`}
+              className="size-11 rounded-full border border-lino bg-white object-cover"
+            />
+          ) : (
+            <IconoSiShow size={44} />
+          )}
         </div>
         <span className="mx-auto mt-6 grid size-12 place-items-center rounded-full bg-salvia-suave text-hoja-tinta">
           <MailCheck className="size-5" strokeWidth={1.7} aria-hidden="true" />
         </span>
         {valida ? (
           <>
-            <h1 className="mt-4 text-[22px] font-extrabold tracking-[-0.01em]">Ya tienes acceso al panel</h1>
-            <p className="mt-2 text-[14.5px] text-cafe-medio">Tu salón te ha invitado a siShow. Entra y verás tu agenda.</p>
+            <h1 className="mt-4 text-[22px] font-extrabold tracking-[-0.01em]">
+              Ya tienes acceso al panel
+            </h1>
+            <p className="mt-2 text-[14.5px] text-cafe-medio">
+              {perfil.name} te ha invitado a siShow. Entra y verás tu agenda.
+            </p>
             <Button asChild className="mt-6 w-full rounded-full font-bold">
               <Link to="/app" search={{ s: slug } as never}>
                 Entrar al panel
@@ -63,12 +105,18 @@ function Aceptar() {
           </>
         ) : (
           <>
-            <h1 className="mt-4 text-[22px] font-extrabold tracking-[-0.01em]">{completo ? "No hemos podido darte acceso" : "Este enlace no está completo"}</h1>
+            <h1 className="mt-4 text-[22px] font-extrabold tracking-[-0.01em]">
+              {completo ? "No hemos podido darte acceso" : "Este enlace no está completo"}
+            </h1>
             <p className="mt-2 text-[14.5px] text-cafe-medio">
-              {estado.fase === "error" ? estado.motivo : "Ábrelo desde el correo de invitación o pide a tu salón que te lo reenvíe."}
+              {estado.fase === "error"
+                ? estado.motivo
+                : "Ábrelo desde el correo de invitación o pide a tu salón que te lo reenvíe."}
             </p>
             <Button asChild variant="outline" className="mt-6 w-full rounded-full font-bold">
-              <Link to="/login">Ir al acceso</Link>
+              <Link to="/login" search={slug ? { s: slug } : {}}>
+                Ir al acceso
+              </Link>
             </Button>
           </>
         )}

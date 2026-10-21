@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useSalonStore } from "@/lib/store";
 
 type InvitacionInstalar = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: string }>;
 };
 export function InstalarPanel() {
+  const salonName = useSalonStore((s) => s.salonProfile.name);
   const [visible, setVisible] = useState(false);
   const [ios, setIos] = useState(false);
   const [prompt, setPrompt] = useState<InvitacionInstalar | null>(null);
@@ -41,7 +43,9 @@ export function InstalarPanel() {
   if (!visible) return null;
   return (
     <details className="mx-4 mb-24 rounded-xl border border-border bg-card p-3 text-sm md:mb-4">
-      <summary className="cursor-pointer font-semibold">Instalar en este dispositivo</summary>
+      <summary className="cursor-pointer font-semibold">
+        Instalar {salonName} en este dispositivo
+      </summary>
       <div className="mt-3 space-y-3">
         {ios ? (
           <p>

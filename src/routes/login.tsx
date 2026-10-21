@@ -1,36 +1,48 @@
-import { esHostPeluchic } from "@/lib/host-actual";
+import { hostActual } from "@/lib/host-actual";
 import { aceptarMisInvitaciones } from "@/lib/api/accesos.functions";
 import { cerrarSesion } from "@/lib/sesion";
-import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Lock, ArrowLeft, Loader2, MailCheck } from "lucide-react";
-import { salon } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
 import { useSesion, pedirEnlaceMagico, verificarCodigo } from "@/lib/sesion";
 import { esSalonRealPublico, accesoAlPanel } from "@/lib/api/salons.functions";
-import { BUSINESS_LABEL, inferBusinessType, professionalWord } from "@/lib/business-type";
+import { BUSINESS_LABEL, inferBusinessType } from "@/lib/business-type";
 import { IconoSiShow } from "@/components/MarcaSiShow";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  manifestDelAcceso,
+  perfilInicialDeAcceso,
+  slugDeAcceso,
+  terminoProfesionalDeAcceso,
+  volverAlSitio,
+} from "@/lib/identidad-acceso";
+import { useIdentidadAcceso } from "@/lib/use-identidad-acceso";
 
 export const Route = createFileRoute("/login")({
+  validateSearch: (search: Record<string, unknown>): { s?: string } => ({
+    s: typeof search.s === "string" && search.s ? search.s : undefined,
+  }),
   head: ({ match }) => {
-    const profile = useSalonStore.getState().salonProfile;
-    const tipo = inferBusinessType(profile.tagline, profile.name);
+    const guardado = useSalonStore.getState().salonProfile;
+    const slug = slugDeAcceso({
+      slugDesdeUrl: (match.search as Record<string, unknown>)?.s,
+      hostname: hostActual(),
+      slugGuardado: guardado.slug,
+    });
+    const profile = perfilInicialDeAcceso(slug, guardado);
     return {
       meta: [
         {
-          title: `Acceso ${professionalWord(tipo)} · ${esHostPeluchic() ? "PeluChic" : profile.name}`,
+          title: `Acceso ${terminoProfesionalDeAcceso(profile)} · ${profile.name}`,
         },
       ],
       links: [
         {
           rel: "manifest",
-          href:
-            esHostPeluchic() || (match.search as Record<string, unknown>)?.s === "peluchic"
-              ? "/manifest-peluchic.webmanifest"
-              : "/manifest-panel.webmanifest",
+          href: manifestDelAcceso(slug),
         },
       ],
     };
@@ -72,23 +84,27 @@ function useEsSalonReal(slug: string | undefined): boolean | null {
 
 function LoginPage() {
   const navigate = useNavigate();
-  const profile = useSalonStore((s) => s.salonProfile);
   const demoActive = useSalonStore((s) => s.demoActive);
-  const salonName = esHostPeluchic() ? "PeluChic" : profile.name;
-  const tipo = inferBusinessType(profile.tagline, profile.name);
 
   // El salón del que se quiere el panel: el de `?s=` si viene, si no el que ya
   // hubiera en este navegador. Es el mismo orden que usa /app.
   const desdeUrl = useRouterState({
     select: (s) => (s.location.search as Record<string, unknown>)?.s,
   });
-  const slug =
-    (typeof desdeUrl === "string" && desdeUrl
-      ? desdeUrl
-      : esHostPeluchic()
-        ? "peluchic"
-        : profile.slug) || undefined;
+  const slugGuardado = useSalonStore((s) => s.salonProfile.slug);
+  const slug = slugDeAcceso({ slugDesdeUrl: desdeUrl, hostname: hostActual(), slugGuardado });
+  const profile = useIdentidadAcceso(slug);
+  const salonName = profile.name;
+  const tipo = inferBusinessType(profile.tagline, profile.name);
+  const terminoProfesional = terminoProfesionalDeAcceso(profile);
+  const sitioSalon = volverAlSitio(slug, hostActual());
   const esReal = useEsSalonReal(slug);
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.title = `Acceso ${terminoProfesional} · ${salonName}`;
+    }
+  }, [salonName, terminoProfesional]);
 
   const { correo: sesionDe } = useSesion();
 
@@ -156,26 +172,29 @@ function LoginPage() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border/60">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-          <Link
-            to="/s/$salonSlug"
-            params={{ salonSlug: salon.slug }}
-            className="flex items-center gap-2"
-          >
-            <IconoSiShow size={36} />
+          <a href={sitioSalon} className="flex items-center gap-2">
+            {profile.logoUrl ? (
+              <img
+                src={profile.logoUrl}
+                alt={`Logo de ${salonName}`}
+                className="h-9 w-9 rounded-full border border-border bg-white object-cover"
+              />
+            ) : (
+              <IconoSiShow size={36} />
+            )}
             <div className="leading-tight">
               <p className="font-display text-base">{salonName}</p>
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
                 {BUSINESS_LABEL[tipo]}
               </p>
             </div>
-          </Link>
-          <Link
-            to="/s/$salonSlug"
-            params={{ salonSlug: salon.slug }}
+          </a>
+          <a
+            href={sitioSalon}
             className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-3 w-3" /> Volver al sitio
-          </Link>
+          </a>
         </div>
       </header>
 
@@ -186,7 +205,7 @@ function LoginPage() {
               <Lock className="h-4 w-4" />
             </div>
             <div>
-              <h1 className="font-display text-xl">Acceso {professionalWord(tipo)}</h1>
+              <h1 className="font-display text-xl">Acceso {terminoProfesional}</h1>
               <p className="text-xs text-muted-foreground">Entra al panel de gestión del salón</p>
             </div>
           </div>

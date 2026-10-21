@@ -1,4 +1,4 @@
-import { esHostPeluchic } from "@/lib/host-actual";
+import { hostActual, slugSalonDelHost } from "@/lib/host-actual";
 import { InstalarPanel } from "@/components/InstalarPanel";
 import { conRegistroEnPausa } from "@/lib/store";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -38,6 +38,7 @@ import { IncluidoEnPlanCompleto } from "@/components/IncluidoEnPlanCompleto";
 import { useHayPanelLateral } from "@/lib/panel-lateral";
 import { slugResolvibleDelPanel } from "@/lib/slug-panel";
 import { cn } from "@/lib/utils";
+import { manifestDelAcceso, slugDeAcceso } from "@/lib/identidad-acceso";
 import {
   Sheet,
   SheetContent,
@@ -78,10 +79,11 @@ export const Route = createFileRoute("/app")({
     );
     if (demo) return;
     const desdeUrl = (location.search as Record<string, unknown>)?.s;
-    const slug =
-      typeof desdeUrl === "string" && desdeUrl
-        ? desdeUrl
-        : esHostPeluchic() ? "peluchic" : useSalonStore.getState().salonProfile.slug;
+    const slug = slugDeAcceso({
+      slugDesdeUrl: desdeUrl,
+      hostname: hostActual(),
+      slugGuardado: useSalonStore.getState().salonProfile.slug,
+    });
     if (!slug) return;
     try {
       // Cada navegación exige el rol vigente EN ESTE salón en el servidor.
@@ -109,7 +111,18 @@ export const Route = createFileRoute("/app")({
   head: ({ match }) => ({
     meta: [{ title: `Dashboard · ${useSalonStore.getState().salonProfile.name}` }],
     // Identidad de instalación propia; el scope incluye login y aceptar.
-    links: [{ rel: "manifest", href: esHostPeluchic() || (match.search as Record<string, unknown>)?.s === "peluchic" ? "/manifest-peluchic.webmanifest" : "/manifest-panel.webmanifest" }],
+    links: [
+      {
+        rel: "manifest",
+        href: manifestDelAcceso(
+          slugDeAcceso({
+            slugDesdeUrl: (match.search as Record<string, unknown>)?.s,
+            hostname: hostActual(),
+            slugGuardado: useSalonStore.getState().salonProfile.slug,
+          }),
+        ),
+      },
+    ],
   }),
   component: DashboardLayout,
 });
@@ -176,7 +189,7 @@ function useSalonSlugDelPanel(): string | undefined {
   return slugResolvibleDelPanel({
     slugDesdeUrl: desdeUrl,
     demoRaw,
-    slugGuardado: esHostPeluchic() ? "peluchic" : guardado,
+    slugGuardado: slugSalonDelHost() ?? guardado,
   });
 }
 
