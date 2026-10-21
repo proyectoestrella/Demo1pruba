@@ -1,6 +1,7 @@
 import { parcheCalendario, type PreferenciasCalendario } from "./preferencias-calendario";
 import { conservarIguales } from "./conservar-iguales";
 import { create } from "zustand";
+import { dispositivoActual } from "./dispositivo";
 import { PERMISOS_DEMO, permisosDe, puede, type MiembroActual } from "./permisos";
 import {
   accionesDeCambio, aplicarDeshacerEnLista, resumenCampoPerfil, cambioDeDeshacer, inverso, podar, puedeDeshacer,
@@ -166,6 +167,11 @@ interface SalonState {
    */
   cambios: Cambio[];
   registrarCambio: (c: Cambio) => void;
+  /**
+   * Incorpora cambios que trajo el servidor (de otros aparatos o de otras
+   * sesiones) para que «Deshacer» funcione sobre ellos. No los vuelve a subir.
+   */
+  fusionarCambiosRemotos: (remotos: Cambio[]) => void;
   /** Se mandó un WhatsApp a la clienta por este cambio (para avisar al deshacerlo). */
   marcarAvisoEnviado: (cambioId: string) => void;
   /**
@@ -175,9 +181,9 @@ interface SalonState {
    */
   abrirWhatsAppDeCita: (citaId: string, url: string) => string | null;
   /** Deshace un cambio si sigue siendo posible; si no, dice por qué. */
-  deshacerCambio: (cambioId: string) => { ok: true; aviso?: "CLIENTA_AVISADA" } | { ok: false; motivo: MotivoNoDeshacer };
+  deshacerCambio: (cambioId: string, forzar?: boolean) => { ok: true; aviso?: "CLIENTA_AVISADA" } | { ok: false; motivo: MotivoNoDeshacer };
   /** ¿Se puede deshacer este cambio ahora? (para pintar el botón). */
-  estadoDeshacer: (cambioId: string) => EstadoDeshacer;
+  estadoDeshacer: (cambioId: string, forzar?: boolean) => EstadoDeshacer;
   /** Resultado de identificar el slug; la reserva pública espera esta respuesta. */
   publicBookingResolution: {
     slug: string;
@@ -1144,10 +1150,36 @@ export const useSalonStore = create<SalonState>()(
       setRealSalonSlug: (slug) => set({ realSalonSlug: slug, ...(slug ? {} : { funcionesPlan: null }) }),
       setMiembro: (m) => set({ miembro: m }),
 
-      registrarCambio: (c) => {
+      registrarCambio: (c0) => {
+        // Cada cambio lleva desde qué aparato y qué profesional lo hizo.
+        const disp = dispositivoActual();
+        const c: Cambio = {
+          ...c0,
+          dispositivoId: c0.dispositivoId ?? disp.id,
+          dispositivoNombre: c0.dispositivoNombre ?? disp.nombre,
+          empleadoId: c0.empleadoId ?? get().miembro?.employeeId ?? null,
+        };
         set((s) => ({ cambios: podar([c, ...s.cambios.filter((x) => x.id !== c.id)], new Date()) }));
         pushCambio(get().realSalonSlug, c);
       },
+      fusionarCambiosRemotos: (remotos) =>
+        set((s) => {
+          if (!remotos.length) return s;
+          const porId = new Map(s.cambios.map((c) => [c.id, c]));
+          let cambio = false;
+          for (const r of remotos) {
+            const l = porId.get(r.id);
+            if (!l) {
+              porId.set(r.id, r);
+              cambio = true;
+            } else if (r.deshechoEn && !l.deshechoEn) {
+              // El servidor manda en «deshecho»: otro aparato lo deshizo.
+              porId.set(r.id, { ...l, deshechoEn: r.deshechoEn, deshechoPor: r.deshechoPor });
+              cambio = true;
+            }
+          }
+          return cambio ? { cambios: podar([...porId.values()], new Date()) } : s;
+        }),
       marcarAvisoEnviado: (cambioId) => {
         set((s) => ({ cambios: s.cambios.map((c) => (c.id === cambioId ? { ...c, avisoEnviado: true } : c)) }));
         pushAvisoEnviado(get().realSalonSlug, cambioId);
@@ -1164,18 +1196,18 @@ export const useSalonStore = create<SalonState>()(
         return c.id;
       },
 
-      estadoDeshacer: (cambioId) => {
+      estadoDeshacer: (cambioId, forzar = false) => {
         const st = get();
         const c = st.cambios.find((x) => x.id === cambioId);
         if (!c) return { puede: false, motivo: "CADUCADO" };
-        return puedeDeshacer(c, contextoDeshacer(st, c));
+        return puedeDeshacer(c, { ...contextoDeshacer(st, c), forzar });
       },
 
-      deshacerCambio: (cambioId) => {
+      deshacerCambio: (cambioId, forzar = false) => {
         const st = get();
         const c = st.cambios.find((x) => x.id === cambioId);
         if (!c) return { ok: false, motivo: "CADUCADO" };
-        const e = puedeDeshacer(c, contextoDeshacer(st, c));
+        const e = puedeDeshacer(c, { ...contextoDeshacer(st, c), forzar });
         if (!e.puede) return { ok: false, motivo: e.motivo };
         const parche = sinNulos(inverso(c));
         conRegistroEnPausa(() => {
@@ -1228,7 +1260,11 @@ export const useSalonStore = create<SalonState>()(
           }
         });
         const m = get().miembro;
-        const d = cambioDeDeshacer(c, { id: nuevoIdCambio(), autor: m?.userId ?? null, autorNombre: m?.displayName ?? null, fecha: new Date().toISOString() });
+        const disp = dispositivoActual();
+        const d = cambioDeDeshacer(c, {
+          id: nuevoIdCambio(), autor: m?.userId ?? null, autorNombre: m?.displayName ?? null, fecha: new Date().toISOString(),
+          empleadoId: m?.employeeId ?? null, dispositivoId: disp.id, dispositivoNombre: disp.nombre,
+        });
         set((s) => ({ cambios: podar(aplicarDeshacerEnLista(s.cambios, c, d), new Date()) }));
         // El dato ya viajó por su parche (con sus permisos); esto cuenta el deshacer
         // y marca el original como deshecho también en el servidor.

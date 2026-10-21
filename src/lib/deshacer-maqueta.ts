@@ -23,6 +23,7 @@ import {
 } from "./cambios";
 import { conRegistroEnPausa, nuevoIdCambio as nuevoIdDeLaStore, useSalonStore } from "./store";
 import { whatsappUrl } from "./campanas";
+import { autorizarDeshacer } from "./api/cambios.functions";
 import type { Appointment, SalonProfile } from "./mock/types";
 
 /* ---------- el registro: el de la store ---------- */
@@ -56,12 +57,12 @@ export function comoTipo<T>(_tipo: TipoCambio, fn: () => T): T {
   return fn();
 }
 
-export function estadoDeshacer(cambioId: string): EstadoDeshacer {
-  return useSalonStore.getState().estadoDeshacer(cambioId);
+export function estadoDeshacer(cambioId: string, forzar = false): EstadoDeshacer {
+  return useSalonStore.getState().estadoDeshacer(cambioId, forzar);
 }
 
-export function deshacerCambio(cambioId: string): { ok: true; aviso?: "CLIENTA_AVISADA" } | { ok: false; motivo: MotivoNoDeshacer } {
-  return useSalonStore.getState().deshacerCambio(cambioId);
+export function deshacerCambio(cambioId: string, forzar = false): { ok: true; aviso?: "CLIENTA_AVISADA" } | { ok: false; motivo: MotivoNoDeshacer } {
+  return useSalonStore.getState().deshacerCambio(cambioId, forzar);
 }
 
 export function marcarAvisoDeCita(citaId: string) {
@@ -114,8 +115,8 @@ export function mensajeCorreccion(c: Pick<Cambio, "tipo">, nombre: string, cita:
 }
 
 /** Deshacer desde un aviso, el historial o Ctrl+Z, con los textos de cada caso. */
-export function deshacerConAviso(cambioId: string, confirmado = false) {
-  const e = estadoDeshacer(cambioId);
+export function deshacerConAviso(cambioId: string, confirmado = false, forzar = false) {
+  const e = estadoDeshacer(cambioId, forzar);
   if (!e.puede) {
     if (e.motivo !== "DESHECHO") toast.error(textoMotivo(e.motivo));
     return;
@@ -125,12 +126,12 @@ export function deshacerConAviso(cambioId: string, confirmado = false) {
   if (e.aviso === "CLIENTA_AVISADA" && !confirmado) {
     toast(textoClientaAvisada(nombre), {
       duration: Infinity,
-      action: { label: "Deshacer igualmente", onClick: () => deshacerConAviso(cambioId, true) },
+      action: { label: "Deshacer igualmente", onClick: () => deshacerConAviso(cambioId, true, forzar) },
       cancel: { label: "Dejarlo así", onClick: () => undefined },
     });
     return;
   }
-  const r = deshacerCambio(cambioId);
+  const r = deshacerCambio(cambioId, forzar);
   if (!r.ok) {
     toast.error(textoMotivo(r.motivo));
     return;
@@ -227,3 +228,37 @@ export function instalarRegistro() {
 }
 
 export { conRegistroEnPausa };
+
+/**
+ * Deshacer desde el historial: primero el servidor confirma que ESTA persona
+ * puede deshacer ESE cambio (suyo, o de otra con permiso de gerente) y que no
+ * lo deshizo ya otro aparato; luego se aplica con el parche de siempre.
+ * Si el servidor no responde (sin red, sin tabla), manda la comprobación local.
+ * Devuelve false si no se llegó a deshacer.
+ */
+export async function deshacerDesdeHistorial(cambioId: string, opciones: { forzar?: boolean } = {}): Promise<boolean> {
+  const slug = useSalonStore.getState().realSalonSlug;
+  if (slug) {
+    try {
+      const r = await autorizarDeshacer({ data: { slug, cambioId } });
+      if (!r.ok) {
+        if (r.motivo === "DESHECHO") {
+          // Otro aparato ya lo deshizo: se refleja aquí sin tocar datos.
+          const c = useSalonStore.getState().cambios.find((x) => x.id === cambioId);
+          if (c) useSalonStore.getState().fusionarCambiosRemotos([{ ...c, deshechoEn: new Date().toISOString() }]);
+        }
+        toast.error(textoMotivo(r.motivo));
+        return false;
+      }
+    } catch (err) {
+      console.warn("No se pudo consultar al servidor antes de deshacer:", err);
+    }
+  }
+  const e = estadoDeshacer(cambioId, !!opciones.forzar);
+  if (!e.puede) {
+    toast.error(textoMotivo(e.motivo));
+    return false;
+  }
+  deshacerConAviso(cambioId, true, !!opciones.forzar);
+  return true;
+}

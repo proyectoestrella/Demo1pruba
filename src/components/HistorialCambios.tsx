@@ -1,10 +1,12 @@
 import { useTienePlan } from "@/lib/accesos-panel";
 import { HORAS_HISTORIAL_ESTANDAR } from "@/lib/plan";
 import { LlegaConPlan } from "@/components/LlegaConPlan";
-import { useMemo, useState } from "react";
-import { Loader2, MessageCircle, Search } from "lucide-react";
-import { textoMotivo, type Cambio, type TipoCambio } from "@/lib/cambios";
-import { deshacerConAviso, estadoDeshacer, useCambios } from "@/lib/deshacer-maqueta";
+import { useEffect, useMemo, useState } from "react";
+import { Loader2, MessageCircle, Search, Smartphone } from "lucide-react";
+import { motivoSaltable, puedeVerCambio, textoMotivo, type Cambio, type TipoCambio } from "@/lib/cambios";
+import { deshacerDesdeHistorial, estadoDeshacer, useCambios } from "@/lib/deshacer-maqueta";
+import { dispositivoId } from "@/lib/dispositivo";
+import { useSalonStore } from "@/lib/store";
 import { agruparPorDia, useHistorialServidor } from "@/lib/historial-panel";
 import { useRealSalonSlug } from "@/lib/use-real-salon";
 import { STATUS_OPTIONS } from "@/lib/appointment-status";
@@ -91,14 +93,28 @@ export function HistorialCambios() {
   // Lote 13: fuera de Estándar (28-sep: bajó de Embajador), las últimas 24 h (el aviso de 10 s sigue en todos los planes).
   const completo = useTienePlan("historial-completo");
   const servidor = useHistorialServidor(realSlug ?? "", esReal, completo);
-  const todos = esReal ? servidor.cambios : locales;
-  // «Deshacer» solo puede ofrecerse para un cambio que esta store conoce
-  // (ver la nota de arriba): en la demo son siempre los mismos, en un salón
-  // real puede que el historial del servidor traiga más de los que esta
-  // pestaña ha visto hacer.
-  const idsConocidos = useMemo(() => new Set(locales.map((c) => c.id)), [locales]);
-  const cambios = useMemo(() => (completo ? todos : todos.filter((c) => Date.now() - Date.parse(c.fecha) <= HORAS_HISTORIAL_ESTANDAR * 3_600_000)), [todos, completo]);
   const permisos = usePermisos();
+  const miembro = useSalonStore((s) => s.miembro);
+  // Cada persona ve y deshace LO SUYO; quien tiene «deshacer lo ajeno» (gerente, subencargada) ve lo de todas.
+  const veTodo = puede(permisos, "historial.deshacer-ajeno");
+  const quien = miembro?.userId ?? null;
+  const [soloAqui, setSoloAqui] = useState(false);
+  const [aquiId, setAquiId] = useState("");
+  useEffect(() => setAquiId(dispositivoId()), []);
+  // En un salón real, la lista del servidor (que ya llegó fusionada a la store) más lo hecho aquí y aún sin subir;
+  // la versión de la store gana (refleja un «deshecho» reciente). En la demo, la lista local.
+  const todos = useMemo(() => {
+    if (!esReal) return locales;
+    const porId = new Map(locales.map((c) => [c.id, c]));
+    const delServidor = servidor.cambios.map((c) => porId.get(c.id) ?? c);
+    const ids = new Set(delServidor.map((c) => c.id));
+    const soloLocales = locales.filter((c) => !ids.has(c.id) && Date.parse(c.fecha) >= Date.now() - 24 * 3_600_000);
+    return [...soloLocales, ...delServidor].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  }, [esReal, locales, servidor.cambios]);
+  const cambios = useMemo(
+    () => todos.filter((c) => (completo || Date.now() - Date.parse(c.fecha) <= HORAS_HISTORIAL_ESTANDAR * 3_600_000) && puedeVerCambio(c, quien, veTodo || !esReal)),
+    [todos, completo, quien, veTodo, esReal],
+  );
   const [grupo, setGrupo] = useState<Grupo | "todo">("todo");
   const [persona, setPersona] = useState<string>("todas");
   const [busca, setBusca] = useState("");
@@ -109,6 +125,7 @@ export function HistorialCambios() {
     (c) =>
       (grupo === "todo" || grupoDe(c.tipo) === grupo) &&
       (persona === "todas" || (c.autorNombre ?? "Demo") === persona) &&
+      (!soloAqui || (!!aquiId && c.dispositivoId === aquiId)) &&
       (veDinero || grupoDe(c.tipo) !== "dinero") &&
       (!busca.trim() || c.resumen.toLowerCase().includes(busca.trim().toLowerCase())),
   );
@@ -117,10 +134,12 @@ export function HistorialCambios() {
   return (
     <div className="space-y-4">
       <p className="text-[14px] text-cafe-medio">
-        {completo ? "Lo que se ha cambiado en el panel en los últimos 90 días." : `Lo que se ha cambiado en las últimas ${HORAS_HISTORIAL_ESTANDAR} horas.`} Deshacer no borra nada: añade una fila más.
+        {veTodo || !esReal ? "Lo que se ha cambiado en el panel" : "Lo que has cambiado tú en el panel"}{" "}
+        {completo ? "en los últimos 90 días." : `en las últimas ${HORAS_HISTORIAL_ESTANDAR} horas.`} Deshacer no borra nada: añade una fila más.
+        {esReal && !veTodo && " Puedes verlo y deshacerlo desde cualquiera de tus dispositivos."}
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border border-input bg-blanco px-3 text-muted-foreground">
+        <label className="flex h-9 min-w-0 flex-1 basis-48 items-center gap-2 rounded-full border border-input bg-blanco px-3 text-muted-foreground">
           <Search className="size-4 shrink-0" strokeWidth={1.6} />
           <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Busca por clienta o servicio" aria-label="Buscar en el historial" className="min-w-0 flex-1 bg-transparent text-[14px] text-foreground outline-none" />
         </label>
@@ -131,7 +150,7 @@ export function HistorialCambios() {
             </option>
           ))}
         </select>
-        {personas.length > 1 && (
+        {veTodo && personas.length > 1 && (
           <select value={persona} onChange={(e) => setPersona(e.target.value)} aria-label="Quién" className="h-9 rounded-full border border-input bg-blanco px-3 text-[13.5px]">
             <option value="todas">Todas</option>
             {personas.map((p) => (
@@ -141,7 +160,16 @@ export function HistorialCambios() {
             ))}
           </select>
         )}
+        <label className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-input bg-blanco px-3 text-[13.5px]">
+          <input type="checkbox" checked={soloAqui} onChange={(e) => setSoloAqui(e.target.checked)} data-testid="solo-este-dispositivo" className="size-4 accent-current" />
+          Solo este dispositivo
+        </label>
       </div>
+      {esReal && servidor.aviso && !servidor.error && (
+        <p role="status" className="text-[12.5px] text-muted-foreground">
+          {servidor.aviso} Mientras tanto verás solo lo que se haga desde este aparato.
+        </p>
+      )}
 
       {esReal && servidor.cargando ? (
         <p className="flex items-center gap-2 rounded-2xl border border-dashed border-lino px-4 py-6 text-center text-[14px] text-muted-foreground">
@@ -165,7 +193,7 @@ export function HistorialCambios() {
             <h4 className="px-1 pb-1.5 text-[13px] font-bold text-cafe-medio">{dia}</h4>
             <ul className="divide-y divide-lino overflow-hidden rounded-2xl border border-lino bg-card">
               {lista.map((c) => (
-                <FilaCambio key={c.id} c={c} conocido={!esReal || idsConocidos.has(c.id)} />
+                <FilaCambio key={c.id} c={c} esteAparato={!!aquiId && c.dispositivoId === aquiId} />
               ))}
             </ul>
           </section>
@@ -184,27 +212,72 @@ export function HistorialCambios() {
   );
 }
 
-/** `conocido`: si esta store sabe de este cambio, para poder ofrecer deshacerlo (ver la nota de arriba). */
-function FilaCambio({ c, conocido }: { c: Cambio; conocido: boolean }) {
-  const e = conocido ? estadoDeshacer(c.id) : null;
+/** Una fila del historial. El «Deshacer» pide confirmación en la propia fila (sin ventanas aparte). */
+function FilaCambio({ c, esteAparato }: { c: Cambio; esteAparato: boolean }) {
+  // `locales` fuerza el repintado al cambiar la store (p. ej. tras deshacer algo).
+  useCambios((s) => s.cambios);
+  const [confirmando, setConfirmando] = useState<null | "normal" | "forzar">(null);
+  const [haciendo, setHaciendo] = useState(false);
+  const e = c.deshaceA || c.deshechoEn ? null : estadoDeshacer(c.id);
   const detalle = antesDespues(c);
+  const saltable = !!e && !e.puede && motivoSaltable(e.motivo) && estadoDeshacer(c.id, true).puede;
+  const ejecutar = async (forzar: boolean) => {
+    setHaciendo(true);
+    try {
+      await deshacerDesdeHistorial(c.id, { forzar });
+    } finally {
+      setHaciendo(false);
+      setConfirmando(null);
+    }
+  };
   return (
-    <li className="flex flex-wrap items-start gap-x-3 gap-y-1 px-4 py-2.5 sm:flex-nowrap">
+    <li className="flex flex-wrap items-start gap-x-3 gap-y-1.5 px-4 py-2.5 sm:flex-nowrap" data-testid="fila-cambio">
       <span className="w-12 shrink-0 pt-0.5 text-[13px] font-bold tabular-nums text-cafe-medio">{hora(c.fecha)}</span>
       <div className="min-w-0 flex-1">
-        <p className={cn("text-[14px]", (c.deshechoEn || c.deshaceA) && "text-cafe-medio")}>
+        <p className={cn("break-words text-[14px]", (c.deshechoEn || c.deshaceA) && "text-cafe-medio")}>
           <b className="font-bold">{c.autorNombre ?? "Demo"}</b> · {c.deshaceA ? `Deshizo: ${c.resumen.replace(/^Deshecho:\s*/i, "")}` : c.resumen}
           {c.avisoEnviado && <MessageCircle className="ml-1.5 inline size-3.5 text-hoja-tinta" strokeWidth={1.8} aria-label="Se le escribió por WhatsApp" />}
         </p>
         {detalle && <p className="text-[12.5px] text-muted-foreground tabular-nums">{detalle}</p>}
-        {e && !e.puede && e.motivo !== "PERMISO" && e.motivo !== "DESHECHO" && !c.deshaceA && <p className="text-[12.5px] text-muted-foreground">{textoMotivo(e.motivo)}</p>}
+        {c.dispositivoNombre && (
+          <p className="flex items-center gap-1 text-[12.5px] text-muted-foreground" data-testid="cambio-dispositivo">
+            <Smartphone className="size-3 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+            {c.dispositivoNombre}
+            {esteAparato && " (este aparato)"}
+          </p>
+        )}
+        {e && !e.puede && e.motivo !== "PERMISO" && e.motivo !== "DESHECHO" && <p className="text-[12.5px] text-muted-foreground">{textoMotivo(e.motivo)}</p>}
+        {confirmando && (
+          <div role="alertdialog" aria-label="Confirmar deshacer" className="mt-2 rounded-xl border border-lino bg-arena px-3 py-2.5 text-[13.5px]" data-testid="confirmar-deshacer">
+            <p className="font-bold">{confirmando === "forzar" ? "Esto cambió después de que lo hicieran." : "¿Deshacer este cambio?"}</p>
+            <p className="text-cafe-medio">
+              {confirmando === "forzar"
+                ? "Si sigues, se vuelve a lo de antes y se pisa lo que se hizo desde entonces sobre esto mismo."
+                : "Todo vuelve a como estaba antes. No se borra nada: queda anotado aquí."}
+              {c.avisoEnviado && " Ojo: a la clienta ya se le escribió por WhatsApp."}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button size="sm" className="h-9 rounded-full px-4 font-bold" disabled={haciendo} onClick={() => void ejecutar(confirmando === "forzar")} data-testid="confirmar-deshacer-si">
+                {haciendo ? <Loader2 className="size-4 animate-spin" /> : null}
+                {confirmando === "forzar" ? "Deshacer igualmente" : "Sí, deshacer"}
+              </Button>
+              <Button size="sm" variant="outline" className="h-9 rounded-full px-4" disabled={haciendo} onClick={() => setConfirmando(null)}>
+                No, dejarlo
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
       <div className="shrink-0">
         {c.deshechoEn ? (
           <span className="rounded-full bg-arena px-2.5 py-0.5 text-[12px] font-bold text-cafe-medio">Deshecho</span>
-        ) : e?.puede && !c.deshaceA ? (
-          <Button size="sm" variant="outline" className="h-8 rounded-full px-3 font-bold" onClick={() => deshacerConAviso(c.id)}>
+        ) : !confirmando && e?.puede ? (
+          <Button size="sm" variant="outline" className="h-9 rounded-full px-3 font-bold" onClick={() => setConfirmando("normal")}>
             Deshacer
+          </Button>
+        ) : !confirmando && saltable ? (
+          <Button size="sm" variant="outline" className="h-9 rounded-full px-3 font-bold" onClick={() => setConfirmando("forzar")}>
+            Deshacer igualmente
           </Button>
         ) : null}
       </div>

@@ -567,6 +567,8 @@ export function pushCambio(slug: string | null, c: Cambio): void {
           fecha: c.fecha,
           deshaceA: c.deshaceA,
           avisoEnviado: c.avisoEnviado,
+          dispositivoId: c.dispositivoId ?? undefined,
+          dispositivoNombre: c.dispositivoNombre ?? undefined,
         },
       },
     }),

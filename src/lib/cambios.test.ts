@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
-  accionDe, aplicarDeshacerEnLista, cambioDeDeshacer, diferencia, inverso, mismoValor, podar, puedeDeshacer, registrarCambio, sigueIgual,
+  accionDe, aplicarDeshacerEnLista, autorDelListado, motivoSaltable, puedeVerCambio, rechazoDeDeshacerEnServidor, cambioDeDeshacer, diferencia, inverso, mismoValor, podar, puedeDeshacer, registrarCambio, sigueIgual,
   type Cambio, type ContextoDeshacer,
 } from "./cambios";
 
@@ -92,5 +92,34 @@ describe("deshacer en la lista", () => {
   test("retención: fuera lo de más de 90 días, como mucho 200", () => {
     const viejo = { ...cancelar, id: "v", fecha: "2026-05-01T00:00:00Z" };
     expect(podar([cancelar, viejo], ahora).map((c) => c.id)).toEqual(["c1"]);
+  });
+});
+
+describe("alcance por persona", () => {
+  test("cada una ve lo suyo; con deshacer-ajeno, todo", () => {
+    expect(puedeVerCambio(cancelar, "noelia", false)).toBe(true);
+    expect(puedeVerCambio(cancelar, "sara", false)).toBe(false);
+    expect(puedeVerCambio(cancelar, "gerente", true)).toBe(true);
+  });
+  test("el servidor filtra por la autora salvo que pueda ver lo ajeno", () => {
+    expect(autorDelListado(false, "noelia", "sara")).toBe("noelia");
+    expect(autorDelListado(false, "noelia")).toBe("noelia");
+    expect(autorDelListado(true, "gerente", "sara")).toBe("sara");
+    expect(autorDelListado(true, "gerente")).toBeUndefined();
+  });
+  test("rechazo en servidor: ajeno sin permiso, o ya deshecho", () => {
+    expect(rechazoDeDeshacerEnServidor({ autor: "sara" }, "noelia", false)).toBe("PERMISO");
+    expect(rechazoDeDeshacerEnServidor({ autor: "sara" }, "gerente", true)).toBeNull();
+    expect(rechazoDeDeshacerEnServidor({ autor: "noelia" }, "noelia", false)).toBeNull();
+    expect(rechazoDeDeshacerEnServidor({ autor: "noelia", deshechoEn: "x" }, "noelia", false)).toBe("DESHECHO");
+  });
+  test("conflicto: solo CAMBIADO y POSTERIORES se pueden pisar tras confirmar; forzar no salta el permiso", () => {
+    expect(motivoSaltable("CAMBIADO")).toBe(true);
+    expect(motivoSaltable("POSTERIORES")).toBe(true);
+    expect(motivoSaltable("PERMISO")).toBe(false);
+    expect(motivoSaltable("SOLAPE")).toBe(false);
+    expect(puedeDeshacer(cancelar, ctx({ actual: { status: "confirmed" }, forzar: true }))).toEqual({ puede: true });
+    expect(puedeDeshacer(cancelar, ctx({ actual: { status: "confirmed" }, forzar: true, quien: "sara" }))).toEqual({ puede: false, motivo: "PERMISO" });
+    expect(puedeDeshacer(cancelar, ctx({ actual: null }))).toEqual({ puede: false, motivo: "NO_ESTA" });
   });
 });

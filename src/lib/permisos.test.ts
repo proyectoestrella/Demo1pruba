@@ -50,6 +50,8 @@ describe("matriz de permisos", () => {
       "caja",
     ] as const)
       expect([p, vePagina(e, p)]).toEqual([p, false]);
+    // Historial: lo suyo sí (alcance propio), lo ajeno no.
+    expect(e.acciones.get("historial.ver")).toBe("propio");
     // Alcance propio: sobre su profesional sí, sobre otra no, sin vínculo nunca.
     expect(puede(e, "cita.cancelar", { employeeId: "noelia", miEmployeeId: "noelia" })).toBe(true);
     expect(puede(e, "cita.cancelar", { employeeId: "sara", miEmployeeId: "noelia" })).toBe(false);

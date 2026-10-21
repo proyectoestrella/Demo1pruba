@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { listarCambios } from "./api/cambios.functions";
 import type { Cambio } from "./cambios";
+import { useSalonStore } from "./store";
 
 /** Cuántos cambios pide cada página del servidor. */
 export const CAMBIOS_POR_PAGINA = 60;
@@ -31,6 +32,8 @@ export interface EstadoHistorialPanel {
   /** Cargando una página siguiente («cargar más»), sin vaciar lo que ya hay. */
   cargandoMas: boolean;
   error: string | null;
+  /** Aviso discreto (no es un fallo): p.ej. el historial del servidor aún no está activado. */
+  aviso: string | null;
   hayMas: boolean;
   cargarMas: () => void;
   recargar: () => void;
@@ -72,6 +75,7 @@ export function useHistorialServidor(slug: string, activo: boolean, completo: bo
   const [cargando, setCargando] = useState(activo);
   const [cargandoMas, setCargandoMas] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
   const [hayMas, setHayMas] = useState(true);
 
   const pedirPrimeraPagina = useCallback(() => {
@@ -79,11 +83,13 @@ export function useHistorialServidor(slug: string, activo: boolean, completo: bo
     setCambios(SIN_CAMBIOS);
     setHayMas(true);
     setError(null);
+    setAviso(null);
     listarCambios({ data: { slug, limite: CAMBIOS_POR_PAGINA, completo } })
       .then((res) => {
         setCambios(res.cambios as Cambio[]);
+        useSalonStore.getState().fusionarCambiosRemotos(res.cambios as Cambio[]);
         setHayMas(siguientePagina(res.cambios.length, CAMBIOS_POR_PAGINA, res.cambios[res.cambios.length - 1]?.fecha).hayMas);
-        if ("aviso" in res && res.aviso) setError(res.aviso);
+        if ("aviso" in res && res.aviso) setAviso(res.aviso);
       })
       .catch((err) => {
         console.error("No se pudo cargar el historial de cambios:", err);
@@ -111,8 +117,9 @@ export function useHistorialServidor(slug: string, activo: boolean, completo: bo
           const vistos = new Set(prev.map((c) => c.id));
           return [...prev, ...(res.cambios as Cambio[]).filter((c) => !vistos.has(c.id))];
         });
+        useSalonStore.getState().fusionarCambiosRemotos(res.cambios as Cambio[]);
         setHayMas(siguientePagina(res.cambios.length, CAMBIOS_POR_PAGINA, res.cambios[res.cambios.length - 1]?.fecha).hayMas);
-        if ("aviso" in res && res.aviso) setError(res.aviso);
+        if ("aviso" in res && res.aviso) setAviso(res.aviso);
       })
       .catch((err) => {
         console.error("No se pudo cargar más historial:", err);
@@ -122,7 +129,7 @@ export function useHistorialServidor(slug: string, activo: boolean, completo: bo
   }, [slug, cambios, cargandoMas, completo]);
 
   if (!activo) {
-    return { cambios: SIN_CAMBIOS, cargando: false, cargandoMas: false, error: null, hayMas: false, cargarMas: () => undefined, recargar: () => undefined };
+    return { cambios: SIN_CAMBIOS, cargando: false, cargandoMas: false, error: null, aviso: null, hayMas: false, cargarMas: () => undefined, recargar: () => undefined };
   }
-  return { cambios, cargando, cargandoMas, error, hayMas, cargarMas, recargar: pedirPrimeraPagina };
+  return { cambios, cargando, cargandoMas, error, aviso, hayMas, cargarMas, recargar: pedirPrimeraPagina };
 }

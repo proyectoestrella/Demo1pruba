@@ -180,7 +180,8 @@ const TABLA: Record<AccionId, [Celda, Celda, Celda, Celda]> = {
   "marketing.usar": ["T", "T", "-", "-"],
   "exportar.excel": ["T", "-", "-", "-"],
   "accesos.gestionar": ["T", "-", "-", "-"],
-  "historial.ver": ["T", "T", "-", "-"],
+  // Cada persona ve (y deshace) LO SUYO; gerente y subencargada ven lo de todas (historial.deshacer-ajeno).
+  "historial.ver": ["T", "T", "P", "P"],
   "historial.deshacer-ajeno": ["T", "T", "-", "-"],
   "plan.gestionar": ["T", "-", "-", "-"],
   "datos.borrar": ["T", "-", "-", "-"],

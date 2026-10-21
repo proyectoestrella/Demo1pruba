@@ -53,12 +53,17 @@ export interface Cambio {
   deshaceA?: string;
   /** Se mandó un WhatsApp a la clienta por este cambio. */
   avisoEnviado: boolean;
+  /** Profesional (employee_id) de quien lo hizo, si tiene ficha de equipo. */
+  empleadoId?: string | null;
+  /** Aparato desde el que se hizo: id estable (localStorage) y nombre legible («iPhone · Safari»). */
+  dispositivoId?: string | null;
+  dispositivoNombre?: string | null;
 }
 
 export const DIAS_RETENCION = 90;
 export const SEGUNDOS_AVISO = 10;
 
-export type MotivoNoDeshacer = "CAMBIADO" | "POSTERIORES" | "SOLAPE" | "PERMISO" | "CADUCADO" | "DESHECHO";
+export type MotivoNoDeshacer = "CAMBIADO" | "POSTERIORES" | "SOLAPE" | "PERMISO" | "CADUCADO" | "DESHECHO" | "NO_ESTA";
 export type EstadoDeshacer = { puede: true; aviso?: "CLIENTA_AVISADA" } | { puede: false; motivo: MotivoNoDeshacer };
 
 /**
@@ -120,6 +125,9 @@ export function registrarCambio(p: {
   autorNombre?: string | null;
   fecha: string;
   avisoEnviado?: boolean;
+  empleadoId?: string | null;
+  dispositivoId?: string | null;
+  dispositivoNombre?: string | null;
 }): Cambio | null {
   const dif = diferencia(p.antes, p.despues, p.campos);
   if (!Object.keys(dif.despues).length) return null;
@@ -135,6 +143,9 @@ export function registrarCambio(p: {
     autorNombre: p.autorNombre ?? null,
     fecha: p.fecha,
     avisoEnviado: !!p.avisoEnviado,
+    empleadoId: p.empleadoId ?? null,
+    dispositivoId: p.dispositivoId ?? null,
+    dispositivoNombre: p.dispositivoNombre ?? null,
   };
 }
 
@@ -227,6 +238,12 @@ export interface ContextoDeshacer {
   ahora: Date;
   /** Solo citas que se mueven: ¿el hueco de «antes» sigue libre? */
   huecoLibre?: boolean;
+  /**
+   * La persona ya vio el aviso de conflicto y confirmó: se salta «esto ha
+   * cambiado desde entonces» y «hay cambios posteriores» (se pisa SOLO lo que
+   * este cambio tocó). Nunca salta permisos, caducidad, deshecho ni solape.
+   */
+  forzar?: boolean;
 }
 
 /** ¿Se puede deshacer, y si no, por qué? El orden de las comprobaciones importa. */
@@ -235,17 +252,20 @@ export function puedeDeshacer(c: Cambio, ctx: ContextoDeshacer): EstadoDeshacer 
   if (ctx.ahora.getTime() - Date.parse(c.fecha) > DIAS_RETENCION * 86_400_000) return { puede: false, motivo: "CADUCADO" };
   const propio = !!c.autor && c.autor === ctx.quien;
   if (!ctx.puedeLaAccion || (!propio && !ctx.puedeAjeno && c.autor !== null)) return { puede: false, motivo: "PERMISO" };
+  if (ctx.actual === null || ctx.actual === undefined) return { puede: false, motivo: "NO_ESTA" };
   const posteriores = ctx.cambios.filter(
     (x) => x.id !== c.id && x.entidad === c.entidad && x.idEntidad === c.idEntidad && !x.deshechoEn && x.fecha > c.fecha && x.deshaceA !== c.id,
   );
-  if (posteriores.some((x) => Object.keys(x.despues).some((k) => k in c.despues))) return { puede: false, motivo: "POSTERIORES" };
-  if (!sigueIgual(c, ctx.actual)) return { puede: false, motivo: "CAMBIADO" };
+  if (!ctx.forzar) {
+    if (posteriores.some((x) => Object.keys(x.despues).some((k) => k in c.despues))) return { puede: false, motivo: "POSTERIORES" };
+    if (!sigueIgual(c, ctx.actual)) return { puede: false, motivo: "CAMBIADO" };
+  }
   if (c.tipo === "cita.mover" && ctx.huecoLibre === false) return { puede: false, motivo: "SOLAPE" };
   return c.avisoEnviado ? { puede: true, aviso: "CLIENTA_AVISADA" } : { puede: true };
 }
 
 /** El cambio que cuenta el deshacer: invierte antes/después y apunta al original. */
-export function cambioDeDeshacer(c: Cambio, p: { id: string; autor: string | null; autorNombre: string | null; fecha: string }): Cambio {
+export function cambioDeDeshacer(c: Cambio, p: { id: string; autor: string | null; autorNombre: string | null; fecha: string; empleadoId?: string | null; dispositivoId?: string | null; dispositivoNombre?: string | null }): Cambio {
   return {
     id: p.id,
     tipo: c.tipo,
@@ -259,6 +279,9 @@ export function cambioDeDeshacer(c: Cambio, p: { id: string; autor: string | nul
     fecha: p.fecha,
     deshaceA: c.id,
     avisoEnviado: false,
+    empleadoId: p.empleadoId ?? null,
+    dispositivoId: p.dispositivoId ?? null,
+    dispositivoNombre: p.dispositivoNombre ?? null,
   };
 }
 
@@ -282,10 +305,49 @@ export function textoMotivo(m: MotivoNoDeshacer): string {
     PERMISO: "Tu acceso no permite deshacer este cambio.",
     CADUCADO: `Han pasado más de ${DIAS_RETENCION} días.`,
     DESHECHO: "Ya está deshecho.",
+    NO_ESTA: "Esto ya no está en el panel (o no se ha cargado en este aparato): no se puede deshacer desde aquí.",
   }[m];
+}
+
+/** Motivos que se pueden saltar tras avisar y confirmar («Deshacer igualmente»). */
+export function motivoSaltable(m: MotivoNoDeshacer): boolean {
+  return m === "CAMBIADO" || m === "POSTERIORES";
+}
+
+/**
+ * Permiso de VER un cambio: cada persona ve lo suyo; quien tiene
+ * `historial.deshacer-ajeno` (gerente, subencargada) ve lo de todas.
+ * Los cambios sin autora (`autor` nulo: demo, acciones antiguas) los ve cualquiera
+ * con acceso al historial, igual que `puedeDeshacer` permite deshacerlos.
+ */
+export function puedeVerCambio(c: Pick<Cambio, "autor">, quien: string | null, puedeAjeno: boolean): boolean {
+  return puedeAjeno || c.autor === null || (!!quien && c.autor === quien);
+}
+
+/**
+ * Comprobación de SERVIDOR al registrar un deshacer: la autora original
+ * manda; si no es ella hace falta `historial.deshacer-ajeno`. Devuelve el
+ * motivo de rechazo o `null` si procede.
+ */
+export function rechazoDeDeshacerEnServidor(
+  original: Pick<Cambio, "autor" | "deshechoEn">,
+  quien: string,
+  puedeAjeno: boolean,
+): "PERMISO" | "DESHECHO" | null {
+  if (original.deshechoEn) return "DESHECHO";
+  if (!puedeVerCambio(original, quien, puedeAjeno)) return "PERMISO";
+  return null;
 }
 
 /** Aviso antes de deshacer si la clienta ya recibió un WhatsApp. */
 export function textoClientaAvisada(nombre: string): string {
   return `${nombre} ya recibió un WhatsApp con este cambio. Si lo deshaces, avísale de nuevo.`;
+}
+
+/**
+ * Qué autora filtra el servidor al listar: quien no puede ver lo ajeno solo
+ * recibe lo suyo, pida lo que pida; quien sí puede, filtra por la que pida.
+ */
+export function autorDelListado(puedeAjeno: boolean, userId: string, autorPedido?: string): string | undefined {
+  return puedeAjeno ? autorPedido : userId;
 }

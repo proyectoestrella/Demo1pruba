@@ -30,6 +30,7 @@ import { usePanelPublicLink } from "@/lib/panel-public-link";
 import { moduloVisibleEnPanel, type ModuloOcultable } from "@/lib/demo-profile";
 import { BuscadorGlobal } from "@/components/BuscadorGlobal";
 import { BotonCerrarSesion } from "@/components/BotonCerrarSesion";
+import { BotonHistorial } from "@/components/HojaHistorial";
 import { TOTAL_PASOS, useProgresoPrimerosPasos } from "@/components/PrimerosPasos";
 import { Button } from "@/components/ui/button";
 import { AvatarSalon } from "@/components/AvatarSalon";
@@ -457,6 +458,7 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
             <Sparkles className="size-[18px]" strokeWidth={1.6} />
           </Button>}
           <BotonTour onTour={onTour} className="size-11" />
+          <BotonHistorial className="size-11" />
           <BotonAvisos className="size-11" />
         </div>
       </div>
@@ -490,6 +492,7 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
           </span>
         </Button>}
         <BotonTour onTour={onTour} />
+        <BotonHistorial />
         <BotonAvisos />
       </div>
     </header>

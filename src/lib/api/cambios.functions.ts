@@ -18,7 +18,9 @@ import { cursorHistorial } from "./cursor-historial";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { accionesDeCambio, DIAS_RETENCION, TIPOS_CAMBIO } from "../cambios";
+import { accionesDeCambio, autorDelListado, DIAS_RETENCION, rechazoDeDeshacerEnServidor, TIPOS_CAMBIO } from "../cambios";
+import { puede } from "../permisos";
+import { permisosDeAcceso } from "./autorizacion";
 import { getSupabaseServerClient } from "../supabase.server";
 import { exigirAcceso, exigirAccesoOdemo } from "./autorizacion.server";
 import { exigirAcciones } from "./guardas";
@@ -41,7 +43,16 @@ const cambioSchema = z.object({
   fecha: z.string().min(10),
   deshaceA: z.string().optional(),
   avisoEnviado: z.boolean().default(false),
+  /** Aparato desde el que se hizo (id estable del navegador y nombre legible). */
+  dispositivoId: z.string().max(80).optional(),
+  dispositivoNombre: z.string().max(80).optional(),
 });
+
+/** ¿Puede esta persona ver y deshacer lo de las demás? (gerente, subencargada). */
+function veTodo(quien: Parameters<typeof permisosDeAcceso>[0]): boolean {
+  const p = permisosDeAcceso(quien);
+  return !!p && puede(p, "historial.deshacer-ajeno");
+}
 
 export const guardarCambio = createServerFn({ method: "POST" })
   .middleware([conSesion])
@@ -54,6 +65,12 @@ export const guardarCambio = createServerFn({ method: "POST" })
     const sb = getSupabaseServerClient();
     if (!sb) return { guardado: false as const, motivo: "sin-backend" as const };
     const c = data.cambio;
+    // Un deshacer solo lo registra quien podía deshacer el original (ver autorizarDeshacer).
+    if (c.deshaceA) {
+      const { data: orig } = await sb.from("cambios").select("autor, deshecho_en").eq("id", c.deshaceA).eq("salon_slug", data.slug).maybeSingle();
+      const rechazo = orig ? rechazoDeDeshacerEnServidor({ autor: (orig.autor as string | null) ?? null, deshechoEn: (orig.deshecho_en as string | null) ?? undefined }, quien.userId, veTodo(quien)) : null;
+      if (rechazo === "PERMISO") return { guardado: false as const, motivo: "permiso" as const };
+    }
     // Igual que los pagos, `cambios.id` es una PK global: un reintento solo
     // es idempotente si el registro que ya existe pertenece a este salón.
     const { data: existente, error: errorExistente } = await sb
@@ -70,14 +87,19 @@ export const guardarCambio = createServerFn({ method: "POST" })
         ? { guardado: true as const }
         : { guardado: false as const, motivo: "id-en-uso" as const };
     }
-    const { error } = await sb.from("cambios").insert(
-      {
-        id: c.id, salon_slug: data.slug, tipo: c.tipo, entidad: c.entidad, id_entidad: c.idEntidad,
-        antes: c.antes, despues: c.despues, resumen: c.resumen,
-        autor: quien.userId, autor_nombre: quien.displayName, fecha: c.fecha,
-        deshace_a: c.deshaceA ?? null, aviso_enviado: c.avisoEnviado,
-      },
-    );
+    const fila = {
+      id: c.id, salon_slug: data.slug, tipo: c.tipo, entidad: c.entidad, id_entidad: c.idEntidad,
+      antes: c.antes, despues: c.despues, resumen: c.resumen,
+      autor: quien.userId, autor_nombre: quien.displayName, fecha: c.fecha,
+      deshace_a: c.deshaceA ?? null, aviso_enviado: c.avisoEnviado,
+    };
+    let { error } = await sb.from("cambios").insert({
+      ...fila, employee_id: quien.employeeId, dispositivo_id: c.dispositivoId ?? null, dispositivo_nombre: c.dispositivoNombre ?? null,
+    });
+    // Si supabase/cambios-panel.sql aún no se aplicó, faltan las columnas nuevas: se guarda sin ellas.
+    if (error && /dispositivo_|employee_id/.test(error.message)) {
+      ({ error } = await sb.from("cambios").insert(fila));
+    }
     if (error) {
       console.warn(`guardarCambio (¿falta aplicar supabase/pendiente.sql?): ${error.message}`);
       return { guardado: false as const, motivo: "sin-tabla" as const };
@@ -131,7 +153,9 @@ export const listarCambios = createServerFn({ method: "GET" })
     if (data.antesDe && data.antesDeId) q = q.or(cursorHistorial(data.antesDe, data.antesDeId));
     else if (data.antesDe) q = q.lt("fecha", data.antesDe);
     if (data.tipo) q = q.eq("tipo", data.tipo);
-    if (data.autor) q = q.eq("autor", data.autor);
+    // Quien no puede ver lo de las demás solo recibe lo suyo, pida lo que pida.
+    const autor = quien.tipo === "miembro" ? autorDelListado(veTodo(quien), quien.userId, data.autor) : data.autor;
+    if (autor) q = q.eq("autor", autor);
     if (data.idEntidad) q = q.eq("id_entidad", data.idEntidad);
     if (!data.completo) q = q.gte("fecha", new Date(Date.now() - 24 * 3_600_000).toISOString());
     const { data: filas, error } = await q;
@@ -143,6 +167,33 @@ export const listarCambios = createServerFn({ method: "GET" })
         autor: (f.autor as string | null) ?? null, autorNombre: (f.autor_nombre as string | null) ?? null, fecha: f.fecha as string,
         deshechoEn: (f.deshecho_en as string | null) ?? undefined, deshechoPor: (f.deshecho_por as string | null) ?? undefined,
         deshaceA: (f.deshace_a as string | null) ?? undefined, avisoEnviado: Boolean(f.aviso_enviado),
+        empleadoId: (f.employee_id as string | null) ?? null,
+        dispositivoId: (f.dispositivo_id as string | null) ?? null,
+        dispositivoNombre: (f.dispositivo_nombre as string | null) ?? null,
       })),
     };
+  });
+
+/**
+ * Antes de deshacer: el servidor decide si ESTA persona puede deshacer ESE
+ * cambio (suyo, o de otra con `historial.deshacer-ajeno`) y si sigue sin
+ * deshacerse. Los datos los aplica después el navegador por el parche de
+ * siempre (que vuelve a comprobar el permiso de la acción). Sin tabla o en
+ * demo no bloquea: la comprobación local manda.
+ */
+export const autorizarDeshacer = createServerFn({ method: "POST" })
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug, cambioId: z.string().min(8).max(64) }))
+  .handler(async ({ data }) => {
+    const quien = await exigirAccesoOdemo(data.slug);
+    if (quien.tipo !== "miembro") return { ok: true as const, comprobado: false as const };
+    exigirAcciones(quien, ["historial.ver"]);
+    const sb = getSupabaseServerClient();
+    if (!sb) return { ok: true as const, comprobado: false as const };
+    const { data: orig, error } = await sb.from("cambios").select("tipo, id_entidad, autor, deshecho_en").eq("id", data.cambioId).eq("salon_slug", data.slug).maybeSingle();
+    if (error || !orig) return { ok: true as const, comprobado: false as const };
+    const motivo = rechazoDeDeshacerEnServidor({ autor: (orig.autor as string | null) ?? null, deshechoEn: (orig.deshecho_en as string | null) ?? undefined }, quien.userId, veTodo(quien));
+    if (motivo) return { ok: false as const, motivo };
+    exigirAcciones(quien, accionesDeCambio({ tipo: orig.tipo as (typeof TIPOS_CAMBIO)[number], idEntidad: orig.id_entidad as string }));
+    return { ok: true as const, comprobado: true as const };
   });
