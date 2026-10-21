@@ -27,11 +27,8 @@
 }
 
 /* ---- Paleta de la web del salón (18.2) -----------------------------------
- * Sale de la marca real de PeluChic (peluchic.online, leída el 27-09-2026):
- * caramelo #DEA378, canela #9C6C49, chocolate #5B412E y chocolate oscuro
- * #402C1E. Encima, un verde que su web casi no usa: salvia en pastel para
- * fondos y eucalipto para acentos de texto. Nunca negro: el texto más oscuro
- * es su chocolate oscuro.
+ * La landing comparte los roles Arena del panel, sin adoptar la identidad de
+ * una demo anterior. El salón se reconoce por sus propios datos del perfil.
  *
  * Contraste medido (WCAG 2.1, texto normal ≥ 4,5:1):
  *   tinta #402C1E ........ 12,1 crema · 10,5 arena · 10,2 caramelo claro · 10,9 salvia clara
@@ -43,24 +40,24 @@
  * trazos, estrellas, puntos y bordes; nunca texto pequeño.
  * ------------------------------------------------------------------------- */
 :root {
-  --ws-crema: #FAF5EE;
-  --ws-tarjeta: #FFFCF8;
-  --ws-arena: #F0E4D6;
-  --ws-lino: #E6D6C4;
-  --ws-lino-fuerte: #D6C1AA;
-  --ws-taupe: #CDB9A4;
-  --ws-caramelo-claro: #F3DFCB;
-  --ws-caramelo: #DEA378;
-  --ws-canela: #9C6C49;
-  --ws-accion: #85593A;
-  --ws-chocolate: #5B412E;
-  --ws-tinta: #402C1E;
-  --ws-texto-suave: #6A5242;
-  --ws-salvia-clara: #E4ECE0;
-  --ws-eucalipto-claro: #D3E3D8;
-  --ws-salvia: #A8BFA8;
-  --ws-oliva: #8A9A5B;
-  --ws-eucalipto: #3A6553;
+  --ws-crema: #FCFAF7;
+  --ws-tarjeta: #FFFFFF;
+  --ws-arena: #EADFD2;
+  --ws-lino: #EAE1D8;
+  --ws-lino-fuerte: #DCCFC1;
+  --ws-taupe: #D9C7B5;
+  --ws-caramelo-claro: #F6F1EA;
+  --ws-caramelo: #D9C7B5;
+  --ws-canela: #A47B5C;
+  --ws-accion: #8A6446;
+  --ws-chocolate: #6B5B52;
+  --ws-tinta: #3B2F2A;
+  --ws-texto-suave: #7A6A60;
+  --ws-salvia-clara: #DDE8DD;
+  --ws-eucalipto-claro: #DDE8DD;
+  --ws-salvia: #9FB8A3;
+  --ws-oliva: #4F6F58;
+  --ws-eucalipto: #45624E;
 }
 
 @theme inline {
@@ -174,34 +171,18 @@ body:has(.web-salon) {
   max-width: 100%;
 }
 
-/* ---- Tipografía de la marca (18.2b) ---------------------------------------
- * Los títulos de su web van en Playfair Display: aquí también, para los
- * títulos de sección (`.ws-titulo`) y lo que ya era serif (`.font-display`:
- * el nombre del salón y de las profesionales). Servida desde `public/fonts`
- * (licencia OFL al lado) y precargada solo en `/s/<salón>`. Mientras carga,
- * Fraunces y Georgia. El texto sigue en Manrope.
- * ------------------------------------------------------------------------- */
-@font-face {
-  font-family: "Playfair Display";
-  font-style: normal;
-  /* Fichero variable: cubre del 400 al 900. Solo el juego latino (español). */
-  font-weight: 400 900;
-  font-display: swap;
-  src: url("/fonts/playfair-display-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
-    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
+/* Arena reserva Fraunces para nombres; los títulos usan Manrope. */
 .web-salon,
 body:has(.web-salon) {
-  --ws-serif: "Playfair Display", "Fraunces", Georgia, serif;
+  --ws-serif: "Fraunces", Georgia, serif;
 }
 .web-salon .font-display,
 body:has(.web-salon) [role="dialog"] .font-display {
   font-family: var(--ws-serif);
 }
 .web-salon .ws-titulo {
-  font-family: var(--ws-serif);
-  font-weight: 600;
+  font-family: "Manrope", ui-sans-serif, sans-serif;
+  font-weight: 800;
   line-height: 1.12;
   letter-spacing: -0.005em;
 }

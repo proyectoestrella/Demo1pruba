@@ -33,6 +33,7 @@ import { rutaSoloCompleto } from "@/lib/plan-basico";
 import { useRedirigirSiRutaSinPermiso } from "@/lib/route-guards";
 import { IncluidoEnPlanCompleto } from "@/components/IncluidoEnPlanCompleto";
 import { useHayPanelLateral } from "@/lib/panel-lateral";
+import { slugResolvibleDelPanel } from "@/lib/slug-panel";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -63,6 +64,16 @@ export const Route = createFileRoute("/app")({
     if (typeof window === "undefined") return;
     // La URL manda sobre lo guardado: un ?s= de otro salón descarta la demo anterior.
     aplicarPrecedenciaDeEnlace(location.search as Record<string, unknown>);
+    // Un perfil de demo es autocontenido: jamás se consulta el slug que
+    // quedara guardado (p. ej. PeluChic) antes de aplicarlo. De otro modo una
+    // respuesta tardía de esa consulta podría pisar el equipo y la carta del
+    // enlace con datos de la demo anterior.
+    const demo = decodeDemoProfile(
+      typeof (location.search as Record<string, unknown>)?.[DEMO_PARAM] === "string"
+        ? ((location.search as Record<string, unknown>)[DEMO_PARAM] as string)
+        : undefined,
+    );
+    if (demo) return;
     const desdeUrl = (location.search as Record<string, unknown>)?.s;
     const slug =
       typeof desdeUrl === "string" && desdeUrl
@@ -156,8 +167,15 @@ function useSalonSlugDelPanel(): string | undefined {
   const desdeUrl = useRouterState({
     select: (s) => (s.location.search as Record<string, unknown>)?.s,
   });
+  const demoRaw = useRouterState({
+    select: (s) => (s.location.search as Record<string, unknown>)?.[DEMO_PARAM],
+  });
   const guardado = useSalonStore((s) => s.salonProfile.slug);
-  return typeof desdeUrl === "string" && desdeUrl ? desdeUrl : guardado || undefined;
+  return slugResolvibleDelPanel({
+    slugDesdeUrl: desdeUrl,
+    demoRaw,
+    slugGuardado: guardado,
+  });
 }
 
 /**
@@ -194,6 +212,17 @@ function useAplicarPrecedenciaDelEnlace() {
 }
 
 function DashboardLayout() {
+  // La capa clara es exclusiva de esta vista previa: los diálogos con portal
+  // la heredan y se restaura al salir hacia la web pública.
+  useEffect(() => {
+    const raiz = document.documentElement;
+    const temaAnterior = raiz.dataset.tema;
+    raiz.dataset.tema = "claro";
+    return () => {
+      if (temaAnterior) raiz.dataset.tema = temaAnterior;
+      else delete raiz.dataset.tema;
+    };
+  }, []);
   // Lote 12: cada acción reversible deja un cambio con «Deshacer» (y Ctrl+Z).
   useEffect(() => {
     instalarRegistro();
@@ -290,66 +319,67 @@ function DashboardLayoutV1() {
   // el contenido esté asentado antes de enfocar nada.
   useEffect(() => {
     if (path !== "/app" || hasSeenTour()) return;
+    // En una demo abierta por enlace (?d=) el tour taparía la cabecera
+    // mientras se enseña el panel: no se lanza solo.
+    if (new URLSearchParams(window.location.search).has("d")) return;
     const t = setTimeout(startTour, 1900);
     return () => clearTimeout(t);
   }, [path]);
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
-      <MenuLateral path={path} />
+    <div className="panel-marco flex min-h-screen w-full">
+      <div className="flex min-h-[inherit] min-w-0 flex-1 bg-transparent">
+        <MenuLateral path={path} />
 
-      <div
-        data-panel={conPanel ? "abierto" : "cerrado"}
-        className={cn(
-          "group/panel flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ease-out",
-          conPanel && "lg:pr-[var(--ancho-panel,440px)]",
-        )}
-      >
-        <CabeceraArena
-          onAsistente={() => setAssistantOpen(true)}
-          onNuevaCita={() => setNewApptOpen(true)}
-          onTour={startTour}
-        />
-        {/* Contenido a todo el ancho con gutter de 28 px; en móvil, 16 px y
+        <div
+          data-panel={conPanel ? "abierto" : "cerrado"}
+          className={cn(
+            "group/panel flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ease-out",
+            conPanel && "lg:pr-[var(--ancho-panel,440px)]",
+          )}
+        >
+          <CabeceraArena
+            onAsistente={() => setAssistantOpen(true)}
+            onNuevaCita={() => setNewApptOpen(true)}
+            onTour={startTour}
+          />
+          {/* Contenido a todo el ancho con gutter de 28 px; en móvil, 16 px y
             hueco para la barra inferior. El último bloque de cada pantalla
             puede crecer hasta el borde (flex-1). */}
-        <FranjaVerComo />
-        <main className="flex min-w-0 flex-1 flex-col px-4 pt-5 pb-[100px] md:px-8 md:pt-8 md:pb-8">
-          {/* Lote 16: cada pantalla entra con un fundido y 8 px de desplazamiento
+          <FranjaVerComo />
+          <main className="flex min-w-0 flex-1 flex-col px-4 pt-5 pb-[100px] md:px-8 md:pt-8 md:pb-8">
+            {/* Lote 16: cada pantalla entra con un fundido y 8 px de desplazamiento
               (180 ms). Con la Web Animations API y sin `key`: remontar el
               contenedor en cada ruta costaba el doble de tiempo al navegar. */}
-          <div ref={contenedorRuta} className="flex min-w-0 flex-1 flex-col">
-            {fueraDelBasico ? (
-              <IncluidoEnPlanCompleto />
-            ) : permitida ? (
-              <Outlet />
-            ) : (
-              <SinPermiso seccion={seccion} />
-            )}
-          </div>
-        </main>
+            <div ref={contenedorRuta} className="flex min-w-0 flex-1 flex-col">
+              {fueraDelBasico ? (
+                <IncluidoEnPlanCompleto />
+              ) : permitida ? (
+                <Outlet />
+              ) : (
+                <SinPermiso seccion={seccion} />
+              )}
+            </div>
+          </main>
+        </div>
+
+        <BarraInferior path={path} onNuevaCita={() => setNewApptOpen(true)} />
+
+        <NewAppointmentDialog open={newApptOpen} onOpenChange={setNewApptOpen} />
+
+        <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
+          <SheetContent side="right" panel="asistente" className="flex w-full flex-col gap-0 p-0">
+            <SheetHeader className="border-b border-border/60 px-4 py-4 text-left">
+              <SheetTitle className="text-lg font-extrabold">Asistente del salón</SheetTitle>
+              <SheetDescription>
+                Consulta tus datos en lenguaje natural. Calcula sobre tus reservas reales: no es un
+                modelo de lenguaje y no inventa cifras.
+              </SheetDescription>
+            </SheetHeader>
+            <AssistantPanel className="flex-1" />
+          </SheetContent>
+        </Sheet>
       </div>
-
-      <BarraInferior path={path} onNuevaCita={() => setNewApptOpen(true)} />
-
-      <NewAppointmentDialog open={newApptOpen} onOpenChange={setNewApptOpen} />
-
-      <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
-        <SheetContent
-          side="right"
-          panel="asistente"
-          className="flex w-full flex-col gap-0 p-0"
-        >
-          <SheetHeader className="border-b border-border/60 px-4 py-4 text-left">
-            <SheetTitle className="text-lg font-extrabold">Asistente del salón</SheetTitle>
-            <SheetDescription>
-              Consulta tus datos en lenguaje natural. Calcula sobre tus reservas
-              reales: no es un modelo de lenguaje y no inventa cifras.
-            </SheetDescription>
-          </SheetHeader>
-          <AssistantPanel className="flex-1" />
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }

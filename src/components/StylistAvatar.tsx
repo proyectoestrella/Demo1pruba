@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { employeeMap } from "@/lib/mock/salon";
 import type { EmployeeId } from "@/lib/mock/types";
+import { Avatar } from "@/components/Avatar";
 
 export type StylistAvatarSize = "sm" | "md" | "lg" | "xl";
 
@@ -20,17 +21,6 @@ const AVATAR_SIZE_PIXELS: Record<StylistAvatarSize, number> = {
 
 /** Fallback color token used when neither `colorVar` nor a resolvable `employeeId` is given. */
 const FALLBACK_COLOR_VAR = "--stylist-ruben";
-
-function initialsFor(name: string) {
-  return name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) => word[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
 
 /** Accepts "stylist-mario" or "--stylist-mario" and always returns the full CSS custom-property name. */
 function normalizeColorVar(colorVar?: string): string | undefined {
@@ -65,10 +55,9 @@ export interface StylistAvatarProps {
 }
 
 /**
- * Stylist avatar: shows a real photo when one is provided via `photo`, and
- * falls back to the original initials-on-color avatar otherwise (design rule
- * for the no-photo case: no AI-looking stylist face photos — see
- * DESIGN-DIRECTION §3.5). Callers opt in to photos explicitly per use site.
+ * Adapter for the legacy public-site API. The actual face is rendered by the
+ * shared Avatar component, so the panel and web never drift into two avatar
+ * families.
  */
 export function StylistAvatar({
   name,
@@ -81,35 +70,16 @@ export function StylistAvatar({
   const cssVar = resolveColorVar(colorVar, employeeId);
   const pixels = AVATAR_SIZE_PIXELS[size];
 
-  if (photo) {
-    return (
-      <div
-        className={cn(
-          "shrink-0 overflow-hidden rounded-full border-2 select-none",
-          AVATAR_SIZE_CLASSES[size],
-          className,
-        )}
-        style={{ borderColor: `var(${cssVar})` }}
-        title={name}
-      >
-        <img src={photo} alt={name} width={pixels} height={pixels} className="h-full w-full object-cover" />
-      </div>
-    );
-  }
-
   return (
-    <div
-      className={cn(
-        "flex shrink-0 items-center justify-center rounded-full font-bold text-foreground select-none",
-        AVATAR_SIZE_CLASSES[size],
-        className,
-      )}
-      style={{ backgroundColor: `var(${cssVar})` }}
-      title={name}
-      aria-label={name}
-    >
-      {initialsFor(name)}
-    </div>
+    <Avatar
+      nombre={name}
+      id={employeeId}
+      foto={photo}
+      size={pixels}
+      aro={cssVar}
+      className={cn("border-0 font-bold text-foreground", AVATAR_SIZE_CLASSES[size], className)}
+      decorativo={false}
+    />
   );
 }
 

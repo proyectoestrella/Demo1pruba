@@ -26,8 +26,11 @@ import {
   type ModuloOcultable,
 } from "@/lib/demo-profile";
 import {
+  EMPLOYEE_OVERLAY,
+  SERVICE_CATALOG,
   formatMenuEntry,
   formatTeamEntry,
+  inferBusinessType,
   parseMenuEntry,
   parseTeamEntry,
 } from "@/lib/business-type";
@@ -136,6 +139,20 @@ function menuLinesToEntries(text: string): string[] {
     .map((l) => parseMenuEntry(lineToTilde(l)))
     .filter((e): e is NonNullable<typeof e> => e !== null)
     .map(formatMenuEntry);
+}
+
+/** Los ejemplos del formulario también hablan el oficio indicado en `t`. */
+function ejemplosDeCarta(tagline: string, nombre: string) {
+  const tipo = inferBusinessType(tagline, nombre);
+  const equipo = Object.values(EMPLOYEE_OVERLAY[tipo])
+    .slice(0, 2)
+    .map((p) => `${p.name} — ${p.specialty}`)
+    .join("\n");
+  const carta = SERVICE_CATALOG[tipo]
+    .slice(0, 2)
+    .map((s) => `${s.name} — ${s.durationMin} — ${s.priceEur} — ${s.category}`)
+    .join("\n");
+  return { equipo, carta };
 }
 
 function draftFrom(demo: DemoProfile & { id?: string }): DraftDemo {
@@ -566,7 +583,7 @@ function Demos() {
               value={draft.team}
               onChange={(e) => field("team", e.target.value)}
               rows={3}
-              placeholder={"Adam — Cortes y afeitado clásico\nLucía — Color y mechas"}
+              placeholder={ejemplosDeCarta(draft.tagline, draft.name).equipo}
               className="resize-y font-mono text-xs"
             />
             <p className="text-xs text-muted-foreground">
@@ -583,7 +600,7 @@ function Demos() {
               value={draft.menu}
               onChange={(e) => field("menu", e.target.value)}
               rows={4}
-              placeholder={"Corte — 30 — 13 — Cortes\nCorte + barba — 45 — 18 — Cortes"}
+              placeholder={ejemplosDeCarta(draft.tagline, draft.name).carta}
               className="resize-y font-mono text-xs"
             />
             <p className="text-xs text-muted-foreground">

@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Check, ChevronDown, Copy, ExternalLink, Eye, EyeOff, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { useSalonStore } from "@/lib/store";
+import { moduloVisibleEnPanel } from "@/lib/demo-profile";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -29,11 +30,14 @@ export function useProgresoPrimerosPasos() {
   if (profile.menu?.length) automáticos.add(0);
   if (profile.team?.length && profile.teamHours?.length && profile.teamHours.length >= profile.team.length) automáticos.add(1);
   if (appointments.some((a) => a.origen === "tpv123")) automáticos.add(4);
+  // Demo que oculta el equipo: el paso no se enseña (su pantalla no existe) y cuenta como hecho.
+  const sinEquipo = !moduloVisibleEnPanel(profile, "equipo");
+  if (sinEquipo) automáticos.add(1);
   const marcados = new Set([...(profile.setupChecklistDone ?? []), ...automáticos]);
   const pendientes = [...PASOS.map((p) => p.titulo), "Compartir tu enlace de reservas"].filter(
     (_, i) => !marcados.has(i),
   );
-  return { automáticos, marcados, progreso: marcados.size, pendientes, oculto: !!profile.setupChecklistHidden };
+  return { sinEquipo, automáticos, marcados, progreso: marcados.size, pendientes, oculto: !!profile.setupChecklistHidden };
 }
 
 export function PrimerosPasos({ enAjustes = false }: { enAjustes?: boolean }) {
@@ -41,7 +45,7 @@ export function PrimerosPasos({ enAjustes = false }: { enAjustes?: boolean }) {
   const update = useSalonStore((s) => s.updateSalonProfile);
   const demoActive = useSalonStore((s) => s.demoActive);
   const [abierto, setAbierto] = useState(!enAjustes && !demoActive);
-  const { automáticos, marcados, progreso, oculto } = useProgresoPrimerosPasos();
+  const { sinEquipo, automáticos, marcados, progreso, oculto } = useProgresoPrimerosPasos();
 
   if (enAjustes && oculto) return <Button variant="outline" className="gap-2" onClick={() => update({ setupChecklistHidden: false })}><Eye className="size-4" />Volver a ver los primeros pasos</Button>;
   if (oculto && !enAjustes) return null;
@@ -68,6 +72,7 @@ export function PrimerosPasos({ enAjustes = false }: { enAjustes?: boolean }) {
       {abierto && <div className="border-t border-border p-3 sm:p-4">
         <ol className="space-y-2">
           {PASOS.map((paso, i) => {
+            if (i === 1 && sinEquipo) return null;
             const done = marcados.has(i);
             const automatico = automáticos.has(i);
             return <li key={paso.titulo} className="flex min-h-14 items-center gap-3 rounded-xl px-2 py-2 hover:bg-perla">
@@ -75,7 +80,7 @@ export function PrimerosPasos({ enAjustes = false }: { enAjustes?: boolean }) {
                 {done && <Check className="size-4" />}
               </button>
               <Link to={paso.to} className="min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <span className={cn("block text-sm font-bold", done && "text-muted-foreground line-through")}>{i + 1}. {paso.titulo}</span><span className="block text-xs text-muted-foreground">{paso.detalle}{automatico ? " · Listo" : ""}</span>
+                <span className={cn("block text-sm font-bold", done && "text-muted-foreground line-through")}>{i + 1 - (sinEquipo && i > 1 ? 1 : 0)}. {paso.titulo}</span><span className="block text-xs text-muted-foreground">{paso.detalle}{automatico ? " · Listo" : ""}</span>
               </Link>
               <Link to={paso.to} aria-label={`Abrir: ${paso.titulo}`} className="rounded-md p-2 text-primary"><ExternalLink className="size-4" /></Link>
             </li>;

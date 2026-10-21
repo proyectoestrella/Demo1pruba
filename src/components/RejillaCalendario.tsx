@@ -1,4 +1,12 @@
-import { memo, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  memo,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { Check, Clock3, UserCheck, UserX } from "lucide-react";
 import { tinteProfesional } from "@/lib/colores-elegidos";
 import { hora } from "@/lib/copy";
@@ -6,7 +14,14 @@ import { serviceLabelOf } from "@/lib/appointment-services";
 import { franjasProfesionalEnFecha } from "@/lib/horario-equipo";
 import { indiceColorServicio, minutosAHora } from "@/lib/hoy-arena";
 import { esBloqueExterno } from "@/lib/calendarios-panel";
-import { carrilesSolapados, citasPorDia, iniciales, minutosDe, mismoDia, pausasDe } from "@/lib/calendario-arena";
+import {
+  carrilesSolapados,
+  citasPorDia,
+  iniciales,
+  minutosDe,
+  mismoDia,
+  pausasDe,
+} from "@/lib/calendario-arena";
 import { toDateKey } from "@/lib/reparto";
 import type { Appointment, DiaEspecial, Employee, EmployeeId, Service } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
@@ -47,15 +62,27 @@ export function altoPorHora(altoDisponible: number, horas: number): number {
  * horas visibles; si hoy está en pantalla y la hora actual cae dentro,
  * una hora antes de ahora. Pura, con test.
  */
-export function scrollInicial(pxHora: number, verDesde: number, verHasta: number, minutoAhoraSiHoy: number | null, altoVisible?: number): number {
+export function scrollInicial(
+  pxHora: number,
+  verDesde: number,
+  verHasta: number,
+  minutoAhoraSiHoy: number | null,
+  altoVisible?: number,
+): number {
   // Lote 16: si las horas visibles caben enteras, se enseñan enteras (con
   // «ahora» dentro): es lo que se ha pedido en Ajustes.
-  if (altoVisible !== undefined && (verHasta - verDesde) * pxHora <= altoVisible + 1) return Math.max(0, verDesde * pxHora);
-  const dentro = minutoAhoraSiHoy !== null && minutoAhoraSiHoy >= verDesde * 60 && minutoAhoraSiHoy < verHasta * 60;
+  if (altoVisible !== undefined && (verHasta - verDesde) * pxHora <= altoVisible + 1)
+    return Math.max(0, verDesde * pxHora);
+  const dentro =
+    minutoAhoraSiHoy !== null &&
+    minutoAhoraSiHoy >= verDesde * 60 &&
+    minutoAhoraSiHoy < verHasta * 60;
   const minuto = dentro ? minutoAhoraSiHoy - 60 : verDesde * 60;
   const top = Math.max(0, (minuto / 60) * pxHora);
   // Y nunca tan abajo que el final de las horas visibles quede por encima.
-  return altoVisible !== undefined ? Math.min(top, Math.max(verDesde * pxHora, verHasta * pxHora - altoVisible)) : top;
+  return altoVisible !== undefined
+    ? Math.min(top, Math.max(verDesde * pxHora, verHasta * pxHora - altoVisible))
+    : top;
 }
 
 /**
@@ -73,7 +100,11 @@ export function scrollConservado(top: number, pxAntes: number, pxAhora: number):
  * (lote 16: las horas visibles también se ven, no solo deciden el scroll).
  * Pura, con test.
  */
-export function tramosCerrados(abiertas: { ini: number; fin: number }[], verDesde: number, verHasta: number): { ini: number; fin: number }[] {
+export function tramosCerrados(
+  abiertas: { ini: number; fin: number }[],
+  verDesde: number,
+  verHasta: number,
+): { ini: number; fin: number }[] {
   const lim = { ini: verDesde * 60, fin: verHasta * 60 };
   const dentro = abiertas
     .map((t) => ({ ini: Math.max(t.ini, lim.ini), fin: Math.min(t.fin, lim.fin) }))
@@ -197,7 +228,9 @@ export function RejillaCalendario({
   useLayoutEffect(() => {
     const el = ref.current;
     if (el && pxPrevio.current !== px) {
-      el.scrollTop = inicialPendiente.current ? topInicial() : scrollConservado(el.scrollTop, pxPrevio.current, px);
+      el.scrollTop = inicialPendiente.current
+        ? topInicial()
+        : scrollConservado(el.scrollTop, pxPrevio.current, px);
     }
     pxPrevio.current = px;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -211,7 +244,13 @@ export function RejillaCalendario({
       return;
     }
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    lienzo.current?.animate?.([{ opacity: 0.35, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], { duration: 160, easing: "ease-out" });
+    lienzo.current?.animate?.(
+      [
+        { opacity: 0.35, transform: "translateY(4px)" },
+        { opacity: 1, transform: "none" },
+      ],
+      { duration: 160, easing: "ease-out" },
+    );
   }, [claveScroll]);
   // Etiquetas de hora que quedarían medio tapadas por la cabecera fija: se
   // ocultan enteras (como Google Calendar). Sin React: 23 spans, una vez por fotograma.
@@ -245,32 +284,45 @@ export function RejillaCalendario({
     const el = ref.current;
     if (!el || !irAAhora) return;
     const suave = !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    el.scrollTo({ top: Math.max(0, y(minutosDe(ahora) - 60)), behavior: suave ? "smooth" : "auto" });
+    el.scrollTo({
+      top: Math.max(0, y(minutosDe(ahora) - 60)),
+      behavior: suave ? "smooth" : "auto",
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [irAAhora]);
 
   return (
-    <div ref={ref} className="relative min-h-0 flex-1 overflow-auto overscroll-contain [scrollbar-gutter:stable]">
+    <div
+      ref={ref}
+      className="relative min-h-0 flex-1 overflow-auto overscroll-contain bg-card/70 [scrollbar-gutter:stable]"
+    >
       <div
         ref={lienzo}
         className="grid [--ancho-columna:var(--ancho-escritorio)] max-sm:[--ancho-columna:var(--ancho-movil)]"
-        style={{
-          "--ancho-escritorio": `${anchoMinimo}px`,
-          "--ancho-movil": `${anchoMinimoMovil}px`,
-          gridTemplateColumns: `52px repeat(${columnas.length}, minmax(var(--ancho-columna), 1fr))`,
-        } as CSSProperties}
+        style={
+          {
+            "--ancho-escritorio": `${anchoMinimo}px`,
+            "--ancho-movil": `${anchoMinimoMovil}px`,
+            gridTemplateColumns: `52px repeat(${columnas.length}, minmax(var(--ancho-columna), 1fr))`,
+          } as CSSProperties
+        }
       >
         {/* Cabecera fija: esquina vacía y un encabezado por columna. */}
-        <div ref={cabecera} className="sticky top-0 left-0 z-[12] border-r border-b border-k-linea-f bg-k-cab" />
+        <div
+          ref={cabecera}
+          className="sticky top-0 left-0 z-[12] border-r border-b border-k-linea-f bg-card/50 backdrop-blur-sm"
+        />
         {columnas.map((c) => {
-          const cerrado = c.equipo.every((e) => franjasProfesionalEnFecha(e, toDateKey(c.dia), diasEspeciales).length === 0);
+          const cerrado = c.equipo.every(
+            (e) => franjasProfesionalEnFecha(e, toDateKey(c.dia), diasEspeciales).length === 0,
+          );
           const Etiqueta = c.onCabecera ? "button" : "div";
           return (
             <Etiqueta
               key={c.clave}
               {...(c.onCabecera ? { type: "button" as const, onClick: c.onCabecera } : {})}
               className={cn(
-                "sticky top-0 z-[10] flex min-h-[58px] flex-col justify-center border-b border-l border-k-linea bg-k-cab px-2 py-1.5 text-left text-k-tinta transition-colors",
+                "sticky top-0 z-[10] flex min-h-[42px] flex-col justify-center border-b border-l border-k-linea-f bg-card/50 px-2 py-1 text-left text-k-tinta backdrop-blur-sm transition-colors",
                 c.onCabecera && "hover:bg-beige",
                 cerrado && "text-cafe-suave",
               )}
@@ -281,20 +333,26 @@ export function RejillaCalendario({
         })}
 
         {/* Columna de horas, fija a la izquierda. */}
-        <div ref={horasCol} className="sticky left-0 z-[9] border-r border-k-linea-f bg-k-cab" style={{ height: horas * px }}>
+        <div
+          ref={horasCol}
+          className="sticky left-0 z-[9] border-r border-k-linea-f bg-transparent"
+          style={{ height: horas * px }}
+        >
           {Array.from({ length: horas }, (_, i) =>
             i === 0 ? null : (
               <span
                 key={i}
                 data-top={i * px}
                 className={cn(
-                  "absolute right-2 -translate-y-1/2 text-[10.5px] font-semibold text-cafe-suave tabular-nums",
+                  "absolute right-2 -translate-y-1/2 text-[12px] font-medium text-k-gris tabular-nums",
                   // El punto rojo de «ahora» no pisa la etiqueta de su hora.
-                  minAhoraVisible !== null && Math.abs(minAhoraVisible - i * 60) < 12 && "opacity-0",
+                  minAhoraVisible !== null &&
+                    Math.abs(minAhoraVisible - i * 60) < 12 &&
+                    "opacity-0",
                 )}
                 style={{ top: i * px }}
               >
-                {desde + i}:00
+                {String(desde + i).padStart(2, "0")}:00
               </span>
             ),
           )}
@@ -304,6 +362,7 @@ export function RejillaCalendario({
           <ColumnaDia
             key={c.clave}
             columna={c}
+            conPildora={columnas[0]?.clave === c.clave}
             citasDelDia={porDia.get(toDateKey(c.dia)) ?? SIN_CITAS}
             todoElEquipo={todoElEquipo}
             desde={desde}
@@ -336,7 +395,10 @@ const SIN_CITAS: Appointment[] = [];
 function mismaColumna(a: PropsColumna, b: PropsColumna): boolean {
   const ids = (l: Employee[]) => l.map((e) => e.id).join(",");
   const esHoy = mismoDia(b.columna.dia, b.ahora);
-  const sel = (p: PropsColumna) => (p.seleccionadaId && p.citasDelDia.some((c) => c.id === p.seleccionadaId) ? p.seleccionadaId : "");
+  const sel = (p: PropsColumna) =>
+    p.seleccionadaId && p.citasDelDia.some((c) => c.id === p.seleccionadaId)
+      ? p.seleccionadaId
+      : "";
   return (
     a.columna.clave === b.columna.clave &&
     ids(a.columna.equipo) === ids(b.columna.equipo) &&
@@ -361,6 +423,7 @@ function mismaColumna(a: PropsColumna, b: PropsColumna): boolean {
 
 type PropsColumna = {
   columna: ColumnaRejilla;
+  conPildora: boolean;
   citasDelDia: Appointment[];
   todoElEquipo: Employee[];
   desde: number;
@@ -380,6 +443,7 @@ type PropsColumna = {
 
 const ColumnaDia = memo(function ColumnaDia({
   columna,
+  conPildora,
   citasDelDia,
   todoElEquipo,
   desde,
@@ -408,7 +472,9 @@ const ColumnaDia = memo(function ColumnaDia({
   const esHoy = mismoDia(dia, ahora);
 
   // Lo que queda fuera del horario de todas las profesionales de la columna, sombreado.
-  const franjas = equipo.flatMap((e) => franjasProfesionalEnFecha(e, toDateKey(dia), diasEspeciales)).sort((a, b) => a.start - b.start);
+  const franjas = equipo
+    .flatMap((e) => franjasProfesionalEnFecha(e, toDateKey(dia), diasEspeciales))
+    .sort((a, b) => a.start - b.start);
   const abiertas: { ini: number; fin: number }[] = [];
   for (const f of franjas) {
     const ult = abiertas[abiertas.length - 1];
@@ -419,7 +485,11 @@ const ColumnaDia = memo(function ColumnaDia({
 
   const minutoDe = (evY: number) => Math.floor((desde * 60 + (evY / px) * 60) / 15) * 15;
   const quienAtiende = (min: number): Employee | undefined =>
-    equipo.find((e) => franjasProfesionalEnFecha(e, toDateKey(dia), diasEspeciales).some((f) => min >= f.start && min < f.end)) ?? equipo[0];
+    equipo.find((e) =>
+      franjasProfesionalEnFecha(e, toDateKey(dia), diasEspeciales).some(
+        (f) => min >= f.start && min < f.end,
+      ),
+    ) ?? equipo[0];
 
   const fondo: CSSProperties = {
     height: horas * px,
@@ -430,7 +500,7 @@ const ColumnaDia = memo(function ColumnaDia({
 
   return (
     <div
-      className={cn("relative cursor-pointer overflow-y-clip border-l border-k-linea-f", esHoy && "bg-salvia-suave/35")}
+      className="relative cursor-pointer overflow-y-clip border-l border-k-linea-f"
       style={fondo}
       title="Pulsa un hueco para dar una cita a esa hora"
       onMouseMove={(ev) => {
@@ -465,15 +535,18 @@ const ColumnaDia = memo(function ColumnaDia({
             Comida
           </div>
         ))}
-      {fantasma !== null && (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-1 z-[3] flex items-center gap-1 rounded-[5px] border border-dashed border-cafe-medio/70 bg-card/85 px-1.5 text-[11px] font-bold text-cafe-medio tabular-nums"
-          style={{ top: y(fantasma) + 1, height: px / 2 - 2 }}
-        >
-          <span className="text-[14px] leading-none">+</span> {minutosAHora(fantasma)}
-        </div>
-      )}
+      {fantasma !== null &&
+        !citas.some(
+          (a) => minutosDe(a.start) < fantasma + 30 && minutosDe(a.start) + a.duration > fantasma,
+        ) && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-1 z-[3] flex items-center gap-1 rounded-[5px] border border-dashed border-cafe-medio/70 bg-card/85 px-1.5 text-[11px] font-bold text-cafe-medio tabular-nums"
+            style={{ top: y(fantasma) + 1, height: px / 2 - 2 }}
+          >
+            <span className="text-[14px] leading-none">+</span> {minutosAHora(fantasma)}
+          </div>
+        )}
       {citas.map((a) => {
         const { carril, total } = carriles.get(a.id) ?? { carril: 0, total: 1 };
         const ini = minutosDe(a.start);
@@ -490,7 +563,15 @@ const ColumnaDia = memo(function ColumnaDia({
               data-cita
               className="absolute z-[4] grid place-items-center overflow-hidden rounded-md border border-cafe/60 bg-beige text-[11px] font-semibold text-cafe-suave"
               // 14c: lo ocupado en un calendario externo va rayado, como la pausa.
-              style={esBloqueExterno(a) ? { ...style, background: "repeating-linear-gradient(135deg,#EDE4D8 0 7px,#F5EFE6 7px 14px)" } : style}
+              style={
+                esBloqueExterno(a)
+                  ? {
+                      ...style,
+                      background:
+                        "repeating-linear-gradient(135deg,var(--k-raya-1) 0 7px,var(--k-raya-2) 7px 14px)",
+                    }
+                  : style
+              }
             >
               {a.note || "Bloqueado"}
             </div>
@@ -504,7 +585,14 @@ const ColumnaDia = memo(function ColumnaDia({
             a={a}
             carta={carta}
             services={services}
-            fondo={colorPor === "profesional" ? colorProfesional(Math.max(0, iPro), a.employeeId) : undefined}
+            fondo={
+              colorPor === "profesional"
+                ? colorProfesional(Math.max(0, iPro), a.employeeId)
+                : undefined
+            }
+            tinta={
+              colorPor === "profesional" ? `var(--pro-${Math.max(0, iPro) + 1}-tinta)` : undefined
+            }
             pro={colorPor === "profesional" && pro ? pro.name : undefined}
             estrecha={total === 3}
             compacta={total > 3}
@@ -516,16 +604,41 @@ const ColumnaDia = memo(function ColumnaDia({
           />
         );
       })}
-      {esHoy && <LineaAhora y={y(minutosDe(ahora))} alto={horas * px} />}
+      {esHoy && (
+        <LineaAhora
+          y={y(minutosDe(ahora))}
+          alto={horas * px}
+          ahora={ahora}
+          conPildora={conPildora}
+        />
+      )}
     </div>
   );
 }, mismaColumna);
 
-function LineaAhora({ y, alto }: { y: number; alto: number }) {
+function LineaAhora({
+  y,
+  alto,
+  ahora,
+  conPildora,
+}: {
+  y: number;
+  alto: number;
+  ahora: Date;
+  conPildora: boolean;
+}) {
   if (y < 0 || y > alto) return null;
   return (
-    <div className="pointer-events-none absolute inset-x-0 z-[6]" style={{ top: y }} aria-hidden="true">
-      <span className="absolute -top-[5px] -left-[6px] size-[11px] rounded-full bg-k-ahora" />
+    <div
+      className="pointer-events-none absolute inset-x-0 z-[6]"
+      style={{ top: y }}
+      aria-hidden="true"
+    >
+      {conPildora && (
+        <span className="absolute -top-3 -left-[52px] z-[1] rounded-full bg-k-ahora px-2 py-0.5 text-[10px] font-bold leading-4 text-primary-foreground tabular-nums">
+          {minutosAHora(ahora.getHours() * 60 + ahora.getMinutes())}
+        </span>
+      )}
       <span className="block h-0.5 bg-k-ahora" />
     </div>
   );
@@ -537,6 +650,7 @@ export function CitaRejilla({
   carta,
   services,
   fondo,
+  tinta,
   pro,
   estrecha = false,
   compacta = false,
@@ -550,7 +664,9 @@ export function CitaRejilla({
   services: Service[];
   /** Fondo por profesional; si no llega, el del servicio. */
   fondo?: string;
-  /** Nombre de la profesional, para su chip de iniciales. */
+  /** Tinta accesible para el pastel del servicio o profesional. */
+  tinta?: string;
+  /** Nombre de la profesional para el detalle emergente. */
   pro?: string;
   /** Tres o más citas a la vez: solo el nombre de pila, sin chip. */
   estrecha?: boolean;
@@ -572,6 +688,7 @@ export function CitaRejilla({
   const pila = nombre.split(/\s+/)[0];
   const cabeHora = !compacta && (estrecha ? alto >= 40 : alto >= 30);
   const dosLineas = !estrecha && !compacta && alto >= 34;
+  const nombreEnDosLineas = dosLineas && alto >= 48;
   const cabeServicio = !estrecha && !compacta && alto >= 52;
   return (
     <button
@@ -581,46 +698,109 @@ export function CitaRejilla({
       aria-pressed={seleccionada}
       title={`${a.clientName} · ${nombreServicio} · ${hora(a.start)}–${minutosAHora(ini + a.duration)}${pro ? ` · ${pro}` : ""}${pendiente ? " · por confirmar" : ""}${vino ? " · vino" : ""}${noVino ? " · no vino" : ""}`}
       className={cn(
-        "@container absolute z-[4] flex flex-col overflow-hidden rounded-[6px] border border-cafe/25 text-left text-[12px] leading-[1.25] text-cafe transition-shadow duration-150 hover:z-[7] hover:shadow-[0_3px_10px_rgba(59,47,42,0.16)] focus-visible:z-[7] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
-        compacta ? "px-[3px] py-0.5 text-[10.5px]" : estrecha ? "px-1 py-0.5 text-[11px]" : dosLineas ? "px-1.5 py-1" : "flex-row items-center gap-1.5 px-1.5 py-0",
-        pendiente && "border-dashed",
+        "@container absolute z-[4] flex flex-col overflow-hidden rounded-[5px] border border-transparent text-left text-[12px] leading-[1.2] transition-colors duration-150 hover:z-[7] focus-visible:z-[7] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
+        compacta
+          ? "px-1 py-0.5 text-[10.5px]"
+          : estrecha
+            ? "px-1 py-0.5 text-[11px]"
+            : dosLineas
+              ? "px-1.5 py-1"
+              : "flex-row items-center gap-1.5 px-1.5 py-0",
+        pendiente && "border-dashed border-cafe/55",
         noVino && "line-through decoration-cafe/60",
         seleccionada && "z-[8] ring-2 ring-primary ring-offset-1 ring-offset-card",
         // Sitio para el icono de estado, que no tape la hora.
         conIcono && !compacta && a.status !== "confirmed" && a.status !== "blocked" && "pr-5",
       )}
-      // Barra izquierda de 4 px con el borde saturado del mismo color (--pro-N-borde / --serv-N-borde).
-      style={{ ...style, background: pendiente ? "var(--superficie)" : (fondo ?? `var(--serv-${n})`), borderLeft: `4px ${pendiente ? "dashed" : "solid"} ${fondo ? fondo.replace(")", "-borde)") : `var(--serv-${n}-borde)`}` }}
+      style={{
+        ...style,
+        background: pendiente ? "var(--superficie)" : (fondo ?? `var(--serv-${n})`),
+        color: pendiente ? "var(--k-tinta)" : (tinta ?? `var(--serv-${n}-tinta)`),
+        borderLeft: pendiente ? "1px dashed var(--k-pendiente-borde)" : "0",
+      }}
     >
       {/* En carriles de menos de 20 px de texto (la semana en el móvil) no cabe ni una
           letra: solo el bloque de color; al pulsarlo sale el detalle. */}
       <span className="flex min-w-0 items-center gap-1 @max-[20px]:hidden">
-        {pro && !estrecha && !compacta && (
-          <span className="grid size-[18px] shrink-0 place-items-center rounded-full border border-cafe/40 bg-superficie text-[9px] font-extrabold" aria-hidden="true">
-            {iniciales(pro)}
-          </span>
+        {pro && !compacta && (
+          // Quién atiende: con tres profesionales a la vez, el color solo no basta (D6).
+          <i
+            aria-hidden="true"
+            className="grid h-[15px] min-w-[15px] shrink-0 place-items-center rounded-full bg-white/60 px-[3px] text-[9px] font-extrabold not-italic leading-none"
+          >
+            {estrecha ? iniciales(pro).slice(0, 1) : iniciales(pro)}
+          </i>
         )}
-        <b className={cn("truncate font-extrabold", noVino && "line-through")}>{estrecha || compacta ? pila : nombre}</b>
+        <b
+          className={cn(
+            nombreEnDosLineas ? "line-clamp-2 leading-[1.15]" : "truncate",
+            "font-semibold",
+            noVino && "line-through",
+          )}
+        >
+          {estrecha || compacta ? pila : nombre}
+        </b>
       </span>
       {cabeHora && (
-        <span className="shrink-0 truncate text-[11px] font-semibold text-cafe-medio tabular-nums @max-[20px]:hidden">
+        <span className="shrink-0 truncate text-[11px] font-normal tabular-nums @max-[20px]:hidden">
           {hora(a.start)}
           {dosLineas && alto >= 50 && ` – ${minutosAHora(ini + a.duration)}`}
         </span>
       )}
-      {cabeServicio && <span className="truncate text-[11px] text-cafe-medio @max-[20px]:hidden">{nombreServicio}</span>}
-      {conIcono && !compacta && <IconoEstado status={a.status} className={cn("@max-[60px]:hidden", dosLineas ? "top-1 right-1" : "top-1/2 right-1 -translate-y-1/2")} />}
+      {cabeServicio && (
+        <span className="truncate text-[11px] font-normal @max-[20px]:hidden">
+          {nombreServicio}
+        </span>
+      )}
+      {conIcono && !compacta && (
+        <IconoEstado
+          status={a.status}
+          className={cn(
+            "@max-[60px]:hidden",
+            dosLineas ? "top-1 right-1" : "top-1/2 right-1 -translate-y-1/2",
+          )}
+        />
+      )}
     </button>
   );
 }
 
 /** Estado de la cita con un icono discreto (el texto va en el title). */
-export function IconoEstado({ status, className }: { status: Appointment["status"]; className?: string }) {
-  const Icono = status === "completed" ? Check : status === "in-progress" ? UserCheck : status === "pending" ? Clock3 : status === "no-show" ? UserX : null;
+export function IconoEstado({
+  status,
+  className,
+}: {
+  status: Appointment["status"];
+  className?: string;
+}) {
+  const Icono =
+    status === "completed"
+      ? Check
+      : status === "in-progress"
+        ? UserCheck
+        : status === "pending"
+          ? Clock3
+          : status === "no-show"
+            ? UserX
+            : null;
   if (!Icono) return null;
-  const txt = status === "completed" ? "Vino" : status === "in-progress" ? "En el salón" : status === "pending" ? "Por confirmar" : "No vino";
+  const txt =
+    status === "completed"
+      ? "Vino"
+      : status === "in-progress"
+        ? "En el salón"
+        : status === "pending"
+          ? "Por confirmar"
+          : "No vino";
   return (
-    <span className={cn("absolute grid size-[15px] place-items-center rounded-full bg-card/85 text-cafe-medio", className)} role="img" aria-label={txt}>
+    <span
+      className={cn(
+        "absolute grid size-[15px] place-items-center rounded-full bg-card/85 text-cafe-medio",
+        className,
+      )}
+      role="img"
+      aria-label={txt}
+    >
       <Icono className="size-[10px]" strokeWidth={2.4} aria-hidden="true" />
     </span>
   );

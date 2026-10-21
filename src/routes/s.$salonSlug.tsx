@@ -44,20 +44,6 @@ export const Route = createFileRoute("/s/$salonSlug")({
       : "Reserva tu cita en segundos, sin llamar.";
     const title = name ? `${name} — Reserva por internet` : "Reserva por internet";
     return {
-      // Lote 18.2b: títulos en Playfair Display, la serif de la marca de
-      // PeluChic, servida desde aquí (`public/fonts`, OFL) y declarada en
-      // `web-salon.css`. Pedirla a Google añadía una hoja que bloqueaba el
-      // primer pintado 180-250 ms en móvil; así solo se precarga el fichero
-      // (38 KB) y solo en la web del salón.
-      links: [
-        {
-          rel: "preload",
-          as: "font",
-          type: "font/woff2",
-          href: "/fonts/playfair-display-latin.woff2",
-          crossOrigin: "anonymous",
-        },
-      ],
       meta: [
         { title },
         { name: "description", content: description },
@@ -83,13 +69,13 @@ function demoSessionKey(salonSlug: string): string {
  * de móvil. Con un solo profesional no hay sección "Equipo" en la página, así
  * que tampoco puede haber un enlace del menú que lleve a un ancla vacía.
  */
-function navLinks(soloUno: boolean) {
+function navLinks(soloUno: boolean, sinResenas = false) {
   return [
     { href: "#servicios", label: "Servicios" },
     { href: "#carta", label: "Precios" },
     ...(soloUno ? [] : [{ href: "#equipo", label: "Equipo" }]),
     { href: "#galeria", label: "Galería" },
-    { href: "#resenas", label: "Reseñas" },
+    ...(sinResenas ? [] : [{ href: "#resenas", label: "Reseñas" }]),
     { href: "#faq", label: "Preguntas" },
     { href: "#ubicacion", label: "Cómo llegar" },
   ];
@@ -104,6 +90,16 @@ function SalonLayout() {
   // Logo del salón en la barra y el pie; en demo, el de la lista de demos (ver logo-salon.ts).
   const sinSalonReal = useSalonStore((st) => !st.realSalonSlug);
   const conEnlaceDemo = useRouterState({ select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string" });
+  const demoParam = useRouterState({
+    select: (st) => {
+      const v = (st.location.search as Record<string, unknown>)[DEMO_PARAM];
+      return typeof v === "string" ? v : "";
+    },
+  });
+  // Con enlace de demo, el panel debe abrir ESE salón (no la demo genérica).
+  const hrefPanel = demoParam
+    ? `/app?${DEMO_PARAM}=${encodeURIComponent(demoParam)}`
+    : `/app?acceso=demo&s=${encodeURIComponent(salonSlug)}`;
   const resolucionPublica = useSalonStore((s) =>
     s.publicBookingResolution?.slug === salonSlug ? s.publicBookingResolution.status : "resolviendo",
   );
@@ -139,8 +135,14 @@ function SalonLayout() {
   // Un solo profesional: sin sección "Equipo" en la home, sin enlace en el
   // menú (ver `navLinks`). Se deriva del equipo activo, no de un flag.
   const NAV_LINKS = useMemo(
-    () => navLinks(esSoloUnProfesional(employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds))),
-    [tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds],
+    () =>
+      navLinks(
+        esSoloUnProfesional(employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds)),
+        // Demo por enlace sin nota real: la home no pinta «Reseñas» (ver
+        // `seccionResenasPublicas`), así que el menú tampoco la enlaza.
+        conEnlaceDemo && !(profile.rating > 0 && profile.reviewCount > 0),
+      ),
+    [tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds, conEnlaceDemo, profile.rating, profile.reviewCount],
   );
 
   // Auditoría de UX, hallazgo C2: los `Link` del flujo de reserva no
@@ -317,7 +319,7 @@ function SalonLayout() {
                 // entrar a SU agenda desde un móvil recién estrenado, sin nada
                 // guardado. Para una demo de venta el parámetro no existe en
                 // `salons` y el panel se comporta exactamente como siempre.
-                href={`/app?acceso=demo&s=${encodeURIComponent(salonSlug)}`}
+                href={hrefPanel}
                 className="ml-1 hidden h-9 items-center gap-1.5 rounded-full border border-lino-fuerte bg-card px-3 text-xs font-medium text-cafe-medio hover:bg-beige sm:inline-flex"
               >
                 <Lock className="h-3 w-3" />
@@ -392,7 +394,7 @@ function SalonLayout() {
                       ))}
                       {(publicV2 || conEnlaceDemo) && (
                         <a
-                          href={`/app?acceso=demo&s=${encodeURIComponent(salonSlug)}`}
+                          href={hrefPanel}
                           className="mt-3 flex min-h-12 items-center gap-2 rounded-xl border border-lino-fuerte bg-card px-3 text-base font-semibold text-foreground transition-colors hover:bg-muted"
                         >
                           <Lock className="h-4 w-4" aria-hidden="true" /> Panel del salón (agenda)

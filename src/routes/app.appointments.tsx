@@ -255,7 +255,7 @@ function Appointments() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="flex-1 rounded-[20px] border border-border bg-card">
+        <div className="flex-1 tarjeta-principal bg-card">
           <EmptyState
             icon={CalendarX}
             title="Sin citas con estos filtros"
@@ -269,7 +269,7 @@ function Appointments() {
       ) : (
         <>
           {/* Desktop: clean table, no vertical borders */}
-          <div className="@container hidden min-w-0 flex-1 overflow-x-auto rounded-[20px] border border-border bg-card md:block">
+          <div className="@container hidden min-w-0 flex-1 overflow-x-auto tarjeta-principal bg-card md:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -408,7 +408,7 @@ function Appointments() {
           </div>
 
           {/* Mobile: stacked cards, never a horizontal-scroll table */}
-          <div className="overflow-hidden rounded-[20px] border border-border bg-card md:hidden">
+          <div className="overflow-hidden tarjeta-principal bg-card md:hidden">
             {citasVisibles.map((a, indice) => {
               const e = employeeMap[a.employeeId];
               const momento = horaDestacadaCita(a, ahora);

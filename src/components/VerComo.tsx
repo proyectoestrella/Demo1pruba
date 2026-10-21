@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
  * miembro (la gerente, una estilista, la subencargada) sin crear cuentas.
  * En un salón real no existe.
  */
-export function VerComo({ className }: { className?: string }) {
+export function VerComo({ className, apilado = false }: { className?: string; apilado?: boolean }) {
   const esDemo = useEsDemo();
   const miembros = useAccesosDemo((s) => s.miembros);
   const setVerComo = useAccesosDemo((s) => s.setVerComo);
@@ -28,18 +28,22 @@ export function VerComo({ className }: { className?: string }) {
   return (
     <label
       className={cn(
-        "min-h-[42px] flex-wrap items-center gap-x-2 gap-y-0.5 rounded-full border border-dashed border-salvia bg-salvia-suave py-1 pr-2 pl-3.5 text-[13px] font-bold text-hoja-tinta",
+        "min-h-[42px] flex-wrap items-center gap-x-2 gap-y-0.5 border border-dashed border-salvia bg-salvia-suave text-[13px] font-bold text-hoja-tinta",
+        // Apilado: el sitio fijo del pie del menú lateral, que no depende del ancho de la ventana.
+        apilado ? "flex flex-col items-stretch gap-1 rounded-2xl px-3 py-2" : "rounded-full py-1 pr-2 pl-3.5",
         className,
       )}
       title="Solo en la demo: mira el panel como lo vería cada persona del salón"
     >
-      <Eye className="size-4 shrink-0" strokeWidth={1.7} aria-hidden="true" />
-      <span className="shrink-0">Ver como</span>
+      <span className="flex shrink-0 items-center gap-2">
+        <Eye className="size-4 shrink-0" strokeWidth={1.7} aria-hidden="true" />
+        Ver como
+      </span>
       <select
         value={actual.userId}
         onChange={(e) => setVerComo(e.target.value)}
         aria-label="Ver el panel como"
-        className="min-w-[5rem] flex-1 cursor-pointer rounded-full bg-transparent py-1 pr-1 text-[13px] font-bold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        className={cn("min-w-[5rem] flex-1 cursor-pointer rounded-full bg-transparent py-1 pr-1 text-[13px] font-bold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40", apilado && "w-full flex-none")}
       >
         {activos.map((m) => (
           <option key={m.userId} value={m.userId}>
@@ -47,12 +51,12 @@ export function VerComo({ className }: { className?: string }) {
           </option>
         ))}
       </select>
-      {conmutador && <span className="h-5 w-px shrink-0 bg-salvia" aria-hidden="true" />}
+      {conmutador && !apilado && <span className="h-5 w-px shrink-0 bg-salvia" aria-hidden="true" />}
       {conmutador && <select
         value={plan}
         onChange={(e) => cambiarPlan(e.target.value as PlanSishow)}
         aria-label="Plan de la demo"
-        className="min-w-0 max-w-[9.5rem] cursor-pointer rounded-full bg-transparent py-1 pr-1 text-[13px] font-bold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        className={cn("min-w-0 max-w-[9.5rem] cursor-pointer rounded-full bg-transparent py-1 pr-1 text-[13px] font-bold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40", apilado && "w-full max-w-none")}
       >
         {PLANES.map((p) => (
           <option key={p} value={p}>
@@ -68,7 +72,7 @@ export function VerComo({ className }: { className?: string }) {
             fijarVista(slug, siguiente);
             if (siguiente === "cliente") cambiarPlan(PLAN_DEL_CLIENTE_DE_DEMO[slug]);
           }}
-          className="shrink-0 rounded-full px-2 text-[12px] font-bold underline underline-offset-2 hover:bg-salvia-clara"
+          className={cn("shrink-0 rounded-full px-2 text-[12px] font-bold underline underline-offset-2 hover:bg-salvia-clara", apilado && "self-start px-0 text-left")}
         >
           {esVistaCliente(slug, vista) ? "Vista de prospecto (con selector)" : "Vista del salón"}
         </button>

@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from "bun:test";
 
 import { inferBusinessType, menuDesdeServicios, parseMenuEntry, parseTeamEntry } from "../business-type";
-import { blankDemoProfile } from "../demo-profile";
+import { blankDemoProfile, decodeDemoProfile, perfilConEnlace } from "../demo-profile";
 import { parseFaqEntry, MAX_FAQ_ENTRIES } from "../faq";
 import { parseRanges } from "../opening-hours";
 import { servicesForType, textosDeCarta } from "../mock/salon";
@@ -9,6 +9,7 @@ import { useSalonStore } from "../store";
 import { useAccesosDemo } from "../accesos-maqueta";
 import { demoPorSlug, demoRegistrada, marcaDeDemo, slugsDeDemos } from "./index";
 import { cargarDemoRegistrada, demoRegistradaCargada, perfilDeDemoRegistrada } from "./aplicar";
+import { logoDelSalon, logotipoDelSalon } from "../logo-salon";
 import { CATEGORIAS_PELUCHIC, PELUCHIC, SERVICIOS_PELUCHIC } from "./peluchic";
 
 describe("registro de demos por slug", () => {
@@ -133,6 +134,73 @@ describe("un enlace ?d= no hereda nada de la demo registrada", () => {
     expect(perfil.name).toBe("PeluChic");
     expect(perfil.teamIds).toEqual(["maria", "anca", "patricia"]);
     expect((perfil as { modulosOcultos?: string[] }).modulosOcultos).toEqual([]);
+  });
+});
+
+/**
+ * El `?d=` de Nelva Ortiz con el que se ensaya la demo del martes (peluquería,
+ * estética y bienestar de Alcobendas). Es el caso real del fallo: el navegador
+ * ya había abierto /demo/peluchic y la web de Nelva enseñaba el logotipo
+ * caligráfico de PeluChic en la barra y en el héroe.
+ */
+const ENLACE_NELVA = "eyJuIjoiTmVsdmEgT3J0aXoiLCJ0IjoiUGVsdXF1ZXLDrWEsIEVzdMOpdGljYSB5IEJpZW5lc3RhciIsImQiOiJBdi4gZGUgbGEgRXJtaXRhLCAyLCBMb2MgNSwgMjgxMDggQWxjb2JlbmRhcywgTWFkcmlkLCBFc3Bhw7FhIiwicCI6IjkxNiA2MjAgNTY0IiwiciI6NC45LCJjIjoxNDIsIm8iOlsiMDk6MDDigJMyMTowMCIsIjA5OjAw4oCTMjE6MDAiLCIwOTowMOKAkzIxOjAwIiwiMDk6MDDigJMyMTowMCIsIjA5OjAw4oCTMjE6MDAiLCIwOTowMOKAkzE1OjAwIiwiQ2VycmFkbyJdLCJlIjpbIk5lbHZhfkVzdGlsaXN0YSB5IEVzdGV0aWNpc3RhIiwiTmF0YWxpYX5Fc3RpbGlzdGEgeSBNYW5pY3VyaXN0YSIsIkbDoXRpbWF-RXN0aWxpc3RhIl0sIm0iOlsiQ2hhbXDDuiArIENvcnRlICsgUGVpbmFkb340NX40M35QZWx1cXVlcsOtYSIsIkNoYW1ww7ogKyBDb3J0ZX4zMH4yNX5QZWx1cXVlcsOtYSIsIkNoYW1ww7ogKyBQZWluYWRvfjMwfjIyflBlbHVxdWVyw61hIiwiQ2hhbXDDuiArIENvbG9yfjYwfjM4fkNvbG9yIiwiQ2hhbXDDuiArIEJhcnJvcyAoY29sb3IgdmVnZXRhbCl-OTB-NTh-Q29sb3IiLCIxMDAlIEdsb3NzfjMwfjIwfkNvbG9yIiwiQWxpc2FkbyBjb24gS2VyYXRpbmF-MTIwfjEwMH5Gb3JtYSIsIkNvcnRlIMOJbCAoY2hhbXDDuiArIGNvcnRlKX4zMH4yMX5QYXJhIMOJbCIsIk94aWdlbmFudGUgVklQIE8yIGNvbiBSZW1vZGVsaW5nfjYwfjkwfkVzdMOpdGljYSIsIklsdW1pbmFkb3IgUGlnbSA0MDB-NjB-OTB-RXN0w6l0aWNhIiwiQm9vc3RlciBWSVAgTzJ-NjB-OTB-RXN0w6l0aWNhIiwiSW55ZWNjacOzbiBkZSBDb2zDoWdlbm9-MzB-MzB-RXN0w6l0aWNhIl0sImVuIjp7InciOiJodHRwczovL25lbHZhb3J0aXouY29tLyJ9LCJtbyI6WyJlcXVpcG8iXX0";
+
+describe("un enlace ?d= de otro salón no hereda la marca de PeluChic", () => {
+  const CAMPOS_DE_MARCA_DE_PELUCHIC = [
+    "logoUrl",
+    "logotipoClaroUrl",
+    "logotipoOscuroUrl",
+    "whatsapp",
+    "boletin",
+    "galeriaPropia",
+    "descripcionesServicios",
+    "preciosLiterales",
+    "destacados",
+    "teamExperience",
+    "serviciosPorProfesional",
+    "bloqueosAgenda",
+    "diasEspeciales",
+    "preguntasReserva",
+  ] as const;
+
+  it("todo campo que define la demo de PeluChic está en blanco en un enlace, salvo lo que es del navegador", () => {
+    // Si alguien añade un campo a PELUCHIC y no lo pone en blankDemoProfile,
+    // este test avisa antes de que se cuele en la demo de otro salón.
+    const delNavegador = ["id", "slug", "timeZone", "plan", "calendario", "teamIds", "teamHours"];
+    const enBlanco = blankDemoProfile() as unknown as Record<string, unknown>;
+    const sinBlanquear = Object.keys(PELUCHIC).filter((campo) => !delNavegador.includes(campo) && !(campo in enBlanco));
+    expect(sinBlanquear).toEqual([]);
+  });
+
+  it("el enlace de Nelva se descodifica y no trae ningún logotipo", () => {
+    const nelva = decodeDemoProfile(ENLACE_NELVA);
+    expect(nelva?.name).toBe("Nelva Ortiz");
+    expect((nelva as Record<string, unknown>).logotipoClaroUrl).toBeUndefined();
+    expect((nelva as Record<string, unknown>).logotipoOscuroUrl).toBeUndefined();
+  });
+
+  it("lo que ve la web pública (guardado = PeluChic, encima el enlace) no lleva el logotipo de PeluChic", () => {
+    const guardado = perfilDeDemoRegistrada(PELUCHIC);
+    expect(guardado.logotipoClaroUrl).toBe("/demo/peluchic-logotipo-blanco.png");
+    const visto = perfilConEnlace(guardado, decodeDemoProfile(ENLACE_NELVA) ?? {});
+    expect(visto.name).toBe("Nelva Ortiz");
+    for (const campo of CAMPOS_DE_MARCA_DE_PELUCHIC) expect(visto[campo]).toBeUndefined();
+    // Los enlaces son los que trae SU enlace (solo su web), no el Instagram ni el blog de PeluChic.
+    expect(visto.enlaces).toEqual({ web: "https://nelvaortiz.com/" });
+    expect(logotipoDelSalon(visto, true, "claro")).toBeNull();
+    expect(logotipoDelSalon(visto, true, "oscuro")).toBeNull();
+    expect(logoDelSalon(visto, true)).toBeNull();
+  });
+
+  it("y al aplicarlo a la store (lo que hace la web al abrir el enlace) tampoco queda nada en lo guardado", () => {
+    cargarDemoRegistrada("peluchic", { panel: true });
+    expect(useSalonStore.getState().salonProfile.logotipoOscuroUrl).toBe("/demo/peluchic-logotipo-oscuro.png");
+    useSalonStore.getState().updateSalonProfile({ ...blankDemoProfile(), ...decodeDemoProfile(ENLACE_NELVA) });
+    const guardado = useSalonStore.getState().salonProfile;
+    expect(guardado.name).toBe("Nelva Ortiz");
+    for (const campo of CAMPOS_DE_MARCA_DE_PELUCHIC) expect(guardado[campo]).toBeUndefined();
+    expect(guardado.enlaces).toEqual({ web: "https://nelvaortiz.com/" });
+    useSalonStore.getState().resetSalonProfile();
   });
 });
 

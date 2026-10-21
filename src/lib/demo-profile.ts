@@ -104,10 +104,37 @@ export type DemoProfile = DemoProfileNegocio & DemoPersonalizacion;
  * del lote 18 (enlaces, WhatsApp, boletín, galería propia, textos de la
  * carta) y los destacados del lote P.5. Sin blanquearlos, abrir la demo de otra peluquería después de la
  * de PeluChic enseñaba el Instagram, el boletín y el logo de PeluChic.
+ *
+ * También el logotipo caligráfico (claro y oscuro) y lo que solo configura
+ * una demo registrada a mano: años de oficio, servicios por profesional,
+ * bloqueos, días especiales, preguntas de la reserva y matices de la señal.
  */
 export type CamposSinHeredar = Pick<
   SalonProfile,
-  "logoUrl" | "enlaces" | "whatsapp" | "boletin" | "galeriaPropia" | "descripcionesServicios" | "preciosLiterales" | "destacados" | "demoAbreHoy" | "ocultarPrecioReserva" | "nifResponsable"
+  | "logoUrl"
+  | "logotipoClaroUrl"
+  | "logotipoOscuroUrl"
+  | "enlaces"
+  | "whatsapp"
+  | "boletin"
+  | "galeriaPropia"
+  | "descripcionesServicios"
+  | "preciosLiterales"
+  | "destacados"
+  | "demoAbreHoy"
+  | "ocultarPrecioReserva"
+  | "nifResponsable"
+  | "teamExperience"
+  | "serviciosPorProfesional"
+  | "bloqueosAgenda"
+  | "diasEspeciales"
+  | "preguntasReserva"
+  | "depositMode"
+  | "depositHourlyRateEur"
+  | "depositAppliesTo"
+  | "depositAuto"
+  | "depositAutoRelease"
+  | "clientImportOrigin"
 >;
 
 /**
@@ -361,6 +388,11 @@ export function blankDemoProfile(): DemoProfile & CamposSinHeredar {
     // Ver `CamposSinHeredar`: presentes y vacíos para que pisen lo anterior.
     nifResponsable: undefined,
     logoUrl: undefined,
+    // El logotipo caligráfico (claro para foto, oscuro para fondo claro): sin
+    // esto, la web de Nelva Ortiz enseñaba el de PeluChic si el navegador
+    // había abierto antes /demo/peluchic.
+    logotipoClaroUrl: undefined,
+    logotipoOscuroUrl: undefined,
     enlaces: undefined,
     whatsapp: undefined,
     boletin: undefined,
@@ -369,7 +401,33 @@ export function blankDemoProfile(): DemoProfile & CamposSinHeredar {
     preciosLiterales: undefined,
     destacados: undefined,
     demoAbreHoy: undefined,
+    // Lo que PeluChic configura a mano y un enlace `?d=` nunca trae: años de
+    // oficio, quién hace qué, comidas bloqueadas, festivos, preguntas propias
+    // de la reserva y los matices de su señal por Bizum. Sin blanquearlos, el
+    // salón de otra demo heredaba su agenda y su formulario.
+    teamExperience: undefined,
+    serviciosPorProfesional: undefined,
+    bloqueosAgenda: undefined,
+    diasEspeciales: undefined,
+    preguntasReserva: undefined,
+    depositMode: undefined,
+    depositHourlyRateEur: undefined,
+    depositAppliesTo: undefined,
+    depositAuto: undefined,
+    depositAutoRelease: undefined,
+    clientImportOrigin: undefined,
   };
+}
+
+/**
+ * El perfil que ve la web pública cuando la dirección lleva un `?d=`: lo
+ * guardado en este navegador, todo lo que el enlace no trae en blanco (no se
+ * hereda del salón de antes) y encima el enlace. Es una función aparte para
+ * poder probar exactamente el caso del ensayo: abrir /demo/peluchic y después
+ * el enlace de otro salón en el mismo navegador.
+ */
+export function perfilConEnlace<T extends object>(guardado: T, delEnlace: Partial<DemoProfile>): T & DemoProfile {
+  return { ...guardado, ...blankDemoProfile(), teamHours: undefined, teamIds: undefined, ...delEnlace } as T & DemoProfile;
 }
 
 /* ---------- base64url, compatible con navegador y servidor ---------- */
@@ -734,15 +792,14 @@ export function moduloVisible(
 }
 
 /**
- * Lo mismo que `moduloVisible`, pero para el PANEL de la dueña: la página
- * Equipo se ve siempre ahí (6-oct), aunque el enlace la oculte con `mo`.
- * `mo: ["equipo"]` sigue ocultando la sección de equipo de la web pública.
+ * Igual que `moduloVisible`, aplicado al panel. Una demo que pide ocultar el
+ * equipo no debe convertir los nombres de muestra en supuestos datos reales.
  */
 export function moduloVisibleEnPanel(
   profile: Pick<DemoProfile, "modulosOcultos">,
   clave: ModuloOcultable,
 ): boolean {
-  return clave === "equipo" || moduloVisible(profile, clave);
+  return moduloVisible(profile, clave);
 }
 
 /** Construye el enlace público completo para una demo. */

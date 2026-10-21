@@ -117,7 +117,7 @@ function AsaAncho({ panel }: { panel: string }) {
 }
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
+  "fixed z-50 gap-4 bg-background p-6 transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
   {
     variants: {
       side: {
@@ -128,7 +128,7 @@ const sheetVariants = cva(
         // Paneles laterales «Arena»: opacos, borde lino, sombra suave en café
         // y 440 px en PC, donde empujan el contenido (sin sombra).
         right:
-          "inset-y-0 right-0 h-full w-full border-l border-border shadow-[var(--sombra-panel)] data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-[var(--ancho-panel,440px)] lg:shadow-none",
+          "panel-flotante-lateral inset-y-0 right-0 h-full w-full border-l border-border data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-[var(--ancho-panel,440px)] lg:shadow-none",
       },
     },
     defaultVariants: {

@@ -17,7 +17,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DuracionOtra } from "@/components/DuracionOtra";
 import { cn } from "@/lib/utils";
-import { idServicioLibre, serviceLabelOf, sumServices, textoPrecioServicio, textoTotalServicios } from "@/lib/appointment-services";
+import {
+  idServicioLibre,
+  serviceLabelOf,
+  sumServices,
+  textoPrecioServicio,
+  textoTotalServicios,
+} from "@/lib/appointment-services";
 import { eur, hora } from "@/lib/copy";
 import { duracionRecordada } from "@/lib/derive";
 import { duracionElegida } from "@/lib/duracion-flexible";
@@ -67,7 +73,8 @@ const minutosDeHora = (t: string) => {
   const [h, m] = t.split(":").map(Number);
   return (h || 0) * 60 + (m || 0);
 };
-const horaDeMinutos = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+const horaDeMinutos = (m: number) =>
+  `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 const soloDigitos = (t: string) => t.replace(/\D/g, "").replace(/^34(?=\d{9}$)/, "");
 const DCORTO = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
@@ -214,9 +221,12 @@ function FormularioNuevaCita({
   // «Otro…» (9g): un servicio que no está en la carta, con nombre, duración y
   // precio libres. Excluye a los de la carta. Con la casilla, se añade a la
   // carta al guardar; sin ella, vive solo en esta cita (`libre:<nombre>`).
-  const [otro, setOtro] = useState<{ nombre: string; precio: string; enCarta: boolean } | null>(null);
+  const [otro, setOtro] = useState<{ nombre: string; precio: string; enCarta: boolean } | null>(
+    null,
+  );
   const precioOtro = otro ? Number(otro.precio.replace(",", ".").trim()) : NaN;
-  const precioOtroValido = !!otro && otro.precio.trim() !== "" && Number.isFinite(precioOtro) && precioOtro >= 0;
+  const precioOtroValido =
+    !!otro && otro.precio.trim() !== "" && Number.isFinite(precioOtro) && precioOtro >= 0;
 
   const chosen = serviceIds.map((id) => serviceMap[id]).filter(Boolean);
   // La cita bloquea y cobra la suma de todos los servicios elegidos.
@@ -241,7 +251,18 @@ function FormularioNuevaCita({
   ].sort((a, b) => a - b);
 
   // ¿Hay algo tocado? Se compara con cómo estaba al abrir: si no, se cierra sin preguntar.
-  const huella = JSON.stringify([clientChoice, newName, phone, serviceIds, employeeId, date, time, note, duracionManual, otro]);
+  const huella = JSON.stringify([
+    clientChoice,
+    newName,
+    phone,
+    serviceIds,
+    employeeId,
+    date,
+    time,
+    note,
+    duracionManual,
+    otro,
+  ]);
   // La foto se toma en el render que ya lleva el relleno (profesional y hora
   // de un hueco, clienta de la ficha…); si no, abrir desde el calendario
   // contaba como «tocada» y Escape preguntaba sin motivo.
@@ -266,7 +287,9 @@ function FormularioNuevaCita({
   useEffect(() => {
     if (!open) return;
     function alPulsar(e: MouseEvent) {
-      const enlace = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      const enlace = (e.target as HTMLElement | null)?.closest?.(
+        "a[href]",
+      ) as HTMLAnchorElement | null;
       if (!enlace || capa.current?.contains(enlace)) return;
       if (enlace.target === "_blank" || e.metaKey || e.ctrlKey) return;
       const url = new URL(enlace.href, window.location.href);
@@ -285,15 +308,23 @@ function FormularioNuevaCita({
   const dias = diasParaElegir(hoy, fechaElegida);
   const ocupanDia = useMemo(() => citasQueOcupan(appointments, fechaElegida), [appointments, date]); // eslint-disable-line react-hooks/exhaustive-deps
   const empleado = employees.find((e) => e.id === employeeId) ?? employees[0];
-  const servicioFueraDeEspecialidad = !otro && !!empleado && !profesionalHaceServicios(empleado.id, serviceIds, serviciosPorProfesional);
+  const servicioFueraDeEspecialidad =
+    !otro &&
+    !!empleado &&
+    !profesionalHaceServicios(empleado.id, serviceIds, serviciosPorProfesional);
   const minutoElegido = minutosDeHora(time);
-  const horasPro = empleado ? franjasProfesionalEnFecha(empleado, date, profile.diasEspeciales).flatMap((f) => {
-    const horas: number[] = [];
-    for (let m = Math.ceil(f.start / 30) * 30; m + 30 <= f.end; m += 30) horas.push(m);
-    return horas;
-  }) : [];
-  const horasVisibles = [...new Set([...horasPro, ...(horasPro.includes(minutoElegido) ? [] : [minutoElegido])])].sort((a, b) => a - b);
-  const esPasada = (m: number) => toDateInput(hoy) === date && m < hoy.getHours() * 60 + hoy.getMinutes();
+  const horasPro = empleado
+    ? franjasProfesionalEnFecha(empleado, date, profile.diasEspeciales).flatMap((f) => {
+        const horas: number[] = [];
+        for (let m = Math.ceil(f.start / 30) * 30; m + 30 <= f.end; m += 30) horas.push(m);
+        return horas;
+      })
+    : [];
+  const horasVisibles = [
+    ...new Set([...horasPro, ...(horasPro.includes(minutoElegido) ? [] : [minutoElegido])]),
+  ].sort((a, b) => a - b);
+  const esPasada = (m: number) =>
+    toDateInput(hoy) === date && m < hoy.getHours() * 60 + hoy.getMinutes();
 
   function cualquieraLibre() {
     const inicioISO = isoDelSalon(date, time, zonaHoraria);
@@ -301,7 +332,9 @@ function FormularioNuevaCita({
     // persona sigue permitido a la gerente y mantiene su aviso existente.
     const candidatas = otro
       ? employees
-      : employees.filter((e) => profesionalHaceServicios(e.id, serviceIds, serviciosPorProfesional));
+      : employees.filter((e) =>
+          profesionalHaceServicios(e.id, serviceIds, serviciosPorProfesional),
+        );
     const libre = profesionalesDisponiblesEnHueco({
       employees: candidatas,
       appointments,
@@ -325,10 +358,21 @@ function FormularioNuevaCita({
 
   // ---- Clienta ----
   const elegida = clientChoice !== "__new" ? clients.find((c) => c.id === clientChoice) : undefined;
-  const frecuentes = useMemo(() => clientasFrecuentes(appointments, clients, new Date()), [appointments, clients]);
-  const resultados = busqueda.trim() ? buscarClientas(busqueda, { clientes: clients, citas: appointments }).slice(0, 7) : [];
+  const frecuentes = useMemo(
+    () => clientasFrecuentes(appointments, clients, new Date()),
+    [appointments, clients],
+  );
+  const resultados = busqueda.trim()
+    ? buscarClientas(busqueda, { clientes: clients, citas: appointments }).slice(0, 7)
+    : [];
   const fichaRapida = elegida
-    ? fichaDeClienta(elegida.id, { citas: appointments, clientes: clients, servicios: services, equipo: employees, ahora: new Date() })
+    ? fichaDeClienta(elegida.id, {
+        citas: appointments,
+        clientes: clients,
+        servicios: services,
+        equipo: employees,
+        ahora: new Date(),
+      })
     : null;
 
   // ---- Guardar ----
@@ -410,7 +454,13 @@ function FormularioNuevaCita({
       if (otro.enCarta) {
         // Entra en la carta con la duración y el precio de esta cita; el color
         // se lo da su posición en la carta, como a los demás.
-        const nuevo = addService({ name: otro.nombre.trim(), description: "", durationMin: totalMin, priceEur: total, active: true });
+        const nuevo = addService({
+          name: otro.nombre.trim(),
+          description: "",
+          durationMin: totalMin,
+          priceEur: total,
+          active: true,
+        });
         idsDeServicio = [nuevo.id];
         toast.success("Servicio añadido a la carta", { description: otro.nombre.trim() });
       } else {
@@ -440,8 +490,12 @@ function FormularioNuevaCita({
     );
 
     // Lote 12: «Cita de Ana guardada · vie 10:00» con «Deshacer» (la borra).
-    const cuando = new Date(appt.start).toLocaleString("es-ES", { weekday: "short", hour: "2-digit", minute: "2-digit" }).replace(",", "");
-    avisar(`Cita de ${clientName.split(" ")[0]} guardada · ${cuando}`, () => useSalonStore.getState().deleteAppointment(appt.id));
+    const cuando = new Date(appt.start)
+      .toLocaleString("es-ES", { weekday: "short", hour: "2-digit", minute: "2-digit" })
+      .replace(",", "");
+    avisar(`Cita de ${clientName.split(" ")[0]} guardada · ${cuando}`, () =>
+      useSalonStore.getState().deleteAppointment(appt.id),
+    );
     onCreated?.(appt);
 
     if (encadenar) {
@@ -464,18 +518,36 @@ function FormularioNuevaCita({
   }
 
   // ---- Piezas ----
-  const etiquetaCol = "mb-3.5 text-xs font-extrabold tracking-[0.06em] text-muted-foreground uppercase";
+  const etiquetaCol =
+    "mb-3.5 text-xs font-extrabold tracking-[0.06em] text-muted-foreground uppercase";
   const etiquetaCampo = "mb-2 block text-[12.5px] font-bold text-cafe-medio";
   const opcion = (on: boolean) =>
     cn(
       "inline-flex h-10 items-center gap-2 rounded-full border px-[15px] text-[13.5px] font-bold transition-colors",
-      on ? "border-salvia bg-salvia-clara text-hoja-tinta" : "border-input bg-card text-cafe-medio hover:bg-nata",
+      on
+        ? "border-salvia bg-salvia-clara text-hoja-tinta"
+        : "border-input bg-card text-cafe-medio hover:bg-nata",
     );
-  const columna = "flex min-w-0 flex-col rounded-[20px] border border-border bg-card p-5 md:p-[22px]";
-  const fechaLarga = fechaElegida.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  const columna = "flex min-w-0 flex-col tarjeta-principal border border-border bg-card p-5 md:p-7";
+  const fechaLarga = fechaElegida.toLocaleDateString("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
   const inicioElegidoISO = isoDelSalon(date, time, zonaHoraria);
-  const ocupadaElegida = empleado ? horaOcupada(ocupanDia, empleado.id, minutoElegido, totalMin) || hayBloqueoEnHueco(profile.bloqueosAgenda, empleado.id, inicioElegidoISO, totalMin, zonaHoraria) : false;
-  const trabajaElegida = empleado ? trabajaEnFecha(empleado, date, minutoElegido, totalMin, profile.diasEspeciales) : true;
+  const ocupadaElegida = empleado
+    ? horaOcupada(ocupanDia, empleado.id, minutoElegido, totalMin) ||
+      hayBloqueoEnHueco(
+        profile.bloqueosAgenda,
+        empleado.id,
+        inicioElegidoISO,
+        totalMin,
+        zonaHoraria,
+      )
+    : false;
+  const trabajaElegida = empleado
+    ? trabajaEnFecha(empleado, date, minutoElegido, totalMin, profile.diasEspeciales)
+    : true;
   const decisionGuardado = decisionGuardadoCita({
     ocupada: ocupadaElegida,
     trabaja: trabajaElegida,
@@ -508,35 +580,47 @@ function FormularioNuevaCita({
               e.preventDefault();
             }}
             onInteractOutside={(e) => e.preventDefault()}
-            className="fixed inset-y-0 right-0 left-0 z-50 flex flex-col bg-background outline-none md:left-[244px]"
+            className="fixed top-[max(12px,env(safe-area-inset-top))] right-[max(12px,env(safe-area-inset-right))] bottom-[max(12px,env(safe-area-inset-bottom))] left-[max(12px,env(safe-area-inset-left))] z-50 flex flex-col overflow-hidden rounded-[var(--radio-tarjeta)] bg-background shadow-[var(--sombra-flotante)] outline-none md:top-6 md:right-6 md:bottom-6 md:left-[268px]"
           >
             {/* Cabecera de la capa */}
-            <div className="flex flex-none items-center gap-3.5 border-b border-border px-4 py-3 md:px-7 md:py-4">
+            <div className="flex flex-none items-center gap-3.5 border-b border-border bg-card px-5 py-3 md:px-8 md:py-4">
               <div className="min-w-0">
-                <p className="hidden text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase md:block">Agenda de {salonName}</p>
-                <DialogPrimitive.Title className="text-xl font-extrabold tracking-[-0.02em] md:text-2xl">Nueva cita</DialogPrimitive.Title>
+                <p className="hidden text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase md:block">
+                  Agenda de {salonName}
+                </p>
+                <DialogPrimitive.Title className="text-xl font-extrabold tracking-[-0.02em] md:text-2xl">
+                  Nueva cita
+                </DialogPrimitive.Title>
               </div>
               <span
                 className={cn(
                   "ml-auto hidden h-6 items-center rounded-full px-2.5 text-[12.5px] font-bold md:inline-flex",
-                  tocada ? "border-[1.5px] border-dashed border-moca bg-card text-primary" : "bg-nata text-cafe-medio",
+                  tocada
+                    ? "border-[1.5px] border-dashed border-moca bg-card text-primary"
+                    : "bg-nata text-cafe-medio",
                 )}
               >
                 {tocada ? "Sin guardar" : "Sin cambios"}
               </span>
               {encadenadas > 0 && (
                 <span className="hidden text-[12.5px] text-muted-foreground md:inline">
-                  {encadenadas} {encadenadas === 1 ? "cita creada" : "citas creadas"} sin salir de aquí
+                  {encadenadas} {encadenadas === 1 ? "cita creada" : "citas creadas"} sin salir de
+                  aquí
                 </span>
               )}
-              <Button type="button" variant="outline" className="ml-auto h-[42px] md:ml-0" onClick={() => intentarSalir()}>
+              <Button
+                type="button"
+                variant="outline"
+                className="ml-auto h-[42px] md:ml-0"
+                onClick={() => intentarSalir()}
+              >
                 <X className="size-[18px]" strokeWidth={1.6} />
                 Cerrar
               </Button>
             </div>
 
             <form
-              className="flex min-h-0 flex-1 overflow-auto bg-perla p-4 pb-28 md:px-7 md:py-6 lg:pb-6"
+              className="flex min-h-0 flex-1 overflow-auto bg-background p-4 pb-28 md:px-7 md:py-6 lg:pb-6"
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSubmit(false);
@@ -550,10 +634,16 @@ function FormularioNuevaCita({
                     <div className="rounded-2xl bg-nata p-3.5 text-[13px]">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="font-display text-xl leading-tight font-medium">{elegida.name}</p>
+                          <p className="font-display text-xl leading-tight font-medium">
+                            {elegida.name}
+                          </p>
                           <p className="text-muted-foreground tabular-nums">{elegida.phone}</p>
                         </div>
-                        <button type="button" className="text-[12.5px] font-bold text-primary underline-offset-2 hover:underline" onClick={() => setClientChoice("__new")}>
+                        <button
+                          type="button"
+                          className="text-[12.5px] font-bold text-primary underline-offset-2 hover:underline"
+                          onClick={() => setClientChoice("__new")}
+                        >
                           Cambiar
                         </button>
                       </div>
@@ -562,16 +652,30 @@ function FormularioNuevaCita({
                         {fichaRapida.resumen.ultimaVisita
                           ? ` · última ${new Date(fichaRapida.resumen.ultimaVisita).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}`
                           : ""}
-                        {fichaRapida.resumen.servicioHabitual ? ` · suele pedir ${fichaRapida.resumen.servicioHabitual.toLowerCase()}` : ""}
+                        {fichaRapida.resumen.servicioHabitual
+                          ? ` · suele pedir ${fichaRapida.resumen.servicioHabitual.toLowerCase()}`
+                          : ""}
                       </p>
                       {fichaRapida.avisos.length > 0 && (
                         <div className="mt-2.5 flex gap-2 rounded-xl border border-melocoton-borde bg-melocoton px-2.5 py-2 text-[12.5px] text-melocoton-tinta">
                           <TriangleAlert className="mt-px size-3.5 shrink-0" strokeWidth={1.6} />
-                          <div>{fichaRapida.avisos.map((a) => <p key={a}>{a}</p>)}</div>
+                          <div>
+                            {fichaRapida.avisos.map((a) => (
+                              <p key={a}>{a}</p>
+                            ))}
+                          </div>
                         </div>
                       )}
-                      <p className={cn("mt-2.5 rounded-xl px-2.5 py-2 text-[12.5px]", fichaRapida.resumen.ultimoColor ? "bg-salvia-clara text-hoja-tinta" : "bg-card text-muted-foreground")}>
-                        <b>Último color:</b> {fichaRapida.resumen.ultimoColor?.formula ?? "sin fórmula anotada"}
+                      <p
+                        className={cn(
+                          "mt-2.5 rounded-xl px-2.5 py-2 text-[12.5px]",
+                          fichaRapida.resumen.ultimoColor
+                            ? "bg-salvia-clara text-hoja-tinta"
+                            : "bg-card text-muted-foreground",
+                        )}
+                      >
+                        <b>Último color:</b>{" "}
+                        {fichaRapida.resumen.ultimoColor?.formula ?? "sin fórmula anotada"}
                       </p>
                     </div>
                   ) : (
@@ -604,17 +708,29 @@ function FormularioNuevaCita({
                             onClick={() => setClientChoice(client.id)}
                             className="flex items-center gap-2.5 rounded-xl px-2 py-2 text-left hover:bg-nata"
                           >
-                            <span className="grid size-[34px] shrink-0 place-items-center rounded-full bg-arena text-[11px] font-extrabold" aria-hidden="true">
-                              {client.name.split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase()}
+                            <span
+                              className="grid size-[34px] shrink-0 place-items-center rounded-full bg-arena text-[11px] font-extrabold"
+                              aria-hidden="true"
+                            >
+                              {client.name
+                                .split(/\s+/)
+                                .map((p) => p[0])
+                                .slice(0, 2)
+                                .join("")
+                                .toUpperCase()}
                             </span>
                             <span className="min-w-0">
                               <b className="block truncate">{client.name}</b>
-                              <span className="block truncate text-[12.5px] text-muted-foreground tabular-nums">{detalle}</span>
+                              <span className="block truncate text-[12.5px] text-muted-foreground tabular-nums">
+                                {detalle}
+                              </span>
                             </span>
                           </button>
                         ))}
                         {busqueda.trim() && resultados.length === 0 && (
-                          <p className="px-2 py-1 text-[12.5px] text-muted-foreground">Ninguna clienta con ese nombre o teléfono.</p>
+                          <p className="px-2 py-1 text-[12.5px] text-muted-foreground">
+                            Ninguna clienta con ese nombre o teléfono.
+                          </p>
                         )}
                       </div>
                       <div className="mt-4 rounded-2xl border border-dashed border-lino-fuerte p-3.5">
@@ -623,8 +739,23 @@ function FormularioNuevaCita({
                           Clienta nueva
                         </p>
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={busqueda.trim() && !/\d/.test(busqueda) ? busqueda : "Nombre"} aria-label="Nombre de la clienta nueva" className="h-11" />
-                          <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Teléfono (opcional)" aria-label="Teléfono de la clienta nueva" className="h-11" inputMode="tel" />
+                          <Input
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            placeholder={
+                              busqueda.trim() && !/\d/.test(busqueda) ? busqueda : "Nombre"
+                            }
+                            aria-label="Nombre de la clienta nueva"
+                            className="h-11"
+                          />
+                          <Input
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            placeholder="Teléfono (opcional)"
+                            aria-label="Teléfono de la clienta nueva"
+                            className="h-11"
+                            inputMode="tel"
+                          />
                         </div>
                       </div>
                     </>
@@ -639,8 +770,20 @@ function FormularioNuevaCita({
                     {activeServices.map((s) => {
                       const on = serviceIds.includes(s.id);
                       return (
-                        <button key={s.id} type="button" aria-pressed={on} onClick={() => toggleService(s.id)} className={opcion(on)}>
-                          <i className="size-2.5 rounded-[4px]" style={{ background: `var(--serv-${indiceColorServicio(s.id, services)}-borde)` }} aria-hidden="true" />
+                        <button
+                          key={s.id}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => toggleService(s.id)}
+                          className={opcion(on)}
+                        >
+                          <i
+                            className="size-2.5 rounded-[4px]"
+                            style={{
+                              background: `var(--serv-${indiceColorServicio(s.id, services)}-borde)`,
+                            }}
+                            aria-hidden="true"
+                          />
                           {s.name} · {textoPrecioServicio(s, eur)}
                         </button>
                       );
@@ -684,9 +827,16 @@ function FormularioNuevaCita({
                           />
                         </label>
                       </div>
-                      <p className="text-[12.5px] text-cafe-suave">La duración se elige abajo, en «Duración».</p>
+                      <p className="text-[12.5px] text-cafe-suave">
+                        La duración se elige abajo, en «Duración».
+                      </p>
                       <label className="flex items-center gap-2 text-[13.5px] text-cafe">
-                        <input type="checkbox" className="size-4 accent-[var(--hoja)]" checked={otro.enCarta} onChange={(e) => setOtro({ ...otro, enCarta: e.target.checked })} />
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-[var(--hoja)]"
+                          checked={otro.enCarta}
+                          onChange={(e) => setOtro({ ...otro, enCarta: e.target.checked })}
+                        />
                         Guardar como nuevo servicio en la carta
                       </label>
                     </div>
@@ -694,11 +844,21 @@ function FormularioNuevaCita({
 
                   {!soloUno && (
                     <>
-                  <span className={cn(etiquetaCampo, "mt-5")}>Profesional</span>
+                      <span className={cn(etiquetaCampo, "mt-5")}>Profesional</span>
                       <div className="flex flex-wrap gap-1.5">
                         {employees.map((e, i) => (
-                          <button key={e.id} type="button" aria-pressed={employeeId === e.id} onClick={() => setEmployeeId(e.id)} className={opcion(employeeId === e.id)}>
-                            <span className="grid size-6 place-items-center rounded-full text-[10px] font-extrabold text-cafe" style={{ background: tinteProfesional(i) }} aria-hidden="true">
+                          <button
+                            key={e.id}
+                            type="button"
+                            aria-pressed={employeeId === e.id}
+                            onClick={() => setEmployeeId(e.id)}
+                            className={opcion(employeeId === e.id)}
+                          >
+                            <span
+                              className="grid size-6 place-items-center rounded-full text-[10px] font-extrabold text-cafe"
+                              style={{ background: tinteProfesional(i) }}
+                              aria-hidden="true"
+                            >
                               {e.name[0]}
                             </span>
                             {e.name}
@@ -711,9 +871,13 @@ function FormularioNuevaCita({
                     </>
                   )}
                   {servicioFueraDeEspecialidad && (
-                    <p role="note" className="mt-2 flex gap-1.5 rounded-xl border border-melocoton-borde bg-melocoton px-3 py-2 text-[12.5px] text-melocoton-tinta">
+                    <p
+                      role="note"
+                      className="mt-2 flex gap-1.5 rounded-xl border border-melocoton-borde bg-melocoton px-3 py-2 text-[12.5px] text-melocoton-tinta"
+                    >
                       <TriangleAlert className="mt-px size-3.5 shrink-0" strokeWidth={1.6} />
-                      {empleado?.name} no tiene estos servicios asignados. Puedes guardar igualmente: desde el panel la gerente puede hacer esta excepción.
+                      {empleado?.name} no tiene estos servicios asignados. Puedes guardar
+                      igualmente: desde el panel la gerente puede hacer esta excepción.
                     </p>
                   )}
 
@@ -721,7 +885,11 @@ function FormularioNuevaCita({
                   <div className="grid grid-cols-7 gap-1.5">
                     {dias.map((d) => {
                       const on = toDateInput(d) === date;
-                      const abre = employees.some((e) => franjasProfesionalEnFecha(e, toDateInput(d), profile.diasEspeciales).length > 0);
+                      const abre = employees.some(
+                        (e) =>
+                          franjasProfesionalEnFecha(e, toDateInput(d), profile.diasEspeciales)
+                            .length > 0,
+                      );
                       return (
                         <button
                           key={d.getTime()}
@@ -730,7 +898,9 @@ function FormularioNuevaCita({
                           onClick={() => setDate(toDateInput(d))}
                           className={cn(
                             "rounded-xl border py-2 text-xs leading-tight font-bold disabled:cursor-not-allowed disabled:opacity-40",
-                            on ? "border-primary bg-primary text-primary-foreground" : "border-input bg-card hover:bg-nata",
+                            on
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-input bg-card hover:bg-nata",
                           )}
                         >
                           {DCORTO[d.getDay()]}
@@ -741,20 +911,32 @@ function FormularioNuevaCita({
                   </div>
                   <label className="mt-2 flex items-center gap-2 text-[12.5px] text-muted-foreground">
                     Otro día
-                    <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9 w-auto" aria-label="Elegir otro día" />
+                    <Input
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="h-9 w-auto"
+                      aria-label="Elegir otro día"
+                    />
                   </label>
 
                   <span className={cn(etiquetaCampo, "mt-5")}>
-                    Hora <span className="font-normal text-muted-foreground">· tachadas = ocupadas o ya pasadas</span>
+                    Hora{" "}
+                    <span className="font-normal text-muted-foreground">
+                      · tachadas = ocupadas o ya pasadas
+                    </span>
                   </span>
                   {horasVisibles.length === 0 ? (
                     <p className="rounded-xl bg-nata px-3 py-2 text-[12.5px] text-muted-foreground">
-                      {empleado?.name ?? "Nadie"} no trabaja este día. Elige otro día u otra profesional.
+                      {empleado?.name ?? "Nadie"} no trabaja este día. Elige otro día u otra
+                      profesional.
                     </p>
                   ) : (
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(70px,1fr))] gap-1.5">
                       {horasVisibles.map((m) => {
-                        const ocupada = empleado ? horaOcupada(ocupanDia, empleado.id, m, totalMin) : false;
+                        const ocupada = empleado
+                          ? horaOcupada(ocupanDia, empleado.id, m, totalMin)
+                          : false;
                         const pasada = esPasada(m);
                         const on = m === minutoElegido;
                         return (
@@ -767,7 +949,9 @@ function FormularioNuevaCita({
                             className={cn(
                               "h-[38px] rounded-[10px] border text-[13px] font-bold tabular-nums",
                               on && "border-primary bg-primary text-primary-foreground",
-                              !on && (ocupada || pasada) && "cursor-not-allowed border-input bg-perla text-taupe line-through",
+                              !on &&
+                                (ocupada || pasada) &&
+                                "cursor-not-allowed border-input bg-perla text-taupe line-through",
                               !on && !ocupada && !pasada && "border-input bg-card hover:bg-nata",
                             )}
                           >
@@ -779,7 +963,13 @@ function FormularioNuevaCita({
                   )}
                   <label className="mt-2 flex items-center gap-2 text-[12.5px] text-muted-foreground">
                     Otra hora
-                    <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-9 w-auto" aria-label="Escribir otra hora" />
+                    <Input
+                      type="time"
+                      value={time}
+                      onChange={(e) => setTime(e.target.value)}
+                      className="h-9 w-auto"
+                      aria-label="Escribir otra hora"
+                    />
                   </label>
                   {decisionGuardado.aviso && (
                     <p className="mt-2 flex items-start gap-1.5 text-[12.5px] text-melocoton-tinta">
@@ -791,29 +981,56 @@ function FormularioNuevaCita({
                   <span className={cn(etiquetaCampo, "mt-5")}>Duración</span>
                   <div className="flex flex-wrap gap-1.5">
                     {opcionesDuracion.map((min) => (
-                      <button key={min} type="button" aria-pressed={totalMin === min} onClick={() => setDuracionManual(min)} className={opcion(totalMin === min)}>
+                      <button
+                        key={min}
+                        type="button"
+                        aria-pressed={totalMin === min}
+                        onClick={() => setDuracionManual(min)}
+                        className={opcion(totalMin === min)}
+                      >
                         {duracionLegible(min)}
                       </button>
                     ))}
-                    <DuracionOtra valor={totalMin} onElegir={setDuracionManual} claseChip={opcion(false)} />
+                    <DuracionOtra
+                      valor={totalMin}
+                      onElegir={setDuracionManual}
+                      claseChip={opcion(false)}
+                    />
                   </div>
                   {recordada && duracionManual === null && (
                     <p className="mt-2 flex items-start gap-1.5 text-[12.5px] text-primary">
-                      <Clock3 className="mt-px size-3.5 shrink-0" strokeWidth={1.6} aria-hidden="true" />
+                      <Clock3
+                        className="mt-px size-3.5 shrink-0"
+                        strokeWidth={1.6}
+                        aria-hidden="true"
+                      />
                       <span>
                         La última vez tardó {recordada.minutos} min (
-                        {new Date(recordada.cuando).toLocaleDateString("es", { day: "numeric", month: "long" })}), no los {catalogoMin} de la carta. Te proponemos {recordada.minutos}.
+                        {new Date(recordada.cuando).toLocaleDateString("es", {
+                          day: "numeric",
+                          month: "long",
+                        })}
+                        ), no los {catalogoMin} de la carta. Te proponemos {recordada.minutos}.
                       </span>
                     </p>
                   )}
                   {duracionManual !== null && duracionManual !== catalogoMin && (
-                    <p className="mt-2 text-[12.5px] text-muted-foreground">La carta dice {duracionLegible(catalogoMin)}: esta cita dura {duracionLegible(duracionManual)}.</p>
+                    <p className="mt-2 text-[12.5px] text-muted-foreground">
+                      La carta dice {duracionLegible(catalogoMin)}: esta cita dura{" "}
+                      {duracionLegible(duracionManual)}.
+                    </p>
                   )}
 
                   <label className={cn(etiquetaCampo, "mt-5")} htmlFor="na-note">
                     Nota <span className="font-normal text-muted-foreground">· opcional</span>
                   </label>
-                  <Textarea id="na-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Alergias, preferencias…" rows={2} />
+                  <Textarea
+                    id="na-note"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Alergias, preferencias…"
+                    rows={2}
+                  />
                 </section>
 
                 {/* 3 · Resumen */}
@@ -822,14 +1039,27 @@ function FormularioNuevaCita({
                   <dl className="flex flex-col text-sm">
                     {[
                       ["Clienta", elegida?.name ?? (newName.trim() || "Sin elegir")],
-                      ["Servicio", otro ? otro.nombre.trim() || "Otro, sin nombre" : chosen.length ? serviceLabelOf({ serviceIds }, serviceMap) : "Sin elegir"],
+                      [
+                        "Servicio",
+                        otro
+                          ? otro.nombre.trim() || "Otro, sin nombre"
+                          : chosen.length
+                            ? serviceLabelOf({ serviceIds }, serviceMap)
+                            : "Sin elegir",
+                      ],
                       ...(soloUno ? [] : [["Con", empleado?.name ?? "—"]]),
                       ["Día", fechaLarga],
                       ...(hayServicioElegido
-                        ? [["Hora", `${time}–${horaDeMinutos(minutoElegido + totalMin)}`], ["Duración", duracionLegible(totalMin)]]
+                        ? [
+                            ["Hora", `${time}–${horaDeMinutos(minutoElegido + totalMin)}`],
+                            ["Duración", duracionLegible(totalMin)],
+                          ]
                         : []),
                     ].map(([k, v]) => (
-                      <div key={k} className="flex justify-between gap-3 border-b border-border py-2.5">
+                      <div
+                        key={k}
+                        className="flex justify-between gap-3 border-b border-border py-2.5"
+                      >
                         <dt className="text-muted-foreground">{k}</dt>
                         <dd className="text-right font-bold tabular-nums">{v}</dd>
                       </div>
@@ -838,7 +1068,11 @@ function FormularioNuevaCita({
                   {hayServicioElegido ? (
                     <div className="mt-4 flex items-baseline justify-between">
                       <span className="text-muted-foreground">Precio</span>
-                      <span className="text-[28px] font-extrabold tabular-nums">{otro ? eur(total).replace(",00", "") : textoTotalServicios(chosen, total, eur)}</span>
+                      <span className="text-[28px] font-extrabold tabular-nums">
+                        {otro
+                          ? eur(total).replace(",00", "")
+                          : textoTotalServicios(chosen, total, eur)}
+                      </span>
                     </div>
                   ) : (
                     <p className="mt-4 rounded-2xl bg-nata px-3.5 py-3 text-[12.5px] font-bold text-cafe-medio">
@@ -847,7 +1081,8 @@ function FormularioNuevaCita({
                   )}
                   <p className="mt-3 flex gap-2 rounded-2xl bg-salvia-clara px-3.5 py-3 text-[12.5px] text-hoja-tinta">
                     <MessageCircle className="mt-px size-[15px] shrink-0" strokeWidth={1.6} />
-                    Queda confirmada en tu agenda al guardar. Si quieres avisarla, hazlo por WhatsApp desde su ficha.
+                    Queda confirmada en tu agenda al guardar. Si quieres avisarla, hazlo por
+                    WhatsApp desde su ficha.
                   </p>
                   {decisionGuardado.aviso && (
                     <p className="mt-3 flex gap-2 rounded-2xl bg-melocoton px-3.5 py-3 text-[12.5px] text-melocoton-tinta">
@@ -856,16 +1091,31 @@ function FormularioNuevaCita({
                     </p>
                   )}
                   <div className="mt-auto flex flex-col gap-2 pt-5">
-                    <Button type="submit" disabled={!hayServicioElegido} className="h-[54px] w-full text-base">
+                    <Button
+                      type="submit"
+                      disabled={!hayServicioElegido}
+                      className="h-[54px] w-full text-base"
+                    >
                       <Check className="size-5" strokeWidth={1.8} />
                       {decisionGuardado.etiqueta}
                     </Button>
                     {allowChaining && (
-                      <Button type="button" variant="outline" disabled={!hayServicioElegido} className="h-[42px] w-full" onClick={() => handleSubmit(true)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={!hayServicioElegido}
+                        className="h-[42px] w-full"
+                        onClick={() => handleSubmit(true)}
+                      >
                         Guardar y crear otra
                       </Button>
                     )}
-                    <Button type="button" variant="ghost" className="h-[42px] w-full" onClick={() => intentarSalir()}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-[42px] w-full"
+                      onClick={() => intentarSalir()}
+                    >
                       Cancelar
                     </Button>
                   </div>
@@ -875,13 +1125,28 @@ function FormularioNuevaCita({
               <div className="fixed inset-x-0 bottom-0 z-10 flex items-center gap-3 border-t border-border bg-card px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom,0px))] lg:hidden">
                 {hayServicioElegido ? (
                   <span className="min-w-0 flex-1 leading-tight">
-                    <b className="block text-xl tabular-nums">{otro ? eur(total).replace(",00", "") : textoTotalServicios(chosen, total, eur)}</b>
-                    <span className="block truncate text-[12.5px] text-muted-foreground tabular-nums">{time} · {duracionLegible(totalMin)}{soloUno ? "" : ` · ${empleado?.name ?? ""}`}</span>
+                    <b className="block text-xl tabular-nums">
+                      {otro
+                        ? eur(total).replace(",00", "")
+                        : textoTotalServicios(chosen, total, eur)}
+                    </b>
+                    <span className="block truncate text-[12.5px] text-muted-foreground tabular-nums">
+                      {time} · {duracionLegible(totalMin)}
+                      {soloUno ? "" : ` · ${empleado?.name ?? ""}`}
+                    </span>
                   </span>
                 ) : (
-                  <span className="min-w-0 flex-1 text-[12.5px] font-bold text-muted-foreground">Elige un servicio para guardar.</span>
+                  <span className="min-w-0 flex-1 text-[12.5px] font-bold text-muted-foreground">
+                    Elige un servicio para guardar.
+                  </span>
                 )}
-                <Button type="submit" disabled={!hayServicioElegido} className="h-12 px-6 text-base">{decisionGuardado.etiqueta}</Button>
+                <Button
+                  type="submit"
+                  disabled={!hayServicioElegido}
+                  className="h-12 px-6 text-base"
+                >
+                  {decisionGuardado.etiqueta}
+                </Button>
               </div>
             </form>
           </DialogPrimitive.Content>
@@ -895,7 +1160,9 @@ function FormularioNuevaCita({
             <span className="mb-1 grid size-12 place-items-center rounded-2xl bg-melocoton text-melocoton-tinta">
               <TriangleAlert className="size-5" strokeWidth={1.6} />
             </span>
-            <AlertDialogTitle className="text-xl font-extrabold">¿Seguro que quieres salir?</AlertDialogTitle>
+            <AlertDialogTitle className="text-xl font-extrabold">
+              ¿Seguro que quieres salir?
+            </AlertDialogTitle>
             <AlertDialogDescription>Se perderá esta cita a medio registrar.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -959,20 +1226,28 @@ export function DialogoSolape({
           <span className="mb-1 grid size-12 place-items-center rounded-2xl bg-melocoton text-melocoton-tinta">
             <TriangleAlert className="size-5" strokeWidth={1.6} />
           </span>
-          <AlertDialogTitle className="text-xl font-extrabold">Esa hora pisa otra cita</AlertDialogTitle>
+          <AlertDialogTitle className="text-xl font-extrabold">
+            Esa hora pisa otra cita
+          </AlertDialogTitle>
           <AlertDialogDescription>
             {profesional ? `${profesional} ya tiene ` : "Ya hay "}
-            {choques.length === 1 ? "esta cita" : `estas ${choques.length} citas`} a esa hora. Puedes guardarla igual si sabes que os da tiempo.
+            {choques.length === 1 ? "esta cita" : `estas ${choques.length} citas`} a esa hora.
+            Puedes guardarla igual si sabes que os da tiempo.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <ul className="overflow-hidden rounded-2xl border border-border">
           {choques.map((a) => (
-            <li key={a.id} className="flex items-center gap-3 border-t border-border px-4 py-2.5 first:border-t-0">
+            <li
+              key={a.id}
+              className="flex items-center gap-3 border-t border-border px-4 py-2.5 first:border-t-0"
+            >
               <span className="w-[108px] shrink-0 font-extrabold whitespace-nowrap tabular-nums">
                 {hora(a.start)}–{hora(+new Date(a.start) + a.duration * 60_000)}
               </span>
               <span className="min-w-0">
-                <b className="block truncate">{a.status === "blocked" ? a.note || "Bloqueo" : a.clientName}</b>
+                <b className="block truncate">
+                  {a.status === "blocked" ? a.note || "Bloqueo" : a.clientName}
+                </b>
                 <span className="block truncate text-[12.5px] text-muted-foreground">
                   {a.status === "blocked" ? "Tiempo bloqueado" : serviceLabelOf(a, carta)}
                 </span>

@@ -84,10 +84,10 @@ describe("profesionales por plan (tabla del 2-oct)", () => {
 });
 
 describe("Equipo en el panel", () => {
-  test("mo:equipo oculta la sección pública pero no la página del panel", () => {
+  test("mo:equipo también evita que el panel presente el equipo de ejemplo como real", () => {
     const p = { modulosOcultos: ["equipo" as const, "marketing" as const] };
     expect(moduloVisible(p, "equipo")).toBe(false);
-    expect(moduloVisibleEnPanel(p, "equipo")).toBe(true);
+    expect(moduloVisibleEnPanel(p, "equipo")).toBe(false);
     expect(moduloVisibleEnPanel(p, "marketing")).toBe(false);
   });
 });
