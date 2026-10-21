@@ -77,6 +77,18 @@ export function entrarEnVistaDemo(slug: string, parametros: { cliente?: unknown;
   return vista;
 }
 
+/**
+ * Al recargar el panel de una demo (`/app/...` sin pasar por `/demo/<slug>`)
+ * la store arranca en «prospecto» aunque la sesión recordara «cliente», y a
+ * PeluChic le volvía a salir el selector de planes (revisión 21-oct). Vuelve
+ * a resolver la vista con lo guardado y la fija si cambia.
+ */
+export function restaurarVistaDemo(slug: string): VistaDemo {
+  const vista = resolverVistaDemo({ slug, guardada: leerVistaGuardada(slug, sesion()) });
+  if (useVistaDemo.getState().vista !== vista) useVistaDemo.getState().fijar(slug, vista);
+  return vista;
+}
+
 /** ¿Se está enseñando como cliente? Solo si la demo lo admite. */
 export function esVistaCliente(slug: string, vista: VistaDemo): boolean {
   return vista === "cliente" && tieneVistaCliente(slug);

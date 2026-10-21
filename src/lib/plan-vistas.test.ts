@@ -16,7 +16,7 @@ import {
   tienePlan,
 } from "./plan";
 import { enlaceCorreo } from "./sishow-web";
-import { entrarEnVistaDemo, esVistaCliente, resolverVistaDemo, useVistaDemo } from "./vista-demo";
+import { entrarEnVistaDemo, esVistaCliente, resolverVistaDemo, restaurarVistaDemo, useVistaDemo } from "./vista-demo";
 
 function memoria() {
   const datos = new Map<string, string>();
@@ -60,6 +60,25 @@ describe("vista de cliente y vista de prospecto", () => {
     expect(entrarEnVistaDemo("peluchic")).toBe("prospecto");
     expect(useVistaDemo.getState().vista).toBe("prospecto");
     expect(entrarEnVistaDemo("peluchic", { cliente: "1" })).toBe("cliente");
+    delete (globalThis as { sessionStorage?: Storage }).sessionStorage;
+  });
+
+  test("al recargar el panel se restaura la vista guardada (sin selector para PeluChic)", () => {
+    // Revisión 21-oct: `/demo/peluchic` fijaba «cliente», pero una recarga de
+    // `/app/marketing` arrancaba la store en «prospecto» y volvía el selector.
+    const sesion = memoria();
+    (globalThis as { sessionStorage?: Storage }).sessionStorage = sesion;
+    entrarEnVistaDemo("peluchic", { cliente: "1" });
+    useVistaDemo.setState({ vista: "prospecto" }); // como tras una recarga
+    expect(restaurarVistaDemo("peluchic")).toBe("cliente");
+    expect(useVistaDemo.getState().vista).toBe("cliente");
+    // Sin nada guardado: PeluChic abre como cliente; otra demo, como prospecto.
+    (globalThis as { sessionStorage?: Storage }).sessionStorage = memoria();
+    useVistaDemo.setState({ vista: "prospecto" });
+    expect(restaurarVistaDemo("peluchic")).toBe("cliente");
+    useVistaDemo.setState({ vista: "cliente" });
+    expect(restaurarVistaDemo("otro-salon")).toBe("prospecto");
+    expect(useVistaDemo.getState().vista).toBe("prospecto");
     delete (globalThis as { sessionStorage?: Storage }).sessionStorage;
   });
 });

@@ -9,7 +9,7 @@ import { conRegistroEnPausa, useSalonStore } from "../store";
 import { useVersiones } from "../versiones-maqueta";
 import { claveDelDia } from "../dia-cerrado-panel";
 import { demoRegistrada, marcaDeDemo } from "./index";
-import { PLAN_DEL_CLIENTE_DE_DEMO, esVistaCliente, useVistaDemo } from "../vista-demo";
+import { PLAN_DEL_CLIENTE_DE_DEMO, esVistaCliente, restaurarVistaDemo, useVistaDemo } from "../vista-demo";
 
 /**
  * Cargar una demo registrada (lib/demos) en este navegador.
@@ -192,6 +192,13 @@ export function demoRegistradaCaducada(slug: string): boolean {
 export function useDemoRegistradaAlDia(hayEnlaceDemo: boolean): void {
   const slug = useSalonStore((s) => s.salonProfile.slug);
   const esDemo = useSalonStore((s) => s.demoActive && !s.realSalonSlug);
+  // Una recarga del panel pierde la vista (cliente/prospecto) de la store: se
+  // recupera de la sesión para que PeluChic no vuelva a ver el selector de plan.
+  // Va antes de recargar la demo caducada, que lee esa vista para fijar el plan.
+  useEffect(() => {
+    if (hayEnlaceDemo || !esDemo || !demoRegistrada(slug)) return;
+    restaurarVistaDemo(slug);
+  }, [hayEnlaceDemo, esDemo, slug]);
   useEffect(() => {
     if (hayEnlaceDemo || !esDemo || !demoRegistradaCaducada(slug)) return;
     cargarDemoRegistrada(slug);
