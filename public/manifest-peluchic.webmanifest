@@ -1,0 +1,31 @@
+{
+  "id": "/app?s=peluchic",
+  "name": "PeluChic",
+  "short_name": "PeluChic",
+  "start_url": "/app?s=peluchic",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f1e9",
+  "theme_color": "#526345",
+  "icons": [
+    {
+      "src": "/peluchic-app/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/peluchic-app/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/peluchic-app/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -1,10 +1,13 @@
+import { esHostPeluchic } from "@/lib/host-actual";
+import { aceptarMisInvitaciones } from "@/lib/api/accesos.functions";
+import { cerrarSesion } from "@/lib/sesion";
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Lock, ArrowLeft, Loader2, MailCheck } from "lucide-react";
 import { salon } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
-import { useSesion, pedirEnlaceMagico } from "@/lib/sesion";
-import { esSalonRealPublico } from "@/lib/api/salons.functions";
+import { useSesion, pedirEnlaceMagico, verificarCodigo } from "@/lib/sesion";
+import { esSalonRealPublico, accesoAlPanel } from "@/lib/api/salons.functions";
 import { BUSINESS_LABEL, inferBusinessType, professionalWord } from "@/lib/business-type";
 import { IconoSiShow } from "@/components/MarcaSiShow";
 import { Button } from "@/components/ui/button";
@@ -12,10 +15,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/login")({
-  head: () => {
+  head: ({ match }) => {
     const profile = useSalonStore.getState().salonProfile;
     const tipo = inferBusinessType(profile.tagline, profile.name);
-    return { meta: [{ title: `Acceso ${professionalWord(tipo)} · ${profile.name}` }] };
+    return {
+      meta: [
+        {
+          title: `Acceso ${professionalWord(tipo)} · ${esHostPeluchic() ? "PeluChic" : profile.name}`,
+        },
+      ],
+      links: [
+        {
+          rel: "manifest",
+          href:
+            esHostPeluchic() || (match.search as Record<string, unknown>)?.s === "peluchic"
+              ? "/manifest-peluchic.webmanifest"
+              : "/manifest-panel.webmanifest",
+        },
+      ],
+    };
   },
   component: LoginPage,
 });
@@ -56,7 +74,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const profile = useSalonStore((s) => s.salonProfile);
   const demoActive = useSalonStore((s) => s.demoActive);
-  const salonName = profile.name;
+  const salonName = esHostPeluchic() ? "PeluChic" : profile.name;
   const tipo = inferBusinessType(profile.tagline, profile.name);
 
   // El salón del que se quiere el panel: el de `?s=` si viene, si no el que ya
@@ -64,11 +82,19 @@ function LoginPage() {
   const desdeUrl = useRouterState({
     select: (s) => (s.location.search as Record<string, unknown>)?.s,
   });
-  const slug = (typeof desdeUrl === "string" && desdeUrl ? desdeUrl : profile.slug) || undefined;
+  const slug =
+    (typeof desdeUrl === "string" && desdeUrl
+      ? desdeUrl
+      : esHostPeluchic()
+        ? "peluchic"
+        : profile.slug) || undefined;
   const esReal = useEsSalonReal(slug);
 
   const { correo: sesionDe } = useSesion();
 
+  const [codigo, setCodigo] = useState("");
+  const verificando = useRef(false);
+  const [sinAcceso, setSinAcceso] = useState(false);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -76,11 +102,36 @@ function LoginPage() {
 
   // Ya hay sesión: no tiene sentido volver a pedirla. Al panel.
   useEffect(() => {
-    if (sesionDe) void navigate({ to: "/app" });
-  }, [sesionDe, navigate]);
+    if (!sesionDe || !slug) return;
+    let vivo = true;
+    aceptarMisInvitaciones({ data: { slug } })
+      .then(() => accesoAlPanel({ data: { slug } }))
+      .then((r) => {
+        if (!vivo) return;
+        if (r.permitido) window.location.replace(`/app?s=${encodeURIComponent(slug)}`);
+        else setSinAcceso(true);
+      })
+      .catch(() => {
+        if (vivo) setError("No se pudo comprobar tu acceso. Vuelve a intentarlo.");
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [sesionDe, slug]);
 
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const comprobarCodigo = async (valor: string) => {
+    if (verificando.current || valor.length !== 6) return;
+    verificando.current = true;
+    setEnviando(true);
+    setError("");
+    const r = await verificarCodigo(email, valor);
+    if (!r.ok) setError(r.motivo);
+    setEnviando(false);
+    verificando.current = false;
+  };
+
+  const onSubmit = async (e?: FormEvent) => {
+    e?.preventDefault();
     setError("");
     if (!email.includes("@") || !email.includes(".")) {
       setError("Escribe tu correo completo, con la arroba y el punto.");
@@ -88,12 +139,16 @@ function LoginPage() {
     }
     setEnviando(true);
     const volverA = `${window.location.origin}/app${slug ? `?s=${encodeURIComponent(slug)}` : ""}`;
-    const res = await pedirEnlaceMagico(email, volverA);
+    const res = await pedirEnlaceMagico(email, volverA).catch(() => ({
+      ok: false as const,
+      motivo: "No hemos podido conectar. Inténtalo otra vez.",
+    }));
     setEnviando(false);
     if (!res.ok) {
       setError(res.motivo);
       return;
     }
+    setCodigo("");
     setEnviado(true);
   };
 
@@ -101,7 +156,11 @@ function LoginPage() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border/60">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-          <Link to="/s/$salonSlug" params={{ salonSlug: salon.slug }} className="flex items-center gap-2">
+          <Link
+            to="/s/$salonSlug"
+            params={{ salonSlug: salon.slug }}
+            className="flex items-center gap-2"
+          >
             <IconoSiShow size={36} />
             <div className="leading-tight">
               <p className="font-display text-base">{salonName}</p>
@@ -154,7 +213,16 @@ function LoginPage() {
             </div>
           )}
 
-          {enviado ? (
+          {sinAcceso ? (
+            <div className="space-y-3">
+              <p role="alert">
+                Este correo no tiene acceso a este salón. Pide a María que te dé acceso.
+              </p>
+              <Button variant="outline" onClick={() => void cerrarSesion()}>
+                Usar otro correo
+              </Button>
+            </div>
+          ) : enviado ? (
             <div className="space-y-4 text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success/15 text-success">
                 <MailCheck className="h-5 w-5" />
@@ -162,13 +230,55 @@ function LoginPage() {
               <div className="space-y-1.5">
                 <p className="font-medium">Mira tu correo</p>
                 <p className="text-sm text-muted-foreground">
-                  Te hemos enviado un enlace a <span className="font-medium">{email}</span>. Ábrelo
-                  desde este mismo dispositivo y entrarás directo, sin contraseña.
+                  Te hemos enviado un código y un enlace a{" "}
+                  <span className="font-medium">{email}</span>. Escribe aquí las seis cifras o abre
+                  el enlace, sin contraseña.
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Si no lo ves en un par de minutos, mira en la carpeta de correo no deseado.
                 </p>
               </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void comprobarCodigo(codigo);
+                }}
+                className="space-y-3"
+              >
+                <Label htmlFor="codigo">Código de seis cifras</Label>
+                <Input
+                  id="codigo"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  autoFocus
+                  className="h-16 text-center text-3xl tracking-[0.4em]"
+                  value={codigo}
+                  disabled={enviando}
+                  onChange={(e) => {
+                    const valor = e.target.value.replace(/\D/g, "").slice(0, 6);
+                    setCodigo(valor);
+                    if (valor.length === 6) void comprobarCodigo(valor);
+                  }}
+                />
+                {error && (
+                  <p role="alert" className="text-sm text-destructive">
+                    {error}
+                  </p>
+                )}
+                <Button type="submit" disabled={enviando || codigo.length !== 6}>
+                  {enviando ? "Comprobando…" : "Entrar"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={enviando}
+                  onClick={() => void onSubmit()}
+                >
+                  Enviar otro
+                </Button>
+              </form>
               <Button
                 type="button"
                 variant="outline"
@@ -195,7 +305,8 @@ function LoginPage() {
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  Te mandamos un enlace y entras pinchándolo. Aquí no hay contraseñas que recordar.
+                  Te mandamos un código y un enlace en el mismo correo. Aquí no hay contraseñas que
+                  recordar.
                 </p>
               </div>
 
@@ -207,7 +318,7 @@ function LoginPage() {
 
               <Button type="submit" disabled={enviando} className="w-full rounded-lg">
                 {enviando && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {enviando ? "Enviando…" : "Enviarme el enlace"}
+                {enviando ? "Enviando…" : "Enviar código"}
               </Button>
             </form>
           )}

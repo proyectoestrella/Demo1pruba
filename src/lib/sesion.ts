@@ -20,7 +20,10 @@ export const CLAVE_ALMACEN_SALON = "trimly-salon-store";
 /** La clave con la que Supabase guarda la sesión. Ver lib/supabase-browser.ts. */
 export const CLAVE_SESION = "sishow-sesion";
 
-type SolicitudOtp = (datos: { email: string; options: { emailRedirectTo: string } }) => Promise<{ error: { message: string } | null }>;
+type SolicitudOtp = (datos: {
+  email: string;
+  options: { emailRedirectTo: string; shouldCreateUser: false };
+}) => Promise<{ error: { message: string; code?: string } | null }>;
 
 /**
  * Borra del navegador todo lo que sea de este salón.
@@ -63,11 +66,19 @@ export async function pedirEnlaceMagicoConCliente(
   }
   const { error } = await solicitar({
     email: correo.trim(),
-    options: { emailRedirectTo: volverA },
+    options: { emailRedirectTo: volverA, shouldCreateUser: false },
   });
   if (error) {
+    if (error.code === "signup_disabled")
+      return {
+        ok: false,
+        motivo: "Este correo no tiene acceso a ningún salón. Pide a María que te dé acceso.",
+      };
     console.error("signInWithOtp:", error.message);
-    return { ok: false, motivo: "No hemos podido enviar el correo. Inténtalo otra vez en un minuto." };
+    return {
+      ok: false,
+      motivo: "No hemos podido enviar el correo. Inténtalo otra vez en un minuto.",
+    };
   }
   return { ok: true };
 }
@@ -85,10 +96,11 @@ export async function cerrarSesion(): Promise<void> {
     console.error("No se pudo cerrar la sesión en el servidor:", err);
   }
   if (typeof window !== "undefined") {
+    const slug = new URLSearchParams(window.location.search).get("s");
     limpiarDatosLocales(window.localStorage);
     // Recarga entera para que ningún componente se quede con las citas ya
     // leídas en memoria. Es la única forma honesta de decir "aquí no queda nada".
-    window.location.href = "/login";
+    window.location.href = `/login${slug ? `?s=${encodeURIComponent(slug)}` : ""}`;
   }
 }
 
@@ -119,4 +131,42 @@ export function useSesion(): { cargando: boolean; correo: string | null } {
   }, []);
 
   return estado;
+}
+
+export type VerificarCodigo = (datos: {
+  email: string;
+  token: string;
+  type: "email";
+}) => Promise<{ error: { code?: string; message: string } | null }>;
+
+export async function verificarCodigo(
+  correo: string,
+  codigo: string,
+  verificar?: VerificarCodigo,
+): Promise<{ ok: true } | { ok: false; motivo: string }> {
+  if (!/^\d{6}$/.test(codigo)) return { ok: false, motivo: "Escribe las seis cifras del código." };
+  const sb = verificar ? null : supabaseNavegador();
+  const fn = verificar ?? sb?.auth.verifyOtp.bind(sb.auth);
+  if (!fn) return { ok: false, motivo: "El acceso no está configurado." };
+  try {
+    const { error } = await fn({
+      email: correo.trim().toLowerCase(),
+      token: codigo,
+      type: "email",
+    });
+    if (error)
+      return {
+        ok: false,
+        motivo:
+          error.code === "otp_expired"
+            ? "El código es incorrecto o ha caducado. Revisa las cifras o pulsa Enviar otro."
+            : "Código incorrecto. Revisa las seis cifras e inténtalo otra vez.",
+      };
+    return { ok: true };
+  } catch {
+    return {
+      ok: false,
+      motivo: "No hemos podido conectar. Comprueba tu conexión e inténtalo otra vez.",
+    };
+  }
 }

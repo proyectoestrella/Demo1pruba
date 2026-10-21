@@ -1,10 +1,10 @@
 import { expect, spyOn, test } from "bun:test";
 
-import { pedirEnlaceMagicoConCliente } from "./sesion";
+import { pedirEnlaceMagicoConCliente, verificarCodigo } from "./sesion";
 
 test("pide el enlace mágico con el correo recortado y la ruta de retorno del panel", async () => {
-  let enviada: { email: string; options: { emailRedirectTo: string } } | undefined;
-  const solicitar = async (datos: { email: string; options: { emailRedirectTo: string } }) => {
+  let enviada: { email: string; options: { emailRedirectTo: string; shouldCreateUser: false } } | undefined;
+  const solicitar = async (datos: { email: string; options: { emailRedirectTo: string; shouldCreateUser: false } }) => {
     enviada = datos;
     return { error: null };
   };
@@ -18,7 +18,7 @@ test("pide el enlace mágico con el correo recortado y la ruta de retorno del pa
   ).resolves.toEqual({ ok: true });
   expect(enviada).toEqual({
     email: "maria@example.test",
-    options: { emailRedirectTo: "https://peluchic.sishow.es/app?s=peluchic" },
+    options: { emailRedirectTo: "https://peluchic.sishow.es/app?s=peluchic", shouldCreateUser: false },
   });
 });
 
@@ -40,4 +40,21 @@ test("un error del proveedor deja un mensaje neutro para la persona usuaria", as
   });
   expect(log).toHaveBeenCalledWith("signInWithOtp:", "fallo interno de transporte");
   log.mockRestore();
+});
+
+test("verifica seis cifras como email OTP y normaliza el correo", async () => {
+  let recibido: unknown;
+  expect(await verificarCodigo(" MARIA@example.test ", "123456", async d => { recibido = d; return { error: null }; })).toEqual({ ok: true });
+  expect(recibido).toEqual({ email: "maria@example.test", token: "123456", type: "email" });
+});
+test("no verifica códigos incompletos y explica caducidad y error de red", async () => {
+  let llamadas = 0;
+  await verificarCodigo("a@b.es", "123", async () => { llamadas++; return { error: null }; });
+  expect(llamadas).toBe(0);
+  expect(await verificarCodigo("a@b.es", "123456", async () => ({ error: { code: "otp_expired", message: "expired" } }))).toMatchObject({ ok: false, motivo: expect.stringContaining("caducado") });
+  expect(await verificarCodigo("a@b.es", "123456", async () => { throw Error("network"); })).toMatchObject({ ok: false });
+});
+
+test("un correo no invitado recibe la indicación de pedir acceso", async () => {
+  expect(await pedirEnlaceMagicoConCliente("sin@correo.es", "https://peluchic.sishow.es/app", async () => ({ error: { code: "signup_disabled", message: "Signups not allowed" } }))).toMatchObject({ ok: false, motivo: expect.stringContaining("Pide a María") });
 });
