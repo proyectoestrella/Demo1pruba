@@ -63,6 +63,7 @@ import {
   ERROR_DATOS_RESERVA,
   ERROR_RESERVA_PASADA,
   ERROR_TELEFONO_INVALIDO,
+  ERROR_NOMBRE_INVALIDO,
   ERROR_RESERVA_LEJANA,
   ERROR_DEMASIADAS_RESERVAS,
   HORIZONTE_RESERVA_DIAS,
@@ -1142,6 +1143,11 @@ export const syncAppointment = createServerFn({ method: "POST" })
       } else {
         data.clientPhone = normalizarTelefonoSiValido(data.clientPhone);
       }
+    }
+    if (!manda) {
+      const nombre = (data.clientName ?? "").trim();
+      if (nombre.length < 2) return { synced: false as const, reason: ERROR_NOMBRE_INVALIDO };
+      data.clientName = nombre;
     }
     if (!manda && !inicioReservaPublicaEsFuturo(data.startISO)) {
       return { synced: false as const, reason: ERROR_RESERVA_PASADA };

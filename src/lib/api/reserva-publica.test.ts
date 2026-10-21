@@ -144,3 +144,20 @@ describe("M5: doble reserva simultánea", () => {
     expect(resto).toContain(".delete()");
   });
 });
+
+describe("Nombre obligatorio en la reserva pública", () => {
+  for (const clientName of [undefined, "", "  \t\n", "A", " A "]) {
+    it(`rechaza ${JSON.stringify(clientName)} sin escrituras`, async () => {
+      const resultado = await llamar(S.syncAppointment, reserva({ clientName }));
+      expect(resultado).toEqual({ synced: false, reason: "NOMBRE_INVALIDO" });
+      expect(doble.escrituras).toHaveLength(0);
+    });
+  }
+  it("acepta dos caracteres y recorta el nombre antes de guardar ficha y cita", async () => {
+    const resultado = await llamar<{ synced: boolean }>(S.syncAppointment, reserva({ clientName: "  Al  ", clientPhone: "699888777" }));
+    expect(resultado.synced).toBe(true);
+    expect(doble.tablas.clients.find((c) => c.phone_key === "699888777")?.name).toBe("Al");
+    const cita = doble.escrituras.find((e) => e.tabla === "appointments" && e.op === "upsert");
+    expect(cita?.datos).toMatchObject({ client_name: "Al" });
+  });
+});

@@ -58,7 +58,7 @@ import heroImg from "@/assets/hero-salon.jpg";
 import { registerBookingClient } from "@/lib/api/clients.functions";
 import { checkClientPenalty } from "@/lib/api/salons.functions";
 import { guardarReservaPublica } from "@/lib/salon-sync";
-import { firmaReservaPublica, haLeidoAvisoPrivacidad, mensajeErrorReserva } from "@/lib/reserva-publica";
+import { motivosDatosReserva, firmaReservaPublica, haLeidoAvisoPrivacidad, mensajeErrorReserva } from "@/lib/reserva-publica";
 import { reintentarSalonPublico } from "@/lib/use-real-salon";
 import { sumServices } from "@/lib/appointment-services";
 import { resumenServiciosReserva } from "@/lib/resumen-servicios-reserva";
@@ -557,7 +557,7 @@ function BookingWizard() {
       !selectedServices.length ||
       !data.date ||
       !data.time ||
-      !data.name ||
+      (data.name ?? "").trim().length < 2 ||
       !telefono.ok ||
       !haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged) ||
       (conRecargo && !data.acceptedPolicy) ||
@@ -594,7 +594,7 @@ function BookingWizard() {
     // El nombre de la ficha ya existente manda: si esta vez lo escribió de
     // otra forma ("Mari" en vez de "María García"), no se pisa el que el
     // salón ya conocía.
-    const clientName = clienteExistente?.name ?? data.name;
+    const clientName = clienteExistente?.name ?? (data.name ?? "").trim();
     const citaSinId: Omit<Appointment, "id"> = {
       clientId,
       clientName,
@@ -655,7 +655,7 @@ function BookingWizard() {
       registerBookingClient({
         data: {
           salonSlug,
-          name: data.name,
+          name: (data.name ?? "").trim(),
           phone: telefonoE164,
           email: data.email,
           serviceIds,
@@ -679,7 +679,7 @@ function BookingWizard() {
         employeeId,
         date: data.date,
         time: data.time,
-        name: data.name,
+        name: (data.name ?? "").trim(),
         // El calendario conserva la duración bloqueada; la confirmación
         // deriva la fianza de la carta a partir de los servicios.
         duration: schedulingDurationMin,
@@ -692,6 +692,17 @@ function BookingWizard() {
     });
   }
 
+  const faltasDatos = motivosDatosReserva({
+    nombre: data.name ?? "",
+    telefonoValido: telefono.ok,
+    sinProfesional: sinProfesionalParaServicios,
+    privacidadLeida: haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged),
+    faltaPolitica: conRecargo && !data.acceptedPolicy,
+    bloqueada: !!blockedClient,
+    faltanRespuestas: faltanRespuestas.length > 0,
+    sending,
+    resolviendo: resolutionStatus === "resolviendo",
+  });
   const ctaDisabled =
     step === 1
       ? selectedServices.length === 0 || sinProfesionalParaServicios
@@ -699,9 +710,8 @@ function BookingWizard() {
         ? !data.employeeId
         : step === 3
           ? !data.date || !data.time || sinProfesionalParaServicios
-        : !data.name || !telefono.ok || sinProfesionalParaServicios || !haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged) || (conRecargo && !data.acceptedPolicy) || !!blockedClient ||
-            faltanRespuestas.length > 0 ||
-            sending || resolutionStatus === "resolviendo";
+          : faltasDatos.length > 0;
+  const ctaHint = step === 4 && ctaDisabled ? `Falta: ${faltasDatos.join(", ")}` : undefined;
 
   const ctaLabel = step < 4 ? "Continuar" : mostrarPrecio ? `Confirmar reserva — ${eur(total)}` : "Confirmar reserva";
   // En la barra fija de móvil no cabe el importe dos veces: ya se ve a la izquierda.
@@ -873,7 +883,7 @@ function BookingWizard() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="name">Nombre completo</Label>
+                  <Label htmlFor="name">Nombre completo *</Label>
                   <Input
                     id="name"
                     className="h-11 text-[15px]"
@@ -883,7 +893,7 @@ function BookingWizard() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="phone">Teléfono</Label>
+                  <Label htmlFor="phone">Teléfono *</Label>
                   <div className="flex gap-2">
                     <select
                       aria-label="Prefijo del país"
@@ -1075,6 +1085,7 @@ function BookingWizard() {
           esSalonReal={realSlug === salonSlug || (!demoParamRaw && resolutionStatus !== "demo")}
           ctaLabel={ctaLabel}
           ctaDisabled={ctaDisabled}
+          ctaHint={ctaHint}
           onCta={onCta}
         />
       </div>
@@ -1093,6 +1104,7 @@ function BookingWizard() {
         ctaLabel={ctaLabel}
         ctaLabelCorto={ctaLabelCorto}
         ctaDisabled={ctaDisabled}
+        ctaHint={ctaHint}
         onCta={onCta}
       />
     </section>
@@ -1841,6 +1853,7 @@ function BookingSummary({
   ctaLabel,
   ctaLabelCorto,
   ctaDisabled,
+  ctaHint,
   onCta,
 }: {
   variant: "sidebar" | "bar";
@@ -1859,6 +1872,7 @@ function BookingSummary({
   /** Rótulo corto para la barra fija de móvil. */
   ctaLabelCorto?: string;
   ctaDisabled: boolean;
+  ctaHint?: string;
   onCta: () => void;
 }) {
   const tipo = useBusinessType();
@@ -1880,6 +1894,7 @@ function BookingSummary({
         className="fixed inset-x-0 bottom-0 z-40 min-h-[calc(4.5rem+env(safe-area-inset-bottom,0px))] border-t border-lino bg-background/95 pt-3 backdrop-blur lg:hidden"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
       >
+        {ctaHint && <p role="status" className={cn(CONTENEDOR_SALON, "mb-2 text-xs text-cafe-medio")}>{ctaHint}</p>}
         <div className={cn(CONTENEDOR_SALON, "flex items-center justify-between gap-3")}>
           <div className="min-w-0 flex-1">
             <p className="flex items-baseline gap-2">
@@ -1958,6 +1973,7 @@ function BookingSummary({
 
         {mostrarPrecio && <><Separator className="my-4" /><div className="flex items-baseline justify-between"><span className="text-sm text-muted-foreground">Total</span><span className="text-2xl font-extrabold tabular-nums">{eur(total)}</span></div></>}
 
+        {ctaHint && <p role="status" className="mt-4 text-xs text-cafe-medio">{ctaHint}</p>}
         <Button
           onClick={onCta}
           disabled={ctaDisabled}

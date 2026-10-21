@@ -27,6 +27,7 @@ export const ERROR_SERVICIO_PROFESIONAL = "RESERVA_SERVICIO_PROFESIONAL";
 export const ERROR_BLOQUEO_AGENDA = "RESERVA_BLOQUEO_AGENDA";
 export const ERROR_DATOS_RESERVA = "RESERVA_DATOS_INVALIDOS";
 export const ERROR_RESERVA_PASADA = "RESERVA_PASADA";
+export const ERROR_NOMBRE_INVALIDO = "NOMBRE_INVALIDO";
 export const ERROR_TELEFONO_INVALIDO = "TELEFONO_INVALIDO";
 export const ERROR_RESERVA_LEJANA = "RESERVA_LEJANA";
 export const ERROR_DEMASIADAS_RESERVAS = "RESERVA_DEMASIADAS";
@@ -39,6 +40,31 @@ export const MAX_RESERVAS_PUBLICAS_POR_SALON_Y_HORA = 60;
 /** La casilla acredita que se mostró la información; no expresa una base legal de consentimiento. */
 export function haLeidoAvisoPrivacidad(valor: unknown): valor is true {
   return valor === true;
+}
+
+/** La lista explica todos los motivos que desactivan Confirmar en el paso de datos. */
+export function motivosDatosReserva(datos: {
+  nombre: string;
+  telefonoValido: boolean;
+  sinProfesional: boolean;
+  privacidadLeida: boolean;
+  faltaPolitica: boolean;
+  bloqueada: boolean;
+  faltanRespuestas: boolean;
+  sending: boolean;
+  resolviendo: boolean;
+}): string[] {
+  const faltas: string[] = [];
+  if (datos.nombre.trim().length < 2) faltas.push("nombre (mínimo 2 caracteres)");
+  if (!datos.telefonoValido) faltas.push("teléfono válido");
+  if (datos.sinProfesional) faltas.push("profesional disponible para los servicios");
+  if (!datos.privacidadLeida) faltas.push("aceptar el aviso de privacidad");
+  if (datos.faltaPolitica) faltas.push("aceptar la política de recargo");
+  if (datos.bloqueada) faltas.push("contactar con el salón para reservar");
+  if (datos.faltanRespuestas) faltas.push("completar las preguntas de la reserva");
+  if (datos.sending) faltas.push("terminar el envío");
+  if (datos.resolviendo) faltas.push("comprobar el salón");
+  return faltas;
 }
 
 /** Una reserva pública solo puede crear una cita futura con un instante válido. */
@@ -105,6 +131,8 @@ export function mensajeErrorReserva(error: unknown): string {
     return "Ese hueco no está disponible. Elige otra hora.";
   if (mensaje.includes(ERROR_DATOS_RESERVA))
     return "Los servicios o su duración han cambiado. Revisa la reserva y vuelve a elegir una hora.";
+  if (mensaje.includes(ERROR_NOMBRE_INVALIDO))
+    return "Escribe un nombre de al menos 2 caracteres.";
   if (mensaje.includes(ERROR_TELEFONO_INVALIDO))
     return "Ese teléfono no parece válido. Revísalo y vuelve a enviar.";
   if (mensaje.includes(ERROR_RESERVA_PASADA))
