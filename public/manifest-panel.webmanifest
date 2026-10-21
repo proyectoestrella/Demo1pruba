@@ -1,10 +1,10 @@
 {
-  "name": "siShow · Panel",
+  "name": "siShow \u00b7 Panel",
   "short_name": "Panel",
   "start_url": "/app",
-  "scope": "/app",
+  "scope": "/",
   "display": "standalone",
-  "orientation": "any",
+  "orientation": "portrait",
   "background_color": "#111113",
   "theme_color": "#111113",
   "icons": [

@@ -1,8 +1,9 @@
+import { paginaDeRutaPanel } from "./ruta-panel-permiso";
 import { useEffect } from "react";
 import { redirect, useNavigate } from "@tanstack/react-router";
 import { useSalonStore } from "./store";
 import { moduloVisibleEnPanel, type ModuloOcultable } from "./demo-profile";
-import { permisosDe, vePagina, type PaginaId } from "./permisos";
+import { permisosDe, vePagina } from "./permisos";
 
 /**
  * `beforeLoad` para una ruta que una demo puede ocultar (Equipo, Marketing,
@@ -43,25 +44,6 @@ export function useRedirigirSiModuloOculto(clave: ModuloOcultable) {
   return visible;
 }
 
-/** La página protegida de una URL del panel, sin importar el chrome del menú. */
-function paginaDeRutaPanel(path: string): PaginaId | null {
-  const rutas: Array<[RegExp, PaginaId]> = [
-    [/^\/app\/?$/, "hoy"],
-    [/^\/app\/calendar/, "calendario"],
-    [/^\/app\/appointments/, "citas"],
-    [/^\/app\/waitlist/, "lista-espera"],
-    [/^\/app\/clients/, "clientas"],
-    [/^\/app\/hoja/, "hoja"],
-    [/^\/app\/employees/, "equipo"],
-    [/^\/app\/services/, "servicios"],
-    [/^\/app\/web/, "mi-pagina"],
-    [/^\/app\/settings/, "ajustes"],
-    [/^\/app\/insights/, "analitica"],
-    [/^\/app\/marketing/, "marketing"],
-    [/^\/app\/caja/, "caja"],
-  ];
-  return rutas.find(([re]) => re.test(path))?.[1] ?? null;
-}
 
 /**
  * Segunda puerta de las rutas del panel: el menú ya no enseña lo que no toca,

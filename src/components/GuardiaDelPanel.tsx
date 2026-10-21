@@ -17,18 +17,17 @@
  *   - Salón de pago y quien entra pertenece a él → adelante.
  *   - Salón de pago y no → a la pantalla de acceso.
  *
- * Si la comprobación no se puede hacer (internet caído, servidor que no
- * responde) se deja pasar a propósito, porque el panel se abriría vacío de
- * todas formas: las funciones que entregan citas y clientes vuelven a
- * comprobar quién llama, cada una por su cuenta. Esta pantalla es la
- * comodidad; la seguridad está detrás.
+ * Si falla la comprobación, se vuelve al acceso: no se muestra la copia
+ * local que pudiera conservar ese dispositivo. El servidor vuelve a exigir
+ * sesión y pertenencia en cada operación protegida.
  */
 import { IconoSiShow } from "@/components/MarcaSiShow";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 
-import { accesoPanel } from "@/lib/acceso-actual-panel";
+import { accesoAlPanel } from "@/lib/api/salons.functions";
+import { paginaDeRutaPanel } from "@/lib/ruta-panel-permiso";
 import { DEMO_PARAM, decodeDemoProfile } from "@/lib/demo-profile";
 import { DemoLoadingScreen } from "@/components/DemoLoadingScreen";
 
@@ -45,14 +44,12 @@ export function estadoInicialGuardia(): Estado {
 
 export function GuardiaDelPanel({ slug, children }: { slug?: string; children: ReactNode }) {
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: s => s.location.pathname });
   const demoRaw = useRouterState({ select: (s) => (s.location.search as Record<string, unknown>)?.[DEMO_PARAM] });
   const demo = decodeDemoProfile(typeof demoRaw === "string" ? demoRaw : undefined);
   // Empieza SIEMPRE comprobando, también al pintar la página en el servidor.
   // Así no existe ni un instante en el que el panel esté en pantalla sin que
   // se haya comprobado nada.
-  // La caché de `beforeLoad` se reutiliza en el efecto mediante `obtener`,
-  // pero nunca durante el render: en SSR estaría vacía y React recibiría un
-  // árbol inicial distinto al del navegador.
   const [estado, setEstado] = useState<Estado>(estadoInicialGuardia);
 
   useEffect(() => {
@@ -62,25 +59,25 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
       return;
     }
     let vivo = true;
-    accesoPanel
-      .obtener(slug)
-      .then(({ real, permitido }) => {
+    accesoAlPanel({ data: { slug, pagina: paginaDeRutaPanel(pathname) ?? undefined } })
+      .then(({ real, permitido, miembro }) => {
         if (!vivo) return;
+        if (real && !permitido && miembro) { void navigate({ to: "/app", search: { s: slug }, replace: true }); return; }
         setEstado(!real || permitido ? "adelante" : "fuera");
       })
       .catch((err) => {
         console.error("No se pudo comprobar el acceso al panel:", err);
-        if (vivo) setEstado("adelante");
+        if (vivo) setEstado("fuera");
       });
     return () => {
       vivo = false;
     };
-  }, [slug]);
+  }, [slug, pathname, navigate]);
 
   useEffect(() => {
     if (estado !== "fuera") return;
-    void navigate({ to: "/login", replace: true });
-  }, [estado, navigate]);
+    void navigate({ to: "/login", search: { s: slug }, replace: true });
+  }, [estado, navigate, slug]);
 
   if (estado === "adelante") return <>{children}</>;
 

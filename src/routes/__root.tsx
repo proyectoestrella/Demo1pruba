@@ -15,6 +15,8 @@ import { SimboloSishow } from "@/components/web/Marca";
 import { IMAGEN_SOCIAL, SITIO_URL } from "@/lib/sishow-web";
 import { zonaDeRuta } from "@/lib/zona-web";
 
+import { esHostPeluchic } from "@/lib/host-actual";
+
 import appCss from "../styles.css?url";
 
 /**
@@ -91,6 +93,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     // oficial (cabezaWeb) y la del salón (s.$salonSlug.tsx).
     const ruta = matches[matches.length - 1]?.pathname ?? "/";
     const zona = zonaDeRuta(ruta);
+    const peluchic = esHostPeluchic() || matches.some(m => (m.search as Record<string, unknown>)?.s === "peluchic");
     const titulo = "siShow — Reservas y agenda para tu salón";
     const descripcion =
       "siShow: reservas por internet y agenda para peluquerías, barberías y centros de belleza. Tus clientas reservan solas; tú, a lo tuyo.";
@@ -104,8 +107,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { name: "apple-mobile-web-app-capable", content: "yes" },
         { name: "mobile-web-app-capable", content: "yes" },
         { name: "apple-mobile-web-app-status-bar-style", content: "black" },
-        { name: "apple-mobile-web-app-title", content: "siShow" },
-        { name: "theme-color", content: "#111113" },
+        { name: "apple-mobile-web-app-title", content: peluchic ? "PeluChic" : "siShow" },
+        { name: "theme-color", content: peluchic ? "#526345" : "#111113" },
         { title: titulo },
         { name: "description", content: descripcion },
         { property: "og:title", content: titulo },
@@ -127,8 +130,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         // El manifiesto instala la app del rutero (start_url /rutero): solo en
         // el panel. En la web oficial o la de un salón, «Añadir a pantalla de
         // inicio» no puede llevar a una clienta a una herramienta interna.
-        ...(zona === "panel" ? [{ rel: "manifest", href: "/manifest.webmanifest" }] : []),
-        { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
+        ...(zona === "panel" && !ruta.startsWith("/app") && ruta !== "/login" ? [{ rel: "manifest", href: "/manifest.webmanifest" }] : []),
+        { rel: "apple-touch-icon", href: peluchic ? "/peluchic-app/apple-touch-icon.png" : "/apple-touch-icon.png", sizes: "180x180" },
         // Sin esto el navegador pedía /favicon.ico (404 en la consola).
         { rel: "icon", href: "/web/favicon.svg", type: "image/svg+xml" },
         { rel: "icon", href: "/web/favicon-32.png", type: "image/png", sizes: "32x32" },
@@ -249,7 +252,7 @@ function ControlesIpad() {
   // queda «Volver al rutero» si se entró a pantalla completa desde el panel,
   // que es el recorrido de la demo; instalada como app por una clienta, nada.
   const zona = zonaDeRuta(path);
-  if (zona === "oficial") return null;
+  if (zona === "oficial" || path.startsWith("/app") || path === "/login" || esHostPeluchic()) return null;
   const verVolver = (zona === "salon" ? enPantallaCompleta : app || enPantallaCompleta) && path !== "/rutero";
   const verPantalla = zona === "panel" && !app && tablet && puede;
   if (!verVolver && !verPantalla) return null;

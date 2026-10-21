@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { listSalonData } from "./api/salons.functions";
+import { cerrarSesion } from "./sesion";
+import { accesoAlPanel, listSalonData } from "./api/salons.functions";
 import { useSalonStore } from "./store";
 import { sincronizacionPendiente } from "./salon-sync";
 import { debeAplazarRefresco, haceCuanto } from "./panel-refresh";
@@ -23,6 +24,9 @@ export function usePanelRefresh(slug: string | null) {
         debeAplazarRefresco(document.visibilityState === "visible", editando(), sincronizacionPendiente())) return;
       consultando = true;
       try {
+        const entrada = await accesoAlPanel({ data: { slug } });
+        if (!entrada.permitido) { await cerrarSesion(); return; }
+        useSalonStore.getState().setMiembro(entrada.miembro);
         const datos = await listSalonData({ data: { slug, vista: "panel" } });
         if (activo && useSalonStore.getState().realSalonSlug === slug &&
           !debeAplazarRefresco(document.visibilityState === "visible", editando(), sincronizacionPendiente())) {

@@ -1,3 +1,5 @@
+import { esHostPeluchic } from "@/lib/host-actual";
+import { InstalarPanel } from "@/components/InstalarPanel";
 import { conRegistroEnPausa } from "@/lib/store";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { menosMovimiento } from "@/lib/movimiento-panel";
@@ -16,7 +18,8 @@ import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { PanelV2Shell } from "@/components/PanelV2Shell";
 import { GuardiaDelPanel } from "@/components/GuardiaDelPanel";
 import { FichasGlobales } from "@/components/FichasGlobales";
-import { accesoPanel } from "@/lib/acceso-actual-panel";
+import { accesoAlPanel } from "@/lib/api/salons.functions";
+import { paginaDeRutaPanel } from "@/lib/ruta-panel-permiso";
 import { hasSeenTour, startTour } from "@/lib/tour";
 import {
   BarraInferior,
@@ -78,15 +81,17 @@ export const Route = createFileRoute("/app")({
     const slug =
       typeof desdeUrl === "string" && desdeUrl
         ? desdeUrl
-        : useSalonStore.getState().salonProfile.slug;
+        : esHostPeluchic() ? "peluchic" : useSalonStore.getState().salonProfile.slug;
     if (!slug) return;
     try {
-      // Lote 16: con caché. Solo la primera entrada espera al servidor; las
-      // navegaciones entre pantallas del panel ya no hacen ida y vuelta.
-      const { real, permitido, miembro } = await accesoPanel.obtener(slug, () => {
-        window.location.assign("/login");
-      });
-      if (real && !permitido) throw redirect({ to: "/login", replace: true });
+      // Cada navegación exige el rol vigente EN ESTE salón en el servidor.
+      const { real, permitido, miembro } = await accesoAlPanel({ data: {
+        slug, pagina: paginaDeRutaPanel(location.pathname) ?? undefined,
+      } });
+      if (real && !permitido) {
+        if (miembro) throw redirect({ to: "/app", search: { s: slug }, replace: true });
+        throw redirect({ to: "/login", search: { s: slug }, replace: true });
+      }
       // Rol y nombre de quien entra (lote 8): para usePermisos() y el saludo.
       // Lote 16: solo si cambia. Cada `set` de la store reescribe entera la
       // copia local (~1,3 MB en la demo), y esto corría en cada navegación.
@@ -101,13 +106,10 @@ export const Route = createFileRoute("/app")({
       console.error("No se pudo comprobar el acceso al panel:", err);
     }
   },
-  head: () => ({
+  head: ({ match }) => ({
     meta: [{ title: `Dashboard · ${useSalonStore.getState().salonProfile.name}` }],
-    // Manifest propio del panel ("siShow · Panel", start_url /app?v=2) además
-    // del de la web pública en __root.tsx, que se queda tal cual. Solo cambia
-    // qué icono de "Añadir a pantalla de inicio" instala quien lo abre desde
-    // aquí — no afecta a nada de /s/*.
-    links: [{ rel: "manifest", href: "/manifest-panel.webmanifest" }],
+    // Identidad de instalación propia; el scope incluye login y aceptar.
+    links: [{ rel: "manifest", href: esHostPeluchic() || (match.search as Record<string, unknown>)?.s === "peluchic" ? "/manifest-peluchic.webmanifest" : "/manifest-panel.webmanifest" }],
   }),
   component: DashboardLayout,
 });
@@ -174,7 +176,7 @@ function useSalonSlugDelPanel(): string | undefined {
   return slugResolvibleDelPanel({
     slugDesdeUrl: desdeUrl,
     demoRaw,
-    slugGuardado: guardado,
+    slugGuardado: esHostPeluchic() ? "peluchic" : guardado,
   });
 }
 
@@ -267,6 +269,7 @@ function PanelAutorizado({ slug }: { slug?: string }) {
   return (
     <>
       {panelV2 && plan !== "reservas" ? <PanelV2Shell /> : <DashboardLayoutV1 />}
+      <InstalarPanel />
       <FichasGlobales />
       {refresco && (
         <span className="indicador-refresco fixed bottom-3 right-3 z-10 rounded-full border border-border bg-background/90 px-2 py-1 text-[10px] text-muted-foreground shadow-sm max-lg:bottom-20">
