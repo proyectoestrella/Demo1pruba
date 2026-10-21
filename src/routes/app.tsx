@@ -4,7 +4,7 @@ import { conRegistroEnPausa } from "@/lib/store";
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { menosMovimiento } from "@/lib/movimiento-panel";
 import { sincronizarColores } from "@/lib/colores-elegidos";
-import { createFileRoute, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { useRealSalon } from "@/lib/use-real-salon";
 import { aplicarPrecedenciaDeEnlace } from "@/lib/precedencia-enlace-panel-store";
@@ -33,7 +33,8 @@ import { useRedirigirSiRutaSinPermiso } from "@/lib/route-guards";
 import { useHayPanelLateral } from "@/lib/panel-lateral";
 import { slugResolvibleDelPanel } from "@/lib/slug-panel";
 import { cn } from "@/lib/utils";
-import { manifestDelAcceso, slugDeAcceso } from "@/lib/identidad-acceso";
+import { manifestDelAcceso, slugDeAcceso } from "@/lib/identidad-slug";
+import { perfilGuardado } from "@/lib/perfil-ref";
 import {
   Sheet,
   SheetContent,
@@ -71,51 +72,11 @@ export const Route = createFileRoute("/app")({
    */
   beforeLoad: async ({ location }) => {
     if (typeof window === "undefined") return;
-    // La URL manda sobre lo guardado: un ?s= de otro salón descarta la demo anterior.
-    aplicarPrecedenciaDeEnlace(location.search as Record<string, unknown>);
-    // Un perfil de demo es autocontenido: jamás se consulta el slug que
-    // quedara guardado (p. ej. PeluChic) antes de aplicarlo. De otro modo una
-    // respuesta tardía de esa consulta podría pisar el equipo y la carta del
-    // enlace con datos de la demo anterior.
-    const demo = decodeDemoProfile(
-      typeof (location.search as Record<string, unknown>)?.[DEMO_PARAM] === "string"
-        ? ((location.search as Record<string, unknown>)[DEMO_PARAM] as string)
-        : undefined,
-    );
-    if (demo) return;
-    const desdeUrl = (location.search as Record<string, unknown>)?.s;
-    const slug = slugDeAcceso({
-      slugDesdeUrl: desdeUrl,
-      hostname: hostActual(),
-      slugGuardado: useSalonStore.getState().salonProfile.slug,
-    });
-    if (!slug) return;
-    try {
-      // Rendimiento (21-oct): el acceso se pregunta una vez por salón y se
-      // reutiliza (refresco de fondo a los 60 s); la pantalla se decide aquí
-      // con la membresía ya cargada. Los DATOS los protege cada función.
-      const acc = await accesoPanel.obtener(slug, () => salirPorRevocacion(slug));
-      const { real, permitido, miembro } = acc;
-      if (real && !permitido) throw redirect({ to: "/login", search: { s: slug }, replace: true });
-      if (!permitidoEnRuta(acc, location.pathname) && location.pathname !== "/app") {
-        throw redirect({ to: "/app", search: { s: slug }, replace: true });
-      }
-      // Rol y nombre de quien entra (lote 8): para usePermisos() y el saludo.
-      // Lote 16: solo si cambia. Cada `set` de la store reescribe entera la
-      // copia local (~1,3 MB en la demo), y esto corría en cada navegación.
-      const actual = useSalonStore.getState().miembro ?? null;
-      if (JSON.stringify(actual) !== JSON.stringify(miembro ?? null)) {
-        useSalonStore.getState().setMiembro(miembro ?? null);
-      }
-    } catch (err) {
-      // El `redirect` de TanStack se lanza como excepción: hay que dejarlo
-      // pasar. Cualquier otro fallo se ignora y decide `GuardiaDelPanel`.
-      if (err && typeof err === "object" && "isRedirect" in err) throw err;
-      console.error("No se pudo comprobar el acceso al panel:", err);
-    }
+    const { puertaDelPanel } = await import("@/lib/app-puerta");
+    return puertaDelPanel(location);
   },
   head: ({ match }) => ({
-    meta: [{ title: `Dashboard · ${useSalonStore.getState().salonProfile.name}` }],
+    meta: [{ title: `Dashboard · ${perfilGuardado()?.name ?? "siShow"}` }],
     // Identidad de instalación propia; el scope incluye login y aceptar.
     links: [
       {
@@ -124,7 +85,7 @@ export const Route = createFileRoute("/app")({
           slugDeAcceso({
             slugDesdeUrl: (match.search as Record<string, unknown>)?.s,
             hostname: hostActual(),
-            slugGuardado: useSalonStore.getState().salonProfile.slug,
+            slugGuardado: perfilGuardado()?.slug,
           }),
         ),
       },
@@ -232,7 +193,37 @@ function useAplicarPrecedenciaDelEnlace() {
   }, [s, d]);
 }
 
+/**
+ * Con el panel ya pintado y el hilo libre, trae el código de las pantallas
+ * principales (solo los trozos, sin ejecutar cargadores ni guardas) para que
+ * navegar entre ellas no espere a la red. Es el mismo trabajo que haría el
+ * `preload: intent` al pasar el dedo, hecho antes.
+ */
+function usePrecargarPantallasDelPanel() {
+  const router = useRouter();
+  useEffect(() => {
+    const rutas = ["/app/calendar", "/app/appointments", "/app/clients", "/app/caja", "/app/hoja"];
+    const ric: (cb: () => void) => number =
+      typeof window.requestIdleCallback === "function"
+        ? (cb) => window.requestIdleCallback(cb, { timeout: 4000 })
+        : (cb) => window.setTimeout(cb, 1500);
+    const cancelar =
+      typeof window.cancelIdleCallback === "function" ? window.cancelIdleCallback : window.clearTimeout;
+    let pendiente: number;
+    let i = 0;
+    const siguiente = () => {
+      const ruta = router.routesByPath[rutas[i++] as keyof typeof router.routesByPath];
+      if (ruta) void router.loadRouteChunk(ruta as never)?.catch(() => {});
+      // Una por turno: nunca varias a la vez en el mismo fotograma.
+      if (i < rutas.length) pendiente = ric(siguiente);
+    };
+    pendiente = ric(siguiente);
+    return () => cancelar(pendiente);
+  }, [router]);
+}
+
 function DashboardLayout() {
+  usePrecargarPantallasDelPanel();
   // La capa clara es exclusiva de esta vista previa: los diálogos con portal
   // la heredan y se restaura al salir hacia la web pública.
   useEffect(() => {

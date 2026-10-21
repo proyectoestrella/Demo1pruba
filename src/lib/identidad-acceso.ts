@@ -1,27 +1,11 @@
 import type { SalonProfile } from "./mock/types";
 import { demoPorSlug } from "./demos";
-import { resolverHost } from "./host";
+export { slugDeAcceso, volverAlSitio, manifestDelAcceso } from "./identidad-slug";
 
 export type PerfilIdentidadAcceso = Pick<
   SalonProfile,
   "slug" | "name" | "tagline" | "logoUrl" | "terminoProfesional"
 >;
-
-/** La URL manda; después el subdominio y, por último, el salón guardado. */
-export function slugDeAcceso({
-  slugDesdeUrl,
-  hostname,
-  slugGuardado,
-}: {
-  slugDesdeUrl: unknown;
-  hostname: string;
-  slugGuardado?: string | null;
-}): string | undefined {
-  if (typeof slugDesdeUrl === "string" && slugDesdeUrl.trim()) return slugDesdeUrl.trim();
-  const host = resolverHost(hostname);
-  if (host.tipo === "salon") return host.slug;
-  return slugGuardado?.trim() || undefined;
-}
 
 /**
  * Identidad que puede conocerse sin red. Una demo registrada (PeluChic) es
@@ -43,13 +27,3 @@ export function terminoProfesionalDeAcceso(perfil: { terminoProfesional?: string
   return termino || "profesional";
 }
 
-/** En el dominio del propio salón su web es `/`; fuera, `/s/<slug>`. */
-export function volverAlSitio(slug: string | undefined, hostname: string): string {
-  if (!slug) return "/";
-  const host = resolverHost(hostname);
-  return host.tipo === "salon" && host.slug === slug ? "/" : `/s/${encodeURIComponent(slug)}`;
-}
-
-export function manifestDelAcceso(slug: string | undefined): string {
-  return slug === "peluchic" ? "/manifest-peluchic.webmanifest" : "/manifest-panel.webmanifest";
-}

@@ -7,9 +7,8 @@ import {
   Scripts,
   useRouterState,
 } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { LayoutGrid, Maximize, Minimize } from "lucide-react";
-import { Toaster } from "@/components/ui/sonner";
 import { AvisosDeSincronizacion } from "@/components/AvisosDeSincronizacion";
 import { SimboloSishow } from "@/components/web/Marca";
 import { IMAGEN_SOCIAL, SITIO_URL } from "@/lib/sishow-web";
@@ -171,6 +170,26 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Sonner (~12 KB gzip) no hace falta para pintar la primera pantalla: se carga
+// justo después de hidratar. Los avisos nacen de acciones del usuario, siempre
+// posteriores.
+const Toaster = lazy(() =>
+  import("@/components/ui/sonner").then((m) => ({ default: m.Toaster })),
+);
+
+function TostadorDiferido() {
+  const [listo, setListo] = useState(false);
+  useEffect(() => {
+    setListo(true);
+  }, []);
+  if (!listo) return null;
+  return (
+    <Suspense fallback={null}>
+      <Toaster position="bottom-center" visibleToasts={3} mobileOffset={{ bottom: 92 }} />
+    </Suspense>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
@@ -179,7 +198,7 @@ function RootComponent() {
       <Outlet />
       <ControlesIpad />
       {/* Lote 12: abajo, como mucho tres a la vez; en móvil, por encima de la barra inferior. */}
-      <Toaster position="bottom-center" visibleToasts={3} mobileOffset={{ bottom: 92 }} />
+      <TostadorDiferido />
       {/* Lo que NO se ha guardado tiene que verse: ver lib/avisos-sync.ts. */}
       <AvisosDeSincronizacion />
     </QueryClientProvider>
