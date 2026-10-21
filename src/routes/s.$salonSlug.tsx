@@ -37,7 +37,9 @@ export const Route = createFileRoute("/s/$salonSlug")({
     // `useEffect` de más abajo lo corrige en cuanto llega el dato real.
     const raw = (match.search as Record<string, unknown> | undefined)?.[DEMO_PARAM];
     // Sin `?d=`, la demo registrada con este slug (lib/demos), si la hay.
-    const fromUrl = decodeDemoProfile(typeof raw === "string" ? raw : undefined) ?? demoPorSlug(match.params.salonSlug);
+    const fromUrl =
+      decodeDemoProfile(typeof raw === "string" ? raw : undefined) ??
+      demoPorSlug(match.params.salonSlug);
     const name = fromUrl?.name?.trim();
     const description = name
       ? `${BUSINESS_LABEL[inferBusinessType(fromUrl?.tagline, fromUrl?.name)]} · Reserva tu cita en ${name} en segundos, sin llamar.`
@@ -72,7 +74,7 @@ function demoSessionKey(salonSlug: string): string {
 function navLinks(soloUno: boolean, sinResenas = false) {
   return [
     { href: "#servicios", label: "Servicios" },
-    { href: "#carta", label: "Precios" },
+    { href: "#carta", label: "Carta" },
     ...(soloUno ? [] : [{ href: "#equipo", label: "Equipo" }]),
     { href: "#galeria", label: "Galería" },
     ...(sinResenas ? [] : [{ href: "#resenas", label: "Reseñas" }]),
@@ -89,9 +91,13 @@ function SalonLayout() {
   const profile = useDisplayProfile();
   // Logo del salón en la barra y el pie; en demo, el de la lista de demos (ver logo-salon.ts).
   const sinSalonReal = useSalonStore((st) => !st.realSalonSlug);
-  const conEnlaceDemo = useRouterState({ select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string" });
+  const conEnlaceDemo = useRouterState({
+    select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string",
+  });
   const resolucionPublica = useSalonStore((s) =>
-    s.publicBookingResolution?.slug === salonSlug ? s.publicBookingResolution.status : "resolviendo",
+    s.publicBookingResolution?.slug === salonSlug
+      ? s.publicBookingResolution.status
+      : "resolviendo",
   );
   const protegerContenidoReal = !conEnlaceDemo && resolucionPublica !== "demo";
   const logoSalon = logoDelSalon(profile, sinSalonReal || conEnlaceDemo);
@@ -110,7 +116,9 @@ function SalonLayout() {
   // panel) PINTA el borrador pero no lo carga: ni en la store —compartida con
   // el panel por localStorage: le recortaba la carta a 12 y le resembraba la
   // agenda— ni como enlace de demo de la pestaña.
-  const esPrevia = useRouterState({ select: (s) => (s.location.search as Record<string, unknown>)?.previa !== undefined });
+  const esPrevia = useRouterState({
+    select: (s) => (s.location.search as Record<string, unknown>)?.previa !== undefined,
+  });
   // El rediseño v2 de la web pública se activa por enlace (`&v=2`), no se
   // guarda: quien abre el mismo enlace sin el parámetro ve la web de siempre.
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
@@ -122,12 +130,29 @@ function SalonLayout() {
   const NAV_LINKS = useMemo(
     () =>
       navLinks(
-        esSoloUnProfesional(employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds)),
+        esSoloUnProfesional(
+          employeesForType(
+            tipo,
+            profile.team,
+            profile.teamHours,
+            profile.openingHours,
+            profile.teamIds,
+          ),
+        ),
         // Demo por enlace sin nota real: la home no pinta «Reseñas» (ver
         // `seccionResenasPublicas`), así que el menú tampoco la enlaza.
         conEnlaceDemo && !(profile.rating > 0 && profile.reviewCount > 0),
       ),
-    [tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds, conEnlaceDemo, profile.rating, profile.reviewCount],
+    [
+      tipo,
+      profile.team,
+      profile.teamHours,
+      profile.openingHours,
+      profile.teamIds,
+      conEnlaceDemo,
+      profile.rating,
+      profile.reviewCount,
+    ],
   );
 
   // Auditoría de UX, hallazgo C2: los `Link` del flujo de reserva no
@@ -154,7 +179,9 @@ function SalonLayout() {
         setDemoRawFromSession(demoRawFromUrl);
       } else {
         // Vista previa de Mi página: el borrador que dejó el panel (lib/vista-previa.ts).
-        setDemoRawFromSession(esPrevia ? leerPrevia(salonSlug) : (window.sessionStorage.getItem(key) ?? undefined));
+        setDemoRawFromSession(
+          esPrevia ? leerPrevia(salonSlug) : (window.sessionStorage.getItem(key) ?? undefined),
+        );
       }
     } catch {
       // Modo privado o sessionStorage bloqueado: nos quedamos solo con lo
@@ -223,10 +250,13 @@ function SalonLayout() {
     const t = setTimeout(() => setGraceOver(true), 1500);
     return () => clearTimeout(t);
   }, [salonSlug]);
-  const salonUnresolved = sessionChecked && graceOver && !fromUrl && !hayDemoRegistrada && realSlug !== salonSlug;
+  const salonUnresolved =
+    sessionChecked && graceOver && !fromUrl && !hayDemoRegistrada && realSlug !== salonSlug;
 
   useEffect(() => {
-    document.title = salonUnresolved ? "Salón no encontrado" : `${profile.name} — Reserva por internet`;
+    document.title = salonUnresolved
+      ? "Salón no encontrado"
+      : `${profile.name} — Reserva por internet`;
   }, [profile.name, salonUnresolved]);
 
   // El dosier comercial imprimible (`/dosier`) es una página A4 propia, no
@@ -262,7 +292,12 @@ function SalonLayout() {
     // suyo para que también sus enlaces queden siempre por encima de la barra.
     <div className="web-salon flex min-h-screen flex-col bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
-        <div className={cn(CONTENEDOR_SALON, "flex min-h-16 items-center justify-between gap-4 py-2.5")}>
+        <div
+          className={cn(
+            CONTENEDOR_SALON,
+            "flex min-h-16 items-center justify-between gap-4 py-2.5",
+          )}
+        >
           <div className="flex min-w-0 items-center gap-3">
             <Link
               to="/s/$salonSlug"
@@ -270,10 +305,22 @@ function SalonLayout() {
               className="flex min-h-11 min-w-0 items-center gap-2.5"
             >
               {logotipoBarra ? (
-                <img src={logotipoBarra} alt={profile.name} width={1455} height={432} className="ws-logotipo h-9 w-auto shrink-0 sm:h-10" />
+                <img
+                  src={logotipoBarra}
+                  alt={profile.name}
+                  width={1455}
+                  height={432}
+                  className="ws-logotipo h-9 w-auto shrink-0 sm:h-10"
+                />
               ) : logoSalon ? (
                 <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
-                  <img src={logoSalon} alt={`Logo de ${profile.name}`} width={36} height={36} className="h-full w-full object-contain p-0.5" />
+                  <img
+                    src={logoSalon}
+                    alt={`Logo de ${profile.name}`}
+                    width={36}
+                    height={36}
+                    className="h-full w-full object-contain p-0.5"
+                  />
                 </span>
               ) : (
                 <Logo label={profile.name} />
@@ -289,7 +336,12 @@ function SalonLayout() {
                 )}
                 {profile.tagline ? (
                   // Con el logotipo, la etiqueta solo desde 640 px: en el móvil se partía en tres líneas.
-                  <p className={cn("text-[11px] font-semibold uppercase tracking-[0.08em] text-cafe-suave", logotipoBarra && "hidden sm:block")}>
+                  <p
+                    className={cn(
+                      "text-[11px] font-semibold uppercase tracking-[0.08em] text-cafe-suave",
+                      logotipoBarra && "hidden sm:block",
+                    )}
+                  >
                     {profile.tagline}
                   </p>
                 ) : null}
@@ -299,7 +351,10 @@ function SalonLayout() {
                 no se enlaza desde la web de clientas (feedback PeluChic 21-oct). */}
           </div>
           {!onBooking && (
-            <nav className="hidden items-center gap-5 text-sm font-medium lg:flex xl:gap-6" aria-label="Secciones">
+            <nav
+              className="hidden items-center gap-5 text-sm font-medium lg:flex xl:gap-6"
+              aria-label="Secciones"
+            >
               {NAV_LINKS.map((l) => (
                 <a
                   key={l.href}
@@ -367,13 +422,26 @@ function SalonLayout() {
                     {(enlaces.tienda || whatsappUrl) && (
                       <div className="mt-4 flex flex-col gap-2 border-t border-lino px-3 pt-4">
                         {whatsappUrl && (
-                          <a href={whatsappUrl} {...FUERA} className="flex min-h-11 items-center gap-2.5 text-[15px] font-semibold text-foreground">
-                            <IconoWhatsApp className="h-[18px] w-[18px] text-ws-eucalipto" /> WhatsApp
+                          <a
+                            href={whatsappUrl}
+                            {...FUERA}
+                            className="flex min-h-11 items-center gap-2.5 text-[15px] font-semibold text-foreground"
+                          >
+                            <IconoWhatsApp className="h-[18px] w-[18px] text-ws-eucalipto" />{" "}
+                            WhatsApp
                           </a>
                         )}
                         {enlaces.tienda && (
-                          <a href={enlaces.tienda} {...FUERA} className="flex min-h-11 items-center gap-2.5 text-[15px] font-semibold text-foreground">
-                            <ShoppingBag className="h-[18px] w-[18px] text-ws-eucalipto" aria-hidden="true" /> Tienda online
+                          <a
+                            href={enlaces.tienda}
+                            {...FUERA}
+                            className="flex min-h-11 items-center gap-2.5 text-[15px] font-semibold text-foreground"
+                          >
+                            <ShoppingBag
+                              className="h-[18px] w-[18px] text-ws-eucalipto"
+                              aria-hidden="true"
+                            />{" "}
+                            Tienda online
                           </a>
                         )}
                       </div>
@@ -393,7 +461,7 @@ function SalonLayout() {
         </div>
       </header>
 
-      <main className={cn("flex-1", !onBooking && "pb-[calc(var(--alto-barra-fija)+1rem)] md:pb-0")}>
+      <main className="flex-1">
         <Outlet />
       </main>
 
@@ -408,7 +476,12 @@ function SalonLayout() {
       >
         {/* Lote 18.4: cuatro columnas desde 1024 px (salón · visítanos · horario ·
             síguenos); «Síguenos» solo si hay algo que enlazar. */}
-        <div className={cn(CONTENEDOR_SALON, "grid gap-8 py-12 sm:grid-cols-2 md:gap-10 md:py-14 lg:grid-cols-[1.4fr_1fr_1fr_1fr]")}>
+        <div
+          className={cn(
+            CONTENEDOR_SALON,
+            "grid gap-8 py-12 sm:grid-cols-2 md:gap-10 md:py-14 lg:grid-cols-[1.4fr_1fr_1fr_1fr]",
+          )}
+        >
           <div>
             <div className="flex items-center gap-2">
               {logotipoPie ? (
@@ -425,7 +498,15 @@ function SalonLayout() {
                 <>
                   {logoSalon ? (
                     <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
-                      <img src={logoSalon} alt={`Logo de ${profile.name}`} width={36} height={36} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                      <img
+                        src={logoSalon}
+                        alt={`Logo de ${profile.name}`}
+                        width={36}
+                        height={36}
+                        loading="lazy"
+                        decoding="async"
+                        className="h-full w-full object-cover"
+                      />
                     </span>
                   ) : (
                     <Logo label={profile.name} />
@@ -437,7 +518,12 @@ function SalonLayout() {
             {profile.about ? (
               <p className="mt-4 max-w-sm text-sm text-muted-foreground">{profile.about}</p>
             ) : null}
-            <RedesSalon enlaces={enlaces} nombre={profile.name} tono="oscuro" className="-ml-3 mt-3" />
+            <RedesSalon
+              enlaces={enlaces}
+              nombre={profile.name}
+              tono="oscuro"
+              className="-ml-3 mt-3"
+            />
           </div>
           <div>
             <p className="ws-etiqueta">Visítanos</p>
@@ -446,31 +532,38 @@ function SalonLayout() {
               {profile.address}
             </p>
             {profile.phone.trim() && (
-            <a
-              href={`tel:${profile.phone.replace(/\s/g, "")}`}
-              className="mt-1 flex min-h-11 items-center gap-2 text-sm tabular-nums hover:text-primary"
-            >
-              <Phone className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-              {profile.phone}
-            </a>
+              <a
+                href={`tel:${profile.phone.replace(/\s/g, "")}`}
+                className="mt-1 flex min-h-11 items-center gap-2 text-sm tabular-nums hover:text-primary"
+              >
+                <Phone className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                {profile.phone}
+              </a>
             )}
             {whatsappUrl && (
-              <a href={whatsappUrl} {...FUERA} className="flex min-h-11 items-center gap-2 text-sm hover:text-primary">
+              <a
+                href={whatsappUrl}
+                {...FUERA}
+                className="flex min-h-11 items-center gap-2 text-sm hover:text-primary"
+              >
                 <IconoWhatsApp className="h-4 w-4 shrink-0 text-primary" />
                 WhatsApp
               </a>
             )}
           </div>
-          {!((conEnlaceDemo || protegerContenidoReal) && JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS)) && (
-          <div>
-            <p className="ws-etiqueta">Horario</p>
-            {weekSchedule(profile.openingHours).map((d) => (
-              <p key={d.label} className="mt-2 flex justify-between gap-4 text-sm tabular-nums">
-                <span className="text-muted-foreground">{d.label}</span>
-                <span>{d.value}</span>
-              </p>
-            ))}
-          </div>
+          {!(
+            (conEnlaceDemo || protegerContenidoReal) &&
+            JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS)
+          ) && (
+            <div>
+              <p className="ws-etiqueta">Horario</p>
+              {weekSchedule(profile.openingHours).map((d) => (
+                <p key={d.label} className="mt-2 flex justify-between gap-4 text-sm tabular-nums">
+                  <span className="text-muted-foreground">{d.label}</span>
+                  <span>{d.value}</span>
+                </p>
+              ))}
+            </div>
           )}
           {(enlaces.blog || enlaces.instagram || enlaces.facebook || enlaces.tienda) && (
             <div>
@@ -478,22 +571,30 @@ function SalonLayout() {
               <ul className="mt-2 text-sm">
                 {enlaces.blog && (
                   <li>
-                    <EnlaceFuera href={enlaces.blog} className="min-h-11 hover:text-primary">Blog</EnlaceFuera>
+                    <EnlaceFuera href={enlaces.blog} className="min-h-11 hover:text-primary">
+                      Blog
+                    </EnlaceFuera>
                   </li>
                 )}
                 {enlaces.instagram && (
                   <li>
-                    <EnlaceFuera href={enlaces.instagram} className="min-h-11 hover:text-primary">Instagram</EnlaceFuera>
+                    <EnlaceFuera href={enlaces.instagram} className="min-h-11 hover:text-primary">
+                      Instagram
+                    </EnlaceFuera>
                   </li>
                 )}
                 {enlaces.facebook && (
                   <li>
-                    <EnlaceFuera href={enlaces.facebook} className="min-h-11 hover:text-primary">Facebook</EnlaceFuera>
+                    <EnlaceFuera href={enlaces.facebook} className="min-h-11 hover:text-primary">
+                      Facebook
+                    </EnlaceFuera>
                   </li>
                 )}
                 {enlaces.tienda && (
                   <li>
-                    <EnlaceFuera href={enlaces.tienda} className="min-h-11 hover:text-primary">Tienda online</EnlaceFuera>
+                    <EnlaceFuera href={enlaces.tienda} className="min-h-11 hover:text-primary">
+                      Tienda online
+                    </EnlaceFuera>
                   </li>
                 )}
               </ul>
@@ -501,7 +602,12 @@ function SalonLayout() {
           )}
         </div>
         <div className="border-t border-lino">
-          <div className={cn(CONTENEDOR_SALON, "flex flex-col gap-1 py-4 text-[13px] text-cafe-suave sm:flex-row sm:items-center sm:justify-between")}>
+          <div
+            className={cn(
+              CONTENEDOR_SALON,
+              "flex flex-col gap-1 py-4 text-[13px] text-cafe-suave sm:flex-row sm:items-center sm:justify-between",
+            )}
+          >
             <p>
               © {profile.name} ·{" "}
               <a

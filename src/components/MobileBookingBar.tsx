@@ -1,21 +1,42 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { FUERA, IconoWhatsApp } from "@/components/web-salon/EnlacesSalon";
+import { useEffect, useState } from "react";
 
 export interface MobileBookingBarProps {
   salonSlug: string;
   /** Lote 18.4: con WhatsApp, un botón redondo al lado de «Reservar cita». */
   whatsappUrl?: string;
+  /** Elemento cuyo CTA sustituye esta barra mientras permanece visible. */
+  heroId: string;
 }
 
 /**
  * Botón fijo de «Reservar cita» en móvil (oculto desde md, donde la cabecera
- * ya lleva el suyo). Lote 17: SIEMPRE visible — antes se escondía al llegar
- * al pie y en la parte baja de la página no había forma de reservar sin
- * volver arriba. Para que no tape nada, el pie reserva su alto (ver
- * `s.$salonSlug.tsx`). Botón de 48 px, por encima del mínimo táctil.
+ * ya lleva el suyo). Aparece al dejar atrás la portada: así no duplica sus
+ * CTA y sigue disponible durante el resto de la página. El pie reserva su
+ * alto (ver `s.$salonSlug.tsx`). Botón de 48 px, por encima del mínimo táctil.
  */
-export function MobileBookingBar({ salonSlug, whatsappUrl }: MobileBookingBarProps) {
+export function MobileBookingBar({ salonSlug, whatsappUrl, heroId }: MobileBookingBarProps) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const hero = document.getElementById(heroId);
+    if (!hero) return;
+
+    const actualizar = () => setVisible(hero.getBoundingClientRect().bottom <= 0);
+    actualizar();
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setVisible(!entry.isIntersecting && entry.boundingClientRect.bottom <= 0),
+      { threshold: 0 },
+    );
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, [heroId]);
+
+  if (!visible) return null;
+
   return (
     <div
       className="fixed inset-x-0 bottom-0 z-30 border-t border-lino bg-background/95 px-4 pt-3 backdrop-blur md:hidden"

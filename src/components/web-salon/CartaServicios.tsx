@@ -36,10 +36,10 @@ export function CartaServicios({
 
   const lista = (items: ServicioCarta[]) => (
     <ul className="grid gap-2.5 md:grid-cols-2 2xl:grid-cols-3">
-      {items.map((s, i) => {
+      {items.map((s) => {
         const descripcion = descripciones?.[s.id]?.trim() || s.description?.trim();
         return (
-          <li key={s.id} className="entrada-lista" style={{ animationDelay: `${Math.min(i, 9) * 30}ms` }}>
+          <li key={s.id}>
             <Link
               to="/s/$salonSlug/book"
               params={{ salonSlug }}
@@ -53,7 +53,9 @@ export function CartaServicios({
                 </span>
               </span>
               {descripcion ? (
-                <span className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{descripcion}</span>
+                <span className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                  {descripcion}
+                </span>
               ) : null}
               <span className="mt-auto flex items-center justify-between gap-3 pt-2.5 text-[13px]">
                 <span className="inline-flex items-center gap-1.5 text-cafe-suave tabular-nums">
@@ -85,7 +87,15 @@ export function CartaServicios({
   const alTeclear = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
     const n = grupos.length;
     const destino =
-      e.key === "ArrowRight" ? (i + 1) % n : e.key === "ArrowLeft" ? (i - 1 + n) % n : e.key === "Home" ? 0 : e.key === "End" ? n - 1 : null;
+      e.key === "ArrowRight"
+        ? (i + 1) % n
+        : e.key === "ArrowLeft"
+          ? (i - 1 + n) % n
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? n - 1
+              : null;
     if (destino === null) return;
     e.preventDefault();
     setActiva(destino);
@@ -96,7 +106,11 @@ export function CartaServicios({
     <div>
       {/* Móvil: una fila que se desliza. Desde 768 px las pestanas bajan de
           línea: con siete categorías, la última quedaba oculta sin pista. */}
-      <div role="tablist" aria-label="Categorías de la carta" className="sin-scrollbar flex gap-2 overflow-x-auto md:flex-wrap md:overflow-visible">
+      <div
+        role="tablist"
+        aria-label="Categorías de la carta"
+        className="sin-scrollbar flex gap-2 overflow-x-auto md:flex-wrap md:overflow-visible"
+      >
         {grupos.map((g, i) => {
           const sel = i === actual;
           return (
@@ -121,7 +135,12 @@ export function CartaServicios({
               )}
             >
               {g.cat}
-              <span className={cn("rounded-full px-1.5 text-[11px] tabular-nums", sel ? "bg-white/20" : "bg-black/5")}>
+              <span
+                className={cn(
+                  "rounded-full px-1.5 text-[11px] tabular-nums",
+                  sel ? "bg-white/20" : "bg-black/5",
+                )}
+              >
                 {g.items.length}
               </span>
             </button>
@@ -129,7 +148,6 @@ export function CartaServicios({
         })}
       </div>
       <div
-        key={actual}
         role="tabpanel"
         id={`${id}-panel`}
         aria-labelledby={`${id}-pestana-${actual}`}
