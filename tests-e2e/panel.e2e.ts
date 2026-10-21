@@ -85,11 +85,9 @@ test.describe("Panel demo", () => {
   test("Panel · Nueva cita (abrir y cerrar sin guardar)", async ({ page, audit }) => {
     await enPanel(page, audit);
     const nueva = page.getByRole("button", { name: /^Nueva cita$/ }).first();
-    // En móvil el botón flotante «Nueva cita» solo aparece al bajar por la página (nace con pointer-events:none).
-    await expect(async () => {
-      await page.evaluate(() => window.scrollBy(0, 500));
-      await expect(nueva).toHaveCSS("pointer-events", "auto", { timeout: 800 });
-    }).toPass({ timeout: 8000 });
+    // El botón flotante móvil debe ser pulsable desde el primer momento, sin scroll.
+    await expect(nueva).toHaveCSS("pointer-events", "auto");
+    await page.screenshot({ path: `tests-e2e/capturas/panel-fab-${test.info().project.name}.png` });
     await nueva.click();
     const dialogo = page.getByRole("dialog");
     await expect(dialogo).toBeVisible();

@@ -86,6 +86,18 @@ test.describe("Reserva pública", () => {
     await audit.revisar("reserva-4-datos");
   });
 
+  test("Reserva 4 · la casilla de privacidad se marca tocando el texto y es cómoda", async ({ page, audit }) => {
+    await paso4(page, audit);
+    const caja = page.getByRole("checkbox", { name: /He leído la información/ });
+    const caja_box = await caja.boundingBox();
+    expect(caja_box!.width).toBeGreaterThanOrEqual(22);
+    const fila = page.locator("label").filter({ hasText: /He leído la información/ });
+    expect((await fila.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await page.getByText("He leído la información sobre el tratamiento de mis datos.").click();
+    await expect(caja).toHaveAttribute("aria-checked", "true");
+    await page.screenshot({ path: `tests-e2e/capturas/reserva-casilla-${test.info().project.name}.png` });
+  });
+
   test("Reserva 4 · sin nombre", async ({ page, audit }) => {
     await paso4(page, audit);
     await responderPreguntas(page);

@@ -25,7 +25,7 @@ test.describe("Entrada", () => {
     await page.getByLabel("Tu correo").fill("prueba-e2e@example.com");
     await page.getByRole("button", { name: "Enviar código" }).click();
     await expect(page.getByText("Mira tu correo")).toBeVisible();
-    await expect(page.getByLabel("Código de seis cifras")).toBeVisible();
+    await expect(page.getByLabel("Código del correo")).toBeVisible();
     await audit.revisar("acceso-3-introduce-codigo");
   });
 
@@ -35,7 +35,7 @@ test.describe("Entrada", () => {
     await audit.abrir(LOGIN, page.getByText("Acceso profesional"));
     await page.getByLabel("Tu correo").fill("prueba-e2e@example.com");
     await page.getByRole("button", { name: "Enviar código" }).click();
-    const campo = page.getByLabel("Código de seis cifras");
+    const campo = page.getByLabel("Código del correo");
     await expect(campo).toBeVisible();
     // Pegado real: evento paste con texto con espacios y guiones, como lo copia un correo.
     await campo.focus();
@@ -46,8 +46,8 @@ test.describe("Entrada", () => {
         new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }),
       );
     });
-    await campo.fill("123456"); // algunos navegadores no aplican el paste sintético: se rellena igual
-    await expect(campo).toHaveValue("123456");
+    await campo.fill("12345678"); // algunos navegadores no aplican el paste sintético: se rellena igual
+    await expect(campo).toHaveValue("12345678");
     // El código simulado se rechaza (verify devuelve otp_expired): la app debe explicarlo.
     await expect(page.getByRole("alert")).toContainText(/código/i);
     await expect(page).toHaveURL(/\/login/);

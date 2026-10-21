@@ -1010,9 +1010,9 @@ function BookingWizard() {
                   <Link to="/s/$salonSlug/privacidad" params={{ salonSlug }} search={(prev) => prev} className="font-medium text-primary underline-offset-2 hover:underline">Más información</Link>
                 </p>
 
-                <label className="flex min-h-11 items-start gap-3 text-sm text-muted-foreground">
+                <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-muted-foreground">
                   <Checkbox
-                    className="mt-0.5"
+                    className="size-6 [&_svg]:size-5"
                     aria-label="He leído la información sobre el tratamiento de mis datos"
                     checked={data.privacyNoticeAcknowledged ?? false}
                     onCheckedChange={(v) => setData((d) => ({ ...d, privacyNoticeAcknowledged: v === true }))}
@@ -1023,9 +1023,9 @@ function BookingWizard() {
                 {/* La casilla de cancelación solo sale si el salón tiene una política con
                     recargo configurada; sin ella (p. ej. plan Básico) no se pide aceptar nada. */}
                 {conRecargo && (
-                <label className="flex items-start gap-3 text-sm text-muted-foreground">
+                <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-muted-foreground">
                   <Checkbox
-                    className="mt-0.5"
+                    className="size-6 [&_svg]:size-5"
                     checked={data.acceptedPolicy ?? false}
                     onCheckedChange={(v) => setData((d) => ({ ...d, acceptedPolicy: v === true }))}
                   />

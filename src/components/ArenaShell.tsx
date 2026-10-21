@@ -497,7 +497,7 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
 }
 
 /**
- * El «+» flotante se aparta (se desvanece) cuando taparía un botón o un
+ * El «+» flotante se encoge y se aclara (sigue visible y pulsable) cuando taparía un botón o un
  * enlace del contenido: mira qué hay debajo de su centro en cada scroll.
  */
 function useFabApartado() {
@@ -568,7 +568,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
         aria-label="Nueva cita"
         className={cn(
           "fixed right-4 bottom-[88px] z-40 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-[var(--sombra-flotante)] transition-[opacity,transform] duration-150 md:hidden",
-          apartado && "pointer-events-none scale-[.6] opacity-0",
+          apartado && "scale-[.8] opacity-70",
         )}
         data-fab
       >

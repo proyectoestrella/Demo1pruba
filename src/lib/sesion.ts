@@ -144,7 +144,7 @@ export async function verificarCodigo(
   codigo: string,
   verificar?: VerificarCodigo,
 ): Promise<{ ok: true } | { ok: false; motivo: string }> {
-  if (!/^\d{6}$/.test(codigo)) return { ok: false, motivo: "Escribe las seis cifras del código." };
+  if (!/^\d{6,10}$/.test(codigo)) return { ok: false, motivo: "Escribe todas las cifras del código." };
   const sb = verificar ? null : supabaseNavegador();
   const fn = verificar ?? sb?.auth.verifyOtp.bind(sb.auth);
   if (!fn) return { ok: false, motivo: "El acceso no está configurado." };
@@ -160,7 +160,7 @@ export async function verificarCodigo(
         motivo:
           error.code === "otp_expired"
             ? "El código es incorrecto o ha caducado. Revisa las cifras o pulsa Enviar otro."
-            : "Código incorrecto. Revisa las seis cifras e inténtalo otra vez.",
+            : "Código incorrecto. Revisa las cifras e inténtalo otra vez.",
       };
     return { ok: true };
   } catch {

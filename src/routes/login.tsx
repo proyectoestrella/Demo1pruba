@@ -50,6 +50,11 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
+/** Supabase permite códigos de 6 a 10 cifras; el proyecto envía 8. Al llegar a 8 se comprueba sola. */
+const CODIGO_MIN = 6;
+const CODIGO_MAX = 10;
+const CODIGO_AUTO = 8;
+
 /**
  * ¿Este salón es de pago, o es una demo de venta?
  *
@@ -57,6 +62,7 @@ export const Route = createFileRoute("/login")({
  * Mientras no se sabe, se devuelve `null` y la pantalla no ofrece ningún
  * atajo: en la duda, se pide el correo.
  */
+
 function useEsSalonReal(slug: string | undefined): boolean | null {
   const [real, setReal] = useState<boolean | null>(null);
   useEffect(() => {
@@ -136,7 +142,7 @@ function LoginPage() {
   }, [sesionDe, slug]);
 
   const comprobarCodigo = async (valor: string) => {
-    if (verificando.current || valor.length !== 6) return;
+    if (verificando.current || valor.length < CODIGO_MIN) return;
     verificando.current = true;
     setEnviando(true);
     setError("");
@@ -250,7 +256,7 @@ function LoginPage() {
                 <p className="font-medium">Mira tu correo</p>
                 <p className="text-sm text-muted-foreground">
                   Te hemos enviado un código y un enlace a{" "}
-                  <span className="font-medium">{email}</span>. Escribe aquí las seis cifras o abre
+                  <span className="font-medium">{email}</span>. Escribe aquí el código o abre
                   el enlace, sin contraseña.
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -264,21 +270,21 @@ function LoginPage() {
                 }}
                 className="space-y-3"
               >
-                <Label htmlFor="codigo">Código de seis cifras</Label>
+                <Label htmlFor="codigo">Código del correo</Label>
                 <Input
                   id="codigo"
                   inputMode="numeric"
                   autoComplete="one-time-code"
-                  pattern="[0-9]{6}"
-                  maxLength={6}
+                  pattern="[0-9]{6,10}"
+                  maxLength={CODIGO_MAX}
                   autoFocus
-                  className="h-16 text-center text-3xl tracking-[0.4em]"
+                  className="h-16 text-center text-3xl tracking-[0.25em]"
                   value={codigo}
                   disabled={enviando}
                   onChange={(e) => {
-                    const valor = e.target.value.replace(/\D/g, "").slice(0, 6);
+                    const valor = e.target.value.replace(/\D/g, "").slice(0, CODIGO_MAX);
                     setCodigo(valor);
-                    if (valor.length === 6) void comprobarCodigo(valor);
+                    if (valor.length === CODIGO_AUTO) void comprobarCodigo(valor);
                   }}
                 />
                 {error && (
@@ -286,7 +292,7 @@ function LoginPage() {
                     {error}
                   </p>
                 )}
-                <Button type="submit" disabled={enviando || codigo.length !== 6}>
+                <Button type="submit" disabled={enviando || codigo.length < CODIGO_MIN}>
                   {enviando ? "Comprobando…" : "Entrar"}
                 </Button>
                 <Button
