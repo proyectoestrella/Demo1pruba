@@ -204,7 +204,7 @@ export function AjustesAccesos() {
     <div className="space-y-4">
       {confirmacion && <div role="alertdialog" aria-label="Confirmar cambio" className="rounded-xl border border-border p-4 space-y-3">
         <p>¿Confirmas este cambio? {confirmacion.texto}</p>
-        <Button disabled={confirmando} onClick={async () => { setConfirmando(true); try { await confirmacion.accion(); setConfirmacion(null); } finally { setConfirmando(false); } }}>Confirmar</Button>{" "}
+        <Button disabled={confirmando} onClick={async () => { setConfirmando(true); try { await confirmacion.accion(); setConfirmacion(null); } catch { toast.error("No se pudo aplicar el cambio. Inténtalo de nuevo."); } finally { setConfirmando(false); } }}>Confirmar</Button>{" "}
         <Button variant="outline" disabled={confirmando} onClick={() => setConfirmacion(null)}>Cancelar</Button>
       </div>}
       <div className="flex flex-wrap items-center gap-3">

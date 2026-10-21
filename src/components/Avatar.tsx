@@ -85,6 +85,8 @@ export function Avatar({
         <img
           src={r.foto}
           alt=""
+          loading="lazy"
+          decoding="async"
           onError={() => setFotoRota(r.foto ?? null)}
           className="h-full w-full object-cover"
         />
