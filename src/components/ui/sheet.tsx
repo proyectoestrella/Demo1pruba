@@ -117,13 +117,13 @@ function AsaAncho({ panel }: { panel: string }) {
 }
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 bg-background p-6 transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
+  "fixed z-50 gap-4 bg-background [--hoja-relleno:var(--gutter)] pt-[calc(var(--hoja-relleno)+var(--seguro-arriba))] pr-[calc(var(--hoja-relleno)+var(--seguro-der))] pb-[calc(var(--hoja-relleno)+var(--seguro-abajo))] pl-[calc(var(--hoja-relleno)+var(--seguro-izq))] transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
   {
     variants: {
       side: {
         top: "inset-x-0 top-0 border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
         bottom:
-          "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+          "inset-x-0 bottom-0 max-h-dvh overflow-y-auto border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
         left: "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
         // Paneles laterales «Arena»: opacos, borde lino, sombra suave en café
         // y 440 px en PC, donde empujan el contenido (sin sombra).
@@ -157,14 +157,17 @@ const SheetContent = React.forwardRef<
       <SheetOverlay className={side === "right" ? "bg-transparent" : "bg-cafe/30"} />
       <SheetPrimitive.Content
         ref={ref}
-        className={cn(sheetVariants({ side }), className)}
+        // Regla única: toda hoja lleva el gutter del panel y la safe-area del
+        // iPhone. Una hoja «p-0» (que pinta su propio relleno) conserva la
+        // safe-area: «p-0» pone a cero solo el relleno, no el hueco del notch.
+        className={cn(sheetVariants({ side }), className?.replace(/(^|\s)p-0(?=\s|$)/, "$1[--hoja-relleno:0px]"))}
         {...props}
         onCloseAutoFocus={devolverFocoA(antes, onCloseAutoFocus)}
       >
         <ApuntarFoco destino={antes} />
         {side === "right" && <RegistroPanelLateral panel={panel} />}
         {side === "right" && panel && <AsaAncho panel={panel} />}
-        <SheetPrimitive.Close className="absolute top-3.5 right-4 grid size-[42px] place-items-center rounded-full border border-input bg-card text-cafe-medio cursor-pointer transition-colors hover:bg-nata focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none">
+        <SheetPrimitive.Close className="absolute top-[calc(14px+var(--seguro-arriba))] right-[calc(16px+var(--seguro-der))] grid size-11 place-items-center rounded-full border border-input bg-card text-cafe-medio cursor-pointer transition-colors hover:bg-nata focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none">
           <X className="size-[18px]" strokeWidth={1.6} />
           <span className="sr-only">Cerrar</span>
         </SheetPrimitive.Close>

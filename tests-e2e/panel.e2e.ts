@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { entrarAlPanel, expect, test, type Auditoria } from "./fixtures";
 
 const cerrarVisita = (page: Page) => page.getByRole("button", { name: "Cerrar", exact: true });
-const siguiente = (page: Page) => page.getByRole("button", { name: "Siguiente" });
+const siguiente = (page: Page) => page.getByRole("button", { name: "Siguiente", exact: true });
 
 /** Entra en el panel demo y cierra la visita guiada, que sale sola en la primera visita y tapa la pantalla. */
 async function enPanel(page: Page, audit: Auditoria, opciones?: { conVisita?: boolean }) {

@@ -125,7 +125,7 @@ function Team() {
   const selectHora = "h-9 rounded-xl border border-input bg-card px-2 text-[13px] tabular-nums";
 
   return (
-    <div className="flex flex-1 flex-col gap-5">
+    <div className="pagina">
       <PageHeader title="Equipo" />
       {limitePlan !== null && employees.length > limitePlan && (
         <p role="note" className="flex items-start gap-2 rounded-2xl border border-lino-fuerte bg-nata/60 px-4 py-3 text-[13.5px] text-cafe-medio">

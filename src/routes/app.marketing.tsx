@@ -42,7 +42,7 @@ function Marketing() {
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-5">
+    <div className="pagina">
       <PageHeader
         title="Marketing"
         description="Campañas calculadas a partir de tus propias reservas, con la lista y el mensaje ya preparados."

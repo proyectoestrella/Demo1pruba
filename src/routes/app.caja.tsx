@@ -147,7 +147,7 @@ function CajaDelDia() {
 
   const etiquetaDia = diaDe(dia).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
   return (
-    <div className="flex flex-1 flex-col gap-5">
+    <div className="pagina">
       <PageHeader title="Caja del día" description="Lo cobrado, cómo se cobró y quién lo cobró. Para cuadrar el cajón al cerrar." />
 
       <div className="flex flex-wrap items-center gap-2">

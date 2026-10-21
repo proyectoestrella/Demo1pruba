@@ -208,7 +208,7 @@ export function AjustesAccesos() {
         <Button variant="outline" disabled={confirmando} onClick={() => setConfirmacion(null)}>Cancelar</Button>
       </div>}
       <div className="flex flex-wrap items-center gap-3">
-        <p className="min-w-0 flex-1 text-[14px] text-cafe-medio">
+        <p className="min-w-0 flex-[1_1_12rem] text-[14px] text-cafe-medio">
           Quién entra en el panel y qué puede hacer. Cada persona entra con un enlace a su correo,
           sin contraseña.
         </p>
@@ -228,7 +228,7 @@ export function AjustesAccesos() {
           return (
             <li key={m.userId} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <AvatarPersona nombre={m.displayName ?? m.email} size={36} />
-              <div className="min-w-0 flex-1 leading-tight">
+              <div className="min-w-0 flex-[1_1_10rem] leading-tight">
                 <p className="truncate font-bold">
                   {m.displayName ?? m.email}
                   {yo?.userId === m.userId && (
@@ -262,7 +262,7 @@ export function AjustesAccesos() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-9"
+                    className="ml-auto size-11"
                     disabled={enCurso}
                     aria-label={`Opciones de ${m.displayName ?? m.email}`}
                   >

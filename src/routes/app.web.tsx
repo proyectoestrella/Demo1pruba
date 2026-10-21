@@ -444,7 +444,7 @@ function MiWebHidratada() {
     errores.filter((e) => e.campo === clave).map((e) => e.mensaje);
 
   return (
-    <div className="flex flex-1 flex-col gap-5">
+    <div className="pagina">
       <PageHeader
         title="Mi página de reservas"
         description="Lo que ven tus clientas cuando abren tu enlace. Cámbialo aquí y míralo al momento."
@@ -502,7 +502,7 @@ function MiWebHidratada() {
         <Button
           onClick={() => publicar()}
           disabled={guardando || !sucio}
-          className="h-[42px] flex-1 sm:flex-none"
+          className="h-11 flex-1 sm:flex-none"
         >
           {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {esReal ? "Publicar cambios" : "Aplicar en la demo"}
@@ -511,12 +511,12 @@ function MiWebHidratada() {
           variant="outline"
           onClick={descartar}
           disabled={guardando || !sucio}
-          className="h-[42px]"
+          className="h-11"
         >
           Descartar
         </Button>
         {anterior && (
-          <Button variant="outline" onClick={deshacer} disabled={guardando} className="h-[42px]">
+          <Button variant="outline" onClick={deshacer} disabled={guardando} className="h-11">
             <RefreshCw className="h-4 w-4" />
             Deshacer
           </Button>
@@ -555,11 +555,11 @@ function MiWebHidratada() {
           {sucio ? "Cambios sin publicar" : "Todo publicado"}
         </span>
         <div className="flex w-full gap-2 sm:ml-auto sm:w-auto">
-          <Button variant="outline" className="h-[42px] flex-1 sm:flex-none" onClick={copiarEnlace}>
+          <Button variant="outline" className="h-11 flex-1 sm:flex-none" onClick={copiarEnlace}>
             <Copy className="size-[18px]" strokeWidth={1.6} />
             Copiar enlace
           </Button>
-          <Button variant="outline" className="h-[42px] flex-1 sm:flex-none" asChild>
+          <Button variant="outline" className="h-11 flex-1 sm:flex-none" asChild>
             <a href={enlacePublico} target="_blank" rel="noreferrer">
               <ExternalLink className="size-[18px]" strokeWidth={1.6} />
               Ver en tu web

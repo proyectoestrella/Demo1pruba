@@ -137,7 +137,7 @@ function Waitlist() {
   if (!visible) return null;
 
   return (
-    <div className="flex flex-1 flex-col gap-5">
+    <div className="pagina">
       <PageHeader
         title="Lista de espera"
         description="Clientas esperando un hueco."

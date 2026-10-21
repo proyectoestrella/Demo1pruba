@@ -712,6 +712,50 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 /* ---------------------------------------------------------------------------
+ * REGLA ÚNICA DE MAQUETACIÓN DEL PANEL (lote responsive, oct-2026).
+ * Ninguna pantalla pone márgenes laterales propios: el <main> del armazón da
+ * el gutter (16 px móvil · 24 px tablet · 32 px escritorio, más la safe-area
+ * del iPhone en horizontal) y `.pagina` centra el contenido con un ancho
+ * máximo y separa las secciones con UNA escala vertical (--hueco-seccion).
+ * Las tarjetas usan `.relleno-tarjeta`; las hojas y diálogos, `.relleno-hoja`.
+ * ------------------------------------------------------------------------ */
+:root {
+  --gutter: 16px;
+  --hueco-seccion: 20px;
+  --relleno-tarjeta: 20px;
+  --ancho-pagina: 1200px;
+  --seguro-izq: env(safe-area-inset-left, 0px);
+  --seguro-der: env(safe-area-inset-right, 0px);
+  --seguro-arriba: env(safe-area-inset-top, 0px);
+  --seguro-abajo: env(safe-area-inset-bottom, 0px);
+}
+@media (min-width: 48rem) {
+  :root { --gutter: 24px; --hueco-seccion: 24px; --relleno-tarjeta: 24px; }
+}
+@media (min-width: 64rem) {
+  :root { --gutter: 32px; --hueco-seccion: 28px; }
+}
+@layer components {
+.gutter-x {
+  padding-left: calc(var(--gutter) + var(--seguro-izq));
+  padding-right: calc(var(--gutter) + var(--seguro-der));
+}
+.pagina {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--hueco-seccion);
+  width: 100%;
+  min-width: 0;
+  max-width: var(--ancho-pagina);
+  margin-inline: auto;
+}
+.relleno-tarjeta { padding: var(--relleno-tarjeta); }
+}
+/* Nada se sale por los lados: el panel nunca hace scroll horizontal. */
+.panel-marco main { overflow-x: clip; }
+
+/* ---------------------------------------------------------------------------
  * Barras fijas al borde inferior de la pantalla (la navegación del panel en
  * móvil y la barra de resumen de la reserva pública). Su alto se declara UNA
  * vez aquí para que el contenido que hay debajo pueda reservar exactamente ese

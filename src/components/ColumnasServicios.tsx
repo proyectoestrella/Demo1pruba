@@ -22,7 +22,7 @@ export function ColumnasServicios({ children }: { children: ReactNode }) {
   }, []);
   const tarjetas = Children.toArray(children);
   return <div ref={contenedor}
-    className="grid items-start gap-4 [--columnas-servicios:1] md:[--columnas-servicios:2] xl:[--columnas-servicios:3] xl:group-data-[panel=abierto]/panel:[--columnas-servicios:1]"
+    className="grid items-start gap-4 [--columnas-servicios:1] lg:[--columnas-servicios:2] xl:[--columnas-servicios:3] xl:group-data-[panel=abierto]/panel:[--columnas-servicios:1]"
     style={{ gridTemplateColumns: `repeat(${columnas}, minmax(0, 1fr))` }}>
     {Array.from({ length: columnas }, (_, columna) => (
       <div key={columna} className="flex min-w-0 flex-col gap-4">

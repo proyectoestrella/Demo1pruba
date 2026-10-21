@@ -543,7 +543,7 @@ function FormularioNuevaCita({
         ? "border-transparent bg-salvia-clara text-hoja-tinta shadow-sm"
         : "border-input bg-card text-cafe-medio hover:bg-nata",
     );
-  const columna = "flex min-w-0 flex-col tarjeta-principal bg-card p-5 md:p-7";
+  const columna = "flex min-w-0 flex-col tarjeta-principal bg-card relleno-tarjeta";
   const fechaLarga = fechaElegida.toLocaleDateString("es-ES", {
     weekday: "long",
     day: "numeric",
@@ -616,10 +616,10 @@ function FormularioNuevaCita({
               e.preventDefault();
             }}
             onInteractOutside={(e) => e.preventDefault()}
-            className="nueva-cita fixed top-[max(12px,env(safe-area-inset-top))] right-[max(12px,env(safe-area-inset-right))] bottom-[max(12px,env(safe-area-inset-bottom))] left-[max(12px,env(safe-area-inset-left))] z-50 flex flex-col overflow-hidden rounded-[var(--radio-tarjeta)] bg-background outline-none md:top-6 md:right-6 md:bottom-6 md:left-[268px] md:shadow-[var(--sombra-flotante)]"
+            className="nueva-cita fixed inset-0 z-50 flex flex-col overflow-hidden bg-background outline-none md:top-6 md:right-6 md:bottom-6 md:left-[268px] md:rounded-[var(--radio-tarjeta)] md:shadow-[var(--sombra-flotante)]"
           >
             {/* Cabecera de la capa */}
-            <div className="flex flex-none items-center gap-3.5 border-b border-border bg-card px-5 py-3 md:px-8 md:py-4">
+            <div className="gutter-x flex flex-none items-center gap-3.5 border-b border-border bg-card pt-[calc(12px+var(--seguro-arriba))] pb-3 md:py-4">
               <div className="min-w-0">
                 <p className="hidden text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase md:block">
                   Agenda de {salonName}
@@ -650,7 +650,7 @@ function FormularioNuevaCita({
               <Button
                 type="button"
                 variant="outline"
-                className="ml-auto h-[42px] md:ml-0"
+                className="ml-auto h-11 md:ml-0"
                 onClick={() => intentarSalir()}
               >
                 <X className="size-[18px]" strokeWidth={1.6} />
@@ -659,7 +659,7 @@ function FormularioNuevaCita({
             </div>
 
             <form
-              className="flex min-h-0 flex-1 overflow-auto bg-background p-4 pb-28 md:px-7 md:pt-6 md:pb-28"
+              className="gutter-x flex min-h-0 flex-1 overflow-auto bg-background pt-[var(--gutter)] pb-28"
               onSubmit={(e) => {
                 e.preventDefault();
                 if (paso < 3) avanzar();
@@ -1207,7 +1207,7 @@ function FormularioNuevaCita({
                   </div>
                 </section>
               </div>
-              <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-between gap-3 border-t border-border bg-card px-5 pt-3 pb-[calc(12px+env(safe-area-inset-bottom,0px))] md:px-8">
+              <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-between gap-3 border-t border-border bg-card gutter-x pt-3 pb-[calc(12px+var(--seguro-abajo))]">
                 <Button type="button" variant="outline" disabled={paso === 0}
                   onClick={() => setPaso((actual) => Math.max(0, actual - 1))}>Atrás</Button>
                 <span className="hidden text-[13px] text-muted-foreground sm:block">

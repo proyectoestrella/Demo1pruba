@@ -318,7 +318,7 @@ export function AppointmentDetailSheet({
                 )}
               </header>
 
-              <div className="space-y-4 px-4 pt-4 pb-6 sm:px-5">
+              <div className="space-y-4 px-[var(--gutter)] pt-[var(--gutter)] pb-[calc(var(--gutter)+var(--seguro-abajo))]">
                 {/* La clienta: avatar, nombre y enlace a su ficha. */}
                 {client ? (
                   <button

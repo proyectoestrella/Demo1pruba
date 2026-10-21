@@ -476,7 +476,7 @@ export function ClientHistorySheet({
         descripcion={`Contacto, visitas, color y observaciones de ${client.name}.`}
         onVolver={puedeVolver ? volver : undefined}
       >
-        <div className="min-h-0 flex-1 overflow-y-auto bg-background px-4 pt-4 pb-6 sm:px-5 sm:pb-8">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-background px-[var(--gutter)] pt-[var(--gutter)] pb-[calc(var(--gutter)+var(--seguro-abajo))]">
           {body}
         </div>
       </FichaContenedor>

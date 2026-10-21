@@ -440,10 +440,10 @@ function BotonAvisos({ className }: { className?: string }) {
   );
 }
 
-/** Cabecera de píldoras: búsqueda y cita al centro; nunca elimina plan ni asistente. */
+/** Cabecera de píldoras: búsqueda y cita a la izquierda, alineadas con el gutter del contenido; nunca elimina plan ni asistente. */
 export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraArenaProps) {
   return (
-    <header className="relative grid grid-cols-1 items-center gap-2 px-4 py-2.5 md:sticky md:top-0 md:z-20 md:h-[71px] md:px-0 md:py-0 md:pointer-events-none">
+    <header className="gutter-x relative grid grid-cols-1 items-center gap-2 pt-[calc(10px+var(--seguro-arriba))] pb-2.5 md:sticky md:top-0 md:z-20 md:flex md:h-[calc(71px+var(--seguro-arriba))] md:gap-3 md:pt-[var(--seguro-arriba)] md:pb-0">
       <div className="flex items-center justify-between md:hidden">
         <Marca compacta />
         <div className="flex items-center gap-2">
@@ -460,7 +460,7 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
           <BotonAvisos className="size-11" />
         </div>
       </div>
-      <div className="flex w-full min-w-0 items-center gap-2 md:absolute md:left-1/2 md:top-1/2 md:z-30 md:w-[min(540px,calc(100%_-_276px))] md:-translate-x-1/2 md:-translate-y-1/2 md:pointer-events-auto md:group-data-[panel=abierto]/panel:left-4 md:group-data-[panel=abierto]/panel:w-[min(360px,calc(100%_-_196px))] md:group-data-[panel=abierto]/panel:translate-x-0">
+      <div className="flex w-full min-w-0 items-center gap-2 md:w-auto md:max-w-[560px] md:flex-1">
         <div className="min-w-0 flex-1 md:max-w-[420px]">
           <BuscadorGlobal variante="campo" />
         </div>
@@ -469,13 +469,13 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
           aria-label="Nueva cita"
           title="Nueva cita"
           onClick={onNuevaCita}
-          className="hidden h-9 min-w-0 max-w-full shrink gap-1.5 rounded-full px-3 text-[13px] font-bold md:inline-flex md:group-data-[panel=abierto]/panel:size-9 md:group-data-[panel=abierto]/panel:shrink-0 md:group-data-[panel=abierto]/panel:px-0"
+          className="hidden h-11 min-w-0 max-w-full shrink-0 gap-1.5 rounded-full px-3 text-[13px] font-bold md:inline-flex md:group-data-[panel=abierto]/panel:size-9 md:group-data-[panel=abierto]/panel:shrink-0 md:group-data-[panel=abierto]/panel:px-0"
         >
           <Plus className="size-4" strokeWidth={1.6} />
           <span className="truncate md:group-data-[panel=abierto]/panel:hidden">Nueva cita</span>
         </Button>
       </div>
-      <div className="pointer-events-auto absolute right-8 top-1/2 z-30 hidden -translate-y-1/2 items-center gap-2 md:flex">
+      <div className="hidden shrink-0 items-center gap-2 md:ml-auto md:flex">
         <PlanContratado className="hidden 2xl:inline-flex 2xl:group-data-[panel=abierto]/panel:hidden" />
         <Button
           data-tour="assistant"
@@ -608,12 +608,12 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
               </SheetTitle>
               <SheetDescription className="sr-only">Resto de apartados del panel</SheetDescription>
             </SheetHeader>
-            <div className="space-y-3 px-4 pb-3">
+            <div className="space-y-3">
               <BloqueUsuario />
               <VerComo apilado className="flex w-full" />
               <PlanContratado />
             </div>
-            <div className="grid grid-cols-3 gap-2 px-4 pb-6">
+            <div className="grid grid-cols-3 gap-2">
               {restantes.map((item) => {
                 const active = estaActivo(item, path);
                 return (
