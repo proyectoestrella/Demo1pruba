@@ -8,6 +8,8 @@
  * La lógica NO está aquí, está en `autorizacion.ts`, que no importa nada de
  * esto y por eso se puede probar. Aquí solo se enchufan los cables.
  */
+import { createHash } from "node:crypto";
+
 import { getRequestHeader } from "@tanstack/react-start/server";
 
 import {
@@ -22,6 +24,47 @@ import {
 import type { AccionId } from "../permisos";
 import { getSupabaseServerClient } from "../supabase.server";
 
+/*
+ * Cachés cortas en memoria de la instancia (rendimiento, 21-oct). Cada
+ * petición autenticada hacía 5 viajes EN SERIE a Supabase (salón, getUser,
+ * sesion_usuario_vigente, membresía y ficha: la misma fila leída dos veces).
+ *
+ *   - Sesión validada: se recuerda SESION_TTL_MS por hash SHA-256 del token
+ *     completo (firma incluida: un token inventado no casa con nada guardado).
+ *     Consecuencia aceptada: cerrar sesión en remoto tarda como mucho ese TTL
+ *     en cortar el acceso en una instancia que ya la tenía validada.
+ *   - Salón real: solo se recuerda el SÍ (SALON_TTL_MS). Un "no" nunca se
+ *     guarda: tratar como demo un salón real daría mando a cualquiera.
+ *   - Membresía y rol: NO se cachean. Una sola lectura por petición, que
+ *     comparten `esMiembro` y `ficha`. Una baja corta los datos al instante.
+ */
+export const SESION_TTL_MS = 45_000;
+export const SALON_TTL_MS = 5 * 60_000;
+const MAX_ENTRADAS = 1000;
+const sesiones = new Map<string, { userId: string; hasta: number }>();
+const salonesReales = new Map<string, number>();
+
+function recordar<V>(m: Map<string, V>, k: string, v: V) {
+  if (m.size >= MAX_ENTRADAS) {
+    const primera = m.keys().next().value;
+    if (primera !== undefined) m.delete(primera);
+  }
+  m.set(k, v);
+}
+
+const huella = (token: string) => createHash("sha256").update(token).digest("hex");
+
+/** Cerrar sesiones desde Accesos: en ESTA instancia surte efecto al momento. */
+export function olvidarSesionesDe(userId: string) {
+  for (const [k, v] of sesiones) if (v.userId === userId) sesiones.delete(k);
+}
+
+/** Vacía las cachés de esta instancia (pruebas). */
+export function olvidarCachesDeAutorizacion() {
+  sesiones.clear();
+  salonesReales.clear();
+}
+
 /**
  * Las dependencias de verdad.
  *
@@ -31,9 +74,32 @@ import { getSupabaseServerClient } from "../supabase.server";
  */
 function depsReales(): DepsAutorizacion {
   const supabase = getSupabaseServerClient();
+  // La fila de salon_members, leída una vez por petición.
+  const filas = new Map<string, Promise<Record<string, unknown> | null>>();
+  const fila = (userId: string, slug: string) => {
+    const k = `${userId}\u0000${slug}`;
+    let p = filas.get(k);
+    if (!p) {
+      p = (async () => {
+        if (!supabase) return null;
+        const { data, error } = await supabase
+          .from("salon_members")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("salon_slug", slug)
+          .maybeSingle();
+        if (error) throw new Error(error.message);
+        return (data as Record<string, unknown> | null) ?? null;
+      })();
+      filas.set(k, p);
+    }
+    return p;
+  };
   return {
     esSalonReal: async (slug) => {
       if (!supabase) return false;
+      const hasta = salonesReales.get(slug);
+      if (hasta && hasta > Date.now()) return true;
       const { data, error } = await supabase
         .from("salons")
         .select("slug")
@@ -45,6 +111,7 @@ function depsReales(): DepsAutorizacion {
         // convertido en "demo", que manda sobre el salón (auditoría 18-oct).
         throw new Error(`esSalonReal: ${error.message}`);
       }
+      if (data) recordar(salonesReales, slug, Date.now() + SALON_TTL_MS);
       return Boolean(data);
     },
 
@@ -59,6 +126,9 @@ function depsReales(): DepsAutorizacion {
 
     usuarioDelToken: async (token) => {
       if (!supabase) return null;
+      const h = huella(token);
+      const guardada = sesiones.get(h);
+      if (guardada && guardada.hasta > Date.now()) return guardada.userId;
       // `getUser(token)` va a Supabase a validar la firma y la caducidad. No
       // se decodifica el token aquí a mano: un token se puede escribir, lo que
       // no se puede es firmarlo.
@@ -72,42 +142,38 @@ function depsReales(): DepsAutorizacion {
         const { data: vigente, error: fallo } = await supabase.rpc("sesion_usuario_vigente", {
           usuario: data.user.id, sesion: claims.session_id,
         });
-        return !fallo && vigente === true ? data.user.id : null;
+        if (fallo || vigente !== true) return null;
+        // Nunca más allá de la caducidad del propio token.
+        const exp = typeof claims.exp === "number" ? claims.exp * 1000 : 0;
+        const hasta = Math.min(Date.now() + SESION_TTL_MS, exp || Date.now() + SESION_TTL_MS);
+        recordar(sesiones, h, { userId: data.user.id, hasta });
+        return data.user.id;
       } catch { return null; }
     },
 
     esMiembro: async (userId, slug) => {
       if (!supabase) return false;
-      const { data, error } = await supabase
-        .from("salon_members")
-        .select("user_id")
-        .eq("user_id", userId)
-        .eq("salon_slug", slug)
-        .maybeSingle();
-      if (error) {
+      try {
+        return Boolean(await fila(userId, slug));
+      } catch (err) {
         // Incluye el caso "la tabla todavía no existe porque no se ha
         // aplicado supabase/schema.sql". Aquí NO se degrada con elegancia a
         // "pues pasa": sin la tabla no se puede demostrar pertenencia, y sin
         // demostrarla no se entra.
-        console.error("esMiembro:", error.message);
+        console.error("esMiembro:", err instanceof Error ? err.message : err);
         return false;
       }
-      return Boolean(data);
     },
 
     ficha: async (userId, slug) => {
       if (!supabase) return null;
-      // Se comprueban rol y estado en cada petición, sin caché de permisos.
+      // Se comprueban rol y estado en cada petición, sin caché de permisos
+      // entre peticiones (la fila es la misma que acaba de leer esMiembro).
       // Una ficha que no se puede leer se rechaza en resolverAcceso.
-      const { data, error } = await supabase
-        .from("salon_members")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("salon_slug", slug)
-        .maybeSingle();
-      if (error || !data) return null;
-      const f = data as Record<string, unknown>;
-      const texto = (k: string) => (typeof f[k] === "string" && f[k] ? (f[k] as string) : null);
+      let f: Record<string, unknown> | null;
+      try { f = await fila(userId, slug); } catch { return null; }
+      if (!f) return null;
+      const texto = (k: string) => (typeof f![k] === "string" && f![k] ? (f![k] as string) : null);
       return {
         rol: texto("rol"),
         employeeId: texto("employee_id"),

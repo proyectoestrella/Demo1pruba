@@ -24,10 +24,14 @@ export function usePanelRefresh(slug: string | null) {
         debeAplazarRefresco(document.visibilityState === "visible", editando(), sincronizacionPendiente())) return;
       consultando = true;
       try {
-        const entrada = await accesoAlPanel({ data: { slug } });
+        // Acceso y agenda a la vez (antes en serie). Si el acceso cae, los
+        // datos se descartan: el servidor ya los habría recortado igualmente.
+        const [entrada, datos] = await Promise.all([
+          accesoAlPanel({ data: { slug } }),
+          listSalonData({ data: { slug, vista: "panel" } }),
+        ]);
         if (!entrada.permitido) { await cerrarSesion(); return; }
         useSalonStore.getState().setMiembro(entrada.miembro);
-        const datos = await listSalonData({ data: { slug, vista: "panel" } });
         if (activo && useSalonStore.getState().realSalonSlug === slug &&
           !debeAplazarRefresco(document.visibilityState === "visible", editando(), sincronizacionPendiente())) {
           useSalonStore.getState().hydrateFromServer(datos);

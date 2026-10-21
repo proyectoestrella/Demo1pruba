@@ -26,8 +26,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 
-import { accesoAlPanel } from "@/lib/api/salons.functions";
-import { paginaDeRutaPanel } from "@/lib/ruta-panel-permiso";
+import { accesoPanel, permitidoEnRuta, salirPorRevocacion } from "@/lib/acceso-actual-panel";
+import { precargarDatosDelSalon, precargarPerfilDelSalon } from "@/lib/precarga-salon";
 import { DEMO_PARAM, decodeDemoProfile } from "@/lib/demo-profile";
 import { DemoLoadingScreen } from "@/components/DemoLoadingScreen";
 
@@ -59,11 +59,23 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
       return;
     }
     let vivo = true;
-    accesoAlPanel({ data: { slug, pagina: paginaDeRutaPanel(pathname) ?? undefined } })
-      .then(({ real, permitido, miembro }) => {
+    // El perfil es público: se pide a la vez que el acceso, no después.
+    precargarPerfilDelSalon(slug);
+    // Rendimiento (21-oct): misma caché que el `beforeLoad`; al navegar no
+    // hay viaje de red, la pantalla se decide con la membresía ya cargada.
+    accesoPanel
+      .obtener(slug, () => salirPorRevocacion(slug))
+      .then((acc) => {
         if (!vivo) return;
-        if (real && !permitido && miembro) { void navigate({ to: "/app", search: { s: slug }, replace: true }); return; }
-        setEstado(!real || permitido ? "adelante" : "fuera");
+        if (acc.real && !acc.permitido) { setEstado("fuera"); return; }
+        if (!permitidoEnRuta(acc, pathname) && pathname !== "/app") {
+          void navigate({ to: "/app", search: { s: slug }, replace: true });
+          return;
+        }
+        // Salón real con acceso: la agenda se empieza a pedir ya, sin
+        // esperar a que React monte el panel (un viaje menos en serie).
+        if (acc.real) precargarDatosDelSalon(slug);
+        setEstado("adelante");
       })
       .catch((err) => {
         console.error("No se pudo comprobar el acceso al panel:", err);

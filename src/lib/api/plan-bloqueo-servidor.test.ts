@@ -29,6 +29,7 @@ beforeAll(() => { supabase.activar(); request.activar(); });
 afterAll(() => { supabase.desactivar(); request.desactivar(); });
 instalarDobleStart();
 const S = await import("./salons.functions?plan-bloqueo");
+const AUT = await import("./autorizacion.server");
 
 const cita = (id: string, fecha: string, nombre: string) => ({
   id: `fila-${id}`,
@@ -119,6 +120,7 @@ describe("bloqueo de analítica avanzada y asistente en el servidor", () => {
   it("si falla la lectura del perfil que contiene el plan, no entrega datos protegidos", async () => {
     // La primera lectura de `salons` identifica a la gerente; la segunda es
     // la lectura del perfil que el propio handler hace antes de responder.
+    AUT.olvidarCachesDeAutorizacion();
     doble = crearDobleSupabase(
       {
         salons: [{ slug: "real", profile: { name: "PeluChic", plan: "reservas-asistente" } }],

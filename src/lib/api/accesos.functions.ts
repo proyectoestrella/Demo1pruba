@@ -33,7 +33,7 @@ import {
   type InvitacionFila,
   type MiembroFila,
 } from "./accesos";
-import { exigirAccesoOdemo, usuarioDeLaPeticion } from "./autorizacion.server";
+import { exigirAccesoOdemo, olvidarSesionesDe, usuarioDeLaPeticion } from "./autorizacion.server";
 import { conSesion } from "./sesion.middleware";
 
 const slug = z.string().min(1).max(120);
@@ -64,6 +64,8 @@ function depsDe(salonSlug: string): DepsAccesos {
     cerrarSesiones: async (userId) => {
       const { error } = await sb.rpc("cerrar_sesiones_usuario", { usuario: userId });
       if (error) throw new Error("No se pudieron cerrar las sesiones. Comprueba la migración acceso-app.sql.");
+      // Las demás instancias lo notan al caducar su caché (SESION_TTL_MS).
+      olvidarSesionesDe(userId);
     },
     ahora: () => new Date(),
     nuevoId: () => randomUUID(),

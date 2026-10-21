@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 import { getSalonProfile, listSalonData } from "./api/salons.functions";
 import { registrarAviso } from "./avisos-sync";
+import { getSalonProfilePrecargado, listSalonDataPrecargado } from "./precarga-salon";
 import { blankDemoProfile } from "./demo-profile";
 import { inferBusinessType } from "./business-type";
 import { resolveActiveProfile } from "./salon-rows";
@@ -225,8 +226,9 @@ export function useRealSalon(slug: string | undefined, scope: "panel" | "publica
     let cancelado = false;
 
     void resolverSalonReal(slug, scope, {
-      getSalonProfile,
-      listSalonData,
+      // El panel aprovecha lo que GuardiaDelPanel ya dejó pidiendo.
+      getSalonProfile: scope === "panel" ? getSalonProfilePrecargado : getSalonProfile,
+      listSalonData: scope === "panel" ? listSalonDataPrecargado : listSalonData,
       store: () => useSalonStore.getState(),
       avisar: registrarAviso,
       cancelado: () => cancelado,
