@@ -12,6 +12,7 @@ import { DEMO_PARAM, decodeDemoProfile } from "@/lib/demo-profile";
 import { StylistAvatar } from "@/components/StylistAvatar";
 import { Button } from "@/components/ui/button";
 import { eur } from "@/lib/copy";
+import { leerNombreConfirmacion } from "@/lib/nombre-confirmacion";
 import { mostrarPreciosEnReserva } from "@/lib/precio-reserva";
 import { sumServices } from "@/lib/appointment-services";
 import {
@@ -56,7 +57,6 @@ export const Route = createFileRoute("/s/$salonSlug/confirmation")({
     employeeId: String(search.employeeId ?? "mario"),
     date: String(search.date ?? ""),
     time: String(search.time ?? ""),
-    name: String(search.name ?? ""),
     duration: Number.isFinite(Number(search.duration)) && Number(search.duration) > 0
       ? Math.round(Number(search.duration))
       : undefined,
@@ -66,7 +66,13 @@ export const Route = createFileRoute("/s/$salonSlug/confirmation")({
 
 function Confirmation() {
   const { salonSlug } = Route.useParams();
-  const { service: sid, employeeId, date, time, name, duration } = Route.useSearch();
+  const { service: sid, employeeId, date, time, duration } = Route.useSearch();
+  // El nombre no va en la URL: se lee de la sesión de esta pestaña tras montar
+  // (en el servidor y en el primer render no existe, así no hay desajuste).
+  const [name, setName] = useState("");
+  useEffect(() => {
+    setName(leerNombreConfirmacion());
+  }, []);
   // El tipo se deduce del mismo enlace de demo que ya venía leyendo la
   // cabecera (useDisplayProfile lee el `?d=` de la URL actual si lo hay, y
   // si no, el perfil guardado del navegador) — así el catálogo y el equipo

@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import process from "node:process";
 import { z } from "zod";
+import { getRequestHeader, getRequestUrl } from "@tanstack/react-start/server";
+import { admiteIntentoReserva, ipDeCabeceras } from "./limite-reserva.server";
 import { fromGoogleWeekdayDescriptions } from "../opening-hours";
 import { GALLERY_MAX } from "../demo-photos";
 import { BUSINESS_LABEL, inferBusinessType } from "../business-type";
@@ -421,9 +423,46 @@ export async function fromPlaces(key: string, hint: PistaMaps): Promise<MapsLook
   };
 }
 
+const MAX_CONSULTAS_MAPS = 40; // por IP y 10 min: cubre una importación por lotes del panel
+
+/**
+ * La consulta solo se acepta si viene de una página del propio origen. Un
+ * `fetch` del navegador siempre manda `Origin` (POST) o `Sec-Fetch-Site`; un
+ * script externo que quiera gastar el cupo no puede falsificar el de un
+ * navegador ajeno, y uno sin cabeceras queda fuera.
+ */
+export function esPeticionDelPropioOrigen(
+  cabecera: (n: string) => string | undefined,
+  origenPropio: string,
+): boolean {
+  const origin = cabecera("origin");
+  if (origin) return origin === origenPropio;
+  return cabecera("sec-fetch-site") === "same-origin";
+}
+
+/** Texto libre o enlace: sin caracteres de control y sin espacios sobrantes. */
+export const entradaMaps = z.object({
+  url: z
+    .string()
+    .trim()
+    .min(1)
+    .max(2048)
+    // eslint-disable-next-line no-control-regex
+    .refine((v) => !/[\u0000-\u001f\u007f]/.test(v), "caracteres no válidos"),
+});
+
 export const lookupGoogleMaps = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ url: z.string().min(1).max(2048) }))
+  .inputValidator(entradaMaps)
   .handler(async ({ data }): Promise<MapsLookup> => {
+    // Sin sesión a propósito (el generador de demos se usa sin cuenta), pero
+    // protegida: solo desde el propio origen y con tope por IP.
+    const cab = (n: string) => getRequestHeader(n) ?? undefined;
+    if (!esPeticionDelPropioOrigen(cab, getRequestUrl().origin)) {
+      throw new Error("Petición no permitida.");
+    }
+    if (!admiteIntentoReserva("maps", ipDeCabeceras(cab), Date.now(), MAX_CONSULTAS_MAPS)) {
+      throw new Error("Demasiadas consultas. Inténtalo en unos minutos.");
+    }
     const expanded = await expandShortLink(data.url.trim());
     const hint = parseMapsUrl(expanded);
 

@@ -30,6 +30,7 @@ export function admiteIntentoReserva(
   salonSlug: string,
   ip: string | null,
   ahora = Date.now(),
+  maxIntentos = MAX_INTENTOS,
 ): boolean {
   if (!ip) return true;
   const huella = createHash("sha256").update(ip).digest("base64url");
@@ -39,7 +40,7 @@ export function admiteIntentoReserva(
     ventanas.set(clave, { desde: ahora, intentos: 1 });
   } else {
     previa.intentos += 1;
-    if (previa.intentos > MAX_INTENTOS) return false;
+    if (previa.intentos > maxIntentos) return false;
   }
 
   if (ventanas.size > MAX_CLAVES) {

@@ -1,3 +1,4 @@
+import { guardarNombreConfirmacion } from "@/lib/nombre-confirmacion";
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useImagenConRespaldo } from "@/lib/imagen-rota";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -671,6 +672,7 @@ function BookingWizard() {
     }
     // Sin aviso emergente (lote 17): la pantalla de confirmación ya lo dice
     // todo, y el aviso tapaba la tarjeta con la fecha en formato máquina.
+    guardarNombreConfirmacion(data.name ?? "");
     navigate({
       to: "/s/$salonSlug/confirmation",
       params: { salonSlug },
@@ -679,7 +681,6 @@ function BookingWizard() {
         employeeId,
         date: data.date,
         time: data.time,
-        name: (data.name ?? "").trim(),
         // El calendario conserva la duración bloqueada; la confirmación
         // deriva la fianza de la carta a partir de los servicios.
         duration: schedulingDurationMin,
