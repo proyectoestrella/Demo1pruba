@@ -34,6 +34,7 @@ export interface Miembro {
   employeeId: string | null;
   displayName: string | null;
   email: string;
+  ultimoAcceso?: string | null;
   estado: "invitada" | "activa" | "baja";
   /** Excepciones por persona; ausentes = exactamente la matriz de su rol. */
   permisosExtra?: PermisosExtra;

@@ -19,6 +19,7 @@ import {
   type ResultadoAccesos as ResultadoAccesosDemo,
 } from "./accesos-maqueta";
 import {
+  cerrarSesionesDelMiembro,
   listarMiembros,
   invitarAlSalon,
   cambiarRolMiembro,
@@ -143,7 +144,7 @@ export interface AccesosAPI {
   cargando: boolean;
   /** Lo que falló al hablar con el servidor; `null` en demo. */
   error: string | null;
-  /** Miembros activos e invitaciones pendientes, sin las bajas. */
+  /** Miembros activos, bajas e invitaciones pendientes. */
   miembros: Miembro[];
   recargar: () => void;
   invitar: (d: {
@@ -158,6 +159,7 @@ export interface AccesosAPI {
     m: Miembro,
     permisosExtra: PermisosExtra,
   ) => Promise<ResultadoAccesosPanel>;
+  cerrarSesiones: (m: Miembro) => Promise<ResultadoAccesosPanel>;
   darDeBaja: (m: Miembro) => Promise<ResultadoAccesosPanel>;
   /** Deshace un cambio de rol, un vínculo o una baja, dado cómo estaba antes. */
   restaurar: (m: Miembro) => Promise<ResultadoAccesosPanel>;
@@ -173,6 +175,8 @@ function mapearListaReal(datos: {
     employeeId: string | null;
     displayName: string | null;
     permisosExtra?: PermisosExtra;
+    estado?: "activa" | "baja";
+    ultimoAcceso?: string | null;
   }[];
   invitaciones: readonly {
     id: string;
@@ -194,7 +198,8 @@ function mapearListaReal(datos: {
         displayName: m.displayName,
         permisosExtra: m.permisosExtra,
         email: m.email ?? "",
-        estado: "activa",
+        estado: m.estado ?? "activa",
+        ultimoAcceso: m.ultimoAcceso,
       }),
     ),
     ...datos.invitaciones.map(
@@ -320,6 +325,11 @@ export function useAccesos(): AccesosAPI {
     [esDemo, slug, recargarReal],
   );
 
+  const cerrarSesiones: AccesosAPI["cerrarSesiones"] = async (m) => {
+    if (esDemo || !slug) return { ok: false, codigo: "DEMO", mensaje: "Disponible en el salón real." };
+    return llamarServidor(() => cerrarSesionesDelMiembro({ data: { slug, userId: m.userId } }));
+  };
+
   const darDeBaja = useCallback<AccesosAPI["darDeBaja"]>(
     async (m) => {
       if (esDemo) return deDemo(accesosDemo.darDeBaja(m.userId));
@@ -416,6 +426,7 @@ export function useAccesos(): AccesosAPI {
       cambiarRol,
       vincular,
       cambiarPermisosExtra,
+      cerrarSesiones,
       darDeBaja,
       restaurar,
       reenviarInvitacion,
@@ -431,6 +442,7 @@ export function useAccesos(): AccesosAPI {
     cambiarRol,
     vincular,
     cambiarPermisosExtra,
+    cerrarSesiones,
     darDeBaja,
     restaurar,
     reenviarInvitacion,

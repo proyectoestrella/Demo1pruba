@@ -158,18 +158,23 @@ export function AjustesAccesos() {
   // dejar pulsar dos veces y para enseñar que se está esperando al servidor.
   const [ocupado, setOcupado] = useState<string | null>(null);
 
+  const [confirmacion, setConfirmacion] = useState<{ texto: string; accion: () => Promise<void> } | null>(null);
+  const [confirmando, setConfirmando] = useState(false);
+
   async function ejecutar(
     id: string,
     accion: () => Promise<ResultadoAccesosPanel>,
     ok: string,
     deshacer?: () => void,
   ) {
+    setConfirmacion({ texto: ok, accion: async () => {
     setOcupado(id);
     try {
       resultado(await accion(), ok, deshacer);
     } finally {
       setOcupado(null);
     }
+    } });
   }
 
   if (!esDemo && acc.cargando && lista.length === 0) {
@@ -197,6 +202,11 @@ export function AjustesAccesos() {
 
   return (
     <div className="space-y-4">
+      {confirmacion && <div role="alertdialog" aria-label="Confirmar cambio" className="rounded-xl border border-border p-4 space-y-3">
+        <p>¿Confirmas este cambio? {confirmacion.texto}</p>
+        <Button disabled={confirmando} onClick={async () => { setConfirmando(true); try { await confirmacion.accion(); setConfirmacion(null); } finally { setConfirmando(false); } }}>Confirmar</Button>{" "}
+        <Button variant="outline" disabled={confirmando} onClick={() => setConfirmacion(null)}>Cancelar</Button>
+      </div>}
       <div className="flex flex-wrap items-center gap-3">
         <p className="min-w-0 flex-1 text-[14px] text-cafe-medio">
           Quién entra en el panel y qué puede hacer. Cada persona entra con un enlace a su correo,
@@ -232,6 +242,7 @@ export function AjustesAccesos() {
                     ? `Invitación enviada el ${fechaCorta(m.invitadaEn)} · caduca el ${fechaCorta(m.caducaEn)}`
                     : m.email}
                 </p>
+                {m.estado !== "invitada" && <p className="text-xs text-muted-foreground">Última entrada: {m.ultimoAcceso ? new Date(m.ultimoAcceso).toLocaleString("es-ES") : "Sin datos"}</p>}
               </div>
               <span
                 className={cn(
@@ -242,6 +253,7 @@ export function AjustesAccesos() {
                 )}
               >
                 {m.estado === "invitada" ? (m.caducada ? "Caducada · " : "Invitada · ") : ""}
+                {m.estado === "baja" ? "Dada de baja · " : m.estado === "activa" ? "Activa · " : ""}
                 {NOMBRE_ROL[m.rol]}
                 {vinculo && m.rol !== "gerente" ? ` → ${vinculo}` : ""}
               </span>
@@ -292,7 +304,7 @@ export function AjustesAccesos() {
                       <DropdownMenuSeparator />
                     </>
                   )}
-                  {puedeEditar && (
+                  {puedeEditar && yo?.userId !== m.userId && (
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger>Cambiar rol</DropdownMenuSubTrigger>
                       <DropdownMenuSubContent>
@@ -345,7 +357,9 @@ export function AjustesAccesos() {
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>
                   )}
-                  {m.estado === "activa" && (
+                  {m.estado !== "invitada" && !esDemo && <DropdownMenuItem onClick={() => ejecutar(m.userId, () => acc.cerrarSesiones(m), "Cerrar sesión en todos sus dispositivos, también en otros salones de esta cuenta.")}>Cerrar sesión en todos sus dispositivos</DropdownMenuItem>}
+                  {m.estado === "baja" && <DropdownMenuItem onClick={() => ejecutar(m.userId, () => acc.restaurar(m), "Reactivar acceso")}>Reactivar acceso</DropdownMenuItem>}
+                  {m.estado === "activa" && yo?.userId !== m.userId && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
