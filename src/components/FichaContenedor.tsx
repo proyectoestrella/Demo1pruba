@@ -55,7 +55,7 @@ export function FichaContenedor({
 
   const barra = (
     <div
-      className="flex h-[66px] shrink-0 items-center gap-2 border-b border-border bg-perla pr-[124px] pl-5"
+      className="flex h-[66px] shrink-0 items-center gap-2 border-b border-border bg-perla pr-[124px] pl-[var(--gutter)]"
       data-ficha-barra={tipo}
     >
       {onVolver && (
@@ -91,7 +91,7 @@ export function FichaContenedor({
       title={
         modo === "lateral" ? "Volver al centro" : "Anclar a la derecha: la agenda queda a la vista"
       }
-      className="absolute top-3.5 right-[66px] z-10 grid size-[42px] cursor-pointer place-items-center rounded-full border border-input bg-card text-cafe-medio transition-colors hover:bg-nata focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      className="absolute top-3.5 right-[66px] z-10 grid size-11 cursor-pointer place-items-center rounded-full border border-input bg-card text-cafe-medio transition-colors hover:bg-nata focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
       {modo === "lateral" ? (
         <PinOff className="size-[18px]" strokeWidth={1.6} />
@@ -131,7 +131,7 @@ export function FichaContenedor({
             {textos}
             {barra}
             {anclar}
-            <DialogPrimitive.Close className="absolute top-3.5 right-4 z-10 grid size-[42px] cursor-pointer place-items-center rounded-full border border-input bg-card text-cafe-medio transition-colors hover:bg-nata focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+            <DialogPrimitive.Close className="absolute top-3.5 right-4 z-10 grid size-11 cursor-pointer place-items-center rounded-full border border-input bg-card text-cafe-medio transition-colors hover:bg-nata focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
               <X className="size-[18px]" strokeWidth={1.6} />
               <span className="sr-only">Cerrar</span>
             </DialogPrimitive.Close>

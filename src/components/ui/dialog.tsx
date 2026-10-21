@@ -42,15 +42,17 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "contenedor-flotante fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 bg-background p-6 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-        className,
+        "contenedor-flotante fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 bg-background p-6 duration-200 max-sm:inset-0 max-sm:max-h-none max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:content-start max-sm:overflow-y-auto max-sm:w-full max-sm:rounded-none max-sm:[--relleno-dialogo:var(--gutter)] max-sm:pt-[calc(var(--relleno-dialogo)+var(--seguro-arriba))] max-sm:pr-[calc(var(--relleno-dialogo)+var(--seguro-der))] max-sm:pb-[calc(var(--relleno-dialogo)+var(--seguro-abajo))] max-sm:pl-[calc(var(--relleno-dialogo)+var(--seguro-izq))] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        // Regla única: en móvil todo diálogo ocupa la pantalla con el gutter
+        // del panel y la safe-area. Uno «p-0» (relleno propio) solo guarda la safe-area.
+        className?.replace(/(^|\s)p-0(?=\s|$)/, "$1p-0 max-sm:[--relleno-dialogo:0px]"),
       )}
       {...props}
       onCloseAutoFocus={devolverFocoA(antes, onCloseAutoFocus)}
     >
       <ApuntarFoco destino={antes} />
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+      <DialogPrimitive.Close className="absolute right-[calc(8px+var(--seguro-der))] top-[calc(8px+var(--seguro-arriba))] grid size-11 place-items-center rounded-full opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
         <X className="h-4 w-4" />
         <span className="sr-only">Cerrar</span>
       </DialogPrimitive.Close>

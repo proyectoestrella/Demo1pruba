@@ -67,7 +67,7 @@ clientas: nuevasYRecurrentesMemo(appointments, r),
   const totalClientas = datos.clientas.nuevas + datos.clientas.recurrentes;
 
   return (
-    <div className="flex flex-1 flex-col gap-5">
+    <div className="pagina">
 <div className="flex flex-wrap items-end gap-4">
   <div className="min-w-0">
     <h1 className="text-[26px] leading-[1.1] font-extrabold tracking-[-0.02em] md:text-[32px]">Analítica</h1>

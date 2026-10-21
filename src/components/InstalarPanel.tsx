@@ -44,7 +44,7 @@ export function InstalarPanel() {
   }, []);
   if (!visible) return null;
   return (
-    <details className="mx-4 mb-24 rounded-xl border border-border bg-card p-3 text-sm md:mb-4">
+    <details className="mr-[calc(var(--gutter)+var(--seguro-der))] mb-[calc(96px+var(--seguro-abajo))] ml-[calc(var(--gutter)+var(--seguro-izq))] rounded-[var(--radio-tarjeta-sm)] border border-border bg-card px-[var(--relleno-tarjeta)] py-3 text-sm md:mb-[var(--gutter)] md:ml-[calc(244px+var(--gutter))]">
       <summary className="flex min-h-11 cursor-pointer items-center font-semibold">
         Instalar {salonName} en este dispositivo
       </summary>

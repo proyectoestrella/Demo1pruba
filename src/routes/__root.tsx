@@ -101,7 +101,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     return {
       meta: [
         { charSet: "utf-8" },
-        { name: "viewport", content: "width=device-width, initial-scale=1" },
+        { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
         // Instalable en el iPad desde "Añadir a pantalla de inicio": se abre a
         // pantalla completa, sin barra del navegador ni el dominio de pruebas.
         { name: "apple-mobile-web-app-capable", content: "yes" },

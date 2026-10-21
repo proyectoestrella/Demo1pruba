@@ -78,7 +78,7 @@ import {
  */
 
 const tituloBloque = "text-[17px] font-extrabold tracking-[-0.01em]";
-const bloque = "tarjeta-principal bg-card p-5 md:p-7";
+const bloque = "tarjeta-principal bg-card relleno-tarjeta";
 
 function fechaDeHoy(ahora: Date) {
   const texto = ahora.toLocaleDateString("es-ES", {
@@ -223,7 +223,7 @@ export function HoyArena() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-8">
+    <div className="pagina">
       {/* Saludo y, debajo, las cuatro cifras del día en tarjetas. */}
       <header className="flex flex-wrap items-end gap-x-6 gap-y-3">
         <div className="min-w-0">
@@ -241,7 +241,7 @@ export function HoyArena() {
               : saludoPara(ahora.getHours())}
           </h1>
         </div>
-        <Button variant="ghost" asChild className="text-cafe-medio md:ml-auto">
+        <Button variant="outline" asChild className="h-11 rounded-full text-cafe-medio md:ml-auto">
           <Link to="/app/hoja" search={{ dia: "hoy" }}>
             <FileText className="size-[18px]" strokeWidth={1.6} />
             Hoja del día
@@ -799,7 +799,7 @@ function EstoTeEspera({
   };
 
   return (
-    <section id="espera" data-tour="pending-requests" className="tarjeta-principal bg-[#F7F8F3] p-5 md:p-7">
+    <section id="espera" data-tour="pending-requests" className="tarjeta-principal bg-[#F7F8F3] relleno-tarjeta">
       <div className="flex items-baseline gap-3">
         <h2 className={tituloBloque}>Esto te espera</h2>
         <span className="inline-flex h-6 items-center rounded-full border-0 bg-miel px-2.5 text-[12.5px] font-bold text-primary tabular-nums shadow-[0_6px_18px_-6px_rgba(48,48,48,0.18)]">

@@ -44,7 +44,7 @@ function HojaDelDia() {
   const segmento = (activo: boolean) =>
     cn("h-[34px] rounded-full px-[15px] text-[13px] font-bold text-cafe-medio", activo && "bg-card text-foreground shadow-[0_1px_3px_rgba(59,47,42,0.12)]");
 
-  return <div className="hoja-dia flex flex-1 flex-col gap-5">
+  return <div className="hoja-dia pagina">
     <header className="flex flex-wrap items-end gap-4">
       <div className="min-w-0">
         <h1 className="text-[26px] leading-[1.1] font-extrabold tracking-[-0.02em] md:text-[32px]">Hoja {manana ? "de mañana" : "del día"}</h1>

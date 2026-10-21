@@ -177,7 +177,7 @@ function LoginPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border/60">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gutter-x pt-[calc(16px+var(--seguro-arriba))] pb-4">
           <a href={sitioSalon} className="flex items-center gap-2">
             {profile.logoUrl ? (
               <img
@@ -204,8 +204,8 @@ function LoginPage() {
         </div>
       </header>
 
-      <main className="mx-auto flex min-h-[calc(100vh-73px)] max-w-md flex-col justify-center px-5 py-12">
-        <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
+      <main className="mx-auto flex min-h-[calc(100vh-73px)] max-w-[calc(28rem+2*var(--gutter))] flex-col justify-center gutter-x py-12">
+        <div className="rounded-2xl border border-border bg-card relleno-tarjeta shadow-sm sm:p-8">
           <div className="mb-6 flex items-center gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Lock className="h-4 w-4" />

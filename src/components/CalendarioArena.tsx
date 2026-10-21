@@ -388,7 +388,7 @@ export function CalendarioArena({
           sea el título (eso subía o bajaba la rejilla al cambiar de semana):
           en PC, título a la izquierda con el ancho que quede y controles fijos
           a la derecha; en móvil, navegación, título y vistas en filas fijas. */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[#ECEBE6] bg-transparent px-3 py-2 lg:flex-nowrap">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[#ECEBE6] bg-transparent gutter-x py-2 lg:flex-nowrap" data-pagina="">
         <div className="flex shrink-0 items-center gap-1">
           <button type="button" onClick={() => { setAnchor(inicioDelDia(new Date())); setIrAAhora((n) => n + 1); }} className="mr-1 h-10 rounded-full bg-cafe px-4 text-sm font-bold text-white hover:bg-cafe/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             Hoy
@@ -472,7 +472,7 @@ export function CalendarioArena({
         </div>
       </div>
       {/* Segunda fila fija: profesional y vista. */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-[#ECEBE6] bg-transparent px-3 pb-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#ECEBE6] bg-transparent gutter-x pb-3">
           {variosDias && !soloUno && (
             <label className="relative">
               <span className="sr-only">Profesional</span>

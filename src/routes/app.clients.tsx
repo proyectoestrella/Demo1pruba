@@ -248,7 +248,7 @@ function Clients() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-5">
+    <div className="pagina">
       <div className="flex flex-wrap items-end gap-4">
         <div className="min-w-0">
           <h1 className="text-[26px] leading-[1.1] font-extrabold tracking-[-0.02em] md:text-[32px]">{esBarberia ? "Clientes" : "Clientas"}</h1>
@@ -344,7 +344,7 @@ function Clients() {
       ) : (
         <>
           {/* PC: tabla */}
-          <div className="@container hidden min-w-0 flex-1 overflow-x-auto tarjeta-principal bg-card md:block">
+          <div className="@container hidden min-w-0 flex-1 overflow-x-auto tarjeta-principal bg-card lg:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -384,7 +384,7 @@ function Clients() {
           </div>
 
           {/* Móvil: tarjetas */}
-          <div className="overflow-hidden tarjeta-principal bg-card md:hidden">
+          <div className="overflow-hidden tarjeta-principal bg-card lg:hidden">
             {rows.slice(0, cuantas).map((c) => {
               const estadoClienta = estado(c);
               return (

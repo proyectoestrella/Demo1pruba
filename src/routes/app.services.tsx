@@ -114,7 +114,7 @@ function ServicesPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-5">
+    <div className="pagina">
       <PageHeader
         title="Servicios y precios"
         actions={

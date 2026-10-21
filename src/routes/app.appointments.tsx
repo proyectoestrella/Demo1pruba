@@ -178,7 +178,7 @@ function Appointments() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-5">
+    <div className="pagina">
       <PageHeader
         title="Citas"
         description={soloUno ? "Todas tus reservas." : "Todas las reservas de tu equipo."}
@@ -266,7 +266,7 @@ function Appointments() {
       ) : (
         <>
           {/* Desktop: clean table, no vertical borders */}
-          <div className="@container hidden min-w-0 flex-1 overflow-x-auto tarjeta-principal bg-card md:block">
+          <div className="@container hidden min-w-0 flex-1 overflow-x-auto tarjeta-principal bg-card lg:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -405,7 +405,7 @@ function Appointments() {
           </div>
 
           {/* Mobile: stacked cards, never a horizontal-scroll table */}
-          <div className="overflow-hidden tarjeta-principal bg-card md:hidden">
+          <div className="overflow-hidden tarjeta-principal bg-card lg:hidden">
             {citasVisibles.map((a, indice) => {
               const e = employeeMap[a.employeeId];
               const momento = horaDestacadaCita(a, ahora);

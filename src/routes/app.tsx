@@ -382,12 +382,18 @@ function DashboardLayoutV1() {
             "flex min-w-0 flex-1 flex-col",
             path === "/app/calendar"
               ? "min-h-0 overflow-hidden bg-transparent p-0 pb-[100px] md:pb-0"
-              : "px-4 pt-5 pb-[100px] md:px-8 md:pt-8 md:pb-8",
+              : "gutter-x pt-[var(--hueco-seccion)] pb-[calc(100px+var(--seguro-abajo))] md:pb-[var(--gutter)]",
           )}>
             {/* Lote 16: cada pantalla entra con un fundido y 8 px de desplazamiento
               (180 ms). Con la Web Animations API y sin `key`: remontar el
-              contenedor en cada ruta costaba el doble de tiempo al navegar. */}
-            <div ref={contenedorRuta} className={cn("flex min-w-0 flex-1 flex-col", path === "/app/calendar" && "min-h-0")}>
+              contenedor en cada ruta costaba el doble de tiempo al navegar.
+              Regla única de maquetación (styles.css): gutter en <main>, ancho
+              máximo y ritmo vertical en `.pagina`. */}
+            <div
+              ref={contenedorRuta}
+              data-pagina={path === "/app/calendar" ? undefined : ""}
+              className={path === "/app/calendar" ? "flex min-h-0 min-w-0 flex-1 flex-col" : "pagina"}
+            >
               {fueraDelPlan ? null : permitida ? (
                 <Outlet />
               ) : (

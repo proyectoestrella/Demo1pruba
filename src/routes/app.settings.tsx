@@ -242,7 +242,7 @@ function Settings() {
   const fila = "space-y-4 border-t border-lino pt-5 first:border-t-0 first:pt-0";
 
   return (
-    <div className="flex flex-1 flex-col gap-5">
+    <div className="pagina">
       <PageHeader
         title="Ajustes"
         description="Cómo funciona tu salón: agenda, reservas, mensajes, plantones, fianza y colores."
@@ -250,7 +250,7 @@ function Settings() {
       <PrimerosPasos enAjustes />
 
       {esDemo && (
-        <section className="min-w-0 rounded-[20px] border border-lino bg-card p-4 sm:p-5">
+        <section className="min-w-0 rounded-[20px] border border-lino bg-card relleno-tarjeta">
           <h2 className="text-[15px] font-bold text-foreground">Ver como</h2>
           <p className="mt-1 mb-3 text-[13px] text-muted-foreground">
             Solo en la demo: mira el panel como lo vería cada persona del salón
@@ -697,7 +697,7 @@ function SeccionAjustes({
           type="button"
           aria-expanded={abierto}
           onClick={alternar}
-          className="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-beige/50"
+          className="flex w-full items-center gap-3 px-[var(--relleno-tarjeta)] py-4 text-left hover:bg-beige/50"
         >
           <span className="min-w-0 flex-1">
             <span className="block text-[16px] font-extrabold tracking-[-0.01em]">{titulo}</span>
@@ -720,7 +720,7 @@ function SeccionAjustes({
       </h2>
       <div className={cn("plegable", abierto && "abierto")}>
         <div className="min-h-0 overflow-hidden">
-          {abierto && <div className="space-y-5 border-t border-lino px-5 py-5">{children}</div>}
+          {abierto && <div className="space-y-5 border-t border-lino p-[var(--relleno-tarjeta)]">{children}</div>}
         </div>
       </div>
     </section>
