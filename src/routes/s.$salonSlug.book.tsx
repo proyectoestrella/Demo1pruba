@@ -2,7 +2,7 @@ import { guardarNombreConfirmacion } from "@/lib/nombre-confirmacion";
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useImagenConRespaldo } from "@/lib/imagen-rota";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, Info, Sparkles, PhoneCall, Repeat, X, Zap } from "lucide-react";
+import { ArrowLeft, Check, Info, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType, textosDeCarta } from "@/lib/mock/salon";
 import { duracionCartaParaSenal, reglaSenal, senalDeReservaNueva, servicioLlevaSenal, textoSenalPublico, type ReglaSenal } from "@/lib/senal";
 import { franjasProfesionalEnFecha, huecosDeProfesionalesEnFecha } from "@/lib/horario-equipo";
@@ -16,12 +16,7 @@ import { useSalonStore } from "@/lib/store";
 import { duracionDeAgenda, duracionFlexibleActiva } from "@/lib/duracion-flexible";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
-import {
-  categoryOrderOf,
-  professionalWord,
-  showsRealPhotos,
-  type BusinessType,
-} from "@/lib/business-type";
+import { categoryOrderOf, professionalWord, type BusinessType } from "@/lib/business-type";
 import { findClientByPhone, isBookingBlocked } from "@/lib/no-show";
 import { PAISES_TELEFONO, PAIS_OTRO, validarTelefono } from "@/lib/telefono";
 import { profesionalesParaServicios } from "@/lib/servicios-profesional";
@@ -38,7 +33,6 @@ import {
   profesionalesDisponiblesEnHueco,
   type SpreadSlot,
 } from "@/lib/reparto";
-import { StylistAvatar } from "@/components/StylistAvatar";
 import { cn } from "@/lib/utils";
 import {
   Accordion,
@@ -743,7 +737,7 @@ function BookingWizard() {
     : undefined;
 
   return (
-    <section className={cn(CONTENEDOR_SALON, "pb-10 pt-8 md:pb-16 md:pt-12", step === 4 && "pb-28")}>
+    <section className={cn(CONTENEDOR_SALON, "ws-reserva pb-10 pt-6 md:pb-16 md:pt-10", step === 4 && "pb-28")}>
       <StepIndicator step={step} soloUno={soloUno} />
 
       {/* Mejora B1: atajo de un toque para quien ya reservó antes en este
@@ -771,8 +765,8 @@ function BookingWizard() {
         </div>
       )}
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
-        <div className="min-w-0">
+      <div className="mt-6 grid gap-6 md:mt-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8">
+        <div key={step} className="ws-paso min-w-0">
           {step === 1 && (
             <>
               <ServiceStep
@@ -802,7 +796,6 @@ function BookingWizard() {
               onSelect={(id) => setData((d) => ({ ...d, employeeId: id }))}
               tipo={tipo}
               employees={eligibleEmployees}
-              esSalonReal={realSlug === salonSlug || (!demoParamRaw && resolutionStatus !== "demo")}
             />
           )}
 
@@ -840,7 +833,7 @@ function BookingWizard() {
                     resumen sale en TODOS los tamaños, completo y sin cortes. */}
                 {/* Desde 1024 px el resumen fijo de la derecha ya lo enseña: aquí
                     solo en móvil y tableta, sin repetirlo dos veces (lote 17). */}
-                <div className="rounded-[20px] border border-lino bg-card p-5 lg:hidden">
+                <div className="tarjeta-principal border border-lino bg-card p-5 lg:hidden">
                   <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">
                     Resumen de tu reserva
                   </p>
@@ -1010,7 +1003,7 @@ function BookingWizard() {
                   <Link to="/s/$salonSlug/privacidad" params={{ salonSlug }} search={(prev) => prev} className="font-medium text-primary underline-offset-2 hover:underline">Más información</Link>
                 </p>
 
-                <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-muted-foreground">
+                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl px-1 text-sm text-muted-foreground">
                   <Checkbox
                     className="size-6 [&_svg]:size-5"
                     aria-label="He leído la información sobre el tratamiento de mis datos"
@@ -1023,7 +1016,7 @@ function BookingWizard() {
                 {/* La casilla de cancelación solo sale si el salón tiene una política con
                     recargo configurada; sin ella (p. ej. plan Básico) no se pide aceptar nada. */}
                 {conRecargo && (
-                <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-muted-foreground">
+                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl px-1 text-sm text-muted-foreground">
                   <Checkbox
                     className="size-6 [&_svg]:size-5"
                     checked={data.acceptedPolicy ?? false}
@@ -1068,7 +1061,14 @@ function BookingWizard() {
                 <ArrowLeft className="h-4 w-4" /> Atrás
               </button>
             ) : (
-              <span />
+              <Link
+                to="/s/$salonSlug"
+                params={{ salonSlug }}
+                search={(prev) => prev}
+                className="-ml-3 inline-flex h-11 items-center gap-2 rounded-full px-3 text-sm font-medium text-cafe-medio hover:bg-beige hover:text-foreground"
+              >
+                <ArrowLeft className="h-4 w-4" /> Volver
+              </Link>
             )}
           </div>
         </div>
@@ -1319,35 +1319,29 @@ function StylistStep({
   onSelect,
   tipo,
   employees,
-  esSalonReal,
 }: {
   selected?: EmployeeId | "any";
   onSelect: (id: EmployeeId | "any") => void;
   tipo: BusinessType;
   employees: Employee[];
-  /** En un salón real no se enseñan las fotos de stock. Ver `fotoDeProfesional`. */
-  esSalonReal: boolean;
 }) {
   if (employees.length === 0) {
     return <Step title={`Elige tu ${professionalWord(tipo)}`}><p role="alert" className="text-sm text-muted-foreground">No hay profesionales disponibles para todos los servicios elegidos.</p></Step>;
   }
   return (
     <Step title={`Elige tu ${professionalWord(tipo)}`}>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2">
         <button
           onClick={() => onSelect("any")}
           className={cn(
-            "flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed bg-card px-4 py-6 text-center transition-colors",
+            "tarjeta-secundaria flex min-h-20 flex-col items-start justify-center rounded-[var(--radio-tarjeta-sm)] border-2 border-dashed bg-card px-5 py-4 text-left transition-colors",
             selected === "any"
               ? "border-primary bg-primary/5 ring-2 ring-primary ring-offset-2 ring-offset-background"
               : "border-border/60 hover:border-primary/40",
           )}
         >
-          <span className="flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <Sparkles className="h-5 w-5" />
-          </span>
           <div>
-            <p className="text-sm font-medium">Cualquiera disponible</p>
+            <p className="font-bold">Cualquiera disponible</p>
             <p className="mt-0.5 text-xs text-muted-foreground">Más rápido</p>
           </div>
         </button>
@@ -1356,21 +1350,15 @@ function StylistStep({
             key={e.id}
             onClick={() => onSelect(e.id)}
             className={cn(
-              "flex flex-col items-center gap-3 rounded-2xl border bg-card px-4 py-6 text-center transition-colors",
+              "tarjeta-secundaria flex min-h-20 flex-col items-start justify-center rounded-[var(--radio-tarjeta-sm)] border bg-card px-5 py-4 text-left transition-colors",
               selected === e.id
                 ? "border-primary bg-primary/5 ring-2 ring-primary ring-offset-2 ring-offset-background"
                 : "border-border/60 hover:border-primary/40",
             )}
           >
-            <StylistAvatar
-              name={e.name}
-              employeeId={e.id}
-              photo={esSalonReal || !showsRealPhotos(tipo) ? undefined : e.photo}
-              size="lg"
-            />
             <div>
-              <p className="text-sm font-medium">{e.name}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">{e.specialty}</p>
+              <p className="font-bold">{e.name}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{e.specialty}</p>
             </div>
           </button>
         ))}
@@ -1895,7 +1883,7 @@ function BookingSummary({
         className="fixed inset-x-0 bottom-0 z-40 min-h-[calc(4.5rem+env(safe-area-inset-bottom,0px))] border-t border-lino bg-background/95 pt-3 backdrop-blur lg:hidden"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
       >
-        {ctaHint && <p role="status" className={cn(CONTENEDOR_SALON, "mb-2 text-xs text-cafe-medio")}>{ctaHint}</p>}
+        {ctaHint && <p role="status" className={cn(CONTENEDOR_SALON, "ws-falta mb-2 text-sm font-bold")}>{ctaHint}</p>}
         <div className={cn(CONTENEDOR_SALON, "flex items-center justify-between gap-3")}>
           <div className="min-w-0 flex-1">
             <p className="flex items-baseline gap-2">
@@ -1923,7 +1911,7 @@ function BookingSummary({
 
   return (
     <aside className="hidden lg:block">
-      <div className="sticky top-24 rounded-[20px] border border-lino bg-card p-6">
+      <div className="tarjeta-principal sticky top-24 border border-lino bg-card relleno-tarjeta">
         <div className="mb-4 flex items-center gap-3">
           {!fotoDeEjemplo && (
             <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg">
@@ -1934,6 +1922,8 @@ function BookingSummary({
                 alt=""
                 width={44}
                 height={44}
+                loading="lazy"
+                decoding="async"
                 className="h-full w-full object-cover"
               />
             </div>
@@ -1974,7 +1964,7 @@ function BookingSummary({
 
         {mostrarPrecio && <><Separator className="my-4" /><div className="flex items-baseline justify-between"><span className="text-sm text-muted-foreground">Total</span><span className="text-2xl font-extrabold tabular-nums">{eur(total)}</span></div></>}
 
-        {ctaHint && <p role="status" className="mt-4 text-xs text-cafe-medio">{ctaHint}</p>}
+        {ctaHint && <p role="status" className="ws-falta mt-4 text-sm font-bold">{ctaHint}</p>}
         <Button
           onClick={onCta}
           disabled={ctaDisabled}
