@@ -41,3 +41,10 @@ dist-ssr
 
 # Caché local de Vite
 .vite
+
+# Batería e2e (Playwright): capturas y resultados locales
+tests-e2e/capturas/
+tests-e2e/test-results/
+test-results/
+playwright-report/
+tests-e2e/ULTIMO-INFORME.md
