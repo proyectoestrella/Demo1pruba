@@ -64,7 +64,16 @@ function depsReales(): DepsAutorizacion {
       // no se puede es firmarlo.
       const { data, error } = await supabase.auth.getUser(token);
       if (error) return null;
-      return data.user?.id ?? null;
+      if (!data.user) return null;
+      // Solo se leen claims DESPUÉS de validar la firma con Auth.
+      try {
+        const claims = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
+        if (typeof claims.session_id !== "string") return null;
+        const { data: vigente, error: fallo } = await supabase.rpc("sesion_usuario_vigente", {
+          usuario: data.user.id, sesion: claims.session_id,
+        });
+        return !fallo && vigente === true ? data.user.id : null;
+      } catch { return null; }
     },
 
     esMiembro: async (userId, slug) => {
@@ -88,9 +97,8 @@ function depsReales(): DepsAutorizacion {
 
     ficha: async (userId, slug) => {
       if (!supabase) return null;
-      // `select("*")` a propósito: mientras las columnas del lote 8 no estén
-      // aplicadas (supabase/pendiente.sql), la fila solo trae `rol` y el
-      // miembro sigue siendo gerente, como antes. Nadie se queda fuera.
+      // Se comprueban rol y estado en cada petición, sin caché de permisos.
+      // Una ficha que no se puede leer se rechaza en resolverAcceso.
       const { data, error } = await supabase
         .from("salon_members")
         .select("*")

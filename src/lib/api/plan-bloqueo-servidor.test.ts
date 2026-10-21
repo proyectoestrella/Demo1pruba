@@ -4,7 +4,7 @@
  * pura: simula a una gerente que llama `listSalonData` directamente.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
-import { crearDobleSupabase } from "./doble-supabase";
+import { crearDobleSupabase, tokenConSesion } from "./doble-supabase";
 import { instalarDobleStart, llamar, mockTransitorio } from "./doble-start";
 
 type FuncionProtegida = "analitica-avanzada" | "asistente";
@@ -79,7 +79,7 @@ async function cargarPanel(): Promise<RespuestaPanel> {
 }
 
 beforeEach(() => {
-  cabecera = "Bearer tk-ana";
+  cabecera = `Bearer ${tokenConSesion("tk-ana")}`;
   sinSupabase = false;
   cargarSalon();
 });

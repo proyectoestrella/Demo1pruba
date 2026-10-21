@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { PermisoDenegado, type Acceso } from "./autorizacion";
 import {
+  cerrarSesionesMiembro,
   aceptarInvitacion,
   cambiarPermisosExtra,
   cambiarRol,
@@ -185,7 +186,7 @@ describe("accesos: roles y bajas", () => {
   it("la última gerente no puede bajarse de rol ni darse de baja", async () => {
     const w = mundo();
     const a = await cambiarRol(maria, "maria", { rol: "subencargado" }, w.deps);
-    expect(a.ok === false && a.codigo).toBe("ULTIMA_GERENTE");
+    expect(a.ok === false && a.codigo).toBe("PERMISO");
     const b = await darDeBaja(maria, "maria", w.deps);
     expect(b.ok === false && b.codigo).toBe("ULTIMA_GERENTE");
   });
@@ -200,7 +201,7 @@ describe("accesos: roles y bajas", () => {
     await aceptarInvitacion("noelia", w.invs[0].id, w.deps);
     expect((await darDeBaja(maria, "noelia", w.deps)).ok).toBe(true);
     expect(w.miembros.find((m) => m.userId === "noelia")?.estado).toBe("baja");
-    expect((await listarAccesos(maria, w.deps)).miembros.map((m) => m.userId)).toEqual(["maria"]);
+    expect((await listarAccesos(maria, w.deps)).miembros.map((m) => m.userId)).toEqual(["maria", "noelia"]);
   });
 });
 
@@ -331,4 +332,20 @@ describe("accesos: reactivar una baja", () => {
     const r = await reactivarMiembro(maria, "r", deps);
     expect(r.ok === false && r.codigo).toBe("PLAN");
   });
+});
+
+it("María no se degrada ni se da de baja aunque haya otra gerente", async () => {
+  const w = mundo();
+  w.miembros.push({ ...w.miembros[0], userId: "otra" });
+  expect((await cambiarRol(maria, "maria", { rol: "subencargado" }, w.deps)).ok).toBe(false);
+  expect((await darDeBaja(maria, "maria", w.deps)).ok).toBe(false);
+});
+it("cierre remoto exige gerente y destinatario del mismo salón", async () => {
+  const w = mundo(); const cerradas: string[] = [];
+  w.deps.cerrarSesiones = async id => { cerradas.push(id); };
+  await expect(cerrarSesionesMiembro(noelia, "maria", w.deps)).rejects.toBeInstanceOf(PermisoDenegado);
+  expect((await cerrarSesionesMiembro(maria, "usuario-otro-salon", w.deps)).ok).toBe(false);
+  expect(cerradas).toEqual([]);
+  expect((await cerrarSesionesMiembro(maria, "maria", w.deps)).ok).toBe(true);
+  expect(cerradas).toEqual(["maria"]);
 });

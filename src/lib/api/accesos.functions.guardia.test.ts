@@ -8,9 +8,9 @@ const cuerpos = [
 
 describe("guardia de accesos.functions", () => {
   it("todas pasan por accesoReal (sin demo, con permiso de gestión) salvo aceptar, que va por el token", () => {
-    expect(cuerpos.length).toBe(10);
+    expect(cuerpos.length).toBe(12);
     for (const { nombre, cuerpo } of cuerpos) {
-      if (nombre === "aceptarInvitacionAlSalon") expect(cuerpo).toContain("usuarioDeLaPeticion()");
+      if (nombre === "aceptarInvitacionAlSalon" || nombre === "aceptarMisInvitaciones") expect(cuerpo).toContain("usuarioDeLaPeticion()");
       else expect([nombre, cuerpo.includes("await accesoReal(data.slug)")]).toEqual([nombre, true]);
     }
   });

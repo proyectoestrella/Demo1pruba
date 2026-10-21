@@ -116,7 +116,7 @@ export function exigirAcciones(
   acciones: AccionId[],
   profesionales: Array<string | null | undefined> = [],
 ): void {
-  const sobre = [...new Set(profesionales.filter((x): x is string => !!x))];
+  const sobre = [...new Set(profesionales.map((x) => x ?? null))];
   for (const a of acciones) {
     const ok = sobre.length
       ? sobre.every((e) => tienePermiso(acceso, a, e))

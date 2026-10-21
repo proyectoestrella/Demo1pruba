@@ -28,6 +28,7 @@
  */
 
 import {
+  esRol,
   permisosDe,
   permisosExtraDe,
   PERMISOS_DEMO,
@@ -151,7 +152,8 @@ export async function resolverAcceso(slug: string, deps: DepsAutorizacion): Prom
     return { tipo: "ajeno" };
   }
   // Dada de baja o aún invitada: la fila existe, pero no da acceso.
-  if (f?.estado === "baja" || f?.estado === "invitada") return { tipo: "ajeno" };
+  if (deps.ficha && (!f || (!esRol(f.rol) && f.rol !== "dueno" && f.rol !== "encargado"))) return { tipo: "ajeno" };
+  if (f?.estado && f.estado !== "activa") return { tipo: "ajeno" };
   const rol = rolVigente(f?.rol);
   // Una estilista sin profesional vinculada no puede ver «lo suyo»: se le deja
   // entrar, pero su alcance propio no casa con ninguna cita.

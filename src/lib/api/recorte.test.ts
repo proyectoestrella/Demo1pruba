@@ -103,3 +103,10 @@ describe("recorte de datos por rol", () => {
     });
   });
 });
+
+it("agenda completa no entrega a una estilista el dinero de otra", () => {
+  const r = recortarDatosPanel(miembro("estilista", "noelia", { verAgendaCompleta: true }), datos);
+  expect(r.appointments.find(a => a.id === "a1")?.priceEur).toBe(35);
+  expect(r.appointments.find(a => a.id === "a2")?.priceEur).toBe(0);
+  expect(r.appointments.find(a => a.id === "a2")?.paidAt).toBeUndefined();
+});

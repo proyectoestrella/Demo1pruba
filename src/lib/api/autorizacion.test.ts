@@ -46,6 +46,7 @@ function deps(cabecera: string | null, extra: Partial<DepsAutorizacion> = {}): D
     tokenDeLaPeticion: () => extraerBearer(cabecera),
     usuarioDelToken: async (token) => TOKENS[token] ?? null,
     esMiembro: async (userId, slug) => (MIEMBROS[userId] ?? []).includes(slug),
+    ficha: async () => ({ rol: "gerente", employeeId: null, displayName: null, estado: "activa" }),
     ...extra,
   };
 }
@@ -386,4 +387,10 @@ describe("si no se puede saber si el salón es real (Supabase falla)", () => {
     await expect(exigirMando("salon-a", deps(null, roto))).rejects.toThrow(AccesoDenegado);
     await expect(exigirMando("salon-a", deps("Bearer token-de-ana", roto))).rejects.toThrow(AccesoDenegado);
   });
+});
+
+it("una ficha desaparecida o un rol desconocido nunca se convierten en gerente", async () => {
+  for (const ficha of [null, { rol: "inventado", employeeId: null, displayName: null, estado: "activa" }]) {
+    expect(await resolverAcceso("salon-a", deps("Bearer token-de-ana", { ficha: async () => ficha }))).toEqual({ tipo: "ajeno" });
+  }
 });

@@ -33,6 +33,7 @@ export interface MiembroFila {
   employeeId: string | null;
   displayName: string | null;
   estado: "activa" | "baja";
+  ultimoAcceso?: string | null;
   /** Ausente en filas anteriores a la migración: manda solo el rol. */
   permisosExtra?: PermisosExtra;
 }
@@ -51,6 +52,7 @@ export interface InvitacionFila {
 }
 
 export interface DepsAccesos {
+  cerrarSesiones?: (userId: string) => Promise<void>;
   ahora: () => Date;
   nuevoId: () => string;
   plan: () => Promise<string | null>;
@@ -196,6 +198,8 @@ export async function cambiarRol(
   deps: DepsAccesos,
 ): Promise<ResultadoAccesos> {
   exigirGestion(acceso);
+  if (acceso.tipo === "miembro" && acceso.userId === userId && nuevo.rol !== "gerente")
+    return { ok: false, codigo: "PERMISO", motivo: "No puedes quitarte tu propio rol de dueña." };
   if (!esRol(nuevo.rol)) return { ok: false, codigo: "DATOS", motivo: "Ese rol no existe." };
   const miembros = await deps.miembros();
   const m = miembros.find((x) => x.userId === userId && x.estado === "activa");
@@ -238,6 +242,8 @@ export async function darDeBaja(
       codigo: "ULTIMA_GERENTE",
       motivo: "Tiene que quedar al menos una gerente.",
     };
+  if (acceso.tipo === "miembro" && acceso.userId === userId)
+    return { ok: false, codigo: "PERMISO", motivo: "No puedes darte de baja a ti misma." };
   // Baja, no borrado: la autoría del historial de cambios se conserva.
   await deps.guardarMiembro({ ...m, estado: "baja" });
   return { ok: true };
@@ -372,13 +378,13 @@ export async function reenviarInvitacion(
   return { ok: true };
 }
 
-/** Lista para Ajustes › Accesos: miembros activos e invitaciones pendientes. */
+/** Lista para Ajustes › Accesos: miembros, incluidas las bajas, e invitaciones pendientes. */
 export async function listarAccesos(acceso: Acceso, deps: DepsAccesos) {
   exigirGestion(acceso);
   const [m, i] = await Promise.all([deps.miembros(), deps.invitaciones()]);
   const t = deps.ahora().getTime();
   return {
-    miembros: m.filter((x) => x.estado === "activa"),
+    miembros: m,
     invitaciones: i
       .filter((x) => !x.aceptadaEn && !x.revocada)
       .map((x) => ({ ...x, caducada: t > Date.parse(x.caduca) })),
@@ -386,3 +392,13 @@ export async function listarAccesos(acceso: Acceso, deps: DepsAccesos) {
 }
 
 export { rolVigente };
+
+/** Solo la dueña puede invalidar las sesiones de un miembro de ESTE salón. */
+export async function cerrarSesionesMiembro(acceso: Acceso, userId: string, deps: DepsAccesos): Promise<ResultadoAccesos> {
+  exigirGestion(acceso);
+  if (!(await deps.miembros()).some(m => m.userId === userId))
+    return { ok: false, codigo: "NO_EXISTE", motivo: "Esa persona no pertenece a este salón." };
+  if (!deps.cerrarSesiones) throw new Error("Falta configurar el cierre de sesiones.");
+  await deps.cerrarSesiones(userId);
+  return { ok: true };
+}

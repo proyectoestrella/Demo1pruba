@@ -26,7 +26,7 @@ import {
   soloCamposWeb,
 } from "./guardas";
 import { funcionesPlanPanel, recortarDatosPanel, recortarDatosPanelPorPlan, type FuncionesPlanPanel } from "./recorte";
-import { alcance, permisosDe, type MiembroActual } from "../permisos";
+import { PAGINAS, vePagina, alcance, permisosDe, type MiembroActual } from "../permisos";
 import { DIAS_RETENCION } from "../cambios";
 import { PermisoDenegado, tienePermiso } from "./autorizacion";
 import { tieneMando, vistaEfectiva } from "./autorizacion";
@@ -371,7 +371,7 @@ export const esSalonRealPublico = createServerFn({ method: "GET" })
  */
 export const accesoAlPanel = createServerFn({ method: "GET" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug }))
+  .inputValidator(z.object({ slug, pagina: z.enum(PAGINAS).optional() }))
   .handler(
     async ({
       data,
@@ -389,7 +389,7 @@ export const accesoAlPanel = createServerFn({ method: "GET" })
               permisosExtra: quien.permisosExtra,
             }
           : null;
-      return { real: quien.tipo !== "demo", permitido: tieneMando(quien), miembro };
+      return { real: quien.tipo !== "demo", permitido: tieneMando(quien) && (!data.pagina || !miembro || vePagina(permisosDe(miembro.rol, miembro.permisosExtra), data.pagina)), miembro };
     },
   );
 

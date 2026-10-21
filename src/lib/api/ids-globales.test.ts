@@ -1,6 +1,6 @@
 /** B8: un id global ajeno nunca puede aparentar que se ha guardado. */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
-import { crearDobleSupabase } from "./doble-supabase";
+import { crearDobleSupabase, tokenConSesion } from "./doble-supabase";
 import { instalarDobleStart, llamar, mockTransitorio } from "./doble-start";
 
 let doble = crearDobleSupabase({});
@@ -16,7 +16,7 @@ const pagos = await import("./pagos.functions?ids-globales");
 const cambios = await import("./cambios.functions?ids-globales");
 
 beforeEach(() => {
-  cabecera = "Bearer tk-gerente";
+  cabecera = `Bearer ${tokenConSesion("tk-gerente")}`;
   doble = crearDobleSupabase({
     salons: [{ slug: "propio", profile: {} }],
     salon_members: [{ user_id: "gerente", salon_slug: "propio", rol: "gerente", estado: "activa" }],

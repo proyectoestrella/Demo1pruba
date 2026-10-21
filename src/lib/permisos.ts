@@ -272,8 +272,8 @@ export function esRol(x: unknown): x is Rol {
 /** Traduce el `rol` guardado (incluidos los valores antiguos) al rol vigente. */
 export function rolVigente(guardado: string | null | undefined): Rol {
   if (esRol(guardado)) return guardado;
-  // 'dueno' y 'encargado' eran los valores de antes del lote 8: mando completo.
-  return "gerente";
+  // Solo los dos alias históricos conservan mando; valores desconocidos nunca lo conceden.
+  return guardado === "dueno" || guardado === "encargado" ? "gerente" : "estilista";
 }
 
 export function alcance(p: Permisos, accion: AccionId): Alcance | null {

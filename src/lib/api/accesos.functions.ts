@@ -12,12 +12,13 @@
  */
 import { randomUUID } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeader } from "@tanstack/react-start/server";
+import { getRequestUrl } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 import { permisosExtraDe, rolVigente } from "../permisos";
 import { getSupabaseServerClient } from "../supabase.server";
 import {
+  cerrarSesionesMiembro,
   aceptarInvitacion,
   cambiarRol,
   cambiarPermisosExtra,
@@ -38,13 +39,7 @@ import { conSesion } from "./sesion.middleware";
 const slug = z.string().min(1).max(120);
 
 function origen(): string {
-  try {
-    const o = getRequestHeader("origin") ?? getRequestHeader("referer");
-    if (o) return new URL(o).origin;
-  } catch {
-    /* fuera de una petición */
-  }
-  return "";
+  return getRequestUrl().origin;
 }
 
 /**
@@ -64,6 +59,10 @@ function depsDe(salonSlug: string): DepsAccesos {
   const sb = getSupabaseServerClient();
   if (!sb) throw new Error("El acceso no está configurado en esta instalación.");
   return {
+    cerrarSesiones: async (userId) => {
+      const { error } = await sb.rpc("cerrar_sesiones_usuario", { usuario: userId });
+      if (error) throw new Error("No se pudieron cerrar las sesiones. Comprueba la migración acceso-app.sql.");
+    },
     ahora: () => new Date(),
     nuevoId: () => randomUUID(),
     plan: async () => {
@@ -172,7 +171,15 @@ function depsDe(salonSlug: string): DepsAccesos {
 export const listarMiembros = createServerFn({ method: "GET" })
   .middleware([conSesion])
   .inputValidator(z.object({ slug }))
-  .handler(async ({ data }) => listarAccesos(await accesoReal(data.slug), depsDe(data.slug)));
+  .handler(async ({ data }) => {
+    const lista = await listarAccesos(await accesoReal(data.slug), depsDe(data.slug));
+    const sb = getSupabaseServerClient()!;
+    const miembros = await Promise.all(lista.miembros.map(async m => {
+      const { data: u } = await sb.auth.admin.getUserById(m.userId);
+      return { ...m, ultimoAcceso: u.user?.last_sign_in_at ?? null };
+    }));
+    return { ...lista, miembros };
+  });
 
 export const invitarAlSalon = createServerFn({ method: "POST" })
   .middleware([conSesion])
@@ -289,3 +296,22 @@ export const reactivarMiembroDelSalon = createServerFn({ method: "POST" })
   .handler(async ({ data }) =>
     reactivarMiembro(await accesoReal(data.slug), data.userId, depsDe(data.slug)),
   );
+
+export const cerrarSesionesDelMiembro = createServerFn({ method: "POST" })
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug, userId: z.string().uuid() }))
+  .handler(async ({ data }) => cerrarSesionesMiembro(await accesoReal(data.slug), data.userId, depsDe(data.slug)));
+
+/** El código del correo también permite aceptar la invitación, sin abrir el enlace. */
+export const aceptarMisInvitaciones = createServerFn({ method: "POST" })
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug }))
+  .handler(async ({ data }) => {
+    const userId = await usuarioDeLaPeticion();
+    if (!userId) return;
+    const deps = depsDe(data.slug);
+    const correo = (await deps.correoDe(userId))?.toLowerCase();
+    if (!correo) return;
+    const pendientes = (await deps.invitaciones()).filter(i => i.email === correo && !i.revocada && !i.aceptadaEn && Date.parse(i.caduca) > Date.now());
+    for (const i of pendientes) await aceptarInvitacion(userId, i.id, deps);
+  });

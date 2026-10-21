@@ -1,3 +1,6 @@
+export function tokenConSesion(alias: string): string {
+  return `prueba.${Buffer.from(JSON.stringify({ session_id: alias })).toString("base64url")}.firma`;
+}
 /**
  * Doble de Supabase para las pruebas de las funciones de servidor REALES.
  * Solo en memoria: no abre red ni toca ningún proyecto. Soporta lo justo:
@@ -16,6 +19,15 @@ export function crearDobleSupabase(
     errorDespuesDe?: Record<string, { lectura: number; mensaje: string }>;
   } = {},
 ) {
+  const sesiones = new Map(Object.entries(opciones.tokens ?? {}).map(([alias, usuario]) => [alias, usuario]));
+  const rpc = async (nombre: string, args: { usuario: string; sesion?: string }) => {
+    if (nombre === "cerrar_sesiones_usuario") {
+      for (const [id, usuario] of sesiones) if (usuario === args.usuario) sesiones.delete(id);
+      return { data: null, error: null };
+    }
+    if (nombre === "sesion_usuario_vigente") return { data: sesiones.get(args.sesion ?? "") === args.usuario, error: null };
+    return { data: null, error: { message: "RPC no implementada" } };
+  };
   const escrituras: Escritura[] = [];
   const consultas: Array<{ tabla: string; filtros: Array<[string, unknown]>; or?: string[] }> = [];
   const lecturas: Record<string, number> = {};
@@ -85,9 +97,10 @@ export function crearDobleSupabase(
   };
   const auth = {
     getUser: async (token: string) => {
-      const id = opciones.tokens?.[token];
+      const alias = Object.keys(opciones.tokens ?? {}).find(a => tokenConSesion(a) === token);
+      const id = opciones.tokens?.[alias ?? token];
       return id ? { data: { user: { id } }, error: null } : { data: { user: null }, error: { message: "invalid" } };
     },
   };
-  return { from, auth, escrituras, consultas, tablas };
+  return { from, auth, rpc, escrituras, consultas, tablas };
 }

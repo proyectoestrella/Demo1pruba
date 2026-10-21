@@ -60,12 +60,9 @@ export const listarConexionesCalendario = createServerFn({ method: "GET" })
   .middleware([conSesion])
   .inputValidator(z.object({ slug }))
   .handler(async ({ data }) => {
-    await accesoRealMiembro(data.slug);
-    // Leer el estado no exige `calendario-externo.gestionar`: cualquiera que
-    // entre al panel puede VER si hay un calendario conectado (es
-    // informativo, como el resto de Ajustes). Lo que se recorta con el
-    // permiso es poder TOCAR una conexión, no verla.
-    return listarConexiones(data.slug);
+    const acceso = await accesoRealMiembro(data.slug);
+    const conexiones = await listarConexiones(data.slug);
+    return conexiones.filter(c => tienePermiso(acceso, "calendario-externo.gestionar", c.employeeId));
   });
 
 export const iniciarConexionGoogle = createServerFn({ method: "POST" })

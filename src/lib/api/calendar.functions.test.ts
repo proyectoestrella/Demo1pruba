@@ -5,7 +5,7 @@
  * entera; solo se sustituyen la base de datos y la cabecera de la petición.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
-import { crearDobleSupabase } from "./doble-supabase";
+import { crearDobleSupabase, tokenConSesion } from "./doble-supabase";
 import { instalarDobleStart, llamar, mockTransitorio } from "./doble-start";
 
 let cabecera: string | null = null;
@@ -52,20 +52,20 @@ describe("getCalendarSubscription", () => {
     await expect(llamar(getCalendarSubscription, { slug: "salon-a" })).rejects.toThrow(/No tienes acceso/);
   });
   it("usuario de OTRO salón: denegado y nunca ve el token ajeno", async () => {
-    cabecera = "Bearer tk-bruno";
+    cabecera = `Bearer ${tokenConSesion("tk-bruno")}`;
     await expect(llamar(getCalendarSubscription, { slug: "salon-a" })).rejects.toThrow(/No tienes acceso/);
   });
   it("rol insuficiente (estilista): sin permiso salon.editar", async () => {
-    cabecera = "Bearer tk-eva";
+    cabecera = `Bearer ${tokenConSesion("tk-eva")}`;
     await expect(llamar(getCalendarSubscription, { slug: "salon-a" })).rejects.toThrow(/no permite hacer esto/);
   });
   it("entrada inválida: slug vacío o demasiado largo", async () => {
-    cabecera = "Bearer tk-ana";
+    cabecera = `Bearer ${tokenConSesion("tk-ana")}`;
     await expect(llamar(getCalendarSubscription, { slug: "" })).rejects.toThrow();
     await expect(llamar(getCalendarSubscription, { slug: "x".repeat(121) })).rejects.toThrow();
   });
   it("la gerente de su salón recibe SU token y la consulta va filtrada por su slug", async () => {
-    cabecera = "Bearer tk-ana";
+    cabecera = `Bearer ${tokenConSesion("tk-ana")}`;
     expect(await llamar(getCalendarSubscription, { slug: "salon-a" })).toEqual({ token: TOKEN_A });
     const c = doble.consultas.find((q) => q.tabla === "calendar_subscriptions")!;
     expect(c.filtros).toEqual([["salon_slug", "salon-a"]]);
@@ -75,7 +75,7 @@ describe("getCalendarSubscription", () => {
       { salons: [{ slug: "salon-a" }], salon_members: [{ user_id: "ana", salon_slug: "salon-a", rol: "gerente", estado: "activa" }], calendar_subscriptions: [{ salon_slug: "salon-b", token: TOKEN_B }] },
       { tokens: { "tk-ana": "ana" }, errorEn: { calendar_subscriptions: "boom" } },
     );
-    cabecera = "Bearer tk-ana";
+    cabecera = `Bearer ${tokenConSesion("tk-ana")}`;
     const e = await llamar(getCalendarSubscription, { slug: "salon-a" }).catch((x) => x as Error);
     expect(String((e as Error).message)).not.toContain(TOKEN_B);
   });
@@ -83,14 +83,14 @@ describe("getCalendarSubscription", () => {
 
 describe("regenerateCalendarSubscription", () => {
   it("sin sesión, otro salón o rol insuficiente: no escribe nada", async () => {
-    for (const c of [null, "Bearer tk-bruno", "Bearer tk-eva"]) {
+    for (const c of [null, `Bearer ${tokenConSesion("tk-bruno")}`, `Bearer ${tokenConSesion("tk-eva")}`]) {
       cabecera = c;
       await expect(llamar(regenerateCalendarSubscription, { slug: "salon-a" })).rejects.toThrow();
     }
     expect(doble.escrituras).toHaveLength(0);
   });
   it("la gerente regenera un token nuevo de 43 caracteres solo para su salón", async () => {
-    cabecera = "Bearer tk-ana";
+    cabecera = `Bearer ${tokenConSesion("tk-ana")}`;
     const r = await llamar<{ token: string }>(regenerateCalendarSubscription, { slug: "salon-a" });
     expect(r.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(doble.escrituras).toHaveLength(1);

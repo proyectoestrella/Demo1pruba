@@ -1,6 +1,6 @@
 /** M3 (auditoría independiente 18-oct-2026): el plan y los flags de plan no los cambia el navegador. */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
-import { crearDobleSupabase } from "./doble-supabase";
+import { crearDobleSupabase, tokenConSesion } from "./doble-supabase";
 import { instalarDobleStart, llamar, mockTransitorio } from "./doble-start";
 
 let cabecera: string | null = null;
@@ -17,7 +17,7 @@ const S = await import("./salons.functions?doble");
 
 const perfilBase = () => ({ name: "Salón", plan: "reservas", phone: "600" });
 beforeEach(() => {
-  cabecera = "Bearer tk-ana";
+  cabecera = `Bearer ${tokenConSesion("tk-ana")}`;
   doble = crearDobleSupabase(
     {
       salons: [{ slug: "real", profile: perfilBase() }],

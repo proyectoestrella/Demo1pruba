@@ -121,3 +121,12 @@ describe("guardas de escritura por rol", () => {
     expect(() => exigirAcciones({ tipo: "demo" }, ["datos.borrar", "web.publicar"])).not.toThrow();
   });
 });
+
+it("un destino nulo no convierte alcance propio en permiso general", () => {
+  const estilista: Acceso = { tipo: "miembro", userId: "sara", rol: "estilista", employeeId: "sara", displayName: null };
+  for (const destino of [null, undefined, "otra"]) {
+    expect(() => exigirAcciones(estilista, ["calendario-externo.gestionar"], [destino])).toThrow();
+    expect(() => exigirAcciones(estilista, ["cita.editar"], [destino])).toThrow();
+  }
+  expect(() => exigirAcciones(estilista, ["calendario-externo.gestionar"], ["sara"])).not.toThrow();
+});

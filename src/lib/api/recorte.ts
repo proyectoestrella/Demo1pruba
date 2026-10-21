@@ -78,12 +78,24 @@ export function recortarDatosPanel(acceso: Acceso, d: DatosPanel): DatosPanel {
   const mia = acceso.tipo === "miembro" ? acceso.employeeId : null;
 
   const verTodas = tienePermiso(acceso, "cita.ver-todas");
-  const citas = verTodas
+  let citas = verTodas
     ? d.appointments
     : d.appointments
         // Las ajenas canceladas no ocupan nada: ni siquiera se mandan como bloque.
         .filter((a) => a.employeeId === mia || a.status !== "cancelled")
         .map((a) => (mia && a.employeeId === mia ? a : comoBloqueOcupado(a)));
+
+  // Ver la agenda completa no concede los ingresos de las demás profesionales.
+  if (acceso.tipo === "miembro" && acceso.rol === "estilista") {
+    citas = citas.map(a => {
+      if (mia && a.employeeId === mia) return a;
+      const copia = { ...a, priceEur: 0 };
+      for (const key of Object.keys(copia)) {
+        if (key.startsWith("deposit") || key === "paidAt" || key === "paymentMethod") delete (copia as unknown as Record<string, unknown>)[key];
+      }
+      return copia;
+    });
+  }
 
   const clientas = tienePermiso(acceso, "clienta.ver-todas")
     ? d.clients
