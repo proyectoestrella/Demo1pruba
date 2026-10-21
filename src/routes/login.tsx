@@ -121,20 +121,29 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
+  // Código aceptado: la sesión ya existe y solo falta cruzar al panel. Mientras
+  // tanto la pantalla no se toca (ni formulario, ni error) para que no parpadee.
+  const [entrando, setEntrando] = useState(false);
 
   // Ya hay sesión: no tiene sentido volver a pedirla. Al panel.
   useEffect(() => {
     if (!sesionDe || !slug) return;
     let vivo = true;
+    setEntrando(true);
     aceptarMisInvitaciones({ data: { slug } })
       .then(() => accesoAlPanel({ data: { slug } }))
       .then((r) => {
         if (!vivo) return;
         if (r.permitido) window.location.replace(`/app?s=${encodeURIComponent(slug)}`);
-        else setSinAcceso(true);
+        else {
+          setEntrando(false);
+          setSinAcceso(true);
+        }
       })
       .catch(() => {
-        if (vivo) setError("No se pudo comprobar tu acceso. Vuelve a intentarlo.");
+        if (!vivo) return;
+        setEntrando(false);
+        setError("No se pudo comprobar tu acceso. Vuelve a intentarlo.");
       });
     return () => {
       vivo = false;
@@ -142,12 +151,18 @@ function LoginPage() {
   }, [sesionDe, slug]);
 
   const comprobarCodigo = async (valor: string) => {
-    if (verificando.current || valor.length < CODIGO_MIN) return;
+    if (verificando.current || entrando || valor.length < CODIGO_MIN) return;
     verificando.current = true;
     setEnviando(true);
     setError("");
     const r = await verificarCodigo(email, valor);
-    if (!r.ok) setError(r.motivo);
+    if (r.ok) {
+      // Se queda "Entrando…" y el bloqueo puesto: la redirección la hace el
+      // efecto de la sesión, una sola vez.
+      setEntrando(true);
+      return;
+    }
+    setError(r.motivo);
     setEnviando(false);
     verificando.current = false;
   };
@@ -204,9 +219,9 @@ function LoginPage() {
         </div>
       </header>
 
-      <main className="mx-auto flex min-h-[calc(100vh-73px)] max-w-[calc(28rem+2*var(--gutter))] flex-col justify-center gutter-x py-12">
-        <div className="rounded-2xl border border-border bg-card relleno-tarjeta shadow-sm sm:p-8">
-          <div className="mb-6 flex items-center gap-3">
+      <main className="mx-auto flex min-h-[calc(100vh-73px)] max-w-[calc(28rem+2*var(--gutter))] flex-col justify-center gutter-x py-6 sm:py-12">
+        <div className="rounded-2xl border border-border bg-card relleno-tarjeta shadow-sm">
+          <div className="mb-5 flex items-center gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Lock className="h-4 w-4" />
             </div>
@@ -280,7 +295,7 @@ function LoginPage() {
                   autoFocus
                   className="h-16 text-center text-3xl tracking-[0.25em]"
                   value={codigo}
-                  disabled={enviando}
+                  disabled={enviando || entrando}
                   onChange={(e) => {
                     const valor = e.target.value.replace(/\D/g, "").slice(0, CODIGO_MAX);
                     setCodigo(valor);
@@ -292,13 +307,18 @@ function LoginPage() {
                     {error}
                   </p>
                 )}
-                <Button type="submit" disabled={enviando || codigo.length < CODIGO_MIN}>
-                  {enviando ? "Comprobando…" : "Entrar"}
+                <Button
+                  type="submit"
+                  disabled={enviando || entrando || codigo.length < CODIGO_MIN}
+                  aria-busy={enviando || entrando}
+                >
+                  {(enviando || entrando) && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {entrando ? "Entrando…" : enviando ? "Comprobando…" : "Entrar"}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={enviando}
+                  disabled={enviando || entrando}
                   onClick={() => void onSubmit()}
                 >
                   Enviar otro
@@ -308,6 +328,7 @@ function LoginPage() {
                 type="button"
                 variant="outline"
                 className="w-full rounded-lg"
+                disabled={entrando}
                 onClick={() => {
                   setEnviado(false);
                   setError("");

@@ -56,12 +56,12 @@ describe("plan del salón (lote 13)", () => {
     expect(planDe({ plan: "reservas" }, true)).toBe("reservas");
     expect(planDe({ plan: "raro" }, false)).toBe("reservas");
   });
-  test("Básico y Estándar admiten seis; Embajador conserva el máximo técnico de seis", () => {
-    expect(LIMITE_PROFESIONALES).toEqual({ reservas: 6, "reservas-asistente": 6, "todo-incluido": 6 });
+  test("Básico admite tres; Estándar y Embajador, el máximo técnico de seis", () => {
+    expect(LIMITE_PROFESIONALES).toEqual({ reservas: 3, "reservas-asistente": 6, "todo-incluido": 6 });
     expect(equipoCabeEnPlan("reservas", ["María", "Sara", "Noelia"])).toBe(true);
-    expect(equipoCabeEnPlan("reservas", ["María", "Sara", "Noelia", "Cuarta"])).toBe(true);
-    expect(equipoCabeEnPlan("reservas", ["1", "2", "3", "4", "5", "6"])).toBe(true);
-    expect(equipoCabeEnPlan("reservas", ["1", "2", "3", "4", "5", "6", "7"])).toBe(false);
+    expect(equipoCabeEnPlan("reservas", ["María", "Sara", "Noelia", "Cuarta"])).toBe(false);
+    expect(equipoCabeEnPlan("reservas", ["1", "2", "3", "4", "5", "6"])).toBe(false);
+    expect(equipoCabeEnPlan("reservas", ["1", "2", "3", " "])).toBe(true);
     expect(equipoCabeEnPlan("reservas-asistente", ["1", "2", "3", "4", "5", "6"])).toBe(true);
     expect(equipoCabeEnPlan("reservas-asistente", ["1", "2", "3", "4", "5", "6", "7"])).toBe(false);
     expect(equipoCabeEnPlan("reservas", [" ", "María~Color"])).toBe(true);
@@ -72,13 +72,13 @@ import { MAX_PROFESIONALES, planParaProfesionales } from "./plan";
 import { moduloVisible, moduloVisibleEnPanel } from "./demo-profile";
 
 describe("profesionales por plan (tabla del 2-oct)", () => {
-  test("Básico 6, Estándar 6, Embajador sin límite", () => {
-    expect(MAX_PROFESIONALES).toEqual({ reservas: 6, "reservas-asistente": 6, "todo-incluido": null });
+  test("Básico 3, Estándar 6, Embajador sin límite", () => {
+    expect(MAX_PROFESIONALES).toEqual({ reservas: 3, "reservas-asistente": 6, "todo-incluido": null });
   });
   test("el plan más barato para n profesionales", () => {
     expect(planParaProfesionales(3)).toBe("reservas");
-    expect(planParaProfesionales(4)).toBe("reservas");
-    expect(planParaProfesionales(6)).toBe("reservas");
+    expect(planParaProfesionales(4)).toBe("reservas-asistente");
+    expect(planParaProfesionales(6)).toBe("reservas-asistente");
     expect(planParaProfesionales(7)).toBe("todo-incluido");
   });
 });

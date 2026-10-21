@@ -57,8 +57,11 @@ test.describe("Panel demo", () => {
       page,
       audit,
       "/app/employees",
-      page.getByRole("button", { name: "Añadir profesional" }),
+      page.getByText(/incluye hasta 3 profesionales/),
     );
+    // Con 3 en el plan Básico: ni botón para añadir ni oferta de otro plan.
+    await expect(page.getByRole("button", { name: "Añadir profesional" })).toHaveCount(0);
+    await expect(page.getByText(/Disponible en plan/)).toHaveCount(0);
     await audit.revisar("panel-equipo");
   });
 

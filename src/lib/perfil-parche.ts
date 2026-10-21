@@ -17,6 +17,31 @@
  * se toca. `undefined` cuenta como «no tocar» (así viaja por JSON de todas
  * formas), y `null` como «vaciar a propósito».
  */
+/**
+ * Campos opcionales de Mi página que el dueño puede vaciar. `undefined` no
+ * viaja por JSON y `fusionarPerfil` lo ignora, así que para BORRAR uno de
+ * estos en el servidor el cliente manda `null` (`aParcheServidor`) y la
+ * fusión quita la clave: la web pública vuelve a su valor por defecto en vez
+ * de quedarse con lo que se creía borrado.
+ */
+export const CLAVES_BORRABLES = [
+  "whatsapp",
+  "enlaces",
+  "boletin",
+  "galeriaPropia",
+  "descripcionesServicios",
+  "nifResponsable",
+] as const;
+
+/** El parche tal y como debe viajar: lo vaciado (`undefined`) pasa a `null` en las claves borrables. */
+export function aParcheServidor(parche: Record<string, unknown>): Record<string, unknown> {
+  const salida: Record<string, unknown> = { ...parche };
+  for (const k of CLAVES_BORRABLES) {
+    if (k in salida && salida[k] === undefined) salida[k] = null;
+  }
+  return salida;
+}
+
 export function fusionarPerfil(
   servidor: Record<string, unknown>,
   parche: Record<string, unknown>,
@@ -24,6 +49,10 @@ export function fusionarPerfil(
   const salida = { ...servidor };
   for (const [clave, valor] of Object.entries(parche)) {
     if (valor === undefined) continue;
+    if (valor === null && (CLAVES_BORRABLES as readonly string[]).includes(clave)) {
+      delete salida[clave];
+      continue;
+    }
     salida[clave] = valor;
   }
   return salida;
