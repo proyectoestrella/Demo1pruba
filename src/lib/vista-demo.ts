@@ -10,7 +10,12 @@ import type { PlanSishow } from "./plan";
 export type VistaDemo = "cliente" | "prospecto";
 
 /** Demos con vista de cliente, y el plan que contrata ese cliente. */
-export const PLAN_DEL_CLIENTE_DE_DEMO: Record<string, PlanSishow> = { peluchic: "reservas-asistente" };
+/**
+ * PeluChic contrató el plan Básico anual (contrato del 28-sep, Anexo I):
+ * sin asistente, sin caja ni analítica avanzada. Antes aquí ponía Estándar y
+ * a María le salían Caja y el asistente como si fueran suyos (21-oct).
+ */
+export const PLAN_DEL_CLIENTE_DE_DEMO: Record<string, PlanSishow> = { peluchic: "reservas" };
 
 export const CLAVE_VISTA_DEMO = "sishow-vista-demo-v1";
 

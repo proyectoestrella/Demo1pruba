@@ -64,17 +64,18 @@ export function VerComo({ className, apilado = false }: { className?: string; ap
           </option>
         ))}
       </select>}
-      {tieneVistaCliente(slug) && (
+      {/* La vuelta a la vista de venta solo existe desde la vista de prospecto
+          (`?prospecto=1`): la dueña nunca ve un botón que hable de selectores. */}
+      {tieneVistaCliente(slug) && !esVistaCliente(slug, vista) && (
         <button
           type="button"
           onClick={() => {
-            const siguiente = esVistaCliente(slug, vista) ? "prospecto" : "cliente";
-            fijarVista(slug, siguiente);
-            if (siguiente === "cliente") cambiarPlan(PLAN_DEL_CLIENTE_DE_DEMO[slug]);
+            fijarVista(slug, "cliente");
+            cambiarPlan(PLAN_DEL_CLIENTE_DE_DEMO[slug]);
           }}
-          className={cn("shrink-0 rounded-full px-2 text-[12px] font-bold underline underline-offset-2 hover:bg-salvia-clara", apilado && "self-start px-0 text-left")}
+          className="shrink-0 rounded-full px-2 text-[12px] font-bold underline underline-offset-2 hover:bg-salvia-clara"
         >
-          {esVistaCliente(slug, vista) ? "Vista de prospecto (con selector)" : "Vista del salón"}
+          Vista del salón
         </button>
       )}
     </label>
