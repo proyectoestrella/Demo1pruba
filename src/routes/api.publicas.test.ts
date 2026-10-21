@@ -90,14 +90,16 @@ describe("webhook Google: token del canal", () => {
 describe("/api/calendario (feed ICS por token)", () => {
   const TA = "A".repeat(43), TB = "B".repeat(43);
   const perfil = { name: "Salón A", tagline: "peluquería", menu: [] };
+  // Fechas relativas: con fechas fijas el test caducaba al pasar el día (ventana del feed = desde ahora).
+  const enDias = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
   beforeEach(() => {
     doble = crearDobleSupabase({
       calendar_subscriptions: [{ salon_slug: "a", token: TA }, { salon_slug: "b", token: TB }],
       salons: [{ slug: "a", profile: perfil }, { slug: "b", profile: { ...perfil, name: "Salón B" } }],
       appointments: [
-        { id: "1", local_id: "l1", salon_slug: "a", client_name: "Clienta de A", service_id: "", employee_id: "e", start_at: "2026-10-20T09:00:00Z", duration_min: 30, status: "confirmed" },
-        { id: "2", local_id: "l2", salon_slug: "b", client_name: "Clienta de B", service_id: "", employee_id: "e", start_at: "2026-10-20T09:00:00Z", duration_min: 30, status: "confirmed" },
-        { id: "3", local_id: "l3", salon_slug: "a", client_name: "Cancelada de A", service_id: "", employee_id: "e", start_at: "2026-10-21T09:00:00Z", duration_min: 30, status: "cancelled" },
+        { id: "1", local_id: "l1", salon_slug: "a", client_name: "Clienta de A", service_id: "", employee_id: "e", start_at: enDias(1), duration_min: 30, status: "confirmed" },
+        { id: "2", local_id: "l2", salon_slug: "b", client_name: "Clienta de B", service_id: "", employee_id: "e", start_at: enDias(1), duration_min: 30, status: "confirmed" },
+        { id: "3", local_id: "l3", salon_slug: "a", client_name: "Cancelada de A", service_id: "", employee_id: "e", start_at: enDias(2), duration_min: 30, status: "cancelled" },
         { id: "4", local_id: "historica", salon_slug: "a", client_name: "Clienta histórica", service_id: "", employee_id: "e", start_at: "2000-01-01T09:00:00Z", duration_min: 30, status: "confirmed" },
         { id: "5", local_id: "lejana", salon_slug: "a", client_name: "Clienta lejana", service_id: "", employee_id: "e", start_at: "2099-01-01T09:00:00Z", duration_min: 30, status: "confirmed" },
       ],
