@@ -502,7 +502,17 @@ function SalonLayout() {
         </div>
         <div className="border-t border-lino">
           <div className={cn(CONTENEDOR_SALON, "flex flex-col gap-1 py-4 text-[13px] text-cafe-suave sm:flex-row sm:items-center sm:justify-between")}>
-            <p>© {profile.name} · Reservas con siShow</p>
+            <p>
+              © {profile.name} ·{" "}
+              <a
+                href="https://sishow.es"
+                target="_blank"
+                rel="noopener"
+                className="underline-offset-2 hover:text-foreground hover:underline"
+              >
+                Reservas con siShow
+              </a>
+            </p>
             <Link
               to="/s/$salonSlug/privacidad"
               params={{ salonSlug }}

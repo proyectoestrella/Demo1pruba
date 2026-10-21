@@ -325,6 +325,16 @@ function Confirmation() {
           </Link>
         </Button>
       </div>
+      <p className="mt-6 text-center text-xs text-muted-foreground">
+        <a
+          href="https://sishow.es"
+          target="_blank"
+          rel="noopener"
+          className="underline-offset-2 hover:text-foreground hover:underline"
+        >
+          Powered by siShow.es
+        </a>
+      </p>
     </section>
   );
 }
