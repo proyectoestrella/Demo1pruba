@@ -118,3 +118,35 @@ describe("guardarCambio de un deshacer", () => {
     expect(doble.tablas.cambios.some((c) => c.id === "deshacer-0001")).toBe(true);
   });
 });
+
+describe("autorizarDeshacer relee la entidad en el servidor", () => {
+  beforeEach(() => {
+    doble.tablas.appointments = [{ id: "uuid-1", salon_slug: "s", local_id: "cita-1", client_id: null, client_name: "Lucía", service_id: "corte", employee_id: "noelia", start_at: "2026-11-03T08:00:00.000Z", duration_min: 30, price_eur: 20, status: "cancelled", note: null }];
+    doble.tablas.clients = [{ id: "5f0a3d2e-1111-4222-8333-444455556666", salon_slug: "s", name: "Ana", phone: "600111222", phone_key: "600111222", email: null, notes: "n", created_at: ahora() }];
+  });
+  it("devuelve la cita tal como está en el servidor (aunque este navegador no la tenga cargada)", async () => {
+    como("noelia");
+    const r = await llamar<{ ok: boolean; servidor?: { existe: boolean; valor: { status: string; id: string } } }>(cambios.autorizarDeshacer, { slug: "s", cambioId: "cambio-de-noelia" });
+    expect(r.ok).toBe(true);
+    expect(r.servidor?.existe).toBe(true);
+    expect(r.servidor?.valor).toMatchObject({ id: "cita-1", status: "cancelled" });
+  });
+  it("una cita borrada en el servidor sale como inexistente", async () => {
+    como("noelia");
+    doble.tablas.appointments = [];
+    const r = await llamar<{ servidor?: { existe: boolean } }>(cambios.autorizarDeshacer, { slug: "s", cambioId: "cambio-de-noelia" });
+    expect(r.servidor?.existe).toBe(false);
+  });
+  it("una ficha se localiza por su id de servidor", async () => {
+    como("gerente");
+    doble.tablas.cambios.push(fila("cambio-ficha", "gerente", { tipo: "clienta.editar", entidad: "clienta", id_entidad: "5f0a3d2e-1111-4222-8333-444455556666", antes: { notes: "a" }, despues: { notes: "n" } }));
+    const r = await llamar<{ servidor?: { existe: boolean; valor: { name: string; notes: string } } }>(cambios.autorizarDeshacer, { slug: "s", cambioId: "cambio-ficha" });
+    expect(r.servidor?.valor).toMatchObject({ name: "Ana", notes: "n" });
+  });
+  it("sin tabla de apoyo no se rompe: simplemente no hay comprobación del servidor", async () => {
+    como("noelia");
+    delete doble.tablas.appointments;
+    const r = await llamar<{ ok: boolean }>(cambios.autorizarDeshacer, { slug: "s", cambioId: "cambio-de-noelia" });
+    expect(r.ok).toBe(true);
+  });
+});

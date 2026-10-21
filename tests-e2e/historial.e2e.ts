@@ -56,4 +56,60 @@ test.describe("Historial de cambios (demo)", () => {
     expect(audit.bloqueos, "El historial de la demo no escribe en remoto").toEqual([]);
     void antes;
   });
+
+  test("ficha: nombre y correo editables, con su historial y su deshacer", async ({ page, audit }) => {
+    await entrarAlPanel(page, audit);
+    await cerrarVisita(page);
+    await audit.abrir("/app/clients", page.getByText(/\d+ clientas/));
+    await cerrarVisita(page);
+    await page
+      .locator("tbody tr:visible, button:visible")
+      .filter({ hasText: /\d+ visitas?|\+34/ })
+      .first()
+      .click();
+    const datos = page.getByTestId("datos-ficha");
+    await expect(datos).toBeVisible();
+    const correo = datos.getByLabel("Correo");
+    const antes = await correo.inputValue();
+    await correo.fill("prueba-historial@example.com");
+    await correo.blur();
+    await expect(page.getByText(/Editada la ficha de/).first()).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await page.getByTestId("abrir-historial").filter({ visible: true }).first().click();
+    const fila = page.getByTestId("fila-cambio").filter({ hasText: /Editada la ficha de/ }).first();
+    await expect(fila).toBeVisible();
+    await fila.getByRole("button", { name: "Deshacer", exact: true }).click();
+    await fila.getByTestId("confirmar-deshacer-si").click();
+    await expect(fila.getByText("Deshecho", { exact: true })).toBeVisible();
+    expect(audit.bloqueos, "El historial de la demo no escribe en remoto").toEqual([]);
+    void antes;
+  });
+
+  test("nueva cita con clienta nueva: quedan en el historial y deshacer la cita la quita", async ({ page, audit }) => {
+    await entrarAlPanel(page, audit);
+    await cerrarVisita(page);
+    await page.getByRole("button", { name: /^Nueva cita$/ }).first().click();
+    const dialogo = page.getByRole("dialog");
+    await expect(dialogo).toBeVisible();
+    await dialogo.getByLabel("Nombre de la clienta nueva").fill("Prueba Historial");
+    await dialogo.getByLabel("Teléfono de la clienta nueva").fill("600123456");
+    await dialogo.getByRole("button", { name: "Continuar" }).click();
+    // Servicio: el primero de la carta.
+    await dialogo.locator("section[aria-label='Servicios'] button[aria-pressed]").first().click();
+    await dialogo.getByRole("button", { name: "Continuar" }).click();
+    await dialogo.getByRole("button", { name: "Revisar cita" }).click();
+    await dialogo.locator("button[type=submit]").click();
+    await expect(dialogo).toBeHidden();
+    await expect(page.getByText(/Cita de Prueba guardada/).first()).toBeVisible();
+
+    await page.getByTestId("abrir-historial").filter({ visible: true }).first().click();
+    await expect(page.getByTestId("fila-cambio").filter({ hasText: /Creada la ficha de Prueba Historial/ }).first()).toBeVisible();
+    const fila = page.getByTestId("fila-cambio").filter({ hasText: /Cita de Prueba guardada/ }).first();
+    await expect(fila).toBeVisible();
+    await fila.getByRole("button", { name: "Deshacer", exact: true }).click();
+    await fila.getByTestId("confirmar-deshacer-si").click();
+    await expect(fila.getByText("Deshecho", { exact: true })).toBeVisible();
+    expect(audit.bloqueos, "El historial de la demo no escribe en remoto").toEqual([]);
+  });
 });

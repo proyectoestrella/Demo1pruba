@@ -86,6 +86,18 @@ export function tipoCambioClienta(accion: string, args: unknown[], antes: Partia
   return "recargo.aplicar";
 }
 
+/** «Cita de Ana guardada · vie 10:00» / «Borrada la cita de Ana (vie 10:00)». */
+export function resumenAltaBajaCita(tipo: "cita.crear" | "cita.borrar", cita: Partial<Appointment>, timeZone: string): string {
+  const nombre = pila(cita.clientName);
+  const cuando = cuandoCorto(cita.start, timeZone);
+  return tipo === "cita.crear" ? `Cita de ${nombre} guardada${cuando ? ` · ${cuando}` : ""}` : `Borrada la cita de ${nombre}${cuando ? ` (${cuando})` : ""}`;
+}
+
+export function resumenAltaBajaClienta(tipo: "clienta.crear" | "clienta.borrar", c: Partial<Client>): string {
+  const nombre = c.name?.trim() || "una clienta";
+  return tipo === "clienta.crear" ? `Creada la ficha de ${nombre}` : `Borrada la ficha de ${nombre}`;
+}
+
 export function resumenClienta(tipo: TipoCambio, c: Partial<Client>): string {
   const nombre = c.name ?? "la clienta";
   if (tipo === "clienta.editar") return `Editada la ficha de ${nombre}`;
@@ -97,6 +109,7 @@ export function resumenClienta(tipo: TipoCambio, c: Partial<Client>): string {
 
 export function resumenServicio(tipo: TipoCambio, antes: Service | null, despues: Service | null): string {
   const n = (despues ?? antes)?.name ?? "un servicio";
+  if (tipo === "servicio.crear") return `Creado el servicio «${n}»`;
   return tipo === "servicio.borrar" ? `Borrado el servicio «${n}»` : `Cambiado el servicio «${n}»`;
 }
 
@@ -109,7 +122,12 @@ export function resumenPago(pago: Pago | null): string {
 }
 
 /** Acciones de la store que se envuelven y sobre qué entidad actúan (su primer argumento es el id). */
-export const ACCIONES_REGISTRADAS: Array<{ accion: string; entidad: EntidadCambio }> = [
+export const ACCIONES_REGISTRADAS: Array<{ accion: string; entidad: EntidadCambio; /** Alta: el id sale del resultado de la acción. */ crea?: true; /** Baja de una cita o ficha: se guarda entera para poder restaurarla. */ borra?: true }> = [
+  { accion: "addAppointment", entidad: "cita", crea: true },
+  { accion: "deleteAppointment", entidad: "cita", borra: true },
+  { accion: "addClient", entidad: "clienta", crea: true },
+  { accion: "deleteClient", entidad: "clienta", borra: true },
+  { accion: "addService", entidad: "servicio", crea: true },
   { accion: "updateAppointment", entidad: "cita" },
   { accion: "cancelAppointment", entidad: "cita" },
   { accion: "markPaid", entidad: "cita" },

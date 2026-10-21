@@ -16,7 +16,9 @@ import {
   SEGUNDOS_AVISO,
   textoClientaAvisada,
   textoMotivo,
+  conflictoConServidor,
   type Cambio,
+  type EntidadEnServidor,
   type EstadoDeshacer,
   type MotivoNoDeshacer,
   type TipoCambio,
@@ -249,6 +251,22 @@ export async function deshacerDesdeHistorial(cambioId: string, opciones: { forza
         }
         toast.error(textoMotivo(r.motivo));
         return false;
+      }
+      if (r.servidor) {
+        const c = useSalonStore.getState().cambios.find((x) => x.id === cambioId);
+        if (c) {
+          const servidor = r.servidor as EntidadEnServidor;
+          // Conflicto de verdad: lo guardado en el servidor ya no es lo que dejó este cambio.
+          if (!opciones.forzar && conflictoConServidor(c, servidor)) {
+            toast(textoMotivo("CAMBIADO"), {
+              duration: Infinity,
+              action: { label: "Deshacer igualmente", onClick: () => void deshacerDesdeHistorial(cambioId, { forzar: true }) },
+              cancel: { label: "Dejarlo así", onClick: () => undefined },
+            });
+            return false;
+          }
+          useSalonStore.getState().cargarEntidadDelServidor(c, servidor);
+        }
       }
     } catch (err) {
       console.warn("No se pudo consultar al servidor antes de deshacer:", err);

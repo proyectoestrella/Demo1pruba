@@ -32,6 +32,8 @@ const DEL_DUENO = [
   "clearClientPenalty",
   "saveClientNotes",
   "saveClient",
+  "editarFichaClienta",
+  "borrarFichaClienta",
   "syncAppointmentPatch",
   "listarVersiones",
   "restaurarVersion",

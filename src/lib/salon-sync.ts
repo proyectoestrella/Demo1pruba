@@ -22,6 +22,8 @@
  */
 import {
   applyClientPenalty,
+  borrarFichaClienta,
+  editarFichaClienta,
   clearClientPenalty,
   deleteAppointment as deleteAppointmentFn,
   deleteWaitlistEntry,
@@ -547,6 +549,29 @@ export function pushClient(slug: string | null, cliente: Client): Promise<void> 
     if (altasPendientes.get(clave) === pending) altasPendientes.delete(clave);
   });
   return pending;
+}
+
+/** Borra la ficha en el servidor (con `cambioId` si es deshacer un alta propia). */
+export function pushClientDeletion(slug: string | null, cliente: Client, cambioId?: string): Promise<void> {
+  if (!slug) return Promise.resolve();
+  return subir(`el borrado de la ficha de ${cliente.name}`, () =>
+    borrarFichaClienta({ data: { slug, clientId: cliente.id, phone: cliente.phone, ...(cambioId ? { cambioId } : {}) } }),
+  );
+}
+
+/** Sube lo editado a mano en la ficha (sobrescribe). Si el servidor no la tiene, la da de alta. */
+export function pushClientEdit(slug: string | null, previa: Client, actual: Client, patch: Partial<Client>): Promise<void> {
+  if (!slug) return Promise.resolve();
+  const campos: Record<string, string | null> = {};
+  for (const k of ["name", "phone", "email", "notes", "birthday", "address", "taxId"] as const) {
+    if (k in patch) campos[k] = (patch[k] as string | undefined) ?? null;
+  }
+  if (campos.name === null) delete campos.name;
+  if (campos.phone === null) campos.phone = "";
+  return subir(`la ficha de ${actual.name}`, async () => {
+    const r = await editarFichaClienta({ data: { slug, clientId: previa.id, phone: previa.phone, campos } as never });
+    if (r.synced === false && "reason" in r && r.reason === "sin-ficha") await pushClient(slug, actual);
+  });
 }
 
 /** Sube un cambio del historial (lote 9). La autora la pone el servidor. */
