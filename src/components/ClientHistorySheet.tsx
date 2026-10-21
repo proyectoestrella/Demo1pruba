@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { usaTpv123 } from "@/lib/plan-basico";
 import { fichaDeClienta } from "@/lib/ficha-clienta";
+import { DatosFichaClienta } from "@/components/DatosFichaClienta";
 import { EtiquetaFicha, FichaCompleta, type DatosColorTPV } from "@/components/FichaCompleta";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { Textarea } from "@/components/ui/textarea";
@@ -360,6 +361,7 @@ export function ClientHistorySheet({
         }}
         antesDelHistorial={
           <>
+            {puede(permisos, "clienta.editar") && <DatosFichaClienta client={client} />}
             {/* Observaciones */}
             <section className="mt-3 rounded-2xl bg-card px-4 pb-4 pt-1">
               <EtiquetaFicha id="notas-clienta">Notas y preferencias</EtiquetaFicha>

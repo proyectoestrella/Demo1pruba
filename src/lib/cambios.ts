@@ -26,6 +26,9 @@ export const TIPOS_CAMBIO = [
   // historial (igual que crear una cita o un servicio tampoco lo es), solo
   // borrarla — y eso sí se puede deshacer (recupera el pago).
   "pago.borrar",
+  // Altas y bajas de citas y fichas, y el alta de servicios: guardan la entidad
+  // entera (`{ cita: {...} | null }`) para poder borrarla o restaurarla.
+  "cita.crear", "cita.borrar", "clienta.crear", "clienta.borrar", "servicio.crear",
 ] as const;
 export type TipoCambio = (typeof TIPOS_CAMBIO)[number];
 
@@ -149,10 +152,65 @@ export function registrarCambio(p: {
   };
 }
 
+/** Cambios que guardan la entidad entera bajo `cita` o `clienta` (alta o baja). */
+export const TIPOS_FOTO_ENTIDAD = ["cita.crear", "cita.borrar", "clienta.crear", "clienta.borrar"] as const;
+export function esFotoDeEntidad(tipo: TipoCambio): boolean {
+  return (TIPOS_FOTO_ENTIDAD as readonly string[]).includes(tipo);
+}
+
+/**
+ * Los campos con los que se compara una cita o una ficha entera: los que una
+ * persona cambia a propósito. No se comparan marcas internas (updated_at,
+ * recordatorios…) que el servidor o la sincronización pueden tocar sin que
+ * nadie haya editado nada.
+ */
+const CAMPOS_FOTO: Record<"cita" | "clienta", string[]> = {
+  cita: ["clientName", "serviceIds", "employeeId", "start", "duration", "priceEur", "status", "paidAt", "note"],
+  clienta: ["name", "phone", "email", "notes", "birthday", "address", "taxId", "manualBlock", "penaltyEur"],
+};
+
+function mismaFoto(entidad: "cita" | "clienta", a: unknown, b: unknown): boolean {
+  if (!a || !b) return !a && !b;
+  const x = a as Record<string, unknown>;
+  const y = b as Record<string, unknown>;
+  return CAMPOS_FOTO[entidad].every((k) => mismoValor(x[k] === false ? undefined : x[k], y[k] === false ? undefined : y[k]));
+}
+
 /** ¿Siguen los campos del cambio valiendo lo que dejó el cambio? */
 export function sigueIgual(c: Cambio, actual: Record<string, unknown> | null | undefined): boolean {
   if (!actual) return false;
+  if (esFotoDeEntidad(c.tipo)) {
+    const entidad = c.entidad as "cita" | "clienta";
+    return mismaFoto(entidad, c.despues[entidad], actual[entidad]);
+  }
   return Object.entries(c.despues).every(([k, v]) => mismoValor(actual[k], v));
+}
+
+/**
+ * Lo que el servidor devuelve al releer la entidad de un cambio antes de
+ * deshacerlo. `valor` es la cita o ficha tal como está en el servidor (o,
+ * para un campo del perfil, `{ [clave]: valor }`); `null` si ya no existe.
+ */
+export interface EntidadEnServidor {
+  existe: boolean;
+  valor: Record<string, unknown> | null;
+}
+
+/** El estado del servidor con la forma que espera `sigueIgual`. */
+export function actualDesdeServidor(c: Pick<Cambio, "tipo" | "entidad">, s: EntidadEnServidor): Record<string, unknown> {
+  if (esFotoDeEntidad(c.tipo as TipoCambio)) return { [c.entidad]: s.existe ? s.valor : null };
+  return s.valor ?? {};
+}
+
+/**
+ * ¿Ha cambiado de verdad lo que este cambio dejó, mirando lo que hay en el
+ * SERVIDOR (no solo lo que este navegador tiene cargado)? Si el servidor no
+ * contesta o la entidad no es comprobable, no hay conflicto que afirmar.
+ */
+export function conflictoConServidor(c: Cambio, s: EntidadEnServidor | null | undefined): boolean {
+  if (!s) return false;
+  if (!esFotoDeEntidad(c.tipo) && !s.existe) return true;
+  return !sigueIgual(c, actualDesdeServidor(c, s));
 }
 
 /** El parche que deshace el cambio: los valores de antes. */
@@ -193,6 +251,12 @@ export function accionDe(tipo: TipoCambio): AccionId {
     "perfil.campo": "salon.editar",
     // Crear y borrar un pago manual son el mismo nivel de confianza.
     "pago.borrar": "dinero.crear",
+    "cita.crear": "cita.crear",
+    // Borrar una cita en el servidor exige poder cancelarla (deleteAppointment).
+    "cita.borrar": "cita.cancelar",
+    "clienta.crear": "clienta.crear",
+    "clienta.borrar": "clienta.borrar",
+    "servicio.crear": "servicio.editar",
   };
   return m[tipo];
 }
@@ -261,7 +325,7 @@ export function puedeDeshacer(c: Cambio, ctx: ContextoDeshacer): EstadoDeshacer 
     if (posteriores.some((x) => Object.keys(x.despues).some((k) => k in c.despues))) return { puede: false, motivo: "POSTERIORES" };
     if (!sigueIgual(c, ctx.actual)) return { puede: false, motivo: "CAMBIADO" };
   }
-  if (c.tipo === "cita.mover" && ctx.huecoLibre === false) return { puede: false, motivo: "SOLAPE" };
+  if ((c.tipo === "cita.mover" || c.tipo === "cita.borrar") && ctx.huecoLibre === false) return { puede: false, motivo: "SOLAPE" };
   return c.avisoEnviado ? { puede: true, aviso: "CLIENTA_AVISADA" } : { puede: true };
 }
 

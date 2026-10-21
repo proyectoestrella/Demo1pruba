@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it } from "bun:test";
-import { useSalonStore } from "./store";
+import { conRegistroEnPausa, useSalonStore } from "./store";
 import type { Appointment } from "./mock/types";
 
 function nuevaCita(p: Partial<Appointment> = {}): Appointment {
-  return useSalonStore.getState().addAppointment({
+  // El alta se hace en pausa: estos tests miran el cambio que viene DESPUÉS (el alta se prueba en alta-baja).
+  return conRegistroEnPausa(() => useSalonStore.getState().addAppointment({
     clientId: "c-deshacer", clientName: "Lucía Prueba", serviceIds: ["corte"], employeeId: "mario",
     start: "2026-10-06T08:00:00.000Z", duration: 30, priceEur: 20, status: "confirmed", ...p,
-  } as Omit<Appointment, "id">);
+  } as Omit<Appointment, "id">));
 }
 const cita = (id: string) => useSalonStore.getState().appointments.find((a) => a.id === id)!;
 const ultimo = () => useSalonStore.getState().cambios[0];

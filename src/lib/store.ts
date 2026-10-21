@@ -6,10 +6,10 @@ import { PERMISOS_DEMO, permisosDe, puede, type MiembroActual } from "./permisos
 import {
   accionesDeCambio, aplicarDeshacerEnLista, resumenCampoPerfil, cambioDeDeshacer, inverso, podar, puedeDeshacer,
   registrarCambio as registrarCambioPuro,
-  type Cambio, type ContextoDeshacer, type EntidadCambio, type EstadoDeshacer, type MotivoNoDeshacer, type TipoCambio,
+  type Cambio, type ContextoDeshacer, type EntidadCambio, type EntidadEnServidor, type EstadoDeshacer, type MotivoNoDeshacer, type TipoCambio,
 } from "./cambios";
 import {
-  ACCIONES_REGISTRADAS, ACCIONES_SIN_REGISTRO, CAMPOS_PERFIL_SIN_REGISTRO, resumenCita, resumenClienta, resumenPago, resumenServicio, tipoCambioCita, tipoCambioClienta,
+  ACCIONES_REGISTRADAS, ACCIONES_SIN_REGISTRO, CAMPOS_PERFIL_SIN_REGISTRO, resumenAltaBajaCita, resumenAltaBajaClienta, resumenCita, resumenClienta, resumenPago, resumenServicio, tipoCambioCita, tipoCambioClienta,
 } from "./registro-cambios";
 import type { PeriodoId, RangoPersonalizado } from "./periodos";
 import { persist, createJSONStorage } from "zustand/middleware";
@@ -85,6 +85,8 @@ import {
   pushAvisoEnviado,
   pushPago,
   pushPagoDeletion,
+  pushClientDeletion,
+  pushClientEdit,
   cargarPagosDeServidor,
   cerrarCajaEnServidor,
 } from "./salon-sync";
@@ -172,6 +174,8 @@ interface SalonState {
    * sesiones) para que «Deshacer» funcione sobre ellos. No los vuelve a subir.
    */
   fusionarCambiosRemotos: (remotos: Cambio[]) => void;
+  /** Mete en la store la cita o ficha que existe en el servidor pero este navegador aún no ha cargado, para poder deshacer sobre ella. */
+  cargarEntidadDelServidor: (c: Cambio, servidor: EntidadEnServidor) => void;
   /** Se mandó un WhatsApp a la clienta por este cambio (para avisar al deshacerlo). */
   marcarAvisoEnviado: (cambioId: string) => void;
   /**
@@ -526,6 +530,14 @@ export function conRegistroEnPausa<T>(fn: () => T): T {
   }
 }
 
+/** Campos de la ficha que una persona edita a mano además de las notas. */
+const CAMPOS_FICHA_EDITABLES = ["name", "phone", "email", "birthday", "address", "taxId"] as const;
+
+/** ¿Es la web pública de reservas (`/s/<salón>`)? Ahí quien actúa es una clienta, no el panel. */
+function enPaginaPublica(): boolean {
+  return typeof window !== "undefined" && /^\/s\//.test(window.location?.pathname ?? "");
+}
+
 export function nuevoIdCambio(): string {
   return globalThis.crypto?.randomUUID?.() ?? `cambio-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
@@ -540,6 +552,8 @@ function quitarVacios<T extends object>(o: T): T {
 
 /** Estado actual de la entidad de un cambio, con los campos con que se registró. */
 function estadoActualDe(st: SalonState, c: Cambio): Record<string, unknown> | null {
+  if (c.tipo === "cita.crear" || c.tipo === "cita.borrar") return { cita: st.appointments.find((a) => a.id === c.idEntidad) ?? null };
+  if (c.tipo === "clienta.crear" || c.tipo === "clienta.borrar") return { clienta: st.clients.find((x) => x.id === c.idEntidad) ?? null };
   if (c.entidad === "cita") return (st.appointments.find((a) => a.id === c.idEntidad) as unknown as Record<string, unknown>) ?? null;
   if (c.entidad === "clienta") return (st.clients.find((x) => x.id === c.idEntidad) as unknown as Record<string, unknown>) ?? null;
   if (c.entidad === "servicio") return { servicio: st.services.find((x) => x.id === c.idEntidad) ?? null };
@@ -555,7 +569,12 @@ function contextoDeshacer(st: SalonState, c: Cambio): ContextoDeshacer {
     const destino = { ...cita, ...sinNulos(c.antes) } as Appointment;
     huecoLibre = solapaConAgenda(st.appointments, { employeeId: destino.employeeId, start: destino.start, duration: destino.duration, excluirId: cita.id }).length === 0;
   }
-  const empleadas = [cita?.employeeId, c.antes.employeeId as string | undefined].filter(Boolean) as string[];
+  if (c.tipo === "cita.borrar") {
+    const previa = c.antes.cita as Appointment | null | undefined;
+    // Una cita cancelada no ocupa hueco; el resto necesita que siga libre.
+    huecoLibre = !previa || previa.status === "cancelled" || solapaConAgenda(st.appointments, { employeeId: previa.employeeId, start: previa.start, duration: previa.duration, excluirId: previa.id }).length === 0;
+  }
+  const empleadas = [cita?.employeeId ?? (c.antes.cita as Appointment | undefined)?.employeeId ?? (c.despues.cita as Appointment | undefined)?.employeeId, c.antes.employeeId as string | undefined].filter(Boolean) as string[];
   const puedeLaAccion = accionesDeCambio(c).every((accion) =>
     empleadas.length
       ? empleadas.every((e) => puede(permisos, accion, { employeeId: e, miEmployeeId: st.miembro?.employeeId ?? null }))
@@ -886,10 +905,17 @@ export const useSalonStore = create<SalonState>()(
         return client;
       },
       updateClient: (id, patch) => {
+        const previaFicha = get().clients.find((c) => c.id === id);
         set((s) => ({
           clients: s.clients.map((c) => (c.id === id ? { ...c, ...patch } : c)),
         }));
         const clienteActualizada = get().clients.find((c) => c.id === id);
+        // Nombre, teléfono, correo, cumpleaños… editados a mano (no las altas masivas, que
+        // van en pausa y solo completan): se sobrescribe la ficha del servidor, no se completa.
+        if (!registroEnPausa() && previaFicha && clienteActualizada && CAMPOS_FICHA_EDITABLES.some((campo) => campo in patch)) {
+          pushClientEdit(get().realSalonSlug, previaFicha, clienteActualizada, patch);
+          return;
+        }
         if ("notes" in patch) {
           pushClientNotes(
             get().realSalonSlug,
@@ -903,10 +929,14 @@ export const useSalonStore = create<SalonState>()(
           pushClient(get().realSalonSlug, clienteActualizada);
         }
       },
-      deleteClient: (id) =>
+      deleteClient: (id) => {
+        const ficha = get().clients.find((c) => c.id === id);
         set((s) => ({
           clients: s.clients.filter((c) => c.id !== id),
-        })),
+        }));
+        // Antes la ficha solo desaparecía de este navegador y volvía en el siguiente refresco.
+        if (ficha) pushClientDeletion(get().realSalonSlug, ficha);
+      },
 
       setManualBlock: (clientId, blocked) => {
         set((s) => ({
@@ -1162,6 +1192,14 @@ export const useSalonStore = create<SalonState>()(
         set((s) => ({ cambios: podar([c, ...s.cambios.filter((x) => x.id !== c.id)], new Date()) }));
         pushCambio(get().realSalonSlug, c);
       },
+      cargarEntidadDelServidor: (c, servidor) => {
+        if (!servidor.existe || !servidor.valor || c.tipo === "cita.borrar" || c.tipo === "clienta.borrar") return;
+        if (c.entidad === "cita" && !get().appointments.some((a) => a.id === c.idEntidad)) {
+          set((s) => ({ appointments: [...s.appointments, servidor.valor as unknown as Appointment] }));
+        } else if (c.entidad === "clienta" && servidor.valor.id === c.idEntidad && !get().clients.some((x) => x.id === c.idEntidad)) {
+          set((s) => ({ clients: [...s.clients, servidor.valor as unknown as Client] }));
+        }
+      },
       fusionarCambiosRemotos: (remotos) =>
         set((s) => {
           if (!remotos.length) return s;
@@ -1211,7 +1249,32 @@ export const useSalonStore = create<SalonState>()(
         if (!e.puede) return { ok: false, motivo: e.motivo };
         const parche = sinNulos(inverso(c));
         conRegistroEnPausa(() => {
-          if (c.entidad === "cita") {
+          if (c.tipo === "cita.crear") {
+            // Deshacer un alta = borrar la cita creada (el estado actual ya se comprobó igual).
+            set((s) => ({ appointments: s.appointments.filter((a) => a.id !== c.idEntidad) }));
+            pushAppointmentDeletion(get().realSalonSlug, c.idEntidad);
+          } else if (c.tipo === "cita.borrar") {
+            // Deshacer un borrado = restaurar la cita entera (el hueco ya se comprobó libre).
+            const previa = c.antes.cita as Appointment | undefined;
+            if (previa) {
+              set((s) => ({ appointments: s.appointments.some((a) => a.id === previa.id) ? s.appointments : [...s.appointments, previa] }));
+              const ahora = get();
+              pushAppointment(ahora.realSalonSlug, previa, clienteDeLaCita(ahora, previa), { origen: "deshacer" });
+            }
+          } else if (c.tipo === "clienta.crear") {
+            const antesDeBorrar = get().clients.find((x) => x.id === c.idEntidad);
+            set((s) => ({ clients: s.clients.filter((x) => x.id !== c.idEntidad) }));
+            if (antesDeBorrar) pushClientDeletion(get().realSalonSlug, antesDeBorrar, c.id);
+          } else if (c.tipo === "clienta.borrar") {
+            const previa = c.antes.clienta as Client | undefined;
+            if (previa) {
+              set((s) => ({ clients: s.clients.some((x) => x.id === previa.id) ? s.clients : [...s.clients, previa] }));
+              const slugReal = get().realSalonSlug;
+              pushClient(slugReal, previa);
+              if ((previa.penaltyEur ?? 0) > 0) pushPenalty(slugReal, previa, previa.penaltyEur ?? 0, previa.penaltyNote);
+              if (previa.manualBlock) pushManualBlock(slugReal, previa, true);
+            }
+          } else if (c.entidad === "cita") {
             const antes = get().appointments.find((a) => a.id === c.idEntidad);
             set((s) => ({ appointments: s.appointments.map((a) => (a.id === c.idEntidad ? quitarVacios({ ...a, ...parche }) : a)) }));
             // Como sincronizarCita, pero con la marca de auditoría del deshacer.
@@ -1544,26 +1607,41 @@ function instalarRegistroDeCambios() {
     return { servicio: s.services.find((x) => x.id === id) ?? null };
   };
 
-  for (const { accion, entidad } of ACCIONES_REGISTRADAS) {
+  /** Cita o ficha entera en el estado que dejó un alta o una baja. */
+  const fotoEntera = (entidad: "cita" | "clienta", id: string): Record<string, unknown> => ({ [entidad]: foto(entidad, id) });
+
+  for (const { accion, entidad, crea, borra } of ACCIONES_REGISTRADAS) {
     const original = st[accion] as ((...a: unknown[]) => unknown) | undefined;
     if (typeof original !== "function") continue;
     envueltas[accion] = (...args: unknown[]) => {
       if (profundidad > 0 || registroEnPausa()) return original(...args);
-      // Solo las notas de la ficha son decisión de una persona; el resto de updateClient son
-      // altas masivas (importar clientas, TPV) y no deben llenar el historial ni sacar avisos.
-      if (accion === "updateClient" && Object.keys((args[1] ?? {}) as object).some((k) => k !== "notes")) return original(...args);
-      const id = String(args[0]);
+      // Un visitante que reserva en la web pública no es una persona del panel: no deja historial.
+      if (accion === "addAppointment" && enPaginaPublica()) return original(...args);
+      // Las altas masivas (importar clientas, TPV) se hacen con `conRegistroEnPausa` y no llegan hasta aquí.
       profundidad++;
       try {
-        const antes = foto(entidad, id);
+        const alta = crea === true;
+        const baja = borra === true;
+        const id = alta ? "" : String(args[0]);
+        const comoFoto = entidad === "cita" || entidad === "clienta";
+        let antes: Record<string, unknown> | null = alta ? (comoFoto ? { [entidad]: null } : foto(entidad, "")) : baja ? fotoEntera(entidad as "cita" | "clienta", id) : foto(entidad, id);
         const r = original(...args);
-        const despues = foto(entidad, id);
-        if (antes && despues) {
+        const idFinal = alta ? String((r as { id?: string } | undefined)?.id ?? "") : id;
+        const despues: Record<string, unknown> | null = alta || baja ? (comoFoto ? fotoEntera(entidad as "cita" | "clienta", idFinal) : foto(entidad, idFinal)) : foto(entidad, id);
+        // Dar de baja algo que no existía no es un cambio.
+        if (baja && !(antes as Record<string, unknown>)[entidad]) antes = null;
+        if (antes && despues && idFinal) {
           const s = useSalonStore.getState();
           const tz = s.salonProfile.timeZone || "Europe/Madrid";
           let tipo: TipoCambio;
           let resumen: string;
-          if (entidad === "cita") {
+          if (entidad === "cita" && (alta || baja)) {
+            tipo = alta ? "cita.crear" : "cita.borrar";
+            resumen = resumenAltaBajaCita(tipo, ((alta ? despues : antes).cita ?? {}) as Partial<Appointment>, tz);
+          } else if (entidad === "clienta" && (alta || baja)) {
+            tipo = alta ? "clienta.crear" : "clienta.borrar";
+            resumen = resumenAltaBajaClienta(tipo, ((alta ? despues : antes).clienta ?? {}) as Partial<Client>);
+          } else if (entidad === "cita") {
             tipo = tipoCambioCita(antes as Partial<Appointment>, despues as Partial<Appointment>);
             resumen = resumenCita(tipo, antes as Partial<Appointment>, despues as Partial<Appointment>, tz);
           } else if (entidad === "clienta") {
@@ -1573,11 +1651,11 @@ function instalarRegistroDeCambios() {
             tipo = "pago.borrar";
             resumen = resumenPago((antes.pago as Pago) ?? null);
           } else {
-            tipo = accion === "deleteService" ? "servicio.borrar" : "servicio.editar";
+            tipo = alta ? "servicio.crear" : accion === "deleteService" ? "servicio.borrar" : "servicio.editar";
             resumen = resumenServicio(tipo, (antes.servicio as Service) ?? null, (despues.servicio as Service) ?? null);
           }
           const c = registrarCambioPuro({
-            id: nuevoIdCambio(), tipo, entidad, idEntidad: id, antes, despues, resumen,
+            id: nuevoIdCambio(), tipo, entidad, idEntidad: idFinal, antes, despues, resumen,
             autor: s.miembro?.userId ?? null, autorNombre: s.miembro?.displayName ?? null, fecha: new Date().toISOString(),
           });
           if (c) s.registrarCambio(c);

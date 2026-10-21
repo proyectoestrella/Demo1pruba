@@ -3,7 +3,7 @@
  * conflicto con confirmación, cambios traídos del servidor y aparato.
  */
 import { beforeEach, describe, expect, it } from "bun:test";
-import { useSalonStore } from "./store";
+import { conRegistroEnPausa, useSalonStore } from "./store";
 import type { Appointment } from "./mock/types";
 import type { Cambio } from "./cambios";
 
@@ -105,7 +105,7 @@ describe("fusionar cambios del servidor", () => {
 });
 
 describe("notas de la ficha de la clienta", () => {
-  it("editar las notas se registra y se deshace; una importación masiva no", () => {
+  it("editar las notas se registra y se deshace; una importación masiva (en pausa) no", () => {
     miembro("gerente", "gerente", null);
     const cl = useSalonStore.getState().addClient({ name: "Ficha Prueba", phone: "600000001", notes: "antes" } as never);
     useSalonStore.getState().updateClient(cl.id, { notes: "después" });
@@ -115,7 +115,7 @@ describe("notas de la ficha de la clienta", () => {
     expect(useSalonStore.getState().deshacerCambio(c.id)).toEqual({ ok: true });
     expect(useSalonStore.getState().clients.find((x) => x.id === cl.id)?.notes).toBe("antes");
     const n = useSalonStore.getState().cambios.length;
-    useSalonStore.getState().updateClient(cl.id, { taxId: "X1", address: "Calle 1" });
+    conRegistroEnPausa(() => useSalonStore.getState().updateClient(cl.id, { taxId: "X1", address: "Calle 1" }));
     expect(useSalonStore.getState().cambios.length).toBe(n);
   });
 });

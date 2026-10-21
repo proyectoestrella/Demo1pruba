@@ -24,6 +24,7 @@ import { permisosDeAcceso } from "./autorizacion";
 import { getSupabaseServerClient } from "../supabase.server";
 import { exigirAcceso, exigirAccesoOdemo } from "./autorizacion.server";
 import { exigirAcciones } from "./guardas";
+import { leerEntidadServidor } from "./leer-entidad";
 import { exigirFuncionPlanEn } from "./plan-guardas.server";
 import { conSesion } from "./sesion.middleware";
 
@@ -190,10 +191,22 @@ export const autorizarDeshacer = createServerFn({ method: "POST" })
     exigirAcciones(quien, ["historial.ver"]);
     const sb = getSupabaseServerClient();
     if (!sb) return { ok: true as const, comprobado: false as const };
-    const { data: orig, error } = await sb.from("cambios").select("tipo, id_entidad, autor, deshecho_en").eq("id", data.cambioId).eq("salon_slug", data.slug).maybeSingle();
+    const { data: orig, error } = await sb.from("cambios").select("tipo, entidad, id_entidad, antes, despues, autor, deshecho_en").eq("id", data.cambioId).eq("salon_slug", data.slug).maybeSingle();
     if (error || !orig) return { ok: true as const, comprobado: false as const };
     const motivo = rechazoDeDeshacerEnServidor({ autor: (orig.autor as string | null) ?? null, deshechoEn: (orig.deshecho_en as string | null) ?? undefined }, quien.userId, veTodo(quien));
     if (motivo) return { ok: false as const, motivo };
     exigirAcciones(quien, accionesDeCambio({ tipo: orig.tipo as (typeof TIPOS_CAMBIO)[number], idEntidad: orig.id_entidad as string }));
-    return { ok: true as const, comprobado: true as const };
+    // Relee la entidad en el servidor: el navegador compara con ESTO, no solo con su store.
+    let perfil: Record<string, unknown> | null = null;
+    if (orig.entidad === "perfil") {
+      const { data: salon } = await sb.from("salons").select("profile").eq("slug", data.slug).maybeSingle();
+      perfil = (salon?.profile as Record<string, unknown> | null) ?? null;
+    }
+    const servidor = await leerEntidadServidor(
+      sb,
+      data.slug,
+      { tipo: orig.tipo as string, entidad: orig.entidad as string, idEntidad: orig.id_entidad as string, antes: (orig.antes ?? {}) as Record<string, unknown>, despues: (orig.despues ?? {}) as Record<string, unknown> },
+      perfil,
+    );
+    return { ok: true as const, comprobado: true as const, servidor: (servidor ?? undefined) as { existe: boolean; valor: Record<string, Json> | null } | undefined };
   });

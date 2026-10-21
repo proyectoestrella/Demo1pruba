@@ -5,7 +5,7 @@ import { LlegaConPlan } from "@/components/LlegaConPlan";
 import { puede } from "@/lib/permisos";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useSalonStore } from "@/lib/store";
+import { conRegistroEnPausa, useSalonStore } from "@/lib/store";
 import { usaTpv123 } from "@/lib/plan-basico";
 import { claveNombre, completarDatosTpvCliente, detectarColumnas, leerTabla, normalizarTelefono, vistaPreviaClientas, type CampoCliente, type FilaClienta, type MapaColumnas, type TablaImportacion } from "@/lib/importar-clientas";
 import type { Client } from "@/lib/mock/types";
@@ -71,6 +71,8 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
     if (!previa || !tabla || mapa.nombre === undefined) return;
     const nuevas: Client[] = [];
     let completadas = 0;
+    // Una importación masiva no llena el historial ni saca un aviso por cada ficha.
+    conRegistroEnPausa(() => {
     for (const fila of previa.filas.filter((f) => f.estado === "nueva")) {
       nuevas.push(addClient({
         name: fila.nombre, phone: fila.telefono, email: fila.email, tpvCode: fila.codigo,
@@ -87,6 +89,7 @@ export function ImportarClientasDialog({ open, onOpenChange }: { open: boolean; 
         completadas++;
       }
     }
+    });
     setResumen(`Importadas ${nuevas.length} clientas${completadas ? ` y completadas ${completadas} fichas que ya existían` : ""}. ${previa.duplicadas} duplicadas y ${previa.errores} filas con errores.`);
     setTabla(null); setMapa({});
   }

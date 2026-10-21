@@ -1992,6 +1992,109 @@ export const saveClient = createServerFn({ method: "POST" })
     return { synced: true as const };
   });
 
+const ID_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Id de la fila de `clients` por uuid (si el panel lo conoce) o, si no, por teléfono. */
+async function filaDeFicha(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  salonSlug: string,
+  clientId: string,
+  phone: string,
+): Promise<string | null> {
+  if (ID_UUID.test(clientId)) {
+    const { data, error } = await supabase.from("clients").select("id").eq("salon_slug", salonSlug).eq("id", clientId).maybeSingle();
+    if (error) throw new Error(`filaDeFicha: ${error.message}`);
+    if (data?.id) return data.id as string;
+  }
+  const key = phoneKey(phone);
+  if (key.length < 6) return null;
+  const { data, error } = await supabase.from("clients").select("id").eq("salon_slug", salonSlug).eq("phone_key", key).maybeSingle();
+  if (error) throw new Error(`filaDeFicha: ${error.message}`);
+  return (data?.id as string | undefined) ?? null;
+}
+
+const textoOpcional = (max: number) => z.string().max(max).nullable().optional();
+
+/**
+ * Edita a mano nombre, teléfono, correo, cumpleaños, dirección o DNI de una
+ * ficha. A diferencia de `saveClient` (que solo COMPLETA lo que falta, para que
+ * una reimportación no pise nada), esto SOBRESCRIBE: `null` o vacío borra el dato.
+ */
+export const editarFichaClienta = createServerFn({ method: "POST" })
+  .middleware([conSesion])
+  .inputValidator(
+    z.object({
+      slug,
+      clientId: z.string().min(1).max(200),
+      /** Teléfono ANTES del cambio: con él se localiza la ficha si el id no es de servidor. */
+      phone: z.string().max(30),
+      campos: z.object({
+        name: z.string().min(1).max(100).optional(),
+        phone: z.string().max(30).optional(),
+        email: textoOpcional(200),
+        notes: textoOpcional(5000),
+        birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+        address: textoOpcional(300),
+        taxId: textoOpcional(32),
+      }),
+    }),
+  )
+  .handler(async ({ data }) => {
+    exigirAcciones(await exigirAcceso(data.slug), ["clienta.editar"]);
+    const supabase = getSupabaseServerClient();
+    if (!supabase) return { synced: false as const };
+    const id = await filaDeFicha(supabase, data.slug, data.clientId, data.phone);
+    if (!id) return { synced: false as const, reason: "sin-ficha" as const };
+    const c = data.campos;
+    const vacioANull = (v: string | null | undefined) => (v === undefined ? undefined : v && v.trim() ? v : null);
+    const fila: Record<string, unknown> = {};
+    if (c.name !== undefined) fila.name = c.name;
+    if (c.phone !== undefined) {
+      const tel = normalizarTelefonoSiValido(c.phone);
+      fila.phone = tel || null;
+      fila.phone_key = phoneKey(tel) || null;
+    }
+    for (const [campo, columna] of [["email", "email"], ["notes", "notes"], ["birthday", "birthday"], ["address", "address"], ["taxId", "tax_id"]] as const) {
+      const v = vacioANull(c[campo]);
+      if (v !== undefined) fila[columna] = v;
+    }
+    if (!Object.keys(fila).length) return { synced: true as const };
+    await escribirFicha(supabase, "editarFichaClienta", (f) => supabase.from("clients").update(f).eq("id", id), fila);
+    return { synced: true as const };
+  });
+
+/**
+ * Borra una ficha. Pide `clienta.borrar` (gerente), salvo para deshacer un alta
+ * propia: con `cambioId` de una `clienta.crear` hecha por esta misma persona
+ * basta `clienta.crear`, que es lo que ya podía hacer.
+ */
+export const borrarFichaClienta = createServerFn({ method: "POST" })
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug, clientId: z.string().min(1).max(200), phone: z.string().max(30), cambioId: z.string().min(8).max(64).optional() }))
+  .handler(async ({ data }) => {
+    const quien = await exigirAcceso(data.slug);
+    const supabase = getSupabaseServerClient();
+    if (!supabase) return { synced: false as const };
+    if (quien.tipo === "miembro") {
+      let permitido = tienePermiso(quien, "clienta.borrar");
+      if (!permitido && data.cambioId && tienePermiso(quien, "clienta.crear")) {
+        const { data: alta } = await supabase
+          .from("cambios")
+          .select("tipo, id_entidad, autor")
+          .eq("id", data.cambioId)
+          .eq("salon_slug", data.slug)
+          .maybeSingle();
+        permitido = !!alta && alta.tipo === "clienta.crear" && alta.id_entidad === data.clientId && alta.autor === quien.userId;
+      }
+      if (!permitido) throw new PermisoDenegado("clienta.borrar");
+    }
+    const id = await filaDeFicha(supabase, data.slug, data.clientId, data.phone);
+    if (!id) return { synced: true as const, existia: false as const };
+    const { error } = await supabase.from("clients").delete().eq("id", id).eq("salon_slug", data.slug);
+    if (error) throw new Error(`borrarFichaClienta: ${error.message}`);
+    return { synced: true as const, existia: true as const };
+  });
+
 /**
  * La ficha se localiza por TELÉFONO normalizado, no por el id local: el id que
  * tiene el panel puede venir del seed de ejemplo, de una ficha creada a mano o

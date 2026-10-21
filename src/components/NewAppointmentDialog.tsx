@@ -1,6 +1,6 @@
 import { tinteProfesional } from "@/lib/colores-elegidos";
 import { isoDelSalon, zonaDelSalon } from "@/lib/zona-horaria";
-import { avisar } from "@/lib/deshacer-maqueta";
+import { conCambio } from "@/lib/deshacer-maqueta";
 import { useEquipoParaDarCita } from "@/lib/accesos-panel";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -452,7 +452,8 @@ function FormularioNuevaCita({
     } else {
       clientName = newName.trim();
       if (phone.trim()) {
-        const created = addClient({ name: clientName, phone: phone.trim() });
+        // Queda en el historial, pero el aviso con «Deshacer» lo da la cita.
+        const created = conCambio(() => addClient({ name: clientName, phone: phone.trim() })).r;
         clientId = created.id;
         clientPhone = phone.trim();
       } else {
@@ -468,13 +469,13 @@ function FormularioNuevaCita({
       if (otro.enCarta) {
         // Entra en la carta con la duración y el precio de esta cita; el color
         // se lo da su posición en la carta, como a los demás.
-        const nuevo = addService({
+        const nuevo = conCambio(() => addService({
           name: otro.nombre.trim(),
           description: "",
           durationMin: totalMin,
           priceEur: total,
           active: true,
-        });
+        })).r;
         idsDeServicio = [nuevo.id];
         toast.success("Servicio añadido a la carta", { description: otro.nombre.trim() });
       } else {
@@ -503,13 +504,7 @@ function FormularioNuevaCita({
       opciones,
     );
 
-    // Lote 12: «Cita de Ana guardada · vie 10:00» con «Deshacer» (la borra).
-    const cuando = new Date(appt.start)
-      .toLocaleString("es-ES", { weekday: "short", hour: "2-digit", minute: "2-digit" })
-      .replace(",", "");
-    avisar(`Cita de ${clientName.split(" ")[0]} guardada · ${cuando}`, () =>
-      useSalonStore.getState().deleteAppointment(appt.id),
-    );
+    // El alta queda en el historial y el aviso «Cita de Ana guardada · Deshacer» lo saca el registro.
     onCreated?.(appt);
 
     if (encadenar) {
