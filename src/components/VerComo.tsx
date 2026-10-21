@@ -28,7 +28,7 @@ export function VerComo({ className }: { className?: string }) {
   return (
     <label
       className={cn(
-        "h-[42px] items-center gap-2 rounded-full border border-dashed border-salvia bg-salvia-suave pr-2 pl-3.5 text-[13px] font-bold text-hoja-tinta",
+        "min-h-[42px] flex-wrap items-center gap-x-2 gap-y-0.5 rounded-full border border-dashed border-salvia bg-salvia-suave py-1 pr-2 pl-3.5 text-[13px] font-bold text-hoja-tinta",
         className,
       )}
       title="Solo en la demo: mira el panel como lo vería cada persona del salón"
