@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Pencil } from "lucide-react";
+import { Camera, Pencil } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
-import { usePermisos } from "@/lib/accesos-panel";
+import { useMiEmployeeId, usePermisos } from "@/lib/accesos-panel";
 import { puede } from "@/lib/permisos";
 import { conAvatar, type AvatarElegido } from "@/lib/avatar";
 import { AvatarClienta, AvatarProfesional, type AvatarSize } from "@/components/Avatar";
 import { SelectorAvatar } from "@/components/SelectorAvatar";
+import { GestorFotoPersona } from "@/components/GestorFotoPersona";
+import { useFotosDisponibles } from "@/hooks/use-foto-persona";
 
 /**
  * El avatar de una clienta o de una profesional, con un lápiz para cambiarlo
@@ -20,12 +22,18 @@ export function EditarAvatar({ tipo, id, nombre, size = "2xl", foto }: {
   foto?: string | null;
 }) {
   const [abierto, setAbierto] = useState(false);
+  const [fotoAbierta, setFotoAbierta] = useState(false);
+  const fotosDisponibles = useFotosDisponibles();
+  const miEmployeeId = useMiEmployeeId();
   const permisos = usePermisos();
   const campo = tipo === "clienta" ? "avataresClientas" : "avataresEquipo";
   const actual = useSalonStore((s) => s.salonProfile[campo]?.[id]);
   const mapa = useSalonStore((s) => s.salonProfile[campo]);
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
   const puedeEditar = puede(permisos, tipo === "clienta" ? "clienta.editar" : "equipo.editar");
+
+  // La foto la cambia quien edita la ficha; una profesional también la suya.
+  const puedeFoto = fotosDisponibles && (puedeEditar || (tipo === "profesional" && !!miEmployeeId && miEmployeeId === id));
 
   function elegir(avatar: AvatarElegido | null) {
     updateSalonProfile({ [campo]: conAvatar(mapa, id, avatar) });
@@ -34,6 +42,21 @@ export function EditarAvatar({ tipo, id, nombre, size = "2xl", foto }: {
   return (
     <div className="relative shrink-0">
       {tipo === "clienta" ? <AvatarClienta id={id} nombre={nombre} foto={foto} size={size} /> : <AvatarProfesional id={id} nombre={nombre} foto={foto} size={size} />}
+      {puedeFoto && (
+        <>
+          <button
+            type="button"
+            onClick={() => setFotoAbierta(true)}
+            aria-label={`Cambiar la foto de ${nombre}`}
+            title="Foto"
+            data-testid="abrir-foto"
+            className="absolute -bottom-1 -left-1 grid size-8 cursor-pointer place-items-center rounded-full border border-input bg-card text-cafe-medio shadow-[var(--sombra-tarjeta)] before:absolute before:-inset-1.5 before:content-[''] hover:bg-nata focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <Camera className="size-3.5" strokeWidth={1.8} />
+          </button>
+          <GestorFotoPersona abierto={fotoAbierta} onOpenChange={setFotoAbierta} tipo={tipo === "clienta" ? "clienta" : "equipo"} id={id} nombre={nombre} elegido={actual} />
+        </>
+      )}
       {puedeEditar && (
         <>
           <button
@@ -41,7 +64,7 @@ export function EditarAvatar({ tipo, id, nombre, size = "2xl", foto }: {
             onClick={() => setAbierto(true)}
             aria-label={`Cambiar el avatar de ${nombre}`}
             title="Cambiar avatar"
-            className="absolute -right-1 -bottom-1 grid size-8 cursor-pointer place-items-center rounded-full border border-input bg-card text-cafe-medio shadow-[var(--sombra-tarjeta)] hover:bg-nata focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="before:absolute before:-inset-1.5 before:content-[''] absolute -right-1 -bottom-1 grid size-8 cursor-pointer place-items-center rounded-full border border-input bg-card text-cafe-medio shadow-[var(--sombra-tarjeta)] hover:bg-nata focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             <Pencil className="size-3.5" strokeWidth={1.8} />
           </button>

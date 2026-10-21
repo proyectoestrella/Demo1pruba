@@ -5,6 +5,7 @@ import { employeeMap } from "@/lib/mock/salon";
 import { hashTexto, iniciales, resolverAvatar } from "@/lib/avatar";
 import { avatarDiceBearUri } from "@/lib/avatar-dicebear";
 import { retratoGuardado, uriRetrato } from "@/components/retratos-avatar";
+import { useFotoActiva } from "@/hooks/use-foto-persona";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
@@ -128,11 +129,13 @@ export function AvatarClienta({
   className?: string;
 }) {
   const elegido = useSalonStore((s) => (id ? s.salonProfile.avataresClientas?.[id] : undefined));
+  // Una foto subida a propósito manda sobre todo; si falla la carga, Avatar cae al dibujado.
+  const subida = useFotoActiva("clienta", id);
   return (
     <Avatar
       nombre={nombre}
       id={id}
-      foto={foto}
+      foto={subida ?? foto}
       elegido={elegido}
       size={size}
       className={className}
@@ -159,16 +162,15 @@ export function AvatarProfesional({
   className?: string;
 }) {
   const elegido = useSalonStore((s) => s.salonProfile.avataresEquipo?.[id]);
+  const subida = useFotoActiva("equipo", id);
   const variable = colorVar ?? employeeMap[id]?.colorVar;
   const aro = variable ? (variable.startsWith("--") ? variable : `--${variable}`) : undefined;
-  // Hoy no hay subida de fotos de personas: la única «foto» del equipo es la de
-  // stock de las demos de barbería. Un avatar elegido a propósito gana a esa foto
-  // (cuando exista la subida real, la foto subida mandará: ver lib/avatar.ts).
+  // Foto subida (activa) > avatar elegido > foto de stock de las demos de barbería.
   return (
     <Avatar
       nombre={nombre}
       id={id}
-      foto={elegido ? undefined : foto}
+      foto={subida ?? (elegido ? undefined : foto)}
       elegido={elegido}
       size={size}
       aro={aroColor ? undefined : aro}
