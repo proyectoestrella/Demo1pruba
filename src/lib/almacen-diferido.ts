@@ -12,17 +12,16 @@ import type { PersistStorage, StorageValue } from "zustand/middleware";
 
 const ESPERA_MS = 700;
 
-let pendiente: { clave: string; valor: StorageValue<unknown> } | null = null;
+let pendiente: { clave: string; valor: StorageValue<unknown>; puede: () => boolean } | null = null;
 let temporizador: ReturnType<typeof setTimeout> | undefined;
 let escuchando = false;
-let puedeEscribir: () => boolean = () => true;
 
 function volcar(): void {
   if (temporizador !== undefined) clearTimeout(temporizador);
   temporizador = undefined;
   const p = pendiente;
   pendiente = null;
-  if (!p || !puedeEscribir()) return;
+  if (!p || !p.puede()) return;
   try {
     window.localStorage.setItem(p.clave, JSON.stringify(p.valor));
   } catch (err) {
@@ -39,7 +38,7 @@ export function cancelarEscrituraDiferida(): void {
 
 /** Escribe ya lo pendiente (pruebas, y antes de navegar fuera). */
 export function volcarEscrituraDiferida(): void {
- 
+  volcar();
 }
 
 function escuchar(): void {
@@ -53,7 +52,7 @@ function escuchar(): void {
 }
 
 export function crearAlmacenDiferido<S>(opciones?: { puedeEscribir?: () => boolean }): PersistStorage<S> {
-  if (opciones?.puedeEscribir) puedeEscribir = opciones.puedeEscribir;
+  const puede = opciones?.puedeEscribir ?? (() => true);
   return {
     getItem: (clave) => {
       if (typeof window === "undefined") return null;
@@ -64,7 +63,7 @@ export function crearAlmacenDiferido<S>(opciones?: { puedeEscribir?: () => boole
     setItem: (clave, valor) => {
       if (typeof window === "undefined") return;
       escuchar();
-      pendiente = { clave, valor: valor as StorageValue<unknown> };
+      pendiente = { clave, valor: valor as StorageValue<unknown>, puede };
       if (temporizador !== undefined) clearTimeout(temporizador);
       // Un marco (la vista previa de «Mi página» es la web real en un iframe del
       // mismo origen) escribe al instante, como siempre: si difiriera, su copia

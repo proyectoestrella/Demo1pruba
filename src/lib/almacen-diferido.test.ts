@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import {
-  cancelarEscrituraDiferida,
-  crearAlmacenDiferido,
-  volcarEscrituraDiferida,
-} from "./almacen-diferido";
+// Instancia propia del módulo: otras pruebas importan la store, que lo usa.
+// @ts-expect-error el sufijo ?aislado solo fuerza una instancia nueva en bun
+import * as modulo from "./almacen-diferido?aislado";
+
+const { cancelarEscrituraDiferida, crearAlmacenDiferido, volcarEscrituraDiferida } =
+  modulo as typeof import("./almacen-diferido");
 
 describe("almacén diferido de la copia local", () => {
   const datos = new Map<string, string>();
@@ -12,19 +13,19 @@ describe("almacén diferido de la copia local", () => {
 
   beforeEach(() => {
     datos.clear();
-    (globalThis as Record<string, unknown>).window = {
+    Object.defineProperty(globalThis, "window", { configurable: true, writable: true, value: {
       localStorage: {
         getItem: (k: string) => datos.get(k) ?? null,
         setItem: (k: string, v: string) => void datos.set(k, v),
         removeItem: (k: string) => void datos.delete(k),
       },
       addEventListener: () => {},
-    };
+    } });
     (globalThis as Record<string, unknown>).document = { addEventListener: () => {}, visibilityState: "visible" };
   });
   afterEach(() => {
     cancelarEscrituraDiferida();
-    (globalThis as Record<string, unknown>).window = antes;
+    Object.defineProperty(globalThis, "window", { configurable: true, writable: true, value: antes });
     (globalThis as Record<string, unknown>).document = antesDoc;
   });
 
@@ -64,6 +65,5 @@ describe("almacén diferido de la copia local", () => {
     a.setItem("k", { state: { n: 1 }, version: 1 });
     volcarEscrituraDiferida();
     expect(datos.has("k")).toBe(false);
-    crearAlmacenDiferido({ puedeEscribir: () => true });
   });
 });
