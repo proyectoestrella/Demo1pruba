@@ -11,11 +11,7 @@ import {
   Phone,
   Star,
 } from "lucide-react";
-import {
-  employeesForType,
-  servicesForType,
-  textosDeCarta,
-} from "@/lib/mock/salon";
+import { employeesForType, servicesForType, textosDeCarta } from "@/lib/mock/salon";
 import { useSalonStore } from "@/lib/store";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { useRealSalonSlug } from "@/lib/use-real-salon";
@@ -29,8 +25,6 @@ import {
   type BusinessType,
   placeholderAvatar,
 } from "@/lib/business-type";
-import { StylistAvatar } from "@/components/StylistAvatar";
-import type { EmployeeId } from "@/lib/mock/types";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useMemo, useState } from "react";
 import { DEFAULT_OPENING_HOURS, weekSchedule } from "@/lib/opening-hours";
@@ -53,13 +47,33 @@ import {
 import { Button } from "@/components/ui/button";
 import { TeamShowcase } from "@/components/twentyfirst/team-showcase";
 import { cn } from "@/lib/utils";
-import { CONTENEDOR_SALON, SECCION_WEB, enlaceWhatsApp, enlacesDelSalon, experienciaEquipoEnWeb, idsLoMasPedido, listaConY, mostrarEquipoEnWebPublica, notaEs, precioDeCarta, resenasDeGoogle, seccionResenasPublicas } from "@/lib/web-publica";
+import {
+  CONTENEDOR_SALON,
+  SECCION_WEB,
+  enlaceWhatsApp,
+  enlacesDelSalon,
+  experienciaEquipoEnWeb,
+  idsLoMasPedido,
+  listaConY,
+  mostrarEquipoEnWebPublica,
+  notaEs,
+  precioDeCarta,
+  resenasDeGoogle,
+  seccionResenasPublicas,
+} from "@/lib/web-publica";
 import { CartaServicios } from "@/components/web-salon/CartaServicios";
 import { NotaQueSube, TrazoTitulo } from "@/components/web-salon/Movimiento";
 import { BloqueComunidad, FUERA, IconoWhatsApp } from "@/components/web-salon/EnlacesSalon";
 import { eur } from "@/lib/copy";
 import { faqPublica } from "@/lib/faq";
-import { introCartaSenal, reglaSenal, respuestaFaqSenal, resumenCancelacionSenal, servicioLlevaSenal, type ReglaSenal } from "@/lib/senal";
+import {
+  introCartaSenal,
+  reglaSenal,
+  respuestaFaqSenal,
+  resumenCancelacionSenal,
+  servicioLlevaSenal,
+  type ReglaSenal,
+} from "@/lib/senal";
 
 export const Route = createFileRoute("/s/$salonSlug/")({
   component: SalonHome,
@@ -174,7 +188,11 @@ const REVIEWS_BY_TYPE: Record<BusinessType, Review[]> = {
 /** Estrellas de una nota, legibles por lector de pantalla como una sola imagen. */
 function Estrellas({ nota, className }: { nota: number; className?: string }) {
   return (
-    <span role="img" aria-label={`${notaEs(nota)} de 5 estrellas`} className={cn("flex gap-0.5", className)}>
+    <span
+      role="img"
+      aria-label={`${notaEs(nota)} de 5 estrellas`}
+      className={cn("flex gap-0.5", className)}
+    >
       {Array.from({ length: 5 }).map((_, j) => (
         <Star
           key={j}
@@ -205,40 +223,40 @@ function ReviewCard({ name, rating, quote, ejemplo }: Review & { ejemplo: boolea
 /**
  * Presentación de un salón con un único profesional (caso Adam): sustituye a
  * `TeamShowcase`, pensada para tres fichas, que con una sola persona queda
- * descompensada. Foto grande si la hay (StylistAvatar cae sola al avatar de
- * iniciales si no), nombre y especialidad; los años solo si son verificables.
+ * descompensada. Foto grande si la hay; si no, nombre y especialidad sin un
+ * avatar inventado. Los años solo se enseñan si son verificables.
  */
 function SoloProfessional({
   name,
   specialty,
   experience,
   photo,
-  employeeId,
 }: {
   name: string;
   specialty: string;
   experience?: string;
   photo?: string;
-  employeeId: EmployeeId;
 }) {
   return (
     <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-center sm:gap-8 sm:text-left">
-      <div
-        className={cn(
-          "shrink-0 overflow-hidden rounded-3xl border-2 border-primary/20",
-          photo ? "h-56 w-56 sm:h-64 sm:w-64" : "h-40 w-40",
-        )}
-      >
-        {photo ? (
-          <img src={photo} alt={name} width={256} height={256} loading="lazy" decoding="async" className="h-full w-full object-cover" />
-        ) : (
-          <StylistAvatar name={name} employeeId={employeeId} size="lg" className="h-full w-full" />
-        )}
-      </div>
+      {photo ? (
+        <div className="h-56 w-56 shrink-0 overflow-hidden rounded-3xl border-2 border-primary/20 sm:h-64 sm:w-64">
+          <img
+            src={photo}
+            alt={name}
+            width={256}
+            height={256}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+          />
+        </div>
+      ) : null}
       <div>
         <p className="font-display text-2xl md:text-3xl">{name}</p>
         <p className="mt-1 text-muted-foreground">
-          {specialty}{experience && ` · ${experience}`}
+          {specialty}
+          {experience && ` · ${experience}`}
         </p>
         <p className="mt-3 text-sm text-muted-foreground">
           Siempre te atiende {name.split(" ")[0]}, sin cambios de última hora.
@@ -282,9 +300,13 @@ function SalonHome() {
   // La demo (enlace ?d= o navegador sin salón real) resuelve su logo de la
   // lista estática de demos; un salón real, solo el que haya guardado.
   const sinSalonReal = useSalonStore((s) => !s.realSalonSlug);
-  const conEnlaceDemo = useRouterState({ select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string" });
+  const conEnlaceDemo = useRouterState({
+    select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string",
+  });
   const resolucionPublica = useSalonStore((s) =>
-    s.publicBookingResolution?.slug === salonSlug ? s.publicBookingResolution.status : "resolviendo",
+    s.publicBookingResolution?.slug === salonSlug
+      ? s.publicBookingResolution.status
+      : "resolviendo",
   );
   const logoPortada = logoDelSalon(profile, sinSalonReal || conEnlaceDemo);
   const logotipoPortada = logotipoDelSalon(profile, sinSalonReal || conEnlaceDemo, "claro");
@@ -316,7 +338,9 @@ function SalonHome() {
   // Ni una demo enlazada ni un salón real se anuncian con una foto de stock:
   // si no hay foto del local (o se ha roto), queda el fondo liso.
   const portadaDeEjemplo =
-    (conEnlaceDemo || protegerContenidoReal) && !portadaEsRespaldoPropio && portada.src !== profile.heroImage;
+    (conEnlaceDemo || protegerContenidoReal) &&
+    !portadaEsRespaldoPropio &&
+    portada.src !== profile.heroImage;
   const [portadaLista, setPortadaLista] = useState(false);
   // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
   // en la cadena "2" — de ahí el `String(...)` antes de comparar.
@@ -354,7 +378,27 @@ function SalonHome() {
     [tipo, profile.menu, profile.descripcionesServicios, profile.preciosLiterales],
   );
   const serviceMap = useMemo(() => Object.fromEntries(services.map((s) => [s.id, s])), [services]);
-  const employees = useMemo(() => employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds, undefined, undefined, profile.teamExperience), [tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds, profile.teamExperience]);
+  const employees = useMemo(
+    () =>
+      employeesForType(
+        tipo,
+        profile.team,
+        profile.teamHours,
+        profile.openingHours,
+        profile.teamIds,
+        undefined,
+        undefined,
+        profile.teamExperience,
+      ),
+    [
+      tipo,
+      profile.team,
+      profile.teamHours,
+      profile.openingHours,
+      profile.teamIds,
+      profile.teamExperience,
+    ],
+  );
   /**
    * Adam es el único barbero de su barbería. Con un solo profesional, la
    * sección "Equipo" no cuenta nada (una ficha suelta de la persona que ya
@@ -368,7 +412,11 @@ function SalonHome() {
   // Lote P.5: «Lo más pedido» son los `destacados` del salón (PeluChic: corte
   // y peinado, color orgánico, mechas y novias). Sin ellos, con carta real,
   // los cuatro primeros de la carta; con la de ejemplo, los del tipo.
-  const featuredIds = idsLoMasPedido(profile.destacados, activeServices, profile.menu?.length ? undefined : FEATURED_IDS_BY_TYPE[tipo]);
+  const featuredIds = idsLoMasPedido(
+    profile.destacados,
+    activeServices,
+    profile.menu?.length ? undefined : FEATURED_IDS_BY_TYPE[tipo],
+  );
   const noShowFeeEur = profile.noShowFeeEur ?? 0;
   const noShowNoticeHours = profile.noShowNoticeHours ?? 2;
   // Salón con un solo profesional (caso Adam): la sección de equipo, el
@@ -377,18 +425,23 @@ function SalonHome() {
   // La señal sale de UNA regla (9j): la carta, la tarjeta de cancelación y la
   // FAQ dicen lo mismo, y nada si el salón no la pide.
   const reglaDeSenal = reglaSenal(profile);
-  const faq = faqPublica(tipo, noShowFeeEur, noShowNoticeHours, profile.faq, soloUno, respuestaFaqSenal(reglaDeSenal, eur)).map(
-    (entry) => {
-      if (profile.faq?.length) return entry;
-      if (entry.q === "¿Hace falta pagar por adelantado?") {
-        return { ...entry, a: respuestaFaqSenal(reglaDeSenal, (n) => eur(n).replace(",00", "")) };
-      }
-      if (soloUno && entry.q === "¿Quién me va a atender?" && soloPro) {
-        return { ...entry, a: `Siempre te atiende ${soloPro.name}, sin turnos ni sustitutos.` };
-      }
-      return entry;
-    },
-  );
+  const faq = faqPublica(
+    tipo,
+    noShowFeeEur,
+    noShowNoticeHours,
+    profile.faq,
+    soloUno,
+    respuestaFaqSenal(reglaDeSenal, eur),
+  ).map((entry) => {
+    if (profile.faq?.length) return entry;
+    if (entry.q === "¿Hace falta pagar por adelantado?") {
+      return { ...entry, a: respuestaFaqSenal(reglaDeSenal, (n) => eur(n).replace(",00", "")) };
+    }
+    if (soloUno && entry.q === "¿Quién me va a atender?" && soloPro) {
+      return { ...entry, a: `Siempre te atiende ${soloPro.name}, sin turnos ni sustitutos.` };
+    }
+    return entry;
+  });
   // Las reseñas de ejemplo se conservan en páginas sin enlace de demo; los
   // enlaces ?d= solo muestran las cifras del perfil, sin testimonios inventados.
   const pro = employees[0]?.name ?? "El equipo";
@@ -401,18 +454,24 @@ function SalonHome() {
   // Ni una demo enlazada ni un salón real sin horario propio publican el
   // horario estático de ejemplo en la sección «Cómo llegar».
   const horarioDeEjemplo =
-    (conEnlaceDemo || protegerContenidoReal) && JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS);
+    (conEnlaceDemo || protegerContenidoReal) &&
+    JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS);
   // Las fotos del equipo: la de stock solo en una DEMO de barbería. En un
   // salón real no se enseña la cara de un desconocido como si fuera suya —
   // iniciales (ver `fotoDeProfesional`).
   const fotoDe = (e: (typeof employees)[number]) =>
     fotoDeProfesional(e.name, e.id, e.photo, tipo, protegerContenidoReal);
   // Los años del catálogo de prueba no son los del salón que abre una demo.
-  const experienciaEquipo = experienciaEquipoEnWeb(employees, conEnlaceDemo || protegerContenidoReal);
+  const experienciaEquipo = experienciaEquipoEnWeb(
+    employees,
+    conEnlaceDemo || protegerContenidoReal,
+  );
   const especialidades = listaConY(profile.specialties);
   const telefono = profile.phone.replace(/\s/g, "");
   const tieneTelefono = telefono.length > 0;
-  const serviciosDeEjemplo = activeServices.length > 0 && activeServices.every((service) => /\(ejemplo\)/i.test(service.name));
+  const serviciosDeEjemplo =
+    activeServices.length > 0 &&
+    activeServices.every((service) => /\(ejemplo\)/i.test(service.name));
   // Lote 18.4: WhatsApp (del perfil o, si no hay, el teléfono) y enlaces del salón.
   const whatsappUrl = enlaceWhatsApp(profile);
   const enlaces = enlacesDelSalon(profile);
@@ -437,38 +496,55 @@ function SalonHome() {
        * 17; con el 60 % y la especialidad en moca se quedaba en 1,15:1).
        * Entrada única de 520 ms desde opacidad 0,4, sin rebotes ni bucles.
        * ---------------------------------------------------------------- */}
-      <section className="relative isolate overflow-hidden bg-cafe text-white">
-        {!portadaDeEjemplo && <img
-          // Sin foto propia, o si la propia no carga, se usa una de ejemplo
-          // acorde al tipo de negocio (ver useImagenConRespaldo).
-          // Portada a 800 o 1600 px según pantalla (lote 17.7): la de 1600
-          // pesaba 424 KB y era el 86 % del LCP en móvil. Una foto que no es
-          // del proxy (subida por el salón o de respaldo) no lleva srcSet.
-          src={portadaEsRespaldoPropio ? respaldoPortada!.src : (portadaPropia?.src ?? conAncho(portada.src, 800) ?? portada.src)}
-          srcSet={
-            portada.src.startsWith("/api/foto?")
-              ? `${conAncho(portada.src, 800)} 800w, ${conAncho(portada.src, 1600)} 1600w`
-              : portadaEsRespaldoPropio
-                ? respaldoPortada!.srcSet
-                : portadaPropia?.srcSet
-          }
-          sizes="100vw"
-          ref={portada.ref}
-          onLoad={() => setPortadaLista(true)}
-          onError={() => {
-            portada.onError();
-            setPortadaLista(true);
-          }}
-          alt={portadaEsRespaldoPropio ? respaldoPortada!.alt : portadaPropia ? `Un trabajo de ${profile.name}` : `Interior de ${profile.name}`}
-          className="ws-portada-foto absolute inset-0 -z-20 h-full w-full object-cover"
-          width={1920}
-          height={1280}
-          fetchPriority="high"
-          decoding="async"
-        />}
+      <section id="portada" className="relative isolate overflow-hidden bg-cafe text-white">
+        {!portadaDeEjemplo && (
+          <img
+            // Sin foto propia, o si la propia no carga, se usa una de ejemplo
+            // acorde al tipo de negocio (ver useImagenConRespaldo).
+            // Portada a 800 o 1600 px según pantalla (lote 17.7): la de 1600
+            // pesaba 424 KB y era el 86 % del LCP en móvil. Una foto que no es
+            // del proxy (subida por el salón o de respaldo) no lleva srcSet.
+            src={
+              portadaEsRespaldoPropio
+                ? respaldoPortada!.src
+                : (portadaPropia?.src ?? conAncho(portada.src, 800) ?? portada.src)
+            }
+            srcSet={
+              portada.src.startsWith("/api/foto?")
+                ? `${conAncho(portada.src, 800)} 800w, ${conAncho(portada.src, 1600)} 1600w`
+                : portadaEsRespaldoPropio
+                  ? respaldoPortada!.srcSet
+                  : portadaPropia?.srcSet
+            }
+            sizes="100vw"
+            ref={portada.ref}
+            onLoad={() => setPortadaLista(true)}
+            onError={() => {
+              portada.onError();
+              setPortadaLista(true);
+            }}
+            alt={
+              portadaEsRespaldoPropio
+                ? respaldoPortada!.alt
+                : portadaPropia
+                  ? `Un trabajo de ${profile.name}`
+                  : `Interior de ${profile.name}`
+            }
+            className="ws-portada-foto absolute inset-0 -z-20 h-full w-full object-cover"
+            width={1920}
+            height={1280}
+            fetchPriority="high"
+            decoding="async"
+          />
+        )}
         <div className="absolute inset-0 -z-10 bg-cafe/80" aria-hidden="true" />
 
-        <div className={cn(CONTENEDOR_SALON, "flex min-h-[560px] flex-col items-center justify-center py-20 text-center md:min-h-[620px] md:py-24")}>
+        <div
+          className={cn(
+            CONTENEDOR_SALON,
+            "flex min-h-[560px] flex-col items-center justify-center py-20 text-center md:min-h-[620px] md:py-24",
+          )}
+        >
           <div className="entrada-portada flex max-w-3xl flex-col items-center">
             <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
               {profile.rating > 0 && (
@@ -485,12 +561,18 @@ function SalonHome() {
             {logotipoPortada ? (
               // El logotipo real, en blanco sobre la foto: es el título de la página.
               <h1 className="mt-6 flex justify-center">
-                <img src={logotipoPortada} alt={profile.name} width={1455} height={432} className="ws-logotipo h-auto w-[min(88vw,420px)] drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)] md:w-[480px]" />
+                <img
+                  src={logotipoPortada}
+                  alt={profile.name}
+                  width={1455}
+                  height={432}
+                  className="ws-logotipo h-auto w-[min(88vw,420px)] drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)] md:w-[480px]"
+                />
               </h1>
             ) : (
-            <div className="mt-6 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <div className="mt-6 flex flex-col items-center justify-center gap-4 sm:flex-row">
                 {logoPortada && (
-                    <span className="block size-16 shrink-0 overflow-hidden rounded-2xl border border-white/50 bg-white p-1 shadow-lg md:size-[72px]">
+                  <span className="block size-16 shrink-0 overflow-hidden rounded-2xl border border-white/50 bg-white p-1 shadow-lg md:size-[72px]">
                     <img
                       src={logoPortada}
                       alt={`Logo de ${profile.name}`}
@@ -521,7 +603,9 @@ function SalonHome() {
                 Especialistas en <span className="font-semibold">{especialidades}</span>
               </p>
             )}
-            {profile.about ? <p className="mt-3 max-w-2xl text-[15px] text-white/90">{profile.about}</p> : null}
+            {profile.about ? (
+              <p className="mt-3 max-w-2xl text-[15px] text-white/90">{profile.about}</p>
+            ) : null}
 
             <p className="mt-4 flex items-start justify-center gap-2 text-[15px] text-white/90">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
@@ -529,8 +613,17 @@ function SalonHome() {
             </p>
 
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Button asChild size="lg" className="h-12 rounded-full px-7 text-[15px] font-semibold">
-                <Link to="/s/$salonSlug/book" params={{ salonSlug }} search={(prev) => prev} className="gap-2">
+              <Button
+                asChild
+                size="lg"
+                className="h-12 rounded-full border border-ws-caramelo bg-ws-caramelo px-7 text-[15px] font-bold text-ws-tinta shadow-[0_8px_24px_rgba(0,0,0,0.24)] hover:bg-ws-caramelo-claro hover:text-ws-tinta"
+              >
+                <Link
+                  to="/s/$salonSlug/book"
+                  params={{ salonSlug }}
+                  search={(prev) => prev}
+                  className="gap-2"
+                >
                   Reservar cita <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </Button>
@@ -550,7 +643,9 @@ function SalonHome() {
             {isV2 && (
               <p className="mt-4 text-sm text-white/90">
                 También puedes venir sin cita o llamar: la agenda la lleva{" "}
-                {soloUno ? `${employees[0].name}, de ${profile.name}.` : `el equipo de ${profile.name}.`}
+                {soloUno
+                  ? `${employees[0].name}, de ${profile.name}.`
+                  : `el equipo de ${profile.name}.`}
               </p>
             )}
           </div>
@@ -560,47 +655,61 @@ function SalonHome() {
       {/* Servicios destacados (con la carta de ejemplo no se repite: ya está
           la «Carta de ejemplo» justo debajo) */}
       {!serviciosDeEjemplo && (
-      <section id="servicios" className="bg-transparent">
-        <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
-          <SectionHeading
-            eyebrow={serviciosDeEjemplo ? "Reserva de prueba" : "Lo más pedido"}
-            title={serviciosDeEjemplo ? "Servicios de ejemplo" : "Servicios destacados"}
-            intro={serviciosDeEjemplo ? "Carta de ejemplo para probar la reserva. El salón podrá sustituirla por sus servicios." : undefined}
-          />
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {featuredIds.map((id, i) => {
-              const s = serviceMap[id];
-              if (!s) return null;
-              return (
-                <Reveal key={id} delay={i * 60} className="h-full">
-                  <Link
-                    to="/s/$salonSlug/book"
-                    params={{ salonSlug }}
-                    search={(prev) => ({ ...prev, service: id })}
-                    className="elevar tarjeta-secundaria group flex h-full min-w-0 flex-col border border-lino bg-card p-5 sm:min-h-[148px]"
-                  >
-                    <div className="flex min-w-0 items-start justify-between gap-3">
-                      <h3 className="min-w-0 break-words text-base font-bold leading-snug text-foreground">{s.name}</h3>
-                      <p className="max-w-[45%] shrink-0 break-words text-right text-lg font-extrabold leading-snug tabular-nums text-foreground">{precioDeCarta(s)}</p>
-                    </div>
-                    {(profile.descripcionesServicios?.[s.id] ?? s.description)?.trim() ? (
-                      <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{(profile.descripcionesServicios?.[s.id] ?? s.description).trim()}</p>
-                    ) : null}
-                    <div className="mt-auto flex items-center justify-between gap-3 pt-4 text-sm">
-                      <span className="inline-flex items-center gap-1.5 text-cafe-suave tabular-nums">
-                        <Clock className="h-3.5 w-3.5" aria-hidden="true" /> {s.durationMin} min
-                      </span>
-                      <span className="inline-flex items-center gap-1 font-semibold text-primary">
-                        Reservar <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden="true" />
-                      </span>
-                    </div>
-                  </Link>
-                </Reveal>
-              );
-            })}
+        <section id="servicios" className="bg-transparent">
+          <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
+            <SectionHeading
+              eyebrow={serviciosDeEjemplo ? "Reserva de prueba" : "Lo más pedido"}
+              title={serviciosDeEjemplo ? "Servicios de ejemplo" : "Servicios destacados"}
+              intro={
+                serviciosDeEjemplo
+                  ? "Carta de ejemplo para probar la reserva. El salón podrá sustituirla por sus servicios."
+                  : undefined
+              }
+            />
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {featuredIds.map((id, i) => {
+                const s = serviceMap[id];
+                if (!s) return null;
+                return (
+                  <Reveal key={id} delay={i * 60} className="h-full">
+                    <Link
+                      to="/s/$salonSlug/book"
+                      params={{ salonSlug }}
+                      search={(prev) => ({ ...prev, service: id })}
+                      className="elevar tarjeta-secundaria group flex h-full min-w-0 flex-col border border-lino bg-card p-5 sm:min-h-[148px]"
+                    >
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <h3 className="min-w-0 break-words text-base font-bold leading-snug text-foreground">
+                          {s.name}
+                        </h3>
+                        <p className="max-w-[45%] shrink-0 break-words text-right text-lg font-extrabold leading-snug tabular-nums text-foreground">
+                          {precioDeCarta(s)}
+                        </p>
+                      </div>
+                      {(profile.descripcionesServicios?.[s.id] ?? s.description)?.trim() ? (
+                        <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
+                          {(profile.descripcionesServicios?.[s.id] ?? s.description).trim()}
+                        </p>
+                      ) : null}
+                      <div className="mt-auto flex items-center justify-between gap-3 pt-4 text-sm">
+                        <span className="inline-flex items-center gap-1.5 text-cafe-suave tabular-nums">
+                          <Clock className="h-3.5 w-3.5" aria-hidden="true" /> {s.durationMin} min
+                        </span>
+                        <span className="inline-flex items-center gap-1 font-semibold text-primary">
+                          Reservar{" "}
+                          <ArrowRight
+                            className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+                            aria-hidden="true"
+                          />
+                        </span>
+                      </div>
+                    </Link>
+                  </Reveal>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
       )}
       {serviciosDeEjemplo && <span id="servicios" aria-hidden="true" />}
 
@@ -635,14 +744,20 @@ function SalonHome() {
       {mostrarEquipoEnWebPublica({
         esDemo: conEnlaceDemo,
         tieneEquipoPropio: (profile.team?.length ?? 0) > 0,
-        oculto: conEnlaceDemo && !moduloVisible(profile as Pick<DemoProfile, "modulosOcultos">, "equipo"),
-      }) && (!soloUno || soloPro) ? (
+        oculto:
+          conEnlaceDemo && !moduloVisible(profile as Pick<DemoProfile, "modulosOcultos">, "equipo"),
+      }) &&
+      (!soloUno || soloPro) ? (
         <section id="equipo" className="bg-ws-crema">
           <div className={cn(CONTENEDOR_SALON, SECCION_WEB)}>
             <SectionHeading
               eyebrow="Equipo"
               title="Quién te va a atender"
-              intro={soloUno ? undefined : `${employees.length} ${professionalWord(tipo, true)}${experienciaEquipo ? ` y ${experienciaEquipo.total}` : ""}. Puedes elegir con quién reservar.`}
+              intro={
+                soloUno
+                  ? undefined
+                  : `${employees.length} ${professionalWord(tipo, true)}${experienciaEquipo ? ` y ${experienciaEquipo.total}` : ""}. Puedes elegir con quién reservar.`
+              }
             />
             {soloUno && soloPro ? (
               <Reveal>
@@ -651,27 +766,26 @@ function SalonHome() {
                   specialty={soloPro.specialty}
                   experience={experienciaEquipo?.porProfesional[0]?.experiencia}
                   photo={showsRealPhotos(tipo) ? fotoDe(soloPro) : undefined}
-                  employeeId={soloPro.id}
                 />
               </Reveal>
             ) : employees.every((e) => fotoDe(e) === placeholderAvatar(e.name, e.id)) ? (
               <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {employees.map((e, i) => (
                   <li key={e.id} className="h-full">
-                  <Reveal delay={i * 60} className="tarjeta-secundaria flex h-full items-center gap-4 border border-lino bg-card p-5">
-                      <StylistAvatar
-                        name={e.name}
-                        employeeId={e.id}
-                        photo={fotoDe(e)}
-                        size="lg"
-                        className="size-16"
-                      />
+                    <Reveal
+                      delay={i * 60}
+                      className="tarjeta-secundaria flex h-full items-center gap-4 border border-lino bg-card p-5"
+                    >
                       <span className="min-w-0">
                         <b className="block font-display text-xl font-medium">{e.name}</b>
                         <span className="block text-sm text-muted-foreground">{e.specialty}</span>
-                        {experienciaEquipo && <span className="block text-[13px] text-cafe-suave tabular-nums">{experienciaEquipo.porProfesional[i]?.experiencia}</span>}
+                        {experienciaEquipo && (
+                          <span className="block text-[13px] text-cafe-suave tabular-nums">
+                            {experienciaEquipo.porProfesional[i]?.experiencia}
+                          </span>
+                        )}
                       </span>
-                  </Reveal>
+                    </Reveal>
                   </li>
                 ))}
               </ul>
@@ -681,7 +795,9 @@ function SalonHome() {
                   members={employees.map((e, i) => ({
                     id: e.id,
                     name: e.name,
-                    role: experienciaEquipo ? `${e.specialty} · ${experienciaEquipo.porProfesional[i]?.rol}` : e.specialty,
+                    role: experienciaEquipo
+                      ? `${e.specialty} · ${experienciaEquipo.porProfesional[i]?.rol}`
+                      : e.specialty,
                     image: fotoDe(e),
                   }))}
                 />
@@ -692,7 +808,11 @@ function SalonHome() {
       ) : null}
 
       {/* Galería de trabajos */}
-      <WorkGallery fotos={fotosDeGaleria(profile)} tipo={profile.tagline} sinRelleno={conEnlaceDemo || protegerContenidoReal} />
+      <WorkGallery
+        fotos={fotosDeGaleria(profile)}
+        tipo={profile.tagline}
+        sinRelleno={conEnlaceDemo || protegerContenidoReal}
+      />
 
       {/* Reseñas. Las demos enlazadas muestran cifras sin testimonios si no
           tienen reseñas de Google; páginas existentes conservan su contenido. */}
@@ -705,9 +825,14 @@ function SalonHome() {
               <TrazoTitulo className="mt-2" centrado />
               <div className="mt-6 flex items-center justify-center gap-2">
                 <Estrellas nota={resenasGoogle.nota} className="[&_svg]:h-5 [&_svg]:w-5" />
-                <NotaQueSube valor={resenasGoogle.nota} className="text-2xl font-extrabold tabular-nums" />
+                <NotaQueSube
+                  valor={resenasGoogle.nota}
+                  className="text-2xl font-extrabold tabular-nums"
+                />
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">{resenasGoogle.total} reseñas en Google</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {resenasGoogle.total} reseñas en Google
+              </p>
               <Button asChild variant="outline" className="mt-6 h-11 rounded-full px-6">
                 <a href={resenasGoogle.url} target="_blank" rel="noreferrer">
                   Ver reseñas en Google
@@ -723,7 +848,9 @@ function SalonHome() {
               <div>
                 <p className="ws-etiqueta">Reseñas</p>
                 <h2 className="mt-2 ws-titulo text-[28px] md:text-[38px]">
-                  {modoResenas === "estadisticas" ? "Valoración del salón" : "Lo que dicen las clientas"}
+                  {modoResenas === "estadisticas"
+                    ? "Valoración del salón"
+                    : "Lo que dicen las clientas"}
                 </h2>
                 <TrazoTitulo className="mt-2" />
               </div>
@@ -731,7 +858,9 @@ function SalonHome() {
                 <div className="flex items-center gap-2 text-sm">
                   <Estrellas nota={profile.rating} />
                   <NotaQueSube valor={profile.rating} className="font-bold tabular-nums" />
-                  {profile.reviewCount > 0 && <span className="text-muted-foreground">· {profile.reviewCount} reseñas</span>}
+                  {profile.reviewCount > 0 && (
+                    <span className="text-muted-foreground">· {profile.reviewCount} reseñas</span>
+                  )}
                 </div>
               )}
             </Reveal>
@@ -750,10 +879,24 @@ function SalonHome() {
 
       {/* Preguntas frecuentes */}
       <section id="faq" className="bg-ws-salvia-clara">
-        <div className={cn(CONTENEDOR_SALON, SECCION_WEB, "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-12")}>
-          <SectionHeading eyebrow="Antes de venir" title="Preguntas frecuentes" className="lg:mb-0" />
+        <div
+          className={cn(
+            CONTENEDOR_SALON,
+            SECCION_WEB,
+            "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-12",
+          )}
+        >
+          <SectionHeading
+            eyebrow="Antes de venir"
+            title="Preguntas frecuentes"
+            className="lg:mb-0"
+          />
           <Reveal>
-            <Accordion type="single" collapsible className="tarjeta-principal divide-y divide-lino border border-lino bg-card px-4 sm:px-5">
+            <Accordion
+              type="single"
+              collapsible
+              className="tarjeta-principal divide-y divide-lino border border-lino bg-card px-4 sm:px-5"
+            >
               {faq.map((item) => (
                 <AccordionItem key={item.q} value={item.q} className="border-b-0">
                   <AccordionTrigger className="min-h-14 gap-3 py-3 text-left text-[15px] font-semibold hover:no-underline">
@@ -782,15 +925,20 @@ function SalonHome() {
                   <span>{profile.address}</span>
                 </p>
                 {telefono && (
-                <a
-                  href={`tel:${telefono}`}
-                  className="mt-2 flex min-h-11 items-center gap-3 text-[15px] font-semibold tabular-nums hover:text-primary"
-                >
-                  <Phone className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" /> {profile.phone}
-                </a>
+                  <a
+                    href={`tel:${telefono}`}
+                    className="mt-2 flex min-h-11 items-center gap-3 text-[15px] font-semibold tabular-nums hover:text-primary"
+                  >
+                    <Phone className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />{" "}
+                    {profile.phone}
+                  </a>
                 )}
                 {enlaces.instagram ? (
-                  <a href={enlaces.instagram} {...FUERA} className="flex min-h-11 items-center gap-3 text-[15px] hover:text-primary">
+                  <a
+                    href={enlaces.instagram}
+                    {...FUERA}
+                    className="flex min-h-11 items-center gap-3 text-[15px] hover:text-primary"
+                  >
                     <Instagram className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
                     {profile.instagram?.trim() || "Instagram"}
                   </a>
@@ -801,11 +949,13 @@ function SalonHome() {
                       <Navigation className="h-4 w-4" aria-hidden="true" /> Cómo llegar
                     </a>
                   </Button>
-                  {telefono && <Button asChild variant="outline" className="h-11 rounded-full px-5">
-                    <a href={`tel:${telefono}`} className="gap-2">
-                      <Phone className="h-4 w-4" aria-hidden="true" /> Llamar
-                    </a>
-                  </Button>}
+                  {telefono && (
+                    <Button asChild variant="outline" className="h-11 rounded-full px-5">
+                      <a href={`tel:${telefono}`} className="gap-2">
+                        <Phone className="h-4 w-4" aria-hidden="true" /> Llamar
+                      </a>
+                    </Button>
+                  )}
                   {whatsappUrl && (
                     <Button asChild variant="outline" className="h-11 rounded-full px-5">
                       <a href={whatsappUrl} {...FUERA} className="gap-2">
@@ -817,28 +967,32 @@ function SalonHome() {
               </div>
             </Reveal>
             {!horarioDeEjemplo && (
-            <Reveal delay={60} className="h-full">
-              <div className="tarjeta-principal h-full border border-lino bg-background p-5 sm:p-6">
-                <p className="ws-etiqueta mb-2">Horario</p>
-                <ul className="divide-y divide-lino">
-                  {weekSchedule(profile.openingHours).map((d, i) => (
-                    <li
-                      key={d.label}
-                      className={cn(
-                        "flex justify-between gap-4 py-2.5 text-[15px]",
-                        i === hoyIndice && "font-bold text-foreground",
-                      )}
-                    >
-                      <span className={cn(i !== hoyIndice && "text-muted-foreground")}>
-                        {d.label}
-                        {i === hoyIndice && <span className="ml-2 rounded-full bg-salvia-clara px-2 py-0.5 text-xs font-semibold text-hoja-tinta">Hoy</span>}
-                      </span>
-                      <span className="tabular-nums">{d.value}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </Reveal>
+              <Reveal delay={60} className="h-full">
+                <div className="tarjeta-principal h-full border border-lino bg-background p-5 sm:p-6">
+                  <p className="ws-etiqueta mb-2">Horario</p>
+                  <ul className="divide-y divide-lino">
+                    {weekSchedule(profile.openingHours).map((d, i) => (
+                      <li
+                        key={d.label}
+                        className={cn(
+                          "flex justify-between gap-4 py-2.5 text-[15px]",
+                          i === hoyIndice && "font-bold text-foreground",
+                        )}
+                      >
+                        <span className={cn(i !== hoyIndice && "text-muted-foreground")}>
+                          {d.label}
+                          {i === hoyIndice && (
+                            <span className="ml-2 rounded-full bg-salvia-clara px-2 py-0.5 text-xs font-semibold text-hoja-tinta">
+                              Hoy
+                            </span>
+                          )}
+                        </span>
+                        <span className="tabular-nums">{d.value}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </Reveal>
             )}
           </div>
         </div>
@@ -858,8 +1012,17 @@ function SalonHome() {
                 ? "Elige servicio y hora en menos de un minuto."
                 : `Elige servicio, ${professionalWord(tipo)} y hora en menos de un minuto.`}
             </p>
-            <Button asChild size="lg" className="mt-7 h-12 rounded-full px-8 text-[15px] font-semibold">
-              <Link to="/s/$salonSlug/book" params={{ salonSlug }} search={(prev) => prev} className="gap-2">
+            <Button
+              asChild
+              size="lg"
+              className="mt-7 h-12 rounded-full px-8 text-[15px] font-semibold"
+            >
+              <Link
+                to="/s/$salonSlug/book"
+                params={{ salonSlug }}
+                search={(prev) => prev}
+                className="gap-2"
+              >
                 Reservar cita <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
             </Button>
@@ -867,7 +1030,7 @@ function SalonHome() {
         </div>
       </section>
 
-      <MobileBookingBar salonSlug={salonSlug} whatsappUrl={whatsappUrl} />
+      <MobileBookingBar salonSlug={salonSlug} whatsappUrl={whatsappUrl} heroId="portada" />
     </>
   );
 }
