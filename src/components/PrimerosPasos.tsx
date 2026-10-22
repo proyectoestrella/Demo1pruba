@@ -10,13 +10,15 @@ import { cn } from "@/lib/utils";
 const PASOS = [
   { titulo: "Tu carta", detalle: "Servicios, duración y precio", to: "/app/services" as const },
   { titulo: "Tu equipo", detalle: "Profesionales y horario de cada una", to: "/app/employees" as const },
-  { titulo: "Horario del salón y tu web", detalle: "Cuándo abres y qué verán tus clientas", to: "/app/web" as const },
-  { titulo: "Fianza por hora de servicio y preguntas al reservar", detalle: "Decide qué necesitas saber antes de confirmar", to: "/app/settings" as const },
-  { titulo: "Importar clientas", detalle: "Importa tu cartera desde Clientas", to: "/app/clients" as const },
 ] as const;
 
-/** Seis pasos en total: los cinco de arriba más «compartir el enlace». */
-export const TOTAL_PASOS = 6;
+/**
+ * Tres pasos (22-oct, PeluChic): carta, equipo y compartir el enlace. El de
+ * compartir conserva el índice 5 que ya tenían guardado los salones.
+ */
+const PASO_COMPARTIR = 5;
+const INDICES = [0, 1, PASO_COMPARTIR];
+export const TOTAL_PASOS = 3;
 
 /**
  * Qué pasos están hechos (a mano o detectados solos) y cuáles faltan. Lo
@@ -25,18 +27,17 @@ export const TOTAL_PASOS = 6;
  */
 export function useProgresoPrimerosPasos() {
   const profile = useSalonStore((s) => s.salonProfile);
-  const appointments = useSalonStore((s) => s.appointments);
   const automáticos = new Set<number>();
   if (profile.menu?.length) automáticos.add(0);
   if (profile.team?.length && profile.teamHours?.length && profile.teamHours.length >= profile.team.length) automáticos.add(1);
-  if (appointments.some((a) => a.origen === "tpv123")) automáticos.add(4);
   // Demo que oculta el equipo: el paso no se enseña (su pantalla no existe) y cuenta como hecho.
   const sinEquipo = !moduloVisibleEnPanel(profile, "equipo");
   if (sinEquipo) automáticos.add(1);
-  const marcados = new Set([...(profile.setupChecklistDone ?? []), ...automáticos]);
-  const pendientes = [...PASOS.map((p) => p.titulo), "Compartir tu enlace de reservas"].filter(
-    (_, i) => !marcados.has(i),
+  const marcados = new Set(
+    [...(profile.setupChecklistDone ?? []), ...automáticos].filter((i) => INDICES.includes(i)),
   );
+  const titulos = [PASOS[0].titulo, PASOS[1].titulo, "Comparte tu enlace de reservas"];
+  const pendientes = titulos.filter((_, n) => !marcados.has(INDICES[n]));
   return { sinEquipo, automáticos, marcados, progreso: marcados.size, pendientes, oculto: !!profile.setupChecklistHidden };
 }
 
@@ -60,12 +61,12 @@ export function PrimerosPasos({ enAjustes = false }: { enAjustes?: boolean }) {
     try { await navigator.clipboard.writeText(url); toast.success("Enlace de reservas copiado"); }
     catch { toast.error("No se ha podido copiar. Abre tu web y copia el enlace desde allí."); }
   };
-  const tareaCompartir = 5;
+  const tareaCompartir = PASO_COMPARTIR;
   return (
     <section className="overflow-hidden rounded-[20px] border border-border bg-card" aria-label="Primeros pasos">
       <button type="button" className="flex min-h-16 w-full items-center gap-3 p-4 text-left sm:px-5" aria-expanded={abierto} onClick={() => setAbierto(!abierto)}>
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-salvia-clara text-hoja-tinta"><ListChecks className="size-5" strokeWidth={1.6} /></span>
-        <span className="min-w-0 flex-1"><span className="block text-base font-extrabold">Primeros pasos</span><span className="block text-[12.5px] text-muted-foreground tabular-nums">{progreso} de 6 listos</span></span>
+        <span className="min-w-0 flex-1"><span className="block text-base font-extrabold">Primeros pasos</span><span className="block text-[12.5px] text-muted-foreground tabular-nums">{progreso} de {TOTAL_PASOS} listos</span></span>
         {!enAjustes && <span className="mr-2 text-xs text-muted-foreground">{oculto ? "" : "Puedes ocultarlo"}</span>}
         <ChevronDown className={cn("size-5 text-muted-foreground transition-transform", abierto && "rotate-180")} />
       </button>
@@ -80,14 +81,14 @@ export function PrimerosPasos({ enAjustes = false }: { enAjustes?: boolean }) {
                 {done && <Check className="size-4" />}
               </button>
               <Link to={paso.to} className="min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <span className={cn("block text-sm font-bold", done && "text-muted-foreground line-through")}>{i + 1 - (sinEquipo && i > 1 ? 1 : 0)}. {paso.titulo}</span><span className="block text-xs text-muted-foreground">{paso.detalle}{automatico ? " · Listo" : ""}</span>
+                <span className={cn("block text-sm font-bold", done && "text-muted-foreground line-through")}>{i + 1}. {paso.titulo}</span><span className="block text-xs text-muted-foreground">{paso.detalle}{automatico ? " · Listo" : ""}</span>
               </Link>
               <Link to={paso.to} aria-label={`Abrir: ${paso.titulo}`} className="rounded-md p-2 text-primary"><ExternalLink className="size-4" /></Link>
             </li>;
           })}
           <li className="flex min-h-14 items-center gap-3 rounded-xl px-2 py-2 hover:bg-perla">
             <button type="button" onClick={() => marcar(tareaCompartir, !marcados.has(tareaCompartir))} aria-label={`${marcados.has(tareaCompartir) ? "Desmarcar" : "Marcar"}: Compartir enlace de reservas`} aria-pressed={marcados.has(tareaCompartir)} className={cn("grid size-7 shrink-0 place-items-center rounded-full border-2", marcados.has(tareaCompartir) ? "border-hoja bg-hoja text-white" : "border-lino-fuerte bg-card")}>{marcados.has(tareaCompartir) && <Check className="size-4" />}</button>
-            <span className="min-w-0 flex-1"><span className="block text-sm font-bold">6. Comparte tu enlace de reservas</span><span className="block text-xs text-muted-foreground">En Instagram, Google o tu web</span></span>
+            <span className="min-w-0 flex-1"><span className="block text-sm font-bold">{sinEquipo ? 2 : 3}. Comparte tu enlace de reservas</span><span className="block text-xs text-muted-foreground">En Instagram, Google o tu web</span></span>
             <Button type="button" variant="outline" size="sm" className="min-h-10 gap-2" onClick={copiarEnlace}><Copy className="size-4" /><span className="hidden sm:inline">Copiar enlace</span></Button>
           </li>
         </ol>
