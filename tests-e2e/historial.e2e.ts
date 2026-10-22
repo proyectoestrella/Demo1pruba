@@ -100,7 +100,9 @@ test.describe("Historial de cambios (demo)", () => {
     await dialogo.getByRole("button", { name: "Continuar" }).click();
     await dialogo.getByRole("button", { name: "Revisar cita" }).click();
     await dialogo.locator("button[type=submit]").click();
-    await expect(dialogo).toBeHidden();
+    // Según la hora del día, el primer hueco puede pisar una cita de la demo: es un aviso, no un error.
+    const guardarIgual = page.getByRole("button", { name: "Guardar igual" });
+    if (await guardarIgual.isVisible({ timeout: 1500 }).catch(() => false)) await guardarIgual.click();
     await expect(page.getByText(/Cita de Prueba guardada/).first()).toBeVisible();
 
     await page.getByTestId("abrir-historial").filter({ visible: true }).first().click();
