@@ -465,10 +465,11 @@ export const getSalonProfile = createServerFn({ method: "GET" })
  */
 export type MotivoNoPublicado = "sin-backend" | "falta-esquema" | "limite-profesionales";
 
-function perfilDentroDelTopeDeProfesionales(profile: Record<string, unknown>): boolean {
+function perfilDentroDelTopeDeProfesionales(profile: Record<string, unknown>, slugSalon?: string): boolean {
   return equipoCabeEnPlan(
     planDe({ plan: typeof profile.plan === "string" ? profile.plan : null }, false),
     profile.team,
+    slugSalon,
   );
 }
 
@@ -486,7 +487,7 @@ export const saveSalonProfile = createServerFn({ method: "POST" })
       // que ni una estilista autorizada para la web ni una subencargada puedan
       // mandar por API un plan, una fianza o cualquier ajuste ajeno.
       exigirAcciones(quien, ["web.publicar", "salon.editar", "plan.gestionar"]);
-      if (!perfilDentroDelTopeDeProfesionales(data.profile)) {
+      if (!perfilDentroDelTopeDeProfesionales(data.profile, data.slug)) {
         return { synced: false as const, motivo: "limite-profesionales" as const };
       }
       const supabase = getSupabaseServerClient();
@@ -753,7 +754,7 @@ export const patchSalonProfile = createServerFn({ method: "POST" })
           throw new PermisoDenegado("plan.gestionar");
       }
       const fusionado = fusionarPerfil(actualPerfil, data.patch);
-      if ("team" in data.patch && !perfilDentroDelTopeDeProfesionales(fusionado)) {
+      if ("team" in data.patch && !perfilDentroDelTopeDeProfesionales(fusionado, data.slug)) {
         return { synced: false as const, motivo: "limite-profesionales" as const };
       }
 

@@ -1076,7 +1076,7 @@ export const useSalonStore = create<SalonState>()(
         if (
           estadoActual.realSalonSlug &&
           "team" in patch &&
-          !equipoCabeEnPlan(planDe(estadoActual.salonProfile, false), patch.team)
+          !equipoCabeEnPlan(planDe(estadoActual.salonProfile, false), patch.team, estadoActual.realSalonSlug)
         ) return;
         set((s) => ({ salonProfile: { ...s.salonProfile, ...patch } }));
         const perfil = get().salonProfile;

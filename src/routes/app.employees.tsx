@@ -9,7 +9,7 @@ import { useRedirigirSiModuloOculto } from "@/lib/route-guards";
 import { beforeLoadSiModuloVisible } from "@/lib/guard-modulo";
 import { useEquipo } from "@/lib/use-equipo";
 import { usePlanSalon } from "@/lib/accesos-panel";
-import { MAX_PROFESIONALES, NOMBRE_PLAN } from "@/lib/plan";
+import { limiteProfesionalesDeSalon, MAX_PROFESIONALES, NOMBRE_PLAN, TOPE_POR_SALON } from "@/lib/plan";
 import { useRealSalonSlug } from "@/lib/use-real-salon";
 import { useBusinessType } from "@/lib/use-display-profile";
 import { fotoDeProfesional, MAX_SALON_TEAM_ENTRIES, formatTeamEntry } from "@/lib/business-type";
@@ -60,8 +60,8 @@ function Team() {
   const hoy = new Date().getDay();
   // Profesionales por plan (6 / 6 / sin límite), sin pasar del tope técnico.
   const plan = usePlanSalon();
-  const limitePlan = MAX_PROFESIONALES[plan];
-  const limite = Math.min(limitePlan ?? MAX_SALON_TEAM_ENTRIES, MAX_SALON_TEAM_ENTRIES);
+  const limite = Math.min(limiteProfesionalesDeSalon(plan, profile.slug), MAX_SALON_TEAM_ENTRIES);
+  const limitePlan = MAX_PROFESIONALES[plan] === null && !(profile.slug in TOPE_POR_SALON) ? null : limite;
   const capadoPorPlan = limitePlan !== null && employees.length >= limitePlan;
   if (!visible) return null;
 
