@@ -54,7 +54,7 @@ describe("configuración real de PeluChic · 7-oct-2026", () => {
     expect(PELUCHIC.duracionFlexible).toBe(true);
     expect(duracionAgenda).toBe(60);
     expect(duracionSenal).toBe(40);
-    expect(importeSenal(reglaSenal(PELUCHIC), { serviceIds: ["peinar"], durationMin: duracionSenal, priceEur: porId.peinar.priceEur })).toBe(3);
+    expect(importeSenal(reglaSenal(PELUCHIC), { serviceIds: ["peinar"], durationMin: duracionSenal, priceEur: porId.peinar.priceEur })).toBe(5);
   });
 
   it("reserva pública no ofrece la comida provisional de los viernes", () => {

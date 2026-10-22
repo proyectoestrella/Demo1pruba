@@ -110,7 +110,8 @@ describe("plan noche C2 · fianza por duración de carta", () => {
   it("redondea exactamente a euros para cada múltiplo de cinco minutos hasta cuatro horas", () => {
     for (let minutos = 0; minutos <= 4 * 60; minutos += 5) {
       // Tabla independiente: 5 €/h = 500 céntimos/hora, medio euro sube.
-      const esperado = Math.floor((500 * minutos + 3_000) / 6_000);
+      const porTiempo = Math.floor((500 * minutos + 3_000) / 6_000);
+      const esperado = minutos > 0 ? Math.max(5, porTiempo) : 0; // mínimo de 5 € (22-oct)
       expect(importeSenal(porHora, { serviceIds: ["x"], durationMin: minutos, priceEur: 0 })).toBe(esperado);
     }
   });

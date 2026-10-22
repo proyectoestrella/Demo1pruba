@@ -189,6 +189,9 @@ export function aplicaSenal(regla: ReglaSenal, r: ReservaParaSenal): boolean {
   }
 }
 
+/** Señal mínima en el modo por hora: una cita corta no baja de aquí. */
+export const SENAL_MINIMA_POR_HORA_EUR = 5;
+
 /** Importe de la señal en euros. El modo por hora se redondea al euro más cercano. */
 export function importeSenal(regla: ReglaSenal, r: ReservaParaSenal): number {
   if (!aplicaSenal(regla, r)) return 0;
@@ -197,7 +200,9 @@ export function importeSenal(regla: ReglaSenal, r: ReservaParaSenal): number {
     const minutos = Math.max(0, Math.round(Number.isFinite(r.durationMin) ? r.durationMin : 0));
     // Todo se calcula como entero: se suma medio divisor (3.000 céntimo-minutos)
     // antes de dividir por 60 * 100, así 0,50 € sube al euro siguiente.
-    return Number((BigInt(tarifaCents) * BigInt(minutos) + 3_000n) / 6_000n);
+    const porTiempo = Number((BigInt(tarifaCents) * BigInt(minutos) + 3_000n) / 6_000n);
+    // 22-oct (PeluChic): por hora, nunca menos de 5 € (si hay tarifa).
+    return tarifaCents > 0 && minutos > 0 ? Math.max(SENAL_MINIMA_POR_HORA_EUR, porTiempo) : porTiempo;
   }
   // Los datos que vienen de una cita antigua o de una importación no tienen
   // por qué ser números utilizables. Una fianza nunca debe acabar enseñando

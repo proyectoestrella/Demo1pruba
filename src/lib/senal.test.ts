@@ -21,11 +21,11 @@ describe("una sola regla de señal por salón", () => {
       priceEur: 0,
     });
 
-    expect(importeDe(["peinar"], 60)).toBe(3); // 40 min de carta, no la hora bloqueada
-    expect(importeDe(["lavado"], 60)).toBe(1);
+    expect(importeDe(["peinar"], 60)).toBe(5); // 40 min de carta (3 €), sube al mínimo de 5 €
+    expect(importeDe(["lavado"], 60)).toBe(5);
     expect(importeDe(["color", "corte"], 120)).toBe(6); // 45 + 30 = 75 min
     expect(importeDe(["otro"], 60)).toBe(5);
-    expect(importeDe([], 45)).toBe(4);
+    expect(importeDe([], 45)).toBe(5);
   });
 
   it("decide de forma determinista el texto bajo la carta", () => {
@@ -59,7 +59,7 @@ describe("una sola regla de señal por salón", () => {
 
   it("por hora redondea cada medio euro hacia arriba, no se topa al precio y funciona con precios ocultos", () => {
     const r = reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 5 });
-    expect([15, 30, 45, 60, 90, 150, 180].map((durationMin) => importeSenal(r, { serviceIds: ["x"], durationMin, priceEur: 0 }))).toEqual([1, 3, 4, 5, 8, 13, 15]);
+    expect([15, 30, 45, 60, 90, 150, 180].map((durationMin) => importeSenal(r, { serviceIds: ["x"], durationMin, priceEur: 0 }))).toEqual([5, 5, 5, 5, 8, 13, 15]);
     const texto = textoSenalPublico(r, { serviceIds: ["x"], durationMin: 90, priceEur: 0 }, "PeluChic", (n) => `${n.toFixed(2).replace(".", ",")} €`)!;
     expect(texto).toContain("8 €");
     expect(texto).not.toContain(",00 €");
@@ -82,13 +82,13 @@ describe("una sola regla de señal por salón", () => {
       depositBizumPhone: "600 000 000",
     });
     const texto = textoSenalPublico(r, { serviceIds: ["x"], durationMin: 30, priceEur: 0 }, "PeluChic", eur)!;
-    expect(texto).toBe("PeluChic te pedirá una fianza por Bizum de 3 € (5 € por hora de servicio). La dueña confirma la solicitud y entonces el hueco queda reservado; tendrás 4 horas para pagarla haciendo un Bizum al 600 000 000, y la dueña marcará el pago cuando lo reciba.");
+    expect(texto).toBe("PeluChic te pedirá una fianza por Bizum de 5 € (5 € por hora de servicio). La dueña confirma la solicitud y entonces el hueco queda reservado; tendrás 4 horas para pagarla haciendo un Bizum al 600 000 000, y la dueña marcará el pago cuando lo reciba.");
   });
 
   it("por hora redondea al euro más cercano, sin inventar 5 € si la tarifa es cero", () => {
     const cinco = reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 5 });
     expect(importeSenal(cinco, { serviceIds: ["x"], durationMin: 90, priceEur: 100 })).toBe(8);
-    expect(importeSenal(cinco, { serviceIds: ["x"], durationMin: 50, priceEur: 100 })).toBe(4);
+    expect(importeSenal(cinco, { serviceIds: ["x"], durationMin: 50, priceEur: 100 })).toBe(5);
     expect(reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 0 }).tarifaPorHoraEur).toBe(0);
     expect(importeSenal(reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 0 }), { serviceIds: ["x"], durationMin: 90, priceEur: 100 })).toBe(0);
   });
