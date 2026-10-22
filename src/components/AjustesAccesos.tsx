@@ -100,7 +100,7 @@ function PermisosPorPersona({
       clave: "verAgendaCompleta",
       titulo: "Ve toda la agenda / solo su día",
       ayuda: permisos.verAgendaCompleta
-        ? "Ahora puede ver las citas de todo el equipo."
+        ? "Ahora puede ver las citas de todo el equipo y todas las clientas."
         : "Ahora solo ve sus citas; las demás no salen del servidor con datos personales.",
       activo: permisos.verAgendaCompleta,
     },

@@ -235,6 +235,8 @@ export function permisosDe(rol: Rol, extras?: PermisosExtra | null): Permisos {
   };
 
   aplicar("cita.ver-todas", extra.verAgendaCompleta);
+  // 22-oct (PeluChic): ver toda la agenda incluye ver todas las clientas.
+  aplicar("clienta.ver-todas", extra.verAgendaCompleta);
   for (const accion of ["web.editar", "web.publicar", "web.restaurar-version"] as const)
     aplicar(accion, extra.accesoWeb);
   if (extra.accesoWeb === true) paginas.add("mi-pagina");
