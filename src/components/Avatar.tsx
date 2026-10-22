@@ -37,6 +37,8 @@ export interface AvatarProps {
   className?: string;
   /** Si el nombre ya está escrito al lado, el avatar es decorativo (por defecto). */
   decorativo?: boolean;
+  /** Sin foto ni avatar elegido, iniciales en vez del retrato automático (clientas, 22-oct). */
+  inicialesPorDefecto?: boolean;
 }
 
 /**
@@ -58,6 +60,7 @@ export function Avatar({
   aroColor,
   className,
   decorativo = true,
+  inicialesPorDefecto = false,
 }: AvatarProps) {
   const t =
     typeof size === "number"
@@ -65,10 +68,10 @@ export function Avatar({
       : TAMANOS[size];
   const [fotoRota, setFotoRota] = useState<string | null>(null);
   const r = resolverAvatar({ id, foto: foto && foto !== fotoRota ? foto : undefined, elegido });
-  const conDibujo = (r.origen === "elegido" && r.avatar !== undefined) || r.origen === "defecto";
+  const conDibujo = (r.origen === "elegido" && r.avatar !== undefined) || (r.origen === "defecto" && !inicialesPorDefecto);
   const dibujo = useDibujoRetratos(conDibujo);
   const retratoElegido = r.origen === "elegido" ? retratoGuardado(elegido) : undefined;
-  const retratoAutomatico = r.origen === "defecto" ? retratoPorDefecto(id ?? nombre) : undefined;
+  const retratoAutomatico = r.origen === "defecto" && !inicialesPorDefecto ? retratoPorDefecto(id ?? nombre) : undefined;
   const uri =
     conDibujo && dibujo
       ? retratoElegido || retratoAutomatico
@@ -159,6 +162,7 @@ export function AvatarClienta({
       elegido={elegido}
       size={size}
       className={className}
+      inicialesPorDefecto
     />
   );
 }

@@ -99,7 +99,7 @@ export function GestorFotoPersona({ abierto, onOpenChange, tipo, id, nombre, ele
           <div className="mb-4 flex items-center gap-4 rounded-2xl bg-nata/60 p-4">
             {nueva
               ? <img src={nueva.url} alt={`Vista previa de la foto de ${nombre}`} data-testid="foto-vista-previa" className="size-20 shrink-0 rounded-full object-cover" />
-              : <Avatar nombre={nombre} id={id} foto={activa} elegido={elegido} size={80} decorativo={false} />}
+              : <Avatar nombre={nombre} id={id} foto={activa} elegido={elegido} size={80} decorativo={false} inicialesPorDefecto={tipo === "clienta"} />}
             <p className="text-sm text-muted-foreground" aria-live="polite">
               {nueva ? "Así se verá. Si te gusta, guárdala." : activa ? "Esta es la foto actual." : "Ahora se ve el avatar dibujado."}
             </p>
