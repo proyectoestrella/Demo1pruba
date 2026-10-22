@@ -11,7 +11,13 @@ async function enPanel(page: Page, audit: Auditoria, opciones?: { conVisita?: bo
   await cerrarVisita(page)
     .waitFor({ state: "visible", timeout: 5000 })
     .catch(() => {});
-  if (opciones?.conVisita) return;
+  if (opciones?.conVisita) {
+    // En las demos el tour ya no arranca solo (22-oct): se abre con su botón.
+    if (!(await cerrarVisita(page).isVisible())) {
+      await page.getByRole("button", { name: "Ver el tour guiado del panel" }).first().click({ force: true });
+    }
+    return;
+  }
   if (await cerrarVisita(page).isVisible()) {
     await cerrarVisita(page).click();
     await expect(siguiente(page)).toBeHidden();

@@ -412,9 +412,10 @@ function DashboardLayoutV1() {
 
   useEffect(() => {
     if (path !== "/app" || hasSeenTour(tourVistoEnServidor)) return;
-    // En una demo abierta por enlace (?d=) el tour taparía la cabecera
-    // mientras se enseña el panel: no se lanza solo.
-    if (new URLSearchParams(window.location.search).has("d")) return;
+    // En las demos (sin salón real) el tour no se lanza solo: taparía el panel
+    // mientras se enseña, y al volver a Hoy el enlace ya no lleva el ?d= (22-oct).
+    // Sigue disponible a mano desde el botón de la cabecera.
+    if (!realSlug || new URLSearchParams(window.location.search).has("d")) return;
     const t = setTimeout(() => {
       // La resolución del salón es asíncrona. Volvemos a comprobar la copia
       // remota justo antes de abrir para que un perfil ya marcado no vea un
@@ -424,7 +425,7 @@ function DashboardLayoutV1() {
       abrirTour();
     }, 1900);
     return () => clearTimeout(t);
-  }, [abrirTour, path, tourEnPerfil, tourVistoEnServidor]);
+  }, [abrirTour, path, realSlug, tourEnPerfil, tourVistoEnServidor]);
 
   return (
     <div className="panel-marco flex w-auto min-w-0">
