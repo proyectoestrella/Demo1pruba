@@ -4,13 +4,33 @@ import { useImagenConRespaldo } from "@/lib/imagen-rota";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Info, PhoneCall, Repeat, X, Zap } from "lucide-react";
 import { employeesForType, servicesForType, textosDeCarta } from "@/lib/mock/salon";
-import { duracionCartaParaSenal, reglaSenal, senalDeReservaNueva, servicioLlevaSenal, textoSenalPublico, type ReglaSenal } from "@/lib/senal";
+import {
+  duracionCartaParaSenal,
+  reglaSenal,
+  senalDeReservaNueva,
+  servicioLlevaSenal,
+  textoSenalPublico,
+  type ReglaSenal,
+} from "@/lib/senal";
 import { franjasProfesionalEnFecha, huecosDeProfesionalesEnFecha } from "@/lib/horario-equipo";
 import { isoDelSalon, zonaDelSalon } from "@/lib/zona-horaria";
 import { antelacionMinima, huecoAunReservable } from "@/lib/primer-hueco";
-import type { Appointment, BookingAnswers, Client, Employee, EmployeeId, Service } from "@/lib/mock/types";
+import type {
+  Appointment,
+  BookingAnswers,
+  Client,
+  Employee,
+  EmployeeId,
+  Service,
+} from "@/lib/mock/types";
 import { serializeBookingNote } from "@/lib/booking-answers";
-import { idDetalleOtro, limpiarRespuestas, obligatoriasSinResponder, preguntasAplicables, preguntasDelSalon } from "@/lib/preguntas-reserva";
+import {
+  idDetalleOtro,
+  limpiarRespuestas,
+  obligatoriasSinResponder,
+  preguntasAplicables,
+  preguntasDelSalon,
+} from "@/lib/preguntas-reserva";
 import type { PreguntaReserva } from "@/lib/mock/types";
 import { useSalonStore } from "@/lib/store";
 import { duracionDeAgenda, duracionFlexibleActiva } from "@/lib/duracion-flexible";
@@ -53,7 +73,12 @@ import heroImg from "@/assets/hero-salon.jpg";
 import { registerBookingClient } from "@/lib/api/clients.functions";
 import { checkClientPenalty } from "@/lib/api/salons.functions";
 import { guardarReservaPublica } from "@/lib/salon-sync";
-import { motivosDatosReserva, firmaReservaPublica, haLeidoAvisoPrivacidad, mensajeErrorReserva } from "@/lib/reserva-publica";
+import {
+  motivosDatosReserva,
+  firmaReservaPublica,
+  haLeidoAvisoPrivacidad,
+  mensajeErrorReserva,
+} from "@/lib/reserva-publica";
 import { reintentarSalonPublico } from "@/lib/use-real-salon";
 import { sumServices } from "@/lib/appointment-services";
 import { resumenServiciosReserva } from "@/lib/resumen-servicios-reserva";
@@ -126,9 +151,10 @@ function resolveEmployee(
 ): EmployeeId | null {
   const [hh, mm] = time.split(":").map(Number);
   const startMin = hh * 60 + mm;
-  const candidates = stylistChoice && stylistChoice !== "any"
-    ? employees.filter((employee) => employee.id === stylistChoice)
-    : employees;
+  const candidates =
+    stylistChoice && stylistChoice !== "any"
+      ? employees.filter((employee) => employee.id === stylistChoice)
+      : employees;
   const candidate = profesionalesDisponiblesEnHueco({
     employees: candidates,
     appointments,
@@ -280,7 +306,9 @@ function BookingWizard() {
   const realSalonSlugGuardado = useSalonStore((s) => s.realSalonSlug);
   const realSalonSlug = clienteHidratado ? realSalonSlugGuardado : null;
   const duracionFlexibleDemo = duracionFlexibleActiva(
-    { duracionFlexible: storedDuracionFlexible }, demoPersonalizacion, realSalonSlug === salonSlug,
+    { duracionFlexible: storedDuracionFlexible },
+    demoPersonalizacion,
+    realSalonSlug === salonSlug,
   );
 
   // Catálogo y equipo, calculados a partir del tipo de negocio deducido del
@@ -305,7 +333,26 @@ function BookingWizard() {
     () => Object.fromEntries(services.map((s) => [s.id, s])) as Record<string, Service>,
     [services],
   );
-  const employees = useMemo(() => employeesForType(tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds, undefined, profile.serviciosPorProfesional), [tipo, profile.team, profile.teamHours, profile.openingHours, profile.teamIds, profile.serviciosPorProfesional]);
+  const employees = useMemo(
+    () =>
+      employeesForType(
+        tipo,
+        profile.team,
+        profile.teamHours,
+        profile.openingHours,
+        profile.teamIds,
+        undefined,
+        profile.serviciosPorProfesional,
+      ),
+    [
+      tipo,
+      profile.team,
+      profile.teamHours,
+      profile.openingHours,
+      profile.teamIds,
+      profile.serviciosPorProfesional,
+    ],
+  );
   const employeeMap = useMemo(
     () => Object.fromEntries(employees.map((e) => [e.id, e])) as Record<string, Employee>,
     [employees],
@@ -327,7 +374,10 @@ function BookingWizard() {
   const telefono = validarTelefono(data.phone, data.phoneCountry ?? "ES");
   const telefonoE164 = telefono.ok ? telefono.e164 : "";
   const [phoneTouched, setPhoneTouched] = useState(false);
-  const preguntas = useMemo(() => preguntasAplicables(preguntasSalon, data.serviceIds), [preguntasSalon, data.serviceIds]);
+  const preguntas = useMemo(
+    () => preguntasAplicables(preguntasSalon, data.serviceIds),
+    [preguntasSalon, data.serviceIds],
+  );
   const showBookingQuestions = preguntas.length > 0;
   const requireBookingQuestions = preguntas.some((p) => p.obligatoria);
   const faltanRespuestas = obligatoriasSinResponder(preguntas, data.bookingAnswers);
@@ -353,9 +403,10 @@ function BookingWizard() {
   // el servidor ha guardado la cita, y mientras no se sepa si el slug es real
   // o demo no se envía nada. Ver `resolverSalonReal` y `guardarReservaPublica`.
   const resolution = useSalonStore((s) => s.publicBookingResolution);
-  const resolutionStatus = clienteHidratado && resolution?.slug === salonSlug
-    ? resolution.status
-    : estadoInicialReservaPublica();
+  const resolutionStatus =
+    clienteHidratado && resolution?.slug === salonSlug
+      ? resolution.status
+      : estadoInicialReservaPublica();
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const sendingRef = useRef(false);
@@ -363,13 +414,10 @@ function BookingWizard() {
 
   // Bloqueo manual o deuda activa: se recalcula en cada tecla, no solo al
   // perder el foco. Sin recargo, la deuda antigua no bloquea.
-  const blockedLocal = useMemo(
-    () => {
-      const matching = findClientByPhone(clients, data.phone);
-      return isBookingBlocked(matching, profile) ? matching : undefined;
-    },
-    [clients, data.phone, profile],
-  );
+  const blockedLocal = useMemo(() => {
+    const matching = findClientByPhone(clients, data.phone);
+    return isBookingBlocked(matching, profile) ? matching : undefined;
+  }, [clients, data.phone, profile]);
 
   // En un salón REAL la ficha del cliente vive en Supabase, no en el navegador
   // de quien reserva: la comprobación la hace el servidor y solo devuelve el
@@ -434,7 +482,9 @@ function BookingWizard() {
     durationMin: duracionCartaParaSenal(data.serviceIds, serviceMap, schedulingDurationMin),
     priceEur: total,
   };
-  const textoSenal = textoSenalPublico(reglaSen, reservaSenal, profile.name, eur, { ocultarImporte: !mostrarPrecio });
+  const textoSenal = textoSenalPublico(reglaSen, reservaSenal, profile.name, eur, {
+    ocultarImporte: !mostrarPrecio,
+  });
 
   // Mejora B1 (grounding externo, patrón Booksy): "Repetir mi última cita".
   // Se lee una sola vez al montar el wizard — si se aplica y el cliente sigue
@@ -448,8 +498,12 @@ function BookingWizard() {
   // Válido solo si TODOS los servicios y el profesional siguen existiendo en
   // el catálogo actual: una carta que cambió entre visitas no debe ofrecer
   // un "repetir" con un servicio que ya no se hace.
-  const repeatValid =
-    ultimaReservaEsRepetible(lastBooking, serviceMap, employees.map((employee) => employee.id), profile.serviciosPorProfesional);
+  const repeatValid = ultimaReservaEsRepetible(
+    lastBooking,
+    serviceMap,
+    employees.map((employee) => employee.id),
+    profile.serviciosPorProfesional,
+  );
   const repeatDuration = repeatValid ? sumServices(repeatServices).durationMin : 0;
   const repeatNextSlot = useMemo(() => {
     if (!repeatValid || !lastBooking) return undefined;
@@ -500,14 +554,21 @@ function BookingWizard() {
       const serviceIds = d.serviceIds.includes(id)
         ? d.serviceIds.filter((x) => x !== id)
         : [...d.serviceIds, id];
-      const compatibles = profesionalesParaServicios(employees, serviceIds, profile.serviciosPorProfesional);
+      const compatibles = profesionalesParaServicios(
+        employees,
+        serviceIds,
+        profile.serviciosPorProfesional,
+      );
       return {
         ...d,
         serviceIds,
         // Si la profesional elegida ya no puede realizar la combinación, se
         // vuelve a «Cualquiera» dentro de las compatibles; nunca se arrastra
         // una selección inválida a los huecos ni al servidor.
-        employeeId: d.employeeId !== "any" && d.employeeId && !compatibles.some((e) => e.id === d.employeeId) ? "any" : d.employeeId,
+        employeeId:
+          d.employeeId !== "any" && d.employeeId && !compatibles.some((e) => e.id === d.employeeId)
+            ? "any"
+            : d.employeeId,
         // Al cambiar los servicios cambia la duración y la hora elegida puede
         // dejar de caber: se vuelve a pedir.
         date: undefined,
@@ -620,13 +681,21 @@ function BookingWizard() {
       // guardó la cita pero se perdió la respuesta, el reintento la reconoce.
       const firma = firmaReservaPublica(salonSlug, citaSinId, cliente);
       if (intentoRef.current?.firma !== firma) {
-        intentoRef.current = { firma, cita: { ...citaSinId, id: `a-public-${crypto.randomUUID()}` } };
+        intentoRef.current = {
+          firma,
+          cita: { ...citaSinId, id: `a-public-${crypto.randomUUID()}` },
+        };
       }
       sendingRef.current = true;
       setSending(true);
       setSendError(null);
       try {
-        await guardarReservaPublica(salonSlug, intentoRef.current.cita, cliente, haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged));
+        await guardarReservaPublica(
+          salonSlug,
+          intentoRef.current.cita,
+          cliente,
+          haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged),
+        );
         addSavedPublicAppointment(intentoRef.current.cita);
       } catch (error) {
         setSendError(mensajeErrorReserva(error));
@@ -706,9 +775,22 @@ function BookingWizard() {
         : step === 3
           ? !data.date || !data.time || sinProfesionalParaServicios
           : faltasDatos.length > 0;
-  const ctaHint = step === 4 && ctaDisabled ? `Falta: ${faltasDatos.join(", ")}` : undefined;
+  const ctaHint = ctaDisabled
+    ? step === 1
+      ? "Elige un servicio"
+      : step === 2
+        ? "Elige una estilista"
+        : step === 3
+          ? "Elige una hora"
+          : `Falta: ${faltasDatos.join(", ")}`
+    : undefined;
 
-  const ctaLabel = step < 4 ? "Continuar" : mostrarPrecio ? `Confirmar reserva — ${eur(total)}` : "Confirmar reserva";
+  const ctaLabel =
+    step < 4
+      ? "Continuar"
+      : mostrarPrecio
+        ? `Confirmar reserva — ${eur(total)}`
+        : "Confirmar reserva";
   // En la barra fija de móvil no cabe el importe dos veces: ya se ve a la izquierda.
   const ctaLabelCorto = step < 4 ? "Continuar" : "Confirmar";
 
@@ -726,7 +808,8 @@ function BookingWizard() {
   const flexNota = flexible
     ? `La duración final la confirma ${profile.name || "el salón"} al aceptar tu solicitud.`
     : undefined;
-  const recargoTexto = mostrarPrecio && conRecargo && recargoRetraso ? recargoRetrasoTexto(recargoRetraso) : undefined;
+  const recargoTexto =
+    mostrarPrecio && conRecargo && recargoRetraso ? recargoRetrasoTexto(recargoRetraso) : undefined;
 
   const dateLabel = data.date
     ? new Date(`${data.date}T00:00`).toLocaleDateString("es-ES", {
@@ -737,7 +820,13 @@ function BookingWizard() {
     : undefined;
 
   return (
-    <section className={cn(CONTENEDOR_SALON, "ws-reserva pb-10 pt-6 md:pb-16 md:pt-10", step === 4 && "pb-28")}>
+    <section
+      className={cn(
+        CONTENEDOR_SALON,
+        "ws-reserva pb-10 pt-6 md:pb-16 md:pt-10",
+        step === 4 && "pb-28",
+      )}
+    >
       <StepIndicator step={step} soloUno={soloUno} />
 
       {/* Mejora B1: atajo de un toque para quien ya reservó antes en este
@@ -783,8 +872,12 @@ function BookingWizard() {
                 reglaSenal={reglaSen}
               />
               {sinProfesionalParaServicios && (
-                <p role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-                  No hay ninguna profesional que haga todos los servicios elegidos. Elige otra combinación o llama al salón.
+                <p
+                  role="alert"
+                  className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+                >
+                  No hay ninguna profesional que haga todos los servicios elegidos. Elige otra
+                  combinación o llama al salón.
                 </p>
               )}
             </>
@@ -862,7 +955,15 @@ function BookingWizard() {
                     <SummaryRow label="Fecha" value={dateLabel ?? "—"} />
                     <SummaryRow label="Hora" value={data.time ?? "—"} />
                   </div>
-                  {mostrarPrecio && <><div className="my-3 border-t border-dashed border-border" /><div className="flex items-baseline justify-between"><span className="text-sm text-muted-foreground">Total</span><span className="text-xl font-extrabold tabular-nums">{eur(total)}</span></div></>}
+                  {mostrarPrecio && (
+                    <>
+                      <div className="my-3 border-t border-dashed border-border" />
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-sm text-muted-foreground">Total</span>
+                        <span className="text-xl font-extrabold tabular-nums">{eur(total)}</span>
+                      </div>
+                    </>
+                  )}
                   {soloUno && employeeName && (
                     <p className="mt-1 text-xs text-muted-foreground">Te atiende {employeeName}.</p>
                   )}
@@ -913,7 +1014,11 @@ function BookingWizard() {
                       onBlur={() => setPhoneTouched(true)}
                       aria-invalid={phoneTouched && !telefono.ok}
                       aria-describedby={phoneTouched && !telefono.ok ? "phone-error" : undefined}
-                      placeholder={(data.phoneCountry ?? "ES") === PAIS_OTRO ? "+351 912 345 678" : "600 000 000"}
+                      placeholder={
+                        (data.phoneCountry ?? "ES") === PAIS_OTRO
+                          ? "+351 912 345 678"
+                          : "600 000 000"
+                      }
                     />
                   </div>
                   {phoneTouched && !telefono.ok && (data.phone ?? "").trim() !== "" && (
@@ -927,12 +1032,23 @@ function BookingWizard() {
                   <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
                     {blockedClient.manualBlock ? (
                       <p>
-                        Este salón ha bloqueado las reservas por internet para este número. Llámanos para
-                        gestionarla.
+                        Este salón ha bloqueado las reservas por internet para este número. Llámanos
+                        para gestionarla.
                       </p>
                     ) : (
                       <p>
-                        {mostrarPrecio ? <>Tienes pendiente una penalización de {eur(profile.noShowFeeEur ?? 0)} por una cita a la que no pudiste venir sin avisar. Abónala en {profile.name} y podrás volver a reservar.</> : <>Tienes pendiente una penalización por una cita a la que no pudiste venir sin avisar. Abónala en {profile.name} y podrás volver a reservar.</>}
+                        {mostrarPrecio ? (
+                          <>
+                            Tienes pendiente una penalización de {eur(profile.noShowFeeEur ?? 0)}{" "}
+                            por una cita a la que no pudiste venir sin avisar. Abónala en{" "}
+                            {profile.name} y podrás volver a reservar.
+                          </>
+                        ) : (
+                          <>
+                            Tienes pendiente una penalización por una cita a la que no pudiste venir
+                            sin avisar. Abónala en {profile.name} y podrás volver a reservar.
+                          </>
+                        )}
                       </p>
                     )}
                     {profile.phone && (
@@ -983,7 +1099,9 @@ function BookingWizard() {
                     <div>
                       <p className="text-sm font-medium">Para preparar tu cita</p>
                       <p className="text-xs text-muted-foreground">
-                        {requireBookingQuestions ? "Las preguntas con * son obligatorias." : "Puedes dejar las preguntas sin responder."}
+                        {requireBookingQuestions
+                          ? "Las preguntas con * son obligatorias."
+                          : "Puedes dejar las preguntas sin responder."}
                       </p>
                     </div>
                     {preguntas.map((p) => (
@@ -991,16 +1109,28 @@ function BookingWizard() {
                         key={p.id}
                         pregunta={p}
                         respuestas={data.bookingAnswers}
-                        onChange={(cambios) => setData((d) => ({ ...d, bookingAnswers: { ...d.bookingAnswers, ...cambios } }))}
+                        onChange={(cambios) =>
+                          setData((d) => ({
+                            ...d,
+                            bookingAnswers: { ...d.bookingAnswers, ...cambios },
+                          }))
+                        }
                       />
                     ))}
                   </div>
                 )}
 
-
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                  Tus datos los trata {profile.name} para gestionar tu cita y el historial de tus servicios.{" "}
-                  <Link to="/s/$salonSlug/privacidad" params={{ salonSlug }} search={(prev) => prev} className="font-medium text-primary underline-offset-2 hover:underline">Más información</Link>
+                  Tus datos los trata {profile.name} para gestionar tu cita y el historial de tus
+                  servicios.{" "}
+                  <Link
+                    to="/s/$salonSlug/privacidad"
+                    params={{ salonSlug }}
+                    search={(prev) => prev}
+                    className="font-medium text-primary underline-offset-2 hover:underline"
+                  >
+                    Más información
+                  </Link>
                 </p>
 
                 <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl px-1 text-sm text-muted-foreground">
@@ -1008,7 +1138,9 @@ function BookingWizard() {
                     className="size-6 [&_svg]:size-5"
                     aria-label="He leído la información sobre el tratamiento de mis datos"
                     checked={data.privacyNoticeAcknowledged ?? false}
-                    onCheckedChange={(v) => setData((d) => ({ ...d, privacyNoticeAcknowledged: v === true }))}
+                    onCheckedChange={(v) =>
+                      setData((d) => ({ ...d, privacyNoticeAcknowledged: v === true }))
+                    }
                   />
                   <span>He leído la información sobre el tratamiento de mis datos.</span>
                 </label>
@@ -1016,20 +1148,20 @@ function BookingWizard() {
                 {/* La casilla de cancelación solo sale si el salón tiene una política con
                     recargo configurada; sin ella (p. ej. plan Básico) no se pide aceptar nada. */}
                 {conRecargo && (
-                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl px-1 text-sm text-muted-foreground">
-                  <Checkbox
-                    className="size-6 [&_svg]:size-5"
-                    checked={data.acceptedPolicy ?? false}
-                    onCheckedChange={(v) => setData((d) => ({ ...d, acceptedPolicy: v === true }))}
-                  />
-                  <span>
-                    Acepto la política de cancelación: gratuita hasta{" "}
-                    {conRecargo
-                      ? `${profile.noShowNoticeHours ?? 2} h`
-                      : "24 h"}{" "}
-                    antes de la cita.
-                  </span>
-                </label>
+                  <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl px-1 text-sm text-muted-foreground">
+                    <Checkbox
+                      className="size-6 [&_svg]:size-5"
+                      checked={data.acceptedPolicy ?? false}
+                      onCheckedChange={(v) =>
+                        setData((d) => ({ ...d, acceptedPolicy: v === true }))
+                      }
+                    />
+                    <span>
+                      Acepto la política de cancelación: gratuita hasta{" "}
+                      {conRecargo ? `${profile.noShowNoticeHours ?? 2} h` : "24 h"} antes de la
+                      cita.
+                    </span>
+                  </label>
                 )}
 
                 {conRecargo && mostrarPrecio && (
@@ -1117,7 +1249,8 @@ function BookingWizard() {
  * al 50 % (≈ 2,1:1). Ahora café medio sobre beige, 5:1, y se sigue viendo que
  * aún no se puede pulsar.
  */
-const BOTON_DESACTIVADO = "disabled:opacity-100 disabled:bg-beige disabled:text-cafe-medio";
+const BOTON_DESACTIVADO =
+  "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
 
 /** Rótulos del calendario en español para el lector de pantalla. */
 const ETIQUETAS_CALENDARIO = {
@@ -1157,7 +1290,9 @@ function StepIndicator({ step, soloUno }: { step: PasoReserva; soloUno: boolean 
 function Step({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h1 className="mb-6 text-[26px] font-extrabold leading-tight tracking-tight md:mb-8 md:text-[32px]">{title}</h1>
+      <h1 className="mb-6 text-[26px] font-extrabold leading-tight tracking-tight md:mb-8 md:text-[32px]">
+        {title}
+      </h1>
       {children}
     </div>
   );
@@ -1196,7 +1331,10 @@ function ServiceStep({
   return (
     <Step title="Elige uno o varios servicios">
       <p
-        className={cn("-mt-4 text-sm text-muted-foreground", count > 0 && flexNota ? "mb-2" : "mb-6")}
+        className={cn(
+          "-mt-4 text-sm text-muted-foreground",
+          count > 0 && flexNota ? "mb-2" : "mb-6",
+        )}
         aria-live="polite"
       >
         {count === 0
@@ -1209,7 +1347,10 @@ function ServiceStep({
       {count > 1 && (
         <div className="mb-6 rounded-[20px] border-2 border-salvia bg-salvia-clara p-4 shadow-[var(--sombra-tarjeta)]">
           <div className="flex items-start gap-3">
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-hoja-tinta text-white" aria-hidden="true">
+            <span
+              className="grid size-8 shrink-0 place-items-center rounded-full bg-hoja-tinta text-white"
+              aria-hidden="true"
+            >
               <Check className="size-4" strokeWidth={2.5} />
             </span>
             <div className="min-w-0 flex-1">
@@ -1221,7 +1362,10 @@ function ServiceStep({
           </div>
           <ul className="mt-3 divide-y divide-salvia border-y border-salvia">
             {selectedServices.map((service) => (
-              <li key={service.id} className="flex min-h-11 items-center justify-between gap-3 py-2">
+              <li
+                key={service.id}
+                className="flex min-h-11 items-center justify-between gap-3 py-2"
+              >
                 <span className="min-w-0 text-sm font-medium text-cafe">{service.name}</span>
                 <button
                   type="button"
@@ -1263,7 +1407,10 @@ function ServiceStep({
           if (!items.length) return null;
           return (
             <AccordionItem key={cat} value={cat} className="border-b-0">
-              <AccordionTrigger headingLevel={2} className="min-h-12 py-3 text-base font-bold hover:no-underline">
+              <AccordionTrigger
+                headingLevel={2}
+                className="min-h-12 py-3 text-base font-bold hover:no-underline"
+              >
                 {cat}
               </AccordionTrigger>
               <AccordionContent>
@@ -1294,9 +1441,16 @@ function ServiceStep({
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
-                          {mostrarPrecio && <span className="max-w-[9rem] text-right text-base font-extrabold leading-snug tabular-nums">{s.priceText?.trim() || eur(s.priceEur)}</span>}
+                          {mostrarPrecio && (
+                            <span className="max-w-[9rem] text-right text-base font-extrabold leading-snug tabular-nums">
+                              {s.priceText?.trim() || eur(s.priceEur)}
+                            </span>
+                          )}
                           {isSelected && (
-                            <span className="grid size-6 place-items-center rounded-full bg-hoja-tinta text-white" aria-hidden="true">
+                            <span
+                              className="grid size-6 place-items-center rounded-full bg-hoja-tinta text-white"
+                              aria-hidden="true"
+                            >
                               <Check className="size-4" strokeWidth={2.5} />
                             </span>
                           )}
@@ -1326,7 +1480,13 @@ function StylistStep({
   employees: Employee[];
 }) {
   if (employees.length === 0) {
-    return <Step title={`Elige tu ${professionalWord(tipo)}`}><p role="alert" className="text-sm text-muted-foreground">No hay profesionales disponibles para todos los servicios elegidos.</p></Step>;
+    return (
+      <Step title={`Elige tu ${professionalWord(tipo)}`}>
+        <p role="alert" className="text-sm text-muted-foreground">
+          No hay profesionales disponibles para todos los servicios elegidos.
+        </p>
+      </Step>
+    );
   }
   return (
     <Step title={`Elige tu ${professionalWord(tipo)}`}>
@@ -1390,7 +1550,9 @@ function TimeSlotButton({
         !slot.available &&
           "cursor-not-allowed border-border/40 text-muted-foreground/50 line-through",
         slot.available && selected && "border-primary bg-primary text-primary-foreground",
-        slot.available && !selected && "border-lino-fuerte bg-card hover:border-primary/50 hover:bg-perla",
+        slot.available &&
+          !selected &&
+          "border-lino-fuerte bg-card hover:border-primary/50 hover:bg-perla",
         slot.available && slot.busy && !selected && "border-dashed border-moca",
       )}
     >
@@ -1470,7 +1632,9 @@ function DateTimeStep({
   }, []);
 
   function scheduleForDate(dateKey: string) {
-    return relevantEmployees.flatMap((e) => franjasProfesionalEnFecha(e, dateKey, diasEspeciales)).map((r) => ({ start: r.start / 60, end: r.end / 60 }));
+    return relevantEmployees
+      .flatMap((e) => franjasProfesionalEnFecha(e, dateKey, diasEspeciales))
+      .map((r) => ({ start: r.start / 60, end: r.end / 60 }));
   }
 
   /**
@@ -1479,7 +1643,9 @@ function DateTimeStep({
    * cierre (`u`) se mide contra eso. Con "any" coincide con `scheduleForWeekday`.
    */
   function salonRangeForDate(dateKey: string) {
-    const opens = employees.flatMap((e) => franjasProfesionalEnFecha(e, dateKey, diasEspeciales)).map((r) => ({ start: r.start / 60, end: r.end / 60 }));
+    const opens = employees
+      .flatMap((e) => franjasProfesionalEnFecha(e, dateKey, diasEspeciales))
+      .map((r) => ({ start: r.start / 60, end: r.end / 60 }));
     if (opens.length === 0) return null;
     return {
       openMin: Math.min(...opens.map((o) => o.start)) * 60,
@@ -1498,17 +1664,23 @@ function DateTimeStep({
     const closeMinOffered = salonRange
       ? offeredCloseMin(salonRange.closeMin, lastSlotBufferMin)
       : end * 60;
-    for (const minuto of huecosDeProfesionalesEnFecha(relevantEmployees, dateKey, durationMin, diasEspeciales)) {
-        const h = Math.floor(minuto / 60);
-        const m = minuto % 60;
-        if (h * 60 + m >= closeMinOffered) continue;
-        const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-        // Lote 16: un hueco de hoy que ya pasó (o está a menos de la
-        // antelación) no se ofrece; sin esto, un sábado a las 19:05 salía
-        // «Lo antes posible: hoy a las 12:30».
-        if (!huecoAunReservable(dateKey, timeStr, timeZone, new Date(), antelacionMin)) continue;
-        const iso = isoDelSalon(dateKey, timeStr, timeZone);
-        if (profesionalesDisponiblesEnHueco({
+    for (const minuto of huecosDeProfesionalesEnFecha(
+      relevantEmployees,
+      dateKey,
+      durationMin,
+      diasEspeciales,
+    )) {
+      const h = Math.floor(minuto / 60);
+      const m = minuto % 60;
+      if (h * 60 + m >= closeMinOffered) continue;
+      const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      // Lote 16: un hueco de hoy que ya pasó (o está a menos de la
+      // antelación) no se ofrece; sin esto, un sábado a las 19:05 salía
+      // «Lo antes posible: hoy a las 12:30».
+      if (!huecoAunReservable(dateKey, timeStr, timeZone, new Date(), antelacionMin)) continue;
+      const iso = isoDelSalon(dateKey, timeStr, timeZone);
+      if (
+        profesionalesDisponiblesEnHueco({
           employees: relevantEmployees,
           appointments,
           dateKey,
@@ -1520,7 +1692,9 @@ function DateTimeStep({
           bloqueosAgenda,
           serviceIds,
           serviciosPorProfesional,
-        }).length > 0) return false;
+        }).length > 0
+      )
+        return false;
     }
     return true;
   }
@@ -1564,20 +1738,26 @@ function DateTimeStep({
     const lastHours = salonRange ? lastOfferedHours(salonRange.openMin, closeMinOffered) : [];
 
     const out: PrioritySlot[] = [];
-    for (const minuto of huecosDeProfesionalesEnFecha(relevantEmployees, dateKey, durationMin, diasEspeciales)) {
+    for (const minuto of huecosDeProfesionalesEnFecha(
+      relevantEmployees,
+      dateKey,
+      durationMin,
+      diasEspeciales,
+    )) {
       const h = Math.floor(minuto / 60);
       const hourOccupancy = smartSpread ? hourOccupancyPct(appointments, dateKey, h, employees) : 0;
       const busy = smartSpread && isBusyHour(h, hourOccupancy, lastHours);
-        const m = minuto % 60;
-        // "No ofrecer los últimos X minutos": el hueco ni se lista.
-        if (h * 60 + m >= closeMinOffered) continue;
-        const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-        // Lote 16: un hueco de hoy que ya pasó (o está a menos de la
-        // antelación) no se ofrece; sin esto, un sábado a las 19:05 salía
-        // «Lo antes posible: hoy a las 12:30».
-        if (!huecoAunReservable(dateKey, timeStr, timeZone, new Date(), antelacionMin)) continue;
-        const iso = isoDelSalon(dateKey, timeStr, timeZone);
-        const available = profesionalesDisponiblesEnHueco({
+      const m = minuto % 60;
+      // "No ofrecer los últimos X minutos": el hueco ni se lista.
+      if (h * 60 + m >= closeMinOffered) continue;
+      const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      // Lote 16: un hueco de hoy que ya pasó (o está a menos de la
+      // antelación) no se ofrece; sin esto, un sábado a las 19:05 salía
+      // «Lo antes posible: hoy a las 12:30».
+      if (!huecoAunReservable(dateKey, timeStr, timeZone, new Date(), antelacionMin)) continue;
+      const iso = isoDelSalon(dateKey, timeStr, timeZone);
+      const available =
+        profesionalesDisponiblesEnHueco({
           employees: relevantEmployees,
           appointments,
           dateKey,
@@ -1590,12 +1770,12 @@ function DateTimeStep({
           serviceIds,
           serviciosPorProfesional,
         }).length > 0;
-        out.push({
-          time: timeStr,
-          available,
-          busy,
-          priority: isPriorityTime(timeStr, priorityHours),
-        });
+      out.push({
+        time: timeStr,
+        available,
+        busy,
+        priority: isPriorityTime(timeStr, priorityHours),
+      });
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1676,9 +1856,11 @@ function DateTimeStep({
       <div className="-mt-4 mb-6 space-y-1.5">
         <p className="text-sm text-muted-foreground">Duración: {durationLabel}</p>
         {flexNota && <p className="text-sm font-medium text-foreground">{flexNota}</p>}
-        {recargoTexto && <p className="text-[11px] leading-snug text-muted-foreground">{recargoTexto}</p>}
+        {recargoTexto && (
+          <p className="text-[11px] leading-snug text-muted-foreground">{recargoTexto}</p>
+        )}
       </div>
-      <div className="grid gap-8 md:grid-cols-[auto_1fr]">
+      <div className="grid gap-8 lg:grid-cols-[auto_1fr]">
         {/* Lote 17: celdas de 44 px (objetivo táctil) que llenan la tarjeta
             en móvil, sin la banda vacía a la derecha, y rótulos en español
             para el lector de pantalla («Go to the Previous Month»). */}
@@ -1883,11 +2065,17 @@ function BookingSummary({
         className="fixed inset-x-0 bottom-0 z-40 min-h-[calc(4.5rem+env(safe-area-inset-bottom,0px))] border-t border-lino bg-background/95 pt-3 backdrop-blur lg:hidden"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
       >
-        {ctaHint && <p role="status" className={cn(CONTENEDOR_SALON, "ws-falta mb-2 text-sm font-bold")}>{ctaHint}</p>}
+        {ctaHint && (
+          <p role="status" className={cn(CONTENEDOR_SALON, "ws-falta mb-2 text-sm font-bold")}>
+            {ctaHint}
+          </p>
+        )}
         <div className={cn(CONTENEDOR_SALON, "flex items-center justify-between gap-3")}>
           <div className="min-w-0 flex-1">
             <p className="flex items-baseline gap-2">
-              {mostrarPrecio && <span className="text-lg font-extrabold tabular-nums">{eur(total)}</span>}
+              {mostrarPrecio && (
+                <span className="text-lg font-extrabold tabular-nums">{eur(total)}</span>
+              )}
               {serviceNames.length > 0 && (
                 <span className="whitespace-nowrap text-xs text-cafe-suave">{durationLabel}</span>
               )}
@@ -1900,7 +2088,10 @@ function BookingSummary({
           <Button
             onClick={onCta}
             disabled={ctaDisabled}
-            className={cn("h-12 shrink-0 rounded-full px-6 text-[15px] font-semibold", BOTON_DESACTIVADO)}
+            className={cn(
+              "h-12 shrink-0 rounded-full px-6 text-[15px] font-semibold",
+              BOTON_DESACTIVADO,
+            )}
           >
             {ctaLabelCorto ?? ctaLabel}
           </Button>
@@ -1962,13 +2153,28 @@ function BookingSummary({
           <SummaryRow label="Hora" value={timeLabel ?? "—"} />
         </div>
 
-        {mostrarPrecio && <><Separator className="my-4" /><div className="flex items-baseline justify-between"><span className="text-sm text-muted-foreground">Total</span><span className="text-2xl font-extrabold tabular-nums">{eur(total)}</span></div></>}
+        {mostrarPrecio && (
+          <>
+            <Separator className="my-4" />
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm text-muted-foreground">Total</span>
+              <span className="text-2xl font-extrabold tabular-nums">{eur(total)}</span>
+            </div>
+          </>
+        )}
 
-        {ctaHint && <p role="status" className="ws-falta mt-4 text-sm font-bold">{ctaHint}</p>}
+        {ctaHint && (
+          <p role="status" className="ws-falta mt-4 text-sm font-bold">
+            {ctaHint}
+          </p>
+        )}
         <Button
           onClick={onCta}
           disabled={ctaDisabled}
-          className={cn("mt-6 h-12 w-full rounded-full text-[15px] font-semibold", BOTON_DESACTIVADO)}
+          className={cn(
+            "mt-6 h-12 w-full rounded-full text-[15px] font-semibold",
+            BOTON_DESACTIVADO,
+          )}
         >
           {ctaLabel}
         </Button>
@@ -2005,13 +2211,21 @@ function PreguntaDelFormulario({
           className={claseSelect}
           value={valor}
           onChange={(e) =>
-            onChange(p.detalle && e.target.value !== "Sí" ? { [p.id]: e.target.value, [p.detalle.id]: undefined } : { [p.id]: e.target.value })
+            onChange(
+              p.detalle && e.target.value !== "Sí"
+                ? { [p.id]: e.target.value, [p.detalle.id]: undefined }
+                : { [p.id]: e.target.value },
+            )
           }
         >
           <option value="">Elige una opción</option>
-          {(p.tipo === "si_no" ? ["No", "Sí"] : p.opciones ?? []).concat(p.permiteOtro ? ["Otro"] : []).map((o) => (
-            <option key={o} value={o}>{o}</option>
-          ))}
+          {(p.tipo === "si_no" ? ["No", "Sí"] : (p.opciones ?? []))
+            .concat(p.permiteOtro ? ["Otro"] : [])
+            .map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
         </select>
       ) : (
         <Input

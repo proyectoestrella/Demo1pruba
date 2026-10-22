@@ -131,7 +131,8 @@ describe("regresión de nombres accesibles", () => {
   test("los filtros de clientas no declaran pestañas sin panel asociado", () => {
     const clientas = fuentes.find(({ ruta }) => ruta.endsWith("app.clients.tsx"))?.codigo ?? "";
     expect(clientas).not.toContain("TabsTrigger");
-    expect(clientas).toContain('role="group" aria-label="Filtrar clientas"');
+    expect(clientas).toContain('role="group"');
+    expect(clientas).toContain('aria-label="Filtrar clientas"');
     expect(clientas).toContain("aria-pressed={filtroEfectivo === id}");
   });
 

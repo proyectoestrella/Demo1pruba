@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { useSalonStore } from "@/lib/store";
 import { employeeMap } from "@/lib/mock/salon";
 import { hashTexto, iniciales, resolverAvatar } from "@/lib/avatar";
-import { retratoGuardado } from "@/lib/retratos-avatar";
+import { retratoGuardado, retratoPorDefecto } from "@/lib/retratos-avatar";
 import { useFotoActiva } from "@/hooks/use-foto-persona";
 import { useDibujoRetratos } from "@/hooks/use-dibujo-retratos";
 
@@ -42,7 +42,7 @@ export interface AvatarProps {
 /**
  * El avatar de una persona, en un solo sitio.
  * Prioridad: foto > avatar elegido > avatar por defecto según el id > iniciales.
- * Sin foto ni avatar elegido, iniciales en círculo Arena. Los retratos elegidos
+ * Sin foto ni avatar elegido, un retrato estable según el id. Los retratos
  * son DiceBear «Notionists», generados en el navegador sin red; la librería se
  * carga bajo demanda y, mientras tanto, se pinta un círculo neutro del mismo
  * tamaño (sin saltos de maquetación).
@@ -65,16 +65,18 @@ export function Avatar({
       : TAMANOS[size];
   const [fotoRota, setFotoRota] = useState<string | null>(null);
   const r = resolverAvatar({ id, foto: foto && foto !== fotoRota ? foto : undefined, elegido });
-  // Por defecto, iniciales en círculo Arena: legibles a 24 px, sin riesgo de
-  // poner barba a «Fátima» ni gestos raros (los dibujos automáticos no saben el
-  // género ni el oficio). El dibujo DiceBear solo sale si se eligió a propósito.
-  const conDibujo = r.origen === "elegido" && r.avatar !== undefined;
+  const conDibujo = (r.origen === "elegido" && r.avatar !== undefined) || r.origen === "defecto";
   const dibujo = useDibujoRetratos(conDibujo);
-  const retrato = conDibujo ? retratoGuardado(elegido) : undefined;
+  const retratoElegido = r.origen === "elegido" ? retratoGuardado(elegido) : undefined;
+  const retratoAutomatico = r.origen === "defecto" ? retratoPorDefecto(id ?? nombre) : undefined;
   const uri =
     conDibujo && dibujo
-      ? retrato
-        ? dibujo.uriRetrato(retrato, t.px)
+      ? retratoElegido || retratoAutomatico
+        ? dibujo.uriRetrato(
+            retratoElegido ?? retratoAutomatico!,
+            t.px,
+            retratoAutomatico ? (id ?? nombre) : undefined,
+          )
         : dibujo.avatarDiceBearUri(r.avatar!, t.px)
       : undefined;
   const caja = cn("relative block shrink-0 overflow-hidden rounded-full select-none", className);

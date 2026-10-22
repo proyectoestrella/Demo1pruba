@@ -12,6 +12,7 @@ import type { Service } from "@/lib/mock/types";
 import { agruparCarta } from "@/lib/servicios-panel";
 import { duracionEstimada } from "@/lib/demos";
 import { PageHeader } from "@/components/PageHeader";
+import { CampoFiltro } from "@/components/CampoFiltro";
 import { EmptyState } from "@/components/EmptyState";
 import { ColumnasServicios } from "@/components/ColumnasServicios";
 import { ServiceFormSheet } from "@/components/ServiceFormSheet";
@@ -34,7 +35,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Clock, MoreHorizontal, Plus, Scissors, Search, SlidersHorizontal, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export const Route = createFileRoute("/app/services")({ component: ServicesPage });
@@ -92,7 +92,10 @@ function ServicesPage() {
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
   const todas = useMemo(() => agruparCarta(services), [services]);
   const grupos = useMemo(
-    () => agruparCarta(services, { texto }).filter((grupo) => !secciones.length || secciones.includes(grupo.categoria)),
+    () =>
+      agruparCarta(services, { texto }).filter(
+        (grupo) => !secciones.length || secciones.includes(grupo.categoria),
+      ),
     [services, secciones, texto],
   );
   const conSecciones = todas.length > 1;
@@ -139,41 +142,76 @@ function ServicesPage() {
         <>
           {(services.length > 8 || conSecciones) && (
             <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <label className="relative block min-w-0 flex-1 sm:max-w-md">
-                  <span className="sr-only">Buscar servicio</span>
-                  <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-cafe-suave" strokeWidth={1.6} aria-hidden="true" />
-                  <Input value={texto} onChange={(e) => setTexto(e.target.value)}
-                    placeholder={`Buscar entre tus ${services.length} servicios`} className="h-11 rounded-full pl-10" />
-                </label>
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-center sm:gap-3">
                 {conSecciones && (
                   <Popover open={filtrosAbiertos} onOpenChange={setFiltrosAbiertos}>
                     <PopoverTrigger asChild>
-                      <Button type="button" variant="outline" className="h-11 shrink-0 gap-2 rounded-full">
-                        <SlidersHorizontal className="size-4" strokeWidth={1.6} />Filtrar
-                        {secciones.length > 0 && <span className="rounded-full bg-miel px-2 text-xs">{secciones.length}</span>}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-11 shrink-0 gap-2 rounded-full"
+                      >
+                        <SlidersHorizontal className="size-4" strokeWidth={1.6} />
+                        Filtrar
+                        {secciones.length > 0 && (
+                          <span className="rounded-full bg-miel px-2 text-xs">
+                            {secciones.length}
+                          </span>
+                        )}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent align="end" className="sin-scrollbar max-h-[65dvh] w-[min(360px,calc(100vw-2rem))] overflow-y-auto">
+                    <PopoverContent
+                      align="end"
+                      className="sin-scrollbar max-h-[65dvh] w-[min(360px,calc(100vw-2rem))] overflow-y-auto"
+                    >
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <p className="text-sm font-bold">Tipo de servicio</p>
-                        <Button type="button" variant="ghost" className="min-h-11 gap-1 px-2" onClick={() => setFiltrosAbiertos(false)}>
-                          <X className="size-4" aria-hidden="true" />Cerrar
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="min-h-11 gap-1 px-2"
+                          onClick={() => setFiltrosAbiertos(false)}
+                        >
+                          <X className="size-4" aria-hidden="true" />
+                          Cerrar
                         </Button>
                       </div>
-                      <p className="mb-3 text-xs text-muted-foreground">Puedes seleccionar varias secciones.</p>
-                      <Button type="button" variant="ghost" className="mb-2 w-full justify-start" onClick={() => setSecciones([])}>
-                        {secciones.length ? "Quitar todos los filtros" : "Mostrando todas las secciones"}
+                      <p className="mb-3 text-xs text-muted-foreground">
+                        Puedes seleccionar varias secciones.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="mb-2 w-full justify-start"
+                        onClick={() => setSecciones([])}
+                      >
+                        {secciones.length
+                          ? "Quitar todos los filtros"
+                          : "Mostrando todas las secciones"}
                       </Button>
                       <div role="group" aria-label="Secciones de tu carta" className="grid gap-1.5">
                         {todas.map((grupo) => (
-                          <label key={grupo.categoria} className={cn("flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-sm",
-                            secciones.includes(grupo.categoria) ? "bg-salvia-suave font-semibold text-hoja-tinta" : "text-cafe-medio hover:bg-nata")}>
-                            <input type="checkbox" checked={secciones.includes(grupo.categoria)}
+                          <label
+                            key={grupo.categoria}
+                            className={cn(
+                              "flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-sm",
+                              secciones.includes(grupo.categoria)
+                                ? "bg-salvia-suave font-semibold text-hoja-tinta"
+                                : "text-cafe-medio hover:bg-nata",
+                            )}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={secciones.includes(grupo.categoria)}
                               className="size-4 shrink-0 accent-[var(--hoja)]"
-                              onChange={() => setSecciones((actuales) => actuales.includes(grupo.categoria)
-                                ? actuales.filter((categoria) => categoria !== grupo.categoria)
-                                : [...actuales, grupo.categoria])} />
+                              onChange={() =>
+                                setSecciones((actuales) =>
+                                  actuales.includes(grupo.categoria)
+                                    ? actuales.filter((categoria) => categoria !== grupo.categoria)
+                                    : [...actuales, grupo.categoria],
+                                )
+                              }
+                            />
                             <span className="flex-1">{grupo.categoria}</span>
                             <span className="text-xs tabular-nums">{grupo.servicios.length}</span>
                           </label>
@@ -182,14 +220,28 @@ function ServicesPage() {
                     </PopoverContent>
                   </Popover>
                 )}
+                <CampoFiltro
+                  value={texto}
+                  onChange={(e) => setTexto(e.target.value)}
+                  placeholder={`Buscar entre tus ${services.length} servicios`}
+                  aria-label="Buscar servicio"
+                  className="lg:ml-auto"
+                />
               </div>
               {secciones.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {secciones.map((categoria) => (
-                    <button key={categoria} type="button" onClick={() => setSecciones((actuales) => actuales.filter((c) => c !== categoria))}
+                    <button
+                      key={categoria}
+                      type="button"
+                      onClick={() =>
+                        setSecciones((actuales) => actuales.filter((c) => c !== categoria))
+                      }
                       aria-label={`Quitar filtro: ${categoria}`}
-                      className="inline-flex min-h-11 items-center gap-2 rounded-full bg-miel px-3.5 text-[13px] font-semibold text-cafe">
-                      {categoria}<X className="size-3.5" aria-hidden="true" />
+                      className="inline-flex min-h-11 items-center gap-2 rounded-full bg-miel px-3.5 text-[13px] font-semibold text-cafe"
+                    >
+                      {categoria}
+                      <X className="size-3.5" aria-hidden="true" />
                     </button>
                   ))}
                 </div>
@@ -215,7 +267,6 @@ function ServicesPage() {
                 {conSecciones && (
                   <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 pt-1">
                     <h2 className="text-lg font-extrabold tracking-[-0.01em]">{grupo.categoria}</h2>
-
                   </div>
                 )}
                 <ColumnasServicios>
@@ -227,7 +278,7 @@ function ServicesPage() {
                         key={s.id}
                         tabIndex={s.description ? 0 : undefined}
                         className={cn(
-                          "tarjeta-servicio flex w-full flex-col tarjeta-secundaria border border-l-4 bg-card px-5 py-2.5",
+                          "tarjeta-servicio flex w-full flex-col tarjeta-secundaria border border-l-4 bg-card px-[var(--relleno-tarjeta)] py-3",
                           s.active === false && "opacity-60",
                         )}
                         style={{ borderLeftColor: `var(--serv-${n}-borde)` }}
@@ -284,7 +335,9 @@ function ServicesPage() {
                         {s.description && (
                           <div className="descripcion-servicio">
                             <div className="min-h-0 overflow-hidden">
-                              <p className="pt-2 text-[13px] leading-relaxed text-muted-foreground">{s.description}</p>
+                              <p className="pt-2 text-[13px] leading-relaxed text-muted-foreground">
+                                {s.description}
+                              </p>
                             </div>
                           </div>
                         )}
@@ -347,7 +400,7 @@ function ServicesPage() {
 
           <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-2 lg:group-data-[panel=abierto]/panel:grid-cols-1">
             <section className="tarjeta-principal bg-card">
-              <div className="flex flex-wrap items-baseline gap-x-2.5 px-5 py-4">
+              <div className="flex flex-wrap items-baseline gap-x-2.5 px-[var(--relleno-tarjeta)] py-4">
                 <h2 className="text-base font-extrabold tracking-[-0.01em]">Lo más pedido</h2>
                 <span className="text-[12.5px] text-muted-foreground">
                   {services.length > TOPE_LISTAS
@@ -355,7 +408,7 @@ function ServicesPage() {
                     : "Veces en los últimos 30 días"}
                 </span>
               </div>
-              <div className="space-y-2.5 px-5 pb-5">
+              <div className="space-y-2.5 px-[var(--relleno-tarjeta)] pb-[var(--relleno-tarjeta)]">
                 {listaPedidos.length === 0 && (
                   <p className="text-[13px] text-muted-foreground">
                     En los últimos 30 días no se ha pedido ningún servicio.
@@ -385,7 +438,7 @@ function ServicesPage() {
             </section>
             {veDinero && (
               <section className="tarjeta-principal bg-card">
-                <div className="flex flex-wrap items-baseline gap-x-2.5 px-5 py-4">
+                <div className="flex flex-wrap items-baseline gap-x-2.5 px-[var(--relleno-tarjeta)] py-4">
                   <h2 className="text-base font-extrabold tracking-[-0.01em]">
                     Lo que deja cada servicio
                   </h2>
@@ -394,7 +447,7 @@ function ServicesPage() {
                     ingresos estimados en 30 días y lo que rinde cada hora
                   </span>
                 </div>
-                <div className="space-y-2.5 px-5 pb-5">
+                <div className="space-y-2.5 px-[var(--relleno-tarjeta)] pb-[var(--relleno-tarjeta)]">
                   {listaDinero.length === 0 && (
                     <p className="text-[13px] text-muted-foreground">
                       En los últimos 30 días todavía no ha entrado dinero por la carta.

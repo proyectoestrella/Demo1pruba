@@ -17,7 +17,8 @@ export const CONTENEDOR_WEB = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8";
 export const CONTENEDOR_SALON = "contenedor-salon";
 
 /** Ritmo vertical de sección, sobre la escala de 4 (56 / 80 px). */
-export const SECCION_WEB = "py-14 md:py-20";
+/** Ritmo vertical único de la landing: 80 px entre secciones en móvil y 112 px desde tablet. */
+export const SECCION_WEB = "py-[var(--hueco-seccion-web)]";
 
 /** «novias, madrinas y eventos»: lista en español con «y» antes del último. */
 export function listaConY(items: string[]): string {
@@ -67,7 +68,9 @@ export function enlacesDelSalon(p: { enlaces?: EnlacesSalon; instagram?: string 
   const usuario = p.instagram?.trim().replace(/^@/, "");
   const instagram =
     urlSegura(e.instagram) ??
-    (usuario && /^[A-Za-z0-9._]{1,30}$/.test(usuario) ? `https://www.instagram.com/${usuario}` : undefined);
+    (usuario && /^[A-Za-z0-9._]{1,30}$/.test(usuario)
+      ? `https://www.instagram.com/${usuario}`
+      : undefined);
   const r: EnlacesSalon = {
     blog: urlSegura(e.blog),
     instagram,
@@ -97,11 +100,17 @@ export function numeroWhatsApp(raw: string | undefined | null): string | undefin
 /** Texto con el que se abre la conversación de WhatsApp desde la web del salón. */
 export function textoWhatsApp(nombreSalon: string): string {
   const nombre = nombreSalon.trim();
-  return nombre ? `Hola, ${nombre}. Os escribo desde vuestra web de reservas.` : "Hola. Os escribo desde vuestra web de reservas.";
+  return nombre
+    ? `Hola, ${nombre}. Os escribo desde vuestra web de reservas.`
+    : "Hola. Os escribo desde vuestra web de reservas.";
 }
 
 /** Enlace de WhatsApp del salón (`whatsapp` del perfil o, si no hay, `phone`), con el texto ya escrito. */
-export function enlaceWhatsApp(p: { whatsapp?: string; phone?: string; name?: string }): string | undefined {
+export function enlaceWhatsApp(p: {
+  whatsapp?: string;
+  phone?: string;
+  name?: string;
+}): string | undefined {
   const n = numeroWhatsApp(p.whatsapp) ?? numeroWhatsApp(p.phone);
   if (!n) return undefined;
   return `https://wa.me/${n}?text=${encodeURIComponent(textoWhatsApp(p.name ?? ""))}`;
@@ -143,7 +152,10 @@ export function idsLoMasPedido(
   respaldo?: readonly string[],
 ): string[] {
   const hay = new Set(activos.map((s) => s.id));
-  const elegidos = [...new Set((destacados ?? []).filter((id) => hay.has(id)))].slice(0, MAX_LO_MAS_PEDIDO);
+  const elegidos = [...new Set((destacados ?? []).filter((id) => hay.has(id)))].slice(
+    0,
+    MAX_LO_MAS_PEDIDO,
+  );
   if (elegidos.length) return elegidos;
   return respaldo ? [...respaldo] : activos.slice(0, MAX_LO_MAS_PEDIDO).map((s) => s.id);
 }
@@ -158,7 +170,13 @@ export function idsLoMasPedido(
  *   decide si el perfil puede enseñar cifras o reseñas de ejemplo.
  */
 export function resenasDeGoogle(
-  p: { enlaces?: { resenas?: string; [otro: string]: string | undefined }; rating: number; reviewCount: number; name: string; address: string },
+  p: {
+    enlaces?: { resenas?: string; [otro: string]: string | undefined };
+    rating: number;
+    reviewCount: number;
+    name: string;
+    address: string;
+  },
   esSalonReal: boolean,
 ): { url: string; nota: number; total: number } | null {
   if (!(p.rating > 0) || !(p.reviewCount > 0)) return null;

@@ -20,7 +20,7 @@ import { eur } from "@/lib/copy";
 import { Badge } from "@/components/ui/badge";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import type { Appointment, AppointmentStatus, Client } from "@/lib/mock/types";
-import { Input } from "@/components/ui/input";
+import { CampoFiltro } from "@/components/CampoFiltro";
 import { PageHeader } from "@/components/PageHeader";
 import { StylistDot } from "@/components/StylistAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -66,7 +66,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarX, MoreHorizontal, Search } from "lucide-react";
+import { CalendarX, MoreHorizontal } from "lucide-react";
 
 export const Route = createFileRoute("/app/appointments")({
   component: Appointments,
@@ -202,16 +202,6 @@ function Appointments() {
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex h-[42px] w-full items-center gap-2 rounded-full border border-input bg-card px-3.5 text-muted-foreground sm:w-[320px]">
-          <Search className="size-[18px] shrink-0" strokeWidth={1.6} />
-          <input
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por clienta"
-            aria-label="Buscar por clienta"
-            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-          />
-        </label>
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger
             aria-label="Filtrar por estado"
@@ -249,6 +239,13 @@ function Appointments() {
             </SelectContent>
           </Select>
         )}
+        <CampoFiltro
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar por clienta"
+          aria-label="Buscar por clienta"
+          className="order-last lg:ml-auto"
+        />
       </div>
 
       {filtered.length === 0 ? (

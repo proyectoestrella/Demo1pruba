@@ -30,6 +30,15 @@ async function ir(
 }
 
 test.describe("Panel demo", () => {
+  test("/demo/peluchic entra en /app y muestra Hoy sin pedir acceso", async ({ page, audit }) => {
+    await page.context().clearCookies();
+    await page.goto("/demo/peluchic");
+    await expect(page).toHaveURL(/\/app(?:\?|$)/, { timeout: 15_000 });
+    await expect(page.getByText("Citas de hoy").first()).toBeVisible();
+    expect(page.url()).not.toContain("/login");
+    expect(audit.consola).toEqual([]);
+  });
+
   test("Panel · Hoy (primera visita, con visita guiada encima)", async ({ page, audit }) => {
     await enPanel(page, audit, { conVisita: true });
     await expect(siguiente(page)).toBeVisible();
@@ -53,12 +62,7 @@ test.describe("Panel demo", () => {
   });
 
   test("Panel · Equipo", async ({ page, audit }) => {
-    await ir(
-      page,
-      audit,
-      "/app/employees",
-      page.getByText(/incluye hasta 3 profesionales/),
-    );
+    await ir(page, audit, "/app/employees", page.getByText(/incluye hasta 3 profesionales/));
     // Con 3 en el plan Básico: ni botón para añadir ni oferta de otro plan.
     await expect(page.getByRole("button", { name: "Añadir profesional" })).toHaveCount(0);
     await expect(page.getByText(/Disponible en plan/)).toHaveCount(0);

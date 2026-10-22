@@ -9,7 +9,12 @@ import { useRedirigirSiModuloOculto } from "@/lib/route-guards";
 import { beforeLoadSiModuloVisible } from "@/lib/guard-modulo";
 import { useEquipo } from "@/lib/use-equipo";
 import { usePlanSalon } from "@/lib/accesos-panel";
-import { limiteProfesionalesDeSalon, MAX_PROFESIONALES, NOMBRE_PLAN, TOPE_POR_SALON } from "@/lib/plan";
+import {
+  limiteProfesionalesDeSalon,
+  MAX_PROFESIONALES,
+  NOMBRE_PLAN,
+  TOPE_POR_SALON,
+} from "@/lib/plan";
 import { useRealSalonSlug } from "@/lib/use-real-salon";
 import { useBusinessType } from "@/lib/use-display-profile";
 import { fotoDeProfesional, MAX_SALON_TEAM_ENTRIES, formatTeamEntry } from "@/lib/business-type";
@@ -32,16 +37,26 @@ export const Route = createFileRoute("/app/employees")({
 
 const DAYS = ["D", "L", "M", "X", "J", "V", "S"];
 const WEEK_JS = [1, 2, 3, 4, 5, 6, 0];
-const horas = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
+const horas = Array.from(
+  { length: 48 },
+  (_, i) => `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`,
+);
 const horasFin = [...horas, "24:00"];
 
-function topServicesFor(appointments: ReturnType<typeof useSalonStore.getState>["appointments"], employeeId: string, serviceMap: Record<string, Service>) {
+function topServicesFor(
+  appointments: ReturnType<typeof useSalonStore.getState>["appointments"],
+  employeeId: string,
+  serviceMap: Record<string, Service>,
+) {
   const counts = new Map<string, number>();
   for (const a of appointments) {
     if (a.employeeId !== employeeId || a.status === "cancelled") continue;
     for (const id of a.serviceIds) counts.set(id, (counts.get(id) ?? 0) + 1);
   }
-  return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => serviceMap[id]?.name).filter((n): n is string => !!n);
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([id]) => serviceMap[id]?.name)
+    .filter((n): n is string => !!n);
 }
 
 function Team() {
@@ -61,7 +76,8 @@ function Team() {
   // Profesionales por plan (6 / 6 / sin límite), sin pasar del tope técnico.
   const plan = usePlanSalon();
   const limite = Math.min(limiteProfesionalesDeSalon(plan, profile.slug), MAX_SALON_TEAM_ENTRIES);
-  const limitePlan = MAX_PROFESIONALES[plan] === null && !(profile.slug in TOPE_POR_SALON) ? null : limite;
+  const limitePlan =
+    MAX_PROFESIONALES[plan] === null && !(profile.slug in TOPE_POR_SALON) ? null : limite;
   const capadoPorPlan = limitePlan !== null && employees.length >= limitePlan;
   if (!visible) return null;
 
@@ -79,22 +95,38 @@ function Team() {
     if (employees.length >= limite) return;
     const team = employees.map((e) => formatTeamEntry({ name: e.name, specialty: e.specialty }));
     team.push(formatTeamEntry({ name: "Nueva profesional", specialty: "" }));
-    const teamIds = [...employees.map((e) => e.id), `profesional-${Date.now().toString(36)}-${employees.length + 1}`];
-    const teamHours = employees.map((_, i) => [...(profile.teamHours?.[i] ?? profile.openingHours)]);
+    const teamIds = [
+      ...employees.map((e) => e.id),
+      `profesional-${Date.now().toString(36)}-${employees.length + 1}`,
+    ];
+    const teamHours = employees.map((_, i) => [
+      ...(profile.teamHours?.[i] ?? profile.openingHours),
+    ]);
     teamHours.push([...profile.openingHours]);
     update({ team, teamHours, teamIds });
   };
   const quitar = (indice: number) => {
     if (employees.length < 2) return;
     update({
-      team: employees.filter((_, i) => i !== indice).map((e) => formatTeamEntry({ name: e.name, specialty: e.specialty })),
+      team: employees
+        .filter((_, i) => i !== indice)
+        .map((e) => formatTeamEntry({ name: e.name, specialty: e.specialty })),
       teamIds: employees.filter((_, i) => i !== indice).map((e) => e.id),
-      teamHours: employees.filter((_, i) => i !== indice).map((_, i) => [...(profile.teamHours?.[i < indice ? i : i + 1] ?? profile.openingHours)]),
+      teamHours: employees
+        .filter((_, i) => i !== indice)
+        .map((_, i) => [...(profile.teamHours?.[i < indice ? i : i + 1] ?? profile.openingHours)]),
     });
   };
   const guardarServicios = (employeeId: string, ids: string[]) => {
     // Vacío/ausente significa «todos»: ver `mapaServiciosTrasGuardar`.
-    update({ serviciosPorProfesional: mapaServiciosTrasGuardar(profile.serviciosPorProfesional, employeeId, ids, serviciosCarta.map((s) => s.id)) });
+    update({
+      serviciosPorProfesional: mapaServiciosTrasGuardar(
+        profile.serviciosPorProfesional,
+        employeeId,
+        ids,
+        serviciosCarta.map((s) => s.id),
+      ),
+    });
   };
 
   // «Esta semana»: citas, horas en agenda y ocupación de cada profesional.
@@ -102,23 +134,31 @@ function Team() {
   // 7 días x cada profesional recorrían la agenda entera en cada pintado).
   const semana = diasDeSemana(new Date(), employees);
   const resumenSemana = useMemo(() => {
-  const porDia = semana.map((d) => citasDeCalendario(appointments, d).filter((a) => a.status !== "blocked"));
-  return employees.map((e) => {
-    let citas = 0;
-    let minutos = 0;
-    let jornada = 0;
-    let ocupacionPonderada = 0;
-    for (const [k, d] of semana.entries()) {
-      const delDia = porDia[k];
-      const mias = delDia.filter((a) => a.employeeId === e.id);
-      citas += mias.length;
-      minutos += mias.reduce((t, a) => t + a.duration, 0);
-      const j = franjasProfesional(e, d.getDay()).reduce((t, f) => t + (f.end - f.start), 0);
-      jornada += j;
-      ocupacionPonderada += (ocupacionDe(delDia, e, d.getDay()) * j) / 100;
-    }
-    return { e, citas, horas: Math.round(minutos / 6) / 10, ocupacion: jornada ? Math.round((ocupacionPonderada / jornada) * 100) : 0, top: topServicesFor(appointments, e.id, carta)[0] };
-  });
+    const porDia = semana.map((d) =>
+      citasDeCalendario(appointments, d).filter((a) => a.status !== "blocked"),
+    );
+    return employees.map((e) => {
+      let citas = 0;
+      let minutos = 0;
+      let jornada = 0;
+      let ocupacionPonderada = 0;
+      for (const [k, d] of semana.entries()) {
+        const delDia = porDia[k];
+        const mias = delDia.filter((a) => a.employeeId === e.id);
+        citas += mias.length;
+        minutos += mias.reduce((t, a) => t + a.duration, 0);
+        const j = franjasProfesional(e, d.getDay()).reduce((t, f) => t + (f.end - f.start), 0);
+        jornada += j;
+        ocupacionPonderada += (ocupacionDe(delDia, e, d.getDay()) * j) / 100;
+      }
+      return {
+        e,
+        citas,
+        horas: Math.round(minutos / 6) / 10,
+        ocupacion: jornada ? Math.round((ocupacionPonderada / jornada) * 100) : 0,
+        top: topServicesFor(appointments, e.id, carta)[0],
+      };
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employees, appointments, serviciosCarta, semana[0]?.toDateString()]);
   const etiqueta = "text-[10.5px] font-bold tracking-[0.08em] text-[#555650] uppercase";
@@ -128,72 +168,197 @@ function Team() {
     <div className="pagina">
       <PageHeader title="Equipo" />
       {limitePlan !== null && employees.length > limitePlan && (
-        <p role="note" className="flex items-start gap-2 rounded-2xl border border-lino-fuerte bg-nata/60 px-4 py-3 text-[13.5px] text-cafe-medio">
+        <p
+          role="note"
+          className="flex items-start gap-2 rounded-2xl border border-lino-fuerte bg-nata/60 px-4 py-3 text-[13.5px] text-cafe-medio"
+        >
           <Lock className="mt-0.5 size-4 shrink-0" strokeWidth={1.7} aria-hidden="true" />
-          <span>Tu plan {NOMBRE_PLAN[plan]} incluye hasta {limitePlan} profesionales y aquí hay {employees.length}. Para guardar cambios en el equipo, déjalo en {limitePlan}.</span>
+          <span>
+            Tu plan {NOMBRE_PLAN[plan]} incluye hasta {limitePlan} profesionales y aquí hay{" "}
+            {employees.length}. Para guardar cambios en el equipo, déjalo en {limitePlan}.
+          </span>
         </p>
       )}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3 lg:group-data-[panel=abierto]/panel:grid-cols-1">
         {employees.map((e, i) => {
           const configurados = profile.serviciosPorProfesional?.[e.id];
           const asignados = configurados?.length ? configurados : serviciosCarta.map((s) => s.id);
-          const tramosResumen = resumenHorario(DAY_LABELS_ES.map((_, d) => profile.teamHours?.[i]?.[d] ?? profile.openingHours[d] ?? "Cerrado")).split(" · ");
+          const tramosResumen = resumenHorario(
+            DAY_LABELS_ES.map(
+              (_, d) => profile.teamHours?.[i]?.[d] ?? profile.openingHours[d] ?? "Cerrado",
+            ),
+          ).split(" · ");
           return (
-            <section key={e.id} className="flex min-w-0 flex-col overflow-hidden tarjeta-principal border border-border bg-card shadow-[0_8px_24px_rgba(59,47,42,.14)]">
-              <div className="flex items-start gap-3 px-5 pt-5 pb-4" style={{ background: tinteProfesional(i, e.id) }}>
-                <span className="shrink-0 rounded-full bg-card p-1 shadow-[var(--sombra-tarjeta)]"><EditarAvatar tipo="profesional" id={e.id} nombre={e.name} foto={fotoDeProfesional(e.name, e.id, e.photo, tipo, esSalonReal)} size="xl" /></span>
+            <section
+              key={e.id}
+              className="flex min-w-0 flex-col overflow-hidden tarjeta-principal border border-border bg-card shadow-[0_8px_24px_rgba(59,47,42,.14)]"
+            >
+              <div
+                className="flex items-start gap-3 px-[var(--relleno-tarjeta)] pt-[var(--relleno-tarjeta)] pb-4"
+                style={{ background: tinteProfesional(i, e.id) }}
+              >
+                <span className="shrink-0 rounded-full bg-card p-1 shadow-[var(--sombra-tarjeta)]">
+                  <EditarAvatar
+                    tipo="profesional"
+                    id={e.id}
+                    nombre={e.name}
+                    foto={fotoDeProfesional(e.name, e.id, e.photo, tipo, esSalonReal)}
+                    size="xl"
+                  />
+                </span>
                 <div className="grid min-w-0 flex-1 gap-1.5">
-                  <label className="sr-only" htmlFor={`nombre-${i}`}>Nombre</label>
-                  <input id={`nombre-${i}`} value={e.name} maxLength={50} onChange={(ev) => guardarNombre(i, "name", ev.target.value)} className="h-9 w-full rounded-lg bg-transparent px-1 font-display text-[22px] font-medium outline-none focus:bg-card/70" />
-                  <label className="sr-only" htmlFor={`especialidad-${i}`}>Especialidad</label>
-                  <input id={`especialidad-${i}`} value={e.specialty} maxLength={80} placeholder="Especialidad: corte, color…" onChange={(ev) => guardarNombre(i, "specialty", ev.target.value)} className="h-8 w-full rounded-lg bg-transparent px-1 text-[13px] text-cafe-medio outline-none placeholder:text-cafe-suave focus:bg-card/70" />
+                  <label className="sr-only" htmlFor={`nombre-${i}`}>
+                    Nombre
+                  </label>
+                  <input
+                    id={`nombre-${i}`}
+                    value={e.name}
+                    maxLength={50}
+                    onChange={(ev) => guardarNombre(i, "name", ev.target.value)}
+                    className="h-9 w-full rounded-lg bg-transparent px-1 font-display text-[22px] font-medium outline-none focus:bg-card/70"
+                  />
+                  <label className="sr-only" htmlFor={`especialidad-${i}`}>
+                    Especialidad
+                  </label>
+                  <input
+                    id={`especialidad-${i}`}
+                    value={e.specialty}
+                    maxLength={80}
+                    placeholder="Especialidad: corte, color…"
+                    onChange={(ev) => guardarNombre(i, "specialty", ev.target.value)}
+                    className="h-8 w-full rounded-lg bg-transparent px-1 text-[13px] text-cafe-medio outline-none placeholder:text-cafe-suave focus:bg-card/70"
+                  />
                 </div>
-                {employees.length > 1 && <Button type="button" variant="ghost" size="icon" className="shrink-0 hover:bg-card/60" aria-label={`Quitar a ${e.name}`} onClick={() => quitar(i)}><Trash2 className="size-[18px]" strokeWidth={1.6} /></Button>}
+                {employees.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 hover:bg-card/60"
+                    aria-label={`Quitar a ${e.name}`}
+                    onClick={() => quitar(i)}
+                  >
+                    <Trash2 className="size-[18px]" strokeWidth={1.6} />
+                  </Button>
+                )}
               </div>
               {/* El horario en una línea; las siete filas, al pedirlas. */}
               <button
                 type="button"
                 aria-expanded={horarioAbierto.includes(i)}
-                onClick={() => setHorarioAbierto((v) => (v.includes(i) ? v.filter((x) => x !== i) : [...v, i]))}
-                className="flex w-full items-center gap-3 px-5 py-3.5 text-left hover:bg-beige/50"
+                onClick={() =>
+                  setHorarioAbierto((v) => (v.includes(i) ? v.filter((x) => x !== i) : [...v, i]))
+                }
+                className="flex w-full items-center gap-3 px-[var(--relleno-tarjeta)] py-3 text-left hover:bg-beige/50"
               >
                 <span className="min-w-0 flex-1">
                   <span className={cn(etiqueta, "block")}>Horario</span>
                   <span className="flex flex-wrap text-[14px] font-semibold text-cafe tabular-nums">
                     {tramosResumen.map((t, k) => (
-                        <span key={t} className="whitespace-nowrap">
-                          {t}
-                          {k < tramosResumen.length - 1 && <span className="px-1.5 text-taupe">·</span>}
-                        </span>
+                      <span key={t} className="whitespace-nowrap">
+                        {t}
+                        {k < tramosResumen.length - 1 && (
+                          <span className="px-1.5 text-taupe">·</span>
+                        )}
+                      </span>
                     ))}
                   </span>
                 </span>
-                <span className="hidden shrink-0 text-[13px] font-bold text-cafe-medio sm:inline">{horarioAbierto.includes(i) ? "Cerrar" : "Editar"}</span>
-                <ChevronDown className={cn("size-5 shrink-0 text-cafe-medio transition-transform", horarioAbierto.includes(i) && "rotate-180")} strokeWidth={1.6} aria-hidden="true" />
+                <span className="hidden shrink-0 text-[13px] font-bold text-cafe-medio sm:inline">
+                  {horarioAbierto.includes(i) ? "Cerrar" : "Editar"}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "size-5 shrink-0 text-cafe-medio transition-transform",
+                    horarioAbierto.includes(i) && "rotate-180",
+                  )}
+                  strokeWidth={1.6}
+                  aria-hidden="true"
+                />
               </button>
               {horarioAbierto.includes(i) && (
-              <div className="flex-1">
-                <p className="px-5 pb-2 text-[12px] text-muted-foreground">Tramos de 30 min, dentro del horario del salón.</p>
-                {DAY_LABELS_ES.map((label, d) => {
-                  const jsDay = WEEK_JS[d];
-                  const texto = profile.teamHours?.[i]?.[d] ?? profile.openingHours[d] ?? "Cerrado";
-                  const rango = parseRanges(texto)[0];
-                  const horarioSalon = parseRanges(profile.openingHours[d]);
-                  const horaInicioSalon = horarioSalon[0]?.start ?? 600;
-                  const horaFinSalon = horarioSalon[horarioSalon.length - 1]?.end ?? 1080;
-                  const trabaja = !!rango;
-                  const inicio = `${String(Math.floor((rango?.start ?? horaInicioSalon) / 60)).padStart(2, "0")}:${(rango?.start ?? horaInicioSalon) % 60 ? "30" : "00"}`;
-                  const fin = `${String(Math.floor((rango?.end ?? horaFinSalon) / 60)).padStart(2, "0")}:${(rango?.end ?? horaFinSalon) % 60 ? "30" : "00"}`;
-                  const guardar = (start: string, end: string) => guardarHorario(i, d, `${start}–${end}`);
-                  return <div key={label} className={cn("grid grid-cols-[1fr_auto_auto] items-center gap-2 border-t border-border px-5 py-1.5", jsDay === hoy && "bg-perla")}>
-                    <label className={cn("flex min-h-9 items-center gap-2.5 text-[13px]", !trabaja && "text-muted-foreground")}><input type="checkbox" className="size-4 accent-[var(--hoja)]" checked={trabaja} onChange={(ev) => guardarHorario(i, d, ev.target.checked ? `${inicio}–${fin}` : "Cerrado")} /><span className="font-semibold">{label}</span>{jsDay === hoy && <span className="rounded-full bg-salvia-clara px-1.5 text-[11px] font-bold text-hoja-tinta">Hoy</span>}</label>
-                    {trabaja ? <>
-                      <select aria-label={`${label}: hora de entrada`} className={selectHora} value={inicio} onChange={(ev) => guardar(ev.target.value, fin)}>{horas.map((h) => <option key={h}>{h}</option>)}</select>
-                      <select aria-label={`${label}: hora de salida`} className={selectHora} value={fin} onChange={(ev) => guardar(inicio, ev.target.value)}>{horasFin.map((h) => <option key={h}>{h}</option>)}</select>
-                    </> : <span className="col-span-2 text-right text-[12.5px] text-muted-foreground">No trabaja</span>}
-                  </div>;
-                })}
-              </div>
+                <div className="flex-1">
+                  <p className="px-[var(--relleno-tarjeta)] pb-2 text-[12px] text-muted-foreground">
+                    Tramos de 30 min, dentro del horario del salón.
+                  </p>
+                  {DAY_LABELS_ES.map((label, d) => {
+                    const jsDay = WEEK_JS[d];
+                    const texto =
+                      profile.teamHours?.[i]?.[d] ?? profile.openingHours[d] ?? "Cerrado";
+                    const rango = parseRanges(texto)[0];
+                    const horarioSalon = parseRanges(profile.openingHours[d]);
+                    const horaInicioSalon = horarioSalon[0]?.start ?? 600;
+                    const horaFinSalon = horarioSalon[horarioSalon.length - 1]?.end ?? 1080;
+                    const trabaja = !!rango;
+                    const inicio = `${String(Math.floor((rango?.start ?? horaInicioSalon) / 60)).padStart(2, "0")}:${(rango?.start ?? horaInicioSalon) % 60 ? "30" : "00"}`;
+                    const fin = `${String(Math.floor((rango?.end ?? horaFinSalon) / 60)).padStart(2, "0")}:${(rango?.end ?? horaFinSalon) % 60 ? "30" : "00"}`;
+                    const guardar = (start: string, end: string) =>
+                      guardarHorario(i, d, `${start}–${end}`);
+                    return (
+                      <div
+                        key={label}
+                        className={cn(
+                          "grid grid-cols-[1fr_auto_auto] items-center gap-2 border-t border-border px-[var(--relleno-tarjeta)] py-3",
+                          jsDay === hoy && "bg-perla",
+                        )}
+                      >
+                        <label
+                          className={cn(
+                            "flex min-h-9 items-center gap-2.5 text-[13px]",
+                            !trabaja && "text-muted-foreground",
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            className="size-4 accent-[var(--hoja)]"
+                            checked={trabaja}
+                            onChange={(ev) =>
+                              guardarHorario(
+                                i,
+                                d,
+                                ev.target.checked ? `${inicio}–${fin}` : "Cerrado",
+                              )
+                            }
+                          />
+                          <span className="font-semibold">{label}</span>
+                          {jsDay === hoy && (
+                            <span className="rounded-full bg-salvia-clara px-1.5 text-[11px] font-bold text-hoja-tinta">
+                              Hoy
+                            </span>
+                          )}
+                        </label>
+                        {trabaja ? (
+                          <>
+                            <select
+                              aria-label={`${label}: hora de entrada`}
+                              className={selectHora}
+                              value={inicio}
+                              onChange={(ev) => guardar(ev.target.value, fin)}
+                            >
+                              {horas.map((h) => (
+                                <option key={h}>{h}</option>
+                              ))}
+                            </select>
+                            <select
+                              aria-label={`${label}: hora de salida`}
+                              className={selectHora}
+                              value={fin}
+                              onChange={(ev) => guardar(inicio, ev.target.value)}
+                            >
+                              {horasFin.map((h) => (
+                                <option key={h}>{h}</option>
+                              ))}
+                            </select>
+                          </>
+                        ) : (
+                          <span className="col-span-2 text-right text-[12.5px] text-muted-foreground">
+                            No trabaja
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
               <EditorServiciosProfesional
                 empleado={{ id: e.id, name: e.name }}
@@ -207,37 +372,71 @@ function Team() {
         })}
         {capadoPorPlan || employees.length >= limite ? (
           // Tope alcanzado: ni botón activo ni oferta de mejora. Solo un aviso sobrio.
-          <p role="note" className="flex min-h-[180px] items-center justify-center rounded-[20px] border-[1.5px] border-dashed border-lino-fuerte bg-nata/60 px-6 text-center text-[13px] text-muted-foreground">
+          <p
+            role="note"
+            className="flex min-h-[180px] items-center justify-center rounded-[20px] border-[1.5px] border-dashed border-lino-fuerte bg-nata/60 px-[var(--relleno-tarjeta)] text-center text-[13px] text-muted-foreground"
+          >
             Tu plan {NOMBRE_PLAN[plan]} incluye hasta {limitePlan ?? limite} profesionales.
           </p>
         ) : (
-          <button type="button" onClick={añadir} className="flex min-h-[180px] flex-col items-center justify-center gap-2 rounded-[var(--radio-tarjeta-sm)] bg-card text-cafe-medio hover:bg-nata">
+          <button
+            type="button"
+            onClick={añadir}
+            className="flex min-h-[180px] flex-col items-center justify-center gap-2 rounded-[var(--radio-tarjeta-sm)] bg-card text-cafe-medio hover:bg-nata"
+          >
             <Plus className="size-6" strokeWidth={1.6} />
             <b>Añadir profesional</b>
-            <span className="text-[12.5px] text-muted-foreground tabular-nums">{limitePlan === null ? `${employees.length} · sin límite en tu plan` : `${employees.length} de ${limite}`}</span>
+            <span className="text-[12.5px] text-muted-foreground tabular-nums">
+              {limitePlan === null
+                ? `${employees.length} · sin límite en tu plan`
+                : `${employees.length} de ${limite}`}
+            </span>
           </button>
         )}
       </div>
 
       <section className="flex-1 overflow-hidden tarjeta-principal bg-card">
-        <div className="flex flex-wrap items-baseline gap-x-2.5 px-5 py-4">
+        <div className="flex flex-wrap items-baseline gap-x-2.5 px-[var(--relleno-tarjeta)] py-4">
           <h2 className="text-base font-extrabold tracking-[-0.01em]">Esta semana</h2>
-          <span className="text-[12.5px] text-muted-foreground">Del {semana[0]?.getDate()} al {semana[semana.length - 1]?.toLocaleDateString("es-ES", { day: "numeric", month: "long" })}, según la agenda</span>
+          <span className="text-[12.5px] text-muted-foreground">
+            Del {semana[0]?.getDate()} al{" "}
+            {semana[semana.length - 1]?.toLocaleDateString("es-ES", {
+              day: "numeric",
+              month: "long",
+            })}
+            , según la agenda
+          </span>
         </div>
         <div className="divide-y divide-border sm:hidden">
           {resumenSemana.map(({ e, citas, horas: h, ocupacion }, i) => (
-            <article key={e.id} className="px-5 py-4">
+            <article key={e.id} className="px-[var(--relleno-tarjeta)] py-4">
               <div className="mb-3 flex items-center gap-2.5">
-                <span className="grid size-8 shrink-0 place-items-center rounded-full text-[11px] font-extrabold" style={{ background: tinteProfesional(i, e.id) }}>{e.name[0]}</span>
+                <span
+                  className="grid size-8 shrink-0 place-items-center rounded-full text-[11px] font-extrabold"
+                  style={{ background: tinteProfesional(i, e.id) }}
+                >
+                  {e.name[0]}
+                </span>
                 <h3 className="min-w-0 truncate text-sm font-extrabold">{e.name}</h3>
               </div>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                <div><dt className={etiqueta}>Citas</dt><dd className="mt-0.5 font-bold tabular-nums">{citas}</dd></div>
-                <div><dt className={etiqueta}>Horas en agenda</dt><dd className="mt-0.5 tabular-nums">{String(h).replace(".", ",")} h</dd></div>
+                <div>
+                  <dt className={etiqueta}>Citas</dt>
+                  <dd className="mt-0.5 font-bold tabular-nums">{citas}</dd>
+                </div>
+                <div>
+                  <dt className={etiqueta}>Horas en agenda</dt>
+                  <dd className="mt-0.5 tabular-nums">{String(h).replace(".", ",")} h</dd>
+                </div>
                 <div className="col-span-2">
                   <dt className={etiqueta}>Ocupación</dt>
                   <dd className="mt-1.5 flex items-center gap-2.5">
-                    <span className="flex h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-nata"><i className="block" style={{ width: `${ocupacion}%`, background: bordeProfesional(i, e.id) }} /></span>
+                    <span className="flex h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-nata">
+                      <i
+                        className="block"
+                        style={{ width: `${ocupacion}%`, background: bordeProfesional(i, e.id) }}
+                      />
+                    </span>
                     <b className="shrink-0 tabular-nums">{ocupacion} %</b>
                   </dd>
                 </div>
@@ -247,15 +446,51 @@ function Team() {
         </div>
         <div className="hidden sm:block">
           <table className="w-full min-w-[560px] text-sm">
-            <thead><tr className="border-b border-[#DAD8CF] bg-white/25 text-left">{["Profesional", "Citas", "Horas en agenda", "Ocupación", "Lo más pedido"].map((t) => <th key={t} className={cn(etiqueta, "px-5 py-2.5")}>{t}</th>)}</tr></thead>
+            <thead>
+              <tr className="border-b border-[#DAD8CF] bg-white/25 text-left">
+                {["Profesional", "Citas", "Horas en agenda", "Ocupación", "Lo más pedido"].map(
+                  (t) => (
+                    <th key={t} className={cn(etiqueta, "px-[var(--relleno-tarjeta)] py-3")}>
+                      {t}
+                    </th>
+                  ),
+                )}
+              </tr>
+            </thead>
             <tbody>
               {resumenSemana.map(({ e, citas, horas: h, ocupacion, top }, i) => (
                 <tr key={e.id} className="border-t border-border">
-                  <td className="px-5 py-3"><span className="flex items-center gap-2.5"><span className="grid size-7 place-items-center rounded-full text-[11px] font-extrabold" style={{ background: tinteProfesional(i, e.id) }}>{e.name[0]}</span><b>{e.name}</b></span></td>
-                  <td className="px-5 py-3 font-bold tabular-nums">{citas}</td>
-                  <td className="px-5 py-3 tabular-nums">{String(h).replace(".", ",")} h</td>
-                  <td className="px-5 py-3"><span className="flex items-center gap-2.5"><span className="flex h-1.5 w-28 overflow-hidden rounded-full bg-nata"><i className="block" style={{ width: `${ocupacion}%`, background: bordeProfesional(i, e.id) }} /></span><b className="tabular-nums">{ocupacion} %</b></span></td>
-                  <td className="px-5 py-3 text-muted-foreground">{top ?? "—"}</td>
+                  <td className="px-[var(--relleno-tarjeta)] py-3">
+                    <span className="flex items-center gap-2.5">
+                      <span
+                        className="grid size-7 place-items-center rounded-full text-[11px] font-extrabold"
+                        style={{ background: tinteProfesional(i, e.id) }}
+                      >
+                        {e.name[0]}
+                      </span>
+                      <b>{e.name}</b>
+                    </span>
+                  </td>
+                  <td className="px-[var(--relleno-tarjeta)] py-3 font-bold tabular-nums">
+                    {citas}
+                  </td>
+                  <td className="px-[var(--relleno-tarjeta)] py-3 tabular-nums">
+                    {String(h).replace(".", ",")} h
+                  </td>
+                  <td className="px-[var(--relleno-tarjeta)] py-3">
+                    <span className="flex items-center gap-2.5">
+                      <span className="flex h-1.5 w-28 overflow-hidden rounded-full bg-nata">
+                        <i
+                          className="block"
+                          style={{ width: `${ocupacion}%`, background: bordeProfesional(i, e.id) }}
+                        />
+                      </span>
+                      <b className="tabular-nums">{ocupacion} %</b>
+                    </span>
+                  </td>
+                  <td className="px-[var(--relleno-tarjeta)] py-3 text-muted-foreground">
+                    {top ?? "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>

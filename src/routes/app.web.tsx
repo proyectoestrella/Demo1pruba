@@ -146,7 +146,9 @@ function MiWebHidratada() {
   useBlocker({
     shouldBlockFn: () => {
       if (!sucioRef.current) return false;
-      return !window.confirm("Tienes cambios sin publicar en Mi página. Si sales ahora se pierden. ¿Salir de todos modos?");
+      return !window.confirm(
+        "Tienes cambios sin publicar en Mi página. Si sales ahora se pierden. ¿Salir de todos modos?",
+      );
     },
     enableBeforeUnload: () => sucioRef.current,
   });
@@ -438,7 +440,11 @@ function MiWebHidratada() {
         });
         return;
       }
-      const nuevo: SalonProfile = { ...salonProfile, ...parcheDeWeb(webDe(res.profile)), ...res.profile };
+      const nuevo: SalonProfile = {
+        ...salonProfile,
+        ...parcheDeWeb(webDe(res.profile)),
+        ...res.profile,
+      };
       setPublicado(nuevo);
       setBorrador(borradorDesdePerfil(nuevo));
       setErrores([]);
@@ -561,7 +567,10 @@ function MiWebHidratada() {
             // Demo: no hay servidor que restaurar, se aplica como cualquier
             // otro cambio de Mi página (deja su fila local y su versión).
             if (!version.web) return;
-            const b = borradorDesdePerfil({ ...publicado, ...parcheDeWeb(version.web) } as SalonProfile);
+            const b = borradorDesdePerfil({
+              ...publicado,
+              ...parcheDeWeb(version.web),
+            } as SalonProfile);
             setBorrador(b);
             void publicar(b, "perfil.restaurar");
           }}
@@ -873,7 +882,7 @@ function MiWebHidratada() {
 
         {/* ---------------- Vista previa ---------------- */}
         <div className="min-w-0 lg:sticky lg:top-[152px] lg:h-[calc(100dvh-180px)]">
-          <div className="flex h-full min-w-0 flex-col rounded-[20px] border border-border bg-perla p-3.5">
+          <div className="flex h-full min-w-0 flex-col rounded-[20px] border border-border bg-perla relleno-tarjeta">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <div className="min-w-0">
                 <h2 className="text-base font-extrabold tracking-[-0.01em]">
@@ -1040,7 +1049,7 @@ function Bloque({
           type="button"
           aria-expanded={visible}
           onClick={alternar}
-          className="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-beige/50"
+          className="flex w-full items-center gap-3 px-[var(--relleno-tarjeta)] py-4 text-left hover:bg-beige/50"
         >
           <span className="flex-1 text-base font-extrabold tracking-[-0.01em]">{titulo}</span>
           <ChevronDown
@@ -1053,7 +1062,11 @@ function Bloque({
           />
         </button>
       </h2>
-      {visible && <div className="space-y-4 px-5 pb-5">{children}</div>}
+      {visible && (
+        <div className="space-y-4 px-[var(--relleno-tarjeta)] pb-[var(--relleno-tarjeta)]">
+          {children}
+        </div>
+      )}
     </section>
   );
 }

@@ -14,6 +14,7 @@ const ANCHOS = [
   { width: 390, height: 844 },
   { width: 768, height: 1024 },
   { width: 1366, height: 900 },
+  { width: 1920, height: 1080 },
 ] as const;
 
 const gutterPara = (ancho: number) => (ancho < 768 ? 16 : ancho < 1024 ? 24 : 32);
@@ -32,7 +33,10 @@ const PANTALLAS: Pantalla[] = [
     nombre: "Ajustes · Accesos",
     ruta: "/app/settings",
     preparar: async (page) => {
-      await page.locator("button[aria-expanded]").filter({ hasText: /^Accesos/ }).click();
+      await page
+        .locator("button[aria-expanded]")
+        .filter({ hasText: /^Accesos/ })
+        .click();
     },
   },
   { nombre: "Mi página", ruta: "/app/web" },
@@ -48,6 +52,58 @@ async function sinScrollHorizontal(page: Page) {
   }));
   expect(sw, "La página no debe hacer scroll horizontal").toBeLessThanOrEqual(cw);
 }
+
+test("Landing: todos los enlaces internos del menú tienen una sección real", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "escritorio", "Una comprobación basta");
+  await page.goto("/s/peluchic");
+  await expect(page.locator("#portada")).toBeVisible();
+  const faltantes = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLAnchorElement>('header nav a[href^="#"]')]
+      .map((enlace) => enlace.getAttribute("href")!)
+      .filter((href) => !document.querySelector(href)),
+  );
+  expect(faltantes).toEqual([]);
+});
+
+test("Panel: las tarjetas auditadas toman el relleno del token común", async ({
+  page,
+  audit,
+}, info) => {
+  test.skip(info.project.name !== "escritorio", "Una comprobación basta");
+  await abrirPanel(page, audit);
+  for (const ruta of [
+    "/app",
+    "/app/appointments",
+    "/app/clients",
+    "/app/employees",
+    "/app/services",
+    "/app/settings",
+    "/app/web",
+    "/app/hoja",
+  ]) {
+    await page.goto(ruta);
+    const medida = await page.evaluate(() => {
+      const token = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--relleno-tarjeta"),
+      );
+      const elemento = [...document.querySelectorAll<HTMLElement>("[class]")].find(
+        (n) =>
+          n.className.includes("px-[var(--relleno-tarjeta)]") &&
+          n.getBoundingClientRect().height > 0,
+      );
+      return {
+        token,
+        relleno: elemento ? parseFloat(getComputedStyle(elemento).paddingLeft) : null,
+      };
+    });
+    expect(medida.relleno, `${ruta} usa --relleno-tarjeta`).not.toBeNull();
+    expect(Math.abs(medida.relleno! - medida.token), `${ruta}: relleno ±1 px`).toBeLessThanOrEqual(
+      1,
+    );
+  }
+});
 
 async function abrirPanel(page: Page, audit: Parameters<typeof entrarAlPanel>[1]) {
   await entrarAlPanel(page, audit);
@@ -83,7 +139,9 @@ for (const vp of ANCHOS) {
           const h1 = pagina.querySelector("h1");
           // Nada visible del contenido puede salirse del <main> por la derecha.
           const derMain = main.getBoundingClientRect().right;
-          const salidos = [...main.querySelectorAll<HTMLElement>("h1, h2, p, button, a, input, section")]
+          const salidos = [
+            ...main.querySelectorAll<HTMLElement>("h1, h2, p, button, a, input, section"),
+          ]
             .filter((el) => {
               const r = el.getBoundingClientRect();
               if (!r.width || !r.height) return false;
@@ -101,20 +159,28 @@ for (const vp of ANCHOS) {
             salidos,
           };
         });
-        expect(medida.gutter, "Borde izquierdo del contenido = gutter común").toBeGreaterThanOrEqual(
-          gutterPara(vp.width) - 2,
-        );
+        expect(
+          medida.gutter,
+          "Borde izquierdo del contenido = gutter común",
+        ).toBeGreaterThanOrEqual(gutterPara(vp.width) - 2);
         expect(medida.gutter).toBeLessThanOrEqual(gutterPara(vp.width) + 2);
         // En el calendario de PC el título va a la derecha de los controles: solo no puede salirse del gutter.
         if (p.ruta === "/app/calendar") expect(medida.h1).toBeGreaterThanOrEqual(-2);
-        else expect(Math.abs(medida.h1), "El título de la página arranca en el gutter").toBeLessThanOrEqual(2);
+        else
+          expect(
+            Math.abs(medida.h1),
+            "El título de la página arranca en el gutter",
+          ).toBeLessThanOrEqual(2);
         expect(medida.salidos, "Nada se sale por la derecha").toEqual([]);
       });
     }
 
     test("Nueva cita: a pantalla completa en móvil y sin desbordes", async ({ page, audit }) => {
       await abrirPanel(page, audit);
-      await page.getByRole("button", { name: /^Nueva cita$/ }).first().click();
+      await page
+        .getByRole("button", { name: /^Nueva cita$/ })
+        .first()
+        .click();
       const dialogo = page.getByRole("dialog");
       await expect(dialogo).toBeVisible();
       await sinScrollHorizontal(page);

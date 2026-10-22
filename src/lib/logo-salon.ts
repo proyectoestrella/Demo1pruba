@@ -11,7 +11,10 @@ export const LOGOS_DEMO: Record<string, string> = {
 };
 
 /** El logo que se pinta: el del perfil; si no hay y es una demo conocida, el suyo; si no, ninguno. */
-export function logoDelSalon(perfil: { name: string; logoUrl?: string }, esDemo: boolean): string | null {
+export function logoDelSalon(
+  perfil: { name: string; logoUrl?: string },
+  esDemo: boolean,
+): string | null {
   const propio = perfil.logoUrl?.trim();
   if (propio) return propio;
   if (!esDemo) return null;
@@ -20,7 +23,10 @@ export function logoDelSalon(perfil: { name: string; logoUrl?: string }, esDemo:
 
 /** Logotipos (nombre en caligrafía, sin fondo) de las demos de venta, por tono. */
 export const LOGOTIPOS_DEMO: Record<string, { claro: string; oscuro: string }> = {
-  peluchic: { claro: "/demo/peluchic-logotipo-blanco.png", oscuro: "/demo/peluchic-logotipo-oscuro.png" },
+  peluchic: {
+    claro: "/demo/peluchic-logotipo-blanco.webp",
+    oscuro: "/demo/peluchic-logotipo-oscuro.webp",
+  },
 };
 
 /**

@@ -328,7 +328,9 @@ export function HoyArena() {
         ) : (
           // Sin dinero (recepción, subencargada): cuántas citas quedan por cobrar, no cuánto.
           <TarjetaCifra icono={Euro} titulo="Citas por cobrar">
-            <Cifra cargando={cargando}>{hoy.filter((a) => esCobrable(a) && !a.paidAt).length}</Cifra>
+            <Cifra cargando={cargando}>
+              {hoy.filter((a) => esCobrable(a) && !a.paidAt).length}
+            </Cifra>
             <Detalle cargando={cargando}>Las cobra quien atiende la cita.</Detalle>
           </TarjetaCifra>
         )}
@@ -510,12 +512,33 @@ function BloqueAhora({
       onClick={() => onAbrir(a)}
       className={cn(
         "elevar flex w-full min-w-0 items-center gap-3 rounded-2xl border px-4 py-3 text-left",
-        viva ? "border-transparent bg-salvia-suave shadow-[0_6px_18px_-6px_rgba(48,48,48,0.18)]" : "border-lino bg-card hover:bg-superficie",
+        viva
+          ? "border-transparent bg-salvia-suave shadow-[0_6px_18px_-6px_rgba(48,48,48,0.18)]"
+          : "border-lino bg-card hover:bg-superficie",
       )}
     >
       <span className={"min-w-0 flex-1"}>
-        <span className={cn("block text-[11px] font-bold tracking-[0.06em] uppercase", viva ? "text-hoja-tinta" : "text-cafe-suave")}>{etiqueta}{viva && detalle(a) && <span className="ml-1.5 text-[12.5px] font-semibold tracking-normal text-cafe-medio normal-case italic">con {detalle(a).replace(" · ", "")}</span>}</span>
-        <span className={cn("mt-0.5 block truncate", viva ? tituloBloque : "font-display text-[18px] font-medium")}>{a.clientName}</span>
+        <span
+          className={cn(
+            "block text-[11px] font-bold tracking-[0.06em] uppercase",
+            viva ? "text-hoja-tinta" : "text-cafe-suave",
+          )}
+        >
+          {etiqueta}
+          {viva && detalle(a) && (
+            <span className="ml-1.5 text-[12.5px] font-semibold tracking-normal text-cafe-medio normal-case italic">
+              con {detalle(a).replace(" · ", "")}
+            </span>
+          )}
+        </span>
+        <span
+          className={cn(
+            "mt-0.5 block truncate",
+            viva ? tituloBloque : "font-display text-[18px] font-medium",
+          )}
+        >
+          {a.clientName}
+        </span>
         <span className={"block truncate text-[13px] text-cafe-medio"}>
           {serviceLabelOf(a, carta)}
           {!viva && detalle(a)}
@@ -569,12 +592,21 @@ function BloqueAhora({
                   {porConfirmar > 0 ? ` · ${porConfirmar} por confirmar` : ""}
                 </p>
               </>
-            ) : enCurso.length > 0
-              ? enCurso.slice(0, 2).map((a) => tarjeta(a, "Ahora mismo", true))
-              : <p className="flex items-center rounded-2xl border border-dashed border-lino-fuerte px-4 py-3 text-[14px] text-cafe-medio">Ahora mismo no hay nadie en el sillón.</p>}
-            {!previa && (siguiente
-              ? tarjeta(siguiente, `Lo siguiente · ${enCuanto(minutosHastaSiguiente)}`, false)
-              : <p className="flex items-center rounded-2xl border border-dashed border-lino-fuerte px-4 py-3 text-[14px] text-cafe-medio">No queda ninguna cita más hoy.</p>)}
+            ) : enCurso.length > 0 ? (
+              enCurso.slice(0, 2).map((a) => tarjeta(a, "Ahora mismo", true))
+            ) : (
+              <p className="flex items-center rounded-2xl border border-dashed border-lino-fuerte px-4 py-3 text-[14px] text-cafe-medio">
+                Ahora mismo no hay nadie en el sillón.
+              </p>
+            )}
+            {!previa &&
+              (siguiente ? (
+                tarjeta(siguiente, `Lo siguiente · ${enCuanto(minutosHastaSiguiente)}`, false)
+              ) : (
+                <p className="flex items-center rounded-2xl border border-dashed border-lino-fuerte px-4 py-3 text-[14px] text-cafe-medio">
+                  No queda ninguna cita más hoy.
+                </p>
+              ))}
           </div>
           {/* Agenda del día en una línea de tiempo: una fila por profesional. */}
           <div className="mt-5 overflow-x-auto">
@@ -606,7 +638,18 @@ function BloqueAhora({
                             "barra-rellena absolute top-0.5 bottom-0.5 min-w-6 overflow-hidden rounded-[5px] border-0 px-1.5 text-left text-[10.5px] leading-6 font-semibold whitespace-nowrap text-[#1F2633] hover:brightness-95",
                             t.cita.status === "pending" && "bg-[#F3F2EE]",
                           )}
-                          style={{ left: pct(t.ini), width: `calc(${((t.fin - t.ini) / total) * 100}% - 2px)`, background: t.cita.status === "pending" ? undefined : colorServicio(t.cita.serviceIds[0], services).replace("-borde)", ")"), animationDelay: `${i * 25}ms` }}
+                          style={{
+                            left: pct(t.ini),
+                            width: `calc(${((t.fin - t.ini) / total) * 100}% - 2px)`,
+                            background:
+                              t.cita.status === "pending"
+                                ? undefined
+                                : colorServicio(t.cita.serviceIds[0], services).replace(
+                                    "-borde)",
+                                    ")",
+                                  ),
+                            animationDelay: `${i * 25}ms`,
+                          }}
                         >
                           {t.cita.clientName.split(" ")[0]}
                         </button>
@@ -658,8 +701,10 @@ function TarjetaCifra({
   children: ReactNode;
 }) {
   const clase = cn(
-    "entrada-lista elevar flex min-w-0 flex-col rounded-[20px] border px-3.5 py-3 sm:px-5 sm:py-4",
-    destacada ? "border-transparent bg-miel shadow-[0_6px_18px_-6px_rgba(48,48,48,0.18)] hover:bg-[#EFDFB5]" : "border-lino bg-card hover:bg-superficie",
+    "entrada-lista elevar flex min-w-0 flex-col rounded-[20px] border px-[var(--relleno-tarjeta)] py-4",
+    destacada
+      ? "border-transparent bg-miel shadow-[0_6px_18px_-6px_rgba(48,48,48,0.18)] hover:bg-[#EFDFB5]"
+      : "border-lino bg-card hover:bg-superficie",
   );
   const dentro = (
     <>
@@ -695,21 +740,51 @@ function Esqueleto({ cargando, children }: { cargando: boolean; children: ReactN
   return (
     <span className="relative inline-block" aria-busy="true">
       <span className="invisible">{children}</span>
-      <span aria-hidden="true" className="absolute inset-y-[12%] left-0 right-0 animate-pulse rounded-md bg-beige" />
+      <span
+        aria-hidden="true"
+        className="absolute inset-y-[12%] left-0 right-0 animate-pulse rounded-md bg-beige"
+      />
     </span>
   );
 }
 
-function Cifra({ children, extra, centrada = false, cargando = false }: { children: ReactNode; extra?: string; centrada?: boolean; cargando?: boolean }) {
+function Cifra({
+  children,
+  extra,
+  centrada = false,
+  cargando = false,
+}: {
+  children: ReactNode;
+  extra?: string;
+  centrada?: boolean;
+  cargando?: boolean;
+}) {
   return (
-    <p className={cn("flex items-baseline gap-1.5 leading-none", centrada ? "mt-4 sm:mt-5" : "mt-1.5")}>
-      <span className="text-[34px] font-light tracking-[-0.045em] tabular-nums sm:text-[48px]"><Esqueleto cargando={cargando}>{children}</Esqueleto></span>
-      {extra && !cargando && <span className="text-[15px] font-medium text-cafe-medio tabular-nums">{extra}</span>}
+    <p
+      className={cn(
+        "flex items-baseline gap-1.5 leading-none",
+        centrada ? "mt-4 sm:mt-5" : "mt-1.5",
+      )}
+    >
+      <span className="text-[34px] font-light tracking-[-0.045em] tabular-nums sm:text-[48px]">
+        <Esqueleto cargando={cargando}>{children}</Esqueleto>
+      </span>
+      {extra && !cargando && (
+        <span className="text-[15px] font-medium text-cafe-medio tabular-nums">{extra}</span>
+      )}
     </p>
   );
 }
 
-function Detalle({ children, bajo = false, cargando = false }: { children: ReactNode; bajo?: boolean; cargando?: boolean }) {
+function Detalle({
+  children,
+  bajo = false,
+  cargando = false,
+}: {
+  children: ReactNode;
+  bajo?: boolean;
+  cargando?: boolean;
+}) {
   return (
     <p
       className={cn(
@@ -820,7 +895,11 @@ function EstoTeEspera({
   };
 
   return (
-    <section id="espera" data-tour="pending-requests" className="tarjeta-principal bg-[#F7F8F3] relleno-tarjeta">
+    <section
+      id="espera"
+      data-tour="pending-requests"
+      className="tarjeta-principal bg-[#F7F8F3] relleno-tarjeta"
+    >
       <div className="flex items-baseline gap-3">
         <h2 className={tituloBloque}>Esto te espera</h2>
         <span className="inline-flex h-6 items-center rounded-full border-0 bg-miel px-2.5 text-[12.5px] font-bold text-primary tabular-nums shadow-[0_6px_18px_-6px_rgba(48,48,48,0.18)]">
@@ -1001,7 +1080,7 @@ function Plegables({ items, porDefecto }: { items: Plegable[]; porDefecto: strin
                 aria-expanded={abierto}
                 aria-controls={`plegable-${it.id}`}
                 onClick={() => alternar(it.id)}
-                className="mx-2 my-1 flex w-[calc(100%-1rem)] items-center gap-3 rounded-2xl px-5 py-4 text-left hover:bg-beige/60 md:px-7"
+                className="mx-0 flex w-full items-center gap-3 px-[var(--relleno-tarjeta)] py-4 text-left hover:bg-beige/60"
               >
                 <span className="text-[16px] font-extrabold tracking-[-0.01em]">{it.titulo}</span>
                 {it.contador > 0 && (
@@ -1022,7 +1101,10 @@ function Plegables({ items, porDefecto }: { items: Plegable[]; porDefecto: strin
               </button>
             </h2>
             {abierto && (
-              <div id={`plegable-${it.id}`} className="px-7 pb-6 md:px-9">
+              <div
+                id={`plegable-${it.id}`}
+                className="px-[var(--relleno-tarjeta)] pb-[var(--relleno-tarjeta)]"
+              >
                 {it.contenido}
               </div>
             )}

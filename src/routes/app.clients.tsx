@@ -18,6 +18,7 @@ import { AvatarClienta } from "@/components/Avatar";
 import { ImportarClientasDialog } from "@/components/ImportarClientasDialog";
 import { Button } from "@/components/ui/button";
 import { RecargosPendientes } from "@/components/RecargosPendientes";
+import { CampoFiltro } from "@/components/CampoFiltro";
 import {
   Table,
   TableBody,
@@ -28,7 +29,7 @@ import {
 } from "@/components/ui/table";
 import { eur, eurRedondo, hora } from "@/lib/copy";
 import { cn } from "@/lib/utils";
-import { Users, Search, Download } from "lucide-react";
+import { Users, Download } from "lucide-react";
 
 export const Route = createFileRoute("/app/clients")({ component: Clients });
 
@@ -53,13 +54,25 @@ const TAG_CONFIG: Record<ClientTag, { label: string; className: string }> = {
 /** Triángulo de aviso (el color nunca va solo). */
 function IconoAviso() {
   return (
-    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M12 3 2.5 20h19L12 3Z" /><path d="M12 10v4M12 17.5v.01" />
+    <svg
+      viewBox="0 0 24 24"
+      width="13"
+      height="13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 3 2.5 20h19L12 3Z" />
+      <path d="M12 10v4M12 17.5v.01" />
     </svg>
   );
 }
 
-const chip = "inline-flex h-6 items-center gap-1 rounded-full px-2.5 text-[12.5px] font-bold whitespace-nowrap";
+const chip =
+  "inline-flex h-6 items-center gap-1 rounded-full px-2.5 text-[12.5px] font-bold whitespace-nowrap";
 
 type Row = Client & ReturnType<typeof clientFrequency>;
 
@@ -85,7 +98,9 @@ function TagPill({ tag }: { tag: ClientTag }) {
 }
 
 const fechaCortaSinAnio = (iso?: string) =>
-  iso ? new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "") : "—";
+  iso
+    ? new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "")
+    : "—";
 
 type Filtro = "todos" | "hoy" | ClientTag | "color" | "penalizado";
 
@@ -99,14 +114,19 @@ function Clients() {
   const todasLasCitas = useSalonStore((s) => s.appointments);
   const clientesSalon = useSalonStore((s) => s.clients);
   const propias = useMemo(() => new Set(appointments.map((a) => a.clientId)), [appointments]);
-  const clients = useMemo(() => (todasLasClientas ? clientesSalon : clientesSalon.filter((c) => propias.has(c.id))), [todasLasClientas, clientesSalon, propias]);
+  const clients = useMemo(
+    () => (todasLasClientas ? clientesSalon : clientesSalon.filter((c) => propias.has(c.id))),
+    [todasLasClientas, clientesSalon, propias],
+  );
   const services = useSalonStore((s) => s.services);
   const equipo = useEquipo();
   const noShowFeeEur = useSalonStore((s) => s.salonProfile.noShowFeeEur);
   const origenTpv123 = useSalonStore((s) => usaTpv123(s.salonProfile));
   const conRecargo = recargoActivo({ noShowFeeEur });
   const { abrirClienta } = useFichas();
-  const setSelected = (c: Client | null) => { if (c) abrirClienta(c.id); };
+  const setSelected = (c: Client | null) => {
+    if (c) abrirClienta(c.id);
+  };
   const [importarAbierto, setImportarAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<Filtro>(todasLasClientas ? "todos" : "hoy");
@@ -137,7 +157,10 @@ function Clients() {
   const allRows: (Row & { tag: ClientTag })[] = useMemo(
     () =>
       clients
-        .map((c) => ({ ...c, ...clientFrequency(citasPorClienta.get(c.id) ?? SIN_CITAS, c.id, new Date(now)) }))
+        .map((c) => ({
+          ...c,
+          ...clientFrequency(citasPorClienta.get(c.id) ?? SIN_CITAS, c.id, new Date(now)),
+        }))
         .map((r) => ({ ...r, tag: tagFor(r, now) })),
     [clients, citasPorClienta, now],
   );
@@ -162,29 +185,53 @@ function Clients() {
   }, [appointments, hoyClave]);
 
   const limiteColor = now + 14 * DAY_MS;
-  const proximasSinColor = useMemo(() => allRows.flatMap((client) => {
-    const suyas = citasPorClienta.get(client.id) ?? SIN_CITAS;
-    const cita = suyas.filter((a) => (a.status === "confirmed" || a.status === "pending") && +new Date(a.start) >= now && +new Date(a.start) <= limiteColor)
-      .sort((a, b) => +new Date(a.start) - +new Date(b.start))[0];
-    const tieneColor = suyas.some((a) => a.status === "completed" && +new Date(a.start) < now && !!a.colorFormula?.trim());
-    return cita && !tieneColor ? [{ client, cita }] : [];
-  }).sort((a, b) => +new Date(a.cita.start) - +new Date(b.cita.start)), [allRows, citasPorClienta, now, limiteColor]);
-  const colorPendiente = useMemo(() => new Set(proximasSinColor.map((x) => x.client.id)), [proximasSinColor]);
+  const proximasSinColor = useMemo(
+    () =>
+      allRows
+        .flatMap((client) => {
+          const suyas = citasPorClienta.get(client.id) ?? SIN_CITAS;
+          const cita = suyas
+            .filter(
+              (a) =>
+                (a.status === "confirmed" || a.status === "pending") &&
+                +new Date(a.start) >= now &&
+                +new Date(a.start) <= limiteColor,
+            )
+            .sort((a, b) => +new Date(a.start) - +new Date(b.start))[0];
+          const tieneColor = suyas.some(
+            (a) => a.status === "completed" && +new Date(a.start) < now && !!a.colorFormula?.trim(),
+          );
+          return cita && !tieneColor ? [{ client, cita }] : [];
+        })
+        .sort((a, b) => +new Date(a.cita.start) - +new Date(b.cita.start)),
+    [allRows, citasPorClienta, now, limiteColor],
+  );
+  const colorPendiente = useMemo(
+    () => new Set(proximasSinColor.map((x) => x.client.id)),
+    [proximasSinColor],
+  );
 
   // Solo se ofrece el filtro cuando hay a quién filtrar: una pestaña "Me
   // deben" vacía es ruido en cualquier demo sin plantones.
-  const hayPenalizados = conRecargo && puede(permisos, "recargo.gestionar") && allRows.some((r) => (r.penaltyEur ?? 0) > 0);
+  const hayPenalizados =
+    conRecargo &&
+    puede(permisos, "recargo.gestionar") &&
+    allRows.some((r) => (r.penaltyEur ?? 0) > 0);
 
   // Lote 16: sin texto no hay nada que buscar (antes se normalizaban todas las fichas igualmente).
   const hayBusqueda = busqueda.trim().length > 0;
   const buscados = useMemo(
-    () => (hayBusqueda ? buscarClientas(busqueda, { clientes: clients, citas: appointments }) : clients),
+    () =>
+      hayBusqueda ? buscarClientas(busqueda, { clientes: clients, citas: appointments }) : clients,
     [hayBusqueda, busqueda, clients, appointments],
   );
   // Fuera de las suyas: las del salón que coinciden, solo para darles cita (ficha reducida).
-  const otrasDelSalon = !todasLasClientas && busqueda.trim().length >= 2
-    ? buscarClientas(busqueda, { clientes: clientesSalon, citas: todasLasCitas }).filter((c) => !propias.has(c.id)).slice(0, 5)
-    : [];
+  const otrasDelSalon =
+    !todasLasClientas && busqueda.trim().length >= 2
+      ? buscarClientas(busqueda, { clientes: clientesSalon, citas: todasLasCitas })
+          .filter((c) => !propias.has(c.id))
+          .slice(0, 5)
+      : [];
   const ordenBusqueda = new Map(buscados.map((c, i) => [c.id, i]));
   const filtroEfectivo: Filtro = filtro === "penalizado" && !conRecargo ? "todos" : filtro;
   const pasa = (c: Row & { tag: ClientTag }) => {
@@ -218,7 +265,13 @@ function Clients() {
   const fichas = new Map(
     rows.map((c) => [
       c.id,
-      fichaDeClientaMemo(c.id, { citas: citasPorClienta.get(c.id) ?? SIN_CITAS, clientes: clients, servicios: services, equipo, ahora: new Date(now) }).resumen,
+      fichaDeClientaMemo(c.id, {
+        citas: citasPorClienta.get(c.id) ?? SIN_CITAS,
+        clientes: clients,
+        servicios: services,
+        equipo,
+        ahora: new Date(now),
+      }).resumen,
     ]),
   );
   const frecuencia = (id: string) => {
@@ -226,7 +279,8 @@ function Clients() {
     if (d === undefined) return "—";
     return d < 14 ? `cada ${d} días` : `cada ${Math.round(d / 7)} sem.`;
   };
-  const semanasSinVenir = (r: Row) => (r.lastVisit ? Math.floor((now - +new Date(r.lastVisit)) / (7 * DAY_MS)) : null);
+  const semanasSinVenir = (r: Row) =>
+    r.lastVisit ? Math.floor((now - +new Date(r.lastVisit)) / (7 * DAY_MS)) : null;
 
   const estado = (c: Row & { tag: ClientTag }) => {
     const hoy = citaDeHoy.get(c.id);
@@ -234,13 +288,31 @@ function Clients() {
     // Un solo chip por fila: el más relevante. El resto vive en la ficha.
     let chipFila: ReactNode = null;
     if (conRecargo && (c.penaltyEur ?? 0) > 0) {
-      chipFila = <span className={cn(chip, "bg-melocoton text-melocoton-tinta")}><IconoAviso />Debe {eur(c.penaltyEur!)}</span>;
+      chipFila = (
+        <span className={cn(chip, "bg-melocoton text-melocoton-tinta")}>
+          <IconoAviso />
+          Debe {eur(c.penaltyEur!)}
+        </span>
+      );
     } else if (hoy) {
-      chipFila = <span className={cn(chip, "bg-salvia-clara text-hoja-tinta tabular-nums")}>Hoy {hora(hoy.start)}</span>;
+      chipFila = (
+        <span className={cn(chip, "bg-salvia-clara text-hoja-tinta tabular-nums")}>
+          Hoy {hora(hoy.start)}
+        </span>
+      );
     } else if (!esBarberia && colorPendiente.has(c.id)) {
-      chipFila = <span className={cn(chip, "bg-melocoton text-melocoton-tinta")}><IconoAviso />Color pendiente</span>;
+      chipFila = (
+        <span className={cn(chip, "bg-melocoton text-melocoton-tinta")}>
+          <IconoAviso />
+          Color pendiente
+        </span>
+      );
     } else if (c.tag === "inactivo" && sem !== null) {
-      chipFila = <span className={cn(chip, "bg-arena text-cafe-medio tabular-nums")}>{sem} sem. sin venir</span>;
+      chipFila = (
+        <span className={cn(chip, "bg-arena text-cafe-medio tabular-nums")}>
+          {sem} sem. sin venir
+        </span>
+      );
     } else if (c.tag === "nuevo") {
       chipFila = <TagPill tag={c.tag} />;
     }
@@ -251,28 +323,59 @@ function Clients() {
     <div className="pagina">
       <div className="flex flex-wrap items-end gap-4">
         <div className="min-w-0">
-          <h1 className="text-[26px] leading-[1.1] font-extrabold tracking-[-0.02em] md:text-[32px]">{esBarberia ? "Clientes" : "Clientas"}</h1>
+          <h1 className="text-[26px] leading-[1.1] font-extrabold tracking-[-0.02em] md:text-[32px]">
+            {esBarberia ? "Clientes" : "Clientas"}
+          </h1>
           {/* La cartera en una línea de texto, como las cifras de Hoy. */}
           <p className="mt-2 flex flex-wrap items-baseline gap-x-2 text-[15px] text-cafe-medio">
-            <span className="whitespace-nowrap"><b className="text-foreground tabular-nums">{kpis.total}</b> {esBarberia ? "clientes" : "clientas"}</span>
-            <span className="text-taupe" aria-hidden="true">·</span>
-            <span className="whitespace-nowrap" title="Dadas de alta en 30 días"><b className="text-foreground tabular-nums">{kpis.nuevos}</b> nuevas este mes</span>
-            <span className="text-taupe" aria-hidden="true">·</span>
-            <span className="whitespace-nowrap" title="Tres visitas o más"><b className="text-foreground tabular-nums">{kpis.habituales}</b> recurrentes</span>
+            <span className="whitespace-nowrap">
+              <b className="text-foreground tabular-nums">{kpis.total}</b>{" "}
+              {esBarberia ? "clientes" : "clientas"}
+            </span>
+            <span className="text-taupe" aria-hidden="true">
+              ·
+            </span>
+            <span className="whitespace-nowrap" title="Dadas de alta en 30 días">
+              <b className="text-foreground tabular-nums">{kpis.nuevos}</b> nuevas este mes
+            </span>
+            <span className="text-taupe" aria-hidden="true">
+              ·
+            </span>
+            <span className="whitespace-nowrap" title="Tres visitas o más">
+              <b className="text-foreground tabular-nums">{kpis.habituales}</b> recurrentes
+            </span>
             {kpis.enRiesgo > 0 && (
               <>
-                <span className="text-taupe" aria-hidden="true">·</span>
-                <button type="button" onClick={() => setFiltro("inactivo")} className="whitespace-nowrap hover:text-foreground" title="Más de 60 días sin venir: ver las inactivas">
+                <span className="text-taupe" aria-hidden="true">
+                  ·
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setFiltro("inactivo")}
+                  className="whitespace-nowrap hover:text-foreground"
+                  title="Más de 60 días sin venir: ver las inactivas"
+                >
                   <b className="text-primary tabular-nums">{kpis.enRiesgo}</b> en riesgo
                 </button>
               </>
             )}
           </p>
         </div>
-        {puede(permisos, "clienta.importar") && <Button type="button" variant="outline" className="md:ml-auto" onClick={() => setImportarAbierto(true)}>
-          <Download className="size-[18px]" strokeWidth={1.6} />
-          {origenTpv123 ? "Importar desde TPV 123" : esBarberia ? "Importar clientes" : "Importar clientas"}
-        </Button>}
+        {puede(permisos, "clienta.importar") && (
+          <Button
+            type="button"
+            variant="outline"
+            className="md:ml-auto"
+            onClick={() => setImportarAbierto(true)}
+          >
+            <Download className="size-[18px]" strokeWidth={1.6} />
+            {origenTpv123
+              ? "Importar desde TPV 123"
+              : esBarberia
+                ? "Importar clientes"
+                : "Importar clientas"}
+          </Button>
+        )}
       </div>
 
       {/* Recargos pendientes destacados: Adam pidió esto expresamente el
@@ -281,14 +384,40 @@ function Clients() {
       {conRecargo && <RecargosPendientes title="Recargos pendientes" />}
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="sin-scrollbar flex min-w-0 max-w-full gap-1 overflow-x-auto [mask-image:linear-gradient(to_right,black_88%,transparent)] lg:[mask-image:none]" role="group" aria-label="Filtrar clientas">
+        <div
+          className="sin-scrollbar flex min-w-0 max-w-full gap-1 overflow-x-auto [mask-image:linear-gradient(to_right,black_88%,transparent)] lg:[mask-image:none]"
+          role="group"
+          aria-label="Filtrar clientas"
+        >
           {[
             { id: "todos", etiqueta: "Todas" },
-            { id: "hoy", etiqueta: <>Vienen hoy <span className="ml-1 tabular-nums text-muted-foreground">{citaDeHoy.size}</span></> },
+            {
+              id: "hoy",
+              etiqueta: (
+                <>
+                  Vienen hoy{" "}
+                  <span className="ml-1 tabular-nums text-muted-foreground">{citaDeHoy.size}</span>
+                </>
+              ),
+            },
             { id: "nuevo", etiqueta: esBarberia ? "Nuevos" : "Nuevas" },
             { id: "habitual", etiqueta: "Habituales" },
             { id: "inactivo", etiqueta: esBarberia ? "Inactivos" : "Inactivas" },
-            ...(esBarberia ? [] : [{ id: "color", etiqueta: <>Color pendiente <span className="ml-1 tabular-nums text-muted-foreground">{proximasSinColor.length}</span></> }]),
+            ...(esBarberia
+              ? []
+              : [
+                  {
+                    id: "color",
+                    etiqueta: (
+                      <>
+                        Color pendiente{" "}
+                        <span className="ml-1 tabular-nums text-muted-foreground">
+                          {proximasSinColor.length}
+                        </span>
+                      </>
+                    ),
+                  },
+                ]),
             ...(hayPenalizados ? [{ id: "penalizado", etiqueta: "Me deben" }] : []),
           ].map(({ id, etiqueta }) => (
             <button
@@ -298,27 +427,29 @@ function Clients() {
               onClick={() => setFiltro(id as Filtro)}
               className={cn(
                 "h-9 shrink-0 rounded-full px-3 text-[13px] font-bold whitespace-nowrap",
-                filtroEfectivo === id ? "bg-cafe text-white shadow-sm" : "bg-beige text-cafe-medio hover:bg-nata",
+                filtroEfectivo === id
+                  ? "bg-cafe text-white shadow-sm"
+                  : "bg-beige text-cafe-medio hover:bg-nata",
               )}
             >
               {etiqueta}
             </button>
           ))}
         </div>
-        <label className="flex h-[42px] items-center gap-2 rounded-full border border-input bg-card px-3.5 text-muted-foreground lg:ml-auto lg:w-[340px]">
-          <Search className="size-[18px] shrink-0" strokeWidth={1.6} />
-          <input
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Filtrar: nombre, teléfono, notas o color"
-            aria-label="Filtrar clientas"
-            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-          />
-        </label>
+        <CampoFiltro
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Filtrar: nombre, teléfono, notas o color"
+          aria-label="Filtrar clientas"
+          className="lg:ml-auto"
+        />
       </div>
 
       {filtroEfectivo === "color" && (
-        <p className="-mt-2 text-[12.5px] text-muted-foreground">Citadas en los próximos 14 días y sin ningún color anotado: ábrelas y añade su fórmula{origenTpv123 ? " de TPV 123" : ""} antes de que lleguen.</p>
+        <p className="-mt-2 text-[12.5px] text-muted-foreground">
+          Citadas en los próximos 14 días y sin ningún color anotado: ábrelas y añade su fórmula
+          {origenTpv123 ? " de TPV 123" : ""} antes de que lleguen.
+        </p>
       )}
 
       {rows.length === 0 ? (
@@ -351,9 +482,15 @@ function Clients() {
                   <TableHead>{esBarberia ? "Cliente" : "Clienta"}</TableHead>
                   <TableHead className="@max-[520px]:hidden">Última visita</TableHead>
                   <TableHead className="text-right @max-[420px]:hidden">Visitas</TableHead>
-                  <TableHead className="group-data-[panel=abierto]/panel:hidden">Frecuencia</TableHead>
-                  <TableHead className="hidden xl:table-cell xl:group-data-[panel=abierto]/panel:hidden">Servicio habitual</TableHead>
-                  <TableHead className="group-data-[panel=abierto]/panel:hidden">Próxima cita</TableHead>
+                  <TableHead className="group-data-[panel=abierto]/panel:hidden">
+                    Frecuencia
+                  </TableHead>
+                  <TableHead className="hidden xl:table-cell xl:group-data-[panel=abierto]/panel:hidden">
+                    Servicio habitual
+                  </TableHead>
+                  <TableHead className="group-data-[panel=abierto]/panel:hidden">
+                    Próxima cita
+                  </TableHead>
                   <TableHead className="text-right @max-[600px]:hidden">Gasto acumulado</TableHead>
                   <TableHead>Estado</TableHead>
                 </TableRow>
@@ -366,16 +503,30 @@ function Clients() {
                         <AvatarClienta id={c.id} nombre={c.name} size="sm" />
                         <div className="min-w-0 leading-tight">
                           <b className="block truncate">{c.name}</b>
-                          <span className="text-[12.5px] text-muted-foreground tabular-nums">{c.phone}</span>
+                          <span className="text-[12.5px] text-muted-foreground tabular-nums">
+                            {c.phone}
+                          </span>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="tabular-nums @max-[520px]:hidden">{fechaCortaSinAnio(c.lastVisit)}</TableCell>
-                    <TableCell className="text-right tabular-nums @max-[420px]:hidden">{c.pastVisits}</TableCell>
-                    <TableCell className="text-muted-foreground group-data-[panel=abierto]/panel:hidden">{frecuencia(c.id)}</TableCell>
-                    <TableCell className="hidden text-muted-foreground xl:table-cell xl:group-data-[panel=abierto]/panel:hidden">{fichas.get(c.id)?.servicioHabitual ?? "—"}</TableCell>
-                    <TableCell className="tabular-nums group-data-[panel=abierto]/panel:hidden">{fechaCortaSinAnio(c.nextVisit)}</TableCell>
-                    <TableCell className="text-right font-bold tabular-nums @max-[600px]:hidden">{eurRedondo(c.totalSpent)}</TableCell>
+                    <TableCell className="tabular-nums @max-[520px]:hidden">
+                      {fechaCortaSinAnio(c.lastVisit)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums @max-[420px]:hidden">
+                      {c.pastVisits}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground group-data-[panel=abierto]/panel:hidden">
+                      {frecuencia(c.id)}
+                    </TableCell>
+                    <TableCell className="hidden text-muted-foreground xl:table-cell xl:group-data-[panel=abierto]/panel:hidden">
+                      {fichas.get(c.id)?.servicioHabitual ?? "—"}
+                    </TableCell>
+                    <TableCell className="tabular-nums group-data-[panel=abierto]/panel:hidden">
+                      {fechaCortaSinAnio(c.nextVisit)}
+                    </TableCell>
+                    <TableCell className="text-right font-bold tabular-nums @max-[600px]:hidden">
+                      {eurRedondo(c.totalSpent)}
+                    </TableCell>
                     <TableCell>{estado(c)}</TableCell>
                   </TableRow>
                 ))}
@@ -392,16 +543,19 @@ function Clients() {
                   key={c.id}
                   type="button"
                   onClick={() => setSelected(c)}
-                  className="flex w-full items-center gap-3 border-t border-border px-4 py-3 text-left first:border-t-0"
+                  className="flex w-full items-center gap-3 border-t border-border px-[var(--relleno-tarjeta)] py-3 text-left first:border-t-0"
                 >
                   <AvatarClienta id={c.id} nombre={c.name} size="md" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <b className="truncate">{c.name}</b>
-                      <span className="shrink-0 font-bold tabular-nums">{eurRedondo(c.totalSpent)}</span>
+                      <span className="shrink-0 font-bold tabular-nums">
+                        {eurRedondo(c.totalSpent)}
+                      </span>
                     </div>
                     <p className="truncate text-[12.5px] text-muted-foreground tabular-nums">
-                      {c.pastVisits} {c.pastVisits === 1 ? "visita" : "visitas"} · última {fechaCortaSinAnio(c.lastVisit)} · {frecuencia(c.id)}
+                      {c.pastVisits} {c.pastVisits === 1 ? "visita" : "visitas"} · última{" "}
+                      {fechaCortaSinAnio(c.lastVisit)} · {frecuencia(c.id)}
                     </p>
                     {estadoClienta && <div className="mt-1.5">{estadoClienta}</div>}
                   </div>
@@ -416,22 +570,32 @@ function Clients() {
               className="inline-flex items-center gap-1 self-start rounded-full px-3 py-2 text-[13.5px] font-bold text-cafe-medio hover:bg-beige"
             >
               Ver {Math.min(20, rows.length - cuantas)} más
-              <span className="font-semibold text-cafe-suave tabular-nums">· {cuantas} de {rows.length}</span>
+              <span className="font-semibold text-cafe-suave tabular-nums">
+                · {cuantas} de {rows.length}
+              </span>
             </button>
           )}
         </>
       )}
 
       {otrasDelSalon.length > 0 && (
-        <section className="rounded-2xl border border-lino bg-card px-4 py-3">
-          <h2 className="text-[13.5px] font-bold text-cafe-medio">Otras clientas del salón · para darles cita</h2>
+        <section className="rounded-2xl border border-lino bg-card px-[var(--relleno-tarjeta)] py-3">
+          <h2 className="text-[13.5px] font-bold text-cafe-medio">
+            Otras clientas del salón · para darles cita
+          </h2>
           <ul className="mt-1.5 divide-y divide-lino">
             {otrasDelSalon.map((c) => (
               <li key={c.id}>
-                <button type="button" onClick={() => setSelected(c)} className="flex w-full items-center gap-3 py-2 text-left hover:text-foreground">
+                <button
+                  type="button"
+                  onClick={() => setSelected(c)}
+                  className="flex w-full items-center gap-3 py-2 text-left hover:text-foreground"
+                >
                   <AvatarClienta id={c.id} nombre={c.name} size="md" />
                   <span className="min-w-0 flex-1 truncate font-semibold">{c.name}</span>
-                  <span className="text-[12.5px] text-muted-foreground tabular-nums">{c.phone}</span>
+                  <span className="text-[12.5px] text-muted-foreground tabular-nums">
+                    {c.phone}
+                  </span>
                 </button>
               </li>
             ))}

@@ -3,7 +3,9 @@ import { logoDelSalon } from "./logo-salon";
 
 describe("logo del salón", () => {
   test("manda el logo del perfil", () => {
-    expect(logoDelSalon({ name: "PeluChic", logoUrl: " https://x.es/logo.png " }, true)).toBe("https://x.es/logo.png");
+    expect(logoDelSalon({ name: "PeluChic", logoUrl: " https://x.es/logo.png " }, true)).toBe(
+      "https://x.es/logo.png",
+    );
   });
   test("la demo PeluChic resuelve su logo sin llevarlo en el enlace", () => {
     expect(logoDelSalon({ name: "PeluChic" }, true)).toBe("/demo/peluchic-logo.png");
@@ -24,7 +26,9 @@ describe("logotipo con el nombre (logo real de PeluChic)", () => {
     expect(logotipoDelSalon(p, false, "oscuro")).toBe("/o.png");
   });
   test("la demo PeluChic sin campo usa el suyo; un salón real que se llame igual, no", () => {
-    expect(logotipoDelSalon({ name: "PeluChic" }, true, "claro")).toBe("/demo/peluchic-logotipo-blanco.png");
+    expect(logotipoDelSalon({ name: "PeluChic" }, true, "claro")).toBe(
+      "/demo/peluchic-logotipo-blanco.webp",
+    );
     expect(logotipoDelSalon({ name: "PeluChic" }, false, "claro")).toBeNull();
   });
   test("sin logotipo: null (se pinta el círculo y el nombre, como siempre)", () => {

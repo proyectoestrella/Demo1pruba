@@ -715,22 +715,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
  * REGLA ÚNICA DE MAQUETACIÓN DEL PANEL (lote responsive, oct-2026).
  * Ninguna pantalla pone márgenes laterales propios: el <main> del armazón da
  * el gutter (16 px móvil · 24 px tablet · 32 px escritorio, más la safe-area
- * del iPhone en horizontal) y `.pagina` centra el contenido con un ancho
- * máximo y separa las secciones con UNA escala vertical (--hueco-seccion).
+ * del iPhone en horizontal) y `.pagina` ocupa todo el ancho disponible y
+ * separa las secciones con UNA escala vertical (--hueco-seccion).
  * Las tarjetas usan `.relleno-tarjeta`; las hojas y diálogos, `.relleno-hoja`.
  * ------------------------------------------------------------------------ */
 :root {
   --gutter: 16px;
   --hueco-seccion: 20px;
+  --hueco-seccion-web: 40px;
   --relleno-tarjeta: 20px;
-  --ancho-pagina: 1200px;
   --seguro-izq: env(safe-area-inset-left, 0px);
   --seguro-der: env(safe-area-inset-right, 0px);
   --seguro-arriba: env(safe-area-inset-top, 0px);
   --seguro-abajo: env(safe-area-inset-bottom, 0px);
 }
 @media (min-width: 48rem) {
-  :root { --gutter: 24px; --hueco-seccion: 24px; --relleno-tarjeta: 24px; }
+  :root { --gutter: 24px; --hueco-seccion: 24px; --hueco-seccion-web: 56px; --relleno-tarjeta: 24px; }
 }
 @media (min-width: 64rem) {
   :root { --gutter: 32px; --hueco-seccion: 28px; }
@@ -747,8 +747,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   gap: var(--hueco-seccion);
   width: 100%;
   min-width: 0;
-  max-width: var(--ancho-pagina);
-  margin-inline: auto;
 }
 .relleno-tarjeta { padding: var(--relleno-tarjeta); }
 }
@@ -785,12 +783,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   }
 }
 
-/* El FAB del panel desaparece a 768 px. Esta clase pertenece al armazón: las
+/* El FAB del panel desaparece a 1024 px. Esta clase pertenece al armazón: las
    rutas no inventan rellenos propios y el calendario recibe la misma reserva. */
 .hueco-fab-panel {
   padding-bottom: var(--hueco-fab-panel);
 }
-@media (min-width: 48rem) {
+@media (min-width: 64rem) {
   .hueco-fab-panel {
     padding-bottom: var(--gutter);
   }

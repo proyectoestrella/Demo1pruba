@@ -162,9 +162,7 @@ function useSolicitudesPendientes() {
 function useBarraMovil(grupos: { items: NavItem[] }[]): NavItem[] {
   const permisos = usePermisos();
   const plan = usePlanSalon();
-  const fijos = BARRA_MOVIL.filter(
-    (i) => veRuta(permisos, i.to) && rutaIncluidaEnPlan(i.to, plan),
-  );
+  const fijos = BARRA_MOVIL.filter((i) => veRuta(permisos, i.to) && rutaIncluidaEnPlan(i.to, plan));
   const resto = grupos.flatMap((g) => g.items).filter((i) => !fijos.some((f) => f.to === i.to));
   return [...fijos, ...resto].slice(0, 4);
 }
@@ -315,7 +313,11 @@ function BloqueUsuario() {
           {nombre ? <AvatarPersona nombre={nombre} /> : <AvatarSalon size={34} />}
           <span className="min-w-0 flex-1 leading-tight">
             <b className="block truncate text-[13px]">{nombre ?? name}</b>
-            {miembro && <span className="block truncate text-xs text-muted-foreground">{NOMBRE_ROL[miembro.rol]}</span>}
+            {miembro && (
+              <span className="block truncate text-xs text-muted-foreground">
+                {NOMBRE_ROL[miembro.rol]}
+              </span>
+            )}
           </span>
         </div>
         {/* 14c: la estilista gestiona su calendario desde aquí (no ve Ajustes). */}
@@ -349,13 +351,13 @@ function BloqueUsuario() {
   );
 }
 
-/** Menú lateral de PC (≥ 768 px). */
+/** Menú lateral de PC (≥ 1024 px). */
 export function MenuLateral({ path }: { path: string }) {
   const grupos = useGruposVisibles();
   const pendientes = useSolicitudesPendientes();
   const publicLink = usePanelPublicLink();
   return (
-    <aside className="sticky top-0 hidden h-screen w-[244px] shrink-0 flex-col border-r border-transparent bg-transparent px-3 py-4 md:flex">
+    <aside className="sticky top-0 hidden h-screen w-[244px] shrink-0 flex-col border-r border-transparent bg-transparent px-3 py-4 lg:flex">
       <div className="px-2 pb-3">
         <Marca />
       </div>
@@ -375,7 +377,10 @@ export function MenuLateral({ path }: { path: string }) {
                   contador={item.to === "/app" ? pendientes : undefined}
                 />
                 {item.to === "/app/web" && (
-                  <a href={publicLink} className="ml-10 flex min-h-9 items-center gap-1.5 text-xs text-muted-foreground hover:text-primary">
+                  <a
+                    href={publicLink}
+                    className="ml-10 flex min-h-9 items-center gap-1.5 text-xs text-muted-foreground hover:text-primary"
+                  >
                     Ver tu web <ArrowUpRight className="size-3" />
                   </a>
                 )}
@@ -439,31 +444,37 @@ function BotonAvisos({ className }: { className?: string }) {
   );
 }
 
-/** Cabecera de píldoras: búsqueda y cita a la izquierda, alineadas con el gutter del contenido; nunca elimina plan ni asistente. */
+/** Cabecera de píldoras: búsqueda centrada en una rejilla estable; nunca elimina plan ni asistente. */
 export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraArenaProps) {
   // Sin el plan del asistente (Básico, o mientras se resuelve el salón), el botón no existe.
   const conAsistente = useTienePlan("asistente");
   return (
-    <header className="gutter-x relative grid grid-cols-1 items-center gap-2 pt-[calc(10px+var(--seguro-arriba))] pb-2.5 md:sticky md:top-0 md:z-20 md:flex md:h-[calc(71px+var(--seguro-arriba))] md:gap-3 md:pt-[var(--seguro-arriba)] md:pb-0">
-      <div className="flex items-center justify-between md:hidden">
+    <header className="gutter-x relative grid grid-cols-1 items-center gap-2 pt-[calc(10px+var(--seguro-arriba))] pb-2.5 lg:sticky lg:top-0 lg:z-20 lg:h-[calc(71px+var(--seguro-arriba))] lg:grid-cols-[minmax(0,1fr)_minmax(0,560px)_minmax(0,1fr)] lg:gap-3 lg:pt-[var(--seguro-arriba)] lg:pb-0 lg:group-data-[panel=abierto]/panel:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="flex items-center justify-between lg:hidden">
         <Marca compacta />
         <div className="flex items-center gap-2">
-          {conAsistente && <Button
-            data-tour="assistant"
-            variant="outline"
-            onClick={onAsistente}
-            className="size-11 rounded-full border-input/70 bg-card/70 px-0 text-cafe-medio hover:bg-nata"
-            aria-label="Asistente"
-          >
-            <Sparkles className="size-[18px]" strokeWidth={1.6} />
-          </Button>}
+          {conAsistente && (
+            <Button
+              data-tour="assistant"
+              variant="outline"
+              onClick={onAsistente}
+              className="size-11 rounded-full border-input/70 bg-card/70 px-0 text-cafe-medio hover:bg-nata"
+              aria-label="Asistente"
+            >
+              <Sparkles className="size-[18px]" strokeWidth={1.6} />
+            </Button>
+          )}
           <BotonTour onTour={onTour} className="size-11" />
           <BotonHistorial className="size-11" />
           <BotonAvisos className="size-11" />
         </div>
       </div>
-      <div className="flex w-full min-w-0 items-center gap-2 md:w-auto md:max-w-[560px] md:flex-1">
-        <div className="min-w-0 flex-1 md:max-w-[420px]">
+      <div
+        aria-hidden="true"
+        className="hidden lg:block lg:group-data-[panel=abierto]/panel:hidden"
+      />
+      <div className="flex w-full min-w-0 items-center gap-2 lg:w-full lg:justify-self-center lg:group-data-[panel=abierto]/panel:justify-self-start">
+        <div className="min-w-0 flex-1 lg:max-w-[420px]">
           <BuscadorGlobal variante="campo" />
         </div>
         <Button
@@ -471,26 +482,28 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
           aria-label="Nueva cita"
           title="Nueva cita"
           onClick={onNuevaCita}
-          className="hidden h-11 min-w-0 max-w-full shrink-0 gap-1.5 rounded-full px-3 text-[13px] font-bold md:inline-flex md:group-data-[panel=abierto]/panel:size-9 md:group-data-[panel=abierto]/panel:shrink-0 md:group-data-[panel=abierto]/panel:px-0"
+          className="hidden h-11 min-w-0 max-w-full shrink-0 gap-1.5 rounded-full px-3 text-[13px] font-bold lg:inline-flex lg:group-data-[panel=abierto]/panel:size-9 lg:group-data-[panel=abierto]/panel:shrink-0 lg:group-data-[panel=abierto]/panel:px-0"
         >
           <Plus className="size-4" strokeWidth={1.6} />
-          <span className="truncate md:group-data-[panel=abierto]/panel:hidden">Nueva cita</span>
+          <span className="truncate lg:group-data-[panel=abierto]/panel:hidden">Nueva cita</span>
         </Button>
       </div>
-      <div className="hidden shrink-0 items-center gap-2 md:ml-auto md:flex">
+      <div className="hidden shrink-0 items-center gap-2 lg:flex lg:justify-self-end">
         <PlanContratado className="hidden 2xl:inline-flex 2xl:group-data-[panel=abierto]/panel:hidden" />
-        {conAsistente && <Button
-          data-tour="assistant"
-          variant="outline"
-          onClick={onAsistente}
-          className="size-9 rounded-full border-input/70 bg-card/70 px-0 text-cafe-medio hover:bg-nata xl:h-9 xl:w-auto xl:gap-2 xl:px-3 xl:group-data-[panel=abierto]/panel:size-9 xl:group-data-[panel=abierto]/panel:px-0"
-          aria-label="Asistente"
-        >
-          <Sparkles className="size-[18px]" strokeWidth={1.6} />
-          <span className="hidden xl:inline xl:group-data-[panel=abierto]/panel:hidden">
-            Asistente
-          </span>
-        </Button>}
+        {conAsistente && (
+          <Button
+            data-tour="assistant"
+            variant="outline"
+            onClick={onAsistente}
+            className="size-9 rounded-full border-input/70 bg-card/70 px-0 text-cafe-medio hover:bg-nata xl:h-9 xl:w-auto xl:gap-2 xl:px-3 xl:group-data-[panel=abierto]/panel:size-9 xl:group-data-[panel=abierto]/panel:px-0"
+            aria-label="Asistente"
+          >
+            <Sparkles className="size-[18px]" strokeWidth={1.6} />
+            <span className="hidden xl:inline xl:group-data-[panel=abierto]/panel:hidden">
+              Asistente
+            </span>
+          </Button>
+        )}
         <BotonTour onTour={onTour} />
         <BotonHistorial />
         <BotonAvisos />
@@ -545,7 +558,7 @@ function useFabApartado() {
   return apartado;
 }
 
-/** Barra inferior del móvil (< 768 px) con «Más», y el botón «+» flotante. */
+/** Barra inferior del móvil y tablet (< 1024 px) con «Más», y el botón «+» flotante. */
 export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita: () => void }) {
   const grupos = useGruposVisibles();
   const barra = useBarraMovil(grupos);
@@ -570,7 +583,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
         onClick={onNuevaCita}
         aria-label="Nueva cita"
         className={cn(
-          "fixed right-4 bottom-[88px] z-40 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-[var(--sombra-flotante)] transition-[opacity,transform] duration-150 md:hidden",
+          "fixed right-4 bottom-[calc(var(--alto-barra-fija)+12px)] z-40 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-[var(--sombra-flotante)] transition-[opacity,transform] duration-150 lg:hidden",
           apartado && "scale-[.8] opacity-70",
         )}
         data-fab
@@ -578,7 +591,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
         <Plus className="size-6" strokeWidth={1.6} />
       </button>
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-[rgba(48,48,48,.07)] bg-[rgba(255,255,255,.12)] px-1.5 pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom,0px))] backdrop-blur-[12px] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-[rgba(48,48,48,.07)] bg-[rgba(251,247,236,.94)] px-1.5 pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom,0px))] backdrop-blur-[8px] lg:hidden"
         aria-label="Apartados"
       >
         {barra.map((item) => {
@@ -621,34 +634,36 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
                 const active = estaActivo(item, path);
                 return (
                   <div key={item.to} className="flex flex-col gap-1">
-                  <Link
-                    to={item.to}
-                    onClick={() => setMasAbierto(false)}
-                    className={cn(
-                      "flex flex-col items-center gap-2 rounded-2xl border px-3 py-4 text-center text-xs font-semibold",
-                      active
-                        ? "border-primary bg-nata text-foreground"
-                        : "border-border text-cafe-medio hover:bg-nata",
+                    <Link
+                      to={item.to}
+                      onClick={() => setMasAbierto(false)}
+                      className={cn(
+                        "flex flex-col items-center gap-2 rounded-2xl border px-3 py-4 text-center text-xs font-semibold",
+                        active
+                          ? "border-primary bg-nata text-foreground"
+                          : "border-border text-cafe-medio hover:bg-nata",
+                      )}
+                    >
+                      <item.icon className="size-5" strokeWidth={1.6} />
+                      <EtiquetaNav label={item.label} />
+                      {insigniaDeRuta(item.to, plan) && (
+                        <span className="rounded-full bg-arena px-2 py-0.5 text-[10px] font-bold text-cafe-medio">
+                          {insigniaDeRuta(item.to, plan)}
+                        </span>
+                      )}
+                    </Link>
+                    {item.to === "/app/web" && (
+                      <a
+                        href={publicLink}
+                        onClick={() => setMasAbierto(false)}
+                        className="flex min-h-11 items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary"
+                      >
+                        Ver tu web <ArrowUpRight className="size-3" />
+                      </a>
                     )}
-                  >
-                    <item.icon className="size-5" strokeWidth={1.6} />
-                    <EtiquetaNav label={item.label} />
-                    {insigniaDeRuta(item.to, plan) && (
-                      <span className="rounded-full bg-arena px-2 py-0.5 text-[10px] font-bold text-cafe-medio">
-                        {insigniaDeRuta(item.to, plan)}
-                      </span>
-                    )}
-                  </Link>
-                  {item.to === "/app/web" && (
-                    <a href={publicLink} onClick={() => setMasAbierto(false)}
-                      className="flex min-h-11 items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary">
-                      Ver tu web <ArrowUpRight className="size-3" />
-                    </a>
-                  )}
                   </div>
                 );
               })}
-
             </div>
           </SheetContent>
         </Sheet>

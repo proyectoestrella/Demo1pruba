@@ -1,6 +1,11 @@
 import { afterAll, describe, expect, it } from "bun:test";
 
-import { inferBusinessType, menuDesdeServicios, parseMenuEntry, parseTeamEntry } from "../business-type";
+import {
+  inferBusinessType,
+  menuDesdeServicios,
+  parseMenuEntry,
+  parseTeamEntry,
+} from "../business-type";
 import { blankDemoProfile, decodeDemoProfile, perfilConEnlace } from "../demo-profile";
 import { parseFaqEntry, MAX_FAQ_ENTRIES } from "../faq";
 import { parseRanges } from "../opening-hours";
@@ -81,7 +86,11 @@ describe("perfil de PeluChic", () => {
   });
 
   it("los turnos del equipo caben dentro del horario del salón", () => {
-    expect(PELUCHIC.team?.map((t) => parseTeamEntry(t)?.name)).toEqual(["María", "Anca", "Patricia"]);
+    expect(PELUCHIC.team?.map((t) => parseTeamEntry(t)?.name)).toEqual([
+      "María",
+      "Anca",
+      "Patricia",
+    ]);
     expect(PELUCHIC.teamHours).toHaveLength(PELUCHIC.team?.length ?? 0);
     for (const turnos of PELUCHIC.teamHours ?? []) {
       turnos.forEach((turno, dia) => {
@@ -100,7 +109,8 @@ describe("perfil de PeluChic", () => {
       instagram: "https://www.instagram.com/peluchicprofesional",
       facebook: "https://www.facebook.com/peluchicprofesional/",
       tienda: "https://peluchic.online/tienda/ols/all",
-      resenas: "https://www.google.com/maps/search/?api=1&query=PeluChic&query_place_id=ChIJc_dY3q0uQg0ReeAzc1Y3irs",
+      resenas:
+        "https://www.google.com/maps/search/?api=1&query=PeluChic&query_place_id=ChIJc_dY3q0uQg0ReeAzc1Y3irs",
     });
     // El 10 % de su web no está activo en su tienda: no se promete ninguna cifra.
     expect(PELUCHIC.boletin?.texto).not.toMatch(/\d/);
@@ -108,7 +118,11 @@ describe("perfil de PeluChic", () => {
     expect(PELUCHIC.logoUrl).toBe("/demo/peluchic-logo.png");
     expect(PELUCHIC.plan).toBe("reservas");
     expect(PELUCHIC.galeriaPropia?.length).toBe(12);
-    expect(PELUCHIC.galeriaPropia?.every((f) => f.url.startsWith("/demo/peluchic-galeria/") && f.alt.length > 10)).toBe(true);
+    expect(
+      PELUCHIC.galeriaPropia?.every(
+        (f) => f.url.startsWith("/demo/peluchic-galeria/") && f.alt.length > 10,
+      ),
+    ).toBe(true);
   });
 
   it("sus preguntas frecuentes son válidas y caben", () => {
@@ -143,7 +157,8 @@ describe("un enlace ?d= no hereda nada de la demo registrada", () => {
  * ya había abierto /demo/peluchic y la web de Nelva enseñaba el logotipo
  * caligráfico de PeluChic en la barra y en el héroe.
  */
-const ENLACE_NELVA = "eyJuIjoiTmVsdmEgT3J0aXoiLCJ0IjoiUGVsdXF1ZXLDrWEsIEVzdMOpdGljYSB5IEJpZW5lc3RhciIsImQiOiJBdi4gZGUgbGEgRXJtaXRhLCAyLCBMb2MgNSwgMjgxMDggQWxjb2JlbmRhcywgTWFkcmlkLCBFc3Bhw7FhIiwicCI6IjkxNiA2MjAgNTY0IiwiciI6NC45LCJjIjoxNDIsIm8iOlsiMDk6MDDigJMyMTowMCIsIjA5OjAw4oCTMjE6MDAiLCIwOTowMOKAkzIxOjAwIiwiMDk6MDDigJMyMTowMCIsIjA5OjAw4oCTMjE6MDAiLCIwOTowMOKAkzE1OjAwIiwiQ2VycmFkbyJdLCJlIjpbIk5lbHZhfkVzdGlsaXN0YSB5IEVzdGV0aWNpc3RhIiwiTmF0YWxpYX5Fc3RpbGlzdGEgeSBNYW5pY3VyaXN0YSIsIkbDoXRpbWF-RXN0aWxpc3RhIl0sIm0iOlsiQ2hhbXDDuiArIENvcnRlICsgUGVpbmFkb340NX40M35QZWx1cXVlcsOtYSIsIkNoYW1ww7ogKyBDb3J0ZX4zMH4yNX5QZWx1cXVlcsOtYSIsIkNoYW1ww7ogKyBQZWluYWRvfjMwfjIyflBlbHVxdWVyw61hIiwiQ2hhbXDDuiArIENvbG9yfjYwfjM4fkNvbG9yIiwiQ2hhbXDDuiArIEJhcnJvcyAoY29sb3IgdmVnZXRhbCl-OTB-NTh-Q29sb3IiLCIxMDAlIEdsb3NzfjMwfjIwfkNvbG9yIiwiQWxpc2FkbyBjb24gS2VyYXRpbmF-MTIwfjEwMH5Gb3JtYSIsIkNvcnRlIMOJbCAoY2hhbXDDuiArIGNvcnRlKX4zMH4yMX5QYXJhIMOJbCIsIk94aWdlbmFudGUgVklQIE8yIGNvbiBSZW1vZGVsaW5nfjYwfjkwfkVzdMOpdGljYSIsIklsdW1pbmFkb3IgUGlnbSA0MDB-NjB-OTB-RXN0w6l0aWNhIiwiQm9vc3RlciBWSVAgTzJ-NjB-OTB-RXN0w6l0aWNhIiwiSW55ZWNjacOzbiBkZSBDb2zDoWdlbm9-MzB-MzB-RXN0w6l0aWNhIl0sImVuIjp7InciOiJodHRwczovL25lbHZhb3J0aXouY29tLyJ9LCJtbyI6WyJlcXVpcG8iXX0";
+const ENLACE_NELVA =
+  "eyJuIjoiTmVsdmEgT3J0aXoiLCJ0IjoiUGVsdXF1ZXLDrWEsIEVzdMOpdGljYSB5IEJpZW5lc3RhciIsImQiOiJBdi4gZGUgbGEgRXJtaXRhLCAyLCBMb2MgNSwgMjgxMDggQWxjb2JlbmRhcywgTWFkcmlkLCBFc3Bhw7FhIiwicCI6IjkxNiA2MjAgNTY0IiwiciI6NC45LCJjIjoxNDIsIm8iOlsiMDk6MDDigJMyMTowMCIsIjA5OjAw4oCTMjE6MDAiLCIwOTowMOKAkzIxOjAwIiwiMDk6MDDigJMyMTowMCIsIjA5OjAw4oCTMjE6MDAiLCIwOTowMOKAkzE1OjAwIiwiQ2VycmFkbyJdLCJlIjpbIk5lbHZhfkVzdGlsaXN0YSB5IEVzdGV0aWNpc3RhIiwiTmF0YWxpYX5Fc3RpbGlzdGEgeSBNYW5pY3VyaXN0YSIsIkbDoXRpbWF-RXN0aWxpc3RhIl0sIm0iOlsiQ2hhbXDDuiArIENvcnRlICsgUGVpbmFkb340NX40M35QZWx1cXVlcsOtYSIsIkNoYW1ww7ogKyBDb3J0ZX4zMH4yNX5QZWx1cXVlcsOtYSIsIkNoYW1ww7ogKyBQZWluYWRvfjMwfjIyflBlbHVxdWVyw61hIiwiQ2hhbXDDuiArIENvbG9yfjYwfjM4fkNvbG9yIiwiQ2hhbXDDuiArIEJhcnJvcyAoY29sb3IgdmVnZXRhbCl-OTB-NTh-Q29sb3IiLCIxMDAlIEdsb3NzfjMwfjIwfkNvbG9yIiwiQWxpc2FkbyBjb24gS2VyYXRpbmF-MTIwfjEwMH5Gb3JtYSIsIkNvcnRlIMOJbCAoY2hhbXDDuiArIGNvcnRlKX4zMH4yMX5QYXJhIMOJbCIsIk94aWdlbmFudGUgVklQIE8yIGNvbiBSZW1vZGVsaW5nfjYwfjkwfkVzdMOpdGljYSIsIklsdW1pbmFkb3IgUGlnbSA0MDB-NjB-OTB-RXN0w6l0aWNhIiwiQm9vc3RlciBWSVAgTzJ-NjB-OTB-RXN0w6l0aWNhIiwiSW55ZWNjacOzbiBkZSBDb2zDoWdlbm9-MzB-MzB-RXN0w6l0aWNhIl0sImVuIjp7InciOiJodHRwczovL25lbHZhb3J0aXouY29tLyJ9LCJtbyI6WyJlcXVpcG8iXX0";
 
 describe("un enlace ?d= de otro salón no hereda la marca de PeluChic", () => {
   const CAMPOS_DE_MARCA_DE_PELUCHIC = [
@@ -168,7 +183,9 @@ describe("un enlace ?d= de otro salón no hereda la marca de PeluChic", () => {
     // este test avisa antes de que se cuele en la demo de otro salón.
     const delNavegador = ["id", "slug", "timeZone", "plan", "calendario", "teamIds", "teamHours"];
     const enBlanco = blankDemoProfile() as unknown as Record<string, unknown>;
-    const sinBlanquear = Object.keys(PELUCHIC).filter((campo) => !delNavegador.includes(campo) && !(campo in enBlanco));
+    const sinBlanquear = Object.keys(PELUCHIC).filter(
+      (campo) => !delNavegador.includes(campo) && !(campo in enBlanco),
+    );
     expect(sinBlanquear).toEqual([]);
   });
 
@@ -181,7 +198,7 @@ describe("un enlace ?d= de otro salón no hereda la marca de PeluChic", () => {
 
   it("lo que ve la web pública (guardado = PeluChic, encima el enlace) no lleva el logotipo de PeluChic", () => {
     const guardado = perfilDeDemoRegistrada(PELUCHIC);
-    expect(guardado.logotipoClaroUrl).toBe("/demo/peluchic-logotipo-blanco.png");
+    expect(guardado.logotipoClaroUrl).toBe("/demo/peluchic-logotipo-blanco.webp");
     const visto = perfilConEnlace(guardado, decodeDemoProfile(ENLACE_NELVA) ?? {});
     expect(visto.name).toBe("Nelva Ortiz");
     for (const campo of CAMPOS_DE_MARCA_DE_PELUCHIC) expect(visto[campo]).toBeUndefined();
@@ -194,8 +211,12 @@ describe("un enlace ?d= de otro salón no hereda la marca de PeluChic", () => {
 
   it("y al aplicarlo a la store (lo que hace la web al abrir el enlace) tampoco queda nada en lo guardado", () => {
     cargarDemoRegistrada("peluchic", { panel: true });
-    expect(useSalonStore.getState().salonProfile.logotipoOscuroUrl).toBe("/demo/peluchic-logotipo-oscuro.png");
-    useSalonStore.getState().updateSalonProfile({ ...blankDemoProfile(), ...decodeDemoProfile(ENLACE_NELVA) });
+    expect(useSalonStore.getState().salonProfile.logotipoOscuroUrl).toBe(
+      "/demo/peluchic-logotipo-oscuro.webp",
+    );
+    useSalonStore
+      .getState()
+      .updateSalonProfile({ ...blankDemoProfile(), ...decodeDemoProfile(ENLACE_NELVA) });
     const guardado = useSalonStore.getState().salonProfile;
     expect(guardado.name).toBe("Nelva Ortiz");
     for (const campo of CAMPOS_DE_MARCA_DE_PELUCHIC) expect(guardado[campo]).toBeUndefined();
@@ -212,7 +233,10 @@ describe("cargar la demo registrada en la store", () => {
     useSalonStore.setState({ payments: [], cambios: [] });
   });
   it("sustituye el salón entero y deja la agenda sembrada con su carta", () => {
-    useSalonStore.setState({ payments: [{ id: "p-otra-demo" } as never], cambios: [{ id: "c-otra" } as never] });
+    useSalonStore.setState({
+      payments: [{ id: "p-otra-demo" } as never],
+      cambios: [{ id: "c-otra" } as never],
+    });
     expect(cargarDemoRegistrada("peluchic", { panel: true })).toBe(true);
     const st = useSalonStore.getState();
     expect(st.salonProfile.name).toBe("PeluChic");
@@ -254,7 +278,10 @@ describe("las fotos de la galería existen, en 600 y 1200 px", () => {
   it("cada foto de galeriaPropia está en public/ con su versión pequeña", async () => {
     for (const foto of PELUCHIC.galeriaPropia ?? []) {
       const grande = new URL(`../../../public${foto.url}`, import.meta.url);
-      const pequena = new URL(`../../../public${foto.url.replace("-1200.webp", "-600.webp")}`, import.meta.url);
+      const pequena = new URL(
+        `../../../public${foto.url.replace("-1200.webp", "-600.webp")}`,
+        import.meta.url,
+      );
       expect(await Bun.file(grande).exists()).toBe(true);
       expect(await Bun.file(pequena).exists()).toBe(true);
     }
@@ -284,7 +311,17 @@ describe("el ?d= lleva lo del lote 18 (vista previa de Mi página)", () => {
     expect(urlSegura("//malo.com/x.jpg", true)).toBeNull();
     expect(urlSegura("/demo/foto.webp", true)).toBe("/demo/foto.webp");
     expect(urlSegura("/demo/foto.webp")).toBeNull();
-    const raw = btoa(JSON.stringify({ n: "X", en: { i: "javascript:alert(1)", f: "https://facebook.com/x" }, gp: [["javascript:x", "a"], ["https://a.com/b.jpg", "b"]], bo: { t: "Hola", u: "javascript:x" } }));
+    const raw = btoa(
+      JSON.stringify({
+        n: "X",
+        en: { i: "javascript:alert(1)", f: "https://facebook.com/x" },
+        gp: [
+          ["javascript:x", "a"],
+          ["https://a.com/b.jpg", "b"],
+        ],
+        bo: { t: "Hola", u: "javascript:x" },
+      }),
+    );
     const d = decodeDemoProfile(raw);
     expect(d?.enlaces).toEqual({ facebook: "https://facebook.com/x" });
     expect(d?.galeriaPropia).toEqual([{ url: "https://a.com/b.jpg", alt: "b" }]);

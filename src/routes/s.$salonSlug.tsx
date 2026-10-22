@@ -19,7 +19,13 @@ import { Logo } from "@/components/Logo";
 import { logoDelSalon, logotipoDelSalon } from "@/lib/logo-salon";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { CONTENEDOR_SALON, enlaceWhatsApp, enlacesDelSalon } from "@/lib/web-publica";
+import {
+  CONTENEDOR_SALON,
+  enlaceWhatsApp,
+  enlacesDelSalon,
+  resenasDeGoogle,
+  seccionResenasPublicas,
+} from "@/lib/web-publica";
 import { EnlaceFuera, FUERA, IconoWhatsApp, RedesSalon } from "@/components/web-salon/EnlacesSalon";
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
@@ -138,6 +144,15 @@ function SalonLayout() {
   const applyBusinessType = useSalonStore((s) => s.applyBusinessType);
   const markDemoActive = useSalonStore((s) => s.markDemoActive);
   const tipo = useBusinessType();
+  const resenasGoogle = resenasDeGoogle(profile, protegerContenidoReal);
+  const haySeccionResenas =
+    seccionResenasPublicas({
+      esDemo: conEnlaceDemo,
+      esSalonReal: protegerContenidoReal,
+      tieneResenasGoogle: Boolean(resenasGoogle),
+      rating: profile.rating,
+      reviewCount: profile.reviewCount,
+    }) !== "oculta";
   // Un solo profesional: sin sección "Equipo" en la home, sin enlace en el
   // menú (ver `navLinks`). Se deriva del equipo activo, no de un flag.
   const NAV_LINKS = useMemo(
@@ -152,9 +167,7 @@ function SalonLayout() {
             profile.teamIds,
           ),
         ),
-        // Demo por enlace sin nota real: la home no pinta «Reseñas» (ver
-        // `seccionResenasPublicas`), así que el menú tampoco la enlaza.
-        conEnlaceDemo && !(profile.rating > 0 && profile.reviewCount > 0),
+        !haySeccionResenas,
       ),
     [
       tipo,
@@ -162,9 +175,7 @@ function SalonLayout() {
       profile.teamHours,
       profile.openingHours,
       profile.teamIds,
-      conEnlaceDemo,
-      profile.rating,
-      profile.reviewCount,
+      haySeccionResenas,
     ],
   );
 
@@ -321,8 +332,8 @@ function SalonLayout() {
                 <img
                   src={logotipoBarra}
                   alt={profile.name}
-                  width={1455}
-                  height={432}
+                  width={600}
+                  height={178}
                   className="ws-logotipo h-9 w-auto shrink-0 sm:h-10"
                 />
               ) : logoSalon ? (
@@ -363,7 +374,7 @@ function SalonLayout() {
           </div>
           {!onBooking && (
             <nav
-              className="hidden items-center gap-5 text-sm font-medium lg:flex xl:gap-6"
+              className="hidden items-center gap-0 text-xs font-medium lg:flex xl:gap-1 xl:text-sm"
               aria-label="Secciones"
             >
               {NAV_LINKS.map((l) => (
@@ -371,7 +382,7 @@ function SalonLayout() {
                   key={l.href}
                   href={l.href}
                   className={cn(
-                    "relative text-cafe-medio transition-colors after:absolute after:-bottom-1 after:left-0 after:h-px after:w-0 after:bg-primary after:transition-all hover:text-foreground hover:after:w-full motion-reduce:after:transition-none",
+                    "relative inline-flex min-h-11 items-center px-2 text-cafe-medio transition-colors after:absolute after:bottom-1 after:left-2 after:h-px after:w-0 after:bg-primary after:transition-all hover:text-foreground hover:after:w-[calc(100%-1rem)] motion-reduce:after:transition-none",
                     // A 1024-1279 px no cabe todo en una línea: «Preguntas» queda en el menú y en la página.
                     l.href === "#faq" && "hidden xl:inline",
                   )}
@@ -382,7 +393,7 @@ function SalonLayout() {
               {enlaces.blog && (
                 <EnlaceFuera
                   href={enlaces.blog}
-                  className="font-semibold text-ws-eucalipto transition-colors hover:text-foreground"
+                  className="inline-flex min-h-11 items-center px-2 font-semibold text-ws-eucalipto transition-colors hover:text-foreground"
                 >
                   Blog
                 </EnlaceFuera>
@@ -512,8 +523,8 @@ function SalonLayout() {
                 <img
                   src={logotipoPie}
                   alt={profile.name}
-                  width={1455}
-                  height={432}
+                  width={600}
+                  height={178}
                   loading="lazy"
                   decoding="async"
                   className="ws-logotipo ws-logotipo-pie h-12 w-auto"
@@ -540,7 +551,9 @@ function SalonLayout() {
               )}
             </div>
             {profile.about ? (
-              <p className="mt-4 max-w-sm text-sm text-muted-foreground">{profile.about}</p>
+              <p className="mt-4 hidden max-w-sm text-sm text-muted-foreground md:block">
+                {profile.about}
+              </p>
             ) : null}
             <RedesSalon
               enlaces={enlaces}
@@ -550,8 +563,8 @@ function SalonLayout() {
             />
           </div>
           <div>
-            <p className="ws-etiqueta">Visítanos</p>
-            <p className="mt-3 flex items-start gap-2 text-sm">
+            <p className="hidden ws-etiqueta md:block">Visítanos</p>
+            <p className="mt-3 hidden items-start gap-2 text-sm md:flex">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
               {profile.address}
             </p>
@@ -568,7 +581,7 @@ function SalonLayout() {
               <a
                 href={whatsappUrl}
                 {...FUERA}
-                className="flex min-h-11 items-center gap-2 text-sm hover:text-primary"
+                className="hidden min-h-11 items-center gap-2 text-sm hover:text-primary md:flex"
               >
                 <IconoWhatsApp className="h-4 w-4 shrink-0 text-primary" />
                 WhatsApp
@@ -579,7 +592,7 @@ function SalonLayout() {
             (conEnlaceDemo || protegerContenidoReal) &&
             JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS)
           ) && (
-            <div>
+            <div className="hidden md:block">
               <p className="ws-etiqueta">Horario</p>
               {weekSchedule(profile.openingHours).map((d) => (
                 <p key={d.label} className="mt-2 flex justify-between gap-4 text-sm tabular-nums">
@@ -638,7 +651,7 @@ function SalonLayout() {
                 href="https://sishow.es"
                 target="_blank"
                 rel="noopener"
-                className="underline-offset-2 hover:text-foreground hover:underline"
+                className="inline-flex min-h-11 items-center underline-offset-2 hover:text-foreground hover:underline"
               >
                 Reservas con siShow
               </a>

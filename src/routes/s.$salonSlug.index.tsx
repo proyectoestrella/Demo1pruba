@@ -564,8 +564,8 @@ function SalonHome() {
                 <img
                   src={logotipoPortada}
                   alt={profile.name}
-                  width={1455}
-                  height={432}
+                  width={600}
+                  height={178}
                   className="ws-logotipo h-auto w-[min(88vw,420px)] drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)] md:w-[480px]"
                 />
               </h1>
@@ -878,7 +878,7 @@ function SalonHome() {
       ) : null}
 
       {/* Preguntas frecuentes */}
-      <section id="faq" className="bg-ws-salvia-clara">
+      <section id="faq" className="bg-ws-crema">
         <div
           className={cn(
             CONTENEDOR_SALON,

@@ -9,6 +9,7 @@ import {
   cargarRetratos,
   guardarRetrato,
   normalizarRetrato,
+  retratoPorDefecto,
   retratoGuardado,
   retratosCargados,
 } from "./retratos-avatar";
@@ -45,6 +46,14 @@ describe("catálogo de retratos Notionists", () => {
     }
     expect(uris.size).toBe(PEINADOS_RETRATO.length);
     expect(avatarDiceBearUri("vera-largo", 40).startsWith("data:image/svg+xml")).toBe(true);
+  });
+
+  it("el retrato automático es determinista y reparte el catálogo de 15 peinados", () => {
+    expect(retratoPorDefecto("clienta-42")).toEqual(retratoPorDefecto("clienta-42"));
+    const repartidos = new Set(
+      Array.from({ length: 300 }, (_, i) => retratoPorDefecto(`clienta-${i}`).peinado),
+    );
+    expect(repartidos.size).toBe(15);
   });
 
   it("la carga diferida devuelve el mismo módulo y queda en caché", async () => {

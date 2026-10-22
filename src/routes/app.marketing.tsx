@@ -55,37 +55,47 @@ function Marketing() {
         <div>
           <h2 className="text-xl font-extrabold tracking-[-0.02em]">Más ideas</h2>
           <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-            Dos ideas calculadas con tus reservas, sin lista ni mensaje todavía, y dónde están los recordatorios.
+            Dos ideas calculadas con tus reservas, sin lista ni mensaje todavía, y dónde están los
+            recordatorios.
           </p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
           {suggestions.map((s) => (
-            <div key={s.title} className="rounded-[20px] border border-border bg-card p-5">
+            <div
+              key={s.title}
+              className="rounded-[20px] border border-border bg-card relleno-tarjeta"
+            >
               <span className="grid size-10 place-items-center rounded-xl bg-nata text-primary">
                 <s.icon className="size-[18px]" strokeWidth={1.6} />
               </span>
               <h3 className="mt-3 text-base font-extrabold">{s.title}</h3>
               <p className="mt-1 text-[13px] text-muted-foreground">{s.body}</p>
               {/* Idea sin nada detrás todavía: se dice, sin botón que no hace nada. */}
-              <p className="mt-4 inline-flex rounded-full bg-beige px-3 py-1 text-[12px] font-bold text-cafe-medio">Idea, sin lista ni mensaje todavía</p>
+              <p className="mt-4 inline-flex rounded-full bg-beige px-3 py-1 text-[12px] font-bold text-cafe-medio">
+                Idea, sin lista ni mensaje todavía
+              </p>
             </div>
           ))}
-        <div className="rounded-[20px] border border-border bg-card p-5">
-          <span className="grid size-10 place-items-center rounded-xl bg-nata text-primary">
-            <Megaphone className="size-[18px]" strokeWidth={1.6} />
-          </span>
-          <div>
-            <h3 className="mt-3 text-base font-extrabold">Recordatorios por WhatsApp</h3>
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              Los mandas tú, uno a uno y con un toque, desde la hoja de mañana: cada recordatorio abre
-              tu WhatsApp con el mensaje ya escrito.
-            </p>
-            <Link to="/app/hoja" search={{ dia: "manana" }} className="mt-4 inline-flex text-[13px] font-bold text-cafe-medio hover:text-foreground">
-              Abrir la hoja de mañana
-            </Link>
+          <div className="rounded-[20px] border border-border bg-card relleno-tarjeta">
+            <span className="grid size-10 place-items-center rounded-xl bg-nata text-primary">
+              <Megaphone className="size-[18px]" strokeWidth={1.6} />
+            </span>
+            <div>
+              <h3 className="mt-3 text-base font-extrabold">Recordatorios por WhatsApp</h3>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                Los mandas tú, uno a uno y con un toque, desde la hoja de mañana: cada recordatorio
+                abre tu WhatsApp con el mensaje ya escrito.
+              </p>
+              <Link
+                to="/app/hoja"
+                search={{ dia: "manana" }}
+                className="mt-4 inline-flex text-[13px] font-bold text-cafe-medio hover:text-foreground"
+              >
+                Abrir la hoja de mañana
+              </Link>
+            </div>
           </div>
-        </div>
         </div>
       </div>
     </div>

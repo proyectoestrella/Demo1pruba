@@ -11,12 +11,15 @@ export function slugResolvibleDelPanel({
   slugDesdeUrl,
   demoRaw,
   slugGuardado,
+  demoRegistradaActiva = false,
 }: {
   slugDesdeUrl: unknown;
   demoRaw: unknown;
   slugGuardado: string | null | undefined;
+  demoRegistradaActiva?: boolean;
 }): string | undefined {
-  if (decodeDemoProfile(typeof demoRaw === "string" ? demoRaw : undefined)) return undefined;
+  if (demoRegistradaActiva || decodeDemoProfile(typeof demoRaw === "string" ? demoRaw : undefined))
+    return undefined;
   return typeof slugDesdeUrl === "string" && slugDesdeUrl
     ? slugDesdeUrl
     : slugGuardado || undefined;

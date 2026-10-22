@@ -34,4 +34,15 @@ describe("slug que puede resolver el panel", () => {
       }),
     ).toBe("peluchic");
   });
+
+  test("una demo registrada activa no resuelve el salón real del mismo slug", () => {
+    expect(
+      slugResolvibleDelPanel({
+        slugDesdeUrl: undefined,
+        demoRaw: undefined,
+        slugGuardado: "peluchic",
+        demoRegistradaActiva: true,
+      }),
+    ).toBeUndefined();
+  });
 });

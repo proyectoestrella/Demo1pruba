@@ -269,7 +269,7 @@ function Settings() {
         />
         <div className="flex min-w-0 flex-col gap-3">
           {visibles.length === 0 && (
-            <p className="rounded-[20px] border border-dashed border-lino-fuerte bg-card px-5 py-6 text-[14px] text-cafe-medio">
+            <p className="rounded-[20px] border border-dashed border-lino-fuerte bg-card relleno-tarjeta text-[14px] text-cafe-medio">
               Ningún ajuste habla de «{buscar}». Prueba con otra palabra: «señal», «horas»,
               «WhatsApp»…
             </p>
@@ -340,7 +340,8 @@ function Settings() {
                 </h3>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Tu calendario la actualiza cada pocas horas; la agenda al minuto está en siShow.
-                  Solo aparecen citas confirmadas, como «Cita reservada»: con su hora, sin datos de la clienta.
+                  Solo aparecen citas confirmadas, como «Cita reservada»: con su hora, sin datos de
+                  la clienta.
                 </p>
               </div>
               {!realSlug ? (
@@ -349,7 +350,10 @@ function Settings() {
                     La suscripción se activa cuando el salón es real. En esta demo puedes ver cómo
                     quedará el ajuste.
                   </p>
-                  <BotonesSuscripcion url="https://ejemplo.invalid/api/calendario?token=EJEMPLO" ejemplo />
+                  <BotonesSuscripcion
+                    url="https://ejemplo.invalid/api/calendario?token=EJEMPLO"
+                    ejemplo
+                  />
                 </>
               ) : (
                 <>
@@ -720,7 +724,11 @@ function SeccionAjustes({
       </h2>
       <div className={cn("plegable", abierto && "abierto")}>
         <div className="min-h-0 overflow-hidden">
-          {abierto && <div className="space-y-5 border-t border-lino p-[var(--relleno-tarjeta)]">{children}</div>}
+          {abierto && (
+            <div className="space-y-5 border-t border-lino p-[var(--relleno-tarjeta)]">
+              {children}
+            </div>
+          )}
         </div>
       </div>
     </section>
@@ -845,14 +853,21 @@ function Field({
 /** Añadir el feed a Apple/Google Calendar con un toque. Solo salida: la app externa no escribe en siShow. */
 function BotonesSuscripcion({ url, ejemplo = false }: { url: string; ejemplo?: boolean }) {
   const { webcal, google } = enlacesSuscripcion(url);
-  const clase = "inline-flex h-10 flex-1 items-center justify-center rounded-xl border border-input bg-blanco px-3 text-center text-sm font-semibold";
+  const clase =
+    "inline-flex h-10 flex-1 items-center justify-center rounded-xl border border-input bg-blanco px-3 text-center text-sm font-semibold";
   return (
     <div className="space-y-2">
       <div className="flex flex-col gap-2 min-[420px]:flex-row">
         <a className={clase} href={ejemplo ? undefined : webcal} aria-disabled={ejemplo}>
           Añadir a Apple Calendar
         </a>
-        <a className={clase} href={ejemplo ? undefined : google} target="_blank" rel="noopener noreferrer" aria-disabled={ejemplo}>
+        <a
+          className={clase}
+          href={ejemplo ? undefined : google}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-disabled={ejemplo}
+        >
           Añadir a Google Calendar
         </a>
       </div>

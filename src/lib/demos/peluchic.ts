@@ -71,134 +71,592 @@ const HIDROFACE =
 /** Carta aprobada el 7-oct-2026: 57 servicios, en el orden de su web. */
 export const SERVICIOS_PELUCHIC: ServicioPeluChic[] = [
   // ---- Trabajos Cotidianos Peluquería ----
-  { id: "lavado", nombre: "Lavado personalizado", categoria: COTIDIANOS, precio: 10, duracionMin: 15, estimada: true,
-    descripcion: "Según tu necesidad capilar y con productos profesionales: champús sin derivados del petróleo y mascarillas nutritivas o hidratantes." },
-  { id: "lavado-corte-secar", nombre: "Lavado personalizado + Corte +Secar humedad", categoria: COTIDIANOS, precio: 28.5, duracionMin: 45, estimada: true,
-    descripcion: "Corte completo con lavado con los productos que tu cabello necesita y secado de la humedad con secador." },
-  { id: "lavado-corte-peinar", nombre: "Lavado personalizado + Corte + Peinar", categoria: COTIDIANOS, precio: 43.5, precioLiteral: "43,50 € / 47,50 €", duracionMin: 60, estimada: true,
-    descripcion: "Corte completo con lavado y peinado: 43,50 € corto o medio y 47,50 € largo o con cantidad. Plus plancha, 3 €." },
-  { id: "peinar", nombre: "Peinar", categoria: COTIDIANOS, precio: 24, precioLiteral: "24 € / 28 € / 31 €", duracionMin: 40, estimada: true,
-    descripcion: "Lavado personalizado, protector térmico y fijador, trabajado con secador: 24 € cortos o medias melenas, 28 € largo o mucha cantidad y 31 € con plancha." },
-  { id: "cortar-caballero-nino", nombre: "Cortar Caballero/Niño", categoria: COTIDIANOS, precio: 19.5, duracionMin: 30, estimada: true,
-    descripcion: "Hombre o niño, mismo precio: el tiempo y los años de experiencia son los mismos para todos." },
-  { id: "cortar-anadido", nombre: "Cortar Añadido a otro servicio", categoria: COTIDIANOS, precio: 19.5, duracionMin: 30, estimada: true,
-    descripcion: "Corte combinado con otro servicio, por ejemplo color, tratamientos o mechas." },
-  { id: "color-organico", nombre: "Color de cobertura Organico", categoria: COTIDIANOS, precio: 41.5, duracionMin: 60, estimada: false,
-    descripcion: "Coloración permanente con cobertura total de canas y notas de magnolia y bergamota. Incluye lavado y secado de humedad. Dura unas 5 semanas." },
-  { id: "color-10-minutos", nombre: "Color de cobertura en 10 minutos", categoria: COTIDIANOS, precio: 41.5, duracionMin: 50, estimada: false,
-    descripcion: "Tu color y cobertura de canas en 10 minutos, enriquecido con keratina. Incluye lavado y secado de humedad." },
-  { id: "bano-brillo", nombre: "Baño de brillo", categoria: COTIDIANOS, precio: 41.5, duracionMin: 50, estimada: false,
-    descripcion: "Refresco de pigmentos para un extra de brillo: disimula la cana sin cubrirla. Sin amoniaco y vegano. Dura de 0 a 4 semanas." },
-  { id: "barros", nombre: "Barros tintóreos", categoria: COTIDIANOS, precio: 65.5, precioLiteral: "65,50 € / 72 € / 77 €", duracionMin: 60, estimada: false,
-    descripcion: "Coloración con plantas medicinales tintóreas, algas y flores: color y brillo sin dañar la fibra, y regula el pH del cuero cabelludo." },
-  { id: "mechas", nombre: "Mechas*", categoria: COTIDIANOS, precio: 46.5, precioLiteral: "46,50 € / 106,50 €", duracionMin: 120, estimada: true,
-    descripcion: "Parciales, micro, balayage, californianas, clásicas o reflejos: personalizamos las mechas que necesites. El precio va según el producto utilizado." },
-  { id: "mechas-matiz", nombre: "Mechas + Matiz", categoria: COTIDIANOS, precio: 116.5, duracionMin: 180, estimada: false,
-    descripcion: "Mechas personalizadas con matiz incluido." },
-  { id: "money-piece", nombre: "Money piece", categoria: COTIDIANOS, precio: 18.5, precioLiteral: "18,50 € / 23,50 €", duracionMin: 30, estimada: true,
-    descripcion: "Solo en la parte frontal, con o sin matiz, para iluminar tu rostro. Precio añadido a otro servicio (color, peinar o barro)." },
-  { id: "matiz", nombre: "Matiz", categoria: COTIDIANOS, precio: 30, duracionMin: 40, estimada: false,
-    descripcion: "Para corregir tonos no deseados: amarillos, naranjas o incluso verdes. No incluye lavado ni secado de humedad." },
-  { id: "ahuecador", nombre: "Ahuecador -Moldeados", categoria: COTIDIANOS, precio: 45, duracionMin: 90, estimada: true,
-    descripcion: "Técnica clásica con productos actuales para dar forma o volumen: desde un leve volumen a una onda más marcada." },
+  {
+    id: "lavado",
+    nombre: "Lavado personalizado",
+    categoria: COTIDIANOS,
+    precio: 10,
+    duracionMin: 15,
+    estimada: true,
+    descripcion:
+      "Según tu necesidad capilar y con productos profesionales: champús sin derivados del petróleo y mascarillas nutritivas o hidratantes.",
+  },
+  {
+    id: "lavado-corte-secar",
+    nombre: "Lavado personalizado + Corte +Secar humedad",
+    categoria: COTIDIANOS,
+    precio: 28.5,
+    duracionMin: 45,
+    estimada: true,
+    descripcion:
+      "Corte completo con lavado con los productos que tu cabello necesita y secado de la humedad con secador.",
+  },
+  {
+    id: "lavado-corte-peinar",
+    nombre: "Lavado personalizado + Corte + Peinar",
+    categoria: COTIDIANOS,
+    precio: 43.5,
+    precioLiteral: "43,50 € / 47,50 €",
+    duracionMin: 60,
+    estimada: true,
+    descripcion:
+      "Corte completo con lavado y peinado: 43,50 € corto o medio y 47,50 € largo o con cantidad. Plus plancha, 3 €.",
+  },
+  {
+    id: "peinar",
+    nombre: "Peinar",
+    categoria: COTIDIANOS,
+    precio: 24,
+    precioLiteral: "24 € / 28 € / 31 €",
+    duracionMin: 40,
+    estimada: true,
+    descripcion:
+      "Lavado personalizado, protector térmico y fijador, trabajado con secador: 24 € cortos o medias melenas, 28 € largo o mucha cantidad y 31 € con plancha.",
+  },
+  {
+    id: "cortar-caballero-nino",
+    nombre: "Cortar Caballero/Niño",
+    categoria: COTIDIANOS,
+    precio: 19.5,
+    duracionMin: 30,
+    estimada: true,
+    descripcion:
+      "Hombre o niño, mismo precio: el tiempo y los años de experiencia son los mismos para todos.",
+  },
+  {
+    id: "cortar-anadido",
+    nombre: "Cortar Añadido a otro servicio",
+    categoria: COTIDIANOS,
+    precio: 19.5,
+    duracionMin: 30,
+    estimada: true,
+    descripcion: "Corte combinado con otro servicio, por ejemplo color, tratamientos o mechas.",
+  },
+  {
+    id: "color-organico",
+    nombre: "Color de cobertura Organico",
+    categoria: COTIDIANOS,
+    precio: 41.5,
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Coloración permanente con cobertura total de canas y notas de magnolia y bergamota. Incluye lavado y secado de humedad. Dura unas 5 semanas.",
+  },
+  {
+    id: "color-10-minutos",
+    nombre: "Color de cobertura en 10 minutos",
+    categoria: COTIDIANOS,
+    precio: 41.5,
+    duracionMin: 50,
+    estimada: false,
+    descripcion:
+      "Tu color y cobertura de canas en 10 minutos, enriquecido con keratina. Incluye lavado y secado de humedad.",
+  },
+  {
+    id: "bano-brillo",
+    nombre: "Baño de brillo",
+    categoria: COTIDIANOS,
+    precio: 41.5,
+    duracionMin: 50,
+    estimada: false,
+    descripcion:
+      "Refresco de pigmentos para un extra de brillo: disimula la cana sin cubrirla. Sin amoniaco y vegano. Dura de 0 a 4 semanas.",
+  },
+  {
+    id: "barros",
+    nombre: "Barros tintóreos",
+    categoria: COTIDIANOS,
+    precio: 65.5,
+    precioLiteral: "65,50 € / 72 € / 77 €",
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Coloración con plantas medicinales tintóreas, algas y flores: color y brillo sin dañar la fibra, y regula el pH del cuero cabelludo.",
+  },
+  {
+    id: "mechas",
+    nombre: "Mechas*",
+    categoria: COTIDIANOS,
+    precio: 46.5,
+    precioLiteral: "46,50 € / 106,50 €",
+    duracionMin: 120,
+    estimada: true,
+    descripcion:
+      "Parciales, micro, balayage, californianas, clásicas o reflejos: personalizamos las mechas que necesites. El precio va según el producto utilizado.",
+  },
+  {
+    id: "mechas-matiz",
+    nombre: "Mechas + Matiz",
+    categoria: COTIDIANOS,
+    precio: 116.5,
+    duracionMin: 180,
+    estimada: false,
+    descripcion: "Mechas personalizadas con matiz incluido.",
+  },
+  {
+    id: "money-piece",
+    nombre: "Money piece",
+    categoria: COTIDIANOS,
+    precio: 18.5,
+    precioLiteral: "18,50 € / 23,50 €",
+    duracionMin: 30,
+    estimada: true,
+    descripcion:
+      "Solo en la parte frontal, con o sin matiz, para iluminar tu rostro. Precio añadido a otro servicio (color, peinar o barro).",
+  },
+  {
+    id: "matiz",
+    nombre: "Matiz",
+    categoria: COTIDIANOS,
+    precio: 30,
+    duracionMin: 40,
+    estimada: false,
+    descripcion:
+      "Para corregir tonos no deseados: amarillos, naranjas o incluso verdes. No incluye lavado ni secado de humedad.",
+  },
+  {
+    id: "ahuecador",
+    nombre: "Ahuecador -Moldeados",
+    categoria: COTIDIANOS,
+    precio: 45,
+    duracionMin: 90,
+    estimada: true,
+    descripcion:
+      "Técnica clásica con productos actuales para dar forma o volumen: desde un leve volumen a una onda más marcada.",
+  },
 
   // ---- Tratamientos Cuero Cabelludo ----
-  { id: "ozonoterapia", nombre: "OZONOTHERAPIA", categoria: CUERO, precio: 41, precioLiteral: "41 € / 49 € / 51,50 €", duracionMin: 60, estimada: false,
-    descripcion: "Tricología para regular el pH, los picores, la grasa y la caspa, y reforzar el bulbo piloso. Básica 41 €, con tónicos 49 € y completa 51,50 €." },
-  { id: "diagnostico-camara", nombre: "Diagnostico capilar con cámara", categoria: CUERO, precio: 10.5, duracionMin: 20, estimada: true,
-    descripcion: "Valoración del estado del cuero cabelludo y del bulbo piloso con cámara." },
+  {
+    id: "ozonoterapia",
+    nombre: "OZONOTHERAPIA",
+    categoria: CUERO,
+    precio: 41,
+    precioLiteral: "41 € / 49 € / 51,50 €",
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Tricología para regular el pH, los picores, la grasa y la caspa, y reforzar el bulbo piloso. Básica 41 €, con tónicos 49 € y completa 51,50 €.",
+  },
+  {
+    id: "diagnostico-camara",
+    nombre: "Diagnostico capilar con cámara",
+    categoria: CUERO,
+    precio: 10.5,
+    duracionMin: 20,
+    estimada: true,
+    descripcion: "Valoración del estado del cuero cabelludo y del bulbo piloso con cámara.",
+  },
   // Duración literal: la da el propio nombre («sesion 30´»).
-  { id: "dermapen", nombre: "Dermapen capilar sesion 30´", categoria: CUERO, precio: 55, duracionMin: 60, estimada: false,
-    descripcion: "Micropunción con principios activos para reforzar el cabello desde el cuero cabelludo. Incluye lavado personalizado." },
-  { id: "hidrobalance", nombre: "Hidrobalance capilar", categoria: CUERO, precio: 55, duracionMin: 60, estimada: false,
-    descripcion: "Peeling y aparatología en tres pasos —limpiar, tonificar e implantar— para que el tratamiento penetre en el cuero cabelludo." },
-  { id: "barros-cuero-cabelludo", nombre: "barros cuero cabelludo", categoria: CUERO, precio: 65.5, duracionMin: 60, estimada: true,
-    descripcion: "Algas, flores y plantas medicinales para limpiar y mineralizar el cuero cabelludo: calma desde la primera aplicación." },
+  {
+    id: "dermapen",
+    nombre: "Dermapen capilar sesion 30´",
+    categoria: CUERO,
+    precio: 55,
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Micropunción con principios activos para reforzar el cabello desde el cuero cabelludo. Incluye lavado personalizado.",
+  },
+  {
+    id: "hidrobalance",
+    nombre: "Hidrobalance capilar",
+    categoria: CUERO,
+    precio: 55,
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Peeling y aparatología en tres pasos —limpiar, tonificar e implantar— para que el tratamiento penetre en el cuero cabelludo.",
+  },
+  {
+    id: "barros-cuero-cabelludo",
+    nombre: "barros cuero cabelludo",
+    categoria: CUERO,
+    precio: 65.5,
+    duracionMin: 60,
+    estimada: true,
+    descripcion:
+      "Algas, flores y plantas medicinales para limpiar y mineralizar el cuero cabelludo: calma desde la primera aplicación.",
+  },
 
   // ---- Tratamientos Cabello ----
-  { id: "hidratacion-intensiva", nombre: "tratamiento de hidratacion intensiva", categoria: CABELLO, precio: 22.5, precioLiteral: "22,50 € / 28,50 €", duracionMin: 60, estimada: false,
-    descripcion: "Hidrata hasta cuatro veces más que una mascarilla; puedes hacerlo durante el tiempo del color. Precio según el producto absorbido." },
-  { id: "proteinas", nombre: "tratamiento de proteinas", categoria: CABELLO, precio: 36, precioLiteral: "36 € / 46,50 €", duracionMin: 60, estimada: false,
-    descripcion: "Para cabello dañado o frágil: brillo, grosor y, en rizos, definición. Precio según el producto absorbido." },
-  { id: "tipo-bx", nombre: "tratamiento tipo bx", categoria: CABELLO, precio: 57, precioLiteral: "57 € / 89,50 €", duracionMin: 150, estimada: false,
-    descripcion: "Fórmula multiproteica que nutre y rellena la fibra: rejuvenecimiento visible desde la primera aplicación. Dura de 1 a 3 meses." },
-  { id: "olaplex", nombre: "tratamiento olaplex", categoria: CABELLO, precio: 47, precioLiteral: "47 € / 67,50 €", duracionMin: 60, estimada: false,
-    descripcion: "Reparación desde el interior para cabellos dañados o sensibilizados, con química o sin ella." },
-  { id: "olaplex-quelante", nombre: "tratamiento olaplex Quelante", categoria: CABELLO, precio: 20, precioLiteral: "20 € / 28 €", duracionMin: 60, estimada: false,
-    descripcion: "Purificación profunda: elimina residuos de aceite, agua dura y metales antes de una keratina, un color o una permanente." },
-  { id: "reconstructor-rizos", nombre: "tratamiento reconstructor de rizos", categoria: CABELLO, precio: 26, precioLiteral: "26 € / 31 €", duracionMin: 60, estimada: false,
-    descripcion: "Refuerza los rizos: más definición, brillo, movimiento e hidratación y menos encrespamiento desde la primera sesión." },
-  { id: "nanokeratinizacion", nombre: "Nanokeratinizacion", categoria: CABELLO, precio: 42, duracionMin: 60, estimada: false,
-    descripcion: "Vapor frío con keratina y ácido hialurónico para cabellos extradañados. No incluye el peinado, que es necesario (28 €): 70 € en total." },
-  { id: "hyaluroplastia", nombre: "Hyaluroplastia", categoria: CABELLO, precio: 22, duracionMin: 60, estimada: false,
-    descripcion: "Vapor frío con ácido hialurónico para cabellos secos y opacos. No incluye el peinado, que es necesario (28 €): 50 € en total." },
-  { id: "combonano", nombre: "Combonano 4 sesiones en un mes", categoria: CABELLO, precio: 88, duracionMin: 60, estimada: false,
-    descripcion: "Bono de 4 sesiones, una por semana: nanokeratinización, hyaluroplastia y ozonoterapia. No incluye los peinados, que son necesarios." },
-  { id: "barros-tratantes", nombre: "barros Tratantes", categoria: CABELLO, precio: 75, duracionMin: 60, estimada: true,
-    descripcion: "Tratamiento natural y orgánico de filosofía japonesa que mineraliza, hidrata y da fuerza y grosor al cabello." },
-  { id: "keratina", nombre: "tratamiento keratina", categoria: CABELLO, precio: 101, precioLiteral: "101 € / 200 € / 250 €", duracionMin: 120, estimada: false,
-    descripcion: "Elimina el frizz y relaja la onda de 3 a 6 meses, con brillo extremo. También en versión vegana. Precio según el producto." },
-  { id: "keratina-plus", nombre: "Tratamiento keratina PLUS", categoria: CABELLO, precio: 250, duracionMin: 180, estimada: false,
-    descripcion: "Tratamiento de keratina PLUS." },
-  { id: "spa-japones-cabeza", nombre: "Spa japonés solo cabeza", categoria: CABELLO, precio: 71, duracionMin: 60, estimada: false,
-    descripcion: "Masaje craneal shiatsu, chorros de agua en puntos de acupuntura y cama de magneto: descarga cabeza, cuello y hombros." },
-  { id: "spa-japones-cabeza-facial", nombre: "Spa japonés cabeza y facial", categoria: CABELLO, precio: 135, duracionMin: 120, estimada: false,
-    descripcion: "Masaje craneal shiatsu, chorros de agua en puntos de acupuntura y cama de magneto, con ritual facial." },
+  {
+    id: "hidratacion-intensiva",
+    nombre: "tratamiento de hidratacion intensiva",
+    categoria: CABELLO,
+    precio: 22.5,
+    precioLiteral: "22,50 € / 28,50 €",
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Hidrata hasta cuatro veces más que una mascarilla; puedes hacerlo durante el tiempo del color. Precio según el producto absorbido.",
+  },
+  {
+    id: "proteinas",
+    nombre: "tratamiento de proteinas",
+    categoria: CABELLO,
+    precio: 36,
+    precioLiteral: "36 € / 46,50 €",
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Para cabello dañado o frágil: brillo, grosor y, en rizos, definición. Precio según el producto absorbido.",
+  },
+  {
+    id: "tipo-bx",
+    nombre: "tratamiento tipo bx",
+    categoria: CABELLO,
+    precio: 57,
+    precioLiteral: "57 € / 89,50 €",
+    duracionMin: 150,
+    estimada: false,
+    descripcion:
+      "Fórmula multiproteica que nutre y rellena la fibra: rejuvenecimiento visible desde la primera aplicación. Dura de 1 a 3 meses.",
+  },
+  {
+    id: "olaplex",
+    nombre: "tratamiento olaplex",
+    categoria: CABELLO,
+    precio: 47,
+    precioLiteral: "47 € / 67,50 €",
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Reparación desde el interior para cabellos dañados o sensibilizados, con química o sin ella.",
+  },
+  {
+    id: "olaplex-quelante",
+    nombre: "tratamiento olaplex Quelante",
+    categoria: CABELLO,
+    precio: 20,
+    precioLiteral: "20 € / 28 €",
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Purificación profunda: elimina residuos de aceite, agua dura y metales antes de una keratina, un color o una permanente.",
+  },
+  {
+    id: "reconstructor-rizos",
+    nombre: "tratamiento reconstructor de rizos",
+    categoria: CABELLO,
+    precio: 26,
+    precioLiteral: "26 € / 31 €",
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Refuerza los rizos: más definición, brillo, movimiento e hidratación y menos encrespamiento desde la primera sesión.",
+  },
+  {
+    id: "nanokeratinizacion",
+    nombre: "Nanokeratinizacion",
+    categoria: CABELLO,
+    precio: 42,
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Vapor frío con keratina y ácido hialurónico para cabellos extradañados. No incluye el peinado, que es necesario (28 €): 70 € en total.",
+  },
+  {
+    id: "hyaluroplastia",
+    nombre: "Hyaluroplastia",
+    categoria: CABELLO,
+    precio: 22,
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Vapor frío con ácido hialurónico para cabellos secos y opacos. No incluye el peinado, que es necesario (28 €): 50 € en total.",
+  },
+  {
+    id: "combonano",
+    nombre: "Combonano 4 sesiones en un mes",
+    categoria: CABELLO,
+    precio: 88,
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Bono de 4 sesiones, una por semana: nanokeratinización, hyaluroplastia y ozonoterapia. No incluye los peinados, que son necesarios.",
+  },
+  {
+    id: "barros-tratantes",
+    nombre: "barros Tratantes",
+    categoria: CABELLO,
+    precio: 75,
+    duracionMin: 60,
+    estimada: true,
+    descripcion:
+      "Tratamiento natural y orgánico de filosofía japonesa que mineraliza, hidrata y da fuerza y grosor al cabello.",
+  },
+  {
+    id: "keratina",
+    nombre: "tratamiento keratina",
+    categoria: CABELLO,
+    precio: 101,
+    precioLiteral: "101 € / 200 € / 250 €",
+    duracionMin: 120,
+    estimada: false,
+    descripcion:
+      "Elimina el frizz y relaja la onda de 3 a 6 meses, con brillo extremo. También en versión vegana. Precio según el producto.",
+  },
+  {
+    id: "keratina-plus",
+    nombre: "Tratamiento keratina PLUS",
+    categoria: CABELLO,
+    precio: 250,
+    duracionMin: 180,
+    estimada: false,
+    descripcion: "Tratamiento de keratina PLUS.",
+  },
+  {
+    id: "spa-japones-cabeza",
+    nombre: "Spa japonés solo cabeza",
+    categoria: CABELLO,
+    precio: 71,
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Masaje craneal shiatsu, chorros de agua en puntos de acupuntura y cama de magneto: descarga cabeza, cuello y hombros.",
+  },
+  {
+    id: "spa-japones-cabeza-facial",
+    nombre: "Spa japonés cabeza y facial",
+    categoria: CABELLO,
+    precio: 135,
+    duracionMin: 120,
+    estimada: false,
+    descripcion:
+      "Masaje craneal shiatsu, chorros de agua en puntos de acupuntura y cama de magneto, con ritual facial.",
+  },
 
   // ---- Trabajos de la Mirada ----
-  { id: "laminado-cejas", nombre: "Laminado cejas", categoria: MIRADA, precio: 28, duracionMin: 60, estimada: false,
-    descripcion: "Incluye recorte y diseño con depilación." },
-  { id: "laminado-tinte-cejas", nombre: "Laminado cejas y tinte cejas", categoria: MIRADA, precio: 36, duracionMin: 90, estimada: false,
-    descripcion: "Incluye recorte y diseño con depilación." },
-  { id: "tinte-cejas", nombre: "tinte de cejas", categoria: MIRADA, precio: 9, duracionMin: 30, estimada: false,
-    descripcion: "Sin diseño ni depilación." },
-  { id: "depilacion-ceja", nombre: "depilacion de ceja", categoria: MIRADA, precio: 12, duracionMin: 30, estimada: false,
-    descripcion: "Con diseño." },
-  { id: "lifting-coreano", nombre: "Linfting KOREANO pestañas", categoria: MIRADA, precio: 36, duracionMin: 60, estimada: true,
-    descripcion: "En cabina." },
-  { id: "lifting-tinte", nombre: "Linfting pestañas +tinte de pestañas", categoria: MIRADA, precio: 46.5, duracionMin: 90, estimada: false,
-    descripcion: "En cabina." },
-  { id: "lifting-tinte-laminado", nombre: "Linfting pestañas +tinte de pestañas +laminado de cejas", categoria: MIRADA, precio: 57, duracionMin: 90, estimada: true,
-    descripcion: "En cabina." },
-  { id: "lifting-tinte-laminado-tinte", nombre: "Linfting pestañas +tinte de pestañas +laminado de cejas+tinte de cejas", categoria: MIRADA, precio: 65, duracionMin: 90, estimada: false,
-    descripcion: "En cabina." },
-  { id: "ojos-bolsas-ojeras", nombre: "tratamiento ojos- bolsas y ojeras", categoria: MIRADA, precio: 65, duracionMin: 60, estimada: false,
-    descripcion: "Principios activos para el contorno de ojos: minimiza bolsas, ojeras y flacidez desde la primera aplicación." },
+  {
+    id: "laminado-cejas",
+    nombre: "Laminado cejas",
+    categoria: MIRADA,
+    precio: 28,
+    duracionMin: 60,
+    estimada: false,
+    descripcion: "Incluye recorte y diseño con depilación.",
+  },
+  {
+    id: "laminado-tinte-cejas",
+    nombre: "Laminado cejas y tinte cejas",
+    categoria: MIRADA,
+    precio: 36,
+    duracionMin: 90,
+    estimada: false,
+    descripcion: "Incluye recorte y diseño con depilación.",
+  },
+  {
+    id: "tinte-cejas",
+    nombre: "tinte de cejas",
+    categoria: MIRADA,
+    precio: 9,
+    duracionMin: 30,
+    estimada: false,
+    descripcion: "Sin diseño ni depilación.",
+  },
+  {
+    id: "depilacion-ceja",
+    nombre: "depilacion de ceja",
+    categoria: MIRADA,
+    precio: 12,
+    duracionMin: 30,
+    estimada: false,
+    descripcion: "Con diseño.",
+  },
+  {
+    id: "lifting-coreano",
+    nombre: "Linfting KOREANO pestañas",
+    categoria: MIRADA,
+    precio: 36,
+    duracionMin: 60,
+    estimada: true,
+    descripcion: "En cabina.",
+  },
+  {
+    id: "lifting-tinte",
+    nombre: "Linfting pestañas +tinte de pestañas",
+    categoria: MIRADA,
+    precio: 46.5,
+    duracionMin: 90,
+    estimada: false,
+    descripcion: "En cabina.",
+  },
+  {
+    id: "lifting-tinte-laminado",
+    nombre: "Linfting pestañas +tinte de pestañas +laminado de cejas",
+    categoria: MIRADA,
+    precio: 57,
+    duracionMin: 90,
+    estimada: true,
+    descripcion: "En cabina.",
+  },
+  {
+    id: "lifting-tinte-laminado-tinte",
+    nombre: "Linfting pestañas +tinte de pestañas +laminado de cejas+tinte de cejas",
+    categoria: MIRADA,
+    precio: 65,
+    duracionMin: 90,
+    estimada: false,
+    descripcion: "En cabina.",
+  },
+  {
+    id: "ojos-bolsas-ojeras",
+    nombre: "tratamiento ojos- bolsas y ojeras",
+    categoria: MIRADA,
+    precio: 65,
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Principios activos para el contorno de ojos: minimiza bolsas, ojeras y flacidez desde la primera aplicación.",
+  },
 
   // ---- Trabajos Faciales ----
-  { id: "higiene-facial-hidroface", nombre: "Higiene facial hidroface", categoria: FACIALES, precio: 0, precioLiteral: "A definir, con diagnóstico", duracionMin: 60, estimada: false, descripcion: HIDROFACE },
-  { id: "ritual-rosegold", nombre: "Ritualfacial hidroface RoseGold", categoria: FACIALES, precio: 65, duracionMin: 75, estimada: true,
-    descripcion: "Tratamiento de 5 sesiones recomendado (325 € en total), con productos de laboratorio de alto contenido en activos." },
-  { id: "ritual-panacee", nombre: "Ritualfacial hidroface panacee", categoria: FACIALES, precio: 65, duracionMin: 75, estimada: true,
-    descripcion: "Tratamiento de 4 sesiones recomendado (260 € en total), con productos de laboratorio de alto contenido en activos." },
-  { id: "ritual-hidroface", nombre: "Ritual hidroface", categoria: FACIALES, precio: 65, duracionMin: 90, estimada: false,
-    descripcion: "Ritual facial hidroface de 90 minutos." },
-  { id: "exosomas", nombre: "Tratamiento de exosomas", categoria: FACIALES, precio: 65, duracionMin: 60, estimada: false,
-    descripcion: "Tratamiento facial de exosomas." },
-  { id: "dermapen-facial", nombre: "Dermapen facial", categoria: FACIALES, precio: 65, duracionMin: 60, estimada: false,
-    descripcion: "Tratamiento facial Dermapen." },
-  { id: "radiofrecuencia-facial", nombre: "tratamiento facial Radiofrecuencia-diatermia", categoria: FACIALES, precio: 35, precioLiteral: "35 € / 65 €", duracionMin: 30, estimada: true,
-    descripcion: "Radiofrecuencia diatermia a 448 kHz. Pregunta en cabina toda la información." },
+  {
+    id: "higiene-facial-hidroface",
+    nombre: "Higiene facial hidroface",
+    categoria: FACIALES,
+    precio: 0,
+    precioLiteral: "A definir, con diagnóstico",
+    duracionMin: 60,
+    estimada: false,
+    descripcion: HIDROFACE,
+  },
+  {
+    id: "ritual-rosegold",
+    nombre: "Ritualfacial hidroface RoseGold",
+    categoria: FACIALES,
+    precio: 65,
+    duracionMin: 75,
+    estimada: true,
+    descripcion:
+      "Tratamiento de 5 sesiones recomendado (325 € en total), con productos de laboratorio de alto contenido en activos.",
+  },
+  {
+    id: "ritual-panacee",
+    nombre: "Ritualfacial hidroface panacee",
+    categoria: FACIALES,
+    precio: 65,
+    duracionMin: 75,
+    estimada: true,
+    descripcion:
+      "Tratamiento de 4 sesiones recomendado (260 € en total), con productos de laboratorio de alto contenido en activos.",
+  },
+  {
+    id: "ritual-hidroface",
+    nombre: "Ritual hidroface",
+    categoria: FACIALES,
+    precio: 65,
+    duracionMin: 90,
+    estimada: false,
+    descripcion: "Ritual facial hidroface de 90 minutos.",
+  },
+  {
+    id: "exosomas",
+    nombre: "Tratamiento de exosomas",
+    categoria: FACIALES,
+    precio: 65,
+    duracionMin: 60,
+    estimada: false,
+    descripcion: "Tratamiento facial de exosomas.",
+  },
+  {
+    id: "dermapen-facial",
+    nombre: "Dermapen facial",
+    categoria: FACIALES,
+    precio: 65,
+    duracionMin: 60,
+    estimada: false,
+    descripcion: "Tratamiento facial Dermapen.",
+  },
+  {
+    id: "radiofrecuencia-facial",
+    nombre: "tratamiento facial Radiofrecuencia-diatermia",
+    categoria: FACIALES,
+    precio: 35,
+    precioLiteral: "35 € / 65 €",
+    duracionMin: 30,
+    estimada: true,
+    descripcion: "Radiofrecuencia diatermia a 448 kHz. Pregunta en cabina toda la información.",
+  },
 
   // ---- Trabajos Corporales ----
   // Duración literal: «Relajantes Corporal 50min…» (los craneales, 30 min).
-  { id: "masajes", nombre: "Masaje corporal", categoria: CORPORALES, precio: 50, precioLiteral: "50 € · bono 5: 225 € · bono 10: 400 €", duracionMin: 60, estimada: false,
-    descripcion: "Relajantes, drenantes, anticelulíticos, reafirmantes o reductores de 50 min; craneales de 30 min." },
-  { id: "model-shape", nombre: "Masaje model shape", categoria: CORPORALES, precio: 50, precioLiteral: "50 € · bono 5: 225 € · bono 10: 400 €", duracionMin: 60, estimada: false,
-    descripcion: "Tratamiento manual de reducción corporal: pérdida rápida de centímetros y piel más tersa desde la primera sesión." },
+  {
+    id: "masajes",
+    nombre: "Masaje corporal",
+    categoria: CORPORALES,
+    precio: 50,
+    precioLiteral: "50 € · bono 5: 225 € · bono 10: 400 €",
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Relajantes, drenantes, anticelulíticos, reafirmantes o reductores de 50 min; craneales de 30 min.",
+  },
+  {
+    id: "model-shape",
+    nombre: "Masaje model shape",
+    categoria: CORPORALES,
+    precio: 50,
+    precioLiteral: "50 € · bono 5: 225 € · bono 10: 400 €",
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Tratamiento manual de reducción corporal: pérdida rápida de centímetros y piel más tersa desde la primera sesión.",
+  },
   // Duración literal: «30min=35€ 60min=65€»; en la carta va la de 30 min.
-  { id: "radiofrecuencia-corporal", nombre: "tratamiento corporal Radiofrecuencia-diatermia", categoria: CORPORALES, precio: 35, precioLiteral: "30 min 35 € / 60 min 65 €", duracionMin: 60, estimada: false,
-    descripcion: "Calienta el tejido poco a poco para producir colágeno nuevo: indoloro y no invasivo. Bonos de 5 sesiones desde 160 €." },
-  { id: "dermapen-corporal", nombre: "Dermapen corporal", categoria: CORPORALES, precio: 65, duracionMin: 60, estimada: false,
-    descripcion: "Tratamiento corporal Dermapen." },
+  {
+    id: "radiofrecuencia-corporal",
+    nombre: "tratamiento corporal Radiofrecuencia-diatermia",
+    categoria: CORPORALES,
+    precio: 35,
+    precioLiteral: "30 min 35 € / 60 min 65 €",
+    duracionMin: 60,
+    estimada: false,
+    descripcion:
+      "Calienta el tejido poco a poco para producir colágeno nuevo: indoloro y no invasivo. Bonos de 5 sesiones desde 160 €.",
+  },
+  {
+    id: "dermapen-corporal",
+    nombre: "Dermapen corporal",
+    categoria: CORPORALES,
+    precio: 65,
+    duracionMin: 60,
+    estimada: false,
+    descripcion: "Tratamiento corporal Dermapen.",
+  },
 
   // ---- Trabajos de Cámara y Foco (su web: «Precios sin IVA») ----
-  { id: "maquillaje-correccion", nombre: "Maquillaje de Correccion", categoria: CAMARA, precio: 65, precioLiteral: "65 € (sin IVA)", duracionMin: 45, estimada: false,
-    descripcion: "Maquillaje para cámara y foco: cine, TV, teatro y publicidad. También maquillaje para novias." },
-  { id: "peluqueria-focos", nombre: "Peluqueria focos", categoria: CAMARA, precio: 65, precioLiteral: "desde 65 € / 150 € (sin IVA)", duracionMin: 45, estimada: false,
-    descripcion: "Peluquería de plató, preparada para cine, TV, teatro y publicidad." },
-  { id: "novias", nombre: "Novias", categoria: CAMARA, precio: 150, precioLiteral: "desde 150 € (sin IVA)", duracionMin: 90, estimada: false,
-    descripcion: "Consultar información: escríbenos por WhatsApp y te contamos." },
+  {
+    id: "maquillaje-correccion",
+    nombre: "Maquillaje de Correccion",
+    categoria: CAMARA,
+    precio: 65,
+    precioLiteral: "65 € (sin IVA)",
+    duracionMin: 45,
+    estimada: false,
+    descripcion:
+      "Maquillaje para cámara y foco: cine, TV, teatro y publicidad. También maquillaje para novias.",
+  },
+  {
+    id: "peluqueria-focos",
+    nombre: "Peluqueria focos",
+    categoria: CAMARA,
+    precio: 65,
+    precioLiteral: "desde 65 € / 150 € (sin IVA)",
+    duracionMin: 45,
+    estimada: false,
+    descripcion: "Peluquería de plató, preparada para cine, TV, teatro y publicidad.",
+  },
+  {
+    id: "novias",
+    nombre: "Novias",
+    categoria: CAMARA,
+    precio: 150,
+    precioLiteral: "desde 150 € (sin IVA)",
+    duracionMin: 90,
+    estimada: false,
+    descripcion: "Consultar información: escríbenos por WhatsApp y te contamos.",
+  },
 ];
 
 /** Equipo real dictado el 7-oct-2026; «Anca», confirmado por Tomás el 14-oct. */
@@ -212,7 +670,15 @@ const EQUIPO = [
  * Horario de su web («Horario de comunicacion»): de martes a viernes de 10 a
  * 20 y el sábado de 9 a 14. Lunes y domingo, cerrado.
  */
-const HORARIO = ["Cerrado", "10:00–20:00", "10:00–20:00", "10:00–20:00", "10:00–20:00", "9:00–14:00", "Cerrado"];
+const HORARIO = [
+  "Cerrado",
+  "10:00–20:00",
+  "10:00–20:00",
+  "10:00–20:00",
+  "10:00–20:00",
+  "9:00–14:00",
+  "Cerrado",
+];
 
 /** Turnos confirmados. */
 const TURNOS = [
@@ -226,23 +692,25 @@ const TURNOS = [
  * Se repite los viernes para las tres profesionales y se guarda en el perfil,
  * de modo que también la reserva pública descarta esa franja.
  */
-const BLOQUEOS_COMIDA_PROVISIONALES = (["maria", "anca", "patricia"] as const).map((profesionalId) => ({
-  id: `comida-viernes-${profesionalId}`,
-  profesionalId,
-  inicio: isoDelSalon("2026-10-16", "14:00"),
-  fin: isoDelSalon("2026-10-16", "15:00"),
-  recurrente: { diaSemana: 5 },
-  motivo: "Comida · hora de ejemplo hasta que María confirme",
-}));
+const BLOQUEOS_COMIDA_PROVISIONALES = (["maria", "anca", "patricia"] as const).map(
+  (profesionalId) => ({
+    id: `comida-viernes-${profesionalId}`,
+    profesionalId,
+    inicio: isoDelSalon("2026-10-16", "14:00"),
+    fin: isoDelSalon("2026-10-16", "15:00"),
+    recurrente: { diaSemana: 5 },
+    motivo: "Comida · hora de ejemplo hasta que María confirme",
+  }),
+);
 
 const CATEGORIAS_PELUQUERIA: CategoriaPeluChic[] = [COTIDIANOS, CUERO, CABELLO, CAMARA];
 const CATEGORIAS_ESTETICA: CategoriaPeluChic[] = [MIRADA, FACIALES, CORPORALES];
-const IDS_PELUQUERIA = SERVICIOS_PELUCHIC
-  .filter((s) => CATEGORIAS_PELUQUERIA.includes(s.categoria))
-  .map((s) => s.id);
-const IDS_ESTETICA = SERVICIOS_PELUCHIC
-  .filter((s) => CATEGORIAS_ESTETICA.includes(s.categoria))
-  .map((s) => s.id);
+const IDS_PELUQUERIA = SERVICIOS_PELUCHIC.filter((s) =>
+  CATEGORIAS_PELUQUERIA.includes(s.categoria),
+).map((s) => s.id);
+const IDS_ESTETICA = SERVICIOS_PELUCHIC.filter((s) =>
+  CATEGORIAS_ESTETICA.includes(s.categoria),
+).map((s) => s.id);
 const IDS_SPA_JAPONES = ["spa-japones-cabeza", "spa-japones-cabeza-facial"];
 const IDS_EXCLUSIVOS_PATRICIA = ["exosomas", "dermapen-facial", "dermapen-corporal"];
 
@@ -254,9 +722,11 @@ const SERVICIOS_POR_PROFESIONAL = {
   anca: [
     ...new Set([
       ...IDS_PELUQUERIA,
-      ...SERVICIOS_PELUCHIC
-        .filter((s) => (s.categoria === MIRADA || s.categoria === FACIALES) && !IDS_EXCLUSIVOS_PATRICIA.includes(s.id))
-        .map((s) => s.id),
+      ...SERVICIOS_PELUCHIC.filter(
+        (s) =>
+          (s.categoria === MIRADA || s.categoria === FACIALES) &&
+          !IDS_EXCLUSIVOS_PATRICIA.includes(s.id),
+      ).map((s) => s.id),
       ...IDS_SPA_JAPONES,
     ]),
   ],
@@ -274,8 +744,16 @@ const DIAS_ESPECIALES_PELUCHIC: DiaEspecial[] = [
   { fecha: "2027-01-01", cerrado: true, nota: "Festivo" },
   { fecha: "2026-12-24", franjas: [{ inicio: "10:00", fin: "15:00" }], nota: "Nochebuena" },
   { fecha: "2026-12-31", franjas: [{ inicio: "10:00", fin: "15:00" }], nota: "Nochevieja" },
-  { fecha: "2026-12-21", soloProfesionales: { maria: [{ inicio: "10:00", fin: "20:00" }] }, nota: "Solo María" },
-  { fecha: "2026-12-23", soloProfesionales: { anca: [{ inicio: "15:00", fin: "20:00" }] }, nota: "Solo Anca" },
+  {
+    fecha: "2026-12-21",
+    soloProfesionales: { maria: [{ inicio: "10:00", fin: "20:00" }] },
+    nota: "Solo María",
+  },
+  {
+    fecha: "2026-12-23",
+    soloProfesionales: { anca: [{ inicio: "15:00", fin: "20:00" }] },
+    nota: "Solo Anca",
+  },
 ];
 
 /** Lo que su web dice de las citas y lo que no cabe en la carta, en su voz. */
@@ -298,36 +776,93 @@ const PREGUNTAS = [
 export const MEZCLA_PELUCHIC: MezclaSemilla = {
   servicios: {
     // El matiz no va solo: sale tras unas mechas (ver `extras`).
-    color: [["color-10-minutos", 42], ["color-organico", 28], ["bano-brillo", 17], ["barros", 13]],
-    mechas: [["mechas", 75], ["money-piece", 25]],
-    corte: [["lavado-corte-peinar", 30], ["peinar", 30], ["lavado-corte-secar", 18], ["cortar-caballero-nino", 12], ["lavado", 6], ["ahuecador", 4]],
+    color: [
+      ["color-10-minutos", 42],
+      ["color-organico", 28],
+      ["bano-brillo", 17],
+      ["barros", 13],
+    ],
+    mechas: [
+      ["mechas", 75],
+      ["money-piece", 25],
+    ],
+    corte: [
+      ["lavado-corte-peinar", 30],
+      ["peinar", 30],
+      ["lavado-corte-secar", 18],
+      ["cortar-caballero-nino", 12],
+      ["lavado", 6],
+      ["ahuecador", 4],
+    ],
     tratamiento: [
-      ["hidratacion-intensiva", 18], ["olaplex", 12], ["proteinas", 8], ["ozonoterapia", 8], ["keratina", 8], ["tipo-bx", 6],
-      ["diagnostico-camara", 6], ["nanokeratinizacion", 6], ["hidrobalance", 5], ["spa-japones-cabeza", 5], ["dermapen", 4],
-      ["hyaluroplastia", 4], ["reconstructor-rizos", 4], ["olaplex-quelante", 4], ["barros-tratantes", 3],
-      ["barros-cuero-cabelludo", 3], ["combonano", 2],
+      ["hidratacion-intensiva", 18],
+      ["olaplex", 12],
+      ["proteinas", 8],
+      ["ozonoterapia", 8],
+      ["keratina", 8],
+      ["tipo-bx", 6],
+      ["diagnostico-camara", 6],
+      ["nanokeratinizacion", 6],
+      ["hidrobalance", 5],
+      ["spa-japones-cabeza", 5],
+      ["dermapen", 4],
+      ["hyaluroplastia", 4],
+      ["reconstructor-rizos", 4],
+      ["olaplex-quelante", 4],
+      ["barros-tratantes", 3],
+      ["barros-cuero-cabelludo", 3],
+      ["combonano", 2],
     ],
     mirada: [
-      ["laminado-cejas", 18], ["depilacion-ceja", 18], ["laminado-tinte-cejas", 12], ["lifting-coreano", 12], ["lifting-tinte", 10],
-      ["tinte-cejas", 8], ["lifting-tinte-laminado", 5], ["lifting-tinte-laminado-tinte", 4],
+      ["laminado-cejas", 18],
+      ["depilacion-ceja", 18],
+      ["laminado-tinte-cejas", 12],
+      ["lifting-coreano", 12],
+      ["lifting-tinte", 10],
+      ["tinte-cejas", 8],
+      ["lifting-tinte-laminado", 5],
+      ["lifting-tinte-laminado-tinte", 4],
       ["ojos-bolsas-ojeras", 3],
     ],
     estetica: [
-      ["higiene-facial-hidroface", 14], ["masajes", 14], ["model-shape", 6], ["radiofrecuencia-facial", 5],
-      ["radiofrecuencia-corporal", 5], ["ritual-rosegold", 3], ["ritual-panacee", 3], ["ritual-hidroface", 3],
-      ["exosomas", 3], ["dermapen-facial", 3], ["dermapen-corporal", 3],
+      ["higiene-facial-hidroface", 14],
+      ["masajes", 14],
+      ["model-shape", 6],
+      ["radiofrecuencia-facial", 5],
+      ["radiofrecuencia-corporal", 5],
+      ["ritual-rosegold", 3],
+      ["ritual-panacee", 3],
+      ["ritual-hidroface", 3],
+      ["exosomas", 3],
+      ["dermapen-facial", 3],
+      ["dermapen-corporal", 3],
     ],
     novia: [["novias", 1]],
-    camara: [["maquillaje-correccion", 55], ["peluqueria-focos", 45]],
+    camara: [
+      ["maquillaje-correccion", 55],
+      ["peluqueria-focos", 45],
+    ],
   },
   tiposEvento: ["novia", "camara"],
   porProfesional: [
     // María: peinados, color y trabajos de cámara entre semana; el sábado, las novias.
-    { semana: { corte: 38, color: 22, mechas: 5, tratamiento: 10, mirada: 8, estetica: 4, camara: 3 },
-      sabado: { corte: 42, color: 15, novia: 24, camara: 5, mirada: 8, tratamiento: 5 } },
+    {
+      semana: {
+        corte: 38,
+        color: 22,
+        mechas: 5,
+        tratamiento: 10,
+        mirada: 8,
+        estetica: 4,
+        camara: 3,
+      },
+      sabado: { corte: 42, color: 15, novia: 24, camara: 5, mirada: 8, tratamiento: 5 },
+    },
     // Sara: la colorista.
-    { semana: { color: 48, mechas: 24, corte: 16, tratamiento: 12 },
-      sabado: { color: 40, mechas: 20, corte: 35, tratamiento: 5 } },
+    {
+      semana: { color: 48, mechas: 24, corte: 16, tratamiento: 12 },
+      sabado: { color: 40, mechas: 20, corte: 35, tratamiento: 5 },
+    },
     // Noelia: tratamientos, mirada y cabina.
     { semana: { tratamiento: 30, estetica: 30, mirada: 22, corte: 14, color: 4 } },
   ],
@@ -337,9 +872,17 @@ export const MEZCLA_PELUCHIC: MezclaSemilla = {
     // Su precio es «con el servicio añadido a otro (color, peinar o barro)».
     { tras: ["money-piece"], anade: "peinar", prob: 1 },
     { tras: ["mechas"], anade: "matiz", prob: 0.35 },
-    { tras: ["color-10-minutos", "color-organico", "bano-brillo", "barros"], anade: "cortar-anadido", prob: 0.2 },
+    {
+      tras: ["color-10-minutos", "color-organico", "bano-brillo", "barros"],
+      anade: "cortar-anadido",
+      prob: 0.2,
+    },
     // «Puedes aprovechar esta hidratación en el tiempo del color».
-    { tras: ["color-10-minutos", "color-organico", "barros"], anade: "hidratacion-intensiva", prob: 0.12 },
+    {
+      tras: ["color-10-minutos", "color-organico", "barros"],
+      anade: "hidratacion-intensiva",
+      prob: 0.12,
+    },
     { tras: ["mechas"], anade: "olaplex", prob: 0.1 },
   ],
 };
@@ -347,7 +890,13 @@ export const MEZCLA_PELUCHIC: MezclaSemilla = {
 /** Carta en el formato de `SalonProfile.menu`, con los ids estables. */
 function carta(): string[] {
   return SERVICIOS_PELUCHIC.map((s) =>
-    formatMenuEntry({ id: s.id, name: s.nombre, durationMin: s.duracionMin, priceEur: s.precio, category: s.categoria }),
+    formatMenuEntry({
+      id: s.id,
+      name: s.nombre,
+      durationMin: s.duracionMin,
+      priceEur: s.precio,
+      category: s.categoria,
+    }),
   );
 }
 
@@ -356,11 +905,62 @@ function carta(): string[] {
  * color y química no salgan en estética, posibilidad que admite el modelo.
  */
 const PREGUNTAS_RESERVA_PELUCHIC = [
-  { id: "hairLength", texto: "¿Qué cantidad de pelo tienes?", tipo: "opcion" as const, opciones: ["Poco", "Medio", "Mucho", "Excesivo"], obligatoria: false, activa: true, servicios: IDS_PELUQUERIA },
-  { id: "hasColor", texto: "¿Llevas color, tintes o mechas ahora?", tipo: "opcion" as const, opciones: ["Sí", "No"], permiteOtro: true, obligatoria: false, activa: true, servicios: IDS_PELUQUERIA },
-  { id: "recentChemical", texto: "¿Te has hecho algún tratamiento químico en el último mes (tinte, mechas, alisado, permanente)?", tipo: "opcion" as const, opciones: ["Sí", "No"], permiteOtro: true, obligatoria: false, activa: true, servicios: IDS_PELUQUERIA },
-  { id: "color-previo", texto: "¿Has venido alguna vez a aplicarte aquí el color?", tipo: "si_no" as const, obligatoria: false, activa: true, servicios: ["color-organico", "color-10-minutos", "bano-brillo", "barros", "mechas", "mechas-matiz", "money-piece", "matiz"] },
-  { id: "tratamiento-brillo", texto: "¿En tu retoque de color, quieres aprovechar el tiempo con un tratamiento de brillo e hidratación?", tipo: "si_no" as const, obligatoria: false, activa: true, servicios: ["color-organico", "color-10-minutos"] },
+  {
+    id: "hairLength",
+    texto: "¿Qué cantidad de pelo tienes?",
+    tipo: "opcion" as const,
+    opciones: ["Poco", "Medio", "Mucho", "Excesivo"],
+    obligatoria: false,
+    activa: true,
+    servicios: IDS_PELUQUERIA,
+  },
+  {
+    id: "hasColor",
+    texto: "¿Llevas color, tintes o mechas ahora?",
+    tipo: "opcion" as const,
+    opciones: ["Sí", "No"],
+    permiteOtro: true,
+    obligatoria: false,
+    activa: true,
+    servicios: IDS_PELUQUERIA,
+  },
+  {
+    id: "recentChemical",
+    texto:
+      "¿Te has hecho algún tratamiento químico en el último mes (tinte, mechas, alisado, permanente)?",
+    tipo: "opcion" as const,
+    opciones: ["Sí", "No"],
+    permiteOtro: true,
+    obligatoria: false,
+    activa: true,
+    servicios: IDS_PELUQUERIA,
+  },
+  {
+    id: "color-previo",
+    texto: "¿Has venido alguna vez a aplicarte aquí el color?",
+    tipo: "si_no" as const,
+    obligatoria: false,
+    activa: true,
+    servicios: [
+      "color-organico",
+      "color-10-minutos",
+      "bano-brillo",
+      "barros",
+      "mechas",
+      "mechas-matiz",
+      "money-piece",
+      "matiz",
+    ],
+  },
+  {
+    id: "tratamiento-brillo",
+    texto:
+      "¿En tu retoque de color, quieres aprovechar el tiempo con un tratamiento de brillo e hidratación?",
+    tipo: "si_no" as const,
+    obligatoria: false,
+    activa: true,
+    servicios: ["color-organico", "color-10-minutos"],
+  },
 ];
 
 export const PELUCHIC: SalonProfile = {
@@ -374,7 +974,8 @@ export const PELUCHIC: SalonProfile = {
     "Peluquería y maquillaje profesional en Sanchinarro, en el salón o a domicilio. Años de experiencia en teatro, televisión y publicidad: peinados y maquillaje de cámara y foco, novias, ceremonias y eventos.",
   // Su web no publica el código postal: 28050 es el de Sanchinarro (y el de
   // la entrega en 48 h de su tienda online).
-  address: "C/ Princesa de Éboli 100, local 104, entrada por el patio de c/ María Tudor 14, 28050 Madrid (Sanchinarro)",
+  address:
+    "C/ Princesa de Éboli 100, local 104, entrada por el patio de c/ María Tudor 14, 28050 Madrid (Sanchinarro)",
   phone: "666 77 67 31",
   whatsapp: "+34 666 77 67 31",
   instagram: "@peluchicprofesional",
@@ -384,7 +985,8 @@ export const PELUCHIC: SalonProfile = {
     facebook: "https://www.facebook.com/peluchicprofesional/",
     tienda: "https://peluchic.online/tienda/ols/all",
     // Su ficha de Google Maps (la del enlace `?d=`, place_id ChIJc_dY3q0uQg0ReeAzc1Y3irs).
-    resenas: "https://www.google.com/maps/search/?api=1&query=PeluChic&query_place_id=ChIJc_dY3q0uQg0ReeAzc1Y3irs",
+    resenas:
+      "https://www.google.com/maps/search/?api=1&query=PeluChic&query_place_id=ChIJc_dY3q0uQg0ReeAzc1Y3irs",
   },
   // «Lo más pedido» (lote P.5): lo que la representa, no lo primero de la
   // carta (que es el lavado de 10 €): corte y peinado, su color orgánico, las
@@ -419,25 +1021,66 @@ export const PELUCHIC: SalonProfile = {
   // (`-600.webp` en vez de `-1200.webp`). Carpeta `peluchic-galeria/` y no
   // `peluchic/`: una carpeta /demo/peluchic chocaría con la ruta /demo/peluchic.
   galeriaPropia: [
-    { url: "/demo/peluchic-galeria/recogido-ondas-trenzado-1200.webp", alt: "Recogido de ondas trenzadas en melena castaña, visto de espaldas" },
-    { url: "/demo/peluchic-galeria/semirrecogido-trenzas-en-proceso-1200.webp", alt: "Manos de la estilista terminando un semirrecogido con trenzas en cabello cobrizo" },
-    { url: "/demo/peluchic-galeria/recogido-trenzado-rubia-1200.webp", alt: "Recogido bajo trenzado en cabello rubio con mechas, visto de espaldas" },
-    { url: "/demo/peluchic-galeria/comunion-corona-flores-1200.webp", alt: "Peinado de comunión con ondas y corona de flores, visto de espaldas" },
-    { url: "/demo/peluchic-galeria/invitada-recogido-salon-1200.webp", alt: "Recogido con trenza y moño de invitada de boda, en el salón" },
-    { url: "/demo/peluchic-galeria/recogido-pelirroja-encaje-1200.webp", alt: "Recogido alto en cabello pelirrojo con blusa de encaje" },
-    { url: "/demo/peluchic-galeria/recogido-bajo-morena-1200.webp", alt: "Recogido bajo con ondas en cabello moreno, visto de espaldas" },
-    { url: "/demo/peluchic-galeria/semirrecogido-pelirroja-1200.webp", alt: "Semirrecogido con ondas en cabello pelirrojo, visto de espaldas" },
-    { url: "/demo/peluchic-galeria/recogido-lateral-rubia-1200.webp", alt: "Recogido lateral en cabello rubio, de frente" },
-    { url: "/demo/peluchic-galeria/novia-melena-suelta-1200.webp", alt: "Novia con melena suelta ondulada en un campo de lavanda" },
-    { url: "/demo/peluchic-galeria/comunion-ondas-flores-1200.webp", alt: "Peinado de comunión con ondas y flores blancas, de perfil" },
-    { url: "/demo/peluchic-galeria/recogido-bajo-rubia-1200.webp", alt: "Moño bajo pulido en cabello rubio, visto de espaldas" },
+    {
+      url: "/demo/peluchic-galeria/recogido-ondas-trenzado-1200.webp",
+      alt: "Recogido de ondas trenzadas en melena castaña, visto de espaldas",
+    },
+    {
+      url: "/demo/peluchic-galeria/semirrecogido-trenzas-en-proceso-1200.webp",
+      alt: "Manos de la estilista terminando un semirrecogido con trenzas en cabello cobrizo",
+    },
+    {
+      url: "/demo/peluchic-galeria/recogido-trenzado-rubia-1200.webp",
+      alt: "Recogido bajo trenzado en cabello rubio con mechas, visto de espaldas",
+    },
+    {
+      url: "/demo/peluchic-galeria/comunion-corona-flores-1200.webp",
+      alt: "Peinado de comunión con ondas y corona de flores, visto de espaldas",
+    },
+    {
+      url: "/demo/peluchic-galeria/invitada-recogido-salon-1200.webp",
+      alt: "Recogido con trenza y moño de invitada de boda, en el salón",
+    },
+    {
+      url: "/demo/peluchic-galeria/recogido-pelirroja-encaje-1200.webp",
+      alt: "Recogido alto en cabello pelirrojo con blusa de encaje",
+    },
+    {
+      url: "/demo/peluchic-galeria/recogido-bajo-morena-1200.webp",
+      alt: "Recogido bajo con ondas en cabello moreno, visto de espaldas",
+    },
+    {
+      url: "/demo/peluchic-galeria/semirrecogido-pelirroja-1200.webp",
+      alt: "Semirrecogido con ondas en cabello pelirrojo, visto de espaldas",
+    },
+    {
+      url: "/demo/peluchic-galeria/recogido-lateral-rubia-1200.webp",
+      alt: "Recogido lateral en cabello rubio, de frente",
+    },
+    {
+      url: "/demo/peluchic-galeria/novia-melena-suelta-1200.webp",
+      alt: "Novia con melena suelta ondulada en un campo de lavanda",
+    },
+    {
+      url: "/demo/peluchic-galeria/comunion-ondas-flores-1200.webp",
+      alt: "Peinado de comunión con ondas y flores blancas, de perfil",
+    },
+    {
+      url: "/demo/peluchic-galeria/recogido-bajo-rubia-1200.webp",
+      alt: "Moño bajo pulido en cabello rubio, visto de espaldas",
+    },
   ],
   logoUrl: "/demo/peluchic-logo.png",
   // El logotipo real (caligrafía de PeluChic, sin fondo): blanco sobre foto y oscuro sobre claro.
-  logotipoClaroUrl: "/demo/peluchic-logotipo-blanco.png",
-  logotipoOscuroUrl: "/demo/peluchic-logotipo-oscuro.png",
+  logotipoClaroUrl: "/demo/peluchic-logotipo-blanco.webp",
+  logotipoOscuroUrl: "/demo/peluchic-logotipo-oscuro.webp",
   // Cuatro y sin «y» al final: la web las junta en una frase («…, color orgánico y tratamientos capilares»).
-  specialties: ["novias y eventos", "maquillaje de cámara", "color orgánico", "tratamientos capilares"],
+  specialties: [
+    "novias y eventos",
+    "maquillaje de cámara",
+    "color orgánico",
+    "tratamientos capilares",
+  ],
   team: EQUIPO,
   // No se confirmaron años de oficio: se guardan vacíos y la web no inventa el bloque.
   teamExperience: [0, 0, 0],
@@ -478,17 +1121,63 @@ export const PELUCHIC: SalonProfile = {
  * ligadas a un servicio real de la carta para que su duración y precio no se
  * inventen.
  */
-const FORMULAS_HISTORIAL_COLOR: ReadonlyArray<{ servicioId: string; formula: string; nota: string }> = [
-  { servicioId: "color-organico", formula: "Color orgánico 7.4 en raíz, oxidante 20 vol, 35 min", nota: "Cubrir canas de sienes; emulsión suave." },
-  { servicioId: "color-10-minutos", formula: "Tinte 6.3 en raíz, oxidante 20 vol, 35 min", nota: "Respetar medios; refrescar solo al aclarar." },
-  { servicioId: "bano-brillo", formula: "Baño de color 7.13, oxidante 10 vol, 20 min", nota: "Vigilar puntas porosas; aclarar con suavidad." },
-  { servicioId: "color-organico", formula: "Color orgánico 5.0 en raíz, oxidante 20 vol, 30 min", nota: "Cubrir canas; anotar el resultado." },
-  { servicioId: "color-10-minutos", formula: "Tinte 8.1 sin amoníaco, oxidante 10 vol, 30 min", nota: "Comprobar el cuero cabelludo antes de aplicar." },
-  { servicioId: "bano-brillo", formula: "Baño de color 6.34, oxidante 10 vol, 25 min", nota: "De medios a puntas; revisar el brillo." },
-  { servicioId: "mechas", formula: "Mechas finas: decoloración con oxidante 20 vol, 35 min; matiz 9.1, 10 vol, 10 min", nota: "Dejar libre el contorno; comprobar elasticidad." },
-  { servicioId: "mechas", formula: "Balayage: decoloración con oxidante 30 vol, 30 min; matiz 9.13, 10 vol, 15 min", nota: "Difuminar la raíz; vigilar puntas." },
-  { servicioId: "mechas", formula: "Balayage cobrizo: decoloración con oxidante 30 vol, 25 min; matiz 8.34, 10 vol, 15 min", nota: "No solapar la decoloración anterior." },
-  { servicioId: "mechas", formula: "Mechas con papel: decoloración con oxidante 20 vol, 40 min; matiz 8.21, 10 vol, 10 min", nota: "Separaciones finas en coronilla." },
+const FORMULAS_HISTORIAL_COLOR: ReadonlyArray<{
+  servicioId: string;
+  formula: string;
+  nota: string;
+}> = [
+  {
+    servicioId: "color-organico",
+    formula: "Color orgánico 7.4 en raíz, oxidante 20 vol, 35 min",
+    nota: "Cubrir canas de sienes; emulsión suave.",
+  },
+  {
+    servicioId: "color-10-minutos",
+    formula: "Tinte 6.3 en raíz, oxidante 20 vol, 35 min",
+    nota: "Respetar medios; refrescar solo al aclarar.",
+  },
+  {
+    servicioId: "bano-brillo",
+    formula: "Baño de color 7.13, oxidante 10 vol, 20 min",
+    nota: "Vigilar puntas porosas; aclarar con suavidad.",
+  },
+  {
+    servicioId: "color-organico",
+    formula: "Color orgánico 5.0 en raíz, oxidante 20 vol, 30 min",
+    nota: "Cubrir canas; anotar el resultado.",
+  },
+  {
+    servicioId: "color-10-minutos",
+    formula: "Tinte 8.1 sin amoníaco, oxidante 10 vol, 30 min",
+    nota: "Comprobar el cuero cabelludo antes de aplicar.",
+  },
+  {
+    servicioId: "bano-brillo",
+    formula: "Baño de color 6.34, oxidante 10 vol, 25 min",
+    nota: "De medios a puntas; revisar el brillo.",
+  },
+  {
+    servicioId: "mechas",
+    formula: "Mechas finas: decoloración con oxidante 20 vol, 35 min; matiz 9.1, 10 vol, 10 min",
+    nota: "Dejar libre el contorno; comprobar elasticidad.",
+  },
+  {
+    servicioId: "mechas",
+    formula: "Balayage: decoloración con oxidante 30 vol, 30 min; matiz 9.13, 10 vol, 15 min",
+    nota: "Difuminar la raíz; vigilar puntas.",
+  },
+  {
+    servicioId: "mechas",
+    formula:
+      "Balayage cobrizo: decoloración con oxidante 30 vol, 25 min; matiz 8.34, 10 vol, 15 min",
+    nota: "No solapar la decoloración anterior.",
+  },
+  {
+    servicioId: "mechas",
+    formula:
+      "Mechas con papel: decoloración con oxidante 20 vol, 40 min; matiz 8.21, 10 vol, 10 min",
+    nota: "Separaciones finas en coronilla.",
+  },
 ];
 
 /**
@@ -501,7 +1190,11 @@ const FORMULAS_HISTORIAL_COLOR: ReadonlyArray<{ servicioId: string; formula: str
  * hora): solo AÑADE histórico, con la marca «TPV 123» de una visita
  * importada, igual que el resto del pasado de la semilla.
  */
-export function conHistorialColorPeluchic(citas: Appointment[], clients: Client[], ahora: Date = new Date()): Appointment[] {
+export function conHistorialColorPeluchic(
+  citas: Appointment[],
+  clients: Client[],
+  ahora: Date = new Date(),
+): Appointment[] {
   const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
   const finVentana = new Date(inicioHoy);
   finVentana.setDate(finVentana.getDate() + 2); // hoy + mañana
@@ -515,7 +1208,8 @@ export function conHistorialColorPeluchic(citas: Appointment[], clients: Client[
     const inicio = new Date(cita.start);
     if (inicio < inicioHoy || inicio >= finVentana) continue;
     const previa = primeraCitaPorClienta.get(cita.clientId);
-    if (!previa || +new Date(cita.start) < +new Date(previa.start)) primeraCitaPorClienta.set(cita.clientId, cita);
+    if (!previa || +new Date(cita.start) < +new Date(previa.start))
+      primeraCitaPorClienta.set(cita.clientId, cita);
   }
 
   const nuevas: Appointment[] = [];
@@ -576,7 +1270,10 @@ const COLOR_SIN_HISTORIAL: readonly string[] = [
 ];
 
 /** Tratamiento químico reciente sin relación con el color (alisado, keratina…). */
-const QUIMICO_SIN_COLOR: readonly string[] = ["Keratina hace unas tres semanas", "Alisado hace un mes"];
+const QUIMICO_SIN_COLOR: readonly string[] = [
+  "Keratina hace unas tres semanas",
+  "Alisado hace un mes",
+];
 
 const OPCIONES_CANTIDAD = PREGUNTAS_RESERVA_PELUCHIC.find((p) => p.id === "hairLength")!.opciones!;
 
@@ -594,10 +1291,17 @@ const OPCIONES_CANTIDAD = PREGUNTAS_RESERVA_PELUCHIC.find((p) => p.id === "hairL
  * Se ejecuta DESPUÉS de `conHistorialColorPeluchic` para que el color
  * contado en la reserva pueda coincidir con el que ya anota la ficha.
  */
-export function conRespuestasReservaPeluchic(citas: Appointment[], _clients: Client[], ahora: Date = new Date()): Appointment[] {
+export function conRespuestasReservaPeluchic(
+  citas: Appointment[],
+  _clients: Client[],
+  ahora: Date = new Date(),
+): Appointment[] {
   const manana = new Date(ahora);
   manana.setDate(manana.getDate() + 1);
-  const ventana = [...hojaDelDia(citas, fechaLocal(ahora)), ...hojaDelDia(citas, fechaLocal(manana))];
+  const ventana = [
+    ...hojaDelDia(citas, fechaLocal(ahora)),
+    ...hojaDelDia(citas, fechaLocal(manana)),
+  ];
 
   const respuestasPorId = new Map<string, BookingAnswers>();
   for (const { cita, ultimoColor: ultimo } of ventana) {
@@ -677,17 +1381,38 @@ interface ContextoObservacion {
  * historial o la hora de la cita; las últimas son universales, para que
  * siempre haya alguna disponible.
  */
-const OBSERVACIONES_CANDIDATAS: ReadonlyArray<{ aplica: (c: ContextoObservacion) => boolean; texto: (c: ContextoObservacion) => string }> = [
-  { aplica: (c) => c.horaInicio.getHours() < 11, texto: () => "Prefiere primera hora de la mañana." },
-  { aplica: (c) => c.respuestas?.hairLength === "Poco", texto: () => "Poco pelo: secar a temperatura media." },
-  { aplica: (c) => c.respuestas?.hairLength === "Excesivo", texto: () => "Mucho pelo: reservar tiempo suficiente de secado." },
-  { aplica: (c) => c.respuestas?.hasColor === "Sí" && c.tieneColorAnotado, texto: () => "Quiere probar un tono más cálido en la próxima." },
-  { aplica: (c) => c.respuestas?.recentChemical === "No", texto: () => "Buena clienta para proponerle un tratamiento nuevo: pregúntale antes." },
+const OBSERVACIONES_CANDIDATAS: ReadonlyArray<{
+  aplica: (c: ContextoObservacion) => boolean;
+  texto: (c: ContextoObservacion) => string;
+}> = [
+  {
+    aplica: (c) => c.horaInicio.getHours() < 11,
+    texto: () => "Prefiere primera hora de la mañana.",
+  },
+  {
+    aplica: (c) => c.respuestas?.hairLength === "Poco",
+    texto: () => "Poco pelo: secar a temperatura media.",
+  },
+  {
+    aplica: (c) => c.respuestas?.hairLength === "Excesivo",
+    texto: () => "Mucho pelo: reservar tiempo suficiente de secado.",
+  },
+  {
+    aplica: (c) => c.respuestas?.hasColor === "Sí" && c.tieneColorAnotado,
+    texto: () => "Quiere probar un tono más cálido en la próxima.",
+  },
+  {
+    aplica: (c) => c.respuestas?.recentChemical === "No",
+    texto: () => "Buena clienta para proponerle un tratamiento nuevo: pregúntale antes.",
+  },
   { aplica: (c) => !!c.nombreProfesional, texto: (c) => `Siempre pide a ${c.nombreProfesional}.` },
   { aplica: () => true, texto: () => "Viene con su hija; a veces reserva dos servicios." },
   { aplica: () => true, texto: () => "Le vendimos el champú VitaFuerza; preguntar qué tal." },
   { aplica: () => true, texto: () => "Prefiere que le avises por WhatsApp el día antes." },
-  { aplica: () => true, texto: () => "Cuenta que se casa el año que viene: apuntar para un recogido de novia." },
+  {
+    aplica: () => true,
+    texto: () => "Cuenta que se casa el año que viene: apuntar para un recogido de novia.",
+  },
   { aplica: () => true, texto: () => "Última vez salió muy contenta con el resultado." },
 ];
 
@@ -699,10 +1424,17 @@ const OBSERVACIONES_CANDIDATAS: ReadonlyArray<{ aplica: (c: ContextoObservacion)
  * No pisa una nota ya existente (las tres de ejemplo del seed) ni toca
  * ningún otro campo de la clienta. Determinista por el id de la clienta.
  */
-export function conObservacionesPeluchic(clients: Client[], citas: Appointment[], ahora: Date = new Date()): Client[] {
+export function conObservacionesPeluchic(
+  clients: Client[],
+  citas: Appointment[],
+  ahora: Date = new Date(),
+): Client[] {
   const manana = new Date(ahora);
   manana.setDate(manana.getDate() + 1);
-  const ventana = [...hojaDelDia(citas, fechaLocal(ahora)), ...hojaDelDia(citas, fechaLocal(manana))];
+  const ventana = [
+    ...hojaDelDia(citas, fechaLocal(ahora)),
+    ...hojaDelDia(citas, fechaLocal(manana)),
+  ];
 
   const primeraPorCliente = new Map<string, (typeof ventana)[number]>();
   for (const v of ventana) {
@@ -726,5 +1458,7 @@ export function conObservacionesPeluchic(clients: Client[], citas: Appointment[]
   }
 
   if (!notasPorCliente.size) return clients;
-  return clients.map((c) => (c.notes ? c : notasPorCliente.has(c.id) ? { ...c, notes: notasPorCliente.get(c.id) } : c));
+  return clients.map((c) =>
+    c.notes ? c : notasPorCliente.has(c.id) ? { ...c, notes: notasPorCliente.get(c.id) } : c,
+  );
 }

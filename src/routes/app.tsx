@@ -4,7 +4,14 @@ import { conRegistroEnPausa } from "@/lib/store";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { menosMovimiento } from "@/lib/movimiento-panel";
 import { sincronizarColores } from "@/lib/colores-elegidos";
-import { createFileRoute, Outlet, redirect, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Outlet,
+  redirect,
+  useNavigate,
+  useRouter,
+  useRouterState,
+} from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { useRealSalon } from "@/lib/use-real-salon";
 import { aplicarPrecedenciaDeEnlace } from "@/lib/precedencia-enlace-panel-store";
@@ -153,10 +160,12 @@ function useSalonSlugDelPanel(): string | undefined {
     select: (s) => (s.location.search as Record<string, unknown>)?.[DEMO_PARAM],
   });
   const guardado = useSalonStore((s) => s.salonProfile.slug);
+  const demoRegistradaActiva = useSalonStore((s) => s.demoActive && !s.realSalonSlug);
   return slugResolvibleDelPanel({
     slugDesdeUrl: desdeUrl,
     demoRaw,
     slugGuardado: slugSalonDelHost() ?? guardado,
+    demoRegistradaActiva,
   });
 }
 
@@ -208,7 +217,9 @@ function usePrecargarPantallasDelPanel() {
         ? (cb) => window.requestIdleCallback(cb, { timeout: 4000 })
         : (cb) => window.setTimeout(cb, 1500);
     const cancelar =
-      typeof window.cancelIdleCallback === "function" ? window.cancelIdleCallback : window.clearTimeout;
+      typeof window.cancelIdleCallback === "function"
+        ? window.cancelIdleCallback
+        : window.clearTimeout;
     let pendiente: number;
     let i = 0;
     const siguiente = () => {
@@ -279,14 +290,18 @@ function PanelAutorizado({ slug }: { slug?: string }) {
   return (
     <>
       {panelV2 && plan !== "reservas" ? (
-        <Suspense fallback={<div className="min-h-dvh" aria-busy="true" aria-label="Cargando panel" />}>
+        <Suspense
+          fallback={<div className="min-h-dvh" aria-busy="true" aria-label="Cargando panel" />}
+        >
           <PanelV2Shell />
         </Suspense>
-      ) : <DashboardLayoutV1 />}
+      ) : (
+        <DashboardLayoutV1 />
+      )}
       <InstalarPanel />
       <FichasGlobales />
       {refresco && (
-        <span className="indicador-refresco fixed bottom-3 right-3 z-10 rounded-full border border-border bg-background/90 px-2 py-1 text-[10px] text-muted-foreground shadow-sm max-lg:bottom-20">
+        <span className="indicador-refresco fixed bottom-3 right-3 z-10 rounded-full border border-border bg-background/90 px-2 py-1 text-[10px] text-muted-foreground shadow-sm max-lg:bottom-[calc(var(--alto-barra-fija)+var(--alto-fab-panel)+20px)]">
           {refresco}
         </span>
       )}
@@ -320,7 +335,8 @@ function DashboardLayoutV1() {
   // con la marca del dispositivo, sin parches que el servidor rechazaría.
   const puedeAcc = usePuede();
   const tourEnPerfil = Boolean(realSlug) && puedeAcc("salon.editar");
-  const tourVistoEnServidor = useSalonStore((s) => s.salonProfile.tourPanelVisto === true) && tourEnPerfil;
+  const tourVistoEnServidor =
+    useSalonStore((s) => s.salonProfile.tourPanelVisto === true) && tourEnPerfil;
   const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
   const marcarTourVisto = useCallback(() => {
     // Las demos no escriben esta preferencia. En un salón real viaja como un
@@ -385,7 +401,12 @@ function DashboardLayoutV1() {
 
   return (
     <div className="panel-marco flex w-auto min-w-0">
-      <div className={cn("flex min-h-[inherit] min-w-0 flex-1 overflow-visible rounded-[inherit] bg-transparent", path === "/app/calendar" && "h-dvh")}>
+      <div
+        className={cn(
+          "flex min-h-[inherit] min-w-0 flex-1 overflow-visible rounded-[inherit] bg-transparent",
+          path === "/app/calendar" && "h-dvh",
+        )}
+      >
         <MenuLateral path={path} />
 
         <div
@@ -404,12 +425,14 @@ function DashboardLayoutV1() {
             hueco para la barra inferior. El último bloque de cada pantalla
             puede crecer hasta el borde (flex-1). */}
           <FranjaVerComo />
-          <main className={cn(
-            "hueco-fab-panel flex min-w-0 flex-1 flex-col",
-            path === "/app/calendar"
-              ? "min-h-0 overflow-hidden bg-transparent p-0"
-              : "gutter-x pt-[var(--hueco-seccion)]",
-          )}>
+          <main
+            className={cn(
+              "hueco-fab-panel flex min-w-0 flex-1 flex-col",
+              path === "/app/calendar"
+                ? "min-h-0 overflow-hidden bg-transparent p-0"
+                : "gutter-x pt-[var(--hueco-seccion)]",
+            )}
+          >
             {/* Lote 16: cada pantalla entra con un fundido y 8 px de desplazamiento
               (180 ms). Con la Web Animations API y sin `key`: remontar el
               contenedor en cada ruta costaba el doble de tiempo al navegar.
@@ -418,13 +441,11 @@ function DashboardLayoutV1() {
             <div
               ref={contenedorRuta}
               data-pagina={path === "/app/calendar" ? undefined : ""}
-              className={path === "/app/calendar" ? "flex min-h-0 min-w-0 flex-1 flex-col" : "pagina"}
+              className={
+                path === "/app/calendar" ? "flex min-h-0 min-w-0 flex-1 flex-col" : "pagina"
+              }
             >
-              {fueraDelPlan ? null : permitida ? (
-                <Outlet />
-              ) : (
-                <SinPermiso seccion={seccion} />
-              )}
+              {fueraDelPlan ? null : permitida ? <Outlet /> : <SinPermiso seccion={seccion} />}
             </div>
           </main>
         </div>
@@ -437,22 +458,30 @@ function DashboardLayoutV1() {
           </Suspense>
         )}
 
-        {conAsistente && <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
-          <SheetContent side="right" panel="asistente" className="flex w-full flex-col gap-0 p-0">
-            <SheetHeader className="border-b border-border/60 px-4 py-4 text-left">
-              <SheetTitle className="text-lg font-extrabold">Asistente del salón</SheetTitle>
-              <SheetDescription>
-                Consulta tus datos en lenguaje natural. Calcula sobre tus reservas reales: no es un
-                modelo de lenguaje y no inventa cifras.
-              </SheetDescription>
-            </SheetHeader>
-            {assistantOpen && (
-              <Suspense fallback={<p role="status" className="p-4 text-sm text-muted-foreground">Cargando asistente…</p>}>
-                <AssistantPanel className="flex-1" />
-              </Suspense>
-            )}
-          </SheetContent>
-        </Sheet>}
+        {conAsistente && (
+          <Sheet open={assistantOpen} onOpenChange={setAssistantOpen}>
+            <SheetContent side="right" panel="asistente" className="flex w-full flex-col gap-0 p-0">
+              <SheetHeader className="border-b border-border/60 px-4 py-4 text-left">
+                <SheetTitle className="text-lg font-extrabold">Asistente del salón</SheetTitle>
+                <SheetDescription>
+                  Consulta tus datos en lenguaje natural. Calcula sobre tus reservas reales: no es
+                  un modelo de lenguaje y no inventa cifras.
+                </SheetDescription>
+              </SheetHeader>
+              {assistantOpen && (
+                <Suspense
+                  fallback={
+                    <p role="status" className="p-4 text-sm text-muted-foreground">
+                      Cargando asistente…
+                    </p>
+                  }
+                >
+                  <AssistantPanel className="flex-1" />
+                </Suspense>
+              )}
+            </SheetContent>
+          </Sheet>
+        )}
       </div>
     </div>
   );

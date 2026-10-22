@@ -1,4 +1,4 @@
-import { avatarValido, elegirAvatar, type AvatarElegido } from "@/lib/avatar";
+import { avatarValido, elegirAvatar, hashTexto, type AvatarElegido } from "@/lib/avatar";
 
 /**
  * Retratos DiceBear «Notionists» (los de antes de la noche del 21-oct), con
@@ -33,6 +33,14 @@ export type PeinadoRetrato = (typeof PEINADOS_RETRATO)[number]["id"];
 export type TipoRetratoLegado = "mujer" | "hombre";
 
 export type Retrato = { version: 3; peinado: PeinadoRetrato };
+
+/** Retrato automático estable: reparte los ids por el catálogo completo. */
+export function retratoPorDefecto(id: string): Retrato {
+  return {
+    version: 3,
+    peinado: PEINADOS_RETRATO[hashTexto(id) % PEINADOS_RETRATO.length].id,
+  };
+}
 
 /** Selector Notionists hasta el 21-oct: tipo + índice en su lista de 8. */
 export type RetratoV1 = { version: 1; tipo: TipoRetratoLegado; peinado: number };
