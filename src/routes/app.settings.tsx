@@ -23,6 +23,7 @@ import { AjustesPreguntas } from "@/components/AjustesPreguntas";
 import { AjustesDiasEspeciales } from "@/components/AjustesDiasEspeciales";
 import { GuiaUso } from "@/components/GuiaUso";
 import { AjustesAccesos } from "@/components/AjustesAccesos";
+import { FilaInstalar } from "@/components/InstalarPanel";
 import { enlacesSuscripcion } from "@/lib/calendario-ics";
 import { AjustesCalendarios } from "@/components/AjustesCalendarios";
 import {
@@ -642,6 +643,7 @@ function Settings() {
               titulo="Accesos"
               resumen="Quién entra en el panel, con qué rol y a qué profesional corresponde"
             >
+              <FilaInstalar />
               <AjustesAccesos />
             </SeccionAjustes>
           )}

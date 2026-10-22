@@ -22,7 +22,7 @@
  * sesión y pertenencia en cada operación protegida.
  */
 import { IconoSiShow } from "@/components/MarcaSiShow";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 
@@ -51,6 +51,11 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
   // Así no existe ni un instante en el que el panel esté en pantalla sin que
   // se haya comprobado nada.
   const [estado, setEstado] = useState<Estado>(estadoInicialGuardia);
+  // Móvil (22-oct): este efecto vuelve a correr en CADA cambio de sección
+  // (depende de `pathname`). Las precargas solo sirven para la entrada: la
+  // consume `useRealSalon` una vez por salón. Repetidas, cada navegación pedía
+  // otra vez el perfil y, en un salón real, la agenda entera, que nadie usaba.
+  const precargado = useRef<string | null>(null);
 
   useEffect(() => {
     // Sin salón no hay nada que proteger: es el panel de ejemplo de siempre.
@@ -59,8 +64,10 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
       return;
     }
     let vivo = true;
+    const primeraVez = precargado.current !== slug;
+    precargado.current = slug;
     // El perfil es público: se pide a la vez que el acceso, no después.
-    precargarPerfilDelSalon(slug);
+    if (primeraVez) precargarPerfilDelSalon(slug);
     // Rendimiento (21-oct): misma caché que el `beforeLoad`; al navegar no
     // hay viaje de red, la pantalla se decide con la membresía ya cargada.
     accesoPanel
@@ -74,7 +81,7 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
         }
         // Salón real con acceso: la agenda se empieza a pedir ya, sin
         // esperar a que React monte el panel (un viaje menos en serie).
-        if (acc.real) precargarDatosDelSalon(slug);
+        if (acc.real && primeraVez) precargarDatosDelSalon(slug);
         setEstado("adelante");
       })
       .catch((err) => {

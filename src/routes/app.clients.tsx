@@ -1,6 +1,6 @@
 import { fichaDeClientaMemo } from "@/lib/selectores-rutas";
 import { useFichas } from "@/lib/use-fichas";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useDeferredValue, useEffect, useMemo, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { useCitasVisibles, usePermisos } from "@/lib/accesos-panel";
@@ -219,20 +219,23 @@ function Clients() {
     allRows.some((r) => (r.penaltyEur ?? 0) > 0);
 
   // Lote 16: sin texto no hay nada que buscar (antes se normalizaban todas las fichas igualmente).
-  const hayBusqueda = busqueda.trim().length > 0;
+  // Móvil (22-oct): la caja de texto se pinta al instante y la lista sigue
+  // cuando puede (con ~1.300 clientas, cada tecla recalculaba todo en el acto).
+  const busquedaDiferida = useDeferredValue(busqueda);
+  const hayBusqueda = busquedaDiferida.trim().length > 0;
   const buscados = useMemo(
-    () =>
-      hayBusqueda ? buscarClientas(busqueda, { clientes: clients, citas: appointments }) : clients,
-    [hayBusqueda, busqueda, clients, appointments],
+    () => (hayBusqueda ? buscarClientas(busquedaDiferida, { clientes: clients, citas: appointments }) : clients),
+    [hayBusqueda, busquedaDiferida, clients, appointments],
   );
   // Fuera de las suyas: las del salón que coinciden, solo para darles cita (ficha reducida).
-  const otrasDelSalon =
-    !todasLasClientas && busqueda.trim().length >= 2
-      ? buscarClientas(busqueda, { clientes: clientesSalon, citas: todasLasCitas })
-          .filter((c) => !propias.has(c.id))
-          .slice(0, 5)
-      : [];
-  const ordenBusqueda = new Map(buscados.map((c, i) => [c.id, i]));
+  const otrasDelSalon = useMemo(
+    () =>
+      !todasLasClientas && busquedaDiferida.trim().length >= 2
+        ? buscarClientas(busquedaDiferida, { clientes: clientesSalon, citas: todasLasCitas }).filter((c) => !propias.has(c.id)).slice(0, 5)
+        : [],
+    [todasLasClientas, busquedaDiferida, clientesSalon, todasLasCitas, propias],
+  );
+  const ordenBusqueda = useMemo(() => new Map(buscados.map((c, i) => [c.id, i])), [buscados]);
   const filtroEfectivo: Filtro = filtro === "penalizado" && !conRecargo ? "todos" : filtro;
   const pasa = (c: Row & { tag: ClientTag }) => {
     switch (filtroEfectivo) {
@@ -248,17 +251,18 @@ function Clients() {
         return c.tag === filtroEfectivo;
     }
   };
-  const rows = allRows
+  const rows = useMemo(() => allRows
     .filter(pasa)
     .filter((c) => ordenBusqueda.has(c.id))
     .sort((a, b) =>
-      busqueda.trim()
+      hayBusqueda
         ? ordenBusqueda.get(a.id)! - ordenBusqueda.get(b.id)!
         : filtroEfectivo === "hoy"
           ? +new Date(citaDeHoy.get(a.id)!.start) - +new Date(citaDeHoy.get(b.id)!.start)
           : b.totalSpent - a.totalSpent,
     )
-    .slice(0, 60);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `pasa` solo lee filtroEfectivo, citaDeHoy y colorPendiente
+    .slice(0, 60), [allRows, ordenBusqueda, hayBusqueda, filtroEfectivo, citaDeHoy, colorPendiente]);
 
   // Frecuencia y servicio habitual salen de la ficha (con la carta viva), solo
   // para las filas que se ven.
