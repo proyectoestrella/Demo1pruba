@@ -31,6 +31,11 @@ export const ERROR_NOMBRE_INVALIDO = "NOMBRE_INVALIDO";
 export const ERROR_TELEFONO_INVALIDO = "TELEFONO_INVALIDO";
 export const ERROR_RESERVA_LEJANA = "RESERVA_LEJANA";
 export const ERROR_DEMASIADAS_RESERVAS = "RESERVA_DEMASIADAS";
+export const ERROR_ESPERA_LLENA = "ESPERA_LLENA";
+export const ERROR_ESPERA_SERVICIO = "ESPERA_SERVICIO_NO_DISPONIBLE";
+
+/** Tope de entradas en la lista de espera de un salón: la web pública no puede llenarla sin límite. */
+export const MAX_LISTA_ESPERA_POR_SALON = 150;
 
 /** Topes de la reserva pública (M4, auditoría 18-oct-2026). */
 export const HORIZONTE_RESERVA_DIAS = 365;

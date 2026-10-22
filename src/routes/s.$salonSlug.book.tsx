@@ -82,6 +82,7 @@ import {
 } from "@/lib/reserva-publica";
 import { reintentarSalonPublico } from "@/lib/use-real-salon";
 import { sumServices } from "@/lib/appointment-services";
+import { ApuntarseEsperaWeb } from "@/components/ApuntarseEsperaWeb";
 import { resumenServiciosReserva } from "@/lib/resumen-servicios-reserva";
 import { FluidSteps } from "@/components/twentyfirst/fluid-steps";
 import { capitalizar, eur, fechaLarga } from "@/lib/copy";
@@ -902,6 +903,7 @@ function BookingWizard() {
               selectedTime={data.time}
               onPick={(date, time) => setData((d) => ({ ...d, date, time }))}
               onElegirProfesional={(id) => setData((d) => ({ ...d, employeeId: id }))}
+              espera={realSlug ? { salonSlug, salonName: profile.name } : undefined}
               employees={eligibleEmployees}
               smartSpread={!!profile.smartSpread}
               lastSlotBufferMin={profile.lastSlotBufferMin ?? 0}
@@ -1593,7 +1595,10 @@ function DateTimeStep({
   serviceIds,
   serviciosPorProfesional,
   onElegirProfesional,
+  espera,
 }: {
+  /** Lista de espera de la web (solo salones reales): se ofrece al no haber hueco. */
+  espera?: { salonSlug: string; salonName: string };
   /** Cambia la profesional desde «A las HH:MM están libres…» (solo ofrece libres). */
   onElegirProfesional?: (id: EmployeeId | "any") => void;
   /** Zona horaria de la agenda del salón (ver lib/zona-horaria.ts). */
@@ -2056,6 +2061,16 @@ function DateTimeStep({
           )}
         </div>
       </div>
+      {espera && serviceIds[0] && (
+        <ApuntarseEsperaWeb
+          key={activeDateKey ?? "sin-dia"}
+          salonSlug={espera.salonSlug}
+          salonName={espera.salonName}
+          serviceId={serviceIds[0]}
+          employeeId={stylistChoice === "any" ? "any" : stylistChoice}
+          rangoSugerido={activeDate ? capitalizar(fechaLarga(activeDate)) : ""}
+        />
+      )}
     </Step>
   );
 }

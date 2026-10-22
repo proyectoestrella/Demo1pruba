@@ -56,6 +56,8 @@ const PUBLICAS_A_PROPOSITO: Record<string, string> = {
   esSalonRealPublico: "solo dice si un slug existe; el slug ya está en la URL pública",
   getSalonProfile: "la ficha que el propio salón enseña en su web",
   checkClientPenalty: "si ESE teléfono debe dinero, para poder reservar; no devuelve listas",
+  apuntarseListaEsperaPublica:
+    "la clienta se apunta sola cuando no hay hueco; solo INSERTA (no lee ni devuelve listas), con aviso de privacidad, teléfono válido, servicio de la carta, límite por IP y tope por salón",
 };
 
 /** El cuerpo de una función exportada, desde su `export const X` hasta el siguiente. */
@@ -143,6 +145,18 @@ describe("la guarda está puesta en todas las funciones de servidor", () => {
       'const exigirAcusePrivacidad = "privacy_notice_acknowledged_at" in fila',
     );
     expect(FUENTE).toContain("exigirAcusePrivacidad && faltaColumnaAcusePrivacidad(error)");
+  });
+
+  it("apuntarse a la lista de espera desde fuera es una escritura estrecha y con topes", () => {
+    const cuerpo = cuerpoDe("apuntarseListaEsperaPublica");
+    expect(cuerpo).toContain("await acceso(data.slug)");
+    expect(cuerpo).toContain('quien.tipo === "demo"');
+    expect(cuerpo).toContain("haLeidoAvisoPrivacidad(data.privacyNoticeAccepted)");
+    expect(cuerpo).toContain("admiteReservaPublicaPorIp(data.slug)");
+    expect(cuerpo).toContain("MAX_LISTA_ESPERA_POR_SALON");
+    // El id lo pone el servidor: quien llama no puede pisar una entrada ajena.
+    expect(cuerpo).toContain("local_id: `web-${randomUUID()}`");
+    expect(cuerpo).not.toContain("upsert");
   });
 
   it("el servidor impide guardar perfiles por encima del plan en alta y parche", () => {

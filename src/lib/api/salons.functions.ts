@@ -69,6 +69,9 @@ import {
   ERROR_NOMBRE_INVALIDO,
   ERROR_RESERVA_LEJANA,
   ERROR_DEMASIADAS_RESERVAS,
+  ERROR_ESPERA_LLENA,
+  ERROR_ESPERA_SERVICIO,
+  MAX_LISTA_ESPERA_POR_SALON,
   HORIZONTE_RESERVA_DIAS,
   MAX_RESERVAS_POR_TELEFONO_Y_DIA,
   MAX_RESERVAS_PUBLICAS_POR_SALON_Y_HORA,
@@ -1094,6 +1097,80 @@ export const syncWaitlistEntry = createServerFn({ method: "POST" })
       return { synced: false as const };
     }
     if (error) throw new Error(`syncWaitlistEntry: ${error.message}`);
+    return { synced: true as const };
+  });
+
+/**
+ * La clienta se apunta SOLA a la lista de espera desde la web de reservas
+ * cuando no hay hueco. Es la única escritura pública de la lista y por eso va
+ * en una función aparte, mucho más estrecha que `syncWaitlistEntry` (que sigue
+ * siendo solo del panel): el id lo pone el servidor, el servicio tiene que
+ * existir y estar activo en la carta, el teléfono se valida y se guarda en
+ * E.164, hay límite por IP y por salón, y repetir (mismo teléfono y servicio)
+ * no duplica. Un slug sin fila en `salons` (demo) no guarda nada.
+ */
+export const apuntarseListaEsperaPublica = createServerFn({ method: "POST" })
+  .middleware([conSesion])
+  .inputValidator(
+    z.object({
+      slug,
+      clientName: z.string().trim().max(100),
+      phone: z.string().max(30),
+      serviceId: z.string().max(100),
+      preferredEmployeeId: z.string().max(100).default("any"),
+      preferredRange: z.string().trim().max(100).default(""),
+      privacyNoticeAccepted: z.boolean().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const quien = await acceso(data.slug);
+    if (quien.tipo === "demo") return { synced: false as const };
+    if (!haLeidoAvisoPrivacidad(data.privacyNoticeAccepted)) {
+      return { synced: false as const, reason: ERROR_PRIVACIDAD_NO_CONFIRMADA };
+    }
+    if (data.clientName.length < 2) return { synced: false as const, reason: ERROR_NOMBRE_INVALIDO };
+    const tel = validarTelefono(data.phone);
+    if (!tel.ok) return { synced: false as const, reason: ERROR_TELEFONO_INVALIDO };
+    if (!admiteReservaPublicaPorIp(data.slug)) {
+      return { synced: false as const, reason: ERROR_DEMASIADAS_RESERVAS };
+    }
+    const supabase = getSupabaseServerClient();
+    if (!supabase) return { synced: false as const };
+    const { data: salonRow, error: errorSalon } = await supabase
+      .from("salons")
+      .select("profile")
+      .eq("slug", data.slug)
+      .maybeSingle();
+    if (errorSalon) throw new Error(`apuntarseListaEsperaPublica (perfil): ${errorSalon.message}`);
+    const perfil = salonRow?.profile as SalonProfile | undefined;
+    if (!perfil || !datosReservaPublicaDesdeCarta(perfil, [data.serviceId])) {
+      return { synced: false as const, reason: ERROR_ESPERA_SERVICIO };
+    }
+    const { data: actuales, error: errorLista } = await supabase
+      .from("waitlist")
+      .select("local_id, phone, service_id")
+      .eq("salon_slug", data.slug);
+    if (faltaEsquema(errorLista)) return { synced: false as const };
+    if (errorLista) throw new Error(`apuntarseListaEsperaPublica (lista): ${errorLista.message}`);
+    const filas = (actuales ?? []) as Array<{ phone: string | null; service_id: string | null }>;
+    const clave = phoneKey(tel.e164);
+    if (filas.some((f) => phoneKey(f.phone) === clave && f.service_id === data.serviceId)) {
+      return { synced: true as const, yaApuntada: true as const };
+    }
+    if (filas.length >= MAX_LISTA_ESPERA_POR_SALON) {
+      return { synced: false as const, reason: ERROR_ESPERA_LLENA };
+    }
+    const { error } = await supabase.from("waitlist").insert({
+      salon_slug: data.slug,
+      local_id: `web-${randomUUID()}`,
+      client_name: data.clientName,
+      phone: tel.e164,
+      service_id: data.serviceId,
+      preferred_employee_id: data.preferredEmployeeId,
+      preferred_range: data.preferredRange,
+    });
+    if (faltaEsquema(error)) return { synced: false as const };
+    if (error) throw new Error(`apuntarseListaEsperaPublica: ${error.message}`);
     return { synced: true as const };
   });
 

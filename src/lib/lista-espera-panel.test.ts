@@ -40,3 +40,37 @@ describe("lista de espera (lote 16)", () => {
     expect(filtrarEspera(l, { servicio: "todos", profesional: "maria" }).map((w) => w.id)).toEqual(["1", "2"]);
   });
 });
+
+import { priorizarEsperaParaHueco } from "./lista-espera-panel";
+
+describe("lista priorizada para un hueco liberado", () => {
+  // Lunes 28-sep-2026 10:00 en Madrid (verano, UTC+2) = 08:00Z.
+  const hueco = "2026-09-28T08:00:00.000Z";
+  const espera = (id: string, createdAt: string, serviceId: string, preferredEmployeeId: string) =>
+    ({ id, clientName: id, phone: "600", serviceId, preferredEmployeeId, preferredRange: "", createdAt }) as WaitlistEntry;
+  const base = { startISO: hueco, equipo: [maria, sara], duracionDe: (s: string) => (s === "color" ? 90 : 45), timeZone: "Europe/Madrid" };
+  const ocupaMaria = { ...cita("maria", new Date(hueco), 60), start: hueco };
+
+  test("las que caben van antes, y entre ellas la que más lleva esperando", () => {
+    const r = priorizarEsperaParaHueco({
+      ...base,
+      citas: [ocupaMaria],
+      espera: [
+        espera("reciente", "2026-09-27T10:00:00Z", "corte", "any"),
+        espera("antigua", "2026-09-20T10:00:00Z", "corte", "any"),
+        espera("quiere-maria", "2026-09-10T10:00:00Z", "corte", "maria"),
+      ],
+    });
+    expect(r.map((x) => x.entry.id)).toEqual(["antigua", "reciente", "quiere-maria"]);
+    expect(r.map((x) => x.cabe)).toEqual([true, true, false]);
+    expect(r[0].profesionalId).toBe("sara");
+  });
+  test("si el servicio no cabe en lo que dura el hueco libre, no cabe", () => {
+    const r = priorizarEsperaParaHueco({
+      ...base,
+      citas: [{ ...cita("maria", new Date(hueco), 60), start: "2026-09-28T09:00:00.000Z" }, { ...cita("sara", new Date(hueco), 60), start: "2026-09-28T09:00:00.000Z" }],
+      espera: [espera("color", "2026-09-01T10:00:00Z", "color", "any"), espera("corte", "2026-09-02T10:00:00Z", "corte", "any")],
+    });
+    expect(r.map((x) => [x.entry.id, x.cabe])).toEqual([["corte", true], ["color", false]]);
+  });
+});

@@ -1,7 +1,8 @@
 import { avisar } from "@/lib/deshacer-maqueta";
 import { useEffect, useMemo, useState } from "react";
 import { useTrasPintar } from "@/lib/tras-pintar-panel";
-import { esperandoDesde, filtrarEspera, proximoHuecoPara, type HuecoPropuesto } from "@/lib/lista-espera-panel";
+import { esperandoDesde, filtrarEspera, priorizarEsperaParaHueco, proximoHuecoPara, type HuecoPropuesto } from "@/lib/lista-espera-panel";
+import { zonaDelSalon } from "@/lib/zona-horaria";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
@@ -12,7 +13,7 @@ import { professionalWord } from "@/lib/business-type";
 import { employeeMap } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
-import { enlaceDeHueco } from "@/lib/avisos";
+import { enlaceDeHueco, mensajeDeHueco } from "@/lib/avisos";
 import type { EmployeeId, WaitlistEntry } from "@/lib/mock/types";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -45,7 +46,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarCheck, ListChecks, MessageCircle, Plus, Trash2 } from "lucide-react";
+import { CalendarCheck, Copy, ListChecks, MessageCircle, Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/app/waitlist")({
   beforeLoad: beforeLoadSiModuloVisible("lista-espera"),
@@ -134,6 +135,38 @@ function Waitlist() {
   // El primero de la lista es el que lleva más tiempo esperando: a ese es a
   // quien toca avisar cuando se libera un hueco.
   const siguiente = waitlist[0];
+  // Lista priorizada para el hueco recién liberado: quién cabe de verdad, y
+  // entre ellas la que más lleva esperando.
+  const perfil = useSalonStore((s) => s.salonProfile);
+  const priorizadas = useMemo(
+    () =>
+      lastFreedSlot && waitlist.length
+        ? priorizarEsperaParaHueco({
+            espera: waitlist,
+            startISO: lastFreedSlot,
+            citas,
+            equipo,
+            duracionDe: (id) => serviceMap[id]?.durationMin ?? 45,
+            timeZone: zonaDelSalon(perfil),
+            diasEspeciales: perfil.diasEspeciales,
+            bloqueosAgenda: perfil.bloqueosAgenda,
+            serviciosPorProfesional: perfil.serviciosPorProfesional,
+          })
+        : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lastFreedSlot, waitlist, citas, equipo, perfil, services],
+  );
+
+  async function copiarMensaje(w: WaitlistEntry) {
+    if (!lastFreedSlot) return;
+    const texto = mensajeDeHueco({ clientName: w.clientName, salonName, startISO: lastFreedSlot, servicio: serviceMap[w.serviceId]?.name });
+    try {
+      await navigator.clipboard.writeText(texto);
+      toast.success("Mensaje copiado", { description: `Pégalo en el chat de ${w.clientName.split(" ")[0]}.` });
+    } catch {
+      toast.error("No se ha podido copiar. Usa «Avisar» para abrir WhatsApp.");
+    }
+  }
 
   if (!visible) return null;
 
@@ -157,8 +190,8 @@ function Waitlist() {
           agenda. El mensaje lo envías tú desde tu móvil: siShow no manda nada solo.
         </p>
         {lastFreedSlot && siguiente && (
-          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-card px-3 py-2 text-foreground">
-            <span className="text-sm">
+          <div className="mt-3 space-y-2 rounded-xl bg-card px-3 py-2 text-foreground" data-testid="espera-priorizada">
+            <p className="text-sm">
               Se acaba de liberar el hueco de las{" "}
               <strong>
                 {new Date(lastFreedSlot).toLocaleTimeString("es", {
@@ -168,11 +201,25 @@ function Waitlist() {
                 })}
               </strong>{" "}
               ({new Date(lastFreedSlot).toLocaleDateString("es", { day: "numeric", month: "long" })}
-              ).
-            </span>
-            <Button size="sm" className="gap-1.5" onClick={() => setAvisoTarget(siguiente)}>
-              <MessageCircle className="h-3.5 w-3.5" /> Avisar a {siguiente.clientName}
-            </Button>
+              ). Por este orden:
+            </p>
+            <ol className="space-y-1.5">
+              {priorizadas.slice(0, 4).map((p, i) => (
+                <li key={p.entry.id} className="flex flex-wrap items-center gap-2 text-[13px]">
+                  <span className="w-5 font-bold tabular-nums text-cafe-suave">{i + 1}.</span>
+                  <span className="min-w-0 flex-1 truncate font-bold">{p.entry.clientName}</span>
+                  <span className="text-muted-foreground">
+                    {p.cabe ? "Le cabe" : "No le cabe"} · {serviceMap[p.entry.serviceId]?.name ?? "cualquier servicio"} · espera {esperandoDesde(p.entry.createdAt, ahora)}
+                  </span>
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => copiarMensaje(p.entry)}>
+                    <Copy className="h-3.5 w-3.5" /> Copiar mensaje
+                  </Button>
+                  <Button size="sm" className="gap-1.5" disabled={!p.entry.phone} onClick={() => setAvisoTarget(p.entry)}>
+                    <MessageCircle className="h-3.5 w-3.5" /> Avisar
+                  </Button>
+                </li>
+              ))}
+            </ol>
           </div>
         )}
       </div>
