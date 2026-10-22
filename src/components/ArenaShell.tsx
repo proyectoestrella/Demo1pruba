@@ -34,7 +34,7 @@ import { BotonHistorial } from "@/components/HojaHistorial";
 import { TOTAL_PASOS, useProgresoPrimerosPasos } from "@/components/PrimerosPasos";
 import { Button } from "@/components/ui/button";
 import { AvatarSalon } from "@/components/AvatarSalon";
-import { IconoSiShow, LetrasSiShow } from "@/components/MarcaSiShow";
+import { IconoSiShow } from "@/components/MarcaSiShow";
 import { VerComo, PlanContratado } from "@/components/VerComo";
 import { AjustesCalendarios } from "@/components/AjustesCalendarios";
 import { API_CALENDARIOS, alcanceCalendario, useCalendariosActivos } from "@/lib/calendarios-panel";
@@ -204,12 +204,6 @@ function Marca({ compacta = false }: { compacta?: boolean }) {
         >
           {name}
         </strong>
-        {!compacta && (
-          <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
-            <LetrasSiShow className="h-3.5 shrink-0" />
-          </span>
-        )}
-        {compacta && <LetrasSiShow className="mt-0.5 h-3" />}
       </span>
     </Link>
   );

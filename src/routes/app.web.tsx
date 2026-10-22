@@ -963,7 +963,7 @@ function MiWebHidratada() {
             <p className="mt-2 text-center text-[12.5px] text-muted-foreground">
               {alDia
                 ? dispositivo === "movil"
-                  ? "Así la ven desde el móvil, que es por donde entran casi todos."
+                  ? "Así la ven desde el móvil."
                   : "Así la ven desde un ordenador."
                 : "Actualizando la vista previa…"}
             </p>

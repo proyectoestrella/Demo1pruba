@@ -551,7 +551,7 @@ function SalonHome() {
         >
           <div className="entrada-portada flex max-w-3xl flex-col items-center">
             <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
-              {profile.rating > 0 && (
+              {profile.rating > 0 && !protegerContenidoReal && (
                 <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 text-[13px] backdrop-blur-sm">
                   <Star className="h-3.5 w-3.5 fill-white text-white" aria-hidden="true" />
                   <span className="font-semibold tabular-nums">{notaEs(profile.rating)}</span>
