@@ -81,9 +81,7 @@ export function WalkInDialog({ open, onOpenChange }: WalkInDialogProps) {
       status: "confirmed",
       note: "Sin cita — entró directamente",
     });
-    toast.success("Clienta en agenda", {
-      description: `${clientName} · ${service.name} · ahora`,
-    });
+    // El aviso con «Deshacer» lo saca el registro de cambios: un solo aviso.
     onOpenChange(false);
   }
 
