@@ -261,13 +261,15 @@ function Clients() {
           ? +new Date(citaDeHoy.get(a.id)!.start) - +new Date(citaDeHoy.get(b.id)!.start)
           : b.totalSpent - a.totalSpent,
     )
+    // Sin tope (22-oct): con ~1.250 clientas importadas, «Ver más» debe llegar a todas;
+    // la tabla pinta de 20 en 20 (`cuantas`) y las fichas solo se calculan para esas.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `pasa` solo lee filtroEfectivo, citaDeHoy y colorPendiente
-    .slice(0, 60), [allRows, ordenBusqueda, hayBusqueda, filtroEfectivo, citaDeHoy, colorPendiente]);
+    , [allRows, ordenBusqueda, hayBusqueda, filtroEfectivo, citaDeHoy, colorPendiente]);
 
   // Frecuencia y servicio habitual salen de la ficha (con la carta viva), solo
   // para las filas que se ven.
   const fichas = new Map(
-    rows.map((c) => [
+    rows.slice(0, cuantas).map((c) => [
       c.id,
       fichaDeClientaMemo(c.id, {
         citas: citasPorClienta.get(c.id) ?? SIN_CITAS,
