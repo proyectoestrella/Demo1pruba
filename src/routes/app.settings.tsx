@@ -340,7 +340,7 @@ function Settings() {
                 </h3>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Tu calendario la actualiza cada pocas horas; la agenda al minuto está en siShow.
-                  Solo aparecen citas confirmadas, con hora, servicio y nombre de pila.
+                  Solo aparecen citas confirmadas, como «Cita reservada»: con su hora, sin datos de la clienta.
                 </p>
               </div>
               {!realSlug ? (
