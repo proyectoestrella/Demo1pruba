@@ -19,11 +19,23 @@
   margin-inline: auto;
   padding-inline: var(--ws-gutter);
 }
+/* 22-oct: en ordenador el ancho útil crece con la pantalla (1240 → 1600 px)
+ * y el margen lateral es fluido (hasta 48 px). A 1920 px quedaban 360 px
+ * vacíos a cada lado. El móvil (16 px) no cambia. */
 @media (min-width: 48rem) {
-  :root { --ws-gutter: 24px; }
+  :root { --ws-gutter: clamp(16px, 4vw, 48px); }
 }
 @media (min-width: 64rem) {
-  :root { --ws-gutter: 32px; }
+  :root { --ws-ancho-util: clamp(1240px, 86vw, 1600px); }
+}
+/* Tipografía que acompaña al ancho: títulos y texto de lectura crecen un poco
+ * en pantallas grandes para no verse diminutos al 100 %. */
+@media (min-width: 64rem) {
+  .web-salon h2.ws-titulo { font-size: clamp(38px, 2.7vw, 50px); }
+}
+@media (min-width: 90rem) {
+  .web-salon main .text-\[15px\] { font-size: 16px; }
+  .web-salon main .text-sm { font-size: 15px; }
 }
 
 /* ---- Paleta de la web del salón (18.2) -----------------------------------
@@ -215,6 +227,10 @@ body:has(.web-salon) [role="dialog"] .font-display {
 @keyframes ws-acercar {
   from { transform: scale(1.06); }
   to { transform: scale(1); }
+}
+.web-salon .ws-portada-velo {
+  background:
+    radial-gradient(ellipse 62% 58% at 50% 52%, rgba(48, 48, 48, .74) 0%, rgba(48, 48, 48, .70) 55%, rgba(48, 48, 48, .62) 100%);
 }
 .web-salon .ws-portada-foto {
   animation: ws-acercar 1600ms var(--curva-salida) both;

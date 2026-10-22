@@ -1,6 +1,4 @@
-import { useEffect, useState } from "react";
 import { useReveal } from "@/hooks/use-reveal";
-import { salidaSuave } from "@/lib/movimiento-panel";
 import { cn } from "@/lib/utils";
 import { notaEs } from "@/lib/web-publica";
 
@@ -23,35 +21,10 @@ export function TrazoTitulo({ className, centrado }: { className?: string; centr
 }
 
 /**
- * La nota (4,5) sube desde 0 en 700 ms cuando la sección entra en pantalla.
- * El lector de pantalla oye solo el valor final.
+ * La nota del salón (4,5), fija desde el primer pintado. Antes subía desde 0
+ * al entrar en pantalla y, en móvil y en ordenador, se veía aparecer y
+ * desaparecer (22-oct, PeluChic): ahora se enseña el valor final y nada más.
  */
 export function NotaQueSube({ valor, className }: { valor: number; className?: string }) {
-  const { ref, visible, armado } = useReveal<HTMLSpanElement>();
-  const [n, setN] = useState(valor);
-  useEffect(() => {
-    if (!armado) {
-      setN(valor);
-      return;
-    }
-    if (!visible) {
-      setN(0);
-      return;
-    }
-    const ini = performance.now();
-    let id = 0;
-    const paso = (t: number) => {
-      const k = salidaSuave((t - ini) / 700);
-      setN(k >= 1 ? valor : valor * k);
-      if (k < 1) id = requestAnimationFrame(paso);
-    };
-    id = requestAnimationFrame(paso);
-    return () => cancelAnimationFrame(id);
-  }, [armado, visible, valor]);
-  return (
-    <span ref={ref} className={className}>
-      <span aria-hidden="true">{notaEs(Math.round(n * 10) / 10)}</span>
-      <span className="sr-only">{notaEs(valor)}</span>
-    </span>
-  );
+  return <span className={className}>{notaEs(valor)}</span>;
 }

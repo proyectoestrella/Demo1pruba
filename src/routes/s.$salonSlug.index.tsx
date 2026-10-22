@@ -59,6 +59,7 @@ import {
   notaEs,
   precioDeCarta,
   resenasDeGoogle,
+  especialidadPublica,
   seccionResenasPublicas,
 } from "@/lib/web-publica";
 import { CartaServicios } from "@/components/web-salon/CartaServicios";
@@ -530,14 +531,17 @@ function SalonHome() {
                   ? `Un trabajo de ${profile.name}`
                   : `Interior de ${profile.name}`
             }
-            className="ws-portada-foto absolute inset-0 -z-20 h-full w-full object-cover"
+            className="ws-portada-foto absolute inset-0 -z-20 h-full w-full object-cover object-[42%_40%] md:object-[50%_40%]"
             width={1920}
             height={1280}
             fetchPriority="high"
             decoding="async"
           />
         )}
-        <div className="absolute inset-0 -z-10 bg-cafe/80" aria-hidden="true" />
+        {/* Velo más ligero (22-oct, «súbele un pelín el brillo»): 0,62 en los
+            bordes y 0,74 detrás del texto, donde el blanco sigue por encima de
+            4,5:1 aun sobre el píxel más claro de la foto. */}
+        <div className="ws-portada-velo absolute inset-0 -z-10" aria-hidden="true" />
 
         <div
           className={cn(
@@ -763,7 +767,7 @@ function SalonHome() {
               <Reveal>
                 <SoloProfessional
                   name={soloPro.name}
-                  specialty={soloPro.specialty}
+                  specialty={especialidadPublica(soloPro.specialty)}
                   experience={experienciaEquipo?.porProfesional[0]?.experiencia}
                   photo={showsRealPhotos(tipo) ? fotoDe(soloPro) : undefined}
                 />
@@ -778,7 +782,7 @@ function SalonHome() {
                     >
                       <span className="min-w-0">
                         <b className="block font-display text-xl font-medium">{e.name}</b>
-                        <span className="block text-sm text-muted-foreground">{e.specialty}</span>
+                        <span className="block text-sm text-muted-foreground">{especialidadPublica(e.specialty)}</span>
                         {experienciaEquipo && (
                           <span className="block text-[13px] text-cafe-suave tabular-nums">
                             {experienciaEquipo.porProfesional[i]?.experiencia}
@@ -796,8 +800,8 @@ function SalonHome() {
                     id: e.id,
                     name: e.name,
                     role: experienciaEquipo
-                      ? `${e.specialty} · ${experienciaEquipo.porProfesional[i]?.rol}`
-                      : e.specialty,
+                      ? `${especialidadPublica(e.specialty)} · ${experienciaEquipo.porProfesional[i]?.rol}`
+                      : especialidadPublica(e.specialty),
                     image: fotoDe(e),
                   }))}
                 />

@@ -141,3 +141,28 @@ export function completarConDemoRegistrada<T extends Partial<SalonProfile>>(slug
   }
   return out as T;
 }
+
+/**
+ * Nota y reseñas de Google de un salón REAL cuyo slug tiene demo registrada
+ * (22-oct, PeluChic). El servidor pinta la demo registrada (4,5 · 81 reseñas)
+ * y, al hidratar, el perfil de la base de datos llegaba sin nota: la sección
+ * «Reseñas» y la nota de la portada aparecían y desaparecían. Solo se
+ * completan esas cifras públicas de su ficha de Google, y solo si el salón no
+ * guardó las suyas; el resto del perfil real no se toca.
+ */
+export function completarNotaGoogleDeDemo<T extends Partial<SalonProfile>>(
+  slug: string | undefined | null,
+  real: T,
+): T {
+  const demo = demoPorSlug(slug);
+  if (!demo || !(demo.rating > 0) || !(demo.reviewCount > 0)) return real;
+  if ((real.rating ?? 0) > 0 && (real.reviewCount ?? 0) > 0) return real;
+  const fichaDemo = demo.enlaces?.resenas;
+  const enlaces = real.enlaces ?? {};
+  return {
+    ...real,
+    rating: demo.rating,
+    reviewCount: demo.reviewCount,
+    ...(fichaDemo && !enlaces.resenas ? { enlaces: { ...enlaces, resenas: fichaDemo } } : {}),
+  };
+}

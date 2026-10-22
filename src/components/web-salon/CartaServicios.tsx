@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Clock } from "lucide-react";
+import { ArrowRight, ChevronDown, Clock } from "lucide-react";
 import type { Service } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import { precioDeCarta } from "@/lib/web-publica";
@@ -35,7 +35,7 @@ export function CartaServicios({
   if (!grupos.length) return null;
 
   const lista = (items: ServicioCarta[]) => (
-    <ul className="grid gap-2.5 md:grid-cols-2 2xl:grid-cols-3">
+    <ul className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-3">
       {items.map((s) => {
         const descripcion = descripciones?.[s.id]?.trim() || s.description?.trim();
         return (
@@ -104,12 +104,39 @@ export function CartaServicios({
 
   return (
     <div>
-      {/* Móvil: una fila que se desliza. Desde 768 px las pestanas bajan de
-          línea: con siete categorías, la última quedaba oculta sin pista. */}
+      {/* Móvil y tablet (22-oct): un único selector a todo el ancho con la
+          categoría actual y su número de servicios. La fila de pestañas se
+          cortaba («Tratami…») y, apilada, era un tocho de botones. */}
+      <div className="lg:hidden">
+        <label id={`${id}-etiqueta`} htmlFor={`${id}-selector`} className="ws-etiqueta mb-2 block text-center">
+          Categoría
+        </label>
+        <div className="relative mx-auto max-w-xl">
+          <select
+            id={`${id}-selector`}
+            aria-labelledby={`${id}-etiqueta`}
+            value={actual}
+            onChange={(e) => setActiva(Number(e.target.value))}
+            aria-controls={`${id}-panel`}
+            className="h-12 w-full cursor-pointer appearance-none truncate rounded-full border border-lino-fuerte bg-card pl-5 pr-12 text-[15px] font-bold text-foreground shadow-[var(--sombra-tarjeta-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            {grupos.map((g, i) => (
+              <option key={g.cat} value={i}>
+                {g.cat} ({g.items.length})
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-foreground"
+            aria-hidden="true"
+          />
+        </div>
+      </div>
+      {/* Ordenador: pestañas que bajan de línea, centradas. */}
       <div
         role="tablist"
         aria-label="Categorías de la carta"
-        className="sin-scrollbar flex gap-2 overflow-x-auto md:flex-wrap md:overflow-visible"
+        className="hidden flex-wrap justify-center gap-2 lg:flex"
       >
         {grupos.map((g, i) => {
           const sel = i === actual;

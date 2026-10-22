@@ -67,7 +67,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Calendar } from "@/components/ui/calendar";
-import { CONTENEDOR_SALON } from "@/lib/web-publica";
+import { CONTENEDOR_SALON, especialidadPublica } from "@/lib/web-publica";
 import { es } from "date-fns/locale";
 import heroImg from "@/assets/hero-salon.jpg";
 import { registerBookingClient } from "@/lib/api/clients.functions";
@@ -1518,7 +1518,7 @@ function StylistStep({
           >
             <div>
               <p className="font-bold">{e.name}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{e.specialty}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{especialidadPublica(e.specialty)}</p>
             </div>
           </button>
         ))}

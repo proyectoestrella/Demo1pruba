@@ -242,3 +242,42 @@ export function seccionResenasPublicas({
   if (esSalonReal) return "oculta";
   return "ejemplo";
 }
+
+/* ---- Especialidad pública de una profesional (22-oct) ----------------------
+ * El equipo guarda a veces el rol interno delante de la especialidad
+ * («Gerente · peluquería, color y novias»). El rol es cosa del panel: en la
+ * web pública y en la reserva solo se enseña la especialidad, con mayúscula.
+ * ------------------------------------------------------------------------- */
+const ROLES_INTERNOS = [
+  "gerente",
+  "encargada",
+  "encargado",
+  "subencargada",
+  "subencargado",
+  "recepción",
+  "recepcion",
+  "recepcionista",
+  "dueña",
+  "dueño",
+  "propietaria",
+  "propietario",
+  "directora",
+  "director",
+  "responsable",
+];
+const RE_ROL_INICIAL = new RegExp(
+  `^\\s*(?:${ROLES_INTERNOS.join("|")})\\b\\s*(?:[·•|,:;/–—-]\\s*)?`,
+  "iu",
+);
+
+/** «Gerente · peluquería, color y novias» → «Peluquería, color y novias». */
+export function especialidadPublica(texto: string | undefined | null): string {
+  let t = (texto ?? "").trim();
+  // Puede haber más de un rol encadenado («Gerente · Recepción · color»).
+  for (let i = 0; i < 3; i++) {
+    const sin = t.replace(RE_ROL_INICIAL, "");
+    if (sin === t) break;
+    t = sin.trim();
+  }
+  return t ? t.charAt(0).toLocaleUpperCase("es-ES") + t.slice(1) : "";
+}

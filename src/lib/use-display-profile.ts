@@ -4,7 +4,7 @@ import { DEMO_PARAM, decodeDemoProfile, perfilConEnlace } from "./demo-profile";
 import { useSalonStore } from "./store";
 import type { SalonProfile } from "./mock/types";
 import { inferBusinessType, type BusinessType } from "./business-type";
-import { completarConDemoRegistrada, demoPorSlug } from "./demos";
+import { completarConDemoRegistrada, completarNotaGoogleDeDemo, demoPorSlug } from "./demos";
 import { enlaceDemoEnPestana, perfilDeDemoRegistrada } from "./demos/aplicar";
 import { leerPrevia } from "./vista-previa";
 
@@ -78,6 +78,9 @@ export function useDisplayProfile(): SalonProfile {
       // La pestaña recuerda un `?d=` de este slug y lo aplicó a la store
       // (p. ej. en /book, si el enlace se perdió al navegar): se completa igual.
       if (completar && enlaceDemoEnPestana(slug!)) return completarConDemoRegistrada(slug, stored);
+      // Salón real con demo registrada: la nota de Google no puede desaparecer
+      // al hidratar (ver `completarNotaGoogleDeDemo`).
+      if (slug && slug === realSalonSlug) return completarNotaGoogleDeDemo(slug, stored);
       return stored;
     }
     // Lo que el enlace no traiga se queda en blanco, NO se hereda del salón

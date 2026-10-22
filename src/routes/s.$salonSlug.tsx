@@ -382,9 +382,9 @@ function SalonLayout() {
                   key={l.href}
                   href={l.href}
                   className={cn(
-                    "relative inline-flex min-h-11 items-center px-2 text-cafe-medio transition-colors after:absolute after:bottom-1 after:left-2 after:h-px after:w-0 after:bg-primary after:transition-all hover:text-foreground hover:after:w-[calc(100%-1rem)] motion-reduce:after:transition-none",
+                    "relative inline-flex min-h-11 items-center whitespace-nowrap px-2 leading-none text-cafe-medio transition-colors after:absolute after:bottom-1 after:left-2 after:h-px after:w-0 after:bg-primary after:transition-all hover:text-foreground hover:after:w-[calc(100%-1rem)] motion-reduce:after:transition-none",
                     // A 1024-1279 px no cabe todo en una línea: «Preguntas» queda en el menú y en la página.
-                    l.href === "#faq" && "hidden xl:inline",
+                    l.href === "#faq" && "hidden xl:inline-flex",
                   )}
                 >
                   {l.label}
