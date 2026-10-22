@@ -245,6 +245,25 @@ export function profesionalesDisponiblesEnHueco({
 }
 
 /**
+ * Profesionales libres a una hora concreta ("HH:mm") de un día. Es la misma
+ * comprobación conjunta que `profesionalesDisponiblesEnHueco`, pero con la
+ * hora tal como la elige la clienta: sirve para decirle «a las 17:00 están
+ * libres Ana y Marta» y para no ofrecerle nunca una profesional ocupada.
+ */
+export function profesionalesLibresEnHora({
+  hora,
+  ...resto
+}: Omit<Parameters<typeof profesionalesDisponiblesEnHueco>[0], "startMin" | "startISO"> & { hora: string }): Employee[] {
+  const [hh, mm] = hora.split(":").map(Number);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return [];
+  return profesionalesDisponiblesEnHueco({
+    ...resto,
+    startMin: hh * 60 + mm,
+    startISO: isoDelSalon(resto.dateKey, hora, resto.timeZone),
+  });
+}
+
+/**
  * Primer hueco libre, a partir de `fromDate` (hoy si no se indica), para un
  * profesional concreto o "any" (cualquiera del equipo). Recorre como mucho
  * `maxDays` días; `undefined` si no encuentra nada en ese horizonte (agenda

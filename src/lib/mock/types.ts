@@ -412,6 +412,13 @@ export interface SalonProfile {
    * solo admite un número: ahí va el más bajo, y aquí lo que el salón dice.
    */
   preciosLiterales?: Record<string, string>;
+  /**
+   * Lavado que va incluido en el precio de otros servicios (p. ej. Color).
+   * `servicioId` es el servicio «Lavado» suelto de la carta; `incluidoEn`, los
+   * servicios cuyo precio ya lo lleva. Si una cita junta el lavado con alguno
+   * de ellos, el lavado no suma precio ni tiempo. Ausente: todo suma, como siempre.
+   */
+  lavado?: { servicioId: string; incluidoEn: string[] };
   /** Textos de WhatsApp de la dueña (9h). Vacío o ausente: el texto de siempre. */
   plantillas?: { recordatorio?: string; confirmacion?: string };
   /** Color elegido por la dueña (9h): servicio → 1-6 de la paleta; profesional → 1-4. */

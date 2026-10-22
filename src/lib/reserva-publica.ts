@@ -80,7 +80,7 @@ export function inicioReservaPublicaEsFuturo(inicioISO: string, ahora = new Date
  * extremo alto, el mismo que se guarda y bloquea en la agenda.
  */
 export function datosReservaPublicaDesdeCarta(
-  perfil: Pick<SalonProfile, "name" | "tagline" | "menu" | "duracionFlexible">,
+  perfil: Pick<SalonProfile, "name" | "tagline" | "menu" | "duracionFlexible"> & Partial<Pick<SalonProfile, "lavado">>,
   serviceIds: string[],
 ): { durationMin: number; priceEur: number } | null {
   if (serviceIds.length === 0) return null;
@@ -89,7 +89,7 @@ export function datosReservaPublicaDesdeCarta(
   const elegidos = serviceIds.map((id) => porId.get(id));
   if (elegidos.some((servicio) => !servicio || servicio.active === false)) return null;
   const servicios = elegidos as Service[];
-  const { durationMin, priceEur } = sumServices(servicios);
+  const { durationMin, priceEur } = sumServices(servicios, perfil.lavado);
   if (durationMin <= 0 || !Number.isFinite(priceEur)) return null;
   return { durationMin: duracionDeAgenda(durationMin, !!perfil.duracionFlexible), priceEur };
 }

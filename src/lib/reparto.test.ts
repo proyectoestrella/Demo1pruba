@@ -14,6 +14,7 @@ import {
   isPriorityTime,
   findNextAvailableSlot,
   profesionalesDisponiblesEnHueco,
+  profesionalesLibresEnHora,
   type SpreadSlot,
 } from "./reparto";
 import type { Appointment, Employee } from "./mock/types";
@@ -325,5 +326,33 @@ describe("findNextAvailableSlot", () => {
         serviciosPorProfesional: servicios,
       }),
     ).toEqual([]);
+  });
+});
+
+describe("profesionalesLibresEnHora (disponibilidad a la hora elegida)", () => {
+  const a = employee("a", 10, 14);
+  const b = employee("b", 10, 14);
+  const c = employee("c", 12, 14);
+  // Citas con «Z» y zona UTC: el resultado no depende de la zona de la máquina.
+  const cita = (id: string, h: number, m: number, min: number): Appointment => ({ ...appt(id, h, m, min), start: `${MONDAY}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00.000Z` });
+  const base = { dateKey: MONDAY, durationMin: 60, timeZone: "UTC" };
+
+  it("lista solo a quien está libre a esa hora, no a la ocupada ni a la que aún no ha entrado", () => {
+    const libres = profesionalesLibresEnHora({ ...base, employees: [a, b, c], appointments: [cita("a", 10, 0, 60)], hora: "10:00" });
+    expect(libres.map((e) => e.id)).toEqual(["b"]);
+  });
+
+  it("con todo el equipo libre las devuelve a todas en el orden del equipo", () => {
+    const libres = profesionalesLibresEnHora({ ...base, employees: [a, b, c], appointments: [], hora: "12:00" });
+    expect(libres.map((e) => e.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("una cita manual que solapa parcialmente también la deja fuera", () => {
+    const libres = profesionalesLibresEnHora({ ...base, employees: [a, b], appointments: [cita("b", 10, 30, 60)], hora: "10:00" });
+    expect(libres.map((e) => e.id)).toEqual(["a"]);
+  });
+
+  it("hora mal formada: nadie", () => {
+    expect(profesionalesLibresEnHora({ ...base, employees: [a], appointments: [], hora: "xx" })).toEqual([]);
   });
 });

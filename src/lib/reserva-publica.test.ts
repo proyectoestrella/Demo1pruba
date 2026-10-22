@@ -148,5 +148,9 @@ describe("datos de una reserva pública", () => {
   it("rechaza ids ausentes o servicios inactivos en vez de creer al navegador", () => {
     expect(datosReservaPublicaDesdeCarta(perfil, ["inventado"])).toBeNull();
     expect(datosReservaPublicaDesdeCarta({ ...perfil, menu: ["Corte~30~20~~off~corte"] }, ["corte"])).toBeNull();
+    // El servidor recalcula con el mismo criterio: Color + lavado suelto no cobra el lavado dos veces.
+    const conLavado = { ...perfil, menu: ["Color~60~40~~~color", "Lavado~15~10~~~lavado"], lavado: { servicioId: "lavado", incluidoEn: ["color"] } };
+    expect(datosReservaPublicaDesdeCarta(conLavado, ["color", "lavado"])).toEqual({ durationMin: 60, priceEur: 40 });
+    expect(datosReservaPublicaDesdeCarta({ ...conLavado, lavado: undefined }, ["color", "lavado"])).toEqual({ durationMin: 75, priceEur: 50 });
   });
 });

@@ -40,11 +40,24 @@ export function serviceLabelOf(
 }
 
 /** Lo que bloquea y cobra una cita con estos servicios: la suma de todos. */
-export function sumServices(list: Service[]) {
+export function sumServices(list: Service[], lavado?: ConfigLavado) {
+  const contados = lavado && lavadoYaIncluido(list.map((s) => s.id), lavado) ? list.filter((s) => s.id !== lavado.servicioId) : list;
   return {
-    durationMin: list.reduce((s, sv) => s + sv.durationMin, 0),
-    priceEur: list.reduce((s, sv) => s + sv.priceEur, 0),
+    durationMin: contados.reduce((s, sv) => s + sv.durationMin, 0),
+    priceEur: contados.reduce((s, sv) => s + sv.priceEur, 0),
   };
+}
+
+/** Misma forma que `SalonProfile.lavado`. */
+export type ConfigLavado = { servicioId: string; incluidoEn: string[] };
+
+/**
+ * ¿Va el lavado suelto dentro de otro servicio de la cita? Entonces no se
+ * cobra aparte (ni alarga la cita): el Color de PeluChic ya lo incluye.
+ */
+export function lavadoYaIncluido(serviceIds: readonly string[], lavado: ConfigLavado | undefined): boolean {
+  if (!lavado?.servicioId || !lavado.incluidoEn?.length) return false;
+  return serviceIds.includes(lavado.servicioId) && serviceIds.some((id) => id !== lavado.servicioId && lavado.incluidoEn.includes(id));
 }
 
 /**

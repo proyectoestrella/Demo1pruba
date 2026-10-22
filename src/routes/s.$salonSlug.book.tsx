@@ -51,6 +51,7 @@ import {
   isPriorityTime,
   findNextAvailableSlot,
   profesionalesDisponiblesEnHueco,
+  profesionalesLibresEnHora,
   type SpreadSlot,
 } from "@/lib/reparto";
 import { cn } from "@/lib/utils";
@@ -459,7 +460,7 @@ function BookingWizard() {
   const sinProfesionalParaServicios = selectedServices.length > 0 && eligibleEmployees.length === 0;
   // Precio y duración de carta son la suma de los servicios elegidos. El
   // hueco puede reservar más tiempo si la duración es flexible; la fianza no.
-  const resumenServicios = resumenServiciosReserva(selectedServices, mostrarPrecio);
+  const resumenServicios = resumenServiciosReserva(selectedServices, mostrarPrecio, profile.lavado);
   const { nombres: serviceNames, durationMin: totalMin, priceEur: total } = resumenServicios;
   const flexible = duracionFlexibleDemo;
   const flexRange = flexible ? flexDurationRange(totalMin) : null;
@@ -504,7 +505,7 @@ function BookingWizard() {
     employees.map((employee) => employee.id),
     profile.serviciosPorProfesional,
   );
-  const repeatDuration = repeatValid ? sumServices(repeatServices).durationMin : 0;
+  const repeatDuration = repeatValid ? sumServices(repeatServices, profile.lavado).durationMin : 0;
   const repeatNextSlot = useMemo(() => {
     if (!repeatValid || !lastBooking) return undefined;
     return findNextAvailableSlot(employees, appointments, repeatDuration, lastBooking.employeeId, {
@@ -900,6 +901,7 @@ function BookingWizard() {
               selectedDate={data.date}
               selectedTime={data.time}
               onPick={(date, time) => setData((d) => ({ ...d, date, time }))}
+              onElegirProfesional={(id) => setData((d) => ({ ...d, employeeId: id }))}
               employees={eligibleEmployees}
               smartSpread={!!profile.smartSpread}
               lastSlotBufferMin={profile.lastSlotBufferMin ?? 0}
@@ -1590,7 +1592,10 @@ function DateTimeStep({
   bloqueosAgenda,
   serviceIds,
   serviciosPorProfesional,
+  onElegirProfesional,
 }: {
+  /** Cambia la profesional desde «A las HH:MM están libres…» (solo ofrece libres). */
+  onElegirProfesional?: (id: EmployeeId | "any") => void;
   /** Zona horaria de la agenda del salón (ver lib/zona-horaria.ts). */
   timeZone: string;
   /** Minutos entre «ahora» y el primer hueco ofrecido (lib/primer-hueco.ts). */
@@ -1834,6 +1839,26 @@ function DateTimeStep({
     setShowAllHours(!hasPriorityBlock);
   }, [hasPriorityBlock, activeDateKey]);
 
+  // «A las 17:00 están libres…»: quién puede atender justo la hora elegida.
+  // Solo sale si hay más de una profesional y la hora elegida es de este día.
+  const horaElegidaAqui = !!activeDateKey && selectedDate === activeDateKey && !!selectedTime;
+  const libresALaHora = useMemo(() => {
+    if (!horaElegidaAqui || !activeDateKey || !selectedTime || employees.length < 2) return [];
+    return profesionalesLibresEnHora({
+      employees,
+      appointments,
+      dateKey: activeDateKey,
+      hora: selectedTime,
+      durationMin,
+      timeZone,
+      diasEspeciales,
+      bloqueosAgenda,
+      serviceIds,
+      serviciosPorProfesional,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [horaElegidaAqui, activeDateKey, selectedTime, employees, appointments, durationMin, timeZone, diasEspeciales, bloqueosAgenda, serviceIds, serviciosPorProfesional]);
+
   function handleSlotClick(s: SpreadSlot) {
     if (!s.available || !activeDateKey) return;
     // Un hueco "con espera": se sugiere antes de reservarlo, nunca se impide.
@@ -1981,6 +2006,40 @@ function DateTimeStep({
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+              {libresALaHora.length > 0 && selectedTime && onElegirProfesional && (
+                <div className="mt-5 rounded-xl border border-border bg-card p-4" data-testid="libres-a-la-hora" aria-live="polite">
+                  <p className="text-sm font-medium">A las {selectedTime} están libres:</p>
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    {libresALaHora.length > 1 && (
+                      <button
+                        type="button"
+                        aria-pressed={stylistChoice === "any"}
+                        onClick={() => onElegirProfesional("any")}
+                        className={cn(
+                          "rounded-full border px-4 py-1.5 text-sm",
+                          stylistChoice === "any" ? "border-primary bg-primary/10 font-bold" : "border-border hover:bg-muted",
+                        )}
+                      >
+                        Cualquiera
+                      </button>
+                    )}
+                    {libresALaHora.map((e) => (
+                      <button
+                        key={e.id}
+                        type="button"
+                        aria-pressed={stylistChoice === e.id}
+                        onClick={() => onElegirProfesional(e.id)}
+                        className={cn(
+                          "rounded-full border px-4 py-1.5 text-sm",
+                          stylistChoice === e.id ? "border-primary bg-primary/10 font-bold" : "border-border hover:bg-muted",
+                        )}
+                      >
+                        {e.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
               {smartSpread && slots.some((s) => s.busy && s.available) && (

@@ -94,7 +94,7 @@ function Confirmation() {
     .map((id) => serviceMap[id])
     .filter(Boolean);
   const serviceNames = chosen.map((s) => s.name);
-  const { durationMin: totalMin, priceEur: total } = sumServices(chosen);
+  const { durationMin: totalMin, priceEur: total } = sumServices(chosen, profile.lavado);
   // La reserva lleva la duración exacta con la que se bloqueó el hueco. Si se
   // abre una confirmación antigua sin ese dato, conserva el catálogo.
   const durationReserva = duration ?? totalMin;

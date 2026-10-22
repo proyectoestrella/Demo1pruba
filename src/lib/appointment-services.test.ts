@@ -38,3 +38,32 @@ describe("precios de Nueva cita", () => {
     expect(textoTotalServicios([normal], 28.5, eur)).toBe("28,50 €");
   });
 });
+
+import { lavadoYaIncluido, sumServices as sumar } from "./appointment-services";
+
+describe("lavado incluido en otros servicios (Color de PeluChic)", () => {
+  const sv = (id: string, durationMin: number, priceEur: number) => ({ id, name: id, description: "", durationMin, priceEur });
+  const lavado = sv("lavado", 15, 10);
+  const color = sv("color", 75, 40);
+  const corte = sv("corte", 30, 20);
+  const cfg = { servicioId: "lavado", incluidoEn: ["color"] };
+
+  it("sin configurar, todo suma como siempre", () => {
+    expect(sumar([color, lavado])).toEqual({ durationMin: 90, priceEur: 50 });
+  });
+  it("Color + lavado suelto: el lavado no cobra ni alarga la cita", () => {
+    expect(sumar([color, lavado], cfg)).toEqual({ durationMin: 75, priceEur: 40 });
+  });
+  it("lavado con un servicio que no lo incluye: se cobra", () => {
+    expect(sumar([corte, lavado], cfg)).toEqual({ durationMin: 45, priceEur: 30 });
+  });
+  it("lavado solo: se cobra; sin lavado en la cita, nada cambia", () => {
+    expect(sumar([lavado], cfg)).toEqual({ durationMin: 15, priceEur: 10 });
+    expect(sumar([color, corte], cfg)).toEqual({ durationMin: 105, priceEur: 60 });
+  });
+  it("lavadoYaIncluido ignora configuraciones vacías", () => {
+    expect(lavadoYaIncluido(["color", "lavado"], undefined)).toBe(false);
+    expect(lavadoYaIncluido(["color", "lavado"], { servicioId: "lavado", incluidoEn: [] })).toBe(false);
+    expect(lavadoYaIncluido(["color", "lavado"], cfg)).toBe(true);
+  });
+});

@@ -41,6 +41,11 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
   const [active, setActive] = useState(true);
   const [category, setCategory] = useState("");
   const [priceText, setPriceText] = useState("");
+  // Lavado que no se cobra aparte: este servicio ES el lavado suelto, o lo INCLUYE.
+  const lavadoCfg = useSalonStore((s) => s.salonProfile.lavado);
+  const [esLavado, setEsLavado] = useState(false);
+  const [incluyeLavado, setIncluyeLavado] = useState(false);
+  const hayLavado = !!lavadoCfg?.servicioId && services.some((x) => x.id === lavadoCfg.servicioId);
 
   useEffect(() => {
     if (!open) return;
@@ -51,6 +56,9 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
     setActive(service?.active ?? true);
     setCategory(service?.category && service.category !== "Servicios" ? service.category : "");
     setPriceText(service?.priceText ?? "");
+    const cfg = useSalonStore.getState().salonProfile.lavado;
+    setEsLavado(!!service && cfg?.servicioId === service.id);
+    setIncluyeLavado(!!service && !!cfg?.incluidoEn?.includes(service.id));
   }, [open, service]);
 
   function handleSubmit(e: React.FormEvent) {
@@ -80,6 +88,16 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
       else delete siguiente[id];
       updateSalonProfile({ preciosLiterales: siguiente });
     }
+    // «Incluye lavado»: vive en el perfil y lo leen la reserva, el servidor y Nueva cita.
+    const cfg = useSalonStore.getState().salonProfile.lavado;
+    let servicioId = cfg?.servicioId ?? "";
+    if (esLavado) servicioId = id;
+    else if (servicioId === id) servicioId = "";
+    const incluidoEn = new Set(cfg?.incluidoEn ?? []);
+    if (incluyeLavado && !esLavado) incluidoEn.add(id);
+    else incluidoEn.delete(id);
+    const hayCambio = servicioId !== (cfg?.servicioId ?? "") || incluidoEn.size !== (cfg?.incluidoEn?.length ?? 0) || [...incluidoEn].some((x) => !cfg?.incluidoEn?.includes(x));
+    if (hayCambio) updateSalonProfile({ lavado: servicioId ? { servicioId, incluidoEn: [...incluidoEn] } : undefined });
     onOpenChange(false);
   }
 
@@ -132,6 +150,22 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
               </div>
               <Switch aria-label="Servicio activo" checked={active} onCheckedChange={setActive} />
             </div>
+            <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">Es el lavado suelto</p>
+                <p className="text-xs text-muted-foreground">El que se cobra solo cuando va sin otro servicio que lo lleve.</p>
+              </div>
+              <Switch aria-label="Es el lavado suelto" checked={esLavado} onCheckedChange={(v) => { setEsLavado(v); if (v) setIncluyeLavado(false); }} />
+            </div>
+            {hayLavado && !esLavado && (
+              <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium">Incluye el lavado</p>
+                  <p className="text-xs text-muted-foreground">Si se reserva junto al lavado suelto, este no se cobra aparte ni alarga la cita.</p>
+                </div>
+                <Switch aria-label="Incluye el lavado" checked={incluyeLavado} onCheckedChange={setIncluyeLavado} />
+              </div>
+            )}
           </div>
 
           <SheetFooter className="mt-auto">
