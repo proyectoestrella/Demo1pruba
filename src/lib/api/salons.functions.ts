@@ -28,6 +28,8 @@ import {
 import { funcionesPlanPanel, recortarDatosPanel, recortarDatosPanelPorPlan, type FuncionesPlanPanel } from "./recorte";
 import { PAGINAS, vePagina, alcance, permisosDe, type MiembroActual } from "../permisos";
 import { DIAS_RETENCION } from "../cambios";
+import { diferenciaDePerfil, resumenRestauracion, versionRestaurable, VERSIONES_WEB_SIEMPRE } from "../resumen-perfil";
+import { CAMPOS_PERFIL_SIN_REGISTRO } from "../registro-cambios";
 import { PermisoDenegado, tienePermiso } from "./autorizacion";
 import { tieneMando, vistaEfectiva } from "./autorizacion";
 import { conSesion } from "./sesion.middleware";
@@ -575,12 +577,15 @@ export const listarVersiones = createServerFn({ method: "GET" })
     if (data.completo) await exigirFuncionPlanEn(data.slug, "historial-completo", quien);
     const supabase = getSupabaseServerClient();
     if (!supabase) return { versiones: [] };
+    // 22-oct: las últimas VERSIONES_WEB_SIEMPRE se ven y se recuperan con
+    // CUALQUIER plan (antes, sin historial completo, solo salía la actual y
+    // no se podía volver a ninguna). El plan amplía a 60.
     const { data: filas, error } = await supabase
       .from("perfil_versiones")
       .select("id, fecha, autor_nombre, nota")
       .eq("salon_slug", data.slug)
       .order("fecha", { ascending: false })
-      .limit(data.completo ? 60 : 1);
+      .limit(data.completo ? 60 : VERSIONES_WEB_SIEMPRE);
     if (error) return { versiones: [] };
     return {
       versiones: (filas ?? []).map(
@@ -615,6 +620,53 @@ function conClavesDelServidor(
   return salida;
 }
 
+/** Puesto de una versión entre las del salón (0 = la más reciente). */
+async function posicionDeVersion(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  salonSlug: string,
+  fecha: string,
+): Promise<number> {
+  const { count } = await supabase
+    .from("perfil_versiones")
+    .select("id", { count: "exact", head: true })
+    .eq("salon_slug", salonSlug)
+    .gt("fecha", fecha);
+  return count ?? 0;
+}
+
+async function tieneHistorialCompleto(slugSalon: string, quien: Parameters<typeof exigirFuncionPlanEn>[2]): Promise<boolean> {
+  try {
+    await exigirFuncionPlanEn(slugSalon, "historial-completo", quien);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Lo que tenía Mi página en una versión (solo los campos de la web), para
+ * enseñar ANTES de restaurar qué cambiaría y cómo se veía (22-oct). Antes el
+ * salón real tenía que restaurar a ciegas.
+ */
+export const verVersion = createServerFn({ method: "GET" })
+  .middleware([conSesion])
+  .inputValidator(z.object({ slug, versionId: z.string().min(8) }))
+  .handler(async ({ data }): Promise<{ ok: true; web: Record<string, JsonPerfil>; restaurable: boolean } | { ok: false; motivo: string }> => {
+    const quien = await exigirAcceso(data.slug);
+    exigirAcciones(quien, ["web.restaurar-version"]);
+    const supabase = getSupabaseServerClient();
+    if (!supabase) return { ok: false, motivo: "sin-backend" };
+    const { data: v } = await supabase
+      .from("perfil_versiones")
+      .select("perfil, fecha")
+      .eq("id", data.versionId)
+      .eq("salon_slug", data.slug)
+      .maybeSingle();
+    if (!v) return { ok: false, motivo: "Esa versión ya no existe." };
+    const restaurable = versionRestaurable(await posicionDeVersion(supabase, data.slug, String(v.fecha)), await tieneHistorialCompleto(data.slug, quien));
+    return { ok: true, web: soloCamposWeb((v.perfil ?? {}) as Record<string, unknown>) as Record<string, JsonPerfil>, restaurable };
+  });
+
 /** Publica de nuevo una versión anterior (como versión nueva) y lo deja en el historial. */
 export const restaurarVersion = createServerFn({ method: "POST" })
   .middleware([conSesion])
@@ -627,7 +679,6 @@ export const restaurarVersion = createServerFn({ method: "POST" })
     > => {
       const quien = await exigirAcceso(data.slug);
       exigirAcciones(quien, ["web.restaurar-version"]);
-      await exigirFuncionPlanEn(data.slug, "historial-completo", quien);
       const supabase = getSupabaseServerClient();
       if (!supabase) return { ok: false, motivo: "sin-backend" };
       const { data: v } = await supabase
@@ -637,6 +688,10 @@ export const restaurarVersion = createServerFn({ method: "POST" })
         .eq("salon_slug", data.slug)
         .maybeSingle();
       if (!v) return { ok: false, motivo: "Esa versión ya no existe." };
+      // Las últimas VERSIONES_WEB_SIEMPRE se recuperan con cualquier plan;
+      // más atrás hace falta el historial completo (y se dice, no se calla).
+      if (!versionRestaurable(await posicionDeVersion(supabase, data.slug, String(v.fecha)), await tieneHistorialCompleto(data.slug, quien)))
+        return { ok: false, motivo: `Con tu plan puedes volver a las ${VERSIONES_WEB_SIEMPRE} últimas versiones de tu página. Esta es más antigua: para recuperarla hace falta el historial completo.` };
       const { data: actual } = await supabase
         .from("salons")
         .select("profile")
@@ -668,15 +723,25 @@ export const restaurarVersion = createServerFn({ method: "POST" })
         autor,
         `Restaurada la versión del ${String(v.fecha).slice(0, 10)}`,
       );
+      // Campo a campo y solo lo que cambia (22-oct): así «Deshacer» en el
+      // Historial aplica justo esos campos de vuelta. Antes se guardaba
+      // `{ perfil: {...} }` entero, que el deshacer no sabía aplicar.
+      const dif = diferenciaDePerfil(
+        perfilAnterior,
+        perfilRestaurado,
+        [...new Set([...Object.keys(perfilAnterior), ...Object.keys(perfilRestaurado)])].filter(
+          (k) => !CAMPOS_PERFIL_SIN_REGISTRO.has(k) && !(CLAVES_SOLO_SERVIDOR as readonly string[]).includes(k),
+        ),
+      );
       await supabase.from("cambios").insert({
         id: randomUUID(),
         salon_slug: data.slug,
         tipo: "perfil.restaurar",
         entidad: "perfil",
         id_entidad: "perfil",
-        antes: { perfil: perfilAnterior },
-        despues: { perfil: perfilRestaurado },
-        resumen: `Restaurada la versión de tu página del ${String(v.fecha).slice(0, 10)}`,
+        antes: dif.antes,
+        despues: dif.despues,
+        resumen: resumenRestauracion(String(v.fecha), Object.keys(dif.despues)),
         autor: autor?.userId ?? null,
         autor_nombre: autor?.displayName ?? null,
         fecha: new Date().toISOString(),
@@ -729,7 +794,14 @@ export type MotivoNoAplicado = MotivoNoPublicado | "sin-salon";
 
 export const patchSalonProfile = createServerFn({ method: "POST" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug, patch: z.record(z.string(), z.unknown()) }))
+  .inputValidator(
+    z.object({
+      slug,
+      patch: z.record(z.string(), z.unknown()),
+      /** «Publicar cambios» de Mi página: deja además la versión publicada en Versiones. */
+      publicar: z.boolean().optional(),
+    }),
+  )
   .handler(
     async ({ data }): Promise<{ synced: true } | { synced: false; motivo: MotivoNoAplicado }> => {
       const quien = await exigirAcceso(data.slug);
@@ -783,7 +855,19 @@ export const patchSalonProfile = createServerFn({ method: "POST" })
           data.slug,
           (fila.profile ?? {}) as Record<string, unknown>,
           quien.tipo === "miembro" ? quien : null,
-          "Antes de cambiar ajustes",
+          data.publicar ? "Antes de publicar" : "Antes de cambiar ajustes",
+        );
+      }
+      // 22-oct: cada publicación de Mi página es una versión con su contenido
+      // (antes solo quedaba el punto de ANTES de la tanda, y lo publicado no
+      // aparecía en Versiones hasta la tanda siguiente).
+      if (data.publicar) {
+        await guardarVersion(
+          supabase,
+          data.slug,
+          fusionado,
+          quien.tipo === "miembro" ? quien : null,
+          "Publicada desde Mi página",
         );
       }
       return { synced: true as const };

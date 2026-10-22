@@ -38,6 +38,7 @@ const DEL_DUENO = [
   "syncAppointmentPatch",
   "listarVersiones",
   "restaurarVersion",
+  "verVersion",
 ];
 
 /**

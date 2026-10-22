@@ -185,7 +185,7 @@ export function HistorialCambios() {
         </div>
       ) : filtrados.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-lino px-4 py-6 text-center text-[14px] text-muted-foreground">
-          {cambios.length === 0 ? "Todavía no hay cambios. Lo que confirmes, muevas, cobres o guardes aparecerá aquí." : "Nada con ese filtro."}
+          {cambios.length === 0 ? `Todavía no hay cambios${completo ? "" : ` en las últimas ${HORAS_HISTORIAL_ESTANDAR} horas`}. Lo que confirmes, muevas, cobres o guardes —y cada texto, foto u horario que cambies en Mi página— aparecerá aquí, con quién lo hizo, cuándo y desde qué aparato, y un botón para deshacerlo.` : "Nada con ese filtro."}
         </p>
       ) : (
         porDia.map(([dia, lista]) => (
@@ -206,6 +206,11 @@ export function HistorialCambios() {
             Cargar más
           </Button>
         </div>
+      )}
+      {!completo && (
+        <p className="text-[12.5px] text-muted-foreground" data-testid="nota-versiones-web">
+          Lo de más de {HORAS_HISTORIAL_ESTANDAR} horas no sale aquí con tu plan, pero tu página no se pierde: en Mi página › Versiones puedes volver a cualquiera de las últimas publicaciones.
+        </p>
       )}
       {!completo && <LlegaConPlan funcion="historial-completo" compacta />}
     </div>

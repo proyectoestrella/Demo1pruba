@@ -269,25 +269,7 @@ export function accionesDeCambio(c: Pick<Cambio, "tipo" | "idEntidad">): AccionI
   return c.tipo === "perfil.campo" ? accionesDeParchePerfil([c.idEntidad]) : [accionDe(c.tipo)];
 }
 
-/** Cómo se llama cada campo del perfil en el historial. */
-const NOMBRE_CAMPO: Record<string, string> = {
-  name: "el nombre del salón", tagline: "el tipo de negocio", about: "el texto «Sobre nosotros»", address: "la dirección",
-  phone: "el teléfono", instagram: "el Instagram", heroImage: "la foto de portada", galleryPhotos: "la galería",
-  photoCount: "las fotos", specialties: "las especialidades", faq: "las preguntas frecuentes",
-  openingHours: "el horario del salón", team: "el equipo", teamIds: "el equipo", teamHours: "el horario del equipo",
-  menu: "la carta", preguntasReserva: "las preguntas de reserva", bookingQuestionsEnabled: "las preguntas de reserva",
-  bookingQuestionsRequired: "las preguntas de reserva", duracionFlexible: "la duración flexible",
-  noShowFeeEur: "el recargo por plantón", noShowNoticeHours: "el aviso del plantón", timeZone: "la zona horaria",
-  lastSlotBufferMin: "el margen de la última hora", priorityHours: "las horas prioritarias", smartSpread: "el reparto de agenda",
-  depositTemplate: "el mensaje de la señal", plantillas: "los mensajes de WhatsApp",
-  coloresServicio: "los colores del calendario", coloresProfesional: "los colores del calendario",
-  avataresClientas: "el avatar de una clienta", avataresEquipo: "el avatar de una profesional",
-  logoUrl: "el logo", plan: "el plan", calendario: "las preferencias del calendario",
-};
-export function resumenCampoPerfil(clave: string): string {
-  const n = NOMBRE_CAMPO[clave] ?? (clave.startsWith("deposit") ? "la regla de la señal" : `«${clave}»`);
-  return `Cambiado ${n}`;
-}
+export { resumenCampoPerfil } from "./resumen-perfil";
 
 export interface ContextoDeshacer {
   /** Estado actual de la entidad (la cita, la clienta o el perfil). */
