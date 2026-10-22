@@ -9,10 +9,12 @@ import { useDemoRegistrada } from "@/lib/demos/aplicar";
 import { leerPrevia } from "@/lib/vista-previa";
 import { DEFAULT_OPENING_HOURS, weekSchedule } from "@/lib/opening-hours";
 import { useBusinessType } from "@/lib/use-display-profile";
-import { BUSINESS_LABEL, inferBusinessType } from "@/lib/business-type";
+import { BUSINESS_LABEL, inferBusinessType, professionalWord } from "@/lib/business-type";
+import { hrefAccesoPanelDemo } from "@/lib/demos/acceso-panel-demo";
+import { slugSalonDelHost } from "@/lib/host-actual";
 import { employeesForType } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
-import { MapPin, Phone, Menu, ShoppingBag, TriangleAlert } from "lucide-react";
+import { MapPin, Phone, Lock, Menu, ShoppingBag, TriangleAlert } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { logoDelSalon, logotipoDelSalon } from "@/lib/logo-salon";
 import { Button } from "@/components/ui/button";
@@ -93,6 +95,17 @@ function SalonLayout() {
   const sinSalonReal = useSalonStore((st) => !st.realSalonSlug);
   const conEnlaceDemo = useRouterState({
     select: (st) => typeof (st.location.search as Record<string, unknown>)[DEMO_PARAM] === "string",
+  });
+  // «Acceso estilista» solo en demos de venta: lleva al panel de ESA demo
+  // (mismo `d`). Nunca en un salón real ni en su subdominio (peluchic.sishow.es).
+  const salonRealEnRuta = useSalonStore((st) => st.realSalonSlug === salonSlug);
+  const demoCrudo = useRouterState({
+    select: (st) => (st.location.search as Record<string, unknown>)[DEMO_PARAM],
+  });
+  const hrefPanelDemo = hrefAccesoPanelDemo({
+    demo: demoCrudo,
+    slugHost: slugSalonDelHost(),
+    salonReal: salonRealEnRuta,
   });
   const resolucionPublica = useSalonStore((s) =>
     s.publicBookingResolution?.slug === salonSlug
@@ -338,7 +351,7 @@ function SalonLayout() {
                   // Con el logotipo, la etiqueta solo desde 640 px: en el móvil se partía en tres líneas.
                   <p
                     className={cn(
-                      "text-[11px] font-semibold uppercase tracking-[0.08em] text-cafe-suave",
+                      "truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-cafe-suave",
                       logotipoBarra && "hidden sm:block",
                     )}
                   >
@@ -347,8 +360,6 @@ function SalonLayout() {
                 ) : null}
               </div>
             </Link>
-            {/* Sin «Acceso estilista»: el panel es una app aparte (/login, /app) y
-                no se enlaza desde la web de clientas (feedback PeluChic 21-oct). */}
           </div>
           {!onBooking && (
             <nav
@@ -382,6 +393,19 @@ function SalonLayout() {
             {/* 44px de zona táctil (auditoría de UX, hallazgo C9): el
                 componente base mide 32px, de sobra en escritorio con ratón
                 pero por debajo del mínimo recomendado en móvil. */}
+            {hrefPanelDemo && (
+              <a
+                href={hrefPanelDemo}
+                data-acceso-panel-demo
+                aria-label={`Acceso ${professionalWord(tipo)}`}
+                title={`Acceso ${professionalWord(tipo)}`}
+                className="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-lino-fuerte bg-card px-3 text-xs font-medium text-cafe-medio hover:bg-beige max-sm:px-0"
+              >
+                <Lock className="h-3.5 w-3.5 sm:h-3 sm:w-3" aria-hidden="true" />
+                {/* En móvil solo el candado: con texto, el nombre del salón no cabía a 360 px. */}
+                <span className="hidden sm:inline">Acceso {professionalWord(tipo)}</span>
+              </a>
+            )}
             {!onBooking && (
               <>
                 <RedesSalon enlaces={enlaces} nombre={profile.name} className="hidden 2xl:flex" />
