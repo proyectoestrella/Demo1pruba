@@ -137,6 +137,9 @@ export function HoyArena() {
   // Lote P: si hoy el salón cierra y no hay nada en la agenda (el lunes de
   // PeluChic), las cifras y la línea del día miran al siguiente día abierto.
   const horario = useSalonStore((s) => s.salonProfile.openingHours);
+  // En las demos el miembro se llama como el negocio («The Heirs Peluqueros»):
+  // saludar con su primera palabra («Buenos días, The») queda mal; sin nombre propio, saludo neutro.
+  const nombreSalon = useSalonStore((s) => s.salonProfile.name);
   const proximoAbierto = useMemo(
     () =>
       hoy.length === 0 && cierraEseDia(horario, ahora)
@@ -242,7 +245,7 @@ export function HoyArena() {
             )}
           </p>
           <h1 className="mt-1 font-display text-[28px] leading-[1.1] font-medium tracking-[-0.02em] md:text-[34px]">
-            {miembro?.displayName
+            {miembro?.displayName && miembro.displayName.trim() !== nombreSalon?.trim()
               ? saludo(miembro.displayName, ahora.getHours())
               : saludoPara(ahora.getHours())}
           </h1>

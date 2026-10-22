@@ -546,7 +546,7 @@ function SalonHome() {
         <div
           className={cn(
             CONTENEDOR_SALON,
-            "flex min-h-[560px] flex-col items-center justify-center py-20 text-center md:min-h-[620px] md:py-24",
+            "flex min-h-[560px] flex-col items-center justify-center py-20 text-center md:min-h-[620px] md:py-24 [@media(max-height:500px)]:min-h-0 [@media(max-height:500px)]:py-10",
           )}
         >
           <div className="entrada-portada flex max-w-3xl flex-col items-center">
@@ -570,7 +570,7 @@ function SalonHome() {
                   alt={profile.name}
                   width={600}
                   height={178}
-                  className="ws-logotipo h-auto w-[min(88vw,420px)] drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)] md:w-[480px]"
+                  className="ws-logotipo h-auto w-[min(88vw,420px)] drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)] md:w-[480px] [@media(max-height:500px)]:w-[300px]"
                 />
               </h1>
             ) : (
@@ -611,9 +611,11 @@ function SalonHome() {
               <p className="mt-3 max-w-2xl text-[15px] text-white/90">{profile.about}</p>
             ) : null}
 
-            <p className="mt-4 flex items-start justify-center gap-2 text-[15px] text-white/90">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>{profile.address}</span>
+            {/* El pin va en línea con el texto: con la dirección en dos líneas
+                se quedaba suelto a la izquierda del bloque (22-oct). */}
+            <p className="mt-4 max-w-2xl text-balance text-[15px] text-white/90">
+              <MapPin className="mr-1.5 inline h-4 w-4 -translate-y-px align-middle" aria-hidden="true" />
+              {profile.address}
             </p>
 
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">

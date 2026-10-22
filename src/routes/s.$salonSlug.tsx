@@ -315,7 +315,7 @@ function SalonLayout() {
     // «Reservar cita» no cubre el final de ninguna sección; el pie mantiene el
     // suyo para que también sus enlaces queden siempre por encima de la barra.
     <div className="web-salon flex min-h-screen flex-col bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
+      <header className="sticky top-0 z-40 [@media(max-height:500px)]:relative border-b border-border/60 bg-background/85 backdrop-blur">
         <div
           className={cn(
             CONTENEDOR_SALON,
@@ -509,143 +509,140 @@ function SalonLayout() {
           onBooking ? "pb-[var(--alto-barra-fija)] lg:pb-0" : "pb-[var(--alto-barra-fija)] md:pb-0",
         )}
       >
-        {/* Lote 18.4: cuatro columnas desde 1024 px (salón · visítanos · horario ·
-            síguenos); «Síguenos» solo si hay algo que enlazar. */}
-        <div
-          className={cn(
-            CONTENEDOR_SALON,
-            "grid gap-8 py-12 sm:grid-cols-2 md:gap-10 md:py-14 lg:grid-cols-[1.4fr_1fr_1fr_1fr]",
-          )}
-        >
-          <div>
-            <div className="flex items-center gap-2">
-              {logotipoPie ? (
-                <img
-                  src={logotipoPie}
-                  alt={profile.name}
-                  width={600}
-                  height={178}
-                  loading="lazy"
-                  decoding="async"
-                  className="ws-logotipo ws-logotipo-pie h-12 w-auto"
-                />
-              ) : (
-                <>
-                  {logoSalon ? (
-                    <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
-                      <img
-                        src={logoSalon}
-                        alt={`Logo de ${profile.name}`}
-                        width={36}
-                        height={36}
-                        loading="lazy"
-                        decoding="async"
-                        className="h-full w-full object-cover"
-                      />
-                    </span>
-                  ) : (
-                    <Logo label={profile.name} />
-                  )}
-                  <span className="font-display text-lg">{profile.name}</span>
-                </>
+        {/* 22-oct: pie centrado en todos los tamaños (Tomás): marca y redes
+            arriba, y debajo una fila de grupos centrados (visítanos · horario ·
+            síguenos) que en móvil se apila. Nada pegado a una esquina. */}
+        <div className={cn(CONTENEDOR_SALON, "flex flex-col items-center py-10 text-center md:py-12")}>
+          <div className="flex items-center justify-center gap-2">
+            {logotipoPie ? (
+              <img
+                src={logotipoPie}
+                alt={profile.name}
+                width={600}
+                height={178}
+                loading="lazy"
+                decoding="async"
+                className="ws-logotipo ws-logotipo-pie h-12 w-auto"
+              />
+            ) : (
+              <>
+                {logoSalon ? (
+                  <span className="block size-9 shrink-0 overflow-hidden rounded-full border border-lino bg-white">
+                    <img
+                      src={logoSalon}
+                      alt={`Logo de ${profile.name}`}
+                      width={36}
+                      height={36}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover"
+                    />
+                  </span>
+                ) : (
+                  <Logo label={profile.name} />
+                )}
+                <span className="font-display text-lg">{profile.name}</span>
+              </>
+            )}
+          </div>
+          {profile.about ? (
+            <p className="mt-4 hidden max-w-xl text-sm text-muted-foreground md:block">
+              {profile.about}
+            </p>
+          ) : null}
+          <RedesSalon
+            enlaces={enlaces}
+            nombre={profile.name}
+            tono="oscuro"
+            className="mt-3 justify-center"
+          />
+
+          <div className="mt-6 flex w-full flex-col items-center gap-6 md:mt-8 md:flex-row md:flex-wrap md:items-start md:justify-center md:gap-x-16 md:gap-y-8">
+            <div className="flex flex-col items-center">
+              <p className="hidden ws-etiqueta md:block">Visítanos</p>
+              <p className="mt-3 hidden max-w-xs text-sm md:block">
+                <MapPin className="mr-1.5 inline h-4 w-4 -translate-y-px text-primary" aria-hidden="true" />
+                {profile.address}
+              </p>
+              {profile.phone.trim() && (
+                <a
+                  href={`tel:${profile.phone.replace(/\s/g, "")}`}
+                  className="mt-1 inline-flex min-h-11 items-center justify-center gap-2 text-sm tabular-nums hover:text-primary"
+                >
+                  <Phone className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                  {profile.phone}
+                </a>
+              )}
+              {whatsappUrl && (
+                <a
+                  href={whatsappUrl}
+                  {...FUERA}
+                  className="hidden min-h-11 items-center justify-center gap-2 text-sm hover:text-primary md:inline-flex"
+                >
+                  <IconoWhatsApp className="h-4 w-4 shrink-0 text-primary" />
+                  WhatsApp
+                </a>
               )}
             </div>
-            {profile.about ? (
-              <p className="mt-4 hidden max-w-sm text-sm text-muted-foreground md:block">
-                {profile.about}
-              </p>
-            ) : null}
-            <RedesSalon
-              enlaces={enlaces}
-              nombre={profile.name}
-              tono="oscuro"
-              className="-ml-3 mt-3"
-            />
-          </div>
-          <div>
-            <p className="hidden ws-etiqueta md:block">Visítanos</p>
-            <p className="mt-3 hidden items-start gap-2 text-sm md:flex">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-              {profile.address}
-            </p>
-            {profile.phone.trim() && (
-              <a
-                href={`tel:${profile.phone.replace(/\s/g, "")}`}
-                className="mt-1 flex min-h-11 items-center gap-2 text-sm tabular-nums hover:text-primary"
-              >
-                <Phone className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                {profile.phone}
-              </a>
+            {!(
+              (conEnlaceDemo || protegerContenidoReal) &&
+              JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS)
+            ) && (
+              <div className="hidden w-56 md:block">
+                <p className="ws-etiqueta">Horario</p>
+                {weekSchedule(profile.openingHours).map((d) => (
+                  <p key={d.label} className="mt-2 flex justify-between gap-4 text-sm tabular-nums">
+                    <span className="text-muted-foreground">{d.label}</span>
+                    <span>{d.value}</span>
+                  </p>
+                ))}
+              </div>
             )}
-            {whatsappUrl && (
-              <a
-                href={whatsappUrl}
-                {...FUERA}
-                className="hidden min-h-11 items-center gap-2 text-sm hover:text-primary md:flex"
-              >
-                <IconoWhatsApp className="h-4 w-4 shrink-0 text-primary" />
-                WhatsApp
-              </a>
+            {(enlaces.blog || enlaces.instagram || enlaces.facebook || enlaces.tienda) && (
+              <div className="flex flex-col items-center">
+                <p className="ws-etiqueta">Síguenos</p>
+                <ul className="mt-1 flex flex-wrap justify-center gap-x-5 text-sm lg:mt-2 lg:flex-col lg:items-center lg:gap-x-0">
+                  {enlaces.blog && (
+                    <li>
+                      <EnlaceFuera href={enlaces.blog} className="min-h-11 hover:text-primary">
+                        Blog
+                      </EnlaceFuera>
+                    </li>
+                  )}
+                  {enlaces.instagram && (
+                    <li>
+                      <EnlaceFuera href={enlaces.instagram} className="min-h-11 hover:text-primary">
+                        Instagram
+                      </EnlaceFuera>
+                    </li>
+                  )}
+                  {enlaces.facebook && (
+                    <li>
+                      <EnlaceFuera href={enlaces.facebook} className="min-h-11 hover:text-primary">
+                        Facebook
+                      </EnlaceFuera>
+                    </li>
+                  )}
+                  {enlaces.tienda && (
+                    <li>
+                      <EnlaceFuera href={enlaces.tienda} className="min-h-11 hover:text-primary">
+                        Tienda online
+                      </EnlaceFuera>
+                    </li>
+                  )}
+                </ul>
+              </div>
             )}
           </div>
-          {!(
-            (conEnlaceDemo || protegerContenidoReal) &&
-            JSON.stringify(profile.openingHours) === JSON.stringify(DEFAULT_OPENING_HOURS)
-          ) && (
-            <div className="hidden md:block">
-              <p className="ws-etiqueta">Horario</p>
-              {weekSchedule(profile.openingHours).map((d) => (
-                <p key={d.label} className="mt-2 flex justify-between gap-4 text-sm tabular-nums">
-                  <span className="text-muted-foreground">{d.label}</span>
-                  <span>{d.value}</span>
-                </p>
-              ))}
-            </div>
-          )}
-          {(enlaces.blog || enlaces.instagram || enlaces.facebook || enlaces.tienda) && (
-            <div>
-              <p className="ws-etiqueta">Síguenos</p>
-              <ul className="mt-2 text-sm">
-                {enlaces.blog && (
-                  <li>
-                    <EnlaceFuera href={enlaces.blog} className="min-h-11 hover:text-primary">
-                      Blog
-                    </EnlaceFuera>
-                  </li>
-                )}
-                {enlaces.instagram && (
-                  <li>
-                    <EnlaceFuera href={enlaces.instagram} className="min-h-11 hover:text-primary">
-                      Instagram
-                    </EnlaceFuera>
-                  </li>
-                )}
-                {enlaces.facebook && (
-                  <li>
-                    <EnlaceFuera href={enlaces.facebook} className="min-h-11 hover:text-primary">
-                      Facebook
-                    </EnlaceFuera>
-                  </li>
-                )}
-                {enlaces.tienda && (
-                  <li>
-                    <EnlaceFuera href={enlaces.tienda} className="min-h-11 hover:text-primary">
-                      Tienda online
-                    </EnlaceFuera>
-                  </li>
-                )}
-              </ul>
-            </div>
-          )}
         </div>
         <div className="border-t border-lino">
           <div
             className={cn(
               CONTENEDOR_SALON,
-              "flex flex-col gap-1 py-4 text-[13px] text-cafe-suave sm:flex-row sm:items-center sm:justify-between",
+              "flex flex-col items-center justify-center py-3 text-center text-[13px] text-cafe-suave sm:flex-row sm:gap-x-3",
             )}
           >
-            <p>
+            <p className="inline-flex flex-wrap items-center justify-center gap-x-1">
               © {profile.name} ·{" "}
               <a
                 href="https://sishow.es"
@@ -656,6 +653,7 @@ function SalonLayout() {
                 Reservas con siShow
               </a>
             </p>
+            <span className="hidden text-cafe-suave sm:inline" aria-hidden="true">·</span>
             <Link
               to="/s/$salonSlug/privacidad"
               params={{ salonSlug }}
