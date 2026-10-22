@@ -5,7 +5,8 @@ import { esperandoDesde, filtrarEspera, proximoHuecoPara, type HuecoPropuesto } 
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
-import { beforeLoadSiModuloVisible, useRedirigirSiModuloOculto } from "@/lib/route-guards";
+import { useRedirigirSiModuloOculto } from "@/lib/route-guards";
+import { beforeLoadSiModuloVisible } from "@/lib/guard-modulo";
 import { useBusinessType } from "@/lib/use-display-profile";
 import { professionalWord } from "@/lib/business-type";
 import { employeeMap } from "@/lib/mock/salon";

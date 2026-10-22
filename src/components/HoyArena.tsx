@@ -188,6 +188,11 @@ export function HoyArena() {
     return { ...dineroCitas, cobrado, delPrecio };
   }, [pagos, citasVista, dineroCitas]);
   const esDemo = useSalonStore((s) => !s.realSalonSlug);
+  // Salón real aún cargando (agenda vaciada a la espera del servidor): las cifras
+  // son esqueletos, no ceros. Una demo conserva su ejemplo y nunca entra aquí.
+  const cargando = useSalonStore(
+    (s) => s.publicBookingResolution?.status === "resolviendo" && s.appointments.length === 0,
+  );
   // Lo que vale el día (ni canceladas ni «no vino»): cobrado + lo que queda por
   // cobrar, sea futuro o ya pasado sin marcar. Así ninguna cita se pierde.
   const valorDelDia = citasVista.filter(esCobrable).reduce((s, a) => s + a.priceEur, 0);
@@ -262,10 +267,10 @@ export function HoyArena() {
           }
           to="/app/calendar"
         >
-          <Cifra>
+          <Cifra cargando={cargando}>
             <CifraAnimada texto={agenda.total} />
           </Cifra>
-          <Detalle>
+          <Detalle cargando={cargando}>
             {soloUno
               ? `${agenda.ocupacionPct} % de tu jornada`
               : agenda.porPro.map((x) => `${x.citas} ${x.e.name}`).join(" · ")}
@@ -278,13 +283,14 @@ export function HoyArena() {
           to="/app/calendar"
         >
           <Cifra
+            cargando={cargando}
             extra={
               agenda.minutosLibres > 0 ? `· ${duracionCorta(agenda.minutosLibres)}` : undefined
             }
           >
             <CifraAnimada texto={agenda.huecos.length} />
           </Cifra>
-          <Detalle>
+          <Detalle cargando={cargando}>
             {agenda.huecos.length
               ? agenda.detalleHuecos
               : cuando
@@ -303,10 +309,10 @@ export function HoyArena() {
                   : "Ingresos de hoy"
             }
           >
-            <Cifra>
+            <Cifra cargando={cargando}>
               <CifraAnimada texto={eurRedondo(valorDelDia)} />
             </Cifra>
-            <Detalle>
+            <Detalle cargando={cargando}>
               {cuando
                 ? `${citasVista.filter(esCobrable).length} citas por cobrar · hoy no hay caja`
                 : dinero.cobrado === 0 && dinero.sinCobroMarcado > 0 && !esDemo
@@ -322,8 +328,8 @@ export function HoyArena() {
         ) : (
           // Sin dinero (recepción, subencargada): cuántas citas quedan por cobrar, no cuánto.
           <TarjetaCifra icono={Euro} titulo="Citas por cobrar">
-            <Cifra>{hoy.filter((a) => esCobrable(a) && !a.paidAt).length}</Cifra>
-            <Detalle>Las cobra quien atiende la cita.</Detalle>
+            <Cifra cargando={cargando}>{hoy.filter((a) => esCobrable(a) && !a.paidAt).length}</Cifra>
+            <Detalle cargando={cargando}>Las cobra quien atiende la cita.</Detalle>
           </TarjetaCifra>
         )}
         <TarjetaCifra
@@ -333,10 +339,10 @@ export function HoyArena() {
           href={solicitudesVisibles > 0 ? "#espera" : undefined}
           to={solicitudesVisibles > 0 ? undefined : "/app/appointments"}
         >
-          <Cifra centrada>
+          <Cifra centrada cargando={cargando}>
             <CifraAnimada texto={pendienteDeTi} />
           </Cifra>
-          <Detalle bajo>
+          <Detalle bajo cargando={cargando}>
             {pendienteDeTi === 0
               ? "Nada pendiente: todo al día."
               : [
@@ -679,16 +685,31 @@ function TarjetaCifra({
   return <div className={clase}>{dentro}</div>;
 }
 
-function Cifra({ children, extra, centrada = false }: { children: ReactNode; extra?: string; centrada?: boolean }) {
+/**
+ * Esqueleto con la MISMA caja que el contenido: el texto real se pinta invisible
+ * (conserva alto y ancho) y encima va la barra. Así, al llegar los datos, nada
+ * se mueve y nunca se ve un «0 €» que luego cambia.
+ */
+function Esqueleto({ cargando, children }: { cargando: boolean; children: ReactNode }) {
+  if (!cargando) return <>{children}</>;
+  return (
+    <span className="relative inline-block" aria-busy="true">
+      <span className="invisible">{children}</span>
+      <span aria-hidden="true" className="absolute inset-y-[12%] left-0 right-0 animate-pulse rounded-md bg-beige" />
+    </span>
+  );
+}
+
+function Cifra({ children, extra, centrada = false, cargando = false }: { children: ReactNode; extra?: string; centrada?: boolean; cargando?: boolean }) {
   return (
     <p className={cn("flex items-baseline gap-1.5 leading-none", centrada ? "mt-4 sm:mt-5" : "mt-1.5")}>
-      <span className="text-[34px] font-light tracking-[-0.045em] tabular-nums sm:text-[48px]">{children}</span>
-      {extra && <span className="text-[15px] font-medium text-cafe-medio tabular-nums">{extra}</span>}
+      <span className="text-[34px] font-light tracking-[-0.045em] tabular-nums sm:text-[48px]"><Esqueleto cargando={cargando}>{children}</Esqueleto></span>
+      {extra && !cargando && <span className="text-[15px] font-medium text-cafe-medio tabular-nums">{extra}</span>}
     </p>
   );
 }
 
-function Detalle({ children, bajo = false }: { children: ReactNode; bajo?: boolean }) {
+function Detalle({ children, bajo = false, cargando = false }: { children: ReactNode; bajo?: boolean; cargando?: boolean }) {
   return (
     <p
       className={cn(
@@ -696,7 +717,7 @@ function Detalle({ children, bajo = false }: { children: ReactNode; bajo?: boole
         bajo ? "mt-3.5 sm:mt-4" : "mt-1.5 sm:mt-2",
       )}
     >
-      {children}
+      <Esqueleto cargando={cargando}>{children}</Esqueleto>
     </p>
   );
 }

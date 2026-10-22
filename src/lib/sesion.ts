@@ -13,7 +13,8 @@
  */
 import { useEffect, useState } from "react";
 
-import { hayAuthConfigurada, supabaseNavegador } from "./supabase-browser";
+import { cancelarEscrituraDiferida } from "./almacen-diferido";
+import { hayAuthConfigurada, supabaseNavegador } from "./supabase-cliente";
 
 /** La clave con la que el almacén del salón guarda las citas y las fichas. Ver lib/store.ts. */
 export const CLAVE_ALMACEN_SALON = "trimly-salon-store";
@@ -32,6 +33,8 @@ type SolicitudOtp = (datos: {
  * `localStorage` de mentira, sin montar Supabase.
  */
 export function limpiarDatosLocales(almacen: Pick<Storage, "removeItem">): void {
+  // La copia local se escribe diferida: lo que esté esperando no puede resucitar.
+  cancelarEscrituraDiferida();
   almacen.removeItem(CLAVE_ALMACEN_SALON);
   almacen.removeItem(CLAVE_SESION);
 }

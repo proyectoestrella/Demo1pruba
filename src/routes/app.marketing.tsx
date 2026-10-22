@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { clientFrequency, mostBookedService } from "@/lib/derive";
-import { beforeLoadSiModuloVisible, useRedirigirSiModuloOculto } from "@/lib/route-guards";
+import { useRedirigirSiModuloOculto } from "@/lib/route-guards";
+import { beforeLoadSiModuloVisible } from "@/lib/guard-modulo";
 import { PageHeader } from "@/components/PageHeader";
 import { CampanasPanel } from "@/components/campanas/CampanasPanel";
 import { Megaphone, Sparkles, MessageCircle } from "lucide-react";

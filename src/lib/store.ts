@@ -1,4 +1,5 @@
 import { parcheCalendario, type PreferenciasCalendario } from "./preferencias-calendario";
+import { registrarPerfilGuardado } from "./perfil-ref";
 import { conservarIguales } from "./conservar-iguales";
 import { create } from "zustand";
 import { dispositivoActual } from "./dispositivo";
@@ -12,7 +13,8 @@ import {
   ACCIONES_REGISTRADAS, ACCIONES_SIN_REGISTRO, CAMPOS_PERFIL_SIN_REGISTRO, resumenAltaBajaCita, resumenAltaBajaClienta, resumenCita, resumenClienta, resumenPago, resumenServicio, tipoCambioCita, tipoCambioClienta,
 } from "./registro-cambios";
 import type { PeriodoId, RangoPersonalizado } from "./periodos";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist } from "zustand/middleware";
+import { crearAlmacenDiferido } from "./almacen-diferido";
 import { pestanaEnWebOficial } from "./zona-web";
 import { seedAppointments, seedWaitlist, clients as seedClients, buildSeed, type MezclaSemilla } from "./mock/seed";
 import {
@@ -454,18 +456,7 @@ export interface SavedDemo extends DemoProfile {
 // pestaña pasa al panel o a una web de salón, el siguiente cambio lo guarda
 // entero como siempre. Se decide en cada escritura por la dirección real de
 // la pestaña (ver `pestanaEnWebOficial`).
-const storage = createJSONStorage<SalonState>(() =>
-  typeof window !== "undefined"
-    ? {
-        getItem: (k: string) => window.localStorage.getItem(k),
-        setItem: (k: string, v: string) => {
-          if (pestanaEnWebOficial()) return;
-          window.localStorage.setItem(k, v);
-        },
-        removeItem: (k: string) => window.localStorage.removeItem(k),
-      }
-    : { getItem: () => null, setItem: () => {}, removeItem: () => {} },
-);
+const storage = crearAlmacenDiferido<SalonState>({ puedeEscribir: () => !pestanaEnWebOficial() });
 
 /**
  * Nombre y teléfono del cliente de una cita, si tiene ficha propia. Un "Sin
@@ -1698,3 +1689,4 @@ function instalarRegistroDeCambios() {
   useSalonStore.setState(envueltas as Partial<SalonState>);
 }
 instalarRegistroDeCambios();
+registrarPerfilGuardado(() => useSalonStore.getState().salonProfile);
