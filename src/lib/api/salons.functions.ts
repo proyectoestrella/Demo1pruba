@@ -1137,7 +1137,11 @@ export const syncAppointment = createServerFn({ method: "POST" })
       localId: z.string().min(1).max(100),
       clientName: z.string().max(100).optional(),
       clientPhone: z.string().max(30).optional(),
-      clientEmail: z.string().email().max(200).optional(),
+      // Correo opcional en la web pública: vacío = sin correo (antes daba 400).
+      clientEmail: z.preprocess(
+        (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+        z.string().trim().email().max(200).optional(),
+      ),
       importedFromTpv: z.boolean().optional(),
       serviceIds: z.array(z.string().max(100)).max(20).default([]),
       employeeId: z.string().min(1).max(100),

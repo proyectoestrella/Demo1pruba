@@ -675,7 +675,7 @@ function BookingWizard() {
     // En un salón real esto es lo que crea (o reconoce) la ficha del cliente
     // en Supabase y engancha la cita. En una demo de venta `realSalonSlug` es
     // null y estos datos no salen del navegador.
-    const cliente = { name: clientName, phone: telefonoE164, email: data.email };
+    const cliente = { name: clientName, phone: telefonoE164, email: data.email?.trim() || undefined };
     if (resolutionStatus === "real") {
       // La misma solicitud conserva su id entre intentos; si el servidor
       // guardó la cita pero se perdió la respuesta, el reintento la reconoce.
