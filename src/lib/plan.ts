@@ -9,9 +9,12 @@
  * las últimas 24 h), campañas ampliadas (estándar: solo la reseña de Google;
  * cumpleaños no existe todavía), analítica avanzada e importación asistida
  * mensual. El asistente, desde Reservas + Asistente. El resto, en Reservas.
- * Básico admite hasta tres profesionales (Tomás, 22-oct: «más de 3 estilistas
- * no entra en su plan»); Estándar, hasta seis. Embajador conserva el máximo técnico actual
- * de seis mientras no se implemente el «sin límite» de su ficha comercial.
+ * Profesionales (Tomás, 22-oct, decisión que sustituye a la anterior): «El tope
+ * de 3 estilistas es solo de peluchic, para los demás es hasta 6 salvo en
+ * embajador». Básico y Estándar, hasta seis; Embajador, sin límite comercial
+ * (conserva el máximo técnico `MAX_SALON_TEAM_ENTRIES`); y el salón con slug
+ * `peluchic`, hasta tres en cualquier plan (`TOPE_POR_SALON`, único sitio donde
+ * se aplica; lo usan la pantalla Equipo, la store y el servidor).
  *
  * Decisión de Tomás (27-sep), alineado con el presupuesto: exportar tus citas
  * y tu analítica a Excel va en TODOS los planes, no solo en Todo incluido
@@ -185,9 +188,9 @@ export function funcionDePlanMencionada(texto: string): FuncionPlan | null {
   return null;
 }
 
-/** Límite operativo vigente. Embajador aún conserva el máximo técnico de seis. */
+/** Límite operativo por plan. Embajador conserva el máximo técnico de seis. */
 export const LIMITE_PROFESIONALES: Record<PlanSishow, number> = {
-  reservas: 3,
+  reservas: 6,
   "reservas-asistente": 6,
   "todo-incluido": 6,
 };
@@ -205,9 +208,23 @@ export function cantidadProfesionales(team: unknown): number {
   return team.filter((entrada) => typeof entrada === "string" && entrada.split("~", 1)[0].trim()).length;
 }
 
+/** Topes propios de un salón concreto (22-oct): PeluChic, tres. Tienen prioridad sobre el plan. */
+export const TOPE_POR_SALON: Record<string, number> = {
+  peluchic: 3,
+};
+
+/**
+ * Límite efectivo de profesionales de un salón: el menor entre el del plan y el
+ * propio del salón (si lo tiene). ÚNICO sitio donde se aplica el override.
+ */
+export function limiteProfesionalesDeSalon(plan: PlanSishow, slug?: string | null): number {
+  const propio = slug ? TOPE_POR_SALON[slug] : undefined;
+  return propio === undefined ? LIMITE_PROFESIONALES[plan] : Math.min(propio, LIMITE_PROFESIONALES[plan]);
+}
+
 /** Evita que la UI y el servidor apliquen topes distintos al mismo perfil. */
-export function equipoCabeEnPlan(plan: PlanSishow, team: unknown): boolean {
-  return cantidadProfesionales(team) <= LIMITE_PROFESIONALES[plan];
+export function equipoCabeEnPlan(plan: PlanSishow, team: unknown, slug?: string | null): boolean {
+  return cantidadProfesionales(team) <= limiteProfesionalesDeSalon(plan, slug);
 }
 
 /** Lo que incluye cada plan, en orden, para «Qué incluye cada plan». */
@@ -220,12 +237,13 @@ export const HORAS_HISTORIAL_ESTANDAR = 24;
 
 /**
  * Profesionales con agenda propia por plan (tabla de precios del 2-oct):
- * Básico hasta 3, Estándar hasta 6, Embajador sin límite (`null`). Es un
+ * Básico hasta 6, Estándar hasta 6, Embajador sin límite (`null`); desde el
+ * 22-oct. El tope de PeluChic (3) va aparte, en `TOPE_POR_SALON`. Es un
  * límite COMERCIAL; el técnico sigue siendo `MAX_SALON_TEAM_ENTRIES` (6),
  * así que en Embajador el panel tampoco deja pasar de 6 hoy.
  */
 export const MAX_PROFESIONALES: Record<PlanSishow, number | null> = {
-  reservas: 3,
+  reservas: 6,
   "reservas-asistente": 6,
   "todo-incluido": null,
 };

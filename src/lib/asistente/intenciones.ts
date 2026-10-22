@@ -244,7 +244,7 @@ export function funcionDeIntencionPlan(id: string): FuncionPlan | null {
  * 25-sep): el documento sigue con los nombres y el reparto de antes de la
  * decisión de Tomás del 28-sep (`plan-final-v2.md`) — Reservas → Básico,
  * Reservas + Asistente → Estándar, Todo incluido → Embajador, y «más
- * profesionales» vuelve a depender del plan (Básico hasta 3, Estándar hasta 6,
+ * profesionales» vuelve a depender del plan (Básico y Estándar hasta 6,
  * Embajador sin límite).
  */
 const CORRIGE_PLAN: Record<string, Partial<FamiliaEspecificacion>> = {
@@ -264,7 +264,7 @@ const CORRIGE_PLAN: Record<string, Partial<FamiliaEspecificacion>> = {
   // aunque el salón ya esté en el plan de más arriba).
   "plan-mas-profesionales": {
     plan: "Embajador",
-    alternativa: "Añádela desde Equipo con «Añadir profesional»: Básico llega hasta 3 profesionales y Estándar hasta 6; Embajador no tiene límite comercial (guía §6 Equipo)",
+    alternativa: "Añádela desde Equipo con «Añadir profesional»: Básico y Estándar llegan hasta 6 profesionales; Embajador no tiene límite comercial (guía §6 Equipo)",
     mensaje: "Hola, soy María de PeluChic. Vamos a ser 7 en el equipo y me gustaría pasar al plan Embajador. ¿Qué tengo que hacer?",
   },
 };

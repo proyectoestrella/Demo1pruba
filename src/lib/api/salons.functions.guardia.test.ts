@@ -14,6 +14,7 @@
  * Si esta prueba se pone roja, NO se cambia la lista de abajo para que pase.
  * Se mira qué función se ha quedado sin guarda.
  */
+import { equipoCabeEnPlan, planDe } from "../plan";
 import { describe, expect, it } from "bun:test";
 
 const FUENTE = await Bun.file(new URL("./salons.functions.ts", import.meta.url)).text();
@@ -145,11 +146,19 @@ describe("la guarda está puesta en todas las funciones de servidor", () => {
 
   it("el servidor impide guardar perfiles por encima del plan en alta y parche", () => {
     expect(cuerpoDe("saveSalonProfile")).toContain(
-      "perfilDentroDelTopeDeProfesionales(data.profile)",
+      "perfilDentroDelTopeDeProfesionales(data.profile, data.slug)",
     );
     expect(cuerpoDe("patchSalonProfile")).toContain(
-      'if ("team" in data.patch && !perfilDentroDelTopeDeProfesionales(fusionado))',
+      'if ("team" in data.patch && !perfilDentroDelTopeDeProfesionales(fusionado, data.slug))',
     );
+  });
+
+  it("el servidor pasa el slug al tope: PeluChic rechaza un cuarto profesional", () => {
+    expect(
+      equipoCabeEnPlan(planDe({ plan: "todo-incluido" }, false), ["a", "b", "c", "d"], "peluchic"),
+    ).toBe(false);
+    expect(equipoCabeEnPlan(planDe({ plan: "reservas" }, false), ["a", "b", "c", "d"], "otro")).toBe(true);
+    expect(cuerpoDe("saveSalonProfile")).toContain("data.slug");
   });
 
   it("un acceso limitado a la web no puede sobrescribir ni restaurar el perfil entero", () => {
