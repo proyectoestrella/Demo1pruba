@@ -35,10 +35,16 @@ export type TipoRetratoLegado = "mujer" | "hombre";
 export type Retrato = { version: 3; peinado: PeinadoRetrato };
 
 /** Retrato automático estable: reparte los ids por el catálogo completo. */
+/**
+ * Retrato automático: solo pelo largo o afro. El automático no sabe quién es la
+ * persona y en un salón la mayoría son mujeres: un corto «de chico» para María
+ * chirría (22-oct). Los 3 cortos quedan para quien los elija a mano.
+ */
+const PEINADOS_POR_DEFECTO = PEINADOS_RETRATO.filter(({ grupo }) => grupo !== "corto");
 export function retratoPorDefecto(id: string): Retrato {
   return {
     version: 3,
-    peinado: PEINADOS_RETRATO[hashTexto(id) % PEINADOS_RETRATO.length].id,
+    peinado: PEINADOS_POR_DEFECTO[hashTexto(id) % PEINADOS_POR_DEFECTO.length].id,
   };
 }
 

@@ -53,7 +53,7 @@ describe("catálogo de retratos Notionists", () => {
     const repartidos = new Set(
       Array.from({ length: 300 }, (_, i) => retratoPorDefecto(`clienta-${i}`).peinado),
     );
-    expect(repartidos.size).toBe(15);
+    expect(repartidos.size).toBe(12); // 10 largos + 2 afro: los cortos solo a mano
   });
 
   it("la carga diferida devuelve el mismo módulo y queda en caché", async () => {
@@ -176,4 +176,10 @@ describe("compatibilidad de lo guardado", () => {
       expect(uri.length).toBeGreaterThan(500);
     }
   });
+});
+
+it("el retrato automático nunca es un corte corto", () => {
+  const cortos = new Set(["variant01", "variant06", "variant22"]);
+  for (let i = 0; i < 500; i++) expect(cortos.has(retratoPorDefecto(`persona-${i}`).peinado)).toBe(false);
+  for (const id of ["maria", "anca", "patricia"]) expect(cortos.has(retratoPorDefecto(id).peinado)).toBe(false);
 });
