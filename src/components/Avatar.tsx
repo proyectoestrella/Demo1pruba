@@ -3,9 +3,9 @@ import { cn } from "@/lib/utils";
 import { useSalonStore } from "@/lib/store";
 import { employeeMap } from "@/lib/mock/salon";
 import { hashTexto, iniciales, resolverAvatar } from "@/lib/avatar";
-import { uriDeAvatar } from "@/lib/avatar-svg";
-import { retratoGuardado, uriRetrato } from "@/lib/retratos-avatar";
+import { retratoGuardado } from "@/lib/retratos-avatar";
 import { useFotoActiva } from "@/hooks/use-foto-persona";
+import { useDibujoRetratos } from "@/hooks/use-dibujo-retratos";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
@@ -43,7 +43,9 @@ export interface AvatarProps {
  * El avatar de una persona, en un solo sitio.
  * Prioridad: foto > avatar elegido > avatar por defecto según el id > iniciales.
  * Sin foto ni avatar elegido, iniciales en círculo Arena. Los retratos elegidos
- * se generan con SVG propios, sin descargar ni cargar una librería externa.
+ * son DiceBear «Notionists», generados en el navegador sin red; la librería se
+ * carga bajo demanda y, mientras tanto, se pinta un círculo neutro del mismo
+ * tamaño (sin saltos de maquetación).
  * Este es el único punto de render de avatar.
  */
 export function Avatar({
@@ -65,13 +67,15 @@ export function Avatar({
   const r = resolverAvatar({ id, foto: foto && foto !== fotoRota ? foto : undefined, elegido });
   // Por defecto, iniciales en círculo Arena: legibles a 24 px, sin riesgo de
   // poner barba a «Fátima» ni gestos raros (los dibujos automáticos no saben el
-  // género ni el oficio). El retrato de línea solo sale si se eligió a propósito.
-  const retrato = retratoGuardado(elegido);
+  // género ni el oficio). El dibujo DiceBear solo sale si se eligió a propósito.
+  const conDibujo = r.origen === "elegido" && r.avatar !== undefined;
+  const dibujo = useDibujoRetratos(conDibujo);
+  const retrato = conDibujo ? retratoGuardado(elegido) : undefined;
   const uri =
-    r.origen === "elegido" && r.avatar !== undefined
+    conDibujo && dibujo
       ? retrato
-        ? uriRetrato(retrato, t.px)
-        : uriDeAvatar(r.avatar, t.px)
+        ? dibujo.uriRetrato(retrato, t.px)
+        : dibujo.avatarDiceBearUri(r.avatar!, t.px)
       : undefined;
   const caja = cn("relative block shrink-0 overflow-hidden rounded-full select-none", className);
   const estilo = {
@@ -104,6 +108,13 @@ export function Avatar({
       </span>
     );
   }
+  if (conDibujo && dibujo === undefined) {
+    // DiceBear aún cargando: círculo neutro del mismo tamaño.
+    return (
+      <span className={cn(caja, "bg-nata")} style={estilo} {...accesible} data-avatar="cargando" />
+    );
+  }
+  // Sin dibujo (o si DiceBear no pudo cargar): iniciales.
   const color = PALETA[hashTexto(id ?? nombre) % PALETA.length];
   return (
     <span
