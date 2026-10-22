@@ -67,6 +67,11 @@ export function elegirAvatar(avatar: AvatarClave | AvatarComposicion): AvatarEle
   if (!avatarIdValido(clave)) throw new Error("Avatar no válido");
   return { style: "trimly", avatar: clave };
 }
+/** ¿Es el placeholder de iniciales de `avatarInicialesUri` (no una foto real)? */
+export function esUriIniciales(uri: string): boolean {
+  return uri.startsWith("data:image/svg+xml,") && uri.includes(encodeURIComponent('data-iniciales="1"'));
+}
+
 /** Avatar automático estable para el mismo id. */
 export function avatarPorDefecto(id: string): AvatarId {
   return IDS_AVATAR[hashTexto(id) % IDS_AVATAR.length];
@@ -78,7 +83,9 @@ export function resolverAvatar(entrada: {
   elegido?: unknown;
 }): AvatarResuelto {
   const foto = entrada.foto?.trim();
-  if (foto) return { origen: "foto", foto };
+  // Las iniciales que generan las APIs antiguas (`avatarInicialesUri`) no son
+  // una foto: si cuentan como tal, tapan el avatar elegido y el retrato por defecto.
+  if (foto && !esUriIniciales(foto)) return { origen: "foto", foto };
   const elegido = avatarIdDeElegido(entrada.elegido);
   if (elegido) return { origen: "elegido", avatar: elegido };
   if (entrada.id) return { origen: "defecto", avatar: avatarPorDefecto(entrada.id) };

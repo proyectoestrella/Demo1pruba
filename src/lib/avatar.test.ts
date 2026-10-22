@@ -215,3 +215,11 @@ describe("familia SVG propia compuesta", () => {
     expect(simple).not.toContain('fill="#F5F0E8"');
   });
 });
+
+import { avatarInicialesUri } from "./avatar-placeholder";
+import { resolverAvatar as resolverAvatarIniciales } from "./avatar";
+it("las iniciales generadas no cuentan como foto: dejan pasar el retrato", () => {
+  const r = resolverAvatarIniciales({ id: "maria", foto: avatarInicialesUri("María", "maria") });
+  expect(r.origen).toBe("defecto");
+  expect(resolverAvatarIniciales({ id: "maria", foto: "https://x/f.webp" }).origen).toBe("foto");
+});
