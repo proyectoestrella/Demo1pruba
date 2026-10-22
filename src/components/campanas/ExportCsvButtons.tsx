@@ -1,125 +1,74 @@
-import { useMemo, useState } from "react";
-import { Download, FileSpreadsheet } from "lucide-react";
+import { useMemo } from "react";
+import { Download } from "lucide-react";
 import type { Appointment, Employee, Service } from "@/lib/mock/types";
-import { claveDeDia, textoRango, type Rango } from "@/lib/periodos";
+import { textoRango, type Rango } from "@/lib/periodos";
 import { selectServiceMap, useSalonStore } from "@/lib/store";
 import { inferBusinessType } from "@/lib/business-type";
-import { citasToCsv, resumenMensualToCsv, downloadCsv } from "@/lib/export-csv";
+import { resumenCitasToCsv, downloadCsv } from "@/lib/export-csv";
+import { zonaDelSalon, fechaEnZona } from "@/lib/zona-horaria";
+import { enRango } from "@/lib/periodo-citas";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-type Periodo = "7d" | "30d" | "mes" | "todo";
-
-const PERIODOS: { value: Periodo; label: string; archivo: string }[] = [
-  { value: "7d", label: "Últimos 7 días", archivo: "ultimos-7-dias" },
-  { value: "30d", label: "Últimos 30 días", archivo: "ultimos-30-dias" },
-  { value: "mes", label: "Este mes", archivo: "este-mes" },
-  { value: "todo", label: "Todo el histórico", archivo: "historico" },
-];
-
-function inicioDePeriodo(periodo: Periodo, now: Date): Date {
-  if (periodo === "todo") return new Date(0);
-  const inicio = new Date(now);
-  if (periodo === "mes") {
-    inicio.setDate(1);
-    inicio.setHours(0, 0, 0, 0);
-    return inicio;
-  }
-  inicio.setDate(inicio.getDate() - (periodo === "7d" ? 7 : 30));
-  return inicio;
-}
 
 export interface ExportCsvButtonsProps {
+  /**
+   * Citas a exportar. Sin `rango`, se exportan TAL CUAL: la pantalla Citas
+   * ya las pasa filtradas por su periodo, estado, profesional y búsqueda.
+   */
   appointments: Appointment[];
   services: Service[];
   employees: Employee[];
-  /**
-   * Periodo que manda, cuando la pantalla ya tiene su propio selector
-   * (Analítica). Si viene, el desplegable de aquí desaparece: dos selectores
-   * de periodo en la misma pantalla diciendo cosas distintas es justo lo que
-   * confunde al dueño. Sin él, el componente se gobierna solo (Agenda).
-   */
+  /** Periodo que manda en Analítica: se recortan las citas a este rango. */
   rango?: Rango;
+  /** Texto del periodo para la cabecera del CSV («Este mes (1 oct – 31 oct)»). */
+  textoPeriodo?: string;
+  /** Trozo del nombre de archivo («este-mes»). */
+  archivo?: string;
+  /** Filtros además del periodo, para la cabecera del CSV. */
+  filtros?: string;
   className?: string;
 }
 
 /**
- * Descarga de citas a CSV (con separador `;` y BOM para que Excel en español
- * las abra bien — ver `lib/export-csv.ts`) para el periodo elegido, y del
- * resumen del mes en curso con totales por día y por profesional. Todo se
- * genera en el propio navegador, sin backend de por medio.
+ * «Exportar resumen» (22-oct): un solo botón y un solo CSV con el resumen
+ * del periodo (totales, por estado, por servicio, por profesional) y el
+ * detalle cita a cita. Antes eran dos botones, y «Resumen del mes» ignoraba
+ * el periodo elegido. Todo se genera en el navegador (ver `lib/export-csv.ts`).
  */
-export function ExportCsvButtons({
-  appointments,
-  services,
-  employees,
-  rango,
-  className,
-}: ExportCsvButtonsProps) {
-  const [periodo, setPeriodo] = useState<Periodo>("mes");
+export function ExportCsvButtons({ appointments, services, employees, rango, textoPeriodo, archivo, filtros, className }: ExportCsvButtonsProps) {
   const serviceMap = useMemo(() => selectServiceMap(services), [services]);
-  const employeeMap = useMemo(
-    () => Object.fromEntries(employees.map((e) => [e.id, e])),
-    [employees],
-  );
-
+  const employeeMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
   const salonProfile = useSalonStore((s) => s.salonProfile);
+  const zona = zonaDelSalon(salonProfile);
 
-  function exportarCitas() {
+  function exportar() {
     const now = new Date();
-    const desde = rango ? +rango.inicio : +inicioDePeriodo(periodo, now);
-    // Con un rango del selector se exporta el rango entero, futuras incluidas:
-    // es lo que el dueño está viendo en pantalla. Sin él, hasta hoy.
-    const hasta = rango ? +rango.fin : +now + 1;
-    const enPeriodo = appointments.filter(
-      (a) => +new Date(a.start) >= desde && +new Date(a.start) < hasta,
-    );
-    const csv = citasToCsv(enPeriodo, serviceMap, employeeMap, { perfil: salonProfile, tipo: inferBusinessType(salonProfile.tagline, salonProfile.name) });
+    const citas = rango ? appointments.filter((a) => enRango(a, rango)) : appointments;
+    const periodo = textoPeriodo ?? (rango ? textoRango(rango, zona) : "Todas las fechas");
+    const csv = resumenCitasToCsv(citas, serviceMap, employeeMap, {
+      periodo,
+      filtros,
+      salon: salonProfile.name,
+      timeZone: zona,
+      ahora: now,
+      formulario: { perfil: salonProfile, tipo: inferBusinessType(salonProfile.tagline, salonProfile.name) },
+    });
     const etiqueta = rango
-      ? `${claveDeDia(rango.inicio)}_${claveDeDia(new Date(+rango.fin - 86_400_000))}`
-      : (PERIODOS.find((p) => p.value === periodo)?.archivo ?? periodo);
-    downloadCsv(`citas-${etiqueta}-${now.toISOString().slice(0, 10)}.csv`, csv);
-  }
-
-  function exportarResumenMes() {
-    const now = new Date();
-    const desde = +inicioDePeriodo("mes", now);
-    const delMes = appointments.filter(
-      (a) => +new Date(a.start) >= desde && +new Date(a.start) <= +now,
-    );
-    const csv = resumenMensualToCsv(delMes, employees);
-    downloadCsv(`resumen-del-mes-${now.toISOString().slice(0, 7)}.csv`, csv);
+      ? `${fechaEnZona(rango.inicio, zona)}_${fechaEnZona(new Date(+rango.fin - 1), zona)}`
+      : (archivo ?? "citas");
+    downloadCsv(`resumen-citas-${etiqueta}-${fechaEnZona(now, zona)}.csv`, csv);
   }
 
   return (
     <div className={className ?? "flex flex-wrap items-center gap-2"}>
-      {rango ? (
-        <span className="text-xs text-muted-foreground">{textoRango(rango)}</span>
-      ) : (
-        <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
-          <SelectTrigger className="w-[130px] sm:w-[170px]" aria-label="Periodo a exportar">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PERIODOS.map((p) => (
-              <SelectItem key={p.value} value={p.value}>
-                {p.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-      <Button variant="outline" size="sm" className="gap-1.5" onClick={exportarCitas}>
-        <Download className="h-3.5 w-3.5" /> <span className="sm:hidden">Excel</span><span className="hidden sm:inline">Exportar a Excel (CSV)</span>
-      </Button>
-      <Button variant="outline" size="sm" className="gap-1.5" onClick={exportarResumenMes}>
-        <FileSpreadsheet className="h-3.5 w-3.5" /> <span className="sm:hidden">Resumen</span><span className="hidden sm:inline">Resumen del mes</span>
+      {rango && <span className="text-xs text-muted-foreground">{textoRango(rango, zona)}</span>}
+      <Button
+        type="button"
+        variant="outline"
+        className="min-h-11 gap-1.5"
+        onClick={exportar}
+        title="Descarga un CSV para Excel con el resumen del periodo y el detalle de cada cita"
+      >
+        <Download className="size-4" /> Exportar resumen
       </Button>
     </div>
   );

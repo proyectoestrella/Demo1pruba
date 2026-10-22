@@ -80,7 +80,24 @@ export function AjustesDiasEspeciales() {
       <Button type="button" variant="outline" className="gap-1.5" onClick={cargarFestivos}><CalendarPlus className="size-4" /> Cargar festivos Madrid 2026</Button>
     </div>
     {lista.length > 0 && <ul className="divide-y rounded-2xl border border-lino">
-      {lista.map((d) => <li key={d.fecha} className="flex items-center gap-3 px-3.5 py-3 text-sm"><b className="tabular-nums">{d.fecha}</b><span className="min-w-0 flex-1 text-muted-foreground">{d.cerrado ? "Cerrado" : d.soloProfesionales ? `Solo ${Object.keys(d.soloProfesionales).length} profesional(es)` : textoFranjas(d.franjas) || "Horario habitual"}{d.nota ? ` · ${d.nota}` : ""}</span><button aria-label={`Editar ${d.fecha}`} type="button" onClick={() => editar(d)} className="p-1.5 text-cafe-medio"><Pencil className="size-4" /></button><button aria-label={`Borrar ${d.fecha}`} type="button" onClick={() => borrar(d.fecha)} className="p-1.5 text-melocoton-tinta"><Trash2 className="size-4" /></button></li>)}
+      {lista.map((d) => {
+        // 22-oct: «lun 12/10/2026» en vez de la clave ISO; plural correcto; botones de 44 px.
+        const [a, m, dd] = d.fecha.split("-").map(Number);
+        const dia = new Date(Date.UTC(a, m - 1, dd)).toLocaleDateString("es-ES", { weekday: "short", timeZone: "UTC" }).replace(".", "");
+        const fechaEs = `${dia} ${String(dd).padStart(2, "0")}/${String(m).padStart(2, "0")}/${a}`;
+        const nPros = d.soloProfesionales ? Object.keys(d.soloProfesionales).length : 0;
+        return (
+          <li key={d.fecha} className="flex items-center gap-2 px-3.5 py-1.5 text-sm">
+            <b className="shrink-0 tabular-nums">{fechaEs}</b>
+            <span className="min-w-0 flex-1 text-muted-foreground">
+              {d.cerrado ? "Cerrado" : d.soloProfesionales ? `Solo ${nPros} ${nPros === 1 ? "profesional" : "profesionales"}` : textoFranjas(d.franjas) || "Horario habitual"}
+              {d.nota ? ` · ${d.nota}` : ""}
+            </span>
+            <button aria-label={`Editar ${fechaEs}`} type="button" onClick={() => editar(d)} className="grid size-11 shrink-0 place-items-center rounded-full text-cafe-medio hover:bg-nata"><Pencil className="size-4" /></button>
+            <button aria-label={`Borrar ${fechaEs}`} type="button" onClick={() => borrar(d.fecha)} className="grid size-11 shrink-0 place-items-center rounded-full text-melocoton-tinta hover:bg-nata"><Trash2 className="size-4" /></button>
+          </li>
+        );
+      })}
     </ul>}
     <div className="grid gap-3 rounded-2xl bg-nata p-3.5">
       <div className="grid gap-3 sm:grid-cols-2"><label className="grid gap-1 text-[13px] font-bold">Fecha<Input type="date" value={form.fecha} onChange={(e) => cambiar({ fecha: e.target.value })} className={campo} /></label><label className="grid gap-1 text-[13px] font-bold">Nota (opcional)<Input value={form.nota} maxLength={100} onChange={(e) => cambiar({ nota: e.target.value })} placeholder="Por ejemplo, Nochebuena" className={campo} /></label></div>

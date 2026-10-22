@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { diasDeRejilla, horasDeRejilla, inicioDeSemana, pasoDeVista, preferenciasDe, tramosDeCitas, citasFueraDeHoras, rangoDeDias, diasDesde, vistaInicialCalendario, vistaElegidaGuardada, recordarVistaElegida } from "./preferencias-calendario";
+import { parcheCalendario, diasDeRejilla, horasDeRejilla, inicioDeSemana, pasoDeVista, preferenciasDe, tramosDeCitas, citasFueraDeHoras, rangoDeDias, diasDesde, vistaInicialCalendario, vistaElegidaGuardada, recordarVistaElegida } from "./preferencias-calendario";
 import type { Appointment } from "./mock/types";
 
 const d = (s: string) => new Date(s + "T00:00:00");
@@ -7,12 +7,12 @@ const iso = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart
 
 describe("preferencias del calendario", () => {
   test("sin nada guardado abre en Semana, lunes, de 8 a 21", () => {
-    expect(preferenciasDe(undefined)).toEqual({ vista: "semana", primerDia: 1, desde: 8, hasta: 21 });
+    expect(preferenciasDe(undefined)).toEqual({ vista: "cronograma", primerDia: 1, desde: 8, hasta: 21 });
   });
   test("sanea lo guardado: vista desconocida, horas al revés o fuera de rango", () => {
     expect(preferenciasDe({ vista: "tres", primerDia: 0, desde: 9, hasta: 20 })).toEqual({ vista: "tres", primerDia: 0, desde: 9, hasta: 20 });
     // @ts-expect-error: un valor viejo o corrupto en el perfil
-    expect(preferenciasDe({ vista: "agenda" }).vista).toBe("semana");
+    expect(preferenciasDe({ vista: "agenda" }).vista).toBe("cronograma");
     expect(preferenciasDe({ desde: 20, hasta: 10 })).toMatchObject({ desde: 20, hasta: 22 });
     expect(preferenciasDe({ desde: -3, hasta: 40 })).toMatchObject({ desde: 0, hasta: 24 });
   });
@@ -82,5 +82,27 @@ describe("elegir días", () => {
     expect(rangoDeDias("", "2026-10-09")).toEqual({ error: "Elige las dos fechas." });
     expect(rangoDeDias("2026-10-09", "2026-10-05")).toEqual({ error: "La fecha final va después de la inicial." });
     expect(rangoDeDias("2026-10-01", "2026-10-15")).toEqual({ error: "Como mucho 14 días seguidos." });
+  });
+});
+
+describe("vista por defecto: Cronograma (22-oct)", () => {
+  test("sin nada guardado abre en Cronograma, también en móvil", () => {
+    const pref = preferenciasDe(undefined);
+    expect(pref.vista).toBe("cronograma");
+    expect(vistaInicialCalendario(pref.vista, true)).toBe("cronograma");
+    expect(vistaInicialCalendario(pref.vista, false)).toBe("cronograma");
+  });
+  test("una vista elegida a mano en el dispositivo se respeta", () => {
+    const datos = new Map<string, string>();
+    const almacen = { getItem: (k: string) => datos.get(k) ?? null, setItem: (k: string, v: string) => void datos.set(k, v) };
+    expect(vistaElegidaGuardada(almacen)).toBeNull();
+    recordarVistaElegida("mes", almacen);
+    expect(vistaElegidaGuardada(almacen)).toBe("mes");
+  });
+  test("cambiar horas o primer día no deja fijada la vista por defecto", () => {
+    expect(parcheCalendario(undefined, { desde: 9 }).calendario).not.toHaveProperty("vista");
+    expect(parcheCalendario({ primerDia: 0 }, { hasta: 20 }).calendario).not.toHaveProperty("vista");
+    expect(parcheCalendario(undefined, { vista: "semana" }).calendario).toMatchObject({ vista: "semana" });
+    expect(parcheCalendario({ vista: "mes" }, { desde: 9 }).calendario).toMatchObject({ vista: "mes", desde: 9 });
   });
 });

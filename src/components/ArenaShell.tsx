@@ -449,7 +449,7 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
   // Sin el plan del asistente (Básico, o mientras se resuelve el salón), el botón no existe.
   const conAsistente = useTienePlan("asistente");
   return (
-    <header className="gutter-x relative grid grid-cols-1 items-center gap-2 pt-[calc(10px+var(--seguro-arriba))] pb-2.5 lg:sticky lg:top-0 lg:z-20 lg:h-[calc(71px+var(--seguro-arriba))] lg:grid-cols-[minmax(0,1fr)_minmax(0,560px)_minmax(0,1fr)] lg:gap-3 lg:pt-[var(--seguro-arriba)] lg:pb-0 lg:group-data-[panel=abierto]/panel:grid-cols-[minmax(0,1fr)_auto]">
+    <header className="cabecera-panel gutter-x relative grid grid-cols-1 items-center gap-2 pt-[calc(10px+var(--seguro-arriba))] pb-2.5 lg:sticky lg:top-0 lg:z-20 lg:h-[calc(71px+var(--seguro-arriba))] lg:grid-cols-[minmax(0,1fr)_minmax(0,560px)_minmax(0,1fr)] lg:gap-3 lg:pt-[var(--seguro-arriba)] lg:pb-0 lg:group-data-[panel=abierto]/panel:grid-cols-[minmax(0,1fr)_auto]">
       <div className="flex items-center justify-between lg:hidden">
         <Marca compacta />
         <div className="flex items-center gap-2">
@@ -579,7 +579,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
         onClick={onNuevaCita}
         aria-label="Nueva cita"
         className={cn(
-          "fixed right-4 bottom-[calc(var(--alto-barra-fija)+12px)] z-40 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-[var(--sombra-flotante)] transition-[opacity,transform] duration-150 lg:hidden",
+          "fab-panel fixed right-4 bottom-[calc(var(--alto-barra-fija)+12px)] z-40 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-[var(--sombra-flotante)] transition-[opacity,transform] duration-150 lg:hidden",
           apartado && "scale-[.8] opacity-70",
         )}
         data-fab
@@ -587,7 +587,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
         <Plus className="size-6" strokeWidth={1.6} />
       </button>
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-[rgba(48,48,48,.07)] bg-[rgba(251,247,236,.94)] px-1.5 pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom,0px))] backdrop-blur-[8px] lg:hidden"
+        className="barra-inferior-panel fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-[rgba(48,48,48,.07)] bg-[rgba(251,247,236,.94)] px-1.5 pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom,0px))] backdrop-blur-[8px] lg:hidden"
         aria-label="Apartados"
       >
         {barra.map((item) => {

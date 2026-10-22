@@ -404,7 +404,7 @@ export function CalendarioArena({
           </button>
         </div>
         <div className="order-last w-full min-w-0 lg:order-2 lg:w-auto lg:flex-1">
-          <h1 className="text-[27px] leading-[1.1] font-normal tracking-[-0.04em] text-[#303030] sm:truncate sm:text-[28px] sm:leading-tight md:text-[36px]" title={titulo}>{titulo}</h1>
+          <h1 className="titulo-calendario text-[27px] leading-[1.1] font-normal tracking-[-0.04em] text-[#303030] sm:truncate sm:text-[28px] sm:leading-tight md:text-[36px]" title={titulo}>{titulo}</h1>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1 lg:order-3">
           <Popover>
@@ -499,6 +499,7 @@ export function CalendarioArena({
                 type="button"
                 role="tab"
                 aria-selected={vista === v.id}
+                aria-label={v.label}
                 onClick={() => elegirVista(v.id)}
                 className={cn(
                   "h-11 rounded-full bg-[#F3F2EE] px-1 text-[12.5px] font-semibold whitespace-nowrap text-[#5A5A56] transition-colors hover:bg-[#ECEBE6] md:h-10 md:px-[13px] md:text-[13px]",
@@ -545,7 +546,7 @@ export function CalendarioArena({
       </div>
 
       {/* Caja del calendario: la vista, con scroll interno. */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
+      <div data-vista={vista} className="caja-calendario flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
         {vista === "cronograma" && (
           <Cronograma
             dia={anchor}

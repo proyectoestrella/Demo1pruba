@@ -31,7 +31,8 @@ export const PRIMEROS_DIAS: { id: PrimerDia; label: string }[] = [
   { id: 6, label: "Sábado" },
 ];
 
-export const PREFERENCIAS_POR_DEFECTO: PreferenciasCalendario = { vista: "semana", primerDia: 1, desde: 8, hasta: 21 };
+/** 22-oct: el calendario abre en Cronograma salvo que alguien elija otra vista. */
+export const PREFERENCIAS_POR_DEFECTO: PreferenciasCalendario = { vista: "cronograma", primerDia: 1, desde: 8, hasta: 21 };
 
 /** En una pantalla estrecha la semana no cabe: la primera apertura usa Día. */
 export function vistaInicialCalendario(vistaGuardada: VistaCalendario, movilAngosto: boolean): VistaCalendario {
@@ -90,8 +91,14 @@ export function preferenciasDe(guardadas: SalonProfile["calendario"] | null | un
 export function parcheCalendario(
   actual: SalonProfile["calendario"] | null | undefined,
   cambio: Partial<PreferenciasCalendario> | null | undefined,
-): { calendario: PreferenciasCalendario } {
-  return { calendario: preferenciasDe({ ...preferenciasDe(actual), ...(cambio ?? {}) } as SalonProfile["calendario"]) };
+): { calendario: PreferenciasCalendario | Omit<PreferenciasCalendario, "vista"> } {
+  const calendario = preferenciasDe({ ...preferenciasDe(actual), ...(cambio ?? {}) } as SalonProfile["calendario"]);
+  // La vista solo se guarda si alguien la eligió: cambiar las horas no debe
+  // dejar fijada la de por defecto (y así un cambio de defecto llega a todas).
+  const vistaElegida = cambio?.vista !== undefined || VISTAS_CALENDARIO.some((v) => v.id === (actual as Record<string, unknown> | null | undefined)?.vista);
+  if (vistaElegida) return { calendario };
+  const { vista: _omitida, ...resto } = calendario;
+  return { calendario: resto };
 }
 
 /** Primer día de la semana que contiene `d`, según la preferencia. */

@@ -1087,3 +1087,60 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Pantallas bajas: el móvil en horizontal (844×390, 932×430…), 22-oct.
+ * La cabecera (marca + buscador en dos filas) y la barra inferior se comían
+ * casi todo el alto y el calendario, de alto fijo a la ventana, se quedaba en
+ * cero píxeles sin forma de desplazarse. Aquí la cabecera va en UNA fila, la
+ * barra inferior pone el icono junto al texto y el calendario deja crecer la
+ * página: su caja ocupa una pantalla entera (menos la barra) y se llega a ella
+ * con el scroll normal. Solo por debajo de 1024 px: en PC no hay barra.
+ * ------------------------------------------------------------------------ */
+@media (max-height: 500px) and (max-width: 63.99rem) {
+  :root {
+    --alto-barra-fija: calc(2.75rem + env(safe-area-inset-bottom, 0px));
+    --alto-fab-panel: 3rem;
+  }
+  .cabecera-panel {
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 12px;
+    padding-top: calc(4px + var(--seguro-arriba, 0px));
+    padding-bottom: 4px;
+  }
+  .barra-inferior-panel {
+    padding-top: 2px;
+    padding-bottom: calc(2px + env(safe-area-inset-bottom, 0px));
+  }
+  .barra-inferior-panel > a,
+  .barra-inferior-panel > button {
+    min-height: 40px;
+    flex-direction: row;
+    gap: 6px;
+  }
+  .fab-panel {
+    width: 3rem;
+    height: 3rem;
+  }
+  .marco-calendario {
+    height: auto;
+  }
+  .main-calendario {
+    overflow: visible;
+    /* Solo el hueco de la barra: al final del scroll la caja llena la pantalla. */
+    padding-bottom: var(--alto-barra-fija);
+  }
+  .caja-calendario {
+    flex: none;
+    height: calc(100dvh - var(--alto-barra-fija));
+    min-height: 16rem;
+  }
+  /* El cronograma crece con su contenido (110 px por profesional) y se
+     recorre con el scroll de la página, sin un scroll vertical anidado. */
+  .caja-calendario[data-vista="cronograma"] {
+    height: auto;
+  }
+  .titulo-calendario {
+    font-size: 22px;
+  }
+}
