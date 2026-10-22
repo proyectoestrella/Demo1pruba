@@ -141,7 +141,7 @@ export function HistorialCambios() {
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex h-9 min-w-0 flex-1 basis-48 items-center gap-2 rounded-full border border-input bg-blanco px-3 text-muted-foreground">
           <Search className="size-4 shrink-0" strokeWidth={1.6} />
-          <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Busca por clienta o servicio" aria-label="Buscar en el historial" className="min-w-0 flex-1 bg-transparent text-[14px] text-foreground outline-none" />
+          <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Clienta o servicio" aria-label="Buscar en el historial" className="min-w-0 flex-1 bg-transparent text-[14px] text-foreground outline-none" />
         </label>
         <select value={grupo} onChange={(e) => setGrupo(e.target.value as Grupo | "todo")} aria-label="Qué cambios" className="h-9 rounded-full border border-input bg-blanco px-3 text-[13.5px]">
           {GRUPOS.filter(([g]) => veDinero || g !== "dinero").map(([g, t]) => (

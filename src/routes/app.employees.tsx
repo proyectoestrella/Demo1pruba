@@ -224,7 +224,28 @@ function Team() {
           <h2 className="text-base font-extrabold tracking-[-0.01em]">Esta semana</h2>
           <span className="text-[12.5px] text-muted-foreground">Del {semana[0]?.getDate()} al {semana[semana.length - 1]?.toLocaleDateString("es-ES", { day: "numeric", month: "long" })}, según la agenda</span>
         </div>
-        <div className="overflow-x-auto">
+        <div className="divide-y divide-border sm:hidden">
+          {resumenSemana.map(({ e, citas, horas: h, ocupacion }, i) => (
+            <article key={e.id} className="px-5 py-4">
+              <div className="mb-3 flex items-center gap-2.5">
+                <span className="grid size-8 shrink-0 place-items-center rounded-full text-[11px] font-extrabold" style={{ background: tinteProfesional(i, e.id) }}>{e.name[0]}</span>
+                <h3 className="min-w-0 truncate text-sm font-extrabold">{e.name}</h3>
+              </div>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <div><dt className={etiqueta}>Citas</dt><dd className="mt-0.5 font-bold tabular-nums">{citas}</dd></div>
+                <div><dt className={etiqueta}>Horas en agenda</dt><dd className="mt-0.5 tabular-nums">{String(h).replace(".", ",")} h</dd></div>
+                <div className="col-span-2">
+                  <dt className={etiqueta}>Ocupación</dt>
+                  <dd className="mt-1.5 flex items-center gap-2.5">
+                    <span className="flex h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-nata"><i className="block" style={{ width: `${ocupacion}%`, background: bordeProfesional(i, e.id) }} /></span>
+                    <b className="shrink-0 tabular-nums">{ocupacion} %</b>
+                  </dd>
+                </div>
+              </dl>
+            </article>
+          ))}
+        </div>
+        <div className="hidden sm:block">
           <table className="w-full min-w-[560px] text-sm">
             <thead><tr className="border-b border-[#DAD8CF] bg-white/25 text-left">{["Profesional", "Citas", "Horas en agenda", "Ocupación", "Lo más pedido"].map((t) => <th key={t} className={cn(etiqueta, "px-5 py-2.5")}>{t}</th>)}</tr></thead>
             <tbody>

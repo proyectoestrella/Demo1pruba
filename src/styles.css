@@ -764,6 +764,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
  * ------------------------------------------------------------------------ */
 :root {
   --alto-barra-fija: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  --alto-fab-panel: 3.5rem;
+  /* La barra ocupa el borde inferior y el FAB vive justo encima. Al final de
+     una pantalla hay que dejar libres ambos, más el gutter que separa el FAB
+     del último control. La safe-area ya forma parte de --alto-barra-fija. */
+  --hueco-fab-panel: calc(var(--alto-barra-fija) + var(--alto-fab-panel) + var(--gutter));
 }
 
 /* Deja libre el alto de la barra fija más un respiro, para que la última línea
@@ -777,6 +782,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @media (min-width: 64rem) {
   .hueco-barra-fija {
     padding-bottom: 1.5rem;
+  }
+}
+
+/* El FAB del panel desaparece a 768 px. Esta clase pertenece al armazón: las
+   rutas no inventan rellenos propios y el calendario recibe la misma reserva. */
+.hueco-fab-panel {
+  padding-bottom: var(--hueco-fab-panel);
+}
+@media (min-width: 48rem) {
+  .hueco-fab-panel {
+    padding-bottom: var(--gutter);
   }
 }
 

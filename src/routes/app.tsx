@@ -1,7 +1,7 @@
 import { hostActual, slugSalonDelHost } from "@/lib/host-actual";
 import { InstalarPanel } from "@/components/InstalarPanel";
 import { conRegistroEnPausa } from "@/lib/store";
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { menosMovimiento } from "@/lib/movimiento-panel";
 import { sincronizarColores } from "@/lib/colores-elegidos";
 import { createFileRoute, Outlet, redirect, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
@@ -16,7 +16,7 @@ import { useDemoRegistradaAlDia } from "@/lib/demos/aplicar";
 import { GuardiaDelPanel } from "@/components/GuardiaDelPanel";
 import { FichasGlobales } from "@/components/FichasGlobales";
 import { accesoPanel, permitidoEnRuta, salirPorRevocacion } from "@/lib/acceso-actual-panel";
-import { hasSeenTour, startTour } from "@/lib/tour";
+import { hasSeenTour, markTourSeen, startTour } from "@/lib/tour";
 import {
   BarraInferior,
   CabeceraArena,
@@ -27,7 +27,7 @@ import {
 import { FranjaVerComo } from "@/components/VerComo";
 import { SinPermiso } from "@/components/SinPermiso";
 import { instalarAtajoDeshacer, instalarRegistro } from "@/lib/deshacer-maqueta";
-import { usePlanSalon, useTienePlan } from "@/lib/accesos-panel";
+import { usePlanSalon, usePuede, useTienePlan } from "@/lib/accesos-panel";
 import { rutaIncluidaEnPlan } from "@/lib/plan-basico";
 import { useRedirigirSiRutaSinPermiso } from "@/lib/route-guards";
 import { useHayPanelLateral } from "@/lib/panel-lateral";
@@ -314,6 +314,22 @@ function DashboardLayoutV1() {
   }, [path]);
   const [newApptOpen, setNewApptOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const realSlug = useSalonStore((s) => s.realSalonSlug);
+  // La marca del perfil es del salón y guardarla exige `salon.editar`: solo la
+  // leen y la escriben gerente y subencargada. Estilistas y recepción se quedan
+  // con la marca del dispositivo, sin parches que el servidor rechazaría.
+  const puedeAcc = usePuede();
+  const tourEnPerfil = Boolean(realSlug) && puedeAcc("salon.editar");
+  const tourVistoEnServidor = useSalonStore((s) => s.salonProfile.tourPanelVisto === true) && tourEnPerfil;
+  const updateSalonProfile = useSalonStore((s) => s.updateSalonProfile);
+  const marcarTourVisto = useCallback(() => {
+    // Las demos no escriben esta preferencia. En un salón real viaja como un
+    // parche pequeño del perfil y queda disponible en los demás dispositivos.
+    if (tourEnPerfil && !useSalonStore.getState().salonProfile.tourPanelVisto) {
+      updateSalonProfile({ tourPanelVisto: true });
+    }
+  }, [tourEnPerfil, updateSalonProfile]);
+  const abrirTour = useCallback(() => startTour(marcarTourVisto), [marcarTourVisto]);
   // Con un panel lateral abierto (asistente, ficha, detalle), en PC el
   // contenido deja el ancho del panel a la derecha (--ancho-panel, que la
   // dueña puede cambiar arrastrando su borde): el panel empuja, no tapa.
@@ -340,13 +356,32 @@ function DashboardLayoutV1() {
   // (/app), que es donde están anclados casi todos los pasos. Se espera a que
   // el contenido esté asentado antes de enfocar nada.
   useEffect(() => {
-    if (path !== "/app" || hasSeenTour()) return;
+    if (tourVistoEnServidor) markTourSeen();
+  }, [tourVistoEnServidor]);
+
+  // Migra la marca que ya existía solo en este dispositivo: en cuanto se
+  // confirma que es una cuenta real, la conserva también en el perfil.
+  useEffect(() => {
+    if (tourEnPerfil && !tourVistoEnServidor && hasSeenTour()) {
+      updateSalonProfile({ tourPanelVisto: true });
+    }
+  }, [tourEnPerfil, tourVistoEnServidor, updateSalonProfile]);
+
+  useEffect(() => {
+    if (path !== "/app" || hasSeenTour(tourVistoEnServidor)) return;
     // En una demo abierta por enlace (?d=) el tour taparía la cabecera
     // mientras se enseña el panel: no se lanza solo.
     if (new URLSearchParams(window.location.search).has("d")) return;
-    const t = setTimeout(startTour, 1900);
+    const t = setTimeout(() => {
+      // La resolución del salón es asíncrona. Volvemos a comprobar la copia
+      // remota justo antes de abrir para que un perfil ya marcado no vea un
+      // destello del tour durante la hidratación.
+      const estado = useSalonStore.getState();
+      if (hasSeenTour(tourEnPerfil && estado.salonProfile.tourPanelVisto === true)) return;
+      abrirTour();
+    }, 1900);
     return () => clearTimeout(t);
-  }, [path]);
+  }, [abrirTour, path, tourEnPerfil, tourVistoEnServidor]);
 
   return (
     <div className="panel-marco flex w-auto min-w-0">
@@ -363,17 +398,17 @@ function DashboardLayoutV1() {
           <CabeceraArena
             onAsistente={() => setAssistantOpen(true)}
             onNuevaCita={() => setNewApptOpen(true)}
-            onTour={startTour}
+            onTour={abrirTour}
           />
           {/* Contenido a todo el ancho con gutter de 28 px; en móvil, 16 px y
             hueco para la barra inferior. El último bloque de cada pantalla
             puede crecer hasta el borde (flex-1). */}
           <FranjaVerComo />
           <main className={cn(
-            "flex min-w-0 flex-1 flex-col",
+            "hueco-fab-panel flex min-w-0 flex-1 flex-col",
             path === "/app/calendar"
-              ? "min-h-0 overflow-hidden bg-transparent p-0 pb-[100px] md:pb-0"
-              : "gutter-x pt-[var(--hueco-seccion)] pb-[calc(100px+var(--seguro-abajo))] md:pb-[var(--gutter)]",
+              ? "min-h-0 overflow-hidden bg-transparent p-0"
+              : "gutter-x pt-[var(--hueco-seccion)]",
           )}>
             {/* Lote 16: cada pantalla entra con un fundido y 8 px de desplazamiento
               (180 ms). Con la Web Animations API y sin `key`: remontar el

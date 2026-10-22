@@ -450,6 +450,8 @@ export interface SalonProfile {
   /** Estado de la tarjeta de primeros pasos. */
   setupChecklistHidden?: boolean;
   setupChecklistDone?: number[];
+  /** La cuenta ya cerró o terminó la visita guiada del panel. */
+  tourPanelVisto?: boolean;
   /**
    * Carta real del salón, de 1 a 12 entradas ("Nombre~minutos~precio" o
    * "...~Categoría" — ver `parseMenuEntry` en business-type.ts). Vacío o

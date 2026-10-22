@@ -51,7 +51,8 @@ const STEPS: Step[] = [
   },
 ];
 
-export function hasSeenTour() {
+export function hasSeenTour(seenOnServer = false) {
+  if (seenOnServer) return true;
   try {
     return localStorage.getItem(SEEN_KEY) === "1";
   } catch {
@@ -59,15 +60,16 @@ export function hasSeenTour() {
   }
 }
 
-export function markTourSeen() {
+export function markTourSeen(onSeen?: () => void) {
   try {
     localStorage.setItem(SEEN_KEY, "1");
   } catch {
     /* modo privado o storage bloqueado: no pasa nada */
   }
+  onSeen?.();
 }
 
-export function startTour() {
+export function startTour(onSeen?: () => void) {
   const steps = STEPS.filter((s) => document.querySelector(s.selector)).map((s) => ({
     element: s.selector,
     popover: { title: s.title, description: s.description },
@@ -97,7 +99,7 @@ export function startTour() {
       cerrar.setAttribute("aria-label", "Cerrar");
       cerrar.setAttribute("title", "Cerrar");
     },
-    onDestroyed: markTourSeen,
+    onDestroyed: () => markTourSeen(onSeen),
   });
   d.drive();
 }
