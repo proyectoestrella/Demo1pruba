@@ -343,7 +343,7 @@ function MiWebHidratada() {
       // Se espera al servidor ANTES de tocar nada local: si esto falla, lo
       // escrito sigue en su caja y la web pública no se ha movido.
       const res = await patchSalonProfile({
-        data: { slug: realSlug, patch: aParcheServidor(parcheWeb as Record<string, unknown>) },
+        data: { slug: realSlug, patch: aParcheServidor(parcheWeb as Record<string, unknown>), publicar: true },
       });
       if (!res.synced) {
         toast.error(
@@ -393,7 +393,7 @@ function MiWebHidratada() {
       setGuardando(true);
       try {
         const res = await patchSalonProfile({
-          data: { slug: realSlug, patch: aParcheServidor(parcheDeWeb(webDe(volver))) },
+          data: { slug: realSlug, patch: aParcheServidor(parcheDeWeb(webDe(volver))), publicar: true },
         });
         if (!res.synced) {
           toast.error("No se ha podido deshacer: tu web sigue con el último cambio publicado.");
@@ -1002,12 +1002,22 @@ function Marco({ ancho, children }: { ancho: number; children: React.ReactNode }
   }, [ancho]);
 
   return (
-    <div ref={hueco} className="min-h-[480px] w-full min-w-0 flex-1 overflow-hidden">
-      {/* Envoltorio al tamaño YA escalado: es lo que ocupa sitio y lo que se
+    // El alto del hueco NO puede depender de lo que lleva dentro (22-oct):
+    // en un móvil en vertical el marco escalado (alto / escala, mayor que el
+    // hueco) hacía crecer el hueco, el ResizeObserver medía más alto, y así
+    // sin fin: 33 millones de píxeles de scroll vacío bajo Mi página. Por eso
+    // el hueco tiene alto propio por debajo de lg (en lg lo da la columna
+    // pegajosa) y el marco va en `absolute`, fuera del flujo.
+    <div
+      ref={hueco}
+      data-testid="hueco-vista-previa"
+      className="relative h-[min(640px,72svh)] min-h-[420px] w-full min-w-0 flex-1 overflow-hidden lg:h-auto lg:min-h-[480px]"
+    >
+      {/* Envoltorio al tamaño YA escalado: es lo que se ve y lo que se
           centra. Dentro va el marco a su tamaño real, escalado desde la
           esquina — centrar un elemento más ancho que su hueco no funciona. */}
       <div
-        className="mx-auto h-full overflow-hidden tarjeta-principal bg-card"
+        className="absolute inset-y-0 left-1/2 -translate-x-1/2 overflow-hidden tarjeta-principal bg-card"
         style={{ width: ancho * escala }}
       >
         <div

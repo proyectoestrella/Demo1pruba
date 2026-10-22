@@ -12,7 +12,7 @@
  *     que enseñar antes de decidir — solo fecha, autora y el botón.
  */
 import { useCallback, useEffect, useState } from "react";
-import { listarVersiones, restaurarVersion } from "./api/salons.functions";
+import { listarVersiones, restaurarVersion, verVersion } from "./api/salons.functions";
 import { conRegistroEnPausa, useSalonStore } from "./store";
 import { useVersiones, webDe, parcheDeWeb, diferenciasWeb, type WebPublicada, type Diferencia } from "./versiones-maqueta";
 import type { SalonProfile } from "./mock/types";
@@ -30,6 +30,8 @@ export interface VersionPanel {
   fecha: string;
   autorNombre: string | null;
   web: WebPublicada | null;
+  /** «Publicada desde Mi página», «Antes de cambiar ajustes», «Restaurada la versión del…». */
+  nota?: string | null;
 }
 
 const SIN_VERSIONES: VersionPanel[] = [];
@@ -57,7 +59,7 @@ export function useVersionesPanel(slug: string, esReal: boolean, completo: boole
     listarVersiones({ data: { slug, completo } })
       .then((res) => {
         if (cancelado) return;
-        setServidor(res.versiones.map((v) => ({ id: v.id, fecha: v.fecha, autorNombre: v.autorNombre, web: null })));
+        setServidor(res.versiones.map((v) => ({ id: v.id, fecha: v.fecha, autorNombre: v.autorNombre, web: null, nota: v.nota })));
       })
       .catch((err) => {
         if (cancelado) return;
@@ -105,4 +107,18 @@ export async function restaurarVersionReal(slug: string, versionId: string): Pro
   const perfil = { ...parcheDeWeb(webDe(res.profile as Partial<SalonProfile>)), ...res.profile } as Partial<SalonProfile>;
   conRegistroEnPausa(() => useSalonStore.getState().updateSalonProfile(perfil));
   return { ok: true, profile: perfil };
+}
+
+/**
+ * Contenido de Mi página en una versión de un salón REAL, para compararla y
+ * verla antes de restaurar (22-oct). `restaurable: false` = el plan no llega
+ * tan atrás (se explica en pantalla).
+ */
+export async function cargarVersionReal(
+  slug: string,
+  versionId: string,
+): Promise<{ ok: true; web: WebPublicada; restaurable: boolean } | { ok: false; motivo: string }> {
+  const res = await verVersion({ data: { slug, versionId } });
+  if (!res.ok) return res;
+  return { ok: true, web: res.web as WebPublicada, restaurable: res.restaurable };
 }

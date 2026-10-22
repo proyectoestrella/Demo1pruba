@@ -26,6 +26,7 @@ import {
   setServicesForType,
   textosDeCarta,
   employees as liveEmployees,
+  employeesForType,
 } from "./mock/salon";
 import type {
   Appointment,
@@ -1668,12 +1669,21 @@ function instalarRegistroDeCambios() {
       actualizarPerfil(patch);
       const s = useSalonStore.getState();
       const despues = s.salonProfile as unknown as Record<string, unknown>;
+      // Nombres para las frases («Avatar de Anca», «el color de Corte»), no ids.
+      const equipoNombres: Record<string, string> = {};
+      try {
+        const p = despues as unknown as SalonProfile;
+        for (const e of employeesForType(inferBusinessType(p.tagline, p.name), p.team, p.teamHours, p.openingHours, p.teamIds, p.demoAbreHoy, p.serviciosPorProfesional)) equipoNombres[e.id] = e.name;
+      } catch {
+        /* sin nombres: la frase dice «una profesional» */
+      }
+      const serviciosNombres = Object.fromEntries(s.services.map((sv) => [sv.id, sv.name]));
       for (const clave of Object.keys(patch)) {
         if (CAMPOS_PERFIL_SIN_REGISTRO.has(clave)) continue;
         const c = registrarCambioPuro({
           id: nuevoIdCambio(), tipo: "perfil.campo", entidad: "perfil", idEntidad: clave,
           antes: { [clave]: antes[clave] ?? null }, despues: { [clave]: despues[clave] ?? null },
-          resumen: resumenCampoPerfil(clave),
+          resumen: resumenCampoPerfil(clave, antes[clave] ?? null, despues[clave] ?? null, { equipo: equipoNombres, servicios: serviciosNombres }),
           autor: s.miembro?.userId ?? null, autorNombre: s.miembro?.displayName ?? null, fecha: new Date().toISOString(),
         });
         if (c) s.registrarCambio(c);

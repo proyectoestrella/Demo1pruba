@@ -117,7 +117,7 @@ describe("deshacer cambios del perfil (lote 9b)", () => {
     const [c1, c2] = useSalonStore.getState().cambios;
     expect([c1.tipo, c2.tipo]).toEqual(["perfil.campo", "perfil.campo"]);
     const about = useSalonStore.getState().cambios.find((c) => c.idEntidad === "about")!;
-    expect(about.resumen).toBe("Cambiado el texto «Sobre nosotros»");
+    expect(about.resumen).toBe("Reescribió la presentación");
     expect(useSalonStore.getState().deshacerCambio(about.id).ok).toBe(true);
     expect(useSalonStore.getState().salonProfile.about).toBe(antes);
   });

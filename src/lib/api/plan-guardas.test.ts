@@ -41,6 +41,10 @@ describe("cableado de las funciones de servidor con plan superior", () => {
     expect(cuerpo(pagos, "importarPagosTpvServidor")).toContain('exigirFuncionPlanEn(data.slug, "importacion-mensual", quien)');
     expect(cuerpo(cambios, "listarCambios")).toContain('exigirFuncionPlanEn(data.slug, "historial-completo", quien)');
     expect(cuerpo(salons, "listarVersiones")).toContain('exigirFuncionPlanEn(data.slug, "historial-completo", quien)');
-    expect(cuerpo(salons, "restaurarVersion")).toContain('exigirFuncionPlanEn(data.slug, "historial-completo", quien)');
+    // 22-oct (Tomás): las últimas VERSIONES_WEB_SIEMPRE de Mi página se
+    // recuperan con cualquier plan; más atrás, con historial completo.
+    expect(cuerpo(salons, "restaurarVersion")).toContain("versionRestaurable(await posicionDeVersion(supabase, data.slug, String(v.fecha)), await tieneHistorialCompleto(data.slug, quien))");
+    expect(cuerpo(salons, "verVersion")).toContain("tieneHistorialCompleto(data.slug, quien)");
+    expect(salons).toContain('await exigirFuncionPlanEn(slugSalon, "historial-completo", quien);');
   });
 });

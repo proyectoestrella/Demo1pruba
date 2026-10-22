@@ -64,6 +64,9 @@ export async function leerEntidadServidor(
     }
     if (c.entidad === "perfil") {
       if (!perfil) return null;
+      // Una restauración (`perfil.restaurar`) toca varios campos a la vez: se
+      // devuelven todos los que dejó, no una clave «perfil» que no existe.
+      if (c.idEntidad === "perfil") return { existe: true, valor: Object.fromEntries(Object.keys(c.despues ?? {}).map((k) => [k, perfil[k] ?? null])) };
       return { existe: true, valor: { [c.idEntidad]: perfil[c.idEntidad] ?? null } };
     }
   } catch (err) {
