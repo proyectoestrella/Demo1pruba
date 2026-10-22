@@ -1,4 +1,5 @@
 import { citasDelDiaMemo } from "@/lib/selectores-rutas";
+import { AvisoInstalar } from "@/components/InstalarPanel";
 import { useFichas } from "@/lib/use-fichas";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -471,6 +472,7 @@ export function HoyArena() {
           },
         ]}
       />
+      <AvisoInstalar />
     </div>
   );
 }

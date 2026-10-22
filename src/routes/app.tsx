@@ -1,5 +1,6 @@
 import { hostActual, slugSalonDelHost } from "@/lib/host-actual";
-import { InstalarPanel } from "@/components/InstalarPanel";
+// Escucha `beforeinstallprompt` desde que se entra al panel (ver lib/instalar-panel).
+import "@/lib/instalar-panel";
 import { conRegistroEnPausa } from "@/lib/store";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { menosMovimiento } from "@/lib/movimiento-panel";
@@ -70,8 +71,12 @@ export const Route = createFileRoute("/app")({
    * Y por si las dos fallaran: ninguna de las dos es la que protege los datos.
    * Eso lo hace cada función de servidor por su cuenta.
    */
-  beforeLoad: async ({ location }) => {
+  beforeLoad: async ({ location, matches }) => {
     if (typeof window === "undefined") return;
+    // Móvil (22-oct): el router no pide el código de la sección hasta que
+    // termina esta puerta (módulo + comprobación de acceso = dos viajes en
+    // serie). Se pide ya, en paralelo: en 4G lento es ~1 s menos de espera.
+    precargarCodigoDeRutas(Route, matches);
     const { puertaDelPanel } = await import("@/lib/app-puerta");
     return puertaDelPanel(location);
   },
@@ -93,6 +98,31 @@ export const Route = createFileRoute("/app")({
   }),
   component: DashboardLayout,
 });
+
+type RutaConCodigo = {
+  id: string;
+  options?: { component?: { preload?: () => unknown } };
+  children?: unknown;
+};
+
+/** Pide el código partido (`component.preload`) de las rutas que van a pintarse. */
+function precargarCodigoDeRutas(raiz: unknown, matches: { routeId: string }[]) {
+  const ids = new Set(matches.map((m) => m.routeId));
+  const visitar = (ruta: RutaConCodigo | undefined) => {
+    if (!ruta) return;
+    if (ids.has(ruta.id)) {
+      try {
+        void Promise.resolve(ruta.options?.component?.preload?.()).catch(() => {});
+      } catch {
+        // Si no se puede adelantar, el router lo pedirá a su hora.
+      }
+    }
+    const hijos = ruta.children;
+    const lista = Array.isArray(hijos) ? hijos : hijos && typeof hijos === "object" ? Object.values(hijos) : [];
+    for (const h of lista) visitar(h as RutaConCodigo);
+  };
+  visitar(raiz as RutaConCodigo);
+}
 
 /**
  * El panel también acepta el negocio en su propio enlace (`/app?d=…`), igual
@@ -283,7 +313,6 @@ function PanelAutorizado({ slug }: { slug?: string }) {
           <PanelV2Shell />
         </Suspense>
       ) : <DashboardLayoutV1 />}
-      <InstalarPanel />
       <FichasGlobales />
       {refresco && (
         <span className="indicador-refresco fixed bottom-3 right-3 z-10 rounded-full border border-border bg-background/90 px-2 py-1 text-[10px] text-muted-foreground shadow-sm max-lg:bottom-20">

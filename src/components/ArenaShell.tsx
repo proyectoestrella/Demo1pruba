@@ -503,8 +503,13 @@ export function CabeceraArena({ onAsistente, onNuevaCita, onTour }: CabeceraAren
  * El «+» flotante se encoge y se aclara (sigue visible y pulsable) cuando taparía un botón o un
  * enlace del contenido: mira qué hay debajo de su centro en cada scroll.
  */
-function useFabApartado() {
+function useFabApartado(path: string) {
   const [apartado, setApartado] = useState(false);
+  // Móvil (22-oct): antes un MutationObserver sobre todo el documento y cinco
+  // `elementsFromPoint` en cada cambio del DOM forzaban un recálculo de
+  // maquetación casi en cada fotograma (listas, avatares, toasts). Ahora se
+  // mira un solo punto, al hacer scroll (también en scrolls internos), al
+  // cambiar de tamaño y al llegar a otra sección.
   useEffect(() => {
     let marco = 0;
     const mirar = () => {
@@ -512,36 +517,27 @@ function useFabApartado() {
       const fab = document.querySelector<HTMLElement>("[data-fab]");
       if (!fab || getComputedStyle(fab).display === "none") return;
       const r = fab.getBoundingClientRect();
-      const puntos: [number, number][] = [
-        [r.left + r.width / 2, r.top + r.height / 2],
-        [r.left + 6, r.top + 6],
-        [r.right - 6, r.top + 6],
-        [r.left + 6, r.bottom - 6],
-        [r.right - 6, r.bottom - 6],
-      ];
-      const tapa = puntos.some(([x, y]) =>
-        document
-          .elementsFromPoint(x, y)
-          .filter((el) => el !== fab && !fab.contains(el))
-          .some((el) => el.closest("button, a, input, select, textarea, [role=button]")),
-      );
+      const tapa = document
+        .elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+        .filter((el) => el !== fab && !fab.contains(el))
+        .some((el) => el.closest("button, a, input, select, textarea, [role=button]"));
       setApartado(tapa);
     };
     const pedir = () => {
       if (!marco) marco = requestAnimationFrame(mirar);
     };
     pedir();
-    window.addEventListener("scroll", pedir, { passive: true });
+    // La sección nueva termina de pintarse un instante después de navegar.
+    const tarde = setTimeout(pedir, 400);
+    window.addEventListener("scroll", pedir, { passive: true, capture: true });
     window.addEventListener("resize", pedir);
-    const obs = new MutationObserver(pedir);
-    obs.observe(document.body, { childList: true, subtree: true });
     return () => {
-      window.removeEventListener("scroll", pedir);
+      clearTimeout(tarde);
+      window.removeEventListener("scroll", pedir, { capture: true });
       window.removeEventListener("resize", pedir);
-      obs.disconnect();
       if (marco) cancelAnimationFrame(marco);
     };
-  }, []);
+  }, [path]);
   return apartado;
 }
 
@@ -552,7 +548,7 @@ export function BarraInferior({ path, onNuevaCita }: { path: string; onNuevaCita
   const publicLink = usePanelPublicLink();
   const plan = usePlanSalon();
   const [masAbierto, setMasAbierto] = useState(false);
-  const apartado = useFabApartado();
+  const apartado = useFabApartado(path);
   const enBarra = new Set(barra.map((i) => i.to));
   const restantes = grupos
     .flatMap((g) => g.items.flatMap((i) => [i, ...(i.hijos ?? [])]))

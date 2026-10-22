@@ -128,14 +128,12 @@ test.describe("Panel demo", () => {
     await expect(siguiente(page)).toBeHidden();
   });
 
+  // 22-oct (auditoría D1): en la demo el aviso no sale solo; el caso completo
+  // (tarjeta en Hoy, cerrar y recordar, fila de Ajustes) está en instalar.e2e.ts.
   test("Panel · Aviso Instalar", async ({ page, audit }) => {
     await enPanel(page, audit);
-    const aviso = page.getByText(/^Instalar PeluChic en este dispositivo/);
-    await expect(aviso).toBeVisible();
-    await aviso.click();
-    await expect(
-      page.getByText(/Añadir a|Instalar aplicación|pulsa Instalar/i).first(),
-    ).toBeVisible();
+    await page.waitForTimeout(3500);
+    await expect(page.locator("[data-aviso-instalar]")).toHaveCount(0);
     await audit.revisar("panel-aviso-instalar");
   });
 

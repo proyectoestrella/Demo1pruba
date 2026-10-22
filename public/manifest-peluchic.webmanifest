@@ -5,7 +5,7 @@
   "start_url": "/app?s=peluchic",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#f6f1e9",
   "theme_color": "#526345",
   "icons": [
