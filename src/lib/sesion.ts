@@ -72,10 +72,17 @@ export async function pedirEnlaceMagicoConCliente(
     options: { emailRedirectTo: volverA, shouldCreateUser: false },
   });
   if (error) {
-    if (error.code === "signup_disabled")
+    // Supabase responde «otp_disabled» («Signups not allowed for otp») cuando el
+    // correo no tiene cuenta: no es un fallo de envío (22-oct, salía el genérico).
+    if (error.code === "signup_disabled" || error.code === "otp_disabled")
       return {
         ok: false,
         motivo: "Este correo no tiene acceso a ningún salón. Pide a María que te dé acceso.",
+      };
+    if (error.code === "over_email_send_rate_limit" || error.status === 429)
+      return {
+        ok: false,
+        motivo: "Ya te hemos enviado un código hace muy poco. Mira tu correo (y la carpeta de spam) o espera un minuto y pide otro.",
       };
     console.error("signInWithOtp:", error.message);
     return {
