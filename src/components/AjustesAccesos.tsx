@@ -158,6 +158,7 @@ function PermisosPorPersona({
  * `accesos.functions.ts`), así que esta pantalla no distingue una de otra.
  */
 export function AjustesAccesos() {
+  const rolesAmpliados = useTienePlan("roles-ampliados");
   const esDemo = useEsDemo();
   const equipo = useEquipo();
   const yo = useMiembroActual();
@@ -364,7 +365,9 @@ export function AjustesAccesos() {
                             );
                           }}
                         >
-                          {ROLES.map((r) => (
+                          {ROLES.filter(
+                            (r) => rolesAmpliados || r === m.rol || (r !== "subencargado" && r !== "recepcion"),
+                          ).map((r) => (
                             <DropdownMenuRadioItem key={r} value={r}>
                               {NOMBRE_ROL[r]}
                             </DropdownMenuRadioItem>
