@@ -37,6 +37,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
 const fechaCorta = (iso?: string) =>
@@ -158,7 +168,7 @@ export function AjustesAccesos() {
   // dejar pulsar dos veces y para enseñar que se está esperando al servidor.
   const [ocupado, setOcupado] = useState<string | null>(null);
 
-  const [confirmacion, setConfirmacion] = useState<{ texto: string; accion: () => Promise<void> } | null>(null);
+  const [confirmacion, setConfirmacion] = useState<{ texto: string; pregunta?: string; peligro?: boolean; accion: () => Promise<void> } | null>(null);
   const [confirmando, setConfirmando] = useState(false);
 
   async function ejecutar(
@@ -166,8 +176,10 @@ export function AjustesAccesos() {
     accion: () => Promise<ResultadoAccesosPanel>,
     ok: string,
     deshacer?: () => void,
+    /** 22-oct: la pregunta del aviso; sin ella, «¿Confirmas este cambio?». */
+    pregunta?: { titulo: string; texto: string; peligro?: boolean },
   ) {
-    setConfirmacion({ texto: ok, accion: async () => {
+    setConfirmacion({ texto: pregunta?.texto ?? ok, pregunta: pregunta?.titulo, peligro: pregunta?.peligro, accion: async () => {
     setOcupado(id);
     try {
       resultado(await accion(), ok, deshacer);
@@ -202,11 +214,38 @@ export function AjustesAccesos() {
 
   return (
     <div className="space-y-4">
-      {confirmacion && <div role="alertdialog" aria-label="Confirmar cambio" className="rounded-xl border border-border p-4 space-y-3">
-        <p>¿Confirmas este cambio? {confirmacion.texto}</p>
-        <Button disabled={confirmando} onClick={async () => { setConfirmando(true); try { await confirmacion.accion(); setConfirmacion(null); } catch { toast.error("No se pudo aplicar el cambio. Inténtalo de nuevo."); } finally { setConfirmando(false); } }}>Confirmar</Button>{" "}
-        <Button variant="outline" disabled={confirmando} onClick={() => setConfirmacion(null)}>Cancelar</Button>
-      </div>}
+      {/* 22-oct: aviso en ventana (antes salía arriba del bloque, fuera de la vista
+          si la persona estaba más abajo) y con la pregunta de cada acción. */}
+      <AlertDialog open={!!confirmacion} onOpenChange={(abierto) => !abierto && !confirmando && setConfirmacion(null)}>
+        <AlertDialogContent aria-label="Confirmar cambio">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmacion?.pregunta ?? "¿Confirmas este cambio?"}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmacion?.texto}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={confirmando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={confirmando}
+              className={confirmacion?.peligro ? "bg-destructive text-white hover:bg-destructive/90" : undefined}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!confirmacion) return;
+                setConfirmando(true);
+                try {
+                  await confirmacion.accion();
+                  setConfirmacion(null);
+                } catch {
+                  toast.error("No se pudo aplicar el cambio. Inténtalo de nuevo.");
+                } finally {
+                  setConfirmando(false);
+                }
+              }}
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="flex flex-wrap items-center gap-3">
         <p className="min-w-0 flex-[1_1_12rem] text-[14px] text-cafe-medio">
           Quién entra en el panel y qué puede hacer. Cada persona entra con un enlace a su correo,
@@ -296,6 +335,11 @@ export function AjustesAccesos() {
                             esDemo
                               ? () => ejecutar(m.userId, () => acc.restaurar(m), "Restaurada")
                               : undefined,
+                            {
+                              titulo: `¿Anular la invitación de ${m.email}?`,
+                              texto: "El enlace que le llegó al correo dejará de servir. Podrás invitarla otra vez cuando quieras.",
+                              peligro: true,
+                            },
                           )
                         }
                       >
@@ -357,8 +401,8 @@ export function AjustesAccesos() {
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>
                   )}
-                  {m.estado !== "invitada" && !esDemo && <DropdownMenuItem onClick={() => ejecutar(m.userId, () => acc.cerrarSesiones(m), "Cerrar sesión en todos sus dispositivos, también en otros salones de esta cuenta.")}>Cerrar sesión en todos sus dispositivos</DropdownMenuItem>}
-                  {m.estado === "baja" && <DropdownMenuItem onClick={() => ejecutar(m.userId, () => acc.restaurar(m), "Reactivar acceso")}>Reactivar acceso</DropdownMenuItem>}
+                  {m.estado !== "invitada" && !esDemo && <DropdownMenuItem onClick={() => ejecutar(m.userId, () => acc.cerrarSesiones(m), "Sesiones cerradas", undefined, { titulo: `¿Cerrar la sesión de ${m.displayName ?? m.email} en todos sus dispositivos?`, texto: "Tendrá que volver a entrar con el enlace de su correo, también en otros salones de esta cuenta. No pierde nada." })}>Cerrar sesión en todos sus dispositivos</DropdownMenuItem>}
+                  {m.estado === "baja" && <DropdownMenuItem onClick={() => ejecutar(m.userId, () => acc.restaurar(m), "Acceso reactivado", undefined, { titulo: `¿Reactivar el acceso de ${m.displayName ?? m.email}?`, texto: "Podrá volver a entrar en el panel con su rol de antes." })}>Reactivar acceso</DropdownMenuItem>}
                   {m.estado === "activa" && yo?.userId !== m.userId && (
                     <>
                       <DropdownMenuSeparator />
@@ -370,6 +414,11 @@ export function AjustesAccesos() {
                             () => acc.darDeBaja(m),
                             `${m.displayName ?? m.email} ya no entra al panel. Sus citas se quedan.`,
                             () => ejecutar(m.userId, () => acc.restaurar(m), "Restaurada"),
+                            {
+                              titulo: `¿Dar de baja a ${m.displayName ?? m.email}?`,
+                              texto: "Dejará de entrar en el panel al momento. Sus citas y su ficha del equipo se quedan, y puedes reactivarla después.",
+                              peligro: true,
+                            },
                           )
                         }
                       >

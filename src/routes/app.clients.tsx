@@ -31,7 +31,14 @@ import { eur, eurRedondo, hora } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 import { Users, Download } from "lucide-react";
 
-export const Route = createFileRoute("/app/clients")({ component: Clients });
+export const Route = createFileRoute("/app/clients")({
+  // ?importar=1 enseña «Importar…» (solo con el permiso clienta.importar). Por
+  // defecto no sale: los salones reciben sus clientas ya importadas.
+  validateSearch: (s: Record<string, unknown>): { importar?: boolean } => ({
+    importar: s.importar === 1 || s.importar === "1" || s.importar === true ? true : undefined,
+  }),
+  component: Clients,
+});
 
 const DAY_MS = 86400_000;
 const SIN_CITAS: Appointment[] = [];
@@ -128,6 +135,7 @@ function Clients() {
     if (c) abrirClienta(c.id);
   };
   const [importarAbierto, setImportarAbierto] = useState(false);
+  const verImportar = Route.useSearch().importar === true && puede(permisos, "clienta.importar");
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<Filtro>(todasLasClientas ? "todos" : "hoy");
   /** Filas a la vista: de 20 en 20, y vuelve a 20 al cambiar filtro o búsqueda. */
@@ -367,7 +375,7 @@ function Clients() {
             )}
           </p>
         </div>
-        {puede(permisos, "clienta.importar") && (
+        {verImportar && (
           <Button
             type="button"
             variant="outline"
@@ -468,7 +476,7 @@ function Clients() {
             <EmptyState
               icon={Users}
               title="Todavía no tienes clientas"
-              description="Aquí irá apareciendo cada persona que reserve contigo: su teléfono, lo que suele pedir y cuándo vino por última vez. La ficha se crea sola con la primera cita, o impórtalas desde un archivo."
+              description="Aquí irá apareciendo cada persona que reserve contigo: su teléfono, lo que suele pedir y cuándo vino por última vez. La ficha se crea sola con la primera cita."
             />
           ) : (
             <EmptyState
@@ -609,7 +617,7 @@ function Clients() {
         </section>
       )}
 
-      <ImportarClientasDialog open={importarAbierto} onOpenChange={setImportarAbierto} />
+      {verImportar && <ImportarClientasDialog open={importarAbierto} onOpenChange={setImportarAbierto} />}
     </div>
   );
 }

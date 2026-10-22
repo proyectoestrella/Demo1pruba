@@ -207,3 +207,141 @@ export function downloadCsv(filename: string, content: string): void {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+/* -------------------------------------------------------------------------
+ * «Exportar resumen» de Citas (22-oct): un solo archivo con el resumen del
+ * periodo y, debajo, el detalle cita a cita. Sustituye a los dos botones de
+ * antes («Exportar a Excel (CSV)» y «Resumen del mes»): el resumen era un
+ * subconjunto del detalle y además ignoraba el periodo elegido.
+ * ---------------------------------------------------------------------- */
+
+/** Estados que cuentan como ingreso: la clienta vino. */
+const ESTADOS_INGRESO = new Set(["completed", "late"]);
+/** Estados aún por pasar o en curso: su importe es previsto, no ingresado. */
+const ESTADOS_PREVISTO = new Set(["pending", "confirmed", "in-progress"]);
+
+export interface OpcionesResumenCitas {
+  /** «Este mes (1 oct – 31 oct)», tal cual se ve en pantalla. */
+  periodo: string;
+  /** Filtros además del periodo («Estado: Vino · Profesional: Ana»), si los hay. */
+  filtros?: string;
+  salon?: string;
+  timeZone?: string;
+  ahora?: Date;
+  formulario?: { perfil: Parameters<typeof respuestasLegibles>[0]; tipo: BusinessType };
+  pagosPorCita?: Map<string, number>;
+}
+
+/** Evita que Excel lea un nombre como «=…» o «+…» como fórmula. */
+function textoSeguro(s: string): string {
+  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+}
+
+function fechaZonaEs(iso: string | Date, timeZone: string): string {
+  return fechaEnZona(iso, timeZone).split("-").reverse().join("/");
+}
+
+/**
+ * CSV para Excel en español: BOM UTF-8, `;`, fechas dd/mm/aaaa y horas en la
+ * zona del salón, euros con coma decimal. Las canceladas salen en el detalle y
+ * en «Por estado», pero no cuentan como cita atendida ni como dinero.
+ */
+export function resumenCitasToCsv(
+  appointments: Appointment[],
+  services: Record<string, Service>,
+  employees: Record<string, Employee>,
+  opciones: OpcionesResumenCitas,
+): string {
+  const tz = opciones.timeZone ?? ZONA_HORARIA_SALON;
+  const ahora = opciones.ahora ?? new Date();
+  const citas = appointments.filter((a) => a.status !== "blocked").slice().sort((a, b) => +new Date(a.start) - +new Date(b.start));
+  const importe = (a: Appointment) => (opciones.pagosPorCita ? cobradoDeCita(a.id, opciones.pagosPorCita, a.priceEur) : a.priceEur) ?? 0;
+  const nombreServicio = (id: string) => services[id]?.name ?? nombreServicioLibre(id) ?? id;
+  const nombrePro = (id: string) => employees[id]?.name ?? id;
+
+  const activas = citas.filter((a) => a.status !== "cancelled");
+  const ingresadas = citas.filter((a) => ESTADOS_INGRESO.has(a.status));
+  const previstas = citas.filter((a) => ESTADOS_PREVISTO.has(a.status));
+  const suma = (xs: Appointment[]) => xs.reduce((s, a) => s + importe(a), 0);
+
+  const porEstado = new Map<string, { citas: number; eur: number }>();
+  for (const o of STATUS_OPTIONS) porEstado.set(o.value, { citas: 0, eur: 0 });
+  for (const a of citas) {
+    const e = porEstado.get(a.status) ?? { citas: 0, eur: 0 };
+    e.citas += 1;
+    e.eur += importe(a);
+    porEstado.set(a.status, e);
+  }
+
+  // Por servicio y por profesional, solo lo que se hizo o está por hacer (sin
+  // canceladas ni «No vino»): «Ingresos» es lo de las citas a las que vino.
+  const contables = activas.filter((a) => a.status !== "no-show");
+  const porServicio = new Map<string, { citas: number; ingresos: number }>();
+  for (const a of contables) {
+    const ids = a.serviceIds.length ? a.serviceIds : ["—"];
+    const pesos = ids.map((id) => services[id]?.priceEur ?? 0);
+    const total = pesos.reduce((s, p) => s + p, 0);
+    ids.forEach((id, i) => {
+      const nombre = id === "—" ? "Sin servicio" : nombreServicio(id);
+      const e = porServicio.get(nombre) ?? { citas: 0, ingresos: 0 };
+      e.citas += 1;
+      if (ESTADOS_INGRESO.has(a.status)) e.ingresos += importe(a) * (total > 0 ? pesos[i] / total : 1 / ids.length);
+      porServicio.set(nombre, e);
+    });
+  }
+  const porPro = new Map<string, { citas: number; ingresos: number }>();
+  for (const a of contables) {
+    const nombre = nombrePro(a.employeeId);
+    const e = porPro.get(nombre) ?? { citas: 0, ingresos: 0 };
+    e.citas += 1;
+    if (ESTADOS_INGRESO.has(a.status)) e.ingresos += importe(a);
+    porPro.set(nombre, e);
+  }
+  const ordenar = (m: Map<string, { citas: number; ingresos: number }>) =>
+    [...m.entries()].sort((a, b) => b[1].ingresos - a[1].ingresos || b[1].citas - a[1].citas || a[0].localeCompare(b[0], "es"));
+
+  const lineas: string[] = [
+    fila([opciones.salon ? `Resumen de citas · ${opciones.salon}` : "Resumen de citas"]),
+    fila(["Periodo", opciones.periodo]),
+    ...(opciones.filtros ? [fila(["Filtros", opciones.filtros])] : []),
+    fila(["Generado", `${fechaZonaEs(ahora, tz)} ${horaEnZona(ahora, tz)}`]),
+    "",
+    fila(["Totales"]),
+    fila(["Citas (sin canceladas)", activas.length]),
+    fila(["Canceladas", citas.length - activas.length]),
+    fila(["Ingresos: vino o vino tarde (€)", euroEs(suma(ingresadas))]),
+    fila(["Previsto: pendientes, confirmadas y en el salón (€)", euroEs(suma(previstas))]),
+    "",
+    fila(["Por estado"]),
+    fila(["Estado", "Citas", "Importe (€)"]),
+    ...[...porEstado.entries()].filter(([, v]) => v.citas > 0).map(([estado, v]) => fila([ESTADO_LABEL[estado] ?? estado, v.citas, euroEs(v.eur)])),
+    "",
+    fila(["Por servicio"]),
+    fila(["Servicio", "Citas", "Ingresos (€)"]),
+    ...ordenar(porServicio).map(([n, v]) => fila([n, v.citas, euroEs(v.ingresos)])),
+    "",
+    fila(["Por profesional"]),
+    fila(["Profesional", "Citas", "Ingresos (€)"]),
+    ...ordenar(porPro).map(([n, v]) => fila([n, v.citas, euroEs(v.ingresos)])),
+    "",
+    fila(["Detalle"]),
+    fila(["Fecha", "Hora", "Clienta", "Servicio", "Profesional", "Precio (€)", "Estado", "Respuestas al reservar"]),
+    ...(citas.length === 0
+      ? [fila(["Sin citas en este periodo."])]
+      : citas.map((a) =>
+          fila([
+            fechaZonaEs(a.start, tz),
+            horaEnZona(a.start, tz),
+            textoSeguro(a.clientName),
+            a.serviceIds.map(nombreServicio).join(" + "),
+            nombrePro(a.employeeId),
+            euroEs(importe(a)),
+            ESTADO_LABEL[a.status] ?? a.status,
+            respuestasLegibles(opciones.formulario?.perfil ?? {}, opciones.formulario?.tipo ?? "peluqueria", a.bookingAnswers)
+              .map((r) => textoSeguro(`${r.pregunta} ${r.respuesta}`))
+              .join(" | "),
+          ]),
+        )),
+  ];
+  return BOM + lineas.join("\r\n");
+}

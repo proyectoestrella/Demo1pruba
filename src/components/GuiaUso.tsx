@@ -54,7 +54,7 @@ const APARTADOS: Apartado[] = [
     titulo: "Señal: pedirla y marcarla recibida",
     intro: "Un adelanto por Bizum para que la clienta no se olvide de venir. siShow nunca cobra ni comprueba el pago: lo marcas tú. El importe fijo que pongas en Ajustes es un tope, nunca un mínimo: la señal jamás supera el precio del servicio. Por eso en los pasos de abajo, con el mismo ajuste de 20 €, verás 20 €, 10 € o 9 € según lo barato que sea el servicio de cada ejemplo.",
     pasos: [
-      { texto: "Actívala en Ajustes → Plantones y señal: importe y tu número de Bizum.", src: "/guia/senal-1-activar.webp", alt: "Ajuste de Señal activado, con el importe fijo y el número de Bizum", w: 692, h: 316, marcador: { top: "10%", left: "94%" } },
+      { texto: "Actívala en Ajustes → Plantones y fianza: cuánto y tu número de Bizum.", src: "/guia/senal-1-activar.webp", alt: "Ajuste de Señal activado, con el importe fijo y el número de Bizum", w: 692, h: 316, marcador: { top: "10%", left: "94%" } },
       { texto: "Tu web ya avisa a la clienta al reservar, antes de que confirmes.", src: "/guia/senal-2-web-cliente.webp", alt: "Aviso en la web pública: PeluChic pedirá por WhatsApp una señal de 10 € por Bizum", w: 614, h: 156 },
       { texto: "Al pedirla, se abre WhatsApp con el mensaje ya escrito.", src: "/guia/senal-2-whatsapp.webp", alt: "Mensaje de WhatsApp pidiendo la señal por Bizum, con el número y el plazo", w: 566, h: 118 },
       { texto: "La cita queda marcada como «Pedida» hasta que llegue el Bizum.", src: "/guia/senal-3-pedida.webp", alt: "Estado Señal: Pedida, con los botones Recibida, Dar más tiempo y Volver a pedir", w: 386, h: 158, marcador: { top: "92%", left: "24%" } },

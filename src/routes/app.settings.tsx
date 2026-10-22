@@ -55,6 +55,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { PrimerosPasos } from "@/components/PrimerosPasos";
 import { VerComo } from "@/components/VerComo";
 
@@ -122,6 +132,24 @@ function Settings() {
   const [calendarError, setCalendarError] = useState(false);
   const [calendarBusy, setCalendarBusy] = useState(false);
   const [profesional, setProfesional] = useState("");
+  /** 22-oct: regenerar rompe el enlace que ya usan los móviles; se confirma antes. */
+  const [confirmarRegenerar, setConfirmarRegenerar] = useState(false);
+  function crearEnlace() {
+    if (!realSlug) return;
+    const habiaEnlace = !!calendarToken;
+    setCalendarBusy(true);
+    void regenerateCalendarSubscription({ data: { slug: realSlug } })
+      .then(({ token }) => {
+        setCalendarToken(token);
+        setCalendarError(false);
+        toast.success(habiaEnlace ? "Enlace nuevo creado: el anterior ya no funciona" : "Calendario activado");
+      })
+      .catch(() => {
+        setCalendarError(true);
+        toast.error("No se pudo crear el enlace");
+      })
+      .finally(() => setCalendarBusy(false));
+  }
   useEffect(() => {
     if (!realSlug) {
       setCalendarToken(null);
@@ -222,20 +250,28 @@ function Settings() {
       return false;
     }
 
-    guardarPerfil({
-      noShowFeeEur: noShowEnabled ? Math.min(50, Math.max(0, parsedFee)) : 0,
-      noShowNoticeHours: Math.min(48, Math.max(1, Math.round(parsedNotice) || 2)),
-      smartSpread: smartSpreadEnabled,
-      lastSlotBufferMin: smartSpreadEnabled
+    // 22-oct: solo viajan las claves que esta persona puede cambiar. El
+    // servidor exige `salon.editar` para plantones y duración, y
+    // `reservas.editar` para lo de reservas (lib/api/guardas.ts): mandar las
+    // dos juntas hacía fallar el guardado a quien solo tiene una.
+    const parche: Partial<SalonProfile> = {};
+    if (puede(permisos, "salon.editar")) {
+      parche.noShowFeeEur = noShowEnabled ? Math.min(50, Math.max(0, parsedFee)) : 0;
+      parche.noShowNoticeHours = Math.min(48, Math.max(1, Math.round(parsedNotice) || 2));
+      parche.duracionFlexible = duracionFlexible;
+    }
+    if (puedeGestionarReservas) {
+      parche.smartSpread = smartSpreadEnabled;
+      parche.lastSlotBufferMin = smartSpreadEnabled
         ? Math.min(240, Math.max(0, Math.round(parsedBuffer)))
-        : 0,
-      // La señal se guarda en su propio bloque (AjustesSenal): aquí no se toca,
-      // para no pisarla con valores viejos de este formulario.
-      bookingQuestionsEnabled: questionsEnabled,
-      bookingQuestionsRequired: questionsRequired,
-      duracionFlexible,
-      ocultarPrecioReserva,
-    });
+        : 0;
+      parche.bookingQuestionsEnabled = questionsEnabled;
+      parche.bookingQuestionsRequired = questionsRequired;
+      parche.ocultarPrecioReserva = ocultarPrecioReserva;
+    }
+    // La señal se guarda en su propio bloque (AjustesSenal): aquí no se toca,
+    // para no pisarla con valores viejos de este formulario.
+    if (Object.keys(parche).length) guardarPerfil(parche);
     return true;
   }
 
@@ -280,8 +316,7 @@ function Settings() {
             oculta={!visibles.includes("guia")}
             abrir={abrir}
             titulo="Guía de uso de la app"
-            resumen="Cómo se usa siShow, con capturas de tu propio panel"
-            abierta
+            resumen="Cómo se usa siShow, paso a paso y con capturas del panel"
           >
             <GuiaUso />
           </SeccionAjustes>
@@ -411,25 +446,34 @@ function Settings() {
                   <Button
                     disabled={calendarBusy}
                     variant={calendarToken ? "outline" : "default"}
-                    onClick={() => {
-                      setCalendarBusy(true);
-                      void regenerateCalendarSubscription({ data: { slug: realSlug } })
-                        .then(({ token }) => {
-                          setCalendarToken(token);
-                          setCalendarError(false);
-                          toast.success(
-                            calendarToken ? "Enlace nuevo creado" : "Calendario activado",
-                          );
-                        })
-                        .catch(() => {
-                          setCalendarError(true);
-                          toast.error("No se pudo crear el enlace");
-                        })
-                        .finally(() => setCalendarBusy(false));
-                    }}
+                    className="min-h-11"
+                    onClick={() => (calendarToken ? setConfirmarRegenerar(true) : crearEnlace())}
                   >
                     {calendarToken ? "Regenerar enlace" : "Crear enlace"}
                   </Button>
+                  <AlertDialog open={confirmarRegenerar} onOpenChange={setConfirmarRegenerar}>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>¿Crear un enlace nuevo?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          El enlace actual dejará de funcionar al momento: los móviles y
+                          calendarios que lo tengan dejarán de ver tus citas hasta que añadas el
+                          nuevo. Hazlo solo si crees que alguien que no debe lo tiene.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Dejar el actual</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => {
+                            setConfirmarRegenerar(false);
+                            crearEnlace();
+                          }}
+                        >
+                          Sí, crear uno nuevo
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </>
               )}
             </div>

@@ -431,7 +431,7 @@ function DashboardLayoutV1() {
       <div
         className={cn(
           "flex min-h-[inherit] min-w-0 flex-1 overflow-visible rounded-[inherit] bg-transparent",
-          path === "/app/calendar" && "h-dvh",
+          path === "/app/calendar" && "marco-calendario h-dvh",
         )}
       >
         <MenuLateral path={path} />
@@ -456,7 +456,7 @@ function DashboardLayoutV1() {
             className={cn(
               "hueco-fab-panel flex min-w-0 flex-1 flex-col",
               path === "/app/calendar"
-                ? "min-h-0 overflow-hidden bg-transparent p-0"
+                ? "main-calendario min-h-0 overflow-hidden bg-transparent p-0"
                 : "gutter-x pt-[var(--hueco-seccion)]",
             )}
           >

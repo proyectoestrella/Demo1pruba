@@ -29,6 +29,9 @@ import { PendingRequestsBanner } from "@/components/PendingRequestsBanner";
 import { CitasPorResolver } from "@/components/CitasPorResolver";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { ExportCsvButtons } from "@/components/campanas/ExportCsvButtons";
+import { PERIODOS_CITAS, PERIODO_CITAS_POR_DEFECTO, citasDelPeriodo, rangoDeCitas, type PeriodoCitasId } from "@/lib/periodo-citas";
+import { textoRango } from "@/lib/periodos";
+import { zonaDelSalon } from "@/lib/zona-horaria";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -137,6 +140,8 @@ function Appointments() {
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const [status, setStatus] = useState<string>("all");
   const [emp, setEmp] = useState<string>("all");
+  const [periodo, setPeriodo] = useState<PeriodoCitasId>(PERIODO_CITAS_POR_DEFECTO);
+  const zona = useSalonStore((s) => zonaDelSalon(s.salonProfile));
   const employees = useEquipoVisible();
   // Un solo profesional: sin filtro ni columna "por profesional".
   const soloUno = esSoloUnProfesional(employees);
@@ -148,7 +153,7 @@ function Appointments() {
   const [newApptOpen, setNewApptOpen] = useState(false);
   /** Filas a la vista: de 20 en 20; vuelve a 20 al filtrar o buscar. */
   const [cuantas, setCuantas] = useState(20);
-  useEffect(() => setCuantas(20), [status, emp, busqueda]);
+  useEffect(() => setCuantas(20), [status, emp, busqueda, periodo]);
   const mostrarSolicitudes = useSalonStore((s) => s.salonProfile.mostrarSolicitudes ?? true);
 
   // El recorte va al final: si se aplicara antes, buscar solo miraría dentro de
@@ -158,15 +163,26 @@ function Appointments() {
   // puede esconder las próximas detrás de un historial largo.
   const ahora = new Date();
   const citasOrdenadas = ordenarCitasProximasPrimero(appointments, ahora);
+  // 22-oct: el periodo filtra la lista y lo que se exporta (antes solo el
+  // archivo). Sin el tope de 60: «Ver más» pagina de 20 en 20.
   const filtered = useMemo(
     () =>
-      citasOrdenadas
+      citasDelPeriodo(citasOrdenadas, periodo, new Date(), zona)
         .filter((a) => (status === "all" ? true : a.status === status))
         .filter((a) => (emp === "all" ? true : a.employeeId === emp))
-        .filter((a) => (termino === "" ? true : a.clientName.toLowerCase().includes(termino)))
-        .slice(0, 60),
-    [citasOrdenadas, status, emp, termino],
+        .filter((a) => (termino === "" ? true : a.clientName.toLowerCase().includes(termino))),
+    [citasOrdenadas, periodo, zona, status, emp, termino],
   );
+  const rangoPeriodo = rangoDeCitas(periodo, new Date(), zona);
+  const etiquetaPeriodo = PERIODOS_CITAS.find((p) => p.id === periodo)!;
+  const textoPeriodo = rangoPeriodo ? `${etiquetaPeriodo.label} (${textoRango(rangoPeriodo, zona)})` : etiquetaPeriodo.label;
+  const textoFiltros = [
+    status !== "all" ? `Estado: ${STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status}` : "",
+    emp !== "all" ? `Profesional: ${employees.find((e) => e.id === emp)?.name ?? emp}` : "",
+    termino ? `Búsqueda: «${busqueda.trim()}»` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const citasVisibles = filtered.slice(0, cuantas);
   const gruposVisibles = agruparCitasPorProximidad(citasVisibles, ahora);
   const indiceAnteriores = gruposVisibles.proximas.length;
@@ -186,9 +202,12 @@ function Appointments() {
           <>
             {puedeExportar && (
               <ExportCsvButtons
-                appointments={appointments}
+                appointments={filtered}
                 services={services}
                 employees={employees}
+                textoPeriodo={textoPeriodo}
+                archivo={etiquetaPeriodo.archivo}
+                filtros={textoFiltros || undefined}
               />
             )}
           </>
@@ -202,6 +221,21 @@ function Appointments() {
       )}
 
       <div className="flex flex-wrap items-center gap-2">
+        <Select value={periodo} onValueChange={(v) => setPeriodo(v as PeriodoCitasId)}>
+          <SelectTrigger
+            aria-label="Periodo"
+            className="h-[42px] w-full sm:w-[190px] rounded-full"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PERIODOS_CITAS.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger
             aria-label="Filtrar por estado"
@@ -248,6 +282,10 @@ function Appointments() {
         />
       </div>
 
+      <p className="-mt-2 text-[12.5px] text-muted-foreground" data-testid="resumen-periodo-citas">
+        {filtered.length === 1 ? "1 cita" : `${filtered.length} citas`} · {textoPeriodo}
+      </p>
+
       {filtered.length === 0 ? (
         <div className="flex-1 tarjeta-principal bg-card">
           <EmptyState
@@ -255,8 +293,8 @@ function Appointments() {
             title="Sin citas con estos filtros"
             description={
               soloUno
-                ? "Prueba a cambiar el estado o la búsqueda."
-                : "Prueba a cambiar el estado o el profesional."
+                ? "Prueba a cambiar el periodo, el estado o la búsqueda."
+                : "Prueba a cambiar el periodo, el estado o el profesional."
             }
           />
         </div>

@@ -16,7 +16,7 @@ describe("lote 15 · horas visibles del calendario", () => {
     expect(preferenciasDe({ desde: "9" as never, hasta: 18.6 })).toMatchObject({ desde: 9, hasta: 19 });
   });
   test("vista y primer día inválidos vuelven al por defecto", () => {
-    expect(preferenciasDe({ vista: "anual" as never, primerDia: 3 as never })).toMatchObject({ vista: "semana", primerDia: 1 });
+    expect(preferenciasDe({ vista: "anual" as never, primerDia: 3 as never })).toMatchObject({ vista: "cronograma", primerDia: 1 });
     expect(preferenciasDe({ vista: "cronograma", primerDia: 0 })).toMatchObject({ vista: "cronograma", primerDia: 0 });
   });
   test("parcheCalendario conserva lo que no cambia y viaja completo", () => {
