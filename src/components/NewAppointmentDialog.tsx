@@ -35,12 +35,10 @@ import { hayBloqueoEnHueco } from "@/lib/bloqueos-agenda";
 import { profesionalHaceServicios } from "@/lib/servicios-profesional";
 import { profesionalesDisponiblesEnHueco } from "@/lib/reparto";
 import {
-  citasQueOcupan,
   clientasFrecuentes,
   decisionGuardadoCita,
   diasParaElegir,
   duracionLegible,
-  horaOcupada,
 } from "@/lib/nueva-cita";
 import { solapaConAgenda } from "@/lib/solape";
 import type { OpcionesGuardado } from "@/lib/salon-sync";
@@ -320,7 +318,6 @@ function FormularioNuevaCita({
   const hoy = new Date();
   const fechaElegida = new Date(`${date}T00:00:00`);
   const dias = diasParaElegir(hoy, fechaElegida);
-  const ocupanDia = useMemo(() => citasQueOcupan(appointments, fechaElegida), [appointments, date]); // eslint-disable-line react-hooks/exhaustive-deps
   const empleado = employees.find((e) => e.id === employeeId) ?? employees[0];
   const servicioFueraDeEspecialidad =
     !otro &&
@@ -339,6 +336,13 @@ function FormularioNuevaCita({
   ].sort((a, b) => a - b);
   const esPasada = (m: number) =>
     toDateInput(hoy) === date && m < hoy.getHours() * 60 + hoy.getMinutes();
+  const chocaConAgenda = (profesionalId: string, minuto: number) =>
+    solapaConAgenda(appointments, {
+      employeeId: profesionalId,
+      start: isoDelSalon(date, horaDeMinutos(minuto), zonaHoraria),
+      duration: totalMin,
+      serviceIds: otro ? [] : serviceIds,
+    }, { servicios: serviceMap, perfil: profile }).length > 0;
 
   function cualquieraLibre() {
     const inicioISO = isoDelSalon(date, time, zonaHoraria);
@@ -361,6 +365,7 @@ function FormularioNuevaCita({
       bloqueosAgenda: profile.bloqueosAgenda,
       serviceIds: otro ? [] : serviceIds,
       serviciosPorProfesional,
+      contextoSolape: { servicios: serviceMap, perfil: profile },
     })[0];
     if (libre) {
       setEmployeeId(libre.id);
@@ -429,9 +434,10 @@ function FormularioNuevaCita({
     // choque no se prohíbe: es su agenda, ella decide (contrato E1).
     const choques = solapaConAgenda(appointments, {
       employeeId,
-      start: new Date(`${date}T${time}:00`).toISOString(),
+      start: isoDelSalon(date, time, zonaHoraria),
       duration: totalMin,
-    });
+      serviceIds: otro ? [] : serviceIds,
+    }, { servicios: serviceMap, perfil: profile });
     if (choques.length) {
       setSolape({ choques, encadenar });
       return;
@@ -546,7 +552,7 @@ function FormularioNuevaCita({
   });
   const inicioElegidoISO = isoDelSalon(date, time, zonaHoraria);
   const ocupadaElegida = empleado
-    ? horaOcupada(ocupanDia, empleado.id, minutoElegido, totalMin) ||
+    ? chocaConAgenda(empleado.id, minutoElegido) ||
       hayBloqueoEnHueco(
         profile.bloqueosAgenda,
         empleado.id,
@@ -1020,7 +1026,7 @@ function FormularioNuevaCita({
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(70px,1fr))] gap-1.5">
                       {horasVisibles.map((m) => {
                         const ocupada = empleado
-                          ? horaOcupada(ocupanDia, empleado.id, m, totalMin)
+                          ? chocaConAgenda(empleado.id, m)
                           : false;
                         const pasada = esPasada(m);
                         const on = m === minutoElegido;

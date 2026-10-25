@@ -37,6 +37,14 @@ export interface Service {
   priceText?: string;
 }
 
+/** Tiempos en los que un servicio deja libre a la profesional mientras actúa. */
+export interface ExposicionServicio {
+  /** Minutos activos desde el inicio del servicio antes de dejarlo actuar. */
+  aplicacionMin?: number;
+  /** Minutos en los que la clienta sigue en el salón, pero la profesional queda libre. */
+  exposicionMin?: number;
+}
+
 export interface Employee {
   id: EmployeeId;
   name: string;
@@ -135,6 +143,12 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 };
 
 export interface Appointment {
+  /**
+   * Solo en la web pública (citas anónimas, sin servicios): tramos en minutos
+   * desde el inicio en que la profesional está ocupada de verdad. Fuera de
+   * ellos está en exposición del color y puede atender a otra clienta.
+   */
+  tramosActivos?: Array<[number, number]>;
   id: string;
   /**
    * Cita de otra profesional que el servidor manda SIN datos (lote 8): solo
@@ -412,6 +426,10 @@ export interface SalonProfile {
    * solo admite un número: ahí va el más bajo, y aquí lo que el salón dice.
    */
   preciosLiterales?: Record<string, string>;
+  /** Aplicación y exposición por id de servicio. Ausente: se usa la derivación de color. */
+  exposicionServicios?: Record<string, ExposicionServicio>;
+  /** Clientas presentes a la vez por profesional. Ausente: 6. */
+  maxClientasExposicion?: number;
   /**
    * Lavado que va incluido en el precio de otros servicios (p. ej. Color).
    * `servicioId` es el servicio «Lavado» suelto de la carta; `incluidoEn`, los

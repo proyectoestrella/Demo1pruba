@@ -49,14 +49,22 @@ describe("fusionarPerfil", () => {
 describe("vaciar campos opcionales de Mi página", () => {
   it("null borra la clave de las borrables; undefined sigue sin tocar", () => {
     const servidor = { whatsapp: "+34 600", boletin: { texto: "a", url: "/x" }, phone: "600" };
-    const f = fusionarPerfil(servidor, aParcheServidor({ whatsapp: undefined, boletin: undefined, phone: "700" }));
+    const f = fusionarPerfil(
+      servidor,
+      aParcheServidor({ whatsapp: undefined, boletin: undefined, phone: "700" }),
+    );
     expect("whatsapp" in f).toBe(false);
     expect("boletin" in f).toBe(false);
     expect(f.phone).toBe("700");
   });
   it("aParcheServidor solo toca claves presentes y borrables", () => {
-    const p = aParcheServidor({ whatsapp: undefined, instagram: undefined });
+    const p = aParcheServidor({
+      whatsapp: undefined,
+      exposicionServicios: undefined,
+      instagram: undefined,
+    });
     expect(p.whatsapp).toBeNull();
+    expect(p.exposicionServicios).toBeNull();
     expect("instagram" in p && p.instagram === undefined).toBe(true);
     expect("galeriaPropia" in p).toBe(false);
   });

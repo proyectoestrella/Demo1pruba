@@ -230,7 +230,10 @@ describe("findNextAvailableSlot", () => {
   it("no sugiere una hora de hoy que ya ha pasado (a las 15:26 no vale «hoy a las 10:00»)", () => {
     const employees = [employee("a", 10, 20)];
     const now = new Date(2026, 8, 21, 15, 26); // lunes 21-sep a las 15:26 (Madrid, por el preload)
-    expect(findNextAvailableSlot(employees, [], 30, "a", { fromDate, now })).toEqual({ dateKey: MONDAY, time: "15:30" });
+    expect(findNextAvailableSlot(employees, [], 30, "a", { fromDate, now })).toEqual({
+      dateKey: MONDAY,
+      time: "15:30",
+    });
     const tarde = new Date(2026, 8, 21, 19, 45);
     const siguiente = findNextAvailableSlot(employees, [], 30, "a", { fromDate, now: tarde });
     expect(siguiente?.dateKey).not.toBe(MONDAY);
@@ -260,14 +263,27 @@ describe("findNextAvailableSlot", () => {
 
   it("respeta turnos diferentes y el descanso entre dos tramos", () => {
     const a = employee("a", 10, 15);
-    a.scheduleRanges = Array.from({ length: 7 }, (_, dia) => dia === 1
-      ? [{ start: 600, end: 720 }, { start: 780, end: 900 }]
-      : []);
+    a.scheduleRanges = Array.from({ length: 7 }, (_, dia) =>
+      dia === 1
+        ? [
+            { start: 600, end: 720 },
+            { start: 780, end: 900 },
+          ]
+        : [],
+    );
     const b = employee("b", 12, 16);
-    b.scheduleRanges = Array.from({ length: 7 }, (_, dia) => dia === 1 ? [{ start: 720, end: 960 }] : []);
+    b.scheduleRanges = Array.from({ length: 7 }, (_, dia) =>
+      dia === 1 ? [{ start: 720, end: 960 }] : [],
+    );
     const appts = [appt("a", 10, 0, 120)];
-    expect(findNextAvailableSlot([a, b], appts, 30, "a", { fromDate })).toEqual({ dateKey: MONDAY, time: "13:00" });
-    expect(findNextAvailableSlot([a, b], [], 30, "b", { fromDate })).toEqual({ dateKey: MONDAY, time: "12:00" });
+    expect(findNextAvailableSlot([a, b], appts, 30, "a", { fromDate })).toEqual({
+      dateKey: MONDAY,
+      time: "13:00",
+    });
+    expect(findNextAvailableSlot([a, b], [], 30, "b", { fromDate })).toEqual({
+      dateKey: MONDAY,
+      time: "12:00",
+    });
   });
 
   it("pasa al día siguiente si hoy no hay hueco para ese profesional", () => {
@@ -327,6 +343,44 @@ describe("findNextAvailableSlot", () => {
       }),
     ).toEqual([]);
   });
+
+  it("la web ofrece un hueco corto dentro de la exposición de un color", () => {
+    const a = employee("a", 10, 14);
+    const color = {
+      id: "color-organico",
+      name: "Color de cobertura Organico",
+      description: "",
+      durationMin: 60,
+      priceEur: 40,
+    };
+    const corte = {
+      id: "corte",
+      name: "Corte",
+      description: "",
+      durationMin: 15,
+      priceEur: 15,
+    };
+    const existente = {
+      ...appt("a", 10, 0, 60),
+      start: `${MONDAY}T10:00:00.000Z`,
+      serviceIds: [color.id],
+    };
+    const libres = profesionalesDisponiblesEnHueco({
+      employees: [a],
+      appointments: [existente],
+      dateKey: MONDAY,
+      startMin: 10 * 60 + 15,
+      durationMin: 15,
+      startISO: `${MONDAY}T10:15:00.000Z`,
+      timeZone: "UTC",
+      serviceIds: [corte.id],
+      contextoSolape: {
+        servicios: { [color.id]: color, [corte.id]: corte },
+        perfil: {},
+      },
+    });
+    expect(libres.map((e) => e.id)).toEqual(["a"]);
+  });
 });
 
 describe("profesionalesLibresEnHora (disponibilidad a la hora elegida)", () => {
@@ -334,25 +388,45 @@ describe("profesionalesLibresEnHora (disponibilidad a la hora elegida)", () => {
   const b = employee("b", 10, 14);
   const c = employee("c", 12, 14);
   // Citas con «Z» y zona UTC: el resultado no depende de la zona de la máquina.
-  const cita = (id: string, h: number, m: number, min: number): Appointment => ({ ...appt(id, h, m, min), start: `${MONDAY}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00.000Z` });
+  const cita = (id: string, h: number, m: number, min: number): Appointment => ({
+    ...appt(id, h, m, min),
+    start: `${MONDAY}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00.000Z`,
+  });
   const base = { dateKey: MONDAY, durationMin: 60, timeZone: "UTC" };
 
   it("lista solo a quien está libre a esa hora, no a la ocupada ni a la que aún no ha entrado", () => {
-    const libres = profesionalesLibresEnHora({ ...base, employees: [a, b, c], appointments: [cita("a", 10, 0, 60)], hora: "10:00" });
+    const libres = profesionalesLibresEnHora({
+      ...base,
+      employees: [a, b, c],
+      appointments: [cita("a", 10, 0, 60)],
+      hora: "10:00",
+    });
     expect(libres.map((e) => e.id)).toEqual(["b"]);
   });
 
   it("con todo el equipo libre las devuelve a todas en el orden del equipo", () => {
-    const libres = profesionalesLibresEnHora({ ...base, employees: [a, b, c], appointments: [], hora: "12:00" });
+    const libres = profesionalesLibresEnHora({
+      ...base,
+      employees: [a, b, c],
+      appointments: [],
+      hora: "12:00",
+    });
     expect(libres.map((e) => e.id)).toEqual(["a", "b", "c"]);
   });
 
   it("una cita manual que solapa parcialmente también la deja fuera", () => {
-    const libres = profesionalesLibresEnHora({ ...base, employees: [a, b], appointments: [cita("b", 10, 30, 60)], hora: "10:00" });
+    const libres = profesionalesLibresEnHora({
+      ...base,
+      employees: [a, b],
+      appointments: [cita("b", 10, 30, 60)],
+      hora: "10:00",
+    });
     expect(libres.map((e) => e.id)).toEqual(["a"]);
   });
 
   it("hora mal formada: nadie", () => {
-    expect(profesionalesLibresEnHora({ ...base, employees: [a], appointments: [], hora: "xx" })).toEqual([]);
+    expect(
+      profesionalesLibresEnHora({ ...base, employees: [a], appointments: [], hora: "xx" }),
+    ).toEqual([]);
   });
 });

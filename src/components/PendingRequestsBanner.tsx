@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { importeSenal, mensajeErrorSenal, prepararPeticionSenal, reglaSenal } from "@/lib/senal";
+import { solapaConAgenda } from "@/lib/solape";
 
 export interface PendingRequestsBannerProps {
   /** Abre el detalle de la cita (AppointmentDetailSheet) para cambiar duración u hora. */
@@ -61,7 +62,8 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const pedirSenal = useSalonStore((s) => s.pedirSenal);
-  const reglaSen = reglaSenal(useSalonStore((s) => s.salonProfile));
+  const profile = useSalonStore((s) => s.salonProfile);
+  const reglaSen = reglaSenal(profile);
   const salonName = useSalonStore((s) => s.salonProfile.name);
   const depositEnabled = useSalonStore((s) => !!s.salonProfile.depositEnabled);
   const depositBizumPhone = useSalonStore((s) => s.salonProfile.depositBizumPhone ?? "");
@@ -107,26 +109,16 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
   }
 
 
-  /**
-   * Próxima cita del mismo profesional tras el fin de `a` (con la duración que
-   * se esté proponiendo), para avisar del solape sin bloquear: es su agenda,
-   * ella decide si lo acepta.
-   */
+  /** Cita que realmente choca con los tramos activos de la propuesta. */
   function proximaConSolape(a: Appointment, duracion: number): Appointment | null {
-    const finPropuesto = +new Date(a.start) + duracion * 60_000;
-    const inicio = +new Date(a.start);
-    const candidatas = appointments
-      .filter(
-        (b) =>
-          b.id !== a.id &&
-          b.employeeId === a.employeeId &&
-          (b.status === "confirmed" || b.status === "pending") &&
-          +new Date(b.start) >= inicio,
-      )
-      .sort((x, y) => +new Date(x.start) - +new Date(y.start));
-    const siguiente = candidatas[0];
-    if (!siguiente) return null;
-    return +new Date(siguiente.start) < finPropuesto ? siguiente : null;
+    return solapaConAgenda(appointments, {
+      employeeId: a.employeeId,
+      start: a.start,
+      duration: duracion,
+      serviceIds: a.serviceIds,
+      excluirId: a.id,
+    }, { servicios: serviceMap, perfil: profile })
+      .sort((x, y) => +new Date(x.start) - +new Date(y.start))[0] ?? null;
   }
 
   return (

@@ -172,7 +172,9 @@ describe("la guarda está puesta en todas las funciones de servidor", () => {
     expect(
       equipoCabeEnPlan(planDe({ plan: "todo-incluido" }, false), ["a", "b", "c", "d"], "peluchic"),
     ).toBe(false);
-    expect(equipoCabeEnPlan(planDe({ plan: "reservas" }, false), ["a", "b", "c", "d"], "otro")).toBe(true);
+    expect(
+      equipoCabeEnPlan(planDe({ plan: "reservas" }, false), ["a", "b", "c", "d"], "otro"),
+    ).toBe(true);
     expect(cuerpoDe("saveSalonProfile")).toContain("data.slug");
   });
 
@@ -196,9 +198,10 @@ describe("la guarda está puesta en todas las funciones de servidor", () => {
 
   it("la comprobación de solape precede a la escritura pública", () => {
     const cuerpo = cuerpoDe("syncAppointment");
-    expect(cuerpo.indexOf("haySolape(data.startISO")).toBeLessThan(
-      cuerpo.indexOf("escribirCita(supabase, fila)"),
-    );
+    const comprobacion = cuerpo.indexOf("await solapaEnServidor(");
+    expect(comprobacion).toBeGreaterThan(-1);
+    expect(comprobacion).toBeLessThan(cuerpo.indexOf("escribirCita(supabase, fila)"));
+    expect(FUENTE).toContain("cabeCitaEnAgenda(");
   });
 
   it("el panel solo solapa diciéndolo: sin permitirSolape se rechaza antes de escribir", () => {

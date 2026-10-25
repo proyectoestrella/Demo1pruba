@@ -3,6 +3,7 @@ import { franjasProfesional, franjasProfesionalEnFecha, huecosDeProfesionales, h
 import { hayBloqueoEnHueco } from "./bloqueos-agenda";
 import { ZONA_HORARIA_SALON, isoDelSalon } from "./zona-horaria";
 import { profesionalHaceServicios } from "./servicios-profesional";
+import { solapaConAgenda, type ContextoSolape } from "./solape";
 
 /**
  * Reparto de agenda ("smartSpread", clave "k" del enlace de demo — ver
@@ -223,6 +224,7 @@ export function profesionalesDisponiblesEnHueco({
   bloqueosAgenda,
   serviceIds = [],
   serviciosPorProfesional,
+  contextoSolape,
 }: {
   employees: Employee[];
   appointments: Appointment[];
@@ -235,11 +237,12 @@ export function profesionalesDisponiblesEnHueco({
   bloqueosAgenda?: BloqueoAgenda[];
   serviceIds?: string[];
   serviciosPorProfesional?: Record<string, string[]>;
+  contextoSolape?: ContextoSolape;
 }): Employee[] {
   return employees.filter((employee) =>
     profesionalHaceServicios(employee.id, serviceIds, serviciosPorProfesional) &&
     trabajaEnFecha(employee, dateKey, startMin, durationMin, diasEspeciales) &&
-    !isSlotTakenLocal(appointments, employee.id, startISO, durationMin) &&
+    !isSlotTakenLocal(appointments, employee.id, startISO, durationMin, serviceIds, contextoSolape) &&
     !hayBloqueoEnHueco(bloqueosAgenda, employee.id, startISO, durationMin, timeZone),
   );
 }
@@ -292,6 +295,7 @@ export function findNextAvailableSlot(
     bloqueosAgenda?: BloqueoAgenda[];
     serviceIds?: string[];
     serviciosPorProfesional?: Record<string, string[]>;
+    contextoSolape?: ContextoSolape;
   } = {},
 ): NextSlot | undefined {
   const ahora = +(opts.now ?? opts.fromDate ?? new Date());
@@ -341,6 +345,7 @@ export function findNextAvailableSlot(
           bloqueosAgenda: opts.bloqueosAgenda,
           serviceIds: opts.serviceIds,
           serviciosPorProfesional: opts.serviciosPorProfesional,
+          contextoSolape: opts.contextoSolape,
         }).length > 0) return { dateKey, time: timeStr };
     }
   }
@@ -357,16 +362,14 @@ function isSlotTakenLocal(
   employeeId: string,
   startISO: string,
   durationMin: number,
+  serviceIds: string[] = [],
+  contextoSolape: ContextoSolape = {},
 ): boolean {
-  const start = +new Date(startISO);
-  const end = start + durationMin * 60_000;
-  return appointments.some((a) => {
-    if (a.employeeId !== employeeId) return false;
-    if (a.status === "cancelled" || a.status === "no-show") return false;
-    const aStart = +new Date(a.start);
-    const aEnd = aStart + a.duration * 60_000;
-    return aStart < end && aEnd > start;
-  });
+  return solapaConAgenda(
+    appointments,
+    { employeeId, start: startISO, duration: durationMin, serviceIds },
+    contextoSolape,
+  ).length > 0;
 }
 
 /** Las barras hora a hora de "Cómo va el día" (panel Hoy), en el rango horario en que trabaja alguien del equipo. */

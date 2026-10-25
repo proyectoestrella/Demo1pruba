@@ -100,6 +100,7 @@ import {
   totalPasos,
   type PasoReserva,
 } from "@/lib/solo-profesional";
+import type { ContextoSolape } from "@/lib/solape";
 
 /** "45 min" / "1 h" / "1 h 30" — sin ceros ni "0 h" cuando sobra. */
 function formatMinutes(min: number): string {
@@ -151,6 +152,7 @@ function resolveEmployee(
   bloqueosAgenda?: import("@/lib/mock/types").BloqueoAgenda[],
   serviceIds: string[] = [],
   serviciosPorProfesional?: Record<string, string[]>,
+  contextoSolape?: ContextoSolape,
 ): EmployeeId | null {
   const [hh, mm] = time.split(":").map(Number);
   const startMin = hh * 60 + mm;
@@ -170,6 +172,7 @@ function resolveEmployee(
     bloqueosAgenda,
     serviceIds,
     serviciosPorProfesional,
+    contextoSolape,
   });
   return candidate[0]?.id ?? null;
 }
@@ -335,6 +338,10 @@ function BookingWizard() {
   const serviceMap = useMemo(
     () => Object.fromEntries(services.map((s) => [s.id, s])) as Record<string, Service>,
     [services],
+  );
+  const contextoSolape = useMemo<ContextoSolape>(
+    () => ({ servicios: serviceMap, perfil: profile }),
+    [serviceMap, profile.exposicionServicios, profile.maxClientasExposicion, profile.lavado],
   );
   const employees = useMemo(
     () =>
@@ -517,6 +524,7 @@ function BookingWizard() {
       bloqueosAgenda: profile.bloqueosAgenda,
       serviceIds: lastBooking.serviceIds,
       serviciosPorProfesional: profile.serviciosPorProfesional,
+      contextoSolape,
     });
   }, [
     repeatValid,
@@ -529,6 +537,7 @@ function BookingWizard() {
     profile.diasEspeciales,
     profile.bloqueosAgenda,
     profile.serviciosPorProfesional,
+    contextoSolape,
   ]);
   const showRepeatBanner =
     step === 1 && data.serviceIds.length === 0 && repeatValid && !!repeatNextSlot && !!lastBooking;
@@ -636,6 +645,7 @@ function BookingWizard() {
       profile.bloqueosAgenda,
       serviceIds,
       profile.serviciosPorProfesional,
+      contextoSolape,
     );
     if (!employeeId) {
       setSendError("Esa hora ya no está disponible, elige otra.");
@@ -918,6 +928,7 @@ function BookingWizard() {
               bloqueosAgenda={profile.bloqueosAgenda}
               serviceIds={data.serviceIds}
               serviciosPorProfesional={profile.serviciosPorProfesional}
+              contextoSolape={contextoSolape}
             />
           )}
 
@@ -1595,6 +1606,7 @@ function DateTimeStep({
   bloqueosAgenda,
   serviceIds,
   serviciosPorProfesional,
+  contextoSolape,
   onElegirProfesional,
   espera,
 }: {
@@ -1610,6 +1622,7 @@ function DateTimeStep({
   bloqueosAgenda?: import("@/lib/mock/types").BloqueoAgenda[];
   serviceIds: string[];
   serviciosPorProfesional?: Record<string, string[]>;
+  contextoSolape: ContextoSolape;
   /** Duración con la que se busca hueco libre — con duración flexible ya es el extremo alto del rango. */
   durationMin: number;
   stylistChoice: EmployeeId | "any";
@@ -1703,6 +1716,7 @@ function DateTimeStep({
           bloqueosAgenda,
           serviceIds,
           serviciosPorProfesional,
+          contextoSolape,
         }).length > 0
       )
         return false;
@@ -1780,6 +1794,7 @@ function DateTimeStep({
           bloqueosAgenda,
           serviceIds,
           serviciosPorProfesional,
+          contextoSolape,
         }).length > 0;
       out.push({
         time: timeStr,
@@ -1861,9 +1876,10 @@ function DateTimeStep({
       bloqueosAgenda,
       serviceIds,
       serviciosPorProfesional,
+      contextoSolape,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [horaElegidaAqui, activeDateKey, selectedTime, employees, appointments, durationMin, timeZone, diasEspeciales, bloqueosAgenda, serviceIds, serviciosPorProfesional]);
+  }, [horaElegidaAqui, activeDateKey, selectedTime, employees, appointments, durationMin, timeZone, diasEspeciales, bloqueosAgenda, serviceIds, serviciosPorProfesional, contextoSolape]);
 
   function handleSlotClick(s: SpreadSlot) {
     if (!s.available || !activeDateKey) return;
