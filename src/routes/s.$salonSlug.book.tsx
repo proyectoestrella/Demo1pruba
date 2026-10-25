@@ -2028,9 +2028,19 @@ function DateTimeStep({
               </option>
             ))}
           </select>
-          <p className="text-xs text-muted-foreground">
-            Si eliges a alguien, verás solo sus huecos.
-          </p>
+          {preferredEmployeeId === "any" ? (
+            <p className="text-xs text-muted-foreground">
+              Si eliges a alguien, verás solo sus huecos.
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onPreferEmployee("any")}
+              className="min-h-11 text-left text-sm font-medium text-primary underline underline-offset-2"
+            >
+              ¿No te va ninguna hora? Ver también las horas con otra profesional
+            </button>
+          )}
         </div>
       )}
       <div className="grid gap-8 lg:grid-cols-[auto_1fr]">
