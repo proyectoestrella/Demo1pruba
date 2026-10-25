@@ -37,7 +37,7 @@ export interface AvatarProps {
   className?: string;
   /** Si el nombre ya está escrito al lado, el avatar es decorativo (por defecto). */
   decorativo?: boolean;
-  /** Sin foto ni avatar elegido, iniciales en vez del retrato automático (clientas, 22-oct). */
+  /** Sin foto ni avatar elegido, iniciales en vez del retrato automático (clientas 22-oct; desde el 25-oct también el equipo: ningún avatar por defecto). */
   inicialesPorDefecto?: boolean;
 }
 
@@ -60,7 +60,7 @@ export function Avatar({
   aroColor,
   className,
   decorativo = true,
-  inicialesPorDefecto = false,
+  inicialesPorDefecto = true,
 }: AvatarProps) {
   const t =
     typeof size === "number"
