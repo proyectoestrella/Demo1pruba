@@ -216,6 +216,14 @@ do $$ begin
 end $$;
 delete from clients c using fusion f where c.id = f.sobra and c.salon_slug = 'peluchic';
 
+-- 5b · Estilistas: ven toda la agenda y, con ella, todas las clientas (María,
+--      22-oct: «que vean toda la agenda»). Se lista quién queda así.
+update salon_members set permisos_extra = coalesce(permisos_extra, '{}'::jsonb) || '{"verAgendaCompleta": true}'::jsonb
+where salon_slug = 'peluchic' and rol = 'estilista'
+  and coalesce(permisos_extra->>'verAgendaCompleta', '') <> 'true';
+select 'estilistas' as quien, coalesce(display_name, email) as persona, estado, permisos_extra->>'verAgendaCompleta' as ve_toda_la_agenda
+from salon_members where salon_slug = 'peluchic' and rol = 'estilista';
+
 -- 6 · Reseñas de Google (4,5 comprobado el 25-oct en Google Maps; 81 reseñas
 --     anotadas el 22-oct: Google no enseña el número sin iniciar sesión).
 update salons set profile = profile
