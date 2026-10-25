@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
+import { lavadoDe } from "@/lib/appointment-services";
 import { useEffect, useMemo, useState } from "react";
 import { Check, Info, Download, MapPin } from "lucide-react";
 import { employeesForType, servicesForType } from "@/lib/mock/salon";
@@ -94,7 +95,7 @@ function Confirmation() {
     .map((id) => serviceMap[id])
     .filter(Boolean);
   const serviceNames = chosen.map((s) => s.name);
-  const { durationMin: totalMin, priceEur: total } = sumServices(chosen, profile.lavado);
+  const { durationMin: totalMin, priceEur: total } = sumServices(chosen, lavadoDe(profile, Object.values(serviceMap)));
   // La reserva lleva la duración exacta con la que se bloqueó el hueco. Si se
   // abre una confirmación antigua sin ese dato, conserva el catálogo.
   const durationReserva = duration ?? totalMin;
@@ -158,7 +159,7 @@ function Confirmation() {
     reglaSenal(profile),
     {
       serviceIds,
-      durationMin: duracionCartaParaSenal(serviceIds, serviceMap, durationReserva, profile.lavado),
+      durationMin: duracionCartaParaSenal(serviceIds, serviceMap, durationReserva, lavadoDe(profile, Object.values(serviceMap))),
       priceEur: total,
     },
     profile.name,

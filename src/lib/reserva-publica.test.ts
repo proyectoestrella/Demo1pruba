@@ -151,6 +151,9 @@ describe("datos de una reserva pública", () => {
     // El servidor recalcula con el mismo criterio: Color + lavado suelto no cobra el lavado dos veces.
     const conLavado = { ...perfil, menu: ["Color~60~40~~~color", "Lavado~15~10~~~lavado"], lavado: { servicioId: "lavado", incluidoEn: ["color"] } };
     expect(datosReservaPublicaDesdeCarta(conLavado, ["color", "lavado"])).toEqual({ durationMin: 60, priceEur: 40 });
-    expect(datosReservaPublicaDesdeCarta({ ...conLavado, lavado: undefined }, ["color", "lavado"])).toEqual({ durationMin: 75, priceEur: 50 });
+    // Apagado por la gerente: suma todo.
+    expect(datosReservaPublicaDesdeCarta({ ...conLavado, lavado: { servicioId: "", incluidoEn: [] } }, ["color", "lavado"])).toEqual({ durationMin: 75, priceEur: 50 });
+    // Sin configurar (25-oct): por defecto el Color incluye el lavado suelto.
+    expect(datosReservaPublicaDesdeCarta({ ...conLavado, lavado: undefined }, ["color", "lavado"])).toEqual({ durationMin: 60, priceEur: 40 });
   });
 });

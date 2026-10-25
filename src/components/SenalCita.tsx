@@ -1,4 +1,5 @@
 import { marcarAvisoDeCita } from "@/lib/deshacer-maqueta";
+import { lavadoDe } from "@/lib/appointment-services";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useSalonStore } from "@/lib/store";
@@ -61,7 +62,7 @@ export function SenalCita({ cita, compacta = false, className }: { cita: Appoint
   const serviceMap = Object.fromEntries(services.map((service) => [service.id, service]));
   const reservaSenal = {
     serviceIds: cita.serviceIds,
-    durationMin: duracionCartaParaSenal(cita.serviceIds, serviceMap, cita.duration, perfil.lavado),
+    durationMin: duracionCartaParaSenal(cita.serviceIds, serviceMap, cita.duration, lavadoDe(perfil, services)),
     priceEur: cita.priceEur,
   };
   const estado = estadoSenal(cita, new Date());

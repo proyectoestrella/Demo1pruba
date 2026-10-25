@@ -1,4 +1,5 @@
 import { leerTodasLasFilas } from "./paginar";
+import { lavadoDe } from "../appointment-services";
 import { randomUUID } from "node:crypto";
 /**
  * Backend de los salones REALES (los que pagan), frente a las ~54 demos de
@@ -1647,7 +1648,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
             data.serviceIds,
             Object.fromEntries(carta.map((servicio) => [servicio.id, servicio])),
             durationMinGuardada,
-            perfilPublico.lavado,
+            lavadoDe(perfilPublico, carta),
           ),
           priceEur: priceEurGuardado,
         },

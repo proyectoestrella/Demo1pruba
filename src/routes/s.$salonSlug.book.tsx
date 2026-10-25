@@ -1,4 +1,5 @@
 import { guardarNombreConfirmacion } from "@/lib/nombre-confirmacion";
+import { lavadoDe } from "@/lib/appointment-services";
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useImagenConRespaldo } from "@/lib/imagen-rota";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -455,6 +456,7 @@ function BookingWizard() {
     : blockedLocal;
 
   const selectedServices = data.serviceIds.map((id) => serviceMap[id]).filter(Boolean);
+  const lavado = useMemo(() => lavadoDe(profile, services), [profile, services]);
   const eligibleEmployees = useMemo(
     () => profesionalesParaServicios(employees, data.serviceIds, profile.serviciosPorProfesional),
     [employees, data.serviceIds, profile.serviciosPorProfesional],
@@ -462,7 +464,7 @@ function BookingWizard() {
   const sinProfesionalParaServicios = selectedServices.length > 0 && eligibleEmployees.length === 0;
   // Precio y duración de carta son la suma de los servicios elegidos. El
   // hueco puede reservar más tiempo si la duración es flexible; la fianza no.
-  const resumenServicios = resumenServiciosReserva(selectedServices, mostrarPrecio, profile.lavado);
+  const resumenServicios = resumenServiciosReserva(selectedServices, mostrarPrecio, lavado);
   const { nombres: serviceNames, durationMin: totalMin, priceEur: total } = resumenServicios;
   const flexible = duracionFlexibleDemo;
   const flexRange = flexible ? flexDurationRange(totalMin) : null;
@@ -482,7 +484,7 @@ function BookingWizard() {
   const reglaSen = reglaSenal(profile);
   const reservaSenal = {
     serviceIds: data.serviceIds,
-    durationMin: duracionCartaParaSenal(data.serviceIds, serviceMap, schedulingDurationMin, profile.lavado),
+    durationMin: duracionCartaParaSenal(data.serviceIds, serviceMap, schedulingDurationMin, lavado),
     priceEur: total,
   };
   const textoSenal = textoSenalPublico(reglaSen, reservaSenal, profile.name, eur, {
@@ -507,7 +509,7 @@ function BookingWizard() {
     employees.map((employee) => employee.id),
     profile.serviciosPorProfesional,
   );
-  const repeatDuration = repeatValid ? sumServices(repeatServices, profile.lavado).durationMin : 0;
+  const repeatDuration = repeatValid ? sumServices(repeatServices, lavado).durationMin : 0;
   const repeatNextSlot = useMemo(() => {
     if (!repeatValid || !lastBooking) return undefined;
     return findNextAvailableSlot(employees, appointments, repeatDuration, lastBooking.employeeId, {

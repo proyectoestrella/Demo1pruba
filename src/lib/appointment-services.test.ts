@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { serviceLabelOf, textoPrecioServicio, textoTotalServicios } from "./appointment-services";
+import { lavadoDe, serviceLabelOf, textoPrecioServicio, textoTotalServicios } from "./appointment-services";
 
 describe("serviceLabelOf", () => {
   it("con la carta viva del panel dice el nombre actual; sin ella cae al catálogo de ejemplo", () => {
@@ -65,5 +65,25 @@ describe("lavado incluido en otros servicios (Color de PeluChic)", () => {
     expect(lavadoYaIncluido(["color", "lavado"], undefined)).toBe(false);
     expect(lavadoYaIncluido(["color", "lavado"], { servicioId: "lavado", incluidoEn: [] })).toBe(false);
     expect(lavadoYaIncluido(["color", "lavado"], cfg)).toBe(true);
+  });
+});
+
+describe("lavadoDe (por defecto, 25-oct)", () => {
+  const carta = [
+    { id: "lavado", name: "Lavado personalizado", description: "" },
+    { id: "lc", name: "Lavado personalizado + Corte +Secar humedad", description: "" },
+    { id: "co", name: "Color de cobertura Organico", description: "Incluye lavado y secado de humedad." },
+    { id: "cc", name: "Corrección de color", description: "No incluye lavado ni secado de humedad." },
+    { id: "mp", name: "Micropunción", description: "Incluye lavado personalizado." },
+    { id: "pe", name: "Peinar", description: "Lavado personalizado, protector térmico" },
+  ];
+  it("deduce el lavado suelto y quién lo incluye", () => {
+    expect(lavadoDe({}, carta)).toEqual({ servicioId: "lavado", incluidoEn: ["lc", "co", "mp"] });
+  });
+  it("lo configurado por la gerente manda, también apagado", () => {
+    expect(lavadoDe({ lavado: { servicioId: "", incluidoEn: [] } }, carta)).toEqual({ servicioId: "", incluidoEn: [] });
+  });
+  it("sin servicio de lavado suelto no hay nada", () => {
+    expect(lavadoDe({}, carta.slice(1))).toBeUndefined();
   });
 });

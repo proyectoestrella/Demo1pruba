@@ -1,4 +1,5 @@
 import { tinteProfesional } from "@/lib/colores-elegidos";
+import { lavadoDe } from "@/lib/appointment-services";
 import { isoDelSalon, zonaDelSalon } from "@/lib/zona-horaria";
 import { conCambio } from "@/lib/deshacer-maqueta";
 import { useEquipoParaDarCita } from "@/lib/accesos-panel";
@@ -244,7 +245,7 @@ function FormularioNuevaCita({
 
   const chosen = serviceIds.map((id) => serviceMap[id]).filter(Boolean);
   // La cita bloquea y cobra la suma de todos los servicios elegidos.
-  const suma = sumServices(chosen, profile.lavado);
+  const suma = sumServices(chosen, lavadoDe(profile, services));
   const catalogoMin = otro ? 60 : suma.durationMin;
   const total = otro ? (precioOtroValido ? Math.round(precioOtro * 100) / 100 : 0) : suma.priceEur;
 

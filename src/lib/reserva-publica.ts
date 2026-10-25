@@ -5,6 +5,7 @@
  * (`syncAppointment`) y la pantalla de reserva, así que no puede haber dos
  * criterios distintos de «este hueco está libre».
  */
+import { lavadoDe } from "./appointment-services";
 import type { Appointment, SalonProfile, Service } from "./mock/types";
 import type { ClienteDeCita } from "./salon-sync";
 import { inferBusinessType } from "./business-type";
@@ -87,7 +88,7 @@ export function inicioReservaPublicaEsFuturo(inicioISO: string, ahora = new Date
  * extremo alto, el mismo que se guarda y bloquea en la agenda.
  */
 export function datosReservaPublicaDesdeCarta(
-  perfil: Pick<SalonProfile, "name" | "tagline" | "menu" | "duracionFlexible"> & Partial<Pick<SalonProfile, "lavado">>,
+  perfil: Pick<SalonProfile, "name" | "tagline" | "menu" | "duracionFlexible"> & Partial<Pick<SalonProfile, "lavado" | "descripcionesServicios">>,
   serviceIds: string[],
 ): { durationMin: number; priceEur: number } | null {
   if (serviceIds.length === 0) return null;
@@ -96,7 +97,7 @@ export function datosReservaPublicaDesdeCarta(
   const elegidos = serviceIds.map((id) => porId.get(id));
   if (elegidos.some((servicio) => !servicio || servicio.active === false)) return null;
   const servicios = elegidos as Service[];
-  const { durationMin, priceEur } = sumServices(servicios, perfil.lavado);
+  const { durationMin, priceEur } = sumServices(servicios, lavadoDe(perfil, carta));
   if (durationMin <= 0 || !Number.isFinite(priceEur)) return null;
   return { durationMin: duracionDeAgenda(durationMin, !!perfil.duracionFlexible), priceEur };
 }

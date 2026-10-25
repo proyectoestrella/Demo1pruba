@@ -1,4 +1,5 @@
 import { parcheCalendario, type PreferenciasCalendario } from "./preferencias-calendario";
+import { lavadoDe } from "./appointment-services";
 import { registrarPerfilGuardado } from "./perfil-ref";
 import { conservarIguales } from "./conservar-iguales";
 import { create } from "zustand";
@@ -691,7 +692,7 @@ export const useSalonStore = create<SalonState>()(
           const siguiente = { ...previa, ...patch, ...senalPatch };
           const debido = importeSenal(reglaSenal(get().salonProfile), {
             serviceIds: siguiente.serviceIds,
-            durationMin: duracionCartaParaSenal(siguiente.serviceIds, selectServiceMap(get().services), siguiente.duration, get().salonProfile.lavado),
+            durationMin: duracionCartaParaSenal(siguiente.serviceIds, selectServiceMap(get().services), siguiente.duration, lavadoDe(get().salonProfile, get().services)),
             priceEur: siguiente.priceEur,
           });
           const r = reajustarSenal(siguiente, debido);
@@ -798,7 +799,7 @@ export const useSalonStore = create<SalonState>()(
         return aplicarSenalA(id, (c) =>
           pedirSenal(c, regla, importeSenal(regla, {
             serviceIds: c.serviceIds,
-            durationMin: duracionCartaParaSenal(c.serviceIds, selectServiceMap(get().services), c.duration, get().salonProfile.lavado),
+            durationMin: duracionCartaParaSenal(c.serviceIds, selectServiceMap(get().services), c.duration, lavadoDe(get().salonProfile, get().services)),
             priceEur: c.priceEur,
             esNueva: undefined,
           })),
@@ -816,7 +817,7 @@ export const useSalonStore = create<SalonState>()(
                 ? c.depositEur
                 : importeSenal(regla, {
                   serviceIds: c.serviceIds,
-                  durationMin: duracionCartaParaSenal(c.serviceIds, selectServiceMap(get().services), c.duration, get().salonProfile.lavado),
+                  durationMin: duracionCartaParaSenal(c.serviceIds, selectServiceMap(get().services), c.duration, lavadoDe(get().salonProfile, get().services)),
                   priceEur: c.priceEur,
                 }) || regla.importeFijoEur),
           }),

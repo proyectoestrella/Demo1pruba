@@ -83,3 +83,39 @@ export function textoTotalServicios(
     ? "A definir"
     : eur(totalEur).replace(",00", "");
 }
+
+const sinTildes = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+
+/**
+ * Lavado incluido efectivo de un salón (25-oct, decisión de Tomás: no se le
+ * pregunta a la dueña; valor por defecto sensato y editable en Servicios).
+ *
+ * - Si la gerente ya lo configuró (aunque sea para apagarlo con `servicioId`
+ *   vacío), manda lo suyo.
+ * - Si no, se deduce de la carta: el lavado suelto es el servicio llamado
+ *   «Lavado…» sin «+»; lo incluyen los servicios cuya descripción dice
+ *   «incluye lavado» (no «no incluye»), los combinados que ya llevan «lavado»
+ *   en el nombre y los de color («el color tiene incluido el lavado», María,
+ *   22-oct).
+ */
+export function lavadoDe(
+  perfil: { lavado?: ConfigLavado | null; descripcionesServicios?: Record<string, string> },
+  carta: readonly Pick<Service, "id" | "name" | "description">[],
+): ConfigLavado | undefined {
+  if (perfil.lavado) return perfil.lavado;
+  const suelto = carta.find((s) => {
+    const n = sinTildes(s.name);
+    return n.startsWith("lavado") && !n.includes("+");
+  });
+  if (!suelto) return undefined;
+  const incluidoEn = carta
+    .filter((s) => s.id !== suelto.id)
+    .filter((s) => {
+      const n = sinTildes(s.name);
+      const d = sinTildes(perfil.descripcionesServicios?.[s.id] ?? s.description ?? "");
+      if (/no incluye[^.]*lavado/.test(d)) return false;
+      return /incluye[^.]*lavado/.test(d) || n.includes("lavado") || n.startsWith("color");
+    })
+    .map((s) => s.id);
+  return incluidoEn.length ? { servicioId: suelto.id, incluidoEn } : undefined;
+}

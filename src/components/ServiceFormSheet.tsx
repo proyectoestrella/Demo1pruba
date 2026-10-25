@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { lavadoDe } from "@/lib/appointment-services";
 import { categoryOrderOf } from "@/lib/business-type";
 import { toast } from "sonner";
 import { useSalonStore } from "@/lib/store";
@@ -42,7 +43,8 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
   const [category, setCategory] = useState("");
   const [priceText, setPriceText] = useState("");
   // Lavado que no se cobra aparte: este servicio ES el lavado suelto, o lo INCLUYE.
-  const lavadoCfg = useSalonStore((s) => s.salonProfile.lavado);
+  const perfilSalon = useSalonStore((s) => s.salonProfile);
+  const lavadoCfg = lavadoDe(perfilSalon, services);
   const [esLavado, setEsLavado] = useState(false);
   const [incluyeLavado, setIncluyeLavado] = useState(false);
   const hayLavado = !!lavadoCfg?.servicioId && services.some((x) => x.id === lavadoCfg.servicioId);
@@ -56,7 +58,7 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
     setActive(service?.active ?? true);
     setCategory(service?.category && service.category !== "Servicios" ? service.category : "");
     setPriceText(service?.priceText ?? "");
-    const cfg = useSalonStore.getState().salonProfile.lavado;
+    const cfg = lavadoDe(useSalonStore.getState().salonProfile, useSalonStore.getState().services);
     setEsLavado(!!service && cfg?.servicioId === service.id);
     setIncluyeLavado(!!service && !!cfg?.incluidoEn?.includes(service.id));
   }, [open, service]);
@@ -89,7 +91,7 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
       updateSalonProfile({ preciosLiterales: siguiente });
     }
     // «Incluye lavado»: vive en el perfil y lo leen la reserva, el servidor y Nueva cita.
-    const cfg = useSalonStore.getState().salonProfile.lavado;
+    const cfg = lavadoDe(useSalonStore.getState().salonProfile, useSalonStore.getState().services);
     let servicioId = cfg?.servicioId ?? "";
     if (esLavado) servicioId = id;
     else if (servicioId === id) servicioId = "";
@@ -97,7 +99,8 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
     if (incluyeLavado && !esLavado) incluidoEn.add(id);
     else incluidoEn.delete(id);
     const hayCambio = servicioId !== (cfg?.servicioId ?? "") || incluidoEn.size !== (cfg?.incluidoEn?.length ?? 0) || [...incluidoEn].some((x) => !cfg?.incluidoEn?.includes(x));
-    if (hayCambio) updateSalonProfile({ lavado: servicioId ? { servicioId, incluidoEn: [...incluidoEn] } : undefined });
+    // Apagado explícito: `servicioId` vacío (si no, volvería el valor por defecto deducido de la carta).
+    if (hayCambio) updateSalonProfile({ lavado: { servicioId, incluidoEn: servicioId ? [...incluidoEn] : [] } });
     onOpenChange(false);
   }
 
