@@ -18,21 +18,21 @@ async function paso2(page: Page, audit: Auditoria) {
     await expect(page.getByRole("button", { name: "Continuar" })).toBeEnabled({ timeout: 1500 });
   }).toPass({ timeout: 15_000 });
   await page.getByRole("button", { name: "Continuar" }).click();
-  await expect(page.getByText("Elige tu estilista")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Fecha y hora" }).first()).toBeVisible();
 }
 async function paso3(page: Page, audit: Auditoria) {
   await paso2(page, audit);
-  await page.getByRole("button", { name: /Cualquiera disponible/ }).click();
-  await page.getByRole("button", { name: "Continuar" }).click();
-  await expect(page.getByRole("heading", { name: "Fecha y hora" }).first()).toBeVisible();
-}
-async function paso4(page: Page, audit: Auditoria) {
-  await paso3(page, audit);
   await page
     .locator("button:enabled")
     .filter({ hasText: /^\d\d:\d\d$/ })
     .first()
     .click();
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await expect(page.getByRole("heading", { name: "¿Con quién?" }).first()).toBeVisible();
+}
+async function paso4(page: Page, audit: Auditoria) {
+  await paso3(page, audit);
+  await page.getByRole("button", { name: /Cualquiera disponible/ }).click();
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByPlaceholder("Nombre y apellidos")).toBeVisible();
 }
@@ -62,21 +62,43 @@ test.describe("Reserva pública", () => {
     await audit.revisar("reserva-1-servicios");
   });
 
-  test("Reserva 2 · Estilista", async ({ page, audit }) => {
+  test("Reserva 2 · Fecha y hora", async ({ page, audit }) => {
     await paso2(page, audit);
-    await expect(page.getByRole("button", { name: /Cualquiera disponible/ })).toBeVisible();
-    await audit.revisar("reserva-2-estilista");
-  });
-
-  test("Reserva 3 · Fecha y hora", async ({ page, audit }) => {
-    await paso3(page, audit);
     await expect(
       page
         .locator("button:enabled")
         .filter({ hasText: /^\d\d:\d\d$/ })
         .first(),
     ).toBeVisible();
-    await audit.revisar("reserva-3-fecha-y-hora");
+    await expect(page.getByLabel("¿Prefieres a alguien?")).toHaveValue("any");
+    await audit.revisar("reserva-2-fecha-y-hora");
+  });
+
+  test("Reserva 3 · Profesional", async ({ page, audit }) => {
+    await paso3(page, audit);
+    await expect(page.getByRole("button", { name: /Cualquiera disponible/ })).toBeVisible();
+    await audit.revisar("reserva-3-profesional");
+  });
+
+  test("Reserva 2–3 · una preferencia filtra huecos y llega preseleccionada", async ({
+    page,
+    audit,
+  }) => {
+    await paso2(page, audit);
+    const selector = page.getByLabel("¿Prefieres a alguien?");
+    const opcion = selector.locator("option").nth(1);
+    const employeeId = await opcion.getAttribute("value");
+    const employeeName = await opcion.textContent();
+    await selector.selectOption(employeeId!);
+    await page
+      .locator("button:enabled")
+      .filter({ hasText: /^\d\d:\d\d$/ })
+      .first()
+      .click();
+    await page.getByRole("button", { name: "Continuar" }).click();
+    await expect(
+      page.locator('button[aria-pressed="true"]').filter({ hasText: employeeName! }).first(),
+    ).toBeVisible();
   });
 
   test("Reserva 4 · Datos (vacío: botón desactivado)", async ({ page, audit }) => {
@@ -86,7 +108,10 @@ test.describe("Reserva pública", () => {
     await audit.revisar("reserva-4-datos");
   });
 
-  test("Reserva 4 · la casilla de privacidad se marca tocando el texto y es cómoda", async ({ page, audit }) => {
+  test("Reserva 4 · la casilla de privacidad se marca tocando el texto y es cómoda", async ({
+    page,
+    audit,
+  }) => {
     await paso4(page, audit);
     const caja = page.getByRole("checkbox", { name: /He leído la información/ });
     const caja_box = await caja.boundingBox();
@@ -95,7 +120,9 @@ test.describe("Reserva pública", () => {
     expect((await fila.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await page.getByText("He leído la información sobre el tratamiento de mis datos.").click();
     await expect(caja).toHaveAttribute("aria-checked", "true");
-    await page.screenshot({ path: `tests-e2e/capturas/reserva-casilla-${test.info().project.name}.png` });
+    await page.screenshot({
+      path: `tests-e2e/capturas/reserva-casilla-${test.info().project.name}.png`,
+    });
   });
 
   test("Reserva 4 · sin nombre", async ({ page, audit }) => {

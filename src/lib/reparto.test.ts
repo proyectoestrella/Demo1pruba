@@ -15,6 +15,7 @@ import {
   findNextAvailableSlot,
   profesionalesDisponiblesEnHueco,
   profesionalesLibresEnHora,
+  profesionalElegidaParaHueco,
   type SpreadSlot,
 } from "./reparto";
 import type { Appointment, Employee } from "./mock/types";
@@ -354,5 +355,22 @@ describe("profesionalesLibresEnHora (disponibilidad a la hora elegida)", () => {
 
   it("hora mal formada: nadie", () => {
     expect(profesionalesLibresEnHora({ ...base, employees: [a], appointments: [], hora: "xx" })).toEqual([]);
+  });
+});
+
+describe("profesionalElegidaParaHueco", () => {
+  const libres = [{ id: "ana" }, { id: "marta" }];
+
+  it("conserva la profesional elegida si también está libre en la nueva hora", () => {
+    expect(profesionalElegidaParaHueco("ana", "any", libres)).toBe("ana");
+  });
+
+  it("vuelve a cualquiera si la profesional elegida ya no está libre", () => {
+    expect(profesionalElegidaParaHueco("noelia", "any", libres)).toBe("any");
+  });
+
+  it("preselecciona una preferencia explícita solo cuando está libre", () => {
+    expect(profesionalElegidaParaHueco("any", "marta", libres)).toBe("marta");
+    expect(profesionalElegidaParaHueco("any", "noelia", libres)).toBe("any");
   });
 });

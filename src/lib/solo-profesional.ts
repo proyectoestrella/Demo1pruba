@@ -26,34 +26,30 @@ export function esSoloUnProfesional(equipo: { length: number } | number): boolea
 /* ---------------------------------------------------------------------- */
 
 /**
- * La reserva tiene cuatro pantallas internas (servicio, profesional, fecha y
- * hora, datos). Con un solo profesional la segunda no tiene nada que
+ * La reserva tiene cuatro pantallas internas (servicio, fecha y hora,
+ * profesional, datos). Con un solo profesional la tercera no tiene nada que
  * preguntar, así que se salta: el cliente ve tres pasos, no cuatro.
- *
- * Los números internos NO se renumeran —el paso «fecha y hora» sigue siendo el
- * 3 en el código— para no tocar la lógica de cada pantalla. Lo que cambia es
- * por dónde se navega y qué se pinta en la barra de progreso.
  */
 export type PasoReserva = 1 | 2 | 3 | 4;
 
 /** El paso del que se parte al abrir la reserva. */
-export function pasoInicial(tieneServicios: boolean, soloUno: boolean): PasoReserva {
+export function pasoInicial(tieneServicios: boolean, _soloUno: boolean): PasoReserva {
   if (!tieneServicios) return 1;
-  return soloUno ? 3 : 2;
+  return 2;
 }
 
 /** Siguiente paso, saltándose el del profesional cuando solo hay uno. */
 export function siguientePaso(paso: PasoReserva, soloUno: boolean): PasoReserva {
   if (paso >= 4) return 4;
   const next = (paso + 1) as PasoReserva;
-  return soloUno && next === 2 ? 3 : next;
+  return soloUno && next === 3 ? 4 : next;
 }
 
 /** Paso anterior, con el mismo salto en sentido contrario. */
 export function pasoAnterior(paso: PasoReserva, soloUno: boolean): PasoReserva {
   if (paso <= 1) return 1;
   const prev = (paso - 1) as PasoReserva;
-  return soloUno && prev === 2 ? 1 : prev;
+  return soloUno && prev === 3 ? 2 : prev;
 }
 
 /** Cuántos pasos ve el cliente: 4 de siempre, o 3 cuando solo hay un profesional. */
@@ -63,10 +59,10 @@ export function totalPasos(soloUno: boolean): number {
 
 /**
  * Qué número de paso enseñar ("Paso 2 de 3"). Con un solo profesional, el
- * paso interno 3 es el 2º que ve el cliente y el 4 es el 3º.
+ * paso interno 4 es el 3º que ve el cliente.
  */
 export function pasoVisible(paso: PasoReserva, soloUno: boolean): number {
-  return soloUno && paso > 2 ? paso - 1 : paso;
+  return soloUno && paso > 3 ? paso - 1 : paso;
 }
 
 /**
@@ -74,7 +70,7 @@ export function pasoVisible(paso: PasoReserva, soloUno: boolean): number {
  * «profesional» según el oficio (ver `professionalWord`).
  */
 export function rotulosDePaso(palabra: string, soloUno: boolean): string[] {
-  const conProfesional = ["Servicio", cap(palabra), "Fecha y hora", "Tus datos"];
+  const conProfesional = ["Servicio", "Fecha y hora", cap(palabra), "Tus datos"];
   return soloUno ? ["Servicio", "Fecha y hora", "Tus datos"] : conProfesional;
 }
 

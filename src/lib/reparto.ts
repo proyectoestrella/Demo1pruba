@@ -247,8 +247,8 @@ export function profesionalesDisponiblesEnHueco({
 /**
  * Profesionales libres a una hora concreta ("HH:mm") de un día. Es la misma
  * comprobación conjunta que `profesionalesDisponiblesEnHueco`, pero con la
- * hora tal como la elige la clienta: sirve para decirle «a las 17:00 están
- * libres Ana y Marta» y para no ofrecerle nunca una profesional ocupada.
+ * hora tal como la elige la clienta: sirve para construir el paso
+ * «¿Con quién?» sin ofrecerle nunca una profesional ocupada.
  */
 export function profesionalesLibresEnHora({
   hora,
@@ -261,6 +261,21 @@ export function profesionalesLibresEnHora({
     startMin: hh * 60 + mm,
     startISO: isoDelSalon(resto.dateKey, hora, resto.timeZone),
   });
+}
+
+/**
+ * Revalida la elección al cambiar de hueco. Una preferencia explícita manda
+ * si sigue libre; sin preferencia se conserva la elección del paso 3 solo
+ * mientras esa profesional pueda atender la nueva hora.
+ */
+export function profesionalElegidaParaHueco<T extends string>(
+  elegida: T | "any" | undefined,
+  preferida: T | "any",
+  libres: ReadonlyArray<{ id: T }>,
+): T | "any" {
+  const estaLibre = (employeeId: T) => libres.some((employee) => employee.id === employeeId);
+  if (preferida !== "any") return estaLibre(preferida) ? preferida : "any";
+  return elegida && elegida !== "any" && estaLibre(elegida) ? elegida : "any";
 }
 
 /**

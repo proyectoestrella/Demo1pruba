@@ -24,32 +24,32 @@ describe("esSoloUnProfesional", () => {
 
 describe("pasos de la reserva con un solo profesional", () => {
   it("se salta el paso del profesional hacia delante", () => {
-    expect(siguientePaso(1, true)).toBe(3);
-    expect(siguientePaso(3, true)).toBe(4);
+    expect(siguientePaso(1, true)).toBe(2);
+    expect(siguientePaso(2, true)).toBe(4);
     expect(siguientePaso(4, true)).toBe(4);
   });
 
   it("y hacia atrás", () => {
-    expect(pasoAnterior(3, true)).toBe(1);
-    expect(pasoAnterior(4, true)).toBe(3);
+    expect(pasoAnterior(2, true)).toBe(1);
+    expect(pasoAnterior(4, true)).toBe(2);
     expect(pasoAnterior(1, true)).toBe(1);
   });
 
   it("arranca en fecha y hora si ya traía servicios elegidos", () => {
-    expect(pasoInicial(true, true)).toBe(3);
+    expect(pasoInicial(true, true)).toBe(2);
     expect(pasoInicial(false, true)).toBe(1);
   });
 
   it("enseña tres pasos, bien numerados", () => {
     expect(totalPasos(true)).toBe(3);
     expect(pasoVisible(1, true)).toBe(1);
-    expect(pasoVisible(3, true)).toBe(2);
+    expect(pasoVisible(2, true)).toBe(2);
     expect(pasoVisible(4, true)).toBe(3);
     expect(rotulosDePaso("barbero", true)).toEqual(["Servicio", "Fecha y hora", "Tus datos"]);
   });
 });
 
-describe("con varios profesionales todo sigue igual que siempre", () => {
+describe("pasos de la reserva con varios profesionales", () => {
   it("recorre los cuatro pasos sin saltos", () => {
     expect(siguientePaso(1, false)).toBe(2);
     expect(siguientePaso(2, false)).toBe(3);
@@ -64,10 +64,10 @@ describe("con varios profesionales todo sigue igual que siempre", () => {
     expect(pasoVisible(3, false)).toBe(3);
     expect(rotulosDePaso("barbero", false)).toEqual([
       "Servicio",
-      "Barbero",
       "Fecha y hora",
+      "Barbero",
       "Tus datos",
     ]);
-    expect(rotulosDePaso("profesional", false)[1]).toBe("Profesional");
+    expect(rotulosDePaso("profesional", false)[2]).toBe("Profesional");
   });
 });
