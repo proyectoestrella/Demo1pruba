@@ -70,12 +70,14 @@ import {
 } from "../preguntas-reserva";
 import { profesionalHaceServicios } from "../servicios-profesional";
 import { hayBloqueoEnHueco } from "../bloqueos-agenda";
-import { zonaDelSalon } from "../zona-horaria";
+import { fechaEnZona, isoDelSalon, zonaDelSalon } from "../zona-horaria";
 import { refSenalAplicada, type MetodoPago } from "../pagos";
 import {
   ERROR_BLOQUEO_MANUAL,
   ERROR_FUERA_HORARIO,
   ERROR_HUECO_OCUPADO,
+  diaCompletoParaProfesional,
+  topeCitasDiaProfesional,
   ERROR_PRIVACIDAD_NO_CONFIRMADA,
   ERROR_RESPUESTAS_RESERVA,
   ERROR_SERVICIO_PROFESIONAL,
@@ -1561,6 +1563,30 @@ export const syncAppointment = createServerFn({ method: "POST" })
         )
       ) {
         return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
+      }
+
+      // Tope diario por profesional (PeluChic: 9). Solo citas confirmadas.
+      const tope = topeCitasDiaProfesional(perfilPublico ?? {}, data.slug);
+      if (tope) {
+        const zona = zonaDelSalon(perfilPublico);
+        const fecha = fechaEnZona(data.startISO, zona);
+        const desde = isoDelSalon(fecha, "00:00", zona);
+        const hasta = new Date(Date.parse(desde) + 26 * 60 * 60_000).toISOString();
+        const { data: delDia } = await supabase
+          .from("appointments")
+          .select("employee_id, start_at, status")
+          .eq("salon_slug", data.slug)
+          .eq("employee_id", data.employeeId)
+          .gte("start_at", desde)
+          .lt("start_at", hasta);
+        const citasDia = ((delDia ?? []) as Array<{ employee_id: string; start_at: string; status: string }>).map((c) => ({
+          employeeId: c.employee_id,
+          start: c.start_at,
+          status: c.status,
+        }));
+        if (diaCompletoParaProfesional(citasDia, data.employeeId, fecha, (iso) => fechaEnZona(iso, zona), tope)) {
+          return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
+        }
       }
 
       // Lote 13: un hueco ocupado por un calendario externo conectado (con

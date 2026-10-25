@@ -1,5 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
+  diaCompletoParaProfesional,
+  topeCitasDiaProfesional,
   ERROR_BLOQUEO_MANUAL,
   ERROR_FUERA_HORARIO,
   ERROR_HUECO_OCUPADO,
@@ -155,5 +157,20 @@ describe("datos de una reserva pública", () => {
     expect(datosReservaPublicaDesdeCarta({ ...conLavado, lavado: { servicioId: "", incluidoEn: [] } }, ["color", "lavado"])).toEqual({ durationMin: 75, priceEur: 50 });
     // Sin configurar (25-oct): por defecto el Color incluye el lavado suelto.
     expect(datosReservaPublicaDesdeCarta({ ...conLavado, lavado: undefined }, ["color", "lavado"])).toEqual({ durationMin: 60, priceEur: 40 });
+  });
+});
+
+describe("tope de citas al día (PeluChic 9 por profesional)", () => {
+  const fechaDe = (iso: string) => iso.slice(0, 10);
+  const cita = (status: string, emp = "anca") => ({ employeeId: emp, start: "2026-10-28T09:00:00Z", status });
+  it("solo cuentan las confirmadas: 9 pendientes no llenan el día", () => {
+    expect(diaCompletoParaProfesional(Array.from({ length: 9 }, () => cita("pending")), "anca", "2026-10-28", fechaDe, 9)).toBe(false);
+    expect(diaCompletoParaProfesional(Array.from({ length: 9 }, () => cita("confirmed")), "anca", "2026-10-28", fechaDe, 9)).toBe(true);
+    expect(diaCompletoParaProfesional(Array.from({ length: 9 }, () => cita("confirmed", "maria")), "anca", "2026-10-28", fechaDe, 9)).toBe(false);
+  });
+  it("el tope sale del perfil o del salón", () => {
+    expect(topeCitasDiaProfesional({}, "peluchic")).toBe(9);
+    expect(topeCitasDiaProfesional({}, "otro")).toBeNull();
+    expect(topeCitasDiaProfesional({ maxCitasDiaProfesional: 12 }, "peluchic")).toBe(12);
   });
 });

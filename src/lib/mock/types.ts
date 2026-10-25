@@ -430,6 +430,8 @@ export interface SalonProfile {
   exposicionServicios?: Record<string, ExposicionServicio>;
   /** Clientas presentes a la vez por profesional. Ausente: 6. */
   maxClientasExposicion?: number;
+  /** Tope de citas confirmadas al día por profesional en la reserva web (ver reserva-publica.ts). */
+  maxCitasDiaProfesional?: number;
   /**
    * Lavado que va incluido en el precio de otros servicios (p. ej. Color).
    * `servicioId` es el servicio «Lavado» suelto de la carta; `incluidoEn`, los
