@@ -84,7 +84,11 @@ export function phoneDigits(phone: string): string {
 
 /** Enlace de WhatsApp para un cliente concreto con el mensaje ya cargado. */
 export function whatsappUrl(phone: string, mensaje: string): string {
-  return `https://wa.me/${phoneDigits(phone)}?text=${encodeURIComponent(mensaje)}`;
+  // wa.me exige el número internacional: un móvil o fijo español de 9 cifras
+  // sin prefijo («666 77 67 31») abría otro país (25-oct noche).
+  const digitos = phoneDigits(phone);
+  const internacional = /^[6789]\d{8}$/.test(digitos) ? `34${digitos}` : digitos;
+  return `https://wa.me/${internacional}?text=${encodeURIComponent(mensaje)}`;
 }
 
 /**

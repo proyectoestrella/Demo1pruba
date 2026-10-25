@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
 import {
   clientesQueNoVuelven,
   huecosFlojos,
@@ -252,4 +252,10 @@ describe("whatsappUrl / phoneDigits", () => {
     const url = whatsappUrl("+34 611 111 222", "Hola ¿qué tal?");
     expect(url).toBe("https://wa.me/34611111222?text=Hola%20%C2%BFqu%C3%A9%20tal%3F");
   });
+});
+
+test("whatsappUrl: un número español de 9 cifras lleva el 34 (25-oct noche)", () => {
+  expect(whatsappUrl("666 77 67 31", "hola")).toStartWith("https://wa.me/34666776731?");
+  expect(whatsappUrl("+34 666 77 67 31", "hola")).toStartWith("https://wa.me/34666776731?");
+  expect(whatsappUrl("+33 6 12 34 56 78", "hola")).toStartWith("https://wa.me/33612345678?");
 });

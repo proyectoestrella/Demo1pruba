@@ -278,7 +278,7 @@ describe("recordatorio de última hora (lote 12): «te quedan X min para el Bizu
     expect(r!.texto).toContain("12 min");
     expect(r!.texto).toContain("20 €");
     expect(r!.texto).toContain(regla.bizumTelefono);
-    expect(r!.enlace).toContain("wa.me/622334455");
+    expect(r!.enlace).toContain("wa.me/34622334455");
     expect(r!.enlace).toContain(encodeURIComponent(r!.texto));
   });
 });
