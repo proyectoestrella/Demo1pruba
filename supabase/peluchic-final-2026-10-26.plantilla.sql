@@ -32,12 +32,19 @@ do $$ begin
   end if;
 end $$;
 
--- 1 · Copia de seguridad (solo la primera vez) -------------------------------
-create table if not exists clients_respaldo_20261026 as
+-- 1 · Copia de seguridad (solo la primera vez), en un esquema privado que la
+--     API de Supabase no publica (datos personales: nada de `public`).
+create schema if not exists respaldo;
+revoke all on schema respaldo from public;
+do $$ begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then execute 'revoke all on schema respaldo from anon'; end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then execute 'revoke all on schema respaldo from authenticated'; end if;
+end $$;
+create table if not exists respaldo.clients_20261026 as
   select * from clients where salon_slug = 'peluchic';
-create table if not exists appointments_respaldo_20261026 as
+create table if not exists respaldo.appointments_20261026 as
   select * from appointments where salon_slug = 'peluchic';
-create table if not exists payments_respaldo_20261026 as
+create table if not exists respaldo.payments_20261026 as
   select * from payments where salon_slug = 'peluchic';
 
 -- ANTES
@@ -67,6 +74,13 @@ create temp table tpv (
 insert into tpv values
 /*DATOS*/;
 
+do $$ begin
+  if (select count(*) from tpv) <> 1336 then raise exception 'El bloque de datos no tiene 1.336 filas: no se aplica nada'; end if;
+  if (select count(distinct ltrim(codigo, '0')) from tpv where coalesce(codigo, '') <> '') <> 1336 then
+    raise exception 'Hay códigos TPV vacíos o repetidos en el bloque de datos: no se aplica nada';
+  end if;
+end $$;
+
 create temp table tpv_n on commit drop as
 select t.*, ltrim(codigo, '0') as cod,
   lower(translate(split_part(trim(nombre), ' ', 1), 'ÁÉÍÓÚÜÑáéíóúüñ', 'AEIOUUNaeiouun')) as primero,
@@ -80,16 +94,21 @@ select c.*, ltrim(coalesce(c.tpv_code, ''), '0') as cod,
 from clients c where c.salon_slug = 'peluchic';
 
 -- 3a · Altas a mano inequívocas: reciben el código de su fila del Excel.
---      Mismo primer nombre y (mismo teléfono o primeras 5 letras del segundo
---      término iguales), una sola candidata por cada lado.
+--      Solo altas hechas a mano desde el 22-oct, con el mismo primer nombre y
+--      (el mismo teléfono, o el primer apellido igual en sus 5 primeras letras
+--      y además el mismo nombre completo o sin teléfono), una sola candidata
+--      por cada lado. Lo demás va al listado de dudosas.
 create temp table enlace_manual on commit drop as
 with faltan as (
   select t.* from tpv_n t where not exists (select 1 from cli_n c where c.cod = t.cod and c.tpv_code is not null)
 ), cand as (
   select f.codigo, c.id
   from faltan f join cli_n c on c.tpv_code is null and c.primero = f.primero
+   and c.created_at >= timestamptz '2026-10-22 00:00+02'
    and ( (f.clave is not null and right(regexp_replace(coalesce(c.phone, ''), '\D', '', 'g'), 9) = f.clave)
-      or left(split_part(c.completo, ' ', 2), 5) = left(split_part(f.completo, ' ', 2), 5) and split_part(f.completo, ' ', 2) <> '' )
+      or ( split_part(f.completo, ' ', 2) <> ''
+           and left(split_part(c.completo, ' ', 2), 5) = left(split_part(f.completo, ' ', 2), 5)
+           and (c.completo = f.completo or c.phone is null) ) )
 )
 select codigo, id from cand
 where codigo in (select codigo from cand group by codigo having count(*) = 1)
@@ -100,6 +119,7 @@ from enlace_manual e where c.id = e.id and c.tpv_code is null;
 
 -- 3b · Completar las que ya están (nunca se pisa un dato que ya tenga).
 update clients c set
+  phone = coalesce(nullif(c.phone, ''), t.telefono),
   email = coalesce(nullif(c.email, ''), t.email),
   tax_id = coalesce(nullif(c.tax_id, ''), t.dni),
   address = coalesce(nullif(c.address, ''), t.direccion),
@@ -176,7 +196,11 @@ with tel as (
 )
 select s.id as sobra, q.id as queda
 from g s join g q on q.completo = s.completo and q.tpv_code is not null and s.tpv_code is null and s.id <> q.id
-where s.n = 2 and s.con_codigo = 1 and s.tels <= 1;
+where s.n = 2 and s.con_codigo = 1 and s.tels <= 1
+  and s.created_at >= timestamptz '2026-10-22 00:00+02'
+  and (s.phone_key is null or s.phone_key = q.phone_key)
+  and not exists (select 1 from clients x where x.id = s.id and x.phone is not null and x.phone_key is null
+                  and right(regexp_replace(x.phone, '\D', '', 'g'), 9) <> coalesce(q.phone_key, ''));
 
 update clients c set
   email = coalesce(nullif(c.email, ''), o.email),
@@ -200,7 +224,10 @@ update salons set profile = profile
        || jsonb_build_object('resenas', 'https://www.google.com/maps/search/?api=1&query=PeluChic&query_place_id=ChIJc_dY3q0uQg0ReeAzc1Y3irs'))
 where slug = 'peluchic';
 
--- 7 · Pruebas de Tomás --------------------------------------------------------
+-- 7 · Pruebas de Tomás (sus cobros, si los hubiera, también) -----------------
+delete from payments p where p.salon_slug = 'peluchic' and (
+  p.client_name ilike 'PRUEBA SISHOW BORRAR%'
+  or p.appointment_id in (select local_id from appointments where salon_slug = 'peluchic' and client_name ilike 'PRUEBA SISHOW BORRAR%'));
 delete from appointments where salon_slug = 'peluchic' and client_name ilike 'PRUEBA SISHOW BORRAR%';
 delete from clients c where c.salon_slug = 'peluchic' and c.name ilike 'PRUEBA SISHOW BORRAR%'
   and not exists (select 1 from appointments a where a.client_id = c.id);
@@ -212,7 +239,7 @@ begin
   select count(*) into faltan from tpv_n t
    where not exists (select 1 from clients c where c.salon_slug = 'peluchic' and c.tpv_code is not null and ltrim(c.tpv_code, '0') = t.cod);
   if faltan > 0 then raise exception 'Faltan % clientas del Excel: no se aplica nada', faltan; end if;
-  select count(*) into citas_antes from appointments_respaldo_20261026
+  select count(*) into citas_antes from respaldo.appointments_20261026
    where client_name is null or client_name not ilike 'PRUEBA SISHOW BORRAR%';
   select count(*) into citas_despues from appointments where salon_slug = 'peluchic';
   if citas_despues < citas_antes then raise exception 'Se perderían citas (% → %): no se aplica nada', citas_antes, citas_despues; end if;
@@ -236,14 +263,17 @@ order by 1, 2;
 
 commit;
 
--- MARCHA ATRÁS (solo si hiciera falta; en este orden):
+-- MARCHA ATRÁS — SOLO justo después de pegar este SQL, antes de que entren
+-- reservas nuevas: deja las clientas, citas y cobros de PeluChic como estaban
+-- en la primera ejecución y BORRARÍA lo que se haya creado después. Si ya hay
+-- actividad posterior, no la uses: pide ayuda (las copias siguen en `respaldo`).
 -- begin;
 -- delete from payments where salon_slug = 'peluchic';
--- insert into payments select * from payments_respaldo_20261026;
+-- insert into payments select * from respaldo.payments_20261026;
 -- delete from appointments where salon_slug = 'peluchic';
 -- delete from clients where salon_slug = 'peluchic';
--- insert into clients select * from clients_respaldo_20261026;
--- insert into appointments select * from appointments_respaldo_20261026;
+-- insert into clients select * from respaldo.clients_20261026;
+-- insert into appointments select * from respaldo.appointments_20261026;
 -- commit;
 -- (El único sobre el teléfono no se vuelve a poner: con familiares que comparten
 --  número ya no se podría. Las reseñas se quitan con:
