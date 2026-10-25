@@ -2354,6 +2354,12 @@ function DateTimeStep({
                   ))}
                 </div>
               )}
+              {preferredEmployee && slots.some((s) => s.available && !s.preferredAvailable) && (
+                <p className="mt-4 flex items-center gap-2 text-sm text-foreground">
+                  <span aria-hidden="true" className="inline-block h-4 w-6 rounded-full border border-dashed border-moca" />
+                  Con borde discontinuo: a esa hora no está {preferredEmployee.name}, pero sí otra profesional.
+                </p>
+              )}
               {smartSpread && slots.some((s) => s.busy && s.available) && (
                 <p className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span aria-hidden="true" className="size-2 rounded-full bg-moca" />
