@@ -3,7 +3,17 @@ import { lavadoDe } from "@/lib/appointment-services";
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useImagenConRespaldo } from "@/lib/imagen-rota";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, Info, PhoneCall, Repeat, X, Zap } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Info,
+  PhoneCall,
+  Repeat,
+  X,
+  Zap,
+} from "lucide-react";
 import { employeesForType, servicesForType, textosDeCarta } from "@/lib/mock/salon";
 import {
   duracionCartaParaSenal,
@@ -14,7 +24,7 @@ import {
   type ReglaSenal,
 } from "@/lib/senal";
 import { franjasProfesionalEnFecha, huecosDeProfesionalesEnFecha } from "@/lib/horario-equipo";
-import { isoDelSalon, zonaDelSalon } from "@/lib/zona-horaria";
+import { fechaEnZona, isoDelSalon, zonaDelSalon } from "@/lib/zona-horaria";
 import { antelacionMinima, huecoAunReservable } from "@/lib/primer-hueco";
 import type {
   Appointment,
@@ -104,6 +114,14 @@ import {
   type PasoReserva,
 } from "@/lib/solo-profesional";
 import type { ContextoSolape } from "@/lib/solape";
+import {
+  alternativasAUnaHora,
+  anteriorDiaAbierto,
+  primerDiaAbierto,
+  proximoDiaConProfesional,
+  salonAbreEnFecha,
+  siguienteDiaAbierto,
+} from "@/lib/fecha-reserva";
 
 /** "45 min" / "1 h" / "1 h 30" — sin ceros ni "0 h" cuando sobra. */
 function formatMinutes(min: number): string {
@@ -516,16 +534,30 @@ function BookingWizard() {
   // volver atrás y elegir otra hora. Una elección que ya no cabe nunca llega
   // arrastrada a la confirmación.
   useEffect(() => {
-    if (!data.date || !data.time || !data.employeeId || data.employeeId === "any") return;
+    if (!data.date || !data.time) return;
+    if (availableEmployeesAtSelectedTime.length === 0) {
+      setData((current) => ({ ...current, time: undefined }));
+      return;
+    }
+    if (
+      preferredEmployeeId !== "any" &&
+      !availableEmployeesAtSelectedTime.some((employee) => employee.id === preferredEmployeeId)
+    ) {
+      setData((current) => ({
+        ...current,
+        employeeId: preferredEmployeeId,
+        time: undefined,
+      }));
+      return;
+    }
+    if (!data.employeeId || data.employeeId === "any") return;
     const revalidatedEmployeeId = profesionalElegidaParaHueco(
       data.employeeId,
       preferredEmployeeId,
       availableEmployeesAtSelectedTime,
     );
     if (revalidatedEmployeeId === data.employeeId) return;
-    const invalidEmployeeId = data.employeeId;
     setData((current) => ({ ...current, employeeId: revalidatedEmployeeId }));
-    setPreferredEmployeeId((current) => (current === invalidEmployeeId ? "any" : current));
   }, [
     data.date,
     data.time,
@@ -678,6 +710,15 @@ function BookingWizard() {
       );
       return { ...current, date, time, employeeId: selectedEmployee };
     });
+  }
+
+  function pickDate(date: string) {
+    setData((current) => (current.date === date ? current : { ...current, date, time: undefined }));
+  }
+
+  function reserveWithAlternative(employeeId: EmployeeId, date: string, time: string) {
+    setPreferredEmployeeId(employeeId);
+    setData((current) => ({ ...current, employeeId, date, time }));
   }
 
   function preferEmployee(employeeId: EmployeeId | "any") {
@@ -902,17 +943,18 @@ function BookingWizard() {
         : step === 3
           ? !data.employeeId || availableEmployeesAtSelectedTime.length === 0
           : faltasDatos.length > 0;
-  const ctaHint = ctaDisabled && intentoPaso === step
-    ? step === 1
-      ? "Elige un servicio"
-      : step === 2
-        ? "Elige una hora"
-        : step === 3
-          ? availableEmployeesAtSelectedTime.length === 0
-            ? "Vuelve atrás y elige otra hora"
-            : `Elige ${professionalWord(tipo) === "estilista" ? "una estilista" : `un ${professionalWord(tipo)}`}`
-          : `Falta: ${faltasDatos.join(", ")}`
-    : undefined;
+  const ctaHint =
+    ctaDisabled && intentoPaso === step
+      ? step === 1
+        ? "Elige un servicio"
+        : step === 2
+          ? "Elige una hora"
+          : step === 3
+            ? availableEmployeesAtSelectedTime.length === 0
+              ? "Vuelve atrás y elige otra hora"
+              : `Elige ${professionalWord(tipo) === "estilista" ? "una estilista" : `un ${professionalWord(tipo)}`}`
+            : `Falta: ${faltasDatos.join(", ")}`
+      : undefined;
 
   const ctaLabel =
     step < 4
@@ -1027,7 +1069,9 @@ function BookingWizard() {
               appointments={appointments}
               selectedDate={data.date}
               selectedTime={data.time}
+              onDateChange={pickDate}
               onPick={pickDateTime}
+              onReserveAlternative={reserveWithAlternative}
               espera={
                 realSlug && webOfreceListaEspera({ plan: profile.plan, slug: salonSlug })
                   ? { salonSlug, salonName: profile.name }
@@ -1068,7 +1112,10 @@ function BookingWizard() {
                     resumen sale en TODOS los tamaños, completo y sin cortes. */}
                 {/* Desde 1024 px el resumen fijo de la derecha ya lo enseña: aquí
                     solo en móvil y tableta, sin repetirlo dos veces (lote 17). */}
-                <div className="tarjeta-principal border border-lino bg-card p-5 lg:hidden">
+                <div
+                  data-testid="booking-summary-data"
+                  className="tarjeta-principal border border-lino bg-card p-5 lg:hidden"
+                >
                   <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-cafe-suave">
                     Resumen de tu reserva
                   </p>
@@ -1094,8 +1141,8 @@ function BookingWizard() {
                     {!soloUno && (
                       <SummaryRow label={cap(professionalWord(tipo))} value={employeeName ?? "—"} />
                     )}
-                    <SummaryRow label="Fecha" value={dateLabel ?? "—"} />
-                    <SummaryRow label="Hora" value={data.time ?? "—"} />
+                    <SummaryRow label="Fecha" value={dateLabel ?? "Elige fecha"} />
+                    <SummaryRow label="Hora" value={data.time ?? "Elige hora"} />
                   </div>
                   {mostrarPrecio && (
                     <>
@@ -1669,8 +1716,12 @@ function StylistStep({
   );
 }
 
-/** `SpreadSlot` + si cae dentro de una franja prioritaria del dueño — ver reparto.ts. */
-type PrioritySlot = SpreadSlot & { priority: boolean };
+/** Hueco visible: disponibilidad general, de la preferida y prioridad del salón. */
+type PrioritySlot = SpreadSlot & {
+  priority: boolean;
+  preferredAvailable: boolean;
+  alternativeEmployees: Employee[];
+};
 
 /** Botón de una hora del paso 2. Se reutiliza en el bloque de franjas prioritarias y en las agrupadas. */
 function TimeSlotButton({
@@ -1685,6 +1736,7 @@ function TimeSlotButton({
   return (
     <button
       disabled={!slot.available}
+      data-alternative={slot.available && !slot.preferredAvailable ? "true" : undefined}
       onClick={onClick}
       title={slot.busy ? "Suele haber espera" : undefined}
       className={cn(
@@ -1695,6 +1747,7 @@ function TimeSlotButton({
         slot.available &&
           !selected &&
           "border-lino-fuerte bg-card hover:border-primary/50 hover:bg-perla",
+        slot.available && !slot.preferredAvailable && !selected && "border-dashed border-moca",
         slot.available && slot.busy && !selected && "border-dashed border-moca",
       )}
     >
@@ -1719,7 +1772,9 @@ function DateTimeStep({
   appointments,
   selectedDate,
   selectedTime,
+  onDateChange,
   onPick,
+  onReserveAlternative,
   employees,
   smartSpread,
   lastSlotBufferMin,
@@ -1755,7 +1810,9 @@ function DateTimeStep({
   appointments: Appointment[];
   selectedDate?: string;
   selectedTime?: string;
+  onDateChange: (date: string) => void;
   onPick: (date: string, time: string) => void;
+  onReserveAlternative: (employeeId: EmployeeId, date: string, time: string) => void;
   employees: Employee[];
   /** Reparto de agenda (clave "k"): etiqueta huecos "con espera" y sugiere una hora más tranquila. */
   smartSpread: boolean;
@@ -1770,22 +1827,16 @@ function DateTimeStep({
   /** Aviso de recargo por retraso (clave "rr"), o undefined si esta demo no lo tiene. */
   recargoTexto?: string;
 }) {
-  const relevantEmployees = useMemo(
-    () =>
-      preferredEmployeeId === "any"
-        ? employees
-        : employees.filter((employee) => employee.id === preferredEmployeeId),
-    [preferredEmployeeId, employees],
-  );
-
-  const today = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
+  const now = useMemo(() => new Date(), []);
+  const todayKey = useMemo(() => fechaEnZona(now, timeZone), [now, timeZone]);
+  const activeDate = selectedDate ? new Date(`${selectedDate}T12:00:00`) : undefined;
+  const preferredEmployee =
+    preferredEmployeeId === "any"
+      ? undefined
+      : employees.find((employee) => employee.id === preferredEmployeeId);
 
   function scheduleForDate(dateKey: string) {
-    return relevantEmployees
+    return employees
       .flatMap((e) => franjasProfesionalEnFecha(e, dateKey, diasEspeciales))
       .map((r) => ({ start: r.start / 60, end: r.end / 60 }));
   }
@@ -1807,75 +1858,37 @@ function DateTimeStep({
   }
 
   function isDayDisabled(date: Date) {
-    if (date < today) return true;
     const dateKey = toDateKey(date);
-    const opens = scheduleForDate(dateKey);
-    if (opens.length === 0) return true;
-    const start = Math.min(...opens.map((o) => o.start));
-    const end = Math.max(...opens.map((o) => o.end));
-    const salonRange = salonRangeForDate(dateKey);
-    const closeMinOffered = salonRange
-      ? offeredCloseMin(salonRange.closeMin, lastSlotBufferMin)
-      : end * 60;
-    for (const minuto of huecosDeProfesionalesEnFecha(
-      relevantEmployees,
-      dateKey,
-      durationMin,
-      diasEspeciales,
-    )) {
-      const h = Math.floor(minuto / 60);
-      const m = minuto % 60;
-      if (h * 60 + m >= closeMinOffered) continue;
-      const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-      // Lote 16: un hueco de hoy que ya pasó (o está a menos de la
-      // antelación) no se ofrece; sin esto, un sábado a las 19:05 salía
-      // «Lo antes posible: hoy a las 12:30».
-      if (!huecoAunReservable(dateKey, timeStr, timeZone, new Date(), antelacionMin)) continue;
-      const iso = isoDelSalon(dateKey, timeStr, timeZone);
-      if (
-        profesionalesDisponiblesEnHueco({
-          employees: relevantEmployees,
-          appointments,
-          dateKey,
-          startMin: minuto,
-          durationMin,
-          startISO: iso,
-          timeZone,
-          diasEspeciales,
-          bloqueosAgenda,
-          serviceIds,
-          serviciosPorProfesional,
-          contextoSolape,
-        }).length > 0
-      )
-        return false;
-    }
-    return true;
+    return dateKey < todayKey || !salonAbreEnFecha(employees, dateKey, diasEspeciales);
   }
 
-  const [activeDate, setActiveDateRaw] = useState<Date | undefined>(
-    selectedDate ? new Date(`${selectedDate}T00:00`) : undefined,
-  );
   // La tarjeta de sugerencia es del día que se está mirando: cambiar de día
   // sin cerrarla dejaría una sugerencia de ayer sobre una franja de hoy.
   const [pendingBusyTime, setPendingBusyTime] = useState<string | null>(null);
+  const [pendingAlternative, setPendingAlternative] = useState<{
+    time: string;
+    employee: Employee;
+  } | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(
+    activeDate ?? new Date(`${todayKey}T12:00:00`),
+  );
+
   function setActiveDate(d: Date) {
     setPendingBusyTime(null);
-    setActiveDateRaw(d);
+    setPendingAlternative(null);
+    onDateChange(toDateKey(d));
   }
 
   useEffect(() => {
-    if (activeDate) return;
-    const d = new Date(today);
-    for (let i = 0; i < 60; i++) {
-      if (!isDayDisabled(d)) {
-        setActiveDateRaw(new Date(d));
-        break;
-      }
-      d.setDate(d.getDate() + 1);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (selectedDate) return;
+    const first = primerDiaAbierto(todayKey, employees, diasEspeciales);
+    if (first) onDateChange(first);
+  }, [selectedDate, todayKey, employees, diasEspeciales, onDateChange]);
+
+  useEffect(() => {
+    if (!selectedDate) return;
+    setCalendarMonth(new Date(`${selectedDate}T12:00:00`));
+  }, [selectedDate]);
 
   const slots = useMemo((): PrioritySlot[] => {
     if (!activeDate) return [];
@@ -1893,7 +1906,7 @@ function DateTimeStep({
 
     const out: PrioritySlot[] = [];
     for (const minuto of huecosDeProfesionalesEnFecha(
-      relevantEmployees,
+      employees,
       dateKey,
       durationMin,
       diasEspeciales,
@@ -1910,24 +1923,30 @@ function DateTimeStep({
       // «Lo antes posible: hoy a las 12:30».
       if (!huecoAunReservable(dateKey, timeStr, timeZone, new Date(), antelacionMin)) continue;
       const iso = isoDelSalon(dateKey, timeStr, timeZone);
-      const available =
-        profesionalesDisponiblesEnHueco({
-          employees: relevantEmployees,
-          appointments,
-          dateKey,
-          startMin: minuto,
-          durationMin,
-          startISO: iso,
-          timeZone,
-          diasEspeciales,
-          bloqueosAgenda,
-          serviceIds,
-          serviciosPorProfesional,
-          contextoSolape,
-        }).length > 0;
+      const freeEmployees = profesionalesDisponiblesEnHueco({
+        employees,
+        appointments,
+        dateKey,
+        startMin: minuto,
+        durationMin,
+        startISO: iso,
+        timeZone,
+        diasEspeciales,
+        bloqueosAgenda,
+        serviceIds,
+        serviciosPorProfesional,
+        contextoSolape,
+      });
+      const alternativeEmployees = preferredEmployee
+        ? alternativasAUnaHora(preferredEmployee.id, freeEmployees)
+        : [];
       out.push({
         time: timeStr,
-        available,
+        available: freeEmployees.length > 0,
+        preferredAvailable:
+          !preferredEmployee ||
+          freeEmployees.some((employee) => employee.id === preferredEmployee.id),
+        alternativeEmployees,
         busy,
         priority: isPriorityTime(timeStr, priorityHours),
       });
@@ -1936,8 +1955,8 @@ function DateTimeStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeDate,
-    relevantEmployees,
     employees,
+    preferredEmployee,
     appointments,
     durationMin,
     smartSpread,
@@ -1972,11 +1991,13 @@ function DateTimeStep({
     [slots, pendingBusyTime],
   );
 
-  // Mejora B3: primer hueco libre del día que ya se está mirando — como
-  // `activeDate` se auto-selecciona en el primer día con hueco (efecto de
-  // arriba), el primer slot disponible de este día ES el primer hueco libre
-  // en todo el horizonte, sin tener que volver a recorrer 60 días aquí.
-  const firstAvailable = useMemo(() => slots.find((s) => s.available), [slots]);
+  // Mejora B3: primer hueco libre de la profesional elegida en el día que se
+  // está mirando. Las horas de otras profesionales siguen visibles debajo,
+  // pero no se presentan como «lo antes posible» sin avisar antes.
+  const firstAvailable = useMemo(
+    () => slots.find((slot) => slot.available && slot.preferredAvailable),
+    [slots],
+  );
 
   // Mejora B2: franjas prioritarias del dueño — se muestran primero, con el
   // resto detrás de "Ver todas las horas" (nunca oculto del todo). Si el
@@ -1989,8 +2010,16 @@ function DateTimeStep({
     setShowAllHours(!hasPriorityBlock);
   }, [hasPriorityBlock, activeDateKey]);
 
-  function handleSlotClick(s: SpreadSlot) {
+  function handleSlotClick(s: PrioritySlot) {
     if (!s.available || !activeDateKey) return;
+    if (!s.preferredAvailable && s.alternativeEmployees[0]) {
+      setPendingBusyTime(null);
+      setPendingAlternative({
+        time: s.time,
+        employee: s.alternativeEmployees[0],
+      });
+      return;
+    }
     // Un hueco "con espera": se sugiere antes de reservarlo, nunca se impide.
     if (smartSpread && s.busy && pendingBusyTime !== s.time) {
       setPendingBusyTime(s.time);
@@ -1998,6 +2027,7 @@ function DateTimeStep({
     }
     onPick(activeDateKey, s.time);
     setPendingBusyTime(null);
+    setPendingAlternative(null);
   }
 
   function confirmPending(time: string) {
@@ -2005,6 +2035,54 @@ function DateTimeStep({
     onPick(activeDateKey, time);
     setPendingBusyTime(null);
   }
+
+  const preferredWorksThisDay =
+    !!preferredEmployee &&
+    !!activeDateKey &&
+    franjasProfesionalEnFecha(preferredEmployee, activeDateKey, diasEspeciales).length > 0;
+  const preferredHasFreeSlot =
+    !!preferredEmployee && slots.some((slot) => slot.preferredAvailable && slot.available);
+  const showPreferredUnavailable = !!preferredEmployee && !!activeDateKey && !preferredHasFreeSlot;
+  const nextDateForPreferred = useMemo(() => {
+    if (!preferredEmployee || !activeDateKey) return undefined;
+    return proximoDiaConProfesional({
+      desde: activeDateKey,
+      employee: preferredEmployee,
+      employees,
+      appointments,
+      durationMin,
+      now,
+      timeZone,
+      lastSlotBufferMin,
+      diasEspeciales,
+      bloqueosAgenda,
+      serviceIds,
+      serviciosPorProfesional,
+      contextoSolape,
+      maxDays: 60,
+    });
+  }, [
+    preferredEmployee,
+    activeDateKey,
+    employees,
+    appointments,
+    durationMin,
+    now,
+    timeZone,
+    lastSlotBufferMin,
+    diasEspeciales,
+    bloqueosAgenda,
+    serviceIds,
+    serviciosPorProfesional,
+    contextoSolape,
+  ]);
+
+  const previousOpenDate = activeDateKey
+    ? anteriorDiaAbierto(activeDateKey, todayKey, employees, diasEspeciales)
+    : undefined;
+  const nextOpenDate = activeDateKey
+    ? siguienteDiaAbierto(activeDateKey, employees, diasEspeciales)
+    : undefined;
 
   return (
     <Step title="Fecha y hora">
@@ -2038,7 +2116,7 @@ function DateTimeStep({
           </select>
           {preferredEmployeeId === "any" ? (
             <p className="text-xs text-muted-foreground">
-              Si eliges a alguien, verás solo sus huecos.
+              Si eliges a alguien, distinguiremos sus huecos de los de sus compañeras.
             </p>
           ) : (
             <button
@@ -2065,12 +2143,107 @@ function DateTimeStep({
             selected={activeDate}
             onSelect={(d) => d && setActiveDate(d)}
             disabled={isDayDisabled}
+            month={calendarMonth}
+            onMonthChange={setCalendarMonth}
           />
         </div>
         <div>
           {activeDate ? (
             <>
-              <p className="mb-4 text-lg font-bold">{capitalizar(fechaLarga(activeDate))}</p>
+              <div className="mb-4 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  aria-label="Día anterior"
+                  disabled={!previousOpenDate}
+                  onClick={() =>
+                    previousOpenDate && setActiveDate(new Date(`${previousOpenDate}T12:00:00`))
+                  }
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-lino-fuerte text-foreground hover:bg-beige disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                </button>
+                <p
+                  data-testid="active-date-label"
+                  className="min-w-0 text-center text-lg font-bold"
+                >
+                  {capitalizar(fechaLarga(activeDate))}
+                </p>
+                <button
+                  type="button"
+                  aria-label="Día siguiente"
+                  disabled={!nextOpenDate}
+                  onClick={() =>
+                    nextOpenDate && setActiveDate(new Date(`${nextOpenDate}T12:00:00`))
+                  }
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-lino-fuerte text-foreground hover:bg-beige disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
+
+              {showPreferredUnavailable && onPreferEmployee && (
+                <div
+                  role="status"
+                  className="mb-5 rounded-xl border border-melocoton-borde bg-melocoton p-4 text-sm text-melocoton-tinta"
+                >
+                  <p className="font-bold">
+                    {preferredEmployee.name}{" "}
+                    {preferredWorksThisDay
+                      ? "no tiene horas libres este día"
+                      : "no trabaja este día"}
+                  </p>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => onPreferEmployee("any")}
+                      className="min-h-11 rounded-full border border-lino-fuerte bg-card px-4 text-left font-semibold text-foreground hover:bg-perla"
+                    >
+                      Ver horas con otra profesional
+                    </button>
+                    <button
+                      type="button"
+                      aria-disabled={!nextDateForPreferred || undefined}
+                      onClick={() =>
+                        nextDateForPreferred &&
+                        setActiveDate(new Date(`${nextDateForPreferred}T12:00:00`))
+                      }
+                      className={cn(
+                        "min-h-11 rounded-full border border-lino-fuerte bg-card px-4 text-left font-semibold text-foreground hover:bg-perla",
+                        !nextDateForPreferred && "cursor-not-allowed opacity-50",
+                      )}
+                    >
+                      Ir al próximo día con {preferredEmployee.name}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {pendingAlternative && activeDateKey && preferredEmployee && (
+                <div
+                  role="alert"
+                  className="mb-5 rounded-xl border border-melocoton-borde bg-melocoton p-4 text-sm text-melocoton-tinta"
+                >
+                  <p className="font-bold">
+                    A las {pendingAlternative.time} no está {preferredEmployee.name}, pero sí{" "}
+                    {pendingAlternative.employee.name}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onReserveAlternative(
+                        pendingAlternative.employee.id,
+                        activeDateKey,
+                        pendingAlternative.time,
+                      );
+                      setPendingAlternative(null);
+                    }}
+                    className="mt-3 min-h-11 rounded-full bg-primary px-5 font-semibold text-primary-foreground hover:bg-primary/90"
+                  >
+                    Reservar con {pendingAlternative.employee.name}
+                  </button>
+                </div>
+              )}
+
               {groups.length === 0 && (
                 <p className="text-sm text-muted-foreground">
                   No hay horas disponibles este día. Prueba con otra fecha.
@@ -2080,7 +2253,7 @@ function DateTimeStep({
               {/* Mejora B3 (grounding externo): el primer hueco libre del día
                   que se está mirando, destacado y a un toque — sin tener que
                   leer toda la lista para encontrar "lo antes posible". */}
-              {firstAvailable && !pendingBusyTime && (
+              {firstAvailable && !pendingBusyTime && !pendingAlternative && (
                 <button
                   type="button"
                   onClick={() => handleSlotClick(firstAvailable)}
@@ -2263,6 +2436,7 @@ function BookingSummary({
     // importe se comía el ancho y cortaba «Corte y pein… 25,00 € a…».
     return (
       <div
+        data-testid="booking-summary-mobile"
         className="fixed inset-x-0 bottom-0 z-40 min-h-[calc(4.5rem+env(safe-area-inset-bottom,0px))] border-t border-lino bg-background/95 pt-3 backdrop-blur lg:hidden"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
       >
@@ -2283,7 +2457,9 @@ function BookingSummary({
             </p>
             <p className="truncate text-[13px] text-cafe-medio">
               {serviceNames.length ? serviceNames.join(" + ") : "Elige un servicio"}
-              {timeLabel && dateLabel ? ` · ${dateLabel}, ${timeLabel}` : ""}
+              {serviceNames.length > 0
+                ? ` · ${dateLabel ?? "Elige fecha"}, ${timeLabel ?? "Elige hora"}`
+                : ""}
             </p>
           </div>
           <Button
@@ -2303,7 +2479,10 @@ function BookingSummary({
 
   return (
     <aside className="hidden lg:block">
-      <div className="tarjeta-principal sticky top-24 border border-lino bg-card relleno-tarjeta">
+      <div
+        data-testid="booking-summary-sidebar"
+        className="tarjeta-principal sticky top-24 border border-lino bg-card relleno-tarjeta"
+      >
         <div className="mb-4 flex items-center gap-3">
           {!fotoDeEjemplo && (
             <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg">
@@ -2350,8 +2529,8 @@ function BookingSummary({
           {showEmployeeRow && (
             <SummaryRow label={cap(professionalWord(tipo))} value={employeeName ?? "—"} />
           )}
-          <SummaryRow label="Fecha" value={dateLabel ?? "—"} />
-          <SummaryRow label="Hora" value={timeLabel ?? "—"} />
+          <SummaryRow label="Fecha" value={dateLabel ?? "Elige fecha"} />
+          <SummaryRow label="Hora" value={timeLabel ?? "Elige hora"} />
         </div>
 
         {mostrarPrecio && (
