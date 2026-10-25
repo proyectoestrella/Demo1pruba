@@ -679,11 +679,17 @@ function BookingWizard() {
 
   // Con una única profesional elegible el paso 3 («elegir a quién») no
   // existe: de fecha y hora se pasa directo a los datos, y de vuelta.
+  // Cada paso empieza arriba: en móvil se quedaba a media página del anterior.
+  const arriba = () => {
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+  };
   function next() {
     setStep((s) => siguientePaso(s, soloUno));
+    arriba();
   }
   function prev() {
     setStep((s) => pasoAnterior(s, soloUno));
+    arriba();
   }
 
   async function confirm() {
@@ -1593,6 +1599,7 @@ function StylistStep({
       <div className="grid gap-3 sm:grid-cols-2">
         <button
           type="button"
+          aria-pressed={selected === "any"}
           onClick={() => onSelect("any")}
           className={cn(
             "tarjeta-secundaria flex min-h-20 flex-col items-start justify-center rounded-[var(--radio-tarjeta-sm)] border-2 border-dashed bg-card px-5 py-4 text-left transition-colors",
@@ -1610,6 +1617,7 @@ function StylistStep({
           <button
             key={e.id}
             type="button"
+            aria-pressed={selected === e.id}
             onClick={() => onSelect(e.id)}
             className={cn(
               "tarjeta-secundaria flex min-h-20 flex-col items-start justify-center rounded-[var(--radio-tarjeta-sm)] border bg-card px-5 py-4 text-left transition-colors",
