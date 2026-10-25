@@ -51,3 +51,4 @@ export function enlacesSuscripcion(feedUrl: string): { webcal: string; google: s
   const webcal = feedUrl.replace(/^https?:\/\//i, "webcal://");
   return { webcal, google: `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}` };
 }
+

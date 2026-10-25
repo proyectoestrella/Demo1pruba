@@ -132,6 +132,31 @@ describe("/api/calendario (feed ICS por token)", () => {
     const citas = doble.consultas.find((c) => c.tabla === "appointments")!;
     expect(citas.filtros).toContainEqual(["salon_slug", "a"]);
   });
+  it("enlace personal firmado (25-oct noche): solo sus citas, con servicio y sin clienta; manipularlo da 404", async () => {
+    const { firmaCalendarioProfesional } = await import("@/lib/calendario-firma.server");
+    doble.tablas.appointments.push(
+      { id: "6", local_id: "deotra", salon_slug: "a", client_name: "Clienta de otra", service_id: "", employee_id: "otra", start_at: enDias(1), duration_min: 30, status: "confirmed" },
+    );
+    const k = await firmaCalendarioProfesional(TA, "a", "e");
+    const r = await feed(`?s=a&profesional=e&k=${k}`);
+    expect(r.status).toBe(200);
+    const ics = await r.text();
+    expect(ics).toContain("UID:l1@sishow");
+    expect(ics).not.toContain("deotra@sishow");
+    expect(ics).not.toContain("Clienta");
+    // Validación estructural iCalendar (RFC 5545): CRLF, pares BEGIN/END, campos obligatorios y líneas ≤ 75 octetos.
+    const lineas = ics.split("\r\n");
+    expect(ics.endsWith("\r\n")).toBe(true);
+    expect(lineas[0]).toBe("BEGIN:VCALENDAR");
+    expect(lineas.filter((l) => l === "BEGIN:VEVENT").length).toBe(lineas.filter((l) => l === "END:VEVENT").length);
+    for (const l of lineas) expect(new TextEncoder().encode(l).length).toBeLessThanOrEqual(75);
+    expect(ics).toMatch(/DTSTART:\d{8}T\d{6}Z/);
+    expect(ics).toMatch(/DTSTAMP:\d{8}T\d{6}Z/);
+    // Con la firma de «e» no se ve a «otra» ni se puede usar con otro salón.
+    expect((await feed(`?s=a&profesional=otra&k=${k}`)).status).toBe(404);
+    expect((await feed(`?s=b&profesional=e&k=${k}`)).status).toBe(404);
+    expect((await feed(`?s=a&profesional=e&k=${"A".repeat(43)}`)).status).toBe(404);
+  });
   it("error de la base: 503 sin detalles", async () => {
     doble = crearDobleSupabase({}, { errorEn: { calendar_subscriptions: "relación secreta" } });
     const r = await feed(`?token=${TA}`);

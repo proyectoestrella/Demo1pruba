@@ -1,4 +1,5 @@
 import { bordeProfesional, tinteProfesional } from "@/lib/colores-elegidos";
+import { MiCalendarioExterno } from "@/components/MiCalendarioExterno";
 import { tituloCalendario } from "@/lib/calendario-titulo-panel";
 import { useFichas } from "@/lib/use-fichas";
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
@@ -467,6 +468,9 @@ export function CalendarioArena({
             <PopoverContent align="end" className="w-[min(320px,calc(100vw-2rem))] rounded-2xl p-4">
               <p className="mb-3 text-[14px] font-extrabold">Ajustes del calendario</p>
               <CamposPreferenciasCalendario />
+              <div className="mt-4 border-t border-border/60 pt-4">
+                <MiCalendarioExterno />
+              </div>
             </PopoverContent>
           </Popover>
         </div>
