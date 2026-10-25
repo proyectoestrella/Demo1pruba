@@ -226,3 +226,11 @@ describe("la tarjeta de cancelación de la portada dice lo mismo", () => {
     expect(resumenCancelacionSenal(reglaSenal({ depositEnabled: true, depositMode: "porcentaje", depositPercent: 25, depositCancelHours: 48 }), eur)).toBe("Hasta 2 días antes, sin coste. Para confirmar la cita se pide una señal del 25 % por Bizum que se descuenta del servicio.");
   });
 });
+
+it("fianza: el lavado incluido en el Color no cuenta para la duración (25-oct)", () => {
+  const carta = { color: { durationMin: 60 }, lavado: { durationMin: 15 } };
+  const lav = { servicioId: "lavado", incluidoEn: ["color"] };
+  expect(duracionCartaParaSenal(["color", "lavado"], carta, 75)).toBe(75);
+  expect(duracionCartaParaSenal(["color", "lavado"], carta, 75, lav)).toBe(60);
+  expect(duracionCartaParaSenal(["lavado"], carta, 15, lav)).toBe(15);
+});

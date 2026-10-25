@@ -142,12 +142,19 @@ export function duracionCartaParaSenal(
   serviceIds: readonly string[] | undefined,
   catalogo: Record<string, ServicioDeCartaParaSenal | undefined>,
   duracionDeLaCita: number,
+  lavado?: { servicioId: string; incluidoEn: string[] },
 ): number {
   const alternativa = Number.isFinite(duracionDeLaCita) ? Math.max(0, Math.round(duracionDeLaCita)) : 0;
   if (!serviceIds?.length) return alternativa;
+  // 25-oct: el lavado que ya va dentro de otro servicio (Color) tampoco cuenta para la fianza.
+  const lavadoIncluido =
+    !!lavado?.servicioId &&
+    serviceIds.includes(lavado.servicioId) &&
+    serviceIds.some((id) => id !== lavado.servicioId && (lavado.incluidoEn ?? []).includes(id));
 
   let total = 0;
   for (const id of serviceIds) {
+    if (lavadoIncluido && id === lavado!.servicioId) continue;
     const servicio = catalogo[id];
     if (!servicio || !Number.isFinite(servicio.durationMin) || servicio.durationMin < 0) return alternativa;
     total += Math.round(servicio.durationMin);

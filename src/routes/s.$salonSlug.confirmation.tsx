@@ -158,7 +158,7 @@ function Confirmation() {
     reglaSenal(profile),
     {
       serviceIds,
-      durationMin: duracionCartaParaSenal(serviceIds, serviceMap, durationReserva),
+      durationMin: duracionCartaParaSenal(serviceIds, serviceMap, durationReserva, profile.lavado),
       priceEur: total,
     },
     profile.name,

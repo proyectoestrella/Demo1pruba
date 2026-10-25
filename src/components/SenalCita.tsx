@@ -61,7 +61,7 @@ export function SenalCita({ cita, compacta = false, className }: { cita: Appoint
   const serviceMap = Object.fromEntries(services.map((service) => [service.id, service]));
   const reservaSenal = {
     serviceIds: cita.serviceIds,
-    durationMin: duracionCartaParaSenal(cita.serviceIds, serviceMap, cita.duration),
+    durationMin: duracionCartaParaSenal(cita.serviceIds, serviceMap, cita.duration, perfil.lavado),
     priceEur: cita.priceEur,
   };
   const estado = estadoSenal(cita, new Date());

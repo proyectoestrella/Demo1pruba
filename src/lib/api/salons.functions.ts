@@ -1647,6 +1647,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
             data.serviceIds,
             Object.fromEntries(carta.map((servicio) => [servicio.id, servicio])),
             durationMinGuardada,
+            perfilPublico.lavado,
           ),
           priceEur: priceEurGuardado,
         },

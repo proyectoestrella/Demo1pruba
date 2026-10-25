@@ -482,7 +482,7 @@ function BookingWizard() {
   const reglaSen = reglaSenal(profile);
   const reservaSenal = {
     serviceIds: data.serviceIds,
-    durationMin: duracionCartaParaSenal(data.serviceIds, serviceMap, schedulingDurationMin),
+    durationMin: duracionCartaParaSenal(data.serviceIds, serviceMap, schedulingDurationMin, profile.lavado),
     priceEur: total,
   };
   const textoSenal = textoSenalPublico(reglaSen, reservaSenal, profile.name, eur, {
