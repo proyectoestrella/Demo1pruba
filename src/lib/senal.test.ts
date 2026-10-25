@@ -234,3 +234,9 @@ it("fianza: el lavado incluido en el Color no cuenta para la duración (25-oct)"
   expect(duracionCartaParaSenal(["color", "lavado"], carta, 75, lav)).toBe(60);
   expect(duracionCartaParaSenal(["lavado"], carta, 15, lav)).toBe(15);
 });
+
+it("fianza PeluChic (5 €/h, mínimo 5 €): 30 min, 1 h, 1 h 15, 2 h 30 y 4 h (25-oct)", () => {
+  const regla = reglaSenal({ depositEnabled: true, depositMode: "hora", depositHourlyRateEur: 5, depositAppliesTo: "todas" });
+  const de = (min: number) => importeSenal(regla, { serviceIds: ["x"], durationMin: min, priceEur: 0 });
+  expect([de(30), de(40), de(60), de(75), de(150), de(240)]).toEqual([5, 5, 5, 6, 13, 20]);
+});

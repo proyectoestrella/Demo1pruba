@@ -136,6 +136,17 @@ describe("M5: doble reserva simultánea", () => {
     expect(await perdioLaCarrera(doble, "real", "A", employees[0].id, HUECO, 30)).toBe(false);
   });
 
+  it("dos clientas reservan el mismo hueco a la vez: solo una se queda la cita (25-oct)", async () => {
+    const [r1, r2] = await Promise.all([
+      llamar<{ synced: boolean; reason?: string }>(S.syncAppointment, reserva({ clientName: "Ana Uno", clientPhone: "600000001", clientEmail: undefined })),
+      llamar<{ synced: boolean; reason?: string }>(S.syncAppointment, reserva({ clientName: "Bea Dos", clientPhone: "600000002", clientEmail: undefined })),
+    ]);
+    const quedan = (doble.tablas.appointments ?? []).filter((c) => c.start_at === proximoDia(2) && c.employee_id === employees[0].id);
+    expect(quedan).toHaveLength(1);
+    expect([r1.synced, r2.synced].filter(Boolean)).toHaveLength(1);
+    expect([r1.reason, r2.reason]).toContain("RESERVA_HUECO_OCUPADO");
+  });
+
   it("la reserva pública llama a la comprobación posterior a la escritura y deshace la suya si pierde", async () => {
     const fuente = await Bun.file(new URL("./salons.functions.ts", import.meta.url)).text();
     const i = fuente.indexOf("await escribirCita(supabase, fila);");
