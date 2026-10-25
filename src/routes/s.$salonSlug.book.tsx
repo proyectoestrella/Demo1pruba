@@ -50,6 +50,7 @@ import {
   pickAlternativeSlots,
   isPriorityTime,
   findNextAvailableSlot,
+  profesionalElegidaParaHueco,
   profesionalesDisponiblesEnHueco,
   profesionalesLibresEnHora,
   type SpreadSlot,
@@ -275,13 +276,6 @@ function BookingWizard() {
   const { salonSlug } = Route.useParams();
   const search = Route.useSearch();
   const navigate = useNavigate();
-  // v2: "Cualquier profesional" preseleccionado (cambio priorizado #2 del
-  // informe) — en v1 el paso 2 sigue sin preselección, igual que siempre.
-  // El parser de búsqueda de TanStack Router convierte "2" en el NÚMERO 2, no
-  // en la cadena "2" — de ahí el `String(...)` antes de comparar.
-  const isV2 = useRouterState({
-    select: (s) => String((s.location.search as Record<string, unknown>)?.v) === "2",
-  });
   // La resolución del salón se guarda en el navegador. Durante el primer
   // render debe usarse el mismo estado que tuvo el servidor y solo después de
   // hidratar se puede leer el resultado local (demo/real/fallo).
@@ -361,18 +355,31 @@ function BookingWizard() {
     [employees],
   );
 
-  /**
-   * Un solo profesional: no hay nada que elegir en el paso 2, así que se
-   * salta y la reserva pasa a tener tres pasos. La cita se asigna igual —a la
-   * única persona que hay— a través de `employeeId`, que se deja fijado desde
-   * el principio. Con dos o más, todo sigue exactamente como antes.
-   */
-  const soloUno = esSoloUnProfesional(employees);
-
+  const initialServiceIds = parseServiceIds(search.service, serviceMap);
+  const initialEligibleEmployees = profesionalesParaServicios(
+    employees,
+    initialServiceIds,
+    profile.serviciosPorProfesional,
+  );
+  const initialSoloUno = esSoloUnProfesional(
+    initialServiceIds.length > 0 ? initialEligibleEmployees : employees,
+  );
   const [data, setData] = useState<WizardData>(() => ({
-    serviceIds: parseServiceIds(search.service, serviceMap),
-    employeeId: soloUno ? employees[0]?.id : isV2 ? "any" : undefined,
+    serviceIds: initialServiceIds,
+    employeeId: initialSoloUno ? (initialEligibleEmployees[0]?.id ?? employees[0]?.id) : "any",
   }));
+  const [preferredEmployeeId, setPreferredEmployeeId] = useState<EmployeeId | "any">(
+    initialSoloUno ? (initialEligibleEmployees[0]?.id ?? employees[0]?.id ?? "any") : "any",
+  );
+  const selectedServices = data.serviceIds.map((id) => serviceMap[id]).filter(Boolean);
+  const eligibleEmployees = useMemo(
+    () => profesionalesParaServicios(employees, data.serviceIds, profile.serviciosPorProfesional),
+    [employees, data.serviceIds, profile.serviciosPorProfesional],
+  );
+  // También se omite «¿Con quién?» cuando el salón tiene varias
+  // profesionales pero solo una puede realizar la combinación elegida.
+  const soloUno = esSoloUnProfesional(data.serviceIds.length > 0 ? eligibleEmployees : employees);
+  const sinProfesionalParaServicios = selectedServices.length > 0 && eligibleEmployees.length === 0;
   // Teléfono validado con libphonenumber (lib/telefono.ts); a Supabase viaja en E.164.
   const telefono = validarTelefono(data.phone, data.phoneCountry ?? "ES");
   const telefonoE164 = telefono.ok ? telefono.e164 : "";
@@ -388,16 +395,16 @@ function BookingWizard() {
     pasoInicial(data.serviceIds.length > 0, soloUno),
   );
 
-  // El equipo puede llegar después del primer render (un salón real se
-  // resuelve contra Supabase tras montar): si resulta que solo hay una
-  // persona, se fija como elegida y se sale del paso que ya no existe.
+  // El equipo puede llegar después del primer render. Si resulta que solo una
+  // persona puede hacer los servicios, se fija y se omite el paso 3.
   useEffect(() => {
     if (!soloUno) return;
-    const unico = employees[0]?.id;
+    const unico = eligibleEmployees[0]?.id ?? employees[0]?.id;
     if (!unico) return;
     setData((d) => (d.employeeId === unico ? d : { ...d, employeeId: unico }));
-    setStep((s) => (s === 2 ? 3 : s));
-  }, [soloUno, employees]);
+    setPreferredEmployeeId(unico);
+    setStep((s) => (s === 3 ? 4 : s));
+  }, [soloUno, eligibleEmployees, employees]);
   const appointments = useSalonStore((s) => s.appointments);
   const addAppointment = useSalonStore((s) => s.addAppointment);
   const addSavedPublicAppointment = useSalonStore((s) => s.addSavedPublicAppointment);
@@ -454,12 +461,6 @@ function BookingWizard() {
       : null
     : blockedLocal;
 
-  const selectedServices = data.serviceIds.map((id) => serviceMap[id]).filter(Boolean);
-  const eligibleEmployees = useMemo(
-    () => profesionalesParaServicios(employees, data.serviceIds, profile.serviciosPorProfesional),
-    [employees, data.serviceIds, profile.serviciosPorProfesional],
-  );
-  const sinProfesionalParaServicios = selectedServices.length > 0 && eligibleEmployees.length === 0;
   // Precio y duración de carta son la suma de los servicios elegidos. El
   // hueco puede reservar más tiempo si la duración es flexible; la fianza no.
   const resumenServicios = resumenServiciosReserva(selectedServices, mostrarPrecio, profile.lavado);
@@ -469,6 +470,63 @@ function BookingWizard() {
   // Con duración flexible se bloquea el extremo alto: esa cifra es solo para
   // agenda y calendario; la señal siempre se ata a la duración de carta.
   const schedulingDurationMin = flexRange ? flexRange.hi : totalMin;
+  const timeZone = zonaDelSalon(profile);
+  const availableEmployeesAtSelectedTime = useMemo(() => {
+    if (!data.date || !data.time) return [];
+    return profesionalesLibresEnHora({
+      employees: eligibleEmployees,
+      appointments,
+      dateKey: data.date,
+      hora: data.time,
+      durationMin: schedulingDurationMin,
+      timeZone,
+      diasEspeciales: profile.diasEspeciales,
+      bloqueosAgenda: profile.bloqueosAgenda,
+      serviceIds: data.serviceIds,
+      serviciosPorProfesional: profile.serviciosPorProfesional,
+    });
+  }, [
+    data.date,
+    data.time,
+    data.serviceIds,
+    eligibleEmployees,
+    appointments,
+    schedulingDurationMin,
+    timeZone,
+    profile.diasEspeciales,
+    profile.bloqueosAgenda,
+    profile.serviciosPorProfesional,
+  ]);
+
+  // La disponibilidad puede cambiar mientras la clienta navega, o puede
+  // volver atrás y elegir otra hora. Una elección que ya no cabe nunca llega
+  // arrastrada a la confirmación.
+  useEffect(() => {
+    if (!data.date || !data.time || !data.employeeId || data.employeeId === "any") return;
+    const revalidatedEmployeeId = profesionalElegidaParaHueco(
+      data.employeeId,
+      preferredEmployeeId,
+      availableEmployeesAtSelectedTime,
+    );
+    if (revalidatedEmployeeId === data.employeeId) return;
+    const invalidEmployeeId = data.employeeId;
+    setData((current) => ({ ...current, employeeId: revalidatedEmployeeId }));
+    setPreferredEmployeeId((current) => (current === invalidEmployeeId ? "any" : current));
+  }, [
+    data.date,
+    data.time,
+    data.employeeId,
+    preferredEmployeeId,
+    availableEmployeesAtSelectedTime,
+  ]);
+
+  useEffect(() => {
+    if (soloUno || preferredEmployeeId === "any") return;
+    if (eligibleEmployees.some((employee) => employee.id === preferredEmployeeId)) return;
+    setPreferredEmployeeId("any");
+    setData((current) => ({ ...current, employeeId: "any", date: undefined, time: undefined }));
+  }, [soloUno, preferredEmployeeId, eligibleEmployees]);
+
   const stylistChoice = data.employeeId;
   const employeeName =
     stylistChoice === "any"
@@ -482,7 +540,12 @@ function BookingWizard() {
   const reglaSen = reglaSenal(profile);
   const reservaSenal = {
     serviceIds: data.serviceIds,
-    durationMin: duracionCartaParaSenal(data.serviceIds, serviceMap, schedulingDurationMin, profile.lavado),
+    durationMin: duracionCartaParaSenal(
+      data.serviceIds,
+      serviceMap,
+      schedulingDurationMin,
+      profile.lavado,
+    ),
     priceEur: total,
   };
   const textoSenal = textoSenalPublico(reglaSen, reservaSenal, profile.name, eur, {
@@ -512,7 +575,7 @@ function BookingWizard() {
     if (!repeatValid || !lastBooking) return undefined;
     return findNextAvailableSlot(employees, appointments, repeatDuration, lastBooking.employeeId, {
       lastSlotBufferMin: profile.lastSlotBufferMin ?? 0,
-      timeZone: zonaDelSalon(profile),
+      timeZone,
       diasEspeciales: profile.diasEspeciales,
       bloqueosAgenda: profile.bloqueosAgenda,
       serviceIds: lastBooking.serviceIds,
@@ -525,7 +588,7 @@ function BookingWizard() {
     appointments,
     repeatDuration,
     profile.lastSlotBufferMin,
-    profile.timeZone,
+    timeZone,
     profile.diasEspeciales,
     profile.bloqueosAgenda,
     profile.serviciosPorProfesional,
@@ -537,6 +600,7 @@ function BookingWizard() {
 
   function applyRepeat() {
     if (!repeatValid || !repeatNextSlot || !lastBooking) return;
+    setPreferredEmployeeId(lastBooking.employeeId as EmployeeId);
     setData((d) => ({
       ...d,
       serviceIds: lastBooking.serviceIds,
@@ -553,35 +617,71 @@ function BookingWizard() {
   }
 
   function toggleService(id: string) {
-    setData((d) => {
-      const serviceIds = d.serviceIds.includes(id)
-        ? d.serviceIds.filter((x) => x !== id)
-        : [...d.serviceIds, id];
-      const compatibles = profesionalesParaServicios(
-        employees,
-        serviceIds,
-        profile.serviciosPorProfesional,
+    const serviceIds = data.serviceIds.includes(id)
+      ? data.serviceIds.filter((serviceId) => serviceId !== id)
+      : [...data.serviceIds, id];
+    const compatibles = profesionalesParaServicios(
+      employees,
+      serviceIds,
+      profile.serviciosPorProfesional,
+    );
+    const preferidaSigueSiendoCompatible =
+      preferredEmployeeId === "any" ||
+      compatibles.some((employee) => employee.id === preferredEmployeeId);
+    if (!preferidaSigueSiendoCompatible) setPreferredEmployeeId("any");
+    setData((current) => ({
+      ...current,
+      serviceIds,
+      employeeId:
+        current.employeeId !== "any" &&
+        current.employeeId &&
+        !compatibles.some((employee) => employee.id === current.employeeId)
+          ? "any"
+          : current.employeeId,
+      // Al cambiar los servicios cambia la duración y la hora elegida puede
+      // dejar de caber: se vuelve a pedir.
+      date: undefined,
+      time: undefined,
+    }));
+  }
+
+  function pickDateTime(date: string, time: string) {
+    const freeEmployees = profesionalesLibresEnHora({
+      employees: eligibleEmployees,
+      appointments,
+      dateKey: date,
+      hora: time,
+      durationMin: schedulingDurationMin,
+      timeZone,
+      diasEspeciales: profile.diasEspeciales,
+      bloqueosAgenda: profile.bloqueosAgenda,
+      serviceIds: data.serviceIds,
+      serviciosPorProfesional: profile.serviciosPorProfesional,
+    });
+    setData((current) => {
+      const selectedEmployee = profesionalElegidaParaHueco(
+        current.employeeId,
+        preferredEmployeeId,
+        freeEmployees,
       );
-      return {
-        ...d,
-        serviceIds,
-        // Si la profesional elegida ya no puede realizar la combinación, se
-        // vuelve a «Cualquiera» dentro de las compatibles; nunca se arrastra
-        // una selección inválida a los huecos ni al servidor.
-        employeeId:
-          d.employeeId !== "any" && d.employeeId && !compatibles.some((e) => e.id === d.employeeId)
-            ? "any"
-            : d.employeeId,
-        // Al cambiar los servicios cambia la duración y la hora elegida puede
-        // dejar de caber: se vuelve a pedir.
-        date: undefined,
-        time: undefined,
-      };
+      return { ...current, date, time, employeeId: selectedEmployee };
     });
   }
 
-  // Con un único profesional el paso 2 (elegir a quién) no existe: del
-  // servicio se pasa directo a la fecha, y de vuelta.
+  function preferEmployee(employeeId: EmployeeId | "any") {
+    setPreferredEmployeeId(employeeId);
+    const selectedTimeStillFits =
+      employeeId === "any" ||
+      availableEmployeesAtSelectedTime.some((employee) => employee.id === employeeId);
+    setData((current) => ({
+      ...current,
+      employeeId,
+      ...(selectedTimeStillFits ? {} : { time: undefined }),
+    }));
+  }
+
+  // Con una única profesional elegible el paso 3 («elegir a quién») no
+  // existe: de fecha y hora se pasa directo a los datos, y de vuelta.
   function next() {
     setStep((s) => siguientePaso(s, soloUno));
   }
@@ -678,7 +778,11 @@ function BookingWizard() {
     // En un salón real esto es lo que crea (o reconoce) la ficha del cliente
     // en Supabase y engancha la cita. En una demo de venta `realSalonSlug` es
     // null y estos datos no salen del navegador.
-    const cliente = { name: clientName, phone: telefonoE164, email: data.email?.trim() || undefined };
+    const cliente = {
+      name: clientName,
+      phone: telefonoE164,
+      email: data.email?.trim() || undefined,
+    };
     if (resolutionStatus === "real") {
       // La misma solicitud conserva su id entre intentos; si el servidor
       // guardó la cita pero se perdió la respuesta, el reintento la reconoce.
@@ -774,17 +878,19 @@ function BookingWizard() {
     step === 1
       ? selectedServices.length === 0 || sinProfesionalParaServicios
       : step === 2
-        ? !data.employeeId
+        ? !data.date || !data.time || sinProfesionalParaServicios
         : step === 3
-          ? !data.date || !data.time || sinProfesionalParaServicios
+          ? !data.employeeId || availableEmployeesAtSelectedTime.length === 0
           : faltasDatos.length > 0;
   const ctaHint = ctaDisabled
     ? step === 1
       ? "Elige un servicio"
       : step === 2
-        ? "Elige una estilista"
+        ? "Elige una hora"
         : step === 3
-          ? "Elige una hora"
+          ? availableEmployeesAtSelectedTime.length === 0
+            ? "Vuelve atrás y elige otra hora"
+            : `Elige ${professionalWord(tipo) === "estilista" ? "una estilista" : `un ${professionalWord(tipo)}`}`
           : `Falta: ${faltasDatos.join(", ")}`
     : undefined;
 
@@ -886,30 +992,25 @@ function BookingWizard() {
             </>
           )}
 
-          {!soloUno && step === 2 && (
-            <StylistStep
-              selected={data.employeeId}
-              onSelect={(id) => setData((d) => ({ ...d, employeeId: id }))}
-              tipo={tipo}
-              employees={eligibleEmployees}
-            />
-          )}
-
-          {step === 3 && selectedServices.length > 0 && (
+          {step === 2 && selectedServices.length > 0 && (
             <DateTimeStep
               durationMin={schedulingDurationMin}
-              stylistChoice={data.employeeId ?? "any"}
+              preferredEmployeeId={preferredEmployeeId}
+              onPreferEmployee={soloUno ? undefined : preferEmployee}
               appointments={appointments}
               selectedDate={data.date}
               selectedTime={data.time}
-              onPick={(date, time) => setData((d) => ({ ...d, date, time }))}
-              onElegirProfesional={(id) => setData((d) => ({ ...d, employeeId: id }))}
-              espera={realSlug && webOfreceListaEspera({ plan: profile.plan, slug: salonSlug }) ? { salonSlug, salonName: profile.name } : undefined}
+              onPick={pickDateTime}
+              espera={
+                realSlug && webOfreceListaEspera({ plan: profile.plan, slug: salonSlug })
+                  ? { salonSlug, salonName: profile.name }
+                  : undefined
+              }
               employees={eligibleEmployees}
               smartSpread={!!profile.smartSpread}
               lastSlotBufferMin={profile.lastSlotBufferMin ?? 0}
               priorityHours={profile.priorityHours ?? []}
-              timeZone={zonaDelSalon(profile)}
+              timeZone={timeZone}
               antelacionMin={antelacionMinima(profile.antelacionMinimaMin)}
               durationLabel={durationLabel}
               flexNota={flexNota}
@@ -918,6 +1019,14 @@ function BookingWizard() {
               bloqueosAgenda={profile.bloqueosAgenda}
               serviceIds={data.serviceIds}
               serviciosPorProfesional={profile.serviciosPorProfesional}
+            />
+          )}
+
+          {!soloUno && step === 3 && (
+            <StylistStep
+              selected={data.employeeId ?? "any"}
+              onSelect={(id) => setData((d) => ({ ...d, employeeId: id }))}
+              employees={availableEmployeesAtSelectedTime}
             />
           )}
 
@@ -1272,9 +1381,9 @@ function cap(w: string) {
 }
 
 function StepIndicator({ step, soloUno }: { step: PasoReserva; soloUno: boolean }) {
-  // «Barbero» en barberías, «Profesional» en unisex: el rótulo del paso no
-  // puede contradecir al título «Elige tu barbero» de la propia pantalla.
-  // Con un solo profesional ese paso no existe: tres rótulos y "Paso 2 de 3".
+  // «Barbero» en barberías, «Profesional» en unisex: el indicador
+  // conserva el vocabulario del oficio. Con una sola profesional elegible,
+  // «¿Con quién?» no existe: tres rótulos y "Paso 2 de 3".
   const tipo = useBusinessType();
   const labels = rotulosDePaso(professionalWord(tipo), soloUno);
   const visible = pasoVisible(step, soloUno);
@@ -1476,27 +1585,17 @@ function ServiceStep({
 function StylistStep({
   selected,
   onSelect,
-  tipo,
   employees,
 }: {
   selected?: EmployeeId | "any";
   onSelect: (id: EmployeeId | "any") => void;
-  tipo: BusinessType;
   employees: Employee[];
 }) {
-  if (employees.length === 0) {
-    return (
-      <Step title={`Elige tu ${professionalWord(tipo)}`}>
-        <p role="alert" className="text-sm text-muted-foreground">
-          No hay profesionales disponibles para todos los servicios elegidos.
-        </p>
-      </Step>
-    );
-  }
   return (
-    <Step title={`Elige tu ${professionalWord(tipo)}`}>
+    <Step title="¿Con quién?">
       <div className="grid gap-3 sm:grid-cols-2">
         <button
+          type="button"
           onClick={() => onSelect("any")}
           className={cn(
             "tarjeta-secundaria flex min-h-20 flex-col items-start justify-center rounded-[var(--radio-tarjeta-sm)] border-2 border-dashed bg-card px-5 py-4 text-left transition-colors",
@@ -1513,6 +1612,7 @@ function StylistStep({
         {employees.map((e) => (
           <button
             key={e.id}
+            type="button"
             onClick={() => onSelect(e.id)}
             className={cn(
               "tarjeta-secundaria flex min-h-20 flex-col items-start justify-center rounded-[var(--radio-tarjeta-sm)] border bg-card px-5 py-4 text-left transition-colors",
@@ -1523,11 +1623,18 @@ function StylistStep({
           >
             <div>
               <p className="font-bold">{e.name}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{especialidadPublica(e.specialty)}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {especialidadPublica(e.specialty)}
+              </p>
             </div>
           </button>
         ))}
       </div>
+      {employees.length === 0 && (
+        <p role="alert" className="mt-4 text-sm text-muted-foreground">
+          Esa hora acaba de dejar de estar disponible. Vuelve atrás y elige otra.
+        </p>
+      )}
     </Step>
   );
 }
@@ -1535,7 +1642,7 @@ function StylistStep({
 /** `SpreadSlot` + si cae dentro de una franja prioritaria del dueño — ver reparto.ts. */
 type PrioritySlot = SpreadSlot & { priority: boolean };
 
-/** Botón de una hora del paso 3. Se reutiliza en el bloque de franjas prioritarias y en las agrupadas. */
+/** Botón de una hora del paso 2. Se reutiliza en el bloque de franjas prioritarias y en las agrupadas. */
 function TimeSlotButton({
   slot,
   selected,
@@ -1577,7 +1684,8 @@ function TimeSlotButton({
 
 function DateTimeStep({
   durationMin,
-  stylistChoice,
+  preferredEmployeeId,
+  onPreferEmployee,
   appointments,
   selectedDate,
   selectedTime,
@@ -1595,13 +1703,13 @@ function DateTimeStep({
   bloqueosAgenda,
   serviceIds,
   serviciosPorProfesional,
-  onElegirProfesional,
   espera,
 }: {
   /** Lista de espera de la web (solo salones reales): se ofrece al no haber hueco. */
   espera?: { salonSlug: string; salonName: string };
-  /** Cambia la profesional desde «A las HH:MM están libres…» (solo ofrece libres). */
-  onElegirProfesional?: (id: EmployeeId | "any") => void;
+  /** Preferencia opcional: filtra los huecos, pero no sustituye la elección del paso 3. */
+  preferredEmployeeId: EmployeeId | "any";
+  onPreferEmployee?: (id: EmployeeId | "any") => void;
   /** Zona horaria de la agenda del salón (ver lib/zona-horaria.ts). */
   timeZone: string;
   /** Minutos entre «ahora» y el primer hueco ofrecido (lib/primer-hueco.ts). */
@@ -1612,7 +1720,6 @@ function DateTimeStep({
   serviciosPorProfesional?: Record<string, string[]>;
   /** Duración con la que se busca hueco libre — con duración flexible ya es el extremo alto del rango. */
   durationMin: number;
-  stylistChoice: EmployeeId | "any";
   appointments: Appointment[];
   selectedDate?: string;
   selectedTime?: string;
@@ -1632,8 +1739,11 @@ function DateTimeStep({
   recargoTexto?: string;
 }) {
   const relevantEmployees = useMemo(
-    () => (stylistChoice === "any" ? employees : employees.filter((e) => e.id === stylistChoice)),
-    [stylistChoice, employees],
+    () =>
+      preferredEmployeeId === "any"
+        ? employees
+        : employees.filter((employee) => employee.id === preferredEmployeeId),
+    [preferredEmployeeId, employees],
   );
 
   const today = useMemo(() => {
@@ -1651,7 +1761,7 @@ function DateTimeStep({
   /**
    * Cierre "de verdad" del día: el del SALÓN, no el del profesional elegido —
    * Cardedal cierra a las 20:30 lleve quien lleve la caja, y el colchón de
-   * cierre (`u`) se mide contra eso. Con "any" coincide con `scheduleForWeekday`.
+   * cierre (`u`) se mide contra eso. Sin preferencia coincide con toda la agenda.
    */
   function salonRangeForDate(dateKey: string) {
     const opens = employees
@@ -1845,26 +1955,6 @@ function DateTimeStep({
     setShowAllHours(!hasPriorityBlock);
   }, [hasPriorityBlock, activeDateKey]);
 
-  // «A las 17:00 están libres…»: quién puede atender justo la hora elegida.
-  // Solo sale si hay más de una profesional y la hora elegida es de este día.
-  const horaElegidaAqui = !!activeDateKey && selectedDate === activeDateKey && !!selectedTime;
-  const libresALaHora = useMemo(() => {
-    if (!horaElegidaAqui || !activeDateKey || !selectedTime || employees.length < 2) return [];
-    return profesionalesLibresEnHora({
-      employees,
-      appointments,
-      dateKey: activeDateKey,
-      hora: selectedTime,
-      durationMin,
-      timeZone,
-      diasEspeciales,
-      bloqueosAgenda,
-      serviceIds,
-      serviciosPorProfesional,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [horaElegidaAqui, activeDateKey, selectedTime, employees, appointments, durationMin, timeZone, diasEspeciales, bloqueosAgenda, serviceIds, serviciosPorProfesional]);
-
   function handleSlotClick(s: SpreadSlot) {
     if (!s.available || !activeDateKey) return;
     // Un hueco "con espera": se sugiere antes de reservarlo, nunca se impide.
@@ -1891,6 +1981,32 @@ function DateTimeStep({
           <p className="text-[11px] leading-snug text-muted-foreground">{recargoTexto}</p>
         )}
       </div>
+      {onPreferEmployee && employees.length > 1 && (
+        <div className="mb-6 max-w-sm space-y-1.5">
+          <Label htmlFor="preferred-employee">¿Prefieres a alguien?</Label>
+          <select
+            id="preferred-employee"
+            aria-label="¿Prefieres a alguien?"
+            className="h-11 w-full rounded-xl border border-lino-fuerte bg-card px-3 text-sm text-foreground"
+            value={preferredEmployeeId}
+            onChange={(event) =>
+              onPreferEmployee(
+                event.target.value === "any" ? "any" : (event.target.value as EmployeeId),
+              )
+            }
+          >
+            <option value="any">Me da igual</option>
+            {employees.map((employee) => (
+              <option key={employee.id} value={employee.id}>
+                {employee.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Si eliges a alguien, verás solo sus huecos.
+          </p>
+        </div>
+      )}
       <div className="grid gap-8 lg:grid-cols-[auto_1fr]">
         {/* Lote 17: celdas de 44 px (objetivo táctil) que llenan la tarjeta
             en móvil, sin la banda vacía a la derecha, y rótulos en español
@@ -2014,40 +2130,6 @@ function DateTimeStep({
                   ))}
                 </div>
               )}
-              {libresALaHora.length > 0 && selectedTime && onElegirProfesional && (
-                <div className="mt-5 rounded-xl border border-border bg-card p-4" data-testid="libres-a-la-hora" aria-live="polite">
-                  <p className="text-sm font-medium">A las {selectedTime} están libres:</p>
-                  <div className="mt-2.5 flex flex-wrap gap-2">
-                    {libresALaHora.length > 1 && (
-                      <button
-                        type="button"
-                        aria-pressed={stylistChoice === "any"}
-                        onClick={() => onElegirProfesional("any")}
-                        className={cn(
-                          "min-h-11 rounded-full border px-4 py-1.5 text-sm",
-                          stylistChoice === "any" ? "border-primary bg-primary/10 font-bold" : "border-border hover:bg-muted",
-                        )}
-                      >
-                        Cualquiera
-                      </button>
-                    )}
-                    {libresALaHora.map((e) => (
-                      <button
-                        key={e.id}
-                        type="button"
-                        aria-pressed={stylistChoice === e.id}
-                        onClick={() => onElegirProfesional(e.id)}
-                        className={cn(
-                          "min-h-11 rounded-full border px-4 py-1.5 text-sm",
-                          stylistChoice === e.id ? "border-primary bg-primary/10 font-bold" : "border-border hover:bg-muted",
-                        )}
-                      >
-                        {e.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
               {smartSpread && slots.some((s) => s.busy && s.available) && (
                 <p className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span aria-hidden="true" className="size-2 rounded-full bg-moca" />
@@ -2068,7 +2150,7 @@ function DateTimeStep({
           salonSlug={espera.salonSlug}
           salonName={espera.salonName}
           serviceId={serviceIds[0]}
-          employeeId={stylistChoice === "any" ? "any" : stylistChoice}
+          employeeId={preferredEmployeeId}
           rangoSugerido={activeDate ? capitalizar(fechaLarga(activeDate)) : ""}
         />
       )}
