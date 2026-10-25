@@ -409,3 +409,13 @@ export function dayOccupancyBars(
   }
   return out;
 }
+
+/**
+ * Orden en que se asigna «Cualquiera disponible»: el del equipo, pero la
+ * titular del salón (la primera del equipo) solo si no hay nadie más libre.
+ * Es solo lógica de asignación: no cambia ningún orden que se vea.
+ */
+export function ordenParaCualquiera<T extends { id: string }>(candidatas: readonly T[], titularId: string | undefined): T[] {
+  if (!titularId) return [...candidatas];
+  return [...candidatas.filter((c) => c.id !== titularId), ...candidatas.filter((c) => c.id === titularId)];
+}

@@ -52,6 +52,7 @@ import {
   isPriorityTime,
   findNextAvailableSlot,
   profesionalElegidaParaHueco,
+  ordenParaCualquiera,
   profesionalesDisponiblesEnHueco,
   profesionalesLibresEnHora,
   type SpreadSlot,
@@ -155,13 +156,14 @@ function resolveEmployee(
   serviceIds: string[] = [],
   serviciosPorProfesional?: Record<string, string[]>,
   contextoSolape?: ContextoSolape,
+  titularId?: string,
 ): EmployeeId | null {
   const [hh, mm] = time.split(":").map(Number);
   const startMin = hh * 60 + mm;
   const candidates =
     stylistChoice && stylistChoice !== "any"
       ? employees.filter((employee) => employee.id === stylistChoice)
-      : employees;
+      : ordenParaCualquiera(employees, titularId);
   const candidate = profesionalesDisponiblesEnHueco({
     employees: candidates,
     appointments,
@@ -752,6 +754,7 @@ function BookingWizard() {
       serviceIds,
       profile.serviciosPorProfesional,
       contextoSolape,
+      employees[0]?.id,
     );
     if (!employeeId) {
       setSendError("Esa hora ya no está disponible, elige otra.");

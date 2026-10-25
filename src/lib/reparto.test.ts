@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
   hourOccupancyPct,
+  ordenParaCualquiera,
   offeredCloseMin,
   lastOfferedHours,
   isBusyHour,
@@ -446,5 +447,14 @@ describe("profesionalElegidaParaHueco", () => {
   it("preselecciona una preferencia explícita solo cuando está libre", () => {
     expect(profesionalElegidaParaHueco("any", "marta", libres)).toBe("marta");
     expect(profesionalElegidaParaHueco("any", "noelia", libres)).toBe("any");
+  });
+});
+
+describe("ordenParaCualquiera", () => {
+  it("la titular pasa al final y el resto conserva el orden", () => {
+    const eq = [{ id: "maria" }, { id: "anca" }, { id: "patricia" }];
+    expect(ordenParaCualquiera(eq, "maria").map((e) => e.id)).toEqual(["anca", "patricia", "maria"]);
+    expect(ordenParaCualquiera([{ id: "maria" }], "maria").map((e) => e.id)).toEqual(["maria"]);
+    expect(ordenParaCualquiera(eq, undefined).map((e) => e.id)).toEqual(["maria", "anca", "patricia"]);
   });
 });
