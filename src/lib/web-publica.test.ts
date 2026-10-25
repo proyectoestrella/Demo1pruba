@@ -97,3 +97,8 @@ describe("precio de la carta (lote 18.5)", () => {
     expect(precioDeCarta({ priceEur: 20, priceText: "  " })).toBe("20\u00a0€");
   });
 });
+
+test("salón real: con nota de Google se enseña la sección de Google; sin ella, nada (25-oct)", () => {
+  expect(seccionResenasPublicas({ esDemo: false, esSalonReal: true, tieneResenasGoogle: true, rating: 4.5, reviewCount: 81 })).toBe("google");
+  expect(seccionResenasPublicas({ esDemo: false, esSalonReal: true, tieneResenasGoogle: false, rating: 0, reviewCount: 0 })).toBe("oculta");
+});

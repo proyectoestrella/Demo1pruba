@@ -235,8 +235,8 @@ export function seccionResenasPublicas({
   rating: number;
   reviewCount: number;
 }): SeccionResenasPublicas {
-  // 22-oct: en un salón real no se enseñan nota ni reseñas (lo pidió PeluChic).
-  if (esSalonReal) return "oculta";
+  // 25-oct (Tomás): la nota y el enlace a sus reseñas de Google SÍ se enseñan
+  // en la web real (deshace lo del 22-oct). Testimonios inventados, nunca.
   if (tieneResenasGoogle) return "google";
   // Demo por enlace (20-oct): nada de testimonios con nombres inventados
   // delante de la dueña. Solo la nota real si la hay; si no, sin sección.
