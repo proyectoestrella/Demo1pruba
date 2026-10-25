@@ -1,6 +1,7 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
 
 import {
+  mismaPersonaPorNombre,
   findPenaltyRow,
   phoneKey,
   resolveActiveProfile,
@@ -245,4 +246,10 @@ describe("lote 3 — columna propia primero, marcador de la nota si viene a null
       tpvAltaDate: "2020-01-02", tpvLastVisit: "2026-03-04",
     });
   });
+});
+
+test("mismaPersonaPorNombre: mismo primer nombre = misma; distinto = familiar", () => {
+  expect(mismaPersonaPorNombre("Olga Carriches", "olga carricho")).toBe(true);
+  expect(mismaPersonaPorNombre("Ana López", "Olga López")).toBe(false);
+  expect(mismaPersonaPorNombre("", "Olga")).toBe(true);
 });

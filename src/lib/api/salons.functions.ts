@@ -103,6 +103,7 @@ import {
 import {
   findPenaltyRow,
   phoneKey,
+  mismaPersonaPorNombre,
   rowToAppointment,
   rowToClient,
   rowToWaitlist,
@@ -1613,62 +1614,16 @@ export const syncAppointment = createServerFn({ method: "POST" })
         return { synced: false as const, reason: ERROR_SOLAPE_PANEL };
       }
     }
-    if (!manda && data.clientPhone && key.length >= 6 && data.clientName) {
-      // Reserva pública (A4): quien reserva NO es dueño de la ficha. Si la
-      // clienta ya existe se reutiliza tal cual (solo se rellenan campos que
-      // estén vacíos); nunca se pisa su nombre ni su correo, que son a donde
-      // llegan después los recordatorios.
-      const { data: existente, error: errorBuscar } = await supabase
-        .from("clients")
-        .select("id, name, email")
-        .eq("salon_slug", data.slug)
-        .eq("phone_key", key)
-        .maybeSingle();
-      if (errorBuscar) throw new Error(`syncAppointment (cliente): ${errorBuscar.message}`);
-      if (existente) {
-        clientId = existente.id as string;
-        const relleno: Record<string, string> = {};
-        if (!existente.name) relleno.name = data.clientName;
-        if (!existente.email && data.clientEmail) relleno.email = data.clientEmail;
-        if (Object.keys(relleno).length) {
-          await supabase
-            .from("clients")
-            .update(relleno)
-            .eq("id", clientId)
-            .eq("salon_slug", data.slug);
-        }
-      } else {
-        const { data: nueva, error: errorNueva } = await supabase
-          .from("clients")
-          .insert({
-            salon_slug: data.slug,
-            name: data.clientName,
-            phone: data.clientPhone,
-            phone_key: key,
-            email: data.clientEmail,
-          })
-          .select("id")
-          .single();
-        if (errorNueva) throw new Error(`syncAppointment (cliente): ${errorNueva.message}`);
-        clientId = nueva.id as string;
-      }
-    } else if (data.clientPhone && key.length >= 6 && data.clientName) {
-      const { data: cliente, error } = await supabase
-        .from("clients")
-        .upsert(
-          {
-            salon_slug: data.slug,
-            name: data.clientName,
-            phone: data.clientPhone,
-            phone_key: key,
-            email: data.clientEmail,
-          },
-          { onConflict: "salon_slug,phone_key" },
-        )
-        .select("id")
-        .single();
-      if (error) throw new Error(`syncAppointment (cliente): ${error.message}`);
-      clientId = cliente.id as string;
+    if (data.clientPhone && key.length >= 6 && data.clientName) {
+      // Reserva pública (A4) y panel: quien reserva NO es dueño de la ficha de
+      // otra persona. Se reutiliza la suya (solo se rellena lo vacío) y con un
+      // teléfono de familia se usa o crea la ficha de quien viene.
+      clientId = await resolverClientaPorTelefono(supabase, data.slug, {
+        name: data.clientName,
+        phone: data.clientPhone,
+        key,
+        email: data.clientEmail,
+      });
     }
     if (!manda && clientId) {
       const { data: delDia, error: errorDia } = await supabase
@@ -1986,6 +1941,67 @@ export async function perdioLaCarrera(
     },
     contextoSolapeDePerfil(perfil, true),
   );
+}
+
+/**
+ * Ficha de quien reserva a partir de su teléfono (25-oct noche). El teléfono
+ * puede ser de la familia: con el mismo número, solo es la misma ficha si
+ * coincide el primer nombre; si no, se usa (o se crea) la ficha «familiar»,
+ * con el mismo teléfono pero sin `phone_key` (que sigue siendo único y es de
+ * la titular). Nunca se renombra ni se pisa la ficha de otra persona.
+ */
+async function resolverClientaPorTelefono(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  slug: string,
+  d: { name: string; phone: string; key: string; email?: string | null },
+): Promise<string> {
+  const { data: titular, error } = await supabase
+    .from("clients")
+    .select("id, name, email")
+    .eq("salon_slug", slug)
+    .eq("phone_key", d.key)
+    .maybeSingle();
+  if (error) throw new Error(`syncAppointment (cliente): ${error.message}`);
+  if (titular && mismaPersonaPorNombre(titular.name as string, d.name)) {
+    const relleno: Record<string, string> = {};
+    if (!titular.name) relleno.name = d.name;
+    if (!titular.email && d.email) relleno.email = d.email;
+    if (Object.keys(relleno).length) {
+      await supabase.from("clients").update(relleno).eq("id", titular.id as string).eq("salon_slug", slug);
+    }
+    return titular.id as string;
+  }
+  if (!titular) {
+    const { data: nueva, error: errorNueva } = await supabase
+      .from("clients")
+      .insert({ salon_slug: slug, name: d.name, phone: d.phone, phone_key: d.key, email: d.email ?? null })
+      .select("id")
+      .single();
+    if (errorNueva) throw new Error(`syncAppointment (cliente): ${errorNueva.message}`);
+    return nueva.id as string;
+  }
+  // Teléfono de otra persona de la familia: su propia ficha.
+  const { data: familiares } = await supabase
+    .from("clients")
+    .select("id, name")
+    .eq("salon_slug", slug)
+    .is("phone_key", null)
+    .eq("phone", d.phone);
+  const misma = ((familiares ?? []) as Array<{ id: string; name: string }>).find((f) => mismaPersonaPorNombre(f.name, d.name));
+  if (misma) return misma.id;
+  const fila = { salon_slug: slug, name: d.name, phone: d.phone, phone_key: null, email: d.email ?? null };
+  let r = await supabase.from("clients").insert(fila).select("id").single();
+  if (r.error) {
+    // Sin el SQL del 25-oct aún existe `unique (salon_slug, phone)`: la ficha
+    // se guarda sin teléfono y con él en las notas, antes que no guardarse.
+    r = await supabase
+      .from("clients")
+      .insert({ ...fila, phone: null, notes: `Teléfono compartido con ${titular.name as string}: ${d.phone}` })
+      .select("id")
+      .single();
+  }
+  if (r.error) throw new Error(`syncAppointment (cliente): ${r.error.message}`);
+  return r.data.id as string;
 }
 
 async function solapaEnServidor(
@@ -2323,6 +2339,9 @@ export const saveClient = createServerFn({ method: "POST" })
           .maybeSingle(),
       );
     }
+    // Teléfono de la familia (25-oct noche): si la titular del número es otra
+    // persona, esta ficha es aparte, con el mismo teléfono y sin `phone_key`.
+    let familiar = false;
     if (!previa && key) {
       previa = await buscarFichaParaGuardar((columnas) =>
         supabase
@@ -2332,6 +2351,19 @@ export const saveClient = createServerFn({ method: "POST" })
           .eq("phone_key", key)
           .maybeSingle(),
       );
+      if (previa && !mismaPersonaPorNombre(previa.name as string | undefined, data.name)) {
+        familiar = true;
+        const { data: familiares } = await supabase
+          .from("clients")
+          .select("*")
+          .eq("salon_slug", data.slug)
+          .is("phone_key", null)
+          .eq("phone", data.phone);
+        previa =
+          ((familiares ?? []) as FilaFichaExistente[]).find((f) =>
+            mismaPersonaPorNombre(f.name as string | undefined, data.name),
+          ) ?? null;
+      }
     }
     if (!previa && !key) {
       previa = await buscarFichaParaGuardar((columnas) =>
@@ -2366,7 +2398,7 @@ export const saveClient = createServerFn({ method: "POST" })
       salon_slug: data.slug,
       name: data.name,
       phone: data.phone || null,
-      phone_key: key || null,
+      phone_key: familiar ? null : key || null,
       ...(data.email !== undefined ? { email: data.email } : {}),
       ...(data.notes !== undefined ? { notes: data.notes } : {}),
       ...(data.createdAt ? { created_at: data.createdAt } : {}),
@@ -2381,9 +2413,15 @@ export const saveClient = createServerFn({ method: "POST" })
     // (ver NIVELES_CLIENTE): la ficha se guarda sin ese dato antes que no
     // guardarse.
     for (let nivel = 0; nivel <= NIVELES_CLIENTE.length; nivel++) {
-      const result = key
+      let result = key && !familiar
         ? await supabase.from("clients").upsert(fila, { onConflict: "salon_slug,phone_key" })
         : await supabase.from("clients").insert(fila);
+      if (result.error && familiar && !faltaEsquema(result.error)) {
+        // Sin el SQL del 25-oct aún existe `unique (salon_slug, phone)`.
+        result = await supabase
+          .from("clients")
+          .insert({ ...fila, phone: null, notes: [fila.notes, `Teléfono compartido: ${data.phone}`].filter(Boolean).join(" · ") });
+      }
       if (!result.error) return { synced: true as const };
       if (!faltaEsquema(result.error) || nivel === NIVELES_CLIENTE.length)
         throw new Error(`saveClient: ${result.error.message}`);

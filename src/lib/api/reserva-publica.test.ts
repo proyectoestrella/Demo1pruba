@@ -106,7 +106,7 @@ describe("Teléfono: el servidor valida y guarda en E.164", () => {
   it("una ficha antigua («600 111 222») sigue casando al reservar con +34", async () => {
     const r = await llamar<{ synced: boolean }>(
       S.syncAppointment,
-      reserva({ clientPhone: "+34600111222" }),
+      reserva({ clientPhone: "+34600111222", clientName: "Marta P." }),
     );
     expect(r.synced).toBe(true);
     expect(doble.tablas.clients.filter((c) => c.phone_key === "600111222")).toHaveLength(1);
@@ -193,6 +193,24 @@ describe("M4: topes de entrada, horizonte y ritmo en la reserva pública", () =>
       reserva({ clientPhone: "655000111" }),
     );
     expect(r.reason).toBe("RESERVA_DEMASIADAS");
+  });
+});
+
+describe("Teléfono compartido en familia (25-oct noche)", () => {
+  it("con el teléfono de Marta pero otro nombre se crea la ficha de quien viene, sin tocar la de Marta", async () => {
+    const r = await llamar<{ synced: boolean }>(S.syncAppointment, reserva({ clientName: "Olga Pérez", clientPhone: "600111222", clientEmail: undefined }));
+    expect(r.synced).toBe(true);
+    const marta = doble.tablas.clients.find((c) => c.id === "c1");
+    expect(marta).toMatchObject({ name: "Marta Pérez", phone_key: "600111222" });
+    const olga = doble.tablas.clients.find((c) => c.name === "Olga Pérez");
+    expect(olga).toMatchObject({ phone_key: null });
+    const cita = doble.escrituras.find((e) => e.tabla === "appointments" && e.op === "upsert");
+    expect(cita?.datos).toMatchObject({ client_id: olga!.id });
+  });
+  it("una segunda reserva de Olga reutiliza su ficha familiar", async () => {
+    await llamar(S.syncAppointment, reserva({ clientName: "Olga Pérez", clientPhone: "600111222", clientEmail: undefined }));
+    await llamar(S.syncAppointment, reserva({ clientName: "olga", clientPhone: "600111222", clientEmail: undefined, startISO: proximoDia(3) }));
+    expect(doble.tablas.clients.filter((c) => /olga/i.test(String(c.name)))).toHaveLength(1);
   });
 });
 
@@ -347,3 +365,4 @@ describe("Nombre obligatorio en la reserva pública", () => {
     expect(cita?.datos).toMatchObject({ client_name: "Al" });
   });
 });
+

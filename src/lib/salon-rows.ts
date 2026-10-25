@@ -274,3 +274,16 @@ export function findPenaltyRow(
     return client.manualBlock || isPenaltyActive(client, now);
   });
 }
+
+/**
+ * ¿Es la misma persona? Teléfono compartido en familia (TPV 123 trae 76
+ * números compartidos por parejas y 2 por tríos): con el mismo teléfono, solo
+ * es la misma ficha si coincide el primer nombre (sin tildes ni mayúsculas).
+ */
+export function mismaPersonaPorNombre(a: string | null | undefined, b: string | null | undefined): boolean {
+  const primero = (t: string | null | undefined) =>
+    (t ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("es-ES").trim().split(/\s+/)[0] ?? "";
+  const x = primero(a);
+  const y = primero(b);
+  return !x || !y || x === y;
+}
