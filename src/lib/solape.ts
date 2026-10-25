@@ -35,6 +35,8 @@ export interface ContextoSolape {
    * sí aprovecha la exposición.
    */
   sinExposicion?: boolean;
+  /** Web: tope de citas confirmadas al día por profesional (ver reserva-publica.ts). */
+  topeCitasDia?: number | null;
 }
 
 export interface CitaParaSolape {

@@ -1,7 +1,8 @@
 import type { Appointment, BloqueoAgenda, DiaEspecial, Employee } from "./mock/types";
 import { franjasProfesional, franjasProfesionalEnFecha, huecosDeProfesionales, huecosDeProfesionalesEnFecha, trabajaEn, trabajaEnFecha } from "./horario-equipo";
 import { hayBloqueoEnHueco } from "./bloqueos-agenda";
-import { ZONA_HORARIA_SALON, isoDelSalon } from "./zona-horaria";
+import { ZONA_HORARIA_SALON, fechaEnZona, isoDelSalon } from "./zona-horaria";
+import { diaCompletoParaProfesional } from "./tope-dia";
 import { profesionalHaceServicios } from "./servicios-profesional";
 import { solapaConAgenda, type ContextoSolape } from "./solape";
 
@@ -243,7 +244,8 @@ export function profesionalesDisponiblesEnHueco({
     profesionalHaceServicios(employee.id, serviceIds, serviciosPorProfesional) &&
     trabajaEnFecha(employee, dateKey, startMin, durationMin, diasEspeciales) &&
     !isSlotTakenLocal(appointments, employee.id, startISO, durationMin, serviceIds, contextoSolape) &&
-    !hayBloqueoEnHueco(bloqueosAgenda, employee.id, startISO, durationMin, timeZone),
+    !hayBloqueoEnHueco(bloqueosAgenda, employee.id, startISO, durationMin, timeZone) &&
+    !diaCompletoParaProfesional(appointments, employee.id, dateKey, (iso) => fechaEnZona(iso, timeZone), contextoSolape?.topeCitasDia ?? null),
   );
 }
 

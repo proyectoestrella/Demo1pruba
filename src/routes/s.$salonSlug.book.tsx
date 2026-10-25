@@ -1,4 +1,5 @@
 import { guardarNombreConfirmacion } from "@/lib/nombre-confirmacion";
+import { topeCitasDiaProfesional } from "@/lib/tope-dia";
 import { lavadoDe } from "@/lib/appointment-services";
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useImagenConRespaldo } from "@/lib/imagen-rota";
@@ -356,8 +357,13 @@ function BookingWizard() {
   );
   const contextoSolape = useMemo<ContextoSolape>(
     // Web: sin solape por exposición (la exclusión SQL de producción lo rechazaría).
-    () => ({ servicios: serviceMap, perfil: profile, sinExposicion: true }),
-    [serviceMap, profile.exposicionServicios, profile.maxClientasExposicion, profile.lavado],
+    () => ({
+      servicios: serviceMap,
+      perfil: profile,
+      sinExposicion: true,
+      topeCitasDia: realSalonSlug ? topeCitasDiaProfesional(profile, salonSlug) : null,
+    }),
+    [serviceMap, profile, realSalonSlug, salonSlug],
   );
   const employees = useMemo(
     () =>

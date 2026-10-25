@@ -458,3 +458,20 @@ describe("ordenParaCualquiera", () => {
     expect(ordenParaCualquiera(eq, undefined).map((e) => e.id)).toEqual(["maria", "anca", "patricia"]);
   });
 });
+
+describe("tope diario en los huecos de la web", () => {
+  it("con 9 confirmadas ese día, la profesional ya no sale; con pendientes, sí", async () => {
+    const { profesionalesDisponiblesEnHueco } = await import("./reparto");
+    const { employees } = await import("./mock/salon");
+    const e = employees[0];
+    const confirmadas = Array.from({ length: 9 }, (_, i) => ({ id: `c${i}`, clientId: "", clientName: "", serviceIds: [], employeeId: e.id, start: `2026-10-28T0${i % 3 + 6}:00:00Z`, duration: 1, priceEur: 0, status: "confirmed" })) as never[];
+    const base = { employees: [e], dateKey: "2026-10-28", startMin: 17 * 60, durationMin: 30, startISO: "2026-10-28T16:00:00Z", timeZone: "Europe/Madrid" };
+    // Sin citas, a esa hora está libre (si no, la prueba no probaría nada).
+    expect(profesionalesDisponiblesEnHueco({ ...base, appointments: [], contextoSolape: {} })).toHaveLength(1);
+    expect(profesionalesDisponiblesEnHueco({ ...base, appointments: confirmadas, contextoSolape: { topeCitasDia: 9 } })).toHaveLength(0);
+    const pendientes = confirmadas.map((c) => ({ ...(c as object), status: "pending" })) as never[];
+    expect(profesionalesDisponiblesEnHueco({ ...base, appointments: pendientes, contextoSolape: { topeCitasDia: 9 } }).length).toBe(
+      profesionalesDisponiblesEnHueco({ ...base, appointments: [], contextoSolape: {} }).length,
+    );
+  });
+});
