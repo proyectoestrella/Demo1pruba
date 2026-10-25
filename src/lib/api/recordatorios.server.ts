@@ -32,6 +32,7 @@ interface FilaCita {
   deposit_requested_at: string | null;
   deposit_received_at: string | null;
   deposit_eur: number | string | null;
+  deposit_due_at?: string | null;
   clients: { name: string | null; email: string | null } | null;
 }
 
@@ -114,7 +115,7 @@ export async function enviarRecordatoriosDeManana(
   let consulta = supabase
     .from("appointments")
     .select(
-      "id, salon_slug, client_name, service_id, start_at, status, note, reminder_sent_at, deposit_requested_at, deposit_received_at, deposit_eur, clients(name, email)",
+      "id, salon_slug, client_name, service_id, start_at, status, note, reminder_sent_at, deposit_requested_at, deposit_received_at, deposit_eur, deposit_due_at, clients(name, email)",
     )
     .eq("status", "confirmed")
     .is("reminder_sent_at", null)
@@ -165,7 +166,8 @@ export async function enviarRecordatoriosDeManana(
         ? {
             importeEur: Number(cita.deposit_eur ?? perfil.depositAmountEur ?? 10),
             bizumPhone: perfil.depositBizumPhone,
-            deadlineISO: parseDepositNote(cita.note).dueAt,
+            // Columna nueva primero (revisión 25-oct, hallazgo 14); la nota, solo en citas antiguas.
+            deadlineISO: cita.deposit_due_at ?? parseDepositNote(cita.note).dueAt,
           }
         : undefined;
     const correo = emailRecordatorio({

@@ -145,7 +145,7 @@ export function mensajeErrorReserva(error: unknown): string {
   if (mensaje.includes(ERROR_TELEFONO_INVALIDO))
     return "Ese teléfono no parece válido. Revísalo y vuelve a enviar.";
   if (mensaje.includes(ERROR_RESERVA_PASADA))
-    return "Esa hora ya ha pasado. Elige otra hora disponible.";
+    return "Esa hora ya no se puede reservar (ha pasado o falta muy poco). Elige otra hora disponible.";
   if (mensaje.includes(ERROR_RESERVA_LEJANA))
     return "Solo se puede reservar hasta con un año de antelación. Elige una fecha más cercana.";
   if (mensaje.includes(ERROR_DEMASIADAS_RESERVAS))

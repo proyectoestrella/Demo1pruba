@@ -70,6 +70,7 @@ import {
 import { profesionalHaceServicios } from "../servicios-profesional";
 import { hayBloqueoEnHueco } from "../bloqueos-agenda";
 import { fechaEnZona, isoDelSalon, zonaDelSalon } from "../zona-horaria";
+import { antelacionMinima } from "../primer-hueco";
 import { refSenalAplicada, type MetodoPago } from "../pagos";
 import {
   ERROR_BLOQUEO_MANUAL,
@@ -1419,8 +1420,10 @@ export const syncAppointment = createServerFn({ method: "POST" })
 
     // Permisos por rol (lote 8): crear sobre la profesional elegida; editar una
     // cita que ya existe, sobre la que la tiene ahora y sobre la nueva.
+    let citaNueva = false;
     if (quien.tipo === "miembro") {
       const antes = await profesionalActual(supabase, data.slug, data.localId);
+      citaNueva = antes === null;
       if (antes === null) exigirAcciones(quien, ["cita.crear"], [data.employeeId]);
       else
         exigirAcciones(
@@ -1535,6 +1538,16 @@ export const syncAppointment = createServerFn({ method: "POST" })
         }
       }
 
+      // Antelación mínima también en el servidor (revisión 25-oct, hallazgo 2):
+      // la rejilla la filtra, pero una clienta lenta o una petición fabricada
+      // no deben colar una cita por debajo. Dos minutos de gracia.
+      if (perfilPublico) {
+        const minimoMs = (antelacionMinima(perfilPublico.antelacionMinimaMin) - 2) * 60_000;
+        if (Date.parse(data.startISO) < Date.now() + minimoMs) {
+          return { synced: false as const, reason: ERROR_RESERVA_PASADA };
+        }
+      }
+
       if (
         await solapaEnServidor(
           supabase,
@@ -1558,13 +1571,14 @@ export const syncAppointment = createServerFn({ method: "POST" })
         const fecha = fechaEnZona(data.startISO, zona);
         const desde = isoDelSalon(fecha, "00:00", zona);
         const hasta = new Date(Date.parse(desde) + 26 * 60 * 60_000).toISOString();
-        const { data: delDia } = await supabase
+        const { data: delDia, error: errorTope } = await supabase
           .from("appointments")
           .select("employee_id, start_at, status")
           .eq("salon_slug", data.slug)
           .eq("employee_id", data.employeeId)
           .gte("start_at", desde)
           .lt("start_at", hasta);
+        if (errorTope) throw new Error(`syncAppointment (tope): ${errorTope.message}`);
         const citasDia = ((delDia ?? []) as Array<{ employee_id: string; start_at: string; status: string }>).map((c) => ({
           employeeId: c.employee_id,
           start: c.start_at,
@@ -1626,11 +1640,19 @@ export const syncAppointment = createServerFn({ method: "POST" })
       });
     }
     if (!manda && clientId) {
+      // El tope es por TELÉFONO (todas las fichas de la familia), no por ficha:
+      // cambiar el nombre no da cinco reservas más (revisión 25-oct, hallazgo 7).
+      const { data: fichasTel } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("salon_slug", data.slug)
+        .or(`phone_key.eq.${key},phone.eq."${(data.clientPhone ?? "").replace(/"/g, "")}"`);
+      const idsTel = [...new Set([clientId, ...((fichasTel ?? []) as Array<{ id: string }>).map((f) => f.id)])];
       const { data: delDia, error: errorDia } = await supabase
         .from("appointments")
         .select("id")
         .eq("salon_slug", data.slug)
-        .eq("client_id", clientId)
+        .in("client_id", idsTel)
         .gte("created_at", new Date(Date.now() - 86_400_000).toISOString());
       if (errorDia) throw new Error(`syncAppointment (ritmo): ${errorDia.message}`);
       if ((delDia ?? []).length >= MAX_RESERVAS_POR_TELEFONO_Y_DIA) {
@@ -1779,6 +1801,29 @@ export const syncAppointment = createServerFn({ method: "POST" })
         .eq("local_id", data.localId);
       return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
     }
+    // Cita NUEVA del panel sin solape autorizado (revisión 25-oct, hallazgo 1):
+    // si en el mismo instante entró una reserva web por el mismo hueco, gana
+    // la que se guardó primero; la del panel se deshace y se avisa, como un
+    // solape normal (la dueña puede guardarla igualmente a propósito).
+    if (manda && citaNueva && !data.permitirSolape && !data.importedFromTpv && Date.parse(data.startISO) > Date.now()) {
+      const perfilCarrera = await perfilDelSalon(supabase, data.slug).catch(() => undefined);
+      if (
+        await perdioLaCarrera(
+          supabase,
+          data.slug,
+          data.localId,
+          data.employeeId,
+          data.startISO,
+          durationMinGuardada,
+          data.serviceIds,
+          perfilCarrera,
+          false,
+        )
+      ) {
+        await supabase.from("appointments").delete().eq("salon_slug", data.slug).eq("local_id", data.localId);
+        return { synced: false as const, reason: ERROR_SOLAPE_PANEL };
+      }
+    }
 
     // Lote 13: llevar la cita a los calendarios externos conectados de esta
     // profesional (y al del salón entero, si lo hay). Nunca lanza (lo
@@ -1909,6 +1954,7 @@ export async function perdioLaCarrera(
   durationMin: number,
   serviceIds: string[] = [],
   perfil?: SalonProfile,
+  web = true,
 ): Promise<boolean> {
   const fin = new Date(Date.parse(startISO) + durationMin * 60_000).toISOString();
   const desde = new Date(Date.parse(startISO) - 7 * 24 * 60 * 60_000).toISOString();
@@ -1939,7 +1985,7 @@ export async function perdioLaCarrera(
       serviceIds,
       status: "pending",
     },
-    contextoSolapeDePerfil(perfil, true),
+    contextoSolapeDePerfil(perfil, web),
   );
 }
 

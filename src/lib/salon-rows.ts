@@ -151,12 +151,12 @@ export function rowToAppointment(row: AppointmentRow, anonimo = false): Appointm
     duration: num(row.duration_min),
     priceEur: anonimo ? 0 : num(row.price_eur),
     status: row.status as AppointmentStatus,
-    clientConfirmedAt: row.client_confirmed_at ?? undefined,
+    clientConfirmedAt: anonimo ? undefined : (row.client_confirmed_at ?? undefined),
     note: booking.note,
     // Columna nueva primero; el marcador de la nota solo si viene a null.
     bookingAnswers: anonimo ? undefined : (row.booking_answers ?? booking.answers),
     privacyNoticeAcknowledgedAt: anonimo ? undefined : (row.privacy_notice_acknowledged_at ?? undefined),
-    origen: row.origen === "tpv123" ? "tpv123" : (row.origen ? undefined : origen.origen),
+    origen: anonimo ? undefined : row.origen === "tpv123" ? "tpv123" : (row.origen ? undefined : origen.origen),
     colorFormula: anonimo ? undefined : (row.color_formula ?? undefined),
     technicalNotes: anonimo ? undefined : (row.technical_notes ?? undefined),
     reminderSentAt: anonimo ? undefined : (row.reminder_sent_at ?? undefined),
@@ -278,12 +278,23 @@ export function findPenaltyRow(
 /**
  * ¿Es la misma persona? Teléfono compartido en familia (TPV 123 trae 76
  * números compartidos por parejas y 2 por tríos): con el mismo teléfono, solo
- * es la misma ficha si coincide el primer nombre (sin tildes ni mayúsculas).
+ * es la misma ficha si coincide el primer nombre y, si las dos lo traen, el
+ * primer apellido (sin tildes ni mayúsculas; «P.» vale por «Pérez»).
  */
 export function mismaPersonaPorNombre(a: string | null | undefined, b: string | null | undefined): boolean {
-  const primero = (t: string | null | undefined) =>
-    (t ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("es-ES").trim().split(/\s+/)[0] ?? "";
-  const x = primero(a);
-  const y = primero(b);
-  return !x || !y || x === y;
+  const partes = (t: string | null | undefined) =>
+    (t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES").trim().split(/\s+/).filter(Boolean);
+  const x = partes(a);
+  const y = partes(b);
+  if (!x.length || !y.length) return true;
+  if (x[0] !== y[0]) return false;
+  // Revisión 25-oct (hallazgo 9): «María López» y «María García» con el mismo
+  // teléfono son dos personas. Si las dos traen apellido, el primero debe
+  // coincidir (con 4 letras basta para tolerar erratas); si una no lo trae
+  // («María»), se toma como la misma.
+  if (x.length > 1 && y.length > 1) {
+    const [p, q] = [x[1].replace(/\./g, ""), y[1].replace(/\./g, "")];
+    return p.startsWith(q) || q.startsWith(p) || p.slice(0, 4) === q.slice(0, 4);
+  }
+  return true;
 }

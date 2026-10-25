@@ -252,4 +252,7 @@ test("mismaPersonaPorNombre: mismo primer nombre = misma; distinto = familiar", 
   expect(mismaPersonaPorNombre("Olga Carriches", "olga carricho")).toBe(true);
   expect(mismaPersonaPorNombre("Ana López", "Olga López")).toBe(false);
   expect(mismaPersonaPorNombre("", "Olga")).toBe(true);
+  expect(mismaPersonaPorNombre("María López", "María García")).toBe(false);
+  expect(mismaPersonaPorNombre("María López Ruiz", "maria lopes")).toBe(true);
+  expect(mismaPersonaPorNombre("María López", "María")).toBe(true);
 });

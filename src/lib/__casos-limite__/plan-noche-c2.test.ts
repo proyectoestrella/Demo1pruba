@@ -82,7 +82,7 @@ describe("plan noche C2 · regresiones descubiertas", () => {
     expect(inicioReservaPublicaEsFuturo("2026-10-17T00:00:00.000Z", ahora)).toBe(false);
     expect(inicioReservaPublicaEsFuturo("no es una fecha", ahora)).toBe(false);
     expect(inicioReservaPublicaEsFuturo("2026-10-17T10:00:00.001Z", ahora)).toBe(true);
-    expect(mensajeErrorReserva(new Error("RESERVA_PASADA"))).toBe("Esa hora ya ha pasado. Elige otra hora disponible.");
+    expect(mensajeErrorReserva(new Error("RESERVA_PASADA"))).toBe("Esa hora ya no se puede reservar (ha pasado o falta muy poco). Elige otra hora disponible.");
     const guarda = FUENTE_RESERVA_PUBLICA.indexOf("!inicioReservaPublicaEsFuturo(data.startISO)");
     expect(guarda).toBeGreaterThan(-1);
     expect(guarda).toBeLessThan(FUENTE_RESERVA_PUBLICA.indexOf("escribirCita(supabase, fila)"));
