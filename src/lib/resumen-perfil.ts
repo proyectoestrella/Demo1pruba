@@ -29,6 +29,8 @@ export const NOMBRE_CAMPO: Record<string, string> = {
   depositTemplate: "el mensaje de la señal", plantillas: "los mensajes de WhatsApp",
   coloresServicio: "los colores de los servicios", coloresProfesional: "los colores del equipo",
   avataresClientas: "el avatar de una clienta", avataresEquipo: "el avatar de una profesional",
+  duracionClientas: "el tiempo de una clienta", lavado: "el lavado incluido en los servicios",
+  exposicionServicios: "el tiempo de exposición de un servicio", maxClientasExposicion: "las clientas a la vez durante la exposición",
   logoUrl: "el logo", logotipoClaroUrl: "el logo para fondo claro", logotipoOscuroUrl: "el logo para fondo oscuro",
   plan: "el plan", calendario: "las preferencias del calendario",
   terminoProfesional: "cómo se llama a las profesionales", nifResponsable: "el NIF del responsable",
