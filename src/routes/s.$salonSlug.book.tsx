@@ -1446,7 +1446,7 @@ function BookingWizard() {
  * aún no se puede pulsar.
  */
 const BOTON_DESACTIVADO =
-  "aria-disabled:bg-muted aria-disabled:text-muted-foreground aria-disabled:opacity-100";
+  "data-[incompleto]:bg-muted data-[incompleto]:text-muted-foreground";
 
 /** Rótulos del calendario en español para el lector de pantalla. */
 const ETIQUETAS_CALENDARIO = {
@@ -2471,7 +2471,7 @@ function BookingSummary({
           </div>
           <Button
             onClick={onCta}
-            aria-disabled={ctaDisabled || undefined}
+            data-incompleto={ctaDisabled ? "" : undefined}
             className={cn(
               "h-12 shrink-0 rounded-full px-6 text-[15px] font-semibold",
               BOTON_DESACTIVADO,
@@ -2557,7 +2557,7 @@ function BookingSummary({
         )}
         <Button
           onClick={onCta}
-          aria-disabled={ctaDisabled || undefined}
+          data-incompleto={ctaDisabled ? "" : undefined}
           className={cn(
             "mt-6 h-12 w-full rounded-full text-[15px] font-semibold",
             BOTON_DESACTIVADO,

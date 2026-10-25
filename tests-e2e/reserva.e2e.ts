@@ -77,7 +77,7 @@ async function paso2(page: Page, audit: Auditoria) {
   await paso1(page, audit);
   await expect(async () => {
     await page.getByRole("button", { name: /^Peinar/ }).click();
-    await expect(page.getByRole("button", { name: "Continuar" })).not.toHaveAttribute("aria-disabled", "true", { timeout: 1500 });
+    await expect(page.getByRole("button", { name: "Continuar" })).not.toHaveAttribute("data-incompleto", "", { timeout: 1500 });
   }).toPass({ timeout: 15_000 });
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByRole("heading", { name: "Fecha y hora" }).first()).toBeVisible();
@@ -247,7 +247,7 @@ test.describe("Reserva pública", () => {
   test("Reserva 1 · Servicios", async ({ page, audit }) => {
     await paso1(page, audit);
     const continuar = page.getByRole("button", { name: "Continuar" });
-    await expect(continuar).toHaveAttribute("aria-disabled", "true");
+    await expect(continuar).toHaveAttribute("data-incompleto", "");
     // Sin tocar nada no hay aviso en rojo; sale al intentar continuar.
     await expect(page.getByRole("status").filter({ hasText: "Elige un servicio" })).toHaveCount(0);
     await continuar.click();
@@ -297,7 +297,7 @@ test.describe("Reserva pública", () => {
 
   test("Reserva 4 · Datos (vacío: botón desactivado)", async ({ page, audit }) => {
     await paso4(page, audit);
-    await expect(botonCta(page)).toHaveAttribute("aria-disabled", "true");
+    await expect(botonCta(page)).toHaveAttribute("data-incompleto", "");
     await botonCta(page).click();
     await expect(faltaTexto(page)).toContainText("nombre");
     await audit.revisar("reserva-4-datos");
@@ -324,7 +324,7 @@ test.describe("Reserva pública", () => {
     await paso4(page, audit);
     await responderPreguntas(page);
     await datos(page, "", "600123456", true);
-    await expect(botonCta(page)).toHaveAttribute("aria-disabled", "true");
+    await expect(botonCta(page)).toHaveAttribute("data-incompleto", "");
     await botonCta(page).click();
     await expect(faltaTexto(page)).toContainText("nombre");
     await audit.revisar("reserva-4-sin-nombre");
@@ -334,7 +334,7 @@ test.describe("Reserva pública", () => {
     await paso4(page, audit);
     await responderPreguntas(page);
     await datos(page, "A", "600123456", true);
-    await expect(botonCta(page)).toHaveAttribute("aria-disabled", "true");
+    await expect(botonCta(page)).toHaveAttribute("data-incompleto", "");
     await botonCta(page).click();
     await expect(faltaTexto(page)).toContainText("nombre");
     await audit.revisar("reserva-4-nombre-1-letra");
@@ -344,7 +344,7 @@ test.describe("Reserva pública", () => {
     await paso4(page, audit);
     await responderPreguntas(page);
     await datos(page, "Ana López", "1245", true);
-    await expect(botonCta(page)).toHaveAttribute("aria-disabled", "true");
+    await expect(botonCta(page)).toHaveAttribute("data-incompleto", "");
     await botonCta(page).click();
     await expect(faltaTexto(page)).toContainText("teléfono");
     await audit.revisar("reserva-4-telefono-1245");
@@ -354,7 +354,7 @@ test.describe("Reserva pública", () => {
     await paso4(page, audit);
     await responderPreguntas(page);
     await datos(page, "Ana López", "600123456", false);
-    await expect(botonCta(page)).toHaveAttribute("aria-disabled", "true");
+    await expect(botonCta(page)).toHaveAttribute("data-incompleto", "");
     await botonCta(page).click();
     await expect(faltaTexto(page)).toContainText("privacidad");
     await audit.revisar("reserva-4-sin-privacidad");
@@ -367,7 +367,7 @@ test.describe("Reserva pública", () => {
     await paso4(page, audit);
     await responderPreguntas(page);
     await datos(page, "Ana López Prueba", "600123456", true);
-    await expect(botonCta(page)).not.toHaveAttribute("aria-disabled", "true");
+    await expect(botonCta(page)).not.toHaveAttribute("data-incompleto", "");
     await audit.revisar("reserva-4-datos-validos");
     // El envío es seguro: syncAppointment / registerBookingClient y Supabase están simulados.
     await botonCta(page).click();
