@@ -29,7 +29,7 @@ import { serviceLabelOf } from "@/lib/appointment-services";
 import { estadoSenal } from "@/lib/senal";
 import { agendaDeHoy, dineroDelRango } from "@/lib/dinero";
 import { esCobrable } from "@/lib/caja";
-import { duracionRecordada } from "@/lib/derive";
+import { duracionPropuesta } from "@/lib/derive";
 import { enlaceDeFianza } from "@/lib/avisos";
 import { deadlineHours, depositDueAt, depositState } from "@/lib/deposit-deadline";
 import { recargoActivo } from "@/lib/recargo-activo";
@@ -114,6 +114,7 @@ export function HoyArena() {
   const appointments = useCitasVisibles();
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
+  const duracionClientas = useSalonStore((s) => s.salonProfile.duracionClientas);
   const miembro = useMiembroActual();
   const permisos = usePermisos();
   // Dinero: el del salón (gerente), el suyo (estilista) o ninguno (recepción, subencargada).
@@ -840,6 +841,7 @@ function EstoTeEspera({
   const appointments = useSalonStore((s) => s.appointments);
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
+  const duracionClientas = useSalonStore((s) => s.salonProfile.duracionClientas);
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const markDepositRequested = useSalonStore((s) => s.markDepositRequested);
@@ -920,7 +922,7 @@ function EstoTeEspera({
             (sum, id) => sum + (serviceMap[id]?.durationMin ?? 0),
             0,
           );
-          const recordada = duracionRecordada(appointments, a.clientId, a.serviceIds, catalogoMin);
+          const recordada = duracionPropuesta(appointments, duracionClientas, a.clientId, a.serviceIds, catalogoMin, services);
           const propuesta = recordada?.minutos ?? (catalogoMin || a.duration);
           const elegida = duracionPorTarjeta[a.id] ?? propuesta;
           const emp = equipo.find((e) => e.id === a.employeeId);
@@ -1004,7 +1006,7 @@ function EstoTeEspera({
                   {recordada && (
                     <span className="ml-1 inline-flex items-center gap-1 text-[12.5px] text-cafe-medio">
                       <Clock3 className="size-3.5" strokeWidth={1.6} />
-                      La última vez tardó {recordada.minutos} min
+                      {recordada.fuente === "ficha" ? `Según su ficha tarda ${recordada.minutos} min` : `La última vez tardó ${recordada.minutos} min`}
                     </span>
                   )}
                 </div>

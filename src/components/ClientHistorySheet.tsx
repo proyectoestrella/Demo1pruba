@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { DuracionClienta } from "@/components/DuracionClienta";
 import { useSalonStore, selectServiceMap } from "@/lib/store";
 import { usaTpv123 } from "@/lib/plan-basico";
 import { fichaDeClienta } from "@/lib/ficha-clienta";
@@ -376,6 +377,7 @@ export function ClientHistorySheet({
               />
               <p className="mt-2 text-xs text-muted-foreground">Se guardan al salir del campo.</p>
             </section>
+            <DuracionClienta clientId={client.id} editable={puede(permisos, "clienta.editar")} />
 
             {/* El resto de próximas citas */}
             {masProximas.length > 0 && (

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
   aiInsights,
+  duracionDeClienta,
   clientFrequency,
   duracionRecordada,
   patronDeRegreso,
@@ -212,5 +213,18 @@ describe("aiInsights en un salón de un solo profesional", () => {
     expect(card).toBeDefined();
     expect(card!.body).toContain("Mario");
     expect(card!.body).toContain("vuelven");
+  });
+});
+
+describe("duracionDeClienta (22-oct)", () => {
+  const carta = { corte: 30, color: 60 };
+  it("usa el tiempo de la clienta y la carta para el resto", () => {
+    expect(duracionDeClienta({ olga: { corte: 35 } }, "olga", ["corte", "color"], carta)).toEqual({ minutos: 95 });
+  });
+  it("sin ficha, otra clienta o igual que la carta: nada", () => {
+    expect(duracionDeClienta(undefined, "olga", ["corte"], carta)).toBeNull();
+    expect(duracionDeClienta({ olga: { corte: 35 } }, "ana", ["corte"], carta)).toBeNull();
+    expect(duracionDeClienta({ olga: { color: 60 } }, "olga", ["color"], carta)).toBeNull();
+    expect(duracionDeClienta({ olga: { corte: 35 } }, "olga", ["color"], carta)).toBeNull();
   });
 });

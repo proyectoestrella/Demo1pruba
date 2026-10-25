@@ -100,7 +100,7 @@ export function accionesDeParchePerfil(claves: string[]): AccionId[] {
     else if (CLAVES_RESERVAS.has(c)) out.add("reservas.editar");
     else if (CLAVES_EQUIPO.has(c)) out.add("equipo.editar");
     else if (CLAVES_CARTA.has(c)) out.add("servicio.editar");
-    else if (c === "avataresClientas") out.add("clienta.editar");
+    else if (c === "avataresClientas" || c === "duracionClientas") out.add("clienta.editar");
     else if (c === "plan") out.add("plan.gestionar");
     else out.add("salon.editar");
   }

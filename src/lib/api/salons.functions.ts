@@ -453,6 +453,10 @@ export const getSalonProfile = createServerFn({ method: "GET" })
     if (!row) return { profile: null };
 
     const profile = row.profile as SalonProfile;
+    // Quien es del equipo recibe también lo que es de clientas concretas
+    // (duración por clienta, avatares de clientas); la web pública, no.
+    const quien = await acceso(data.slug).catch(() => null);
+    if (quien?.tipo === "miembro") return { profile: { ...profile, slug: row.slug } };
     return { profile: perfilPublico({ ...profile, slug: row.slug }) };
   });
 

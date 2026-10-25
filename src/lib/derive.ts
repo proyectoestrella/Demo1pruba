@@ -747,3 +747,48 @@ export function trendsForPeriod(
 
   return { citas, ingresos, ocupacion, clientesNuevos, cancelaciones };
 }
+
+/**
+ * Duración que tarda ESTA clienta con estos servicios según su ficha
+ * (`SalonProfile.duracionClientas`). Suma, servicio a servicio, su tiempo
+ * propio o el de la carta. `null` si su ficha no dice nada de ninguno de ellos
+ * o si el total coincide con la carta.
+ */
+export function duracionDeClienta(
+  duraciones: Record<string, Record<string, number>> | undefined,
+  clientId: string | undefined,
+  serviceIds: string[],
+  minutosCarta: Record<string, number | undefined>,
+): { minutos: number } | null {
+  if (!clientId || serviceIds.length === 0) return null;
+  const propias = duraciones?.[clientId];
+  if (!propias || !serviceIds.some((id) => Number(propias[id]) > 0)) return null;
+  let total = 0;
+  let carta = 0;
+  for (const id of serviceIds) {
+    const base = Math.max(0, Number(minutosCarta[id]) || 0);
+    const suya = Number(propias[id]);
+    carta += base;
+    total += suya > 0 ? suya : base;
+  }
+  return total > 0 && total !== carta ? { minutos: Math.round(total) } : null;
+}
+
+/**
+ * Duración que el panel propone para una cita de esta clienta: primero la de
+ * su ficha («Su tiempo»), si no la de su última visita con esos servicios.
+ */
+export function duracionPropuesta(
+  appts: Appointment[],
+  duraciones: Record<string, Record<string, number>> | undefined,
+  clientId: string | undefined,
+  serviceIds: string[],
+  duracionDeCatalogo: number,
+  carta: readonly { id: string; durationMin: number }[],
+): { minutos: number; cuando?: string; fuente: "ficha" | "ultima" } | null {
+  const minutosCarta = Object.fromEntries(carta.map((s) => [s.id, s.durationMin]));
+  const propia = duracionDeClienta(duraciones, clientId, serviceIds, minutosCarta);
+  if (propia && propia.minutos !== duracionDeCatalogo) return { minutos: propia.minutos, fuente: "ficha" };
+  const ultima = duracionRecordada(appts, clientId, serviceIds, duracionDeCatalogo);
+  return ultima ? { ...ultima, fuente: "ultima" } : null;
+}

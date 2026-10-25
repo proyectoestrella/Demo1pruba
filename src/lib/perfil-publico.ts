@@ -7,8 +7,10 @@ import type { SalonProfile } from "./mock/types";
  * permitida para que un campo interno añadido mañana tampoco se filtre.
  */
 export function perfilPublico(perfil: SalonProfile): SalonProfile {
+  // Datos de clientas concretas: nunca a la web pública.
+  const { duracionClientas: _duraciones, avataresClientas: _avatares, ...resto } = perfil;
   return {
-    ...perfil,
+    ...resto,
     bloqueosAgenda: perfil.bloqueosAgenda?.map(({ id, profesionalId, inicio, fin, recurrente }) => ({
       id,
       profesionalId,

@@ -26,7 +26,7 @@ import {
   textoTotalServicios,
 } from "@/lib/appointment-services";
 import { eur, hora } from "@/lib/copy";
-import { duracionRecordada } from "@/lib/derive";
+import { duracionPropuesta } from "@/lib/derive";
 import { duracionElegida } from "@/lib/duracion-flexible";
 import { fichaDeClienta } from "@/lib/ficha-clienta";
 import { buscarClientas } from "@/lib/buscar-clientas";
@@ -252,11 +252,13 @@ function FormularioNuevaCita({
   // Si a esta persona estos mismos servicios le llevaron otra cosa la última
   // vez, se propone ESO y se dice por qué. El catálogo sabe cuánto dura un
   // corte; no sabe cuánto dura el corte de esta clienta.
-  const recordada = duracionRecordada(
+  const recordada = duracionPropuesta(
     appointments,
+    profile.duracionClientas,
     clientChoice !== "__new" ? clientChoice : undefined,
     serviceIds,
     catalogoMin,
+    services,
   );
   const totalMin = duracionManual ?? recordada?.minutos ?? catalogoMin;
   const hayServicioElegido = !!otro || chosen.length > 0;
@@ -1090,14 +1092,20 @@ function FormularioNuevaCita({
                         strokeWidth={1.6}
                         aria-hidden="true"
                       />
-                      <span>
-                        La última vez tardó {recordada.minutos} min (
-                        {new Date(recordada.cuando).toLocaleDateString("es", {
-                          day: "numeric",
-                          month: "long",
-                        })}
-                        ), no los {catalogoMin} de la carta. Te proponemos {recordada.minutos}.
-                      </span>
+                      {recordada.fuente === "ficha" || !recordada.cuando ? (
+                        <span>
+                          Según su ficha, esta clienta tarda {recordada.minutos} min, no los {catalogoMin} de la carta. Te proponemos {recordada.minutos}.
+                        </span>
+                      ) : (
+                        <span>
+                          La última vez tardó {recordada.minutos} min (
+                          {new Date(recordada.cuando).toLocaleDateString("es", {
+                            day: "numeric",
+                            month: "long",
+                          })}
+                          ), no los {catalogoMin} de la carta. Te proponemos {recordada.minutos}.
+                        </span>
+                      )}
                     </p>
                   )}
                   {duracionManual !== null && duracionManual !== catalogoMin && (

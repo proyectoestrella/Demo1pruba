@@ -17,3 +17,10 @@ test("el perfil público conserva los bloqueos operativos pero no sus notas priv
   expect(JSON.stringify(perfilPublico(perfil))).not.toContain("secreto");
   expect(JSON.stringify(perfilPublico(perfil))).not.toContain("operación");
 });
+
+test("la duración por clienta y los avatares de clientas no salen a la web pública", () => {
+  const p = { ...({} as Record<string, unknown>), name: "S", duracionClientas: { c1: { corte: 35 } }, avataresClientas: { c1: {} } } as never;
+  const r = perfilPublico(p) as Record<string, unknown>;
+  expect(r.duracionClientas).toBeUndefined();
+  expect(r.avataresClientas).toBeUndefined();
+});

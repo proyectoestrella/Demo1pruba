@@ -13,7 +13,7 @@ import { employeeMap } from "@/lib/mock/salon";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { serviceLabelOf } from "@/lib/appointment-services";
-import { duracionRecordada } from "@/lib/derive";
+import { duracionPropuesta } from "@/lib/derive";
 import { enlaceDeFianza } from "@/lib/avisos";
 import { eur } from "@/lib/copy";
 import type { Appointment } from "@/lib/mock/types";
@@ -58,6 +58,7 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
   const appointments = useCitasVisibles();
   const clients = useSalonStore((s) => s.clients);
   const services = useSalonStore((s) => s.services);
+  const duracionClientas = useSalonStore((s) => s.salonProfile.duracionClientas);
   const updateAppointment = useSalonStore((s) => s.updateAppointment);
   const cancelAppointment = useSalonStore((s) => s.cancelAppointment);
   const pedirSenal = useSalonStore((s) => s.pedirSenal);
@@ -161,7 +162,7 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
             (sum, id) => sum + (serviceMap[id]?.durationMin ?? 0),
             0,
           );
-          const recordada = duracionRecordada(appointments, a.clientId, a.serviceIds, catalogoMin);
+          const recordada = duracionPropuesta(appointments, duracionClientas, a.clientId, a.serviceIds, catalogoMin, services);
           const propuesta = recordada?.minutos ?? (catalogoMin || a.duration);
           const duracionElegida = duracionPorTarjeta[a.id] ?? propuesta;
           const opciones = [...new Set([...DURATION_OPTIONS_MIN, catalogoMin, duracionElegida])]
@@ -207,7 +208,7 @@ export function PendingRequestsBanner({ onOpenDetail, plegable }: PendingRequest
                     <p className="flex items-start gap-1.5 text-xs text-primary">
                       <Clock3 className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
                       <span>
-                        Última visita: {recordada.minutos} min. Duración de la carta: {catalogoMin} min.
+                        {recordada.fuente === "ficha" ? "Su ficha" : "Última visita"}: {recordada.minutos} min. Duración de la carta: {catalogoMin} min.
                       </span>
                     </p>
                   )}

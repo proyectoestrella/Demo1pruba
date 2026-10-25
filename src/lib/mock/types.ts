@@ -426,6 +426,13 @@ export interface SalonProfile {
   coloresProfesional?: Record<string, number>;
   /** Avatar elegido de cada clienta (por id) y de cada profesional (por id). Incluye el formato histórico para que perfiles guardados sigan viéndose. */
   avataresClientas?: Record<string, import("../avatar").AvatarGuardado>;
+  /**
+   * Duración por clienta (22-oct, PeluChic: «hay unas que tardan más»):
+   * clienta → servicio → minutos que tarda ELLA. Manda sobre la carta y sobre
+   * «la última vez» al proponer la duración en el panel. Nunca sale a la web
+   * pública (ver perfil-publico.ts).
+   */
+  duracionClientas?: Record<string, Record<string, number>>;
   avataresEquipo?: Record<string, import("../avatar").AvatarGuardado>;
   /**
    * Equipo real del salón, de 1 a 6 entradas ("Nombre" o "Nombre~Especialidad"
