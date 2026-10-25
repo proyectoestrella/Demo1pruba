@@ -401,6 +401,7 @@ function BookingWizard() {
   const showBookingQuestions = preguntas.length > 0;
   const requireBookingQuestions = preguntas.some((p) => p.obligatoria);
   const faltanRespuestas = obligatoriasSinResponder(preguntas, data.bookingAnswers);
+  const [intentoPaso, setIntentoPaso] = useState<number | null>(null);
   const [step, setStep] = useState<PasoReserva>(() =>
     pasoInicial(data.serviceIds.length > 0, soloUno),
   );
@@ -901,7 +902,7 @@ function BookingWizard() {
         : step === 3
           ? !data.employeeId || availableEmployeesAtSelectedTime.length === 0
           : faltasDatos.length > 0;
-  const ctaHint = ctaDisabled
+  const ctaHint = ctaDisabled && intentoPaso === step
     ? step === 1
       ? "Elige un servicio"
       : step === 2
@@ -922,7 +923,14 @@ function BookingWizard() {
   // En la barra fija de móvil no cabe el importe dos veces: ya se ve a la izquierda.
   const ctaLabelCorto = step < 4 ? "Continuar" : "Confirmar";
 
+  // El aviso de lo que falta solo sale tras intentar continuar (25-oct noche:
+  // «Elige un servicio» en rojo antes de tocar nada asustaba).
   function onCta() {
+    if (ctaDisabled) {
+      setIntentoPaso(step);
+      return;
+    }
+    setIntentoPaso(null);
     if (step < 4) next();
     else void confirm();
   }
@@ -1384,7 +1392,7 @@ function BookingWizard() {
  * aún no se puede pulsar.
  */
 const BOTON_DESACTIVADO =
-  "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
+  "aria-disabled:bg-muted aria-disabled:text-muted-foreground aria-disabled:opacity-100";
 
 /** Rótulos del calendario en español para el lector de pantalla. */
 const ETIQUETAS_CALENDARIO = {
@@ -2280,7 +2288,7 @@ function BookingSummary({
           </div>
           <Button
             onClick={onCta}
-            disabled={ctaDisabled}
+            aria-disabled={ctaDisabled || undefined}
             className={cn(
               "h-12 shrink-0 rounded-full px-6 text-[15px] font-semibold",
               BOTON_DESACTIVADO,
@@ -2363,7 +2371,7 @@ function BookingSummary({
         )}
         <Button
           onClick={onCta}
-          disabled={ctaDisabled}
+          aria-disabled={ctaDisabled || undefined}
           className={cn(
             "mt-6 h-12 w-full rounded-full text-[15px] font-semibold",
             BOTON_DESACTIVADO,
