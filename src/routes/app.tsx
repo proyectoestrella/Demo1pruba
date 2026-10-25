@@ -384,7 +384,8 @@ function DashboardLayoutV1() {
   // Una pantalla que el plan no incluye (Caja, Analítica, Marketing, Lista de
   // espera con el Básico) no existe: ni se pinta ni enseña tarjeta de plan;
   // una URL escrita a mano vuelve a Inicio. Vale igual en salón real y demo.
-  const fueraDelPlan = !rutaIncluidaEnPlan(path, plan);
+  const slugPlan = useSalonStore((s) => s.realSalonSlug ?? s.salonProfile.slug);
+  const fueraDelPlan = !rutaIncluidaEnPlan(path, plan, slugPlan);
   const navigate = useNavigate();
   useEffect(() => {
     if (fueraDelPlan) void navigate({ to: "/app", replace: true });

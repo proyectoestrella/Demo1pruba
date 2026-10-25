@@ -141,10 +141,11 @@ function useGruposVisibles() {
   const modulosOcultos = useSalonStore((s) => s.salonProfile.modulosOcultos);
   const permisos = usePermisos();
   const plan = usePlanSalon();
+  const slugPlan = useSalonStore((s) => s.realSalonSlug ?? s.salonProfile.slug);
   const visible = (i: NavItem) =>
     (!i.modulo || moduloVisibleEnPanel({ modulosOcultos }, i.modulo)) &&
     veRuta(permisos, i.to) &&
-    rutaIncluidaEnPlan(i.to, plan);
+    rutaIncluidaEnPlan(i.to, plan, slugPlan);
   return GRUPOS_NAV.map((g) => ({
     ...g,
     items: g.items
@@ -162,7 +163,8 @@ function useSolicitudesPendientes() {
 function useBarraMovil(grupos: { items: NavItem[] }[]): NavItem[] {
   const permisos = usePermisos();
   const plan = usePlanSalon();
-  const fijos = BARRA_MOVIL.filter((i) => veRuta(permisos, i.to) && rutaIncluidaEnPlan(i.to, plan));
+  const slugPlan = useSalonStore((s) => s.realSalonSlug ?? s.salonProfile.slug);
+  const fijos = BARRA_MOVIL.filter((i) => veRuta(permisos, i.to) && rutaIncluidaEnPlan(i.to, plan, slugPlan));
   const resto = grupos.flatMap((g) => g.items).filter((i) => !fijos.some((f) => f.to === i.to));
   return [...fijos, ...resto].slice(0, 4);
 }

@@ -19,7 +19,7 @@ afterAll(() => { m1.desactivar(); m2.desactivar(); });
 instalarDobleStart();
 const S = await import("./salons.functions?espera");
 
-const perfil = { ...salon };
+const perfil = { ...salon, plan: "reservas-asistente" };
 const servicio = servicesForType("barberia", perfil.menu)[0];
 const alta = (extra: Record<string, unknown> = {}) => ({
   slug: "real", clientName: "Clienta Web", phone: "+34 699 88 87 77", serviceId: servicio.id,
@@ -60,6 +60,18 @@ describe("apuntarseListaEsperaPublica", () => {
       waitlist: Array.from({ length: 150 }, (_, i) => ({ salon_slug: "real", local_id: `x${i}`, phone: `+3460000${String(i).padStart(4, "0")}`, service_id: servicio.id })),
     });
     expect(await llamar(S.apuntarseListaEsperaPublica, alta())).toEqual({ synced: false, reason: "ESPERA_LLENA" });
+  });
+  it("en el plan Básico (sin pantalla de lista de espera) no guarda nada", async () => {
+    doble = crearDobleSupabase({ salons: [{ slug: "real", profile: { ...salon, plan: "reservas" } }], waitlist: [] });
+    expect(await llamar(S.apuntarseListaEsperaPublica, alta())).toEqual({ synced: false, reason: "ESPERA_SIN_PLAN" });
+    doble = crearDobleSupabase({ salons: [{ slug: "real", profile: { ...salon, plan: undefined } }], waitlist: [] });
+    expect(await llamar(S.apuntarseListaEsperaPublica, alta())).toEqual({ synced: false, reason: "ESPERA_SIN_PLAN" });
+    expect(doble.tablas.waitlist).toHaveLength(0);
+  });
+  it("PeluChic tiene lista de espera aunque su plan sea el Básico (25-oct)", async () => {
+    doble = crearDobleSupabase({ salons: [{ slug: "peluchic", profile: { ...salon, plan: "reservas" } }], waitlist: [] });
+    const r = await llamar<{ synced: boolean }>(S.apuntarseListaEsperaPublica, alta({ slug: "peluchic" }));
+    expect(r.synced).toBe(true);
   });
   it("un slug sin fila en salons (demo) no guarda nada", async () => {
     expect(await llamar(S.apuntarseListaEsperaPublica, alta({ slug: "demo-x" }))).toEqual({ synced: false });

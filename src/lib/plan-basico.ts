@@ -18,9 +18,20 @@ export function usaTpv123(perfil: { clientImportOrigin?: string | null }): boole
   return perfil.clientImportOrigin === "tpv123";
 }
 
-/** ¿Tiene este plan la pantalla? El Básico no ve ninguna de `RUTAS_SOLO_COMPLETO`. */
-export function rutaIncluidaEnPlan(path: string, plan: PlanSishow): boolean {
-  return plan !== "reservas" || !rutaSoloCompleto(path);
+/**
+ * Pantallas de fuera del Básico que un salón concreto tiene igualmente.
+ * 25-oct (Tomás): a PeluChic entra todo lo que pidió en la formación del
+ * 22-oct, también la lista de espera (con alta desde la web).
+ */
+export const RUTAS_EXTRA_POR_SALON: Record<string, readonly string[]> = {
+  peluchic: ["/app/waitlist"],
+};
+
+/** ¿Tiene este plan la pantalla? El Básico no ve ninguna de `RUTAS_SOLO_COMPLETO`, salvo las extra de su salón. */
+export function rutaIncluidaEnPlan(path: string, plan: PlanSishow, slug?: string | null): boolean {
+  if (plan !== "reservas" || !rutaSoloCompleto(path)) return true;
+  const extra = slug ? RUTAS_EXTRA_POR_SALON[slug] : undefined;
+  return !!extra?.some((ruta) => path === ruta || path.startsWith(`${ruta}/`));
 }
 
 /**

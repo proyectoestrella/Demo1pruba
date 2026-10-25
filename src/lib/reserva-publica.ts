@@ -33,6 +33,8 @@ export const ERROR_RESERVA_LEJANA = "RESERVA_LEJANA";
 export const ERROR_DEMASIADAS_RESERVAS = "RESERVA_DEMASIADAS";
 export const ERROR_ESPERA_LLENA = "ESPERA_LLENA";
 export const ERROR_ESPERA_SERVICIO = "ESPERA_SERVICIO_NO_DISPONIBLE";
+/** El plan del salón no incluye lista de espera: la web no debe recoger datos que nadie verá. */
+export const ERROR_ESPERA_SIN_PLAN = "ESPERA_SIN_PLAN";
 
 /** Tope de entradas en la lista de espera de un salón: la web pública no puede llenarla sin límite. */
 export const MAX_LISTA_ESPERA_POR_SALON = 150;

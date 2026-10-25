@@ -83,6 +83,7 @@ import {
 import { reintentarSalonPublico } from "@/lib/use-real-salon";
 import { sumServices } from "@/lib/appointment-services";
 import { ApuntarseEsperaWeb } from "@/components/ApuntarseEsperaWeb";
+import { webOfreceListaEspera } from "@/lib/lista-espera-publica";
 import { resumenServiciosReserva } from "@/lib/resumen-servicios-reserva";
 import { FluidSteps } from "@/components/twentyfirst/fluid-steps";
 import { capitalizar, eur, fechaLarga } from "@/lib/copy";
@@ -903,7 +904,7 @@ function BookingWizard() {
               selectedTime={data.time}
               onPick={(date, time) => setData((d) => ({ ...d, date, time }))}
               onElegirProfesional={(id) => setData((d) => ({ ...d, employeeId: id }))}
-              espera={realSlug ? { salonSlug, salonName: profile.name } : undefined}
+              espera={realSlug && webOfreceListaEspera({ plan: profile.plan, slug: salonSlug }) ? { salonSlug, salonName: profile.name } : undefined}
               employees={eligibleEmployees}
               smartSpread={!!profile.smartSpread}
               lastSlotBufferMin={profile.lastSlotBufferMin ?? 0}
@@ -1898,7 +1899,7 @@ function DateTimeStep({
           <Calendar
             mode="single"
             locale={es}
-            className="bg-transparent p-1 [--cell-size:2.6rem] sm:[--cell-size:2.75rem]"
+            className="bg-transparent p-1 [--cell-size:2.75rem]"
             labels={ETIQUETAS_CALENDARIO}
             classNames={{ today: "rounded-full bg-transparent font-bold text-foreground" }}
             selected={activeDate}
@@ -2023,7 +2024,7 @@ function DateTimeStep({
                         aria-pressed={stylistChoice === "any"}
                         onClick={() => onElegirProfesional("any")}
                         className={cn(
-                          "rounded-full border px-4 py-1.5 text-sm",
+                          "min-h-11 rounded-full border px-4 py-1.5 text-sm",
                           stylistChoice === "any" ? "border-primary bg-primary/10 font-bold" : "border-border hover:bg-muted",
                         )}
                       >
@@ -2037,7 +2038,7 @@ function DateTimeStep({
                         aria-pressed={stylistChoice === e.id}
                         onClick={() => onElegirProfesional(e.id)}
                         className={cn(
-                          "rounded-full border px-4 py-1.5 text-sm",
+                          "min-h-11 rounded-full border px-4 py-1.5 text-sm",
                           stylistChoice === e.id ? "border-primary bg-primary/10 font-bold" : "border-border hover:bg-muted",
                         )}
                       >

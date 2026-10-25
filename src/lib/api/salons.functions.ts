@@ -71,6 +71,7 @@ import {
   ERROR_DEMASIADAS_RESERVAS,
   ERROR_ESPERA_LLENA,
   ERROR_ESPERA_SERVICIO,
+  ERROR_ESPERA_SIN_PLAN,
   MAX_LISTA_ESPERA_POR_SALON,
   HORIZONTE_RESERVA_DIAS,
   MAX_RESERVAS_POR_TELEFONO_Y_DIA,
@@ -93,6 +94,7 @@ import {
   type WaitlistRow,
 } from "../salon-rows";
 import type { Appointment, Client, SalonProfile, WaitlistEntry } from "../mock/types";
+import { webOfreceListaEspera } from "../lista-espera-publica";
 import { equipoCabeEnPlan, planDe } from "../plan";
 import { exigirFuncionPlanEn } from "./plan-guardas.server";
 import {
@@ -1146,6 +1148,7 @@ export const apuntarseListaEsperaPublica = createServerFn({ method: "POST" })
     if (!perfil || !datosReservaPublicaDesdeCarta(perfil, [data.serviceId])) {
       return { synced: false as const, reason: ERROR_ESPERA_SERVICIO };
     }
+    if (!webOfreceListaEspera({ plan: perfil.plan, slug: data.slug })) return { synced: false as const, reason: ERROR_ESPERA_SIN_PLAN };
     const { data: actuales, error: errorLista } = await supabase
       .from("waitlist")
       .select("local_id, phone, service_id")
