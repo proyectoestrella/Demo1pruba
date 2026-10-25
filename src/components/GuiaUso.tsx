@@ -155,7 +155,16 @@ function anchoTope(p: Paso): number {
 
 export function GuiaUso() {
   const plan = usePlanSalon();
-  const apartados = plan === "reservas" ? APARTADOS.filter((a) => !["senal", "caja", "asistente"].includes(a.id)) : APARTADOS;
+  // Básico: sin señal, caja, asistente ni lista de espera (el apartado de
+  // clientas se queda sin el paso de la espera).
+  const apartados =
+    plan === "reservas"
+      ? APARTADOS.filter((a) => !["senal", "caja", "asistente"].includes(a.id)).map((a) =>
+          a.id === "clientas"
+            ? { ...a, titulo: "Clientas", pasos: a.pasos.filter((p) => !p.src.includes("espera")) }
+            : a,
+        )
+      : APARTADOS;
   const [ampliada, setAmpliada] = useState<Paso | null>(null);
   return (
     <div className="space-y-6">

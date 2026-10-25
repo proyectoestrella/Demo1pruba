@@ -1,4 +1,3 @@
-import { AvisoHuecoLiberado } from "@/components/AvisoHuecoLiberado";
 import { hostActual, slugSalonDelHost } from "@/lib/host-actual";
 // Escucha `beforeinstallprompt` desde que se entra al panel (ver lib/instalar-panel).
 import "@/lib/instalar-panel";
@@ -438,7 +437,6 @@ function DashboardLayoutV1() {
         )}
       >
         <MenuLateral path={path} />
-        <AvisoHuecoLiberado />
 
         <div
           data-panel={conPanel ? "abierto" : "cerrado"}

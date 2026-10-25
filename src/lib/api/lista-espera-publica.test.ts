@@ -68,10 +68,9 @@ describe("apuntarseListaEsperaPublica", () => {
     expect(await llamar(S.apuntarseListaEsperaPublica, alta())).toEqual({ synced: false, reason: "ESPERA_SIN_PLAN" });
     expect(doble.tablas.waitlist).toHaveLength(0);
   });
-  it("PeluChic tiene lista de espera aunque su plan sea el Básico (25-oct)", async () => {
+  it("PeluChic (Básico) no tiene lista de espera: la web no guarda nada (25-oct noche)", async () => {
     doble = crearDobleSupabase({ salons: [{ slug: "peluchic", profile: { ...salon, plan: "reservas" } }], waitlist: [] });
-    const r = await llamar<{ synced: boolean }>(S.apuntarseListaEsperaPublica, alta({ slug: "peluchic" }));
-    expect(r.synced).toBe(true);
+    expect(await llamar(S.apuntarseListaEsperaPublica, alta({ slug: "peluchic" }))).toEqual({ synced: false, reason: "ESPERA_SIN_PLAN" });
   });
   it("un slug sin fila en salons (demo) no guarda nada", async () => {
     expect(await llamar(S.apuntarseListaEsperaPublica, alta({ slug: "demo-x" }))).toEqual({ synced: false });
