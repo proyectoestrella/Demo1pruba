@@ -384,9 +384,12 @@ function FormularioNuevaCita({
     () => clientasFrecuentes(appointments, clients, new Date()),
     [appointments, clients],
   );
-  const resultados = busqueda.trim()
-    ? buscarClientas(busqueda, { clientes: clients, citas: appointments }).slice(0, 7)
+  const encontradas = busqueda.trim()
+    ? buscarClientas(busqueda, { clientes: clients, citas: appointments })
     : [];
+  // 22-oct: con «Marta» solo salían 7 y parecía que faltaban clientas. Se
+  // enseñan hasta 40 (con barra) y se dice cuántas hay en total.
+  const resultados = encontradas.slice(0, 40);
   const fichaRapida = elegida
     ? fichaDeClienta(elegida.id, {
         citas: appointments,
@@ -749,9 +752,13 @@ function FormularioNuevaCita({
                         />
                       </label>
                       <p className="mt-4 mb-1.5 text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase">
-                        {busqueda.trim() ? "Resultados" : "Vienen a menudo"}
+                        {busqueda.trim()
+                          ? encontradas.length > resultados.length
+                            ? `${encontradas.length} clientas · escribe también el apellido`
+                            : `${encontradas.length} ${encontradas.length === 1 ? "clienta" : "clientas"}`
+                          : "Vienen a menudo"}
                       </p>
-                      <div className="grid gap-1 sm:grid-cols-2">
+                      <div className="grid max-h-80 gap-1 overflow-y-auto sm:grid-cols-2">
                         {(busqueda.trim()
                           ? resultados.map((c) => ({ client: c, detalle: c.phone }))
                           : frecuentes.map((f) => ({
