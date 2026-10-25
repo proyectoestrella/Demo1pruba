@@ -337,7 +337,8 @@ function BookingWizard() {
     [services],
   );
   const contextoSolape = useMemo<ContextoSolape>(
-    () => ({ servicios: serviceMap, perfil: profile }),
+    // Web: sin solape por exposición (la exclusión SQL de producción lo rechazaría).
+    () => ({ servicios: serviceMap, perfil: profile, sinExposicion: true }),
     [serviceMap, profile.exposicionServicios, profile.maxClientasExposicion, profile.lavado],
   );
   const employees = useMemo(

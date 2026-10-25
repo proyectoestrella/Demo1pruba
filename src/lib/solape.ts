@@ -28,6 +28,13 @@ type PerfilExposicion = Partial<
 export interface ContextoSolape {
   servicios?: Record<string, ServicioParaExposicion>;
   perfil?: PerfilExposicion;
+  /**
+   * Reserva WEB (25-oct noche): sin solape por exposición. La exclusión SQL
+   * de producción (`appointments_web_sin_solape_excl`) rechaza dos reservas
+   * web que se pisen, así que la web no puede ofrecer esos huecos. El panel
+   * sí aprovecha la exposición.
+   */
+  sinExposicion?: boolean;
 }
 
 export interface CitaParaSolape {
@@ -154,6 +161,7 @@ export function tramosActivosDeCita(
   const hasta = desde + cita.duration * 60_000;
   if (!Number.isFinite(desde) || !Number.isFinite(hasta) || hasta <= desde) return [];
   const total = { desde, hasta };
+  if (contexto.sinExposicion) return [total];
   if (cita.tramosActivos?.length) {
     return cita.tramosActivos
       .map(([a, b]) => ({ desde: desde + a * 60_000, hasta: Math.min(hasta, desde + b * 60_000) }))

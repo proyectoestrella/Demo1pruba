@@ -208,3 +208,13 @@ describe("web pública: tramos activos sin servicios (25-oct)", () => {
     expect(cabeCitaEnAgenda([anonima], { employeeId: "e1", start: "2026-10-27T08:00:00Z", duration: 15, status: "pending" }, {})).toBe(false);
   });
 });
+
+describe("web sin exposición (25-oct noche: coherente con la exclusión SQL)", () => {
+  const servicios = { "color-organico": { id: "color-organico", name: "Color de cobertura Organico", durationMin: 60 } };
+  const color = { id: "a", employeeId: "e1", start: "2026-10-27T08:00:00Z", duration: 60, serviceIds: ["color-organico"], status: "confirmed" };
+  it("en el panel cabe otra cita en la exposición; en la web, no", () => {
+    const nueva = { employeeId: "e1", start: "2026-10-27T08:15:00Z", duration: 15, status: "pending" };
+    expect(cabeCitaEnAgenda([color], nueva, { servicios })).toBe(true);
+    expect(cabeCitaEnAgenda([color], nueva, { servicios, sinExposicion: true })).toBe(false);
+  });
+});

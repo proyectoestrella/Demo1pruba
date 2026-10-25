@@ -264,7 +264,7 @@ describe("reserva pública durante la exposición", () => {
     created_at: "2026-10-18T10:00:00.000Z",
   };
 
-  it("acepta otra cita corta dentro de los 30 minutos de exposición", async () => {
+  it("la web NO acepta otra cita en la exposición (la exclusión SQL de producción la rechazaría)", async () => {
     doble = crearDobleSupabase({
       salons: [{ slug: "real", profile: perfilColor }],
       appointments: [colorGuardado],
@@ -280,7 +280,7 @@ describe("reserva pública durante la exposición", () => {
         clientPhone: "699888777",
       }),
     );
-    expect(r).toEqual({ synced: true });
+    expect(r).toEqual({ synced: false, reason: "RESERVA_HUECO_OCUPADO" });
   });
 
   it("fuera de la exposición devuelve RESERVA_HUECO_OCUPADO", async () => {
