@@ -1,6 +1,7 @@
 import type { Appointment, Client, Employee } from "./mock/types";
 import { franjasProfesional, trabajaEn } from "./horario-equipo";
 import { toDateKey } from "./reparto";
+import { fechaEnZona } from "./zona-horaria";
 
 export type DecisionGuardadoCita = {
   aviso: string | null;
@@ -136,4 +137,28 @@ export function duracionLegible(min: number): string {
   const h = Math.floor(min / 60);
   const m = min % 60;
   return m ? `${h} h ${m}` : `${h} h`;
+}
+
+/**
+ * Otras citas vivas de la misma clienta ese día (22-oct: «si una clienta coge
+ * dos citas el mismo día, que salga el aviso»). Ordenadas por hora.
+ */
+export function otrasCitasDelDia(
+  appts: readonly Appointment[],
+  clientId: string | undefined,
+  fecha: string,
+  timeZone: string,
+  excluirId?: string,
+): Appointment[] {
+  if (!clientId) return [];
+  return appts
+    .filter(
+      (a) =>
+        a.clientId === clientId &&
+        a.id !== excluirId &&
+        a.status !== "cancelled" &&
+        a.status !== "no-show" &&
+        fechaEnZona(a.start, timeZone) === fecha,
+    )
+    .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
 }

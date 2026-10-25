@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Appointment, Client, Employee } from "./mock/types";
 import {
   citasQueOcupan,
+  otrasCitasDelDia,
   clientasFrecuentes,
   decisionGuardadoCita,
   diasParaElegir,
@@ -105,3 +106,12 @@ describe("guardado con aviso", () => {
 
 // solapaConAgenda ya no es una maqueta: es `src/lib/solape.ts` (BACKEND),
 // con su propia cobertura en `src/lib/solape.test.ts`.
+
+describe("otrasCitasDelDia", () => {
+  const cita = (id: string, start: string, status = "confirmed") => ({ id, clientId: "c1", start, status }) as never;
+  test("encuentra las del mismo día de la clienta, sin canceladas", () => {
+    const appts = [cita("a", "2026-10-27T08:00:00Z"), cita("b", "2026-10-27T15:00:00Z", "cancelled"), cita("c", "2026-10-28T08:00:00Z")];
+    expect(otrasCitasDelDia(appts, "c1", "2026-10-27", "Europe/Madrid").map((a: { id: string }) => a.id)).toEqual(["a"]);
+    expect(otrasCitasDelDia(appts, "c1", "2026-10-27", "Europe/Madrid", "a")).toEqual([]);
+  });
+});

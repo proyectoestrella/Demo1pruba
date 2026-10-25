@@ -34,12 +34,14 @@ import { indiceColorServicio } from "@/lib/hoy-arena";
 import { franjasProfesionalEnFecha, trabajaEnFecha } from "@/lib/horario-equipo";
 import { hayBloqueoEnHueco } from "@/lib/bloqueos-agenda";
 import { profesionalHaceServicios } from "@/lib/servicios-profesional";
+import { horaEnZona } from "@/lib/zona-horaria";
 import { profesionalesDisponiblesEnHueco } from "@/lib/reparto";
 import {
   clientasFrecuentes,
   decisionGuardadoCita,
   diasParaElegir,
   duracionLegible,
+  otrasCitasDelDia,
 } from "@/lib/nueva-cita";
 import { solapaConAgenda } from "@/lib/solape";
 import type { OpcionesGuardado } from "@/lib/salon-sync";
@@ -1098,6 +1100,16 @@ function FormularioNuevaCita({
                       claseChip={opcion(false)}
                     />
                   </div>
+                  {(() => {
+                    const otras = otrasCitasDelDia(appointments, clientChoice !== "__new" ? clientChoice : undefined, date, zonaHoraria);
+                    if (!otras.length) return null;
+                    return (
+                      <p className="mt-2 rounded-xl bg-warning/15 px-3 py-2 text-[12.5px] font-medium text-foreground">
+                        Esta clienta ya tiene {otras.length === 1 ? "otra cita" : `${otras.length} citas`} ese día:{" "}
+                        {otras.map((o) => horaEnZona(o.start, zonaHoraria)).join(", ")}.
+                      </p>
+                    );
+                  })()}
                   {recordada && duracionManual === null && (
                     <p className="mt-2 flex items-start gap-1.5 text-[12.5px] text-primary">
                       <Clock3
