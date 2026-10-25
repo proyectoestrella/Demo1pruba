@@ -32,6 +32,7 @@ export const CLAVES_BORRABLES = [
   "descripcionesServicios",
   "nifResponsable",
   "lavado",
+  "exposicionServicios",
 ] as const;
 
 /** El parche tal y como debe viajar: lo vaciado (`undefined`) pasa a `null` en las claves borrables. */

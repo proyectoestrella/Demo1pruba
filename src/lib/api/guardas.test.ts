@@ -74,6 +74,7 @@ describe("guardas de escritura por rol", () => {
         "preguntasReserva",
         "ocultarPrecioReserva",
         "smartSpread",
+        "maxClientasExposicion",
       ]).sort(),
     ).toEqual(["reservas.editar"]);
     const conReservas: Acceso = {
@@ -86,6 +87,10 @@ describe("guardas de escritura por rol", () => {
     };
     expect(() => exigirAcciones(conReservas, ["reservas.editar"])).not.toThrow();
     expect(() => exigirAcciones(conReservas, ["salon.editar"])).toThrow(PermisoDenegado);
+  });
+
+  it("los tiempos de exposición forman parte de la edición de servicios", () => {
+    expect(accionesDeParchePerfil(["exposicionServicios"])).toEqual(["servicio.editar"]);
   });
 
   it("el acceso a web cubre todo su editor, pero no el plan ni la gestión del salón", () => {
@@ -123,7 +128,13 @@ describe("guardas de escritura por rol", () => {
 });
 
 it("un destino nulo no convierte alcance propio en permiso general", () => {
-  const estilista: Acceso = { tipo: "miembro", userId: "sara", rol: "estilista", employeeId: "sara", displayName: null };
+  const estilista: Acceso = {
+    tipo: "miembro",
+    userId: "sara",
+    rol: "estilista",
+    employeeId: "sara",
+    displayName: null,
+  };
   for (const destino of [null, undefined, "otra"]) {
     expect(() => exigirAcciones(estilista, ["calendario-externo.gestionar"], [destino])).toThrow();
     expect(() => exigirAcciones(estilista, ["cita.editar"], [destino])).toThrow();

@@ -15,6 +15,7 @@ import { servicesForType } from "./mock/salon";
 import { sumServices } from "./appointment-services";
 import { duracionDeAgenda } from "./duracion-flexible";
 import { ZONA_HORARIA_SALON, fechaEnZona, momentoLocal, zonaDelSalon } from "./zona-horaria";
+import { cabeCitaEnAgenda } from "./solape";
 
 export { ZONA_HORARIA_SALON, momentoLocal } from "./zona-horaria";
 
@@ -158,13 +159,16 @@ export function haySolape(
   duracionMin: number,
   citas: Array<{ start_at: string; duration_min: number; status: string }>,
 ): boolean {
-  const desde = Date.parse(inicio);
-  const hasta = desde + duracionMin * 60_000;
-  return citas.some((cita) => {
-    if (cita.status === "cancelled" || cita.status === "no-show") return false;
-    const otroInicio = Date.parse(cita.start_at);
-    return otroInicio < hasta && otroInicio + cita.duration_min * 60_000 > desde;
-  });
+  return !cabeCitaEnAgenda(
+    citas.map((cita, indice) => ({
+      id: String(indice),
+      employeeId: "profesional",
+      start: cita.start_at,
+      duration: cita.duration_min,
+      status: cita.status,
+    })),
+    { employeeId: "profesional", start: inicio, duration: duracionMin, status: "pending" },
+  );
 }
 
 /**

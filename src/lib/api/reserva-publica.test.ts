@@ -9,13 +9,21 @@ import { salon, employees } from "../mock/salon";
 import { datosReservaPublicaDesdeCarta } from "../reserva-publica";
 
 let doble = crearDobleSupabase({});
-const m1 = await mockTransitorio("../supabase.server", { getSupabaseServerClient: () => doble as never });
+const m1 = await mockTransitorio("../supabase.server", {
+  getSupabaseServerClient: () => doble as never,
+});
 const m2 = await mockTransitorio("@tanstack/react-start/server", {
   getRequestHeader: (() => undefined) as never,
   getRequestUrl: (() => new URL("https://sishow.test/x")) as never,
 });
-beforeAll(() => { m1.activar(); m2.activar(); });
-afterAll(() => { m1.desactivar(); m2.desactivar(); });
+beforeAll(() => {
+  m1.activar();
+  m2.activar();
+});
+afterAll(() => {
+  m1.desactivar();
+  m2.desactivar();
+});
 instalarDobleStart();
 const S = await import("./salons.functions?doble");
 
@@ -25,21 +33,41 @@ const datos = datosReservaPublicaDesdeCarta(perfil as never, [servicio.id])!;
 
 /** Próximo martes a las 11:00 Madrid, aprox. (UTC+1/+2: se prueba 10:00Z). */
 function proximoDia(dow: number, horaUTC = 10) {
-  const d = new Date(); d.setUTCDate(d.getUTCDate() + 3);
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + 3);
   while (d.getUTCDay() !== dow) d.setUTCDate(d.getUTCDate() + 1);
   d.setUTCHours(horaUTC, 0, 0, 0);
   return d.toISOString();
 }
 const reserva = (extra: Record<string, unknown> = {}) => ({
-  slug: "real", localId: `loc-${Math.random()}`, clientName: "Atacante", clientPhone: "600111222", clientEmail: "atacante@malo.test",
-  serviceIds: [servicio.id], employeeId: employees[0].id, startISO: proximoDia(2), durationMin: datos.durationMin, priceEur: datos.priceEur,
-  status: "pending", privacyNoticeAccepted: true, ...extra,
+  slug: "real",
+  localId: `loc-${Math.random()}`,
+  clientName: "Atacante",
+  clientPhone: "600111222",
+  clientEmail: "atacante@malo.test",
+  serviceIds: [servicio.id],
+  employeeId: employees[0].id,
+  startISO: proximoDia(2),
+  durationMin: datos.durationMin,
+  priceEur: datos.priceEur,
+  status: "pending",
+  privacyNoticeAccepted: true,
+  ...extra,
 });
 
 beforeEach(() => {
   doble = crearDobleSupabase({
     salons: [{ slug: "real", profile: perfil }],
-    clients: [{ id: "c1", salon_slug: "real", name: "Marta Pérez", phone: "600 111 222", phone_key: "600111222", email: "marta@real.test" }],
+    clients: [
+      {
+        id: "c1",
+        salon_slug: "real",
+        name: "Marta Pérez",
+        phone: "600 111 222",
+        phone_key: "600111222",
+        email: "marta@real.test",
+      },
+    ],
   });
 });
 
@@ -57,18 +85,29 @@ describe("A4: la reserva pública no pisa los datos de una clienta existente", (
 describe("Teléfono: el servidor valida y guarda en E.164", () => {
   for (const malo of ["1245", "12345678", "abcdefghi"]) {
     it(`rechaza «${malo}» sin guardar nada`, async () => {
-      const r = await llamar<{ synced: boolean; reason?: string }>(S.syncAppointment, reserva({ clientPhone: malo, clientName: "X" }));
+      const r = await llamar<{ synced: boolean; reason?: string }>(
+        S.syncAppointment,
+        reserva({ clientPhone: malo, clientName: "X" }),
+      );
       expect(r).toEqual({ synced: false, reason: "TELEFONO_INVALIDO" });
       expect(doble.escrituras.filter((e) => e.tabla === "appointments")).toHaveLength(0);
     });
   }
   it("una clienta nueva queda con el teléfono en E.164 y su phone_key de 9 cifras", async () => {
-    const r = await llamar<{ synced: boolean }>(S.syncAppointment, reserva({ clientPhone: "+34 699 88 87 77", clientName: "Nueva" }));
+    const r = await llamar<{ synced: boolean }>(
+      S.syncAppointment,
+      reserva({ clientPhone: "+34 699 88 87 77", clientName: "Nueva" }),
+    );
     expect(r.synced).toBe(true);
-    expect(doble.tablas.clients.find((c) => c.phone_key === "699888777")).toMatchObject({ phone: "+34699888777" });
+    expect(doble.tablas.clients.find((c) => c.phone_key === "699888777")).toMatchObject({
+      phone: "+34699888777",
+    });
   });
   it("una ficha antigua («600 111 222») sigue casando al reservar con +34", async () => {
-    const r = await llamar<{ synced: boolean }>(S.syncAppointment, reserva({ clientPhone: "+34600111222" }));
+    const r = await llamar<{ synced: boolean }>(
+      S.syncAppointment,
+      reserva({ clientPhone: "+34600111222" }),
+    );
     expect(r.synced).toBe(true);
     expect(doble.tablas.clients.filter((c) => c.phone_key === "600111222")).toHaveLength(1);
     const cita = doble.escrituras.find((e) => e.tabla === "appointments" && e.op === "upsert");
@@ -78,9 +117,15 @@ describe("Teléfono: el servidor valida y guarda en E.164", () => {
 
 describe("A4: una clienta nueva sí se crea con los datos que da", () => {
   it("teléfono desconocido: ficha nueva con su nombre", async () => {
-    const r = await llamar<{ synced: boolean }>(S.syncAppointment, reserva({ clientPhone: "699888777", clientName: "Nueva", clientEmail: "n@x.test" }));
+    const r = await llamar<{ synced: boolean }>(
+      S.syncAppointment,
+      reserva({ clientPhone: "699888777", clientName: "Nueva", clientEmail: "n@x.test" }),
+    );
     expect(r.synced).toBe(true);
-    expect(doble.tablas.clients.find((c) => c.phone_key === "699888777")).toMatchObject({ name: "Nueva", email: "n@x.test" });
+    expect(doble.tablas.clients.find((c) => c.phone_key === "699888777")).toMatchObject({
+      name: "Nueva",
+      email: "n@x.test",
+    });
   });
 });
 
@@ -94,15 +139,24 @@ describe("M5: la reserva pública queda marcada como origen web", () => {
 
 describe("M4: topes de entrada, horizonte y ritmo en la reserva pública", () => {
   it("rechaza textos desmesurados", async () => {
-    await expect(llamar(S.syncAppointment, reserva({ clientName: "N".repeat(101) }))).rejects.toThrow();
-    await expect(llamar(S.syncAppointment, reserva({ clientPhone: "6".repeat(31) }))).rejects.toThrow();
+    await expect(
+      llamar(S.syncAppointment, reserva({ clientName: "N".repeat(101) })),
+    ).rejects.toThrow();
+    await expect(
+      llamar(S.syncAppointment, reserva({ clientPhone: "6".repeat(31) })),
+    ).rejects.toThrow();
     await expect(llamar(S.syncAppointment, reserva({ note: "x".repeat(1001) }))).rejects.toThrow();
-    await expect(llamar(S.syncAppointment, reserva({ localId: "l".repeat(101) }))).rejects.toThrow();
+    await expect(
+      llamar(S.syncAppointment, reserva({ localId: "l".repeat(101) })),
+    ).rejects.toThrow();
   });
   it("no acepta una reserva a más de un año vista", async () => {
     const lejos = new Date(Date.parse(proximoDia(2)) + 2 * 365 * 86_400_000);
     while (lejos.getUTCDay() !== 2) lejos.setUTCDate(lejos.getUTCDate() + 1);
-    const r = await llamar<{ synced: boolean; reason?: string }>(S.syncAppointment, reserva({ startISO: lejos.toISOString() }));
+    const r = await llamar<{ synced: boolean; reason?: string }>(
+      S.syncAppointment,
+      reserva({ startISO: lejos.toISOString() }),
+    );
     expect(r.synced).toBe(false);
     expect(r.reason).toBe("RESERVA_LEJANA");
   });
@@ -110,14 +164,34 @@ describe("M4: topes de entrada, horizonte y ritmo en la reserva pública", () =>
     const base = Date.parse(proximoDia(2));
     const resultados: Array<{ synced: boolean; reason?: string }> = [];
     for (let i = 0; i < 7; i++)
-      resultados.push(await llamar(S.syncAppointment, reserva({ clientPhone: "644555666", startISO: new Date(base + i * 7 * 86_400_000).toISOString() })));
+      resultados.push(
+        await llamar(
+          S.syncAppointment,
+          reserva({
+            clientPhone: "644555666",
+            startISO: new Date(base + i * 7 * 86_400_000).toISOString(),
+          }),
+        ),
+      );
     expect(resultados.filter((r) => r.synced).length).toBe(5);
     expect(resultados[5].reason).toBe("RESERVA_DEMASIADAS");
   });
   it("un salón no recibe más de 60 reservas públicas por hora", async () => {
     const ahora = new Date().toISOString();
-    doble.tablas.appointments = Array.from({ length: 60 }, (_, i) => ({ id: `a${i}`, salon_slug: "real", local_id: `x${i}`, status: "pending", created_at: ahora, start_at: "2099-01-01T10:00:00Z", duration_min: 30, employee_id: "otro" }));
-    const r = await llamar<{ synced: boolean; reason?: string }>(S.syncAppointment, reserva({ clientPhone: "655000111" }));
+    doble.tablas.appointments = Array.from({ length: 60 }, (_, i) => ({
+      id: `a${i}`,
+      salon_slug: "real",
+      local_id: `x${i}`,
+      status: "pending",
+      created_at: ahora,
+      start_at: "2099-01-01T10:00:00Z",
+      duration_min: 30,
+      employee_id: "otro",
+    }));
+    const r = await llamar<{ synced: boolean; reason?: string }>(
+      S.syncAppointment,
+      reserva({ clientPhone: "655000111" }),
+    );
     expect(r.reason).toBe("RESERVA_DEMASIADAS");
   });
 });
@@ -125,13 +199,25 @@ describe("M4: topes de entrada, horizonte y ritmo en la reserva pública", () =>
 describe("M5: doble reserva simultánea", () => {
   const HUECO = proximoDia(2);
   const solape = (created_at: string, local_id: string) => ({
-    id: local_id, salon_slug: "real", local_id, employee_id: employees[0].id, start_at: HUECO, duration_min: 30, status: "pending", created_at,
+    id: local_id,
+    salon_slug: "real",
+    local_id,
+    employee_id: employees[0].id,
+    start_at: HUECO,
+    duration_min: 30,
+    status: "pending",
+    created_at,
   });
 
   it("perdioLaCarrera: pierde la reserva creada después; gana la primera", async () => {
-    const { perdioLaCarrera } = S as unknown as { perdioLaCarrera: (...a: unknown[]) => Promise<boolean> };
+    const { perdioLaCarrera } = S as unknown as {
+      perdioLaCarrera: (...a: unknown[]) => Promise<boolean>;
+    };
     expect(typeof perdioLaCarrera).toBe("function");
-    doble.tablas.appointments = [solape("2026-10-18T10:00:00.000Z", "A"), solape("2026-10-18T10:00:00.050Z", "B")];
+    doble.tablas.appointments = [
+      solape("2026-10-18T10:00:00.000Z", "A"),
+      solape("2026-10-18T10:00:00.050Z", "B"),
+    ];
     expect(await perdioLaCarrera(doble, "real", "B", employees[0].id, HUECO, 30)).toBe(true);
     expect(await perdioLaCarrera(doble, "real", "A", employees[0].id, HUECO, 30)).toBe(false);
   });
@@ -150,9 +236,95 @@ describe("M5: doble reserva simultánea", () => {
   it("la reserva pública llama a la comprobación posterior a la escritura y deshace la suya si pierde", async () => {
     const fuente = await Bun.file(new URL("./salons.functions.ts", import.meta.url)).text();
     const i = fuente.indexOf("await escribirCita(supabase, fila);");
-    const resto = fuente.slice(i, i + 900);
+    const resto = fuente.slice(i, i + 1_800);
     expect(resto).toContain("perdioLaCarrera(");
     expect(resto).toContain(".delete()");
+  });
+});
+
+describe("reserva pública durante la exposición", () => {
+  const perfilColor = {
+    ...perfil,
+    name: "PeluChic",
+    tagline: "Peluquería",
+    menu: ["Color de cobertura Organico~60~40~~~color-organico", "Corte~15~15~~~corte"],
+  };
+  const datosCorte = datosReservaPublicaDesdeCarta(perfilColor as never, ["corte"])!;
+  const inicioColor = proximoDia(2);
+  const colorGuardado = {
+    id: "color-previo",
+    salon_slug: "real",
+    local_id: "color-previo",
+    employee_id: employees[0].id,
+    service_id: "color-organico",
+    start_at: inicioColor,
+    duration_min: 60,
+    price_eur: 40,
+    status: "confirmed",
+    created_at: "2026-10-18T10:00:00.000Z",
+  };
+
+  it("acepta otra cita corta dentro de los 30 minutos de exposición", async () => {
+    doble = crearDobleSupabase({
+      salons: [{ slug: "real", profile: perfilColor }],
+      appointments: [colorGuardado],
+      clients: [],
+    });
+    const r = await llamar<{ synced: boolean; reason?: string }>(
+      S.syncAppointment,
+      reserva({
+        serviceIds: ["corte"],
+        startISO: new Date(Date.parse(inicioColor) + 15 * 60_000).toISOString(),
+        durationMin: datosCorte.durationMin,
+        priceEur: datosCorte.priceEur,
+        clientPhone: "699888777",
+      }),
+    );
+    expect(r).toEqual({ synced: true });
+  });
+
+  it("fuera de la exposición devuelve RESERVA_HUECO_OCUPADO", async () => {
+    doble = crearDobleSupabase({
+      salons: [{ slug: "real", profile: perfilColor }],
+      appointments: [colorGuardado],
+      clients: [],
+    });
+    const r = await llamar<{ synced: boolean; reason?: string }>(
+      S.syncAppointment,
+      reserva({
+        serviceIds: ["corte"],
+        startISO: inicioColor,
+        durationMin: datosCorte.durationMin,
+        priceEur: datosCorte.priceEur,
+        clientPhone: "699888777",
+      }),
+    );
+    expect(r).toEqual({ synced: false, reason: "RESERVA_HUECO_OCUPADO" });
+  });
+
+  it("convierte la exclusión SQL antigua en hueco ocupado, no en un 500", async () => {
+    doble = crearDobleSupabase(
+      { salons: [{ slug: "real", profile: perfilColor }], clients: [] },
+      {
+        errorEscrituraEn: {
+          appointments: {
+            code: "23P01",
+            message:
+              'conflicting key value violates exclusion constraint "appointments_web_sin_solape_excl"',
+          },
+        },
+      },
+    );
+    const r = await llamar<{ synced: boolean; reason?: string }>(
+      S.syncAppointment,
+      reserva({
+        serviceIds: ["corte"],
+        durationMin: datosCorte.durationMin,
+        priceEur: datosCorte.priceEur,
+        clientPhone: "699888777",
+      }),
+    );
+    expect(r).toEqual({ synced: false, reason: "RESERVA_HUECO_OCUPADO" });
   });
 });
 
@@ -165,7 +337,10 @@ describe("Nombre obligatorio en la reserva pública", () => {
     });
   }
   it("acepta dos caracteres y recorta el nombre antes de guardar ficha y cita", async () => {
-    const resultado = await llamar<{ synced: boolean }>(S.syncAppointment, reserva({ clientName: "  Al  ", clientPhone: "699888777" }));
+    const resultado = await llamar<{ synced: boolean }>(
+      S.syncAppointment,
+      reserva({ clientName: "  Al  ", clientPhone: "699888777" }),
+    );
     expect(resultado.synced).toBe(true);
     expect(doble.tablas.clients.find((c) => c.phone_key === "699888777")?.name).toBe("Al");
     const cita = doble.escrituras.find((e) => e.tabla === "appointments" && e.op === "upsert");

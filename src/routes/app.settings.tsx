@@ -43,6 +43,7 @@ import {
   regenerateCalendarSubscription,
 } from "@/lib/api/calendar.functions";
 import { recargoActivo } from "@/lib/recargo-activo";
+import { MAX_CLIENTAS_EXPOSICION_POR_DEFECTO } from "@/lib/solape";
 import { inferBusinessType } from "@/lib/business-type";
 import { bookingQuestionsEnabled } from "@/lib/booking-answers";
 import {
@@ -142,7 +143,9 @@ function Settings() {
       .then(({ token }) => {
         setCalendarToken(token);
         setCalendarError(false);
-        toast.success(habiaEnlace ? "Enlace nuevo creado: el anterior ya no funciona" : "Calendario activado");
+        toast.success(
+          habiaEnlace ? "Enlace nuevo creado: el anterior ya no funciona" : "Calendario activado",
+        );
       })
       .catch(() => {
         setCalendarError(true);
@@ -185,6 +188,9 @@ function Settings() {
   const [ocultarPrecioReserva, setOcultarPrecioReserva] = useState(
     !!salonProfile.ocultarPrecioReserva,
   );
+  const [maxClientasExposicion, setMaxClientasExposicion] = useState(
+    String(salonProfile.maxClientasExposicion ?? MAX_CLIENTAS_EXPOSICION_POR_DEFECTO),
+  );
 
   // Plantones — política de penalización por cancelar tarde o no presentarse.
   const [noShowEnabled, setNoShowEnabled] = useState(recargoActivo(salonProfile));
@@ -224,6 +230,9 @@ function Settings() {
     setQuestionsRequired(!!salonProfile.bookingQuestionsRequired);
     setDuracionFlexible(!!salonProfile.duracionFlexible);
     setOcultarPrecioReserva(!!salonProfile.ocultarPrecioReserva);
+    setMaxClientasExposicion(
+      String(salonProfile.maxClientasExposicion ?? MAX_CLIENTAS_EXPOSICION_POR_DEFECTO),
+    );
   }, [salonProfile, businessType]);
 
   function handleSave(): boolean {
@@ -249,6 +258,11 @@ function Settings() {
       toast.error("Los minutos antes del cierre tienen que estar entre 0 y 240");
       return false;
     }
+    const parsedMaxClientas = Number(maxClientasExposicion);
+    if (!Number.isInteger(parsedMaxClientas) || parsedMaxClientas < 1 || parsedMaxClientas > 20) {
+      toast.error("El máximo de clientas a la vez tiene que estar entre 1 y 20");
+      return false;
+    }
 
     // 22-oct: solo viajan las claves que esta persona puede cambiar. El
     // servidor exige `salon.editar` para plantones y duración, y
@@ -268,6 +282,7 @@ function Settings() {
       parche.bookingQuestionsEnabled = questionsEnabled;
       parche.bookingQuestionsRequired = questionsRequired;
       parche.ocultarPrecioReserva = ocultarPrecioReserva;
+      parche.maxClientasExposicion = parsedMaxClientas;
     }
     // La señal se guarda en su propio bloque (AjustesSenal): aquí no se toca,
     // para no pisarla con valores viejos de este formulario.
@@ -456,9 +471,9 @@ function Settings() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>¿Crear un enlace nuevo?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          El enlace actual dejará de funcionar al momento: los móviles y
-                          calendarios que lo tengan dejarán de ver tus citas hasta que añadas el
-                          nuevo. Hazlo solo si crees que alguien que no debe lo tiene.
+                          El enlace actual dejará de funcionar al momento: los móviles y calendarios
+                          que lo tengan dejarán de ver tus citas hasta que añadas el nuevo. Hazlo
+                          solo si crees que alguien que no debe lo tiene.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -545,6 +560,31 @@ function Settings() {
                   checked={ocultarPrecioReserva}
                   onCheckedChange={setOcultarPrecioReserva}
                 />
+              </div>
+              {guardar}
+            </div>
+            <div className={fila}>
+              <div>
+                <Label htmlFor="max-clientas-exposicion" className="text-[15px] font-extrabold">
+                  Máximo de clientas a la vez por profesional durante exposiciones
+                </Label>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Cuenta a todas las clientas que siguen en el salón, aunque su color esté actuando.
+                  Los tiempos se ajustan dentro de cada servicio.
+                </p>
+              </div>
+              <div className="max-w-xs space-y-1.5">
+                <Input
+                  id="max-clientas-exposicion"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={20}
+                  step={1}
+                  value={maxClientasExposicion}
+                  onChange={(e) => setMaxClientasExposicion(e.target.value)}
+                />
+                <p className="text-[12.5px] text-muted-foreground">De 1 a 20. Por defecto, 6.</p>
               </div>
               {guardar}
             </div>

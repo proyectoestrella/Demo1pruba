@@ -129,6 +129,8 @@ export type CamposSinHeredar = Pick<
   | "bloqueosAgenda"
   | "diasEspeciales"
   | "preguntasReserva"
+  | "exposicionServicios"
+  | "maxClientasExposicion"
   | "depositMode"
   | "depositHourlyRateEur"
   | "depositAppliesTo"
@@ -410,6 +412,8 @@ export function blankDemoProfile(): DemoProfile & CamposSinHeredar {
     bloqueosAgenda: undefined,
     diasEspeciales: undefined,
     preguntasReserva: undefined,
+    exposicionServicios: undefined,
+    maxClientasExposicion: undefined,
     depositMode: undefined,
     depositHourlyRateEur: undefined,
     depositAppliesTo: undefined,

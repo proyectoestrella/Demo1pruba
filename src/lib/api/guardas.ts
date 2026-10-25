@@ -16,7 +16,12 @@ export function accionesDeParcheCita(patch: Record<string, unknown>): AccionId[]
   const estado = typeof patch.status === "string" ? patch.status : null;
   if (estado === "cancelled") out.add("cita.cancelar");
   else if (estado === "confirmed") out.add("cita.confirmar-solicitud");
-  else if (estado === "in-progress" || estado === "completed" || estado === "no-show" || estado === "late")
+  else if (
+    estado === "in-progress" ||
+    estado === "completed" ||
+    estado === "no-show" ||
+    estado === "late"
+  )
     out.add("cita.marcar-asistencia");
   else if (estado) out.add("cita.editar");
   if (k.some((c) => c === "paidAt" || c === "paymentMethod")) out.add("cita.cobrar");
@@ -73,7 +78,7 @@ const CLAVES_EQUIPO = new Set([
   "serviciosPorProfesional",
   "avataresEquipo",
 ]);
-const CLAVES_CARTA = new Set(["menu"]);
+const CLAVES_CARTA = new Set(["menu", "exposicionServicios"]);
 // «Reservas por internet» de Ajustes. Se separa de `salon.editar` para que
 // una estilista a quien se le haya dado esta tarea no gane el resto del
 // control del salón por una llamada directa a la API.
@@ -85,6 +90,7 @@ const CLAVES_RESERVAS = new Set([
   "smartSpread",
   "lastSlotBufferMin",
   "correoPrivacidad",
+  "maxClientasExposicion",
 ]);
 
 /** Copia de un perfil únicamente los campos que pertenecen a Mi página. */

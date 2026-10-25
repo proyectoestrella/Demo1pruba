@@ -102,6 +102,7 @@ import {
   totalPasos,
   type PasoReserva,
 } from "@/lib/solo-profesional";
+import type { ContextoSolape } from "@/lib/solape";
 
 /** "45 min" / "1 h" / "1 h 30" — sin ceros ni "0 h" cuando sobra. */
 function formatMinutes(min: number): string {
@@ -153,6 +154,7 @@ function resolveEmployee(
   bloqueosAgenda?: import("@/lib/mock/types").BloqueoAgenda[],
   serviceIds: string[] = [],
   serviciosPorProfesional?: Record<string, string[]>,
+  contextoSolape?: ContextoSolape,
 ): EmployeeId | null {
   const [hh, mm] = time.split(":").map(Number);
   const startMin = hh * 60 + mm;
@@ -172,6 +174,7 @@ function resolveEmployee(
     bloqueosAgenda,
     serviceIds,
     serviciosPorProfesional,
+    contextoSolape,
   });
   return candidate[0]?.id ?? null;
 }
@@ -331,6 +334,10 @@ function BookingWizard() {
     () => Object.fromEntries(services.map((s) => [s.id, s])) as Record<string, Service>,
     [services],
   );
+  const contextoSolape = useMemo<ContextoSolape>(
+    () => ({ servicios: serviceMap, perfil: profile }),
+    [serviceMap, profile.exposicionServicios, profile.maxClientasExposicion, profile.lavado],
+  );
   const employees = useMemo(
     () =>
       employeesForType(
@@ -486,6 +493,7 @@ function BookingWizard() {
       bloqueosAgenda: profile.bloqueosAgenda,
       serviceIds: data.serviceIds,
       serviciosPorProfesional: profile.serviciosPorProfesional,
+      contextoSolape,
     });
   }, [
     data.date,
@@ -498,6 +506,7 @@ function BookingWizard() {
     profile.diasEspeciales,
     profile.bloqueosAgenda,
     profile.serviciosPorProfesional,
+    contextoSolape,
   ]);
 
   // La disponibilidad puede cambiar mientras la clienta navega, o puede
@@ -577,6 +586,7 @@ function BookingWizard() {
       bloqueosAgenda: profile.bloqueosAgenda,
       serviceIds: lastBooking.serviceIds,
       serviciosPorProfesional: profile.serviciosPorProfesional,
+      contextoSolape,
     });
   }, [
     repeatValid,
@@ -589,6 +599,7 @@ function BookingWizard() {
     profile.diasEspeciales,
     profile.bloqueosAgenda,
     profile.serviciosPorProfesional,
+    contextoSolape,
   ]);
   const showRepeatBanner =
     step === 1 && data.serviceIds.length === 0 && repeatValid && !!repeatNextSlot && !!lastBooking;
@@ -654,6 +665,7 @@ function BookingWizard() {
       bloqueosAgenda: profile.bloqueosAgenda,
       serviceIds: data.serviceIds,
       serviciosPorProfesional: profile.serviciosPorProfesional,
+      contextoSolape,
     });
     setData((current) => {
       const selectedEmployee = profesionalElegidaParaHueco(
@@ -739,6 +751,7 @@ function BookingWizard() {
       profile.bloqueosAgenda,
       serviceIds,
       profile.serviciosPorProfesional,
+      contextoSolape,
     );
     if (!employeeId) {
       setSendError("Esa hora ya no está disponible, elige otra.");
@@ -1022,6 +1035,7 @@ function BookingWizard() {
               bloqueosAgenda={profile.bloqueosAgenda}
               serviceIds={data.serviceIds}
               serviciosPorProfesional={profile.serviciosPorProfesional}
+              contextoSolape={contextoSolape}
             />
           )}
 
@@ -1708,6 +1722,7 @@ function DateTimeStep({
   bloqueosAgenda,
   serviceIds,
   serviciosPorProfesional,
+  contextoSolape,
   espera,
 }: {
   /** Lista de espera de la web (solo salones reales): se ofrece al no haber hueco. */
@@ -1723,6 +1738,7 @@ function DateTimeStep({
   bloqueosAgenda?: import("@/lib/mock/types").BloqueoAgenda[];
   serviceIds: string[];
   serviciosPorProfesional?: Record<string, string[]>;
+  contextoSolape: ContextoSolape;
   /** Duración con la que se busca hueco libre — con duración flexible ya es el extremo alto del rango. */
   durationMin: number;
   appointments: Appointment[];
@@ -1818,6 +1834,7 @@ function DateTimeStep({
           bloqueosAgenda,
           serviceIds,
           serviciosPorProfesional,
+          contextoSolape,
         }).length > 0
       )
         return false;
@@ -1895,6 +1912,7 @@ function DateTimeStep({
           bloqueosAgenda,
           serviceIds,
           serviciosPorProfesional,
+          contextoSolape,
         }).length > 0;
       out.push({
         time: timeStr,

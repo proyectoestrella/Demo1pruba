@@ -15,6 +15,7 @@ export function crearDobleSupabase(
   opciones: {
     tokens?: Record<string, string>;
     errorEn?: Record<string, string>;
+    errorEscrituraEn?: Record<string, { code?: string; message: string }>;
     /** Falla desde una lectura concreta; permite comprobar la segunda lectura del perfil. */
     errorDespuesDe?: Record<string, { lectura: number; mensaje: string }>;
   } = {},
@@ -36,7 +37,12 @@ export function crearDobleSupabase(
     let op = "select";
     let datos: unknown;
     let opts: { onConflict?: string; ignoreDuplicates?: boolean } = {};
-    const err = () => (opciones.errorEn?.[tabla] ? { message: opciones.errorEn[tabla] } : null);
+    const err = () =>
+      op !== "select" && opciones.errorEscrituraEn?.[tabla]
+        ? opciones.errorEscrituraEn[tabla]
+        : opciones.errorEn?.[tabla]
+          ? { message: opciones.errorEn[tabla] }
+          : null;
     let selecciona = false;
     let afectadas: Fila[] = [];
     const noNulos: string[] = [];

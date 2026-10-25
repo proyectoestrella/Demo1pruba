@@ -560,12 +560,12 @@ function contextoDeshacer(st: SalonState, c: Cambio): ContextoDeshacer {
   let huecoLibre: boolean | undefined;
   if (c.tipo === "cita.mover" && cita) {
     const destino = { ...cita, ...sinNulos(c.antes) } as Appointment;
-    huecoLibre = solapaConAgenda(st.appointments, { employeeId: destino.employeeId, start: destino.start, duration: destino.duration, excluirId: cita.id }).length === 0;
+    huecoLibre = solapaConAgenda(st.appointments, { employeeId: destino.employeeId, start: destino.start, duration: destino.duration, serviceIds: destino.serviceIds, excluirId: cita.id }, { servicios: selectServiceMap(st.services), perfil: st.salonProfile }).length === 0;
   }
   if (c.tipo === "cita.borrar") {
     const previa = c.antes.cita as Appointment | null | undefined;
     // Una cita cancelada no ocupa hueco; el resto necesita que siga libre.
-    huecoLibre = !previa || previa.status === "cancelled" || solapaConAgenda(st.appointments, { employeeId: previa.employeeId, start: previa.start, duration: previa.duration, excluirId: previa.id }).length === 0;
+    huecoLibre = !previa || previa.status === "cancelled" || solapaConAgenda(st.appointments, { employeeId: previa.employeeId, start: previa.start, duration: previa.duration, serviceIds: previa.serviceIds, excluirId: previa.id }, { servicios: selectServiceMap(st.services), perfil: st.salonProfile }).length === 0;
   }
   const empleadas = [cita?.employeeId ?? (c.antes.cita as Appointment | undefined)?.employeeId ?? (c.despues.cita as Appointment | undefined)?.employeeId, c.antes.employeeId as string | undefined].filter(Boolean) as string[];
   const puedeLaAccion = accionesDeCambio(c).every((accion) =>
