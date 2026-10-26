@@ -1,4 +1,5 @@
 import { citasDelDiaMemo } from "@/lib/selectores-rutas";
+import { slugSalonDelHost } from "@/lib/host-actual";
 import { AvisoInstalar } from "@/components/InstalarPanel";
 import { useFichas } from "@/lib/use-fichas";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -196,9 +197,24 @@ export function HoyArena() {
   const esDemo = useSalonStore((s) => !s.realSalonSlug);
   // Salón real aún cargando (agenda vaciada a la espera del servidor): las cifras
   // son esqueletos, no ceros. Una demo conserva su ejemplo y nunca entra aquí.
-  const cargando = useSalonStore(
-    (s) => s.publicBookingResolution?.status === "resolviendo" && s.appointments.length === 0,
-  );
+  // 26-oct (Tomás): en el subdominio de un salón real, mientras no ha llegado
+  // la agenda real, las cifras de la demo («Buenos días, María», 17 citas…)
+  // no pueden asomar: esqueleto hasta que el salón real esté cargado.
+  const slugDelHost = slugSalonDelHost();
+  // El nombre guardado se lee tras montar (el servidor no lo conoce).
+  const [nombreGuardado, setNombreGuardado] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      setNombreGuardado(localStorage.getItem(claveSaludo(slugDelHost)));
+    } catch {
+      setNombreGuardado(null);
+    }
+  }, [slugDelHost]);
+  const salonRealPendiente = useSalonStore((s) => !!slugDelHost && s.realSalonSlug !== slugDelHost);
+  const cargando =
+    useSalonStore(
+      (s) => s.publicBookingResolution?.status === "resolviendo" && s.appointments.length === 0,
+    ) || salonRealPendiente;
   // Lo que vale el día (ni canceladas ni «no vino»): cobrado + lo que queda por
   // cobrar, sea futuro o ya pasado sin marcar. Así ninguna cita se pierde.
   const valorDelDia = citasVista.filter(esCobrable).reduce((s, a) => s + a.priceEur, 0);
@@ -247,11 +263,15 @@ export function HoyArena() {
             )}
           </p>
           <h1 className="mt-1 font-display text-[28px] leading-[1.1] font-medium tracking-[-0.02em] md:text-[34px]">
-            {miembro?.displayName &&
-            miembro.displayName.trim() !== nombreSalon?.trim() &&
-            equipo.find((e) => e.id === miembro.employeeId)?.name.trim() !== nombreSalon?.trim()
-              ? saludo(miembro.displayName, ahora.getHours())
-              : saludoPara(ahora.getHours())}
+            {salonRealPendiente
+              ? nombreGuardado
+                ? saludo(nombreGuardado, ahora.getHours())
+                : saludoPara(ahora.getHours())
+              : miembro?.displayName &&
+                  miembro.displayName.trim() !== nombreSalon?.trim() &&
+                  equipo.find((e) => e.id === miembro.employeeId)?.name.trim() !== nombreSalon?.trim()
+                ? recordarSaludo(slugDelHost, miembro.displayName, saludo(miembro.displayName, ahora.getHours()))
+                : saludoPara(ahora.getHours())}
           </h1>
         </div>
         <Button variant="outline" asChild className="h-11 rounded-full text-cafe-medio md:ml-auto">
@@ -1422,4 +1442,23 @@ function Manana({
       )}
     </div>
   );
+}
+
+/**
+ * Último nombre con el que se saludó en este dispositivo (por salón): así,
+ * al abrir la app sale «Buenos días, Patricia» al instante, y nunca el nombre
+ * de la demo mientras carga. Sin dato guardado, el saludo va sin nombre.
+ */
+function claveSaludo(slug: string | undefined) {
+  return `sishow-ultimo-nombre-${slug ?? "panel"}`;
+}
+function recordarSaludo(slug: string | undefined, nombre: string, texto: string): string {
+  if (slug) {
+    try {
+      localStorage.setItem(claveSaludo(slug), nombre);
+    } catch {
+      /* sin almacenamiento: solo se pierde el atajo */
+    }
+  }
+  return texto;
 }
