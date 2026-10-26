@@ -98,6 +98,16 @@ export function ClientHistorySheet({
 
   // Borrador local para no reescribir el store en cada tecla: se guarda al salir del campo.
   const [notes, setNotes] = useState(client?.notes ?? "");
+  const [importante, setImportante] = useState(client?.aTenerEnCuenta ?? "");
+  useEffect(() => {
+    setImportante(client?.aTenerEnCuenta ?? "");
+  }, [client?.id, client?.aTenerEnCuenta]);
+  function saveImportante() {
+    if (!client) return;
+    const t = importante.trim();
+    if (t === (client.aTenerEnCuenta ?? "")) return;
+    updateClient(client.id, { aTenerEnCuenta: t });
+  }
   useEffect(() => {
     setNotes(client?.notes ?? "");
   }, [client?.id, client?.notes]);
@@ -363,6 +373,20 @@ export function ClientHistorySheet({
         antesDelHistorial={
           <>
             {puede(permisos, "clienta.editar") && <DatosFichaClienta client={client} />}
+            {/* A tener en cuenta (destacado) */}
+            <section className="mt-3 rounded-2xl border border-melocoton bg-melocoton/30 px-4 pb-4 pt-1">
+              <EtiquetaFicha id="importante-clienta">A tener en cuenta</EtiquetaFicha>
+              <Textarea
+                aria-labelledby="importante-clienta"
+                value={importante}
+                onChange={(e) => setImportante(e.target.value)}
+                onBlur={saveImportante}
+                rows={2}
+                placeholder="Alergias, sensibilidades, lo que no se puede olvidar"
+                className="resize-y bg-background text-sm"
+              />
+              <p className="mt-2 text-xs text-muted-foreground">Sale destacado en la hoja del día y en sus citas.</p>
+            </section>
             {/* Observaciones */}
             <section className="mt-3 rounded-2xl bg-card px-4 pb-4 pt-1">
               <EtiquetaFicha id="notas-clienta">Notas y preferencias</EtiquetaFicha>

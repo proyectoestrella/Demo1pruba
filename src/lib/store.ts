@@ -909,7 +909,7 @@ export const useSalonStore = create<SalonState>()(
           pushClientEdit(get().realSalonSlug, previaFicha, clienteActualizada, patch);
           return;
         }
-        if ("notes" in patch) {
+        if ("notes" in patch || "aTenerEnCuenta" in patch) {
           pushClientNotes(
             get().realSalonSlug,
             clienteActualizada,
@@ -1287,7 +1287,7 @@ export const useSalonStore = create<SalonState>()(
                 else pushPenaltyCleared(slugReal, cliente, cliente.penaltyNote);
               }
               if ("manualBlock" in c.antes) pushManualBlock(slugReal, cliente, !!cliente.manualBlock);
-              if ("notes" in c.antes) pushClientNotes(slugReal, cliente);
+              if ("notes" in c.antes || "aTenerEnCuenta" in c.antes) pushClientNotes(slugReal, cliente);
               // Otros datos de la ficha (nombre, teléfono, correo…): se sube la ficha entera.
               if (Object.keys(c.antes).some((k) => k !== "notes" && k !== "manualBlock" && !k.startsWith("penalty"))) pushClient(slugReal, cliente);
             }

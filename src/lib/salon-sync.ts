@@ -514,7 +514,7 @@ export function pushManualBlock(
 export function pushClientNotes(slug: string | null, cliente: Client | undefined): Promise<void> {
   if (!slug || !cliente?.phone) return Promise.resolve();
   return subir(`las notas de ${cliente.name}`, () =>
-    saveClientNotes({ data: { slug, phone: cliente.phone, notes: cliente.notes ?? "" } }),
+    saveClientNotes({ data: { slug, phone: cliente.phone, notes: cliente.notes ?? "", aTenerEnCuenta: cliente.aTenerEnCuenta ?? "" } }),
   );
 }
 

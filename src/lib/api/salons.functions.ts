@@ -190,6 +190,8 @@ const NIVELES_CITA: string[][] = [
   ["payment_method", "paid_at", "deposit_requested_at", "deposit_received_at", "deposit_eur"],
 ];
 const NIVELES_CLIENTE: string[][] = [
+  // 26-oct: columna nueva del SQL de la mañana; sin ella todo sigue funcionando.
+  ["a_tener_en_cuenta"],
   ["address", "tax_id", "tpv_alta", "tpv_last_visit"],
   ["manual_block", "tpv_code", "birthday", "updated_at"],
   ["penalty_at", "penalty_keep", "penalty_block"],
@@ -209,8 +211,8 @@ const CAMPOS_NUEVOS_CITA = NIVELES_CITA[4];
 const CAMPOS_TECNICOS_CITA = NIVELES_CITA[3];
 const CAMPOS_RECORDATORIO_CITA = NIVELES_CITA[2];
 const CAMPOS_LOTE3_CITA = NIVEL_LOTE3;
-const CAMPOS_NUEVOS_CLIENTE = NIVELES_CLIENTE[2];
-const CAMPOS_LOTE3_CLIENTE = NIVELES_CLIENTE[1];
+const CAMPOS_NUEVOS_CLIENTE = NIVELES_CLIENTE[3];
+const CAMPOS_LOTE3_CLIENTE = NIVELES_CLIENTE[2];
 
 /**
  * ¿Ha fallado esto porque una columna o una tabla todavía no existen?
@@ -2760,7 +2762,9 @@ export const clearClientPenalty = createServerFn({ method: "POST" })
 /** Guarda las indicaciones del salón sobre un cliente ("usa el número 8"). */
 export const saveClientNotes = createServerFn({ method: "POST" })
   .middleware([conSesion])
-  .inputValidator(z.object({ slug, phone: z.string().min(1).max(30), notes: z.string().max(5000) }))
+  .inputValidator(
+    z.object({ slug, phone: z.string().min(1).max(30), notes: z.string().max(5000), aTenerEnCuenta: z.string().max(2000).optional() }),
+  )
   .handler(async ({ data }) => {
     // Las notas son texto libre del salón sobre una persona con nombre y
     // teléfono. Escribirlas —y leerlas— es del dueño.
@@ -2781,7 +2785,14 @@ export const saveClientNotes = createServerFn({ method: "POST" })
         .limit(1);
       if (!quien.employeeId || !suya?.length) throw new PermisoDenegado("clienta.editar");
     }
-    const { error } = await supabase.from("clients").update({ notes: data.notes }).eq("id", id);
+    const cambios: Record<string, string | null> = { notes: data.notes };
+    if (data.aTenerEnCuenta !== undefined) cambios.a_tener_en_cuenta = data.aTenerEnCuenta.trim() || null;
+    let { error } = await supabase.from("clients").update(cambios).eq("id", id);
+    if (error && faltaEsquema(error) && "a_tener_en_cuenta" in cambios) {
+      // Sin el SQL del 26-oct aún no existe la columna: se guardan las notas y se avisa.
+      ({ error } = await supabase.from("clients").update({ notes: data.notes }).eq("id", id));
+      if (!error) return { synced: true as const, sinColumnaATenerEnCuenta: true as const };
+    }
     if (error) throw new Error(`saveClientNotes: ${error.message}`);
     return { synced: true as const };
   });

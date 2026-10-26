@@ -92,6 +92,7 @@ export function fichaDeClienta(clientId: string, datos: DatosFicha) {
   // teléfono» son información general, nunca una alerta. Solo lo demás de las
   // notas va a «Ten en cuenta»; lo informativo sale aparte y discreto.
   const { aTenerEnCuenta, informativas } = separarNotas(cliente?.notes);
+  if (cliente?.aTenerEnCuenta?.trim()) avisos.push(cliente.aTenerEnCuenta.trim());
   if (aTenerEnCuenta) avisos.push(`Observaciones: ${aTenerEnCuenta}`);
   if (cliente?.manualBlock) avisos.push("Reserva por internet bloqueada a mano");
   if (proxima) {

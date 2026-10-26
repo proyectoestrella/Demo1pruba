@@ -82,6 +82,7 @@ export interface ClientRow {
   phone: string;
   email: string | null;
   notes: string | null;
+  a_tener_en_cuenta?: string | null;
   penalty_eur: number | string | null;
   penalty_note: string | null;
   created_at: string;
@@ -214,6 +215,7 @@ export function rowToClient(row: ClientRow): Client {
     email: row.email ?? undefined,
     createdAt: row.created_at,
     notes: row.notes ?? undefined,
+    aTenerEnCuenta: row.a_tener_en_cuenta ?? undefined,
     manualBlock: row.manual_block === true || bloqueoEnNota,
     tpvCode: row.tpv_code ?? undefined,
     birthday: row.birthday ?? undefined,

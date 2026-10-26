@@ -69,6 +69,8 @@ export interface Client {
   createdAt: string; // ISO
   /** Indicaciones del salón sobre este cliente ("usa el número 8"). Del cliente, no de una cita. */
   notes?: string;
+  /** «A tener en cuenta» (26-oct): lo que SÍ hay que tener presente; sale destacado. Las notas son información general. */
+  aTenerEnCuenta?: string;
   /** Bloqueo explícito de reserva online, independiente de cualquier deuda. */
   manualBlock?: boolean;
   /** Código de la clienta en TPV 123, si vino de una importación. */
