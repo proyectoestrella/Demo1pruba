@@ -44,6 +44,7 @@ import {
   otrasCitasDelDia,
 } from "@/lib/nueva-cita";
 import { solapaConAgenda } from "@/lib/solape";
+import { avisoHorarioSalon, type AvisoHorarioSalon } from "@/lib/horario-salon";
 import type { OpcionesGuardado } from "@/lib/salon-sync";
 import {
   AlertDialog,
@@ -193,6 +194,11 @@ function FormularioNuevaCita({
   const [confirmarSalida, setConfirmarSalida] = useState<{ destino?: string } | null>(null);
   /** Citas con las que choca la que se va a guardar, a la espera de que la dueña decida. */
   const [solape, setSolape] = useState<{ choques: Appointment[]; encadenar: boolean } | null>(null);
+  /** Horario general del salón que la dueña debe saltarse de forma explícita. */
+  const [fueraDeHorario, setFueraDeHorario] = useState<{
+    aviso: AvisoHorarioSalon;
+    encadenar: boolean;
+  } | null>(null);
   const capa = useRef<HTMLDivElement>(null);
   const inicial = useRef("");
   /** Sube cada vez que se rellena la capa: la foto de «cómo estaba» se toma justo después. */
@@ -438,6 +444,21 @@ function FormularioNuevaCita({
 
   function handleSubmit(encadenar = false) {
     if (!validar()) return;
+    const aviso = avisoHorarioSalon({
+      openingHours: profile.openingHours,
+      diasEspeciales: profile.diasEspeciales,
+      fecha: date,
+      hora: time,
+      duracionMin: totalMin,
+    });
+    if (aviso) {
+      setFueraDeHorario({ aviso, encadenar });
+      return;
+    }
+    comprobarSolapeYGuardar(encadenar);
+  }
+
+  function comprobarSolapeYGuardar(encadenar: boolean) {
     // Antes de guardar se mira si pisa otra cita de esa profesional. El
     // choque no se prohíbe: es su agenda, ella decide (contrato E1).
     const choques = solapaConAgenda(appointments, {
@@ -1304,7 +1325,51 @@ function FormularioNuevaCita({
         }}
         carta={serviceMap}
       />
+      <DialogoHorarioSalon
+        aviso={fueraDeHorario?.aviso ?? null}
+        abierto={!!fueraDeHorario}
+        onCancelar={() => setFueraDeHorario(null)}
+        onConfirmar={() => {
+          const encadenar = fueraDeHorario?.encadenar ?? false;
+          setFueraDeHorario(null);
+          comprobarSolapeYGuardar(encadenar);
+        }}
+      />
     </>
+  );
+}
+
+export function DialogoHorarioSalon({
+  aviso,
+  abierto,
+  onCancelar,
+  onConfirmar,
+}: {
+  aviso: AvisoHorarioSalon | null;
+  abierto: boolean;
+  onCancelar: () => void;
+  onConfirmar: () => void;
+}) {
+  return (
+    <AlertDialog open={abierto} onOpenChange={(o) => !o && onCancelar()}>
+      <AlertDialogContent className="rounded-[22px] sm:max-w-[460px]">
+        <AlertDialogHeader>
+          <span className="mb-1 grid size-12 place-items-center rounded-2xl bg-melocoton text-melocoton-tinta">
+            <TriangleAlert className="size-5" strokeWidth={1.6} />
+          </span>
+          <AlertDialogTitle className="text-xl font-extrabold">
+            {aviso?.mensaje ?? "Fuera del horario del salón"}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            La cita queda fuera del horario configurado. Confirma si quieres guardarla de todos modos.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onCancelar}>Cambiar día u hora</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirmar}>Guardar igualmente</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -1366,7 +1431,7 @@ export function DialogoSolape({
         </ul>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancelar}>Cambiar la hora</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirmar}>Guardar igual</AlertDialogAction>
+          <AlertDialogAction onClick={onConfirmar}>Guardar igualmente</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
