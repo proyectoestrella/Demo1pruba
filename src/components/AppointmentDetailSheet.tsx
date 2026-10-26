@@ -1,8 +1,8 @@
 import { VentanaCobrar } from "@/components/VentanaCobrar";
 import { importeACobrar } from "@/lib/cobro-panel";
-import { avisar, marcarAvisoDeCita } from "@/lib/deshacer-maqueta";
-import { cambiarDuracionElegida } from "@/lib/duracion-flexible";
+import { avisar, conCambio, deshacerConAviso, marcarAvisoDeCita } from "@/lib/deshacer-maqueta";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { SenalCita } from "@/components/SenalCita";
 import { VentanaConfirmar } from "@/components/VentanaConfirmar";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,7 @@ import { recargoActivo } from "@/lib/recargo-activo";
 import { esSoloUnProfesional } from "@/lib/solo-profesional";
 import { useEquipo } from "@/lib/use-equipo";
 import { employeeMap } from "@/lib/mock/salon";
-import { serviceNamesOf } from "@/lib/appointment-services";
+import { lavadoDe, serviceNamesOf, sumServices } from "@/lib/appointment-services";
 import { isWithinNoticeWindow } from "@/lib/no-show";
 import { historialDeFallos } from "@/lib/plantones";
 import { necesitaDesenlace, type Desenlace } from "@/lib/deuda";
@@ -59,15 +59,22 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CalendarClock, CheckCheck, ChevronRight, Euro, TriangleAlert } from "lucide-react";
+import { CheckCheck, ChevronRight, Euro, Pencil, TriangleAlert } from "lucide-react";
+import { fechaEnZona, horaEnZona, isoDelSalon, zonaDelSalon } from "@/lib/zona-horaria";
+import { solapaConAgenda } from "@/lib/solape";
+import { avisoHorarioSalon, type AvisoHorarioSalon } from "@/lib/horario-salon";
+import { DialogoHorarioSalon, DialogoSolape } from "@/components/NewAppointmentDialog";
 
 /** Duraciones que puede elegir el salón al ajustar una cita, en minutos. */
 const DURATION_OPTIONS_MIN = [15, 30, 45, 60, 90, 120, 150, 180];
 
-// Local time components (not toISOString, que es UTC) — igual que en
-// NewAppointmentDialog, para que "09:00" en el input sea "09:00" en la cita.
-function toTimeInputValue(d: Date) {
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+interface BorradorCita {
+  serviceIds: string[];
+  employeeId: string;
+  duration: number;
+  date: string;
+  time: string;
+  priceEur: number;
 }
 
 function toDateInputValue(d: Date) {
@@ -91,7 +98,8 @@ export function AppointmentDetailSheet({
   onOpenChange,
 }: AppointmentDetailSheetProps) {
   // Un solo profesional: la ficha de la cita no repite quién atiende.
-  const soloUno = esSoloUnProfesional(useEquipo());
+  const equipo = useEquipo();
+  const soloUno = esSoloUnProfesional(equipo);
   // La cita llega como prop desde quien abrió el panel, y esa copia se queda
   // congelada: al cambiar el estado o marcar la confirmación del cliente, el
   // store se actualizaba pero aquí se seguía pintando el objeto viejo. Se lee
@@ -112,8 +120,22 @@ export function AppointmentDetailSheet({
   const markClientConfirmed = useSalonStore((s) => s.markClientConfirmed);
   const markPaid = useSalonStore((s) => s.markPaid);
   const [cobrarAbierta, setCobrarAbierta] = useState(false);
-  const [panelAbierto, setPanelAbierto] = useState<"mover" | "fianza" | null>(null);
-  useEffect(() => setPanelAbierto(null), [appointment?.id]);
+  const [panelAbierto, setPanelAbierto] = useState<"editar" | "fianza" | null>(null);
+  const [borrador, setBorrador] = useState<BorradorCita | null>(null);
+  const [confirmarHorario, setConfirmarHorario] = useState<{
+    aviso: AvisoHorarioSalon;
+    patch: Partial<Appointment>;
+  } | null>(null);
+  const [confirmarSolape, setConfirmarSolape] = useState<{
+    choques: Appointment[];
+    patch: Partial<Appointment>;
+  } | null>(null);
+  useEffect(() => {
+    setPanelAbierto(null);
+    setBorrador(null);
+    setConfirmarHorario(null);
+    setConfirmarSolape(null);
+  }, [appointment?.id]);
   const { abrirClienta, puedeVolver, volver } = useFichas();
   const pagos = useSalonStore((s) => s.payments);
   const pagosCita = appointment ? pagos.filter((p) => p.appointmentId === appointment.id) : [];
@@ -168,7 +190,10 @@ export function AppointmentDetailSheet({
     if (conRecargo && d !== "vino") preguntarPorLaDeuda(d);
   }
 
-  const carta = selectServiceMap(useSalonStore((s) => s.services));
+  const services = useSalonStore((s) => s.services);
+  const profile = useSalonStore((s) => s.salonProfile);
+  const zonaHoraria = zonaDelSalon(profile);
+  const carta = selectServiceMap(services);
   const serviceNames = appointment ? serviceNamesOf(appointment, carta) : [];
   // Cuántas veces ha plantado este cliente en los últimos 3 meses, con las
   // mismas palabras que su ficha — ver lib/plantones.ts.
@@ -184,40 +209,102 @@ export function AppointmentDetailSheet({
     !!client?.phone &&
     (appointment.status === "pending" || !!appointment.depositRequestedAt);
   const start = appointment ? new Date(appointment.start) : null;
-  // La cita puede llevar una duración que no está en la lista fija (suma de
-  // varios servicios): se añade como opción propia para que el desplegable
-  // siempre muestre el valor real en vez de quedarse en blanco.
-  const durationOptions =
-    appointment && !DURATION_OPTIONS_MIN.includes(appointment.duration)
-      ? [...DURATION_OPTIONS_MIN, appointment.duration].sort((a, b) => a - b)
-      : DURATION_OPTIONS_MIN;
+  const durationOptions = [
+    ...new Set([...DURATION_OPTIONS_MIN, borrador?.duration ?? 0].filter((min) => min > 0)),
+  ].sort((a, b) => a - b);
 
-  function handleDurationChange(valor: string) {
+  function abrirEditor() {
     if (!appointment) return;
-    cambiarDuracionElegida(valor, (duration) => updateAppointment(appointment.id, { duration }));
+    setBorrador({
+      serviceIds: [...appointment.serviceIds],
+      employeeId: appointment.employeeId,
+      duration: appointment.duration,
+      date: fechaEnZona(appointment.start, zonaHoraria),
+      time: horaEnZona(appointment.start, zonaHoraria),
+      priceEur: appointment.priceEur,
+    });
+    setPanelAbierto("editar");
   }
 
-  function handleTimeChange(time: string) {
-    if (!appointment || !start || !time) return;
-    const [hh, mm] = time.split(":").map(Number);
-    const next = new Date(start);
-    next.setHours(hh, mm, 0, 0);
-    updateAppointment(appointment.id, { start: next.toISOString() });
+  function alternarServicio(id: string) {
+    setBorrador((actual) => {
+      if (!actual) return actual;
+      const serviceIds = actual.serviceIds.includes(id)
+        ? actual.serviceIds.filter((serviceId) => serviceId !== id)
+        : [...actual.serviceIds, id];
+      const elegidos = serviceIds.map((serviceId) => carta[serviceId]).filter(Boolean);
+      const suma = sumServices(elegidos, lavadoDe(profile, services));
+      return {
+        ...actual,
+        serviceIds,
+        duration: suma.durationMin || actual.duration,
+        priceEur: elegidos.length === serviceIds.length ? suma.priceEur : actual.priceEur,
+      };
+    });
   }
 
-  /**
-   * Mover la cita a otro día. Antes solo se podía cambiar la hora dentro del
-   * mismo día, así que pasar una cita al jueves obligaba a cancelarla y
-   * volver a crearla entera — con su cliente, su servicio y su profesional.
-   */
-  function handleDateChange(fecha: string) {
-    if (!appointment || !start || !fecha) return;
-    const [yyyy, mm, dd] = fecha.split("-").map(Number);
-    if (!yyyy || !mm || !dd) return;
-    const next = new Date(start);
-    next.setFullYear(yyyy, mm - 1, dd);
-    // Lote 12: el aviso «Movida la cita de…» con «Deshacer» lo pone el registro de cambios.
-    updateAppointment(appointment.id, { start: next.toISOString() });
+  function guardarEdicion(patch: Partial<Appointment>, permitirSolape = false) {
+    if (!appointment) return;
+    const { cambio } = conCambio(() =>
+      updateAppointment(appointment.id, patch, permitirSolape ? { permitirSolape: true } : undefined),
+    );
+    if (cambio) {
+      avisar("Cita actualizada", () => deshacerConAviso(cambio.id), cambio.id);
+    }
+    setPanelAbierto(null);
+    setBorrador(null);
+  }
+
+  function comprobarSolapeEdicion(patch: Partial<Appointment>) {
+    if (!appointment) return;
+    const siguiente = { ...appointment, ...patch };
+    const choques = solapaConAgenda(
+      appointments,
+      {
+        employeeId: siguiente.employeeId,
+        start: siguiente.start,
+        duration: siguiente.duration,
+        serviceIds: siguiente.serviceIds,
+        excluirId: appointment.id,
+      },
+      { servicios: carta, perfil: profile },
+    );
+    if (choques.length) {
+      setConfirmarSolape({ choques, patch });
+      return;
+    }
+    guardarEdicion(patch);
+  }
+
+  function intentarGuardarEdicion() {
+    if (!appointment || !borrador) return;
+    if (!borrador.serviceIds.length) {
+      toast.error("Elige al menos un servicio");
+      return;
+    }
+    if (!borrador.date || !borrador.time || borrador.duration <= 0) {
+      toast.error("Elige una fecha, una hora y una duración válidas");
+      return;
+    }
+    const patch: Partial<Appointment> = {
+      serviceIds: borrador.serviceIds,
+      employeeId: borrador.employeeId,
+      duration: borrador.duration,
+      start: isoDelSalon(borrador.date, borrador.time, zonaHoraria),
+      priceEur: borrador.priceEur,
+    };
+    const aviso = avisoHorarioSalon({
+      openingHours: profile.openingHours,
+      diasEspeciales: profile.diasEspeciales,
+      fecha: borrador.date,
+      hora: borrador.time,
+      duracionMin: borrador.duration,
+    });
+    if (aviso) {
+      setConfirmarHorario({ aviso, patch });
+      return;
+    }
+    comprobarSolapeEdicion(patch);
   }
 
   /** Cierre de caja: marcar cobrada eligiendo cómo, o desmarcarla. Aquí no se cobra nada. */
@@ -319,6 +406,93 @@ export function AppointmentDetailSheet({
               </header>
 
               <div className="space-y-4 px-[var(--gutter)] pt-[var(--gutter)] pb-[calc(var(--gutter)+var(--seguro-abajo))]">
+                {puedeEn("cita.editar") && (
+                  <Button
+                    type="button"
+                    className="min-h-12 w-full rounded-full text-[15px] font-extrabold"
+                    aria-expanded={panelAbierto === "editar"}
+                    onClick={() => {
+                      if (panelAbierto === "editar") {
+                        setPanelAbierto(null);
+                        setBorrador(null);
+                      } else abrirEditor();
+                    }}
+                  >
+                    <Pencil className="size-[18px]" strokeWidth={1.7} />
+                    Editar cita
+                  </Button>
+                )}
+
+                {panelAbierto === "editar" && borrador && puedeEn("cita.editar") && (
+                  <section className="space-y-4 rounded-2xl border border-lino bg-card p-4" aria-label="Editar cita">
+                    <div>
+                      <h3 className="text-base font-extrabold text-cafe">Editar cita</h3>
+                      <p className="mt-1 text-[12.5px] text-muted-foreground">Cambia los datos y guarda todo de una vez.</p>
+                    </div>
+                    {!soloUno && (
+                      <label className="grid gap-1.5 text-[12.5px] font-bold text-cafe-medio">
+                        Profesional
+                        <Select value={borrador.employeeId} onValueChange={(employeeId) => setBorrador({ ...borrador, employeeId })}>
+                          <SelectTrigger aria-label="Profesional de la cita" className="min-h-11 bg-blanco"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {equipo.map((employee) => <SelectItem key={employee.id} value={employee.id}>{employee.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </label>
+                    )}
+                    <fieldset className="space-y-2">
+                      <legend className="text-[12.5px] font-bold text-cafe-medio">Servicios</legend>
+                      <div className="flex flex-wrap gap-2">
+                        {services.filter((service) => service.active !== false || borrador.serviceIds.includes(service.id)).map((service) => {
+                          const elegido = borrador.serviceIds.includes(service.id);
+                          return (
+                            <button
+                              key={service.id}
+                              type="button"
+                              aria-pressed={elegido}
+                              onClick={() => alternarServicio(service.id)}
+                              className={cn(
+                                "min-h-11 rounded-2xl border px-3 py-2 text-left text-[13px] font-bold transition-colors",
+                                elegido ? "border-transparent bg-salvia-clara text-hoja-tinta" : "border-input bg-blanco text-cafe-medio hover:bg-nata",
+                              )}
+                            >
+                              {service.name}
+                            </button>
+                          );
+                        })}
+                        {borrador.serviceIds.filter((id) => !carta[id]).map((id) => (
+                          <button key={id} type="button" aria-pressed="true" onClick={() => alternarServicio(id)} className="min-h-11 rounded-2xl border border-transparent bg-salvia-clara px-3 py-2 text-left text-[13px] font-bold text-hoja-tinta">
+                            {serviceNamesOf({ serviceIds: [id] }, carta)[0]}
+                          </button>
+                        ))}
+                      </div>
+                    </fieldset>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="grid gap-1.5 text-[12.5px] font-bold text-cafe-medio">
+                        Fecha
+                        <Input type="date" aria-label="Fecha de la cita" value={borrador.date} onChange={(e) => setBorrador({ ...borrador, date: e.target.value })} className="min-h-11 bg-blanco" />
+                      </label>
+                      <label className="grid gap-1.5 text-[12.5px] font-bold text-cafe-medio">
+                        Hora
+                        <Input type="time" aria-label="Hora de la cita" value={borrador.time} onChange={(e) => setBorrador({ ...borrador, time: e.target.value })} className="min-h-11 bg-blanco" />
+                      </label>
+                    </div>
+                    <label className="grid gap-1.5 text-[12.5px] font-bold text-cafe-medio">
+                      Duración
+                      <Select value={String(borrador.duration)} onValueChange={(valor) => setBorrador({ ...borrador, duration: Number(valor) })}>
+                        <SelectTrigger aria-label="Duración de la cita" className="min-h-11 bg-blanco"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {durationOptions.map((min) => <SelectItem key={min} value={String(min)}>{min} min</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </label>
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                      <Button type="button" variant="outline" className="min-h-11" onClick={() => { setPanelAbierto(null); setBorrador(null); }}>Cancelar</Button>
+                      <Button type="button" className="min-h-11" onClick={intentarGuardarEdicion}>Guardar cambios</Button>
+                    </div>
+                  </section>
+                )}
+
                 {/* La clienta: avatar, nombre y enlace a su ficha. */}
                 {client ? (
                   <button
@@ -431,76 +605,21 @@ export function AppointmentDetailSheet({
                   </Button>
                 ) : null}
 
-                {/* Acciones secundarias: abren su apartado debajo. */}
-                {(puedeEn("cita.mover") ||
-                  puedeEn("cita.editar") ||
-                  puedeEn("senal.gestionar")) && (
+                {/* La señal conserva su acción secundaria; editar está arriba y visible. */}
+                {puedeEn("senal.gestionar") && (
                   <div className="flex flex-wrap gap-2">
-                    {(puedeEn("cita.mover") || puedeEn("cita.editar")) && (
-                      <button
-                        type="button"
-                        aria-expanded={panelAbierto === "mover"}
-                        onClick={() => setPanelAbierto((p) => (p === "mover" ? null : "mover"))}
-                        className={accionSecundaria(panelAbierto === "mover")}
-                      >
-                        <CalendarClock className="size-[15px]" strokeWidth={1.6} /> Mover
-                      </button>
-                    )}
-                    {puedeEn("senal.gestionar") && (
-                      <button
-                        type="button"
-                        aria-expanded={panelAbierto === "fianza"}
-                        onClick={() => setPanelAbierto((p) => (p === "fianza" ? null : "fianza"))}
-                        className={accionSecundaria(panelAbierto === "fianza")}
-                      >
-                        <Euro className="size-[15px]" strokeWidth={1.6} /> Fianza
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      aria-expanded={panelAbierto === "fianza"}
+                      onClick={() => setPanelAbierto((p) => (p === "fianza" ? null : "fianza"))}
+                      className={accionSecundaria(panelAbierto === "fianza")}
+                    >
+                      <Euro className="size-[15px]" strokeWidth={1.6} /> Fianza
+                    </button>
                   </div>
                 )}
 
                 </section>
-
-                {panelAbierto === "mover" && (puedeEn("cita.mover") || puedeEn("cita.editar")) && (
-                  <div className="space-y-2 rounded-2xl bg-nata/60 p-3.5">
-                    <p className="text-[12.5px] font-bold text-cafe-medio">
-                      Fecha, duración y hora
-                    </p>
-                    {/* La fecha va primero y a lo ancho: mover una cita a otro día era
-                      lo único que obligaba a cancelarla y rehacerla entera. */}
-                    <Input
-                      type="date"
-                      aria-label="Fecha de la cita"
-                      value={toDateInputValue(start)}
-                      onChange={(e) => handleDateChange(e.target.value)}
-                      className="bg-card"
-                    />
-                    <div className="grid grid-cols-2 gap-2">
-                      <Select
-                        value={String(appointment.duration)}
-                        onValueChange={handleDurationChange}
-                      >
-                        <SelectTrigger aria-label="Duración de la cita" className="bg-card">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {durationOptions.map((min) => (
-                            <SelectItem key={min} value={String(min)}>
-                              {min} min
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="time"
-                        aria-label="Hora de la cita"
-                        value={toTimeInputValue(start)}
-                        onChange={(e) => handleTimeChange(e.target.value)}
-                        className="bg-card"
-                      />
-                    </div>
-                  </div>
-                )}
 
                 {/* Señal (9j): estado del ciclo y sus acciones, según la regla de Ajustes. */}
                 {panelAbierto === "fianza" && puedeEn("senal.gestionar") && (
@@ -739,6 +858,28 @@ export function AppointmentDetailSheet({
           </>
         )}
       </FichaContenedor>
+      <DialogoHorarioSalon
+        aviso={confirmarHorario?.aviso ?? null}
+        abierto={!!confirmarHorario}
+        onCancelar={() => setConfirmarHorario(null)}
+        onConfirmar={() => {
+          const patch = confirmarHorario?.patch;
+          setConfirmarHorario(null);
+          if (patch) comprobarSolapeEdicion(patch);
+        }}
+      />
+      <DialogoSolape
+        choques={confirmarSolape?.choques ?? []}
+        profesional={equipo.find((employee) => employee.id === (confirmarSolape?.patch.employeeId ?? appointment?.employeeId))?.name ?? ""}
+        abierto={!!confirmarSolape}
+        onCancelar={() => setConfirmarSolape(null)}
+        onConfirmar={() => {
+          const patch = confirmarSolape?.patch;
+          setConfirmarSolape(null);
+          if (patch) guardarEdicion(patch, true);
+        }}
+        carta={carta}
+      />
     </>
   );
 }
