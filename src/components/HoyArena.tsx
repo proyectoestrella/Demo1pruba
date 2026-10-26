@@ -746,7 +746,19 @@ function TarjetaCifra({
   );
   if (href)
     return (
-      <a href={href} className={clase}>
+      <a
+        href={href}
+        className={clase}
+        onClick={(e) => {
+          // 26-oct: llevar a las citas por confirmar y resaltarlas, no solo saltar.
+          const destino = href.startsWith("#") ? document.getElementById(href.slice(1)) : null;
+          if (!destino) return;
+          e.preventDefault();
+          destino.scrollIntoView({ behavior: "smooth", block: "start" });
+          destino.setAttribute("data-resaltada", "");
+          window.setTimeout(() => destino.removeAttribute("data-resaltada"), 2600);
+        }}
+      >
         {dentro}
       </a>
     );
@@ -928,7 +940,7 @@ function EstoTeEspera({
     <section
       id="espera"
       data-tour="pending-requests"
-      className="tarjeta-principal bg-[#F7F8F3] relleno-tarjeta"
+      className="tarjeta-principal bg-[#F7F8F3] relleno-tarjeta scroll-mt-24 transition-shadow duration-500 data-[resaltada]:ring-4 data-[resaltada]:ring-amber-400 data-[resaltada]:ring-offset-2"
     >
       <div className="flex items-baseline gap-3">
         <h2 className={tituloBloque}>Esto te espera</h2>
