@@ -237,6 +237,25 @@ describe("«Su tiempo» en la web (26-oct)", () => {
   });
 });
 
+describe("«Cualquiera disponible» con «Su tiempo» (26-oct tarde)", () => {
+  it("si con su duración no cabe con la elegida por el navegador, el servidor asigna otra libre", async () => {
+    const inicio = proximoDia(2);
+    doble = crearDobleSupabase({
+      salons: [{ slug: "real", profile: { ...perfil, duracionClientas: { c1: { "*": 20 } } } }],
+      clients: [{ id: "c1", salon_slug: "real", name: "Marta Pérez", phone: "600 111 222", phone_key: "600111222" }],
+      appointments: [{ id: "o", salon_slug: "real", local_id: "o", employee_id: employees[0].id, start_at: new Date(Date.parse(inicio) + datos.durationMin * 60_000 + 5 * 60_000).toISOString(), duration_min: 30, status: "confirmed", created_at: "2026-10-01T00:00:00Z" }],
+    });
+    const sin = await llamar<{ synced: boolean; reason?: string }>(S.syncAppointment, reserva({ clientName: "Marta Pérez", clientPhone: "600111222", clientEmail: undefined, startISO: inicio }));
+    expect(sin).toEqual({ synced: false, reason: "RESERVA_HUECO_OCUPADO" });
+    const con = await llamar<{ synced: boolean; employeeId?: string }>(S.syncAppointment, reserva({ clientName: "Marta Pérez", clientPhone: "600111222", clientEmail: undefined, startISO: inicio, cualquiera: true }));
+    expect(con.synced).toBe(true);
+    expect(con.employeeId).toBeDefined();
+    expect(con.employeeId).not.toBe(employees[0].id);
+    const cita = doble.escrituras.filter((e) => e.tabla === "appointments" && e.op === "upsert").at(-1);
+    expect(cita?.datos).toMatchObject({ employee_id: con.employeeId, duration_min: datos.durationMin + 20 });
+  });
+});
+
 describe("M5: doble reserva simultánea", () => {
   const HUECO = proximoDia(2);
   const solape = (created_at: string, local_id: string) => ({

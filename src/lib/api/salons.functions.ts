@@ -63,6 +63,7 @@ import {
 import { duracionCartaParaSenal, reglaSenal, senalDeReservaNueva } from "../senal";
 import { inferBusinessType } from "../business-type";
 import { employeesForType, servicesForType, textosDeCarta } from "../mock/salon";
+import { ordenParaCualquiera } from "../reparto";
 import { buildCampanas } from "../campanas";
 import {
   limpiarRespuestas,
@@ -1359,6 +1360,8 @@ export const syncAppointment = createServerFn({ method: "POST" })
       origen: z.enum(["sishow", "tpv123"]).optional(),
       /** Solo el panel, y solo tras confirmar el aviso de solape (ver lib/solape.ts). */
       /** El panel deshace un cambio (no se avisa a la clienta de lo que no supo). */
+      /** La clienta eligió «Cualquiera disponible»: el servidor puede asignar a otra. */
+      cualquiera: z.boolean().optional(),
       deshacer: z.boolean().optional(),
       permitirSolape: z.boolean().optional(),
     }),
@@ -1530,30 +1533,6 @@ export const syncAppointment = createServerFn({ method: "POST" })
           }
         }
       }
-      if (
-        perfil &&
-        !profesionalHaceServicios(data.employeeId, data.serviceIds, perfil.serviciosPorProfesional)
-      ) {
-        return { synced: false as const, reason: ERROR_SERVICIO_PROFESIONAL };
-      }
-      if (
-        perfil &&
-        hayBloqueoEnHueco(
-          perfil.bloqueosAgenda,
-          data.employeeId,
-          data.startISO,
-          datosRecalculados.durationMin,
-          zonaDelSalon(perfil),
-        )
-      ) {
-        return { synced: false as const, reason: ERROR_BLOQUEO_AGENDA };
-      }
-      if (
-        perfil &&
-        !profesionalTrabaja(perfil, data.employeeId, data.startISO, datosRecalculados.durationMin)
-      ) {
-        return { synced: false as const, reason: ERROR_FUERA_HORARIO };
-      }
       if (perfil) {
         const preguntas = preguntasAplicables(
           preguntasDelSalon(perfil, inferBusinessType(perfil.tagline, perfil.name)),
@@ -1575,20 +1554,51 @@ export const syncAppointment = createServerFn({ method: "POST" })
         }
       }
 
+      // Comprobaciones de UNA profesional (26-oct tarde): servicios que hace,
+      // bloqueos, horario y días especiales, solape, tope diario y calendario
+      // externo. Con «Cualquiera disponible», si la elegida por el navegador ya
+      // no cabe (p. ej. con «Su tiempo» de la clienta), se prueban las demás en
+      // el mismo orden interno (la titular, la última) antes de decir que no.
+      const duracionUsada = datosRecalculados.durationMin;
+      const motivoNoCabe = async (emp: string): Promise<string | null> => {
+      if (
+        perfil &&
+        !profesionalHaceServicios(emp, data.serviceIds, perfil.serviciosPorProfesional)
+      ) {
+        return (ERROR_SERVICIO_PROFESIONAL);
+      }
+      if (
+        perfil &&
+        hayBloqueoEnHueco(
+          perfil.bloqueosAgenda,
+          emp,
+          data.startISO,
+          duracionUsada,
+          zonaDelSalon(perfil),
+        )
+      ) {
+        return (ERROR_BLOQUEO_AGENDA);
+      }
+      if (
+        perfil &&
+        !profesionalTrabaja(perfil, emp, data.startISO, duracionUsada)
+      ) {
+        return (ERROR_FUERA_HORARIO);
+      }
       if (
         await solapaEnServidor(
           supabase,
           data.slug,
           data.localId,
-          data.employeeId,
+          emp,
           data.startISO,
-          datosRecalculados.durationMin,
+          duracionUsada,
           data.serviceIds,
           perfilPublico,
           true,
         )
       ) {
-        return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
+        return (ERROR_HUECO_OCUPADO);
       }
 
       // Tope diario por profesional (PeluChic: 9). Solo citas confirmadas.
@@ -1602,7 +1612,7 @@ export const syncAppointment = createServerFn({ method: "POST" })
           .from("appointments")
           .select("employee_id, start_at, status")
           .eq("salon_slug", data.slug)
-          .eq("employee_id", data.employeeId)
+          .eq("employee_id", emp)
           .gte("start_at", desde)
           .lt("start_at", hasta);
         if (errorTope) throw new Error(`syncAppointment (tope): ${errorTope.message}`);
@@ -1611,8 +1621,8 @@ export const syncAppointment = createServerFn({ method: "POST" })
           start: c.start_at,
           status: c.status,
         }));
-        if (diaCompletoParaProfesional(citasDia, data.employeeId, fecha, (iso) => fechaEnZona(iso, zona), tope)) {
-          return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
+        if (diaCompletoParaProfesional(citasDia, emp, fecha, (iso) => fechaEnZona(iso, zona), tope)) {
+          return (ERROR_HUECO_OCUPADO);
         }
       }
 
@@ -1623,17 +1633,32 @@ export const syncAppointment = createServerFn({ method: "POST" })
       // aplicar) o falla, se abre paso: es exactamente el comportamiento de
       // antes de este lote.
       const finExterno = new Date(
-        Date.parse(data.startISO) + datosRecalculados.durationMin * 60_000,
+        Date.parse(data.startISO) + duracionUsada * 60_000,
       ).toISOString();
       const ocupadoExterno = await hayOcupadoExternoEnHueco(
         data.slug,
-        data.employeeId,
+        emp,
         data.startISO,
         finExterno,
       ).catch(() => false);
       if (ocupadoExterno) {
-        return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
+        return (ERROR_HUECO_OCUPADO);
       }
+        return null;
+      };
+      let motivo = await motivoNoCabe(data.employeeId);
+      if (motivo && data.cualquiera && perfil) {
+        const equipo = employeesForType(inferBusinessType(perfil.tagline, perfil.name), perfil.team, perfil.teamHours, perfil.openingHours, perfil.teamIds);
+        for (const otra of ordenParaCualquiera(equipo, equipo[0]?.id)) {
+          if (otra.id === data.employeeId) continue;
+          if (!(await motivoNoCabe(otra.id))) {
+            data.employeeId = otra.id;
+            motivo = null;
+            break;
+          }
+        }
+      }
+      if (motivo) return { synced: false as const, reason: motivo };
     }
     // El panel puede solapar a propósito, pero solo diciéndolo: sin
     // `permitirSolape` se rechaza con su propio código y la pantalla enseña
@@ -1908,7 +1933,8 @@ export const syncAppointment = createServerFn({ method: "POST" })
       console.error("calendario-externo (tras guardar cita):", err);
     }
 
-    return { synced: true as const };
+    // Con «Cualquiera» el servidor pudo asignar a otra profesional: se le dice al navegador.
+    return { synced: true as const, employeeId: data.employeeId };
   });
 
 /**

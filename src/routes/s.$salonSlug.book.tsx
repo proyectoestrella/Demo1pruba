@@ -792,7 +792,7 @@ function BookingWizard() {
     )
       return;
     const serviceIds = selectedServices.map((s) => s.id);
-    const employeeId = resolveEmployee(
+    let employeeId = resolveEmployee(
       stylistChoice,
       data.date,
       data.time,
@@ -867,12 +867,18 @@ function BookingWizard() {
       setSending(true);
       setSendError(null);
       try {
-        await guardarReservaPublica(
+        const asignada = await guardarReservaPublica(
           salonSlug,
           intentoRef.current.cita,
           cliente,
           haLeidoAvisoPrivacidad(data.privacyNoticeAcknowledged),
+          stylistChoice === "any",
         );
+        // Con «Cualquiera», el servidor pudo asignar a otra profesional (p. ej. por «Su tiempo»).
+        if (asignada.employeeId && asignada.employeeId !== employeeId) {
+          employeeId = asignada.employeeId as EmployeeId;
+          intentoRef.current.cita = { ...intentoRef.current.cita, employeeId };
+        }
         addSavedPublicAppointment(intentoRef.current.cita);
       } catch (error) {
         setSendError(mensajeErrorReserva(error));

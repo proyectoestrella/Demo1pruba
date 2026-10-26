@@ -149,7 +149,7 @@ describe("salon-sync con un salón real", () => {
         { name: "Marta", phone: "600111222" },
         true,
       ),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({ employeeId: undefined });
     expect(llamadas).toEqual(["syncAppointment"]);
     expect(argumentosCitas[0]).toMatchObject({
       data: { localId: cita.id, status: "pending", privacyNoticeAccepted: true },

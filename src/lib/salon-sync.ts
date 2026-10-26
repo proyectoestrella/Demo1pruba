@@ -347,13 +347,15 @@ export async function guardarReservaPublica(
   appt: Appointment,
   cliente: ClienteDeCita,
   privacyNoticeAccepted: boolean,
-): Promise<void> {
+  cualquiera = false,
+): Promise<{ employeeId?: string }> {
   const resultado = await syncAppointment({
-    data: appointmentPayload(slug, appt, cliente, { privacyNoticeAccepted }),
+    data: { ...appointmentPayload(slug, appt, cliente, { privacyNoticeAccepted }), ...(cualquiera ? { cualquiera: true } : {}) },
   });
   if (!resultado.synced) {
     throw new Error("reason" in resultado ? resultado.reason : "RESERVA_NO_GUARDADA");
   }
+  return { employeeId: "employeeId" in resultado ? (resultado.employeeId as string | undefined) : undefined };
 }
 
 /** Borra una cita de verdad. */

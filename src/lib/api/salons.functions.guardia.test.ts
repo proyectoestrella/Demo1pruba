@@ -217,10 +217,12 @@ describe("la guarda está puesta en todas las funciones de servidor", () => {
 
   it("el horario por profesional se comprueba en el servidor antes de escribir", () => {
     const cuerpo = cuerpoDe("syncAppointment");
-    const i = cuerpo.indexOf("profesionalTrabaja(perfil, data.employeeId");
+    // 26-oct tarde: se comprueba para cada profesional candidata (motivoNoCabe).
+    const i = cuerpo.indexOf("profesionalTrabaja(perfil, emp");
     expect(i).toBeGreaterThan(-1);
     expect(i).toBeLessThan(cuerpo.indexOf("escribirCita(supabase, fila)"));
-    expect(cuerpo).toContain("reason: ERROR_FUERA_HORARIO");
+    expect(cuerpo).toContain("return (ERROR_FUERA_HORARIO)");
+    expect(cuerpo).toContain("let motivo = await motivoNoCabe(data.employeeId)");
   });
 
   it("la reserva pública valida especialidad, preguntas y bloqueos del perfil antes de escribir", () => {
