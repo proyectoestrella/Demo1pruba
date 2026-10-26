@@ -358,11 +358,10 @@ function BookingWizard() {
     [services],
   );
   const contextoSolape = useMemo<ContextoSolape>(
-    // Web: sin solape por exposición (la exclusión SQL de producción lo rechazaría).
+    // Web: con solape en la exposición del color (26-oct; SQL del día retira la exclusión antigua).
     () => ({
       servicios: serviceMap,
       perfil: profile,
-      sinExposicion: true,
       topeCitasDia: realSalonSlug ? topeCitasDiaProfesional(profile, salonSlug) : null,
     }),
     [serviceMap, profile, realSalonSlug, salonSlug],
