@@ -1,4 +1,6 @@
 import { leerTodasLasFilas } from "./paginar";
+import { proveedorDeCorreo } from "../email.server";
+import { emailCitaCambiada } from "../recordatorio-email";
 import { lavadoDe } from "../appointment-services";
 import { randomUUID } from "node:crypto";
 /**
@@ -1765,6 +1767,23 @@ export const syncAppointment = createServerFn({ method: "POST" })
     // con null desengancharía la cita de su ficha.
     if (clientId) fila.client_id = clientId;
 
+    // ¿El salón está cambiando la fecha u hora de una cita que ya existía?
+    // Entonces se avisa a la clienta (26-oct) y el recordatorio vuelve a salir.
+    let cambioDeHora: { antes: string; clientId: string | null } | null = null;
+    if (manda && data.status !== "cancelled") {
+      const { data: previa } = await supabase
+        .from("appointments")
+        .select("start_at, client_id, status")
+        .eq("salon_slug", data.slug)
+        .eq("local_id", data.localId)
+        .maybeSingle();
+      const p = previa as { start_at?: string; client_id?: string | null; status?: string } | null;
+      if (p?.start_at && Date.parse(p.start_at) !== Date.parse(data.startISO) && p.status !== "cancelled") {
+        cambioDeHora = { antes: p.start_at, clientId: p.client_id ?? clientId ?? null };
+        fila.reminder_sent_at = null;
+      }
+    }
+
     try {
       await escribirCita(supabase, fila);
     } catch (error) {
@@ -1775,6 +1794,12 @@ export const syncAppointment = createServerFn({ method: "POST" })
         return { synced: false as const, reason: ERROR_HUECO_OCUPADO };
       }
       throw error;
+    }
+
+    if (cambioDeHora && cambioDeHora.clientId && Date.parse(data.startISO) > Date.now()) {
+      await avisarCambioDeCita(supabase, data.slug, cambioDeHora.clientId, cambioDeHora.antes, data.startISO, data.clientName ?? "").catch((e) =>
+        console.warn("syncAppointment (aviso de cambio):", e instanceof Error ? e.message : e),
+      );
     }
 
     // M5: la comprobación de hueco de arriba y esta escritura no son atómicas.
@@ -2824,4 +2849,30 @@ function fichaMinimaDeBloqueo(c: Client, telefonoPedido: string): Client {
     penaltyKeep: c.penaltyKeep,
     penaltyBlock: c.penaltyBlock,
   };
+}
+
+
+/** Correo de «tu cita ha cambiado». Nunca hace fallar el guardado. */
+async function avisarCambioDeCita(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  slug: string,
+  clientId: string,
+  antesISO: string,
+  nuevaISO: string,
+  nombreCita: string,
+): Promise<void> {
+  const proveedor = proveedorDeCorreo();
+  if (!proveedor) return;
+  const { data: cliente } = await supabase.from("clients").select("name, email").eq("id", clientId).maybeSingle();
+  const email = (cliente as { email?: string | null } | null)?.email?.trim();
+  if (!email) return;
+  const { data: salon } = await supabase.from("salons").select("profile").eq("slug", slug).maybeSingle();
+  const perfil = (salon as { profile?: SalonProfile } | null)?.profile;
+  if (!perfil) return;
+  const correo = emailCitaCambiada(
+    { clientName: (cliente as { name?: string }).name ?? nombreCita, salonName: perfil.name, antesISO, nuevaISO },
+    zonaDelSalon(perfil),
+    perfil.whatsapp || perfil.phone,
+  );
+  await proveedor.enviar({ para: email, ...correo });
 }

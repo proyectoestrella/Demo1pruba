@@ -102,3 +102,30 @@ export function emailRecordatorio(
     html: p(escaparHtml(principal)) + p(escaparHtml(cuando)) + p(htmlCambiar),
   };
 }
+
+/**
+ * Correo a la clienta cuando el salón cambia la fecha u hora de su cita
+ * (26-oct, Tomás: si la profesional «mueve» una cita, que la clienta lo sepa).
+ * Incluye el WhatsApp del salón para aceptar o pedir otra hora.
+ */
+export function emailCitaCambiada(
+  d: { clientName: string; salonName: string; antesISO: string; nuevaISO: string; servicio?: string },
+  timeZone = ZONA_HORARIA_SALON,
+  whatsappSalon?: string,
+): { asunto: string; texto: string; html: string } {
+  const fecha = (iso: string) =>
+    `${new Date(iso).toLocaleDateString("es-ES", { timeZone, weekday: "long", day: "numeric", month: "long" })} a las ${horaEnZona(iso, timeZone)}`;
+  const nombre = d.clientName.trim().split(/\s+/)[0] || "";
+  const principal = `Hola${nombre ? ` ${nombre}` : ""}, ${d.salonName} ha cambiado tu cita${d.servicio ? ` de ${d.servicio}` : ""}. Antes: ${fecha(d.antesISO)}. Ahora: ${fecha(d.nuevaISO)} (hora de Madrid).`;
+  const telefono = whatsappSalon?.replace(/\D/g, "") ? whatsappSalon.trim() : "";
+  const enlace = telefono ? whatsappUrl(telefono, `Hola, me habéis cambiado la cita en ${d.salonName} al ${fecha(d.nuevaISO)}.`) : "";
+  const pie = telefono
+    ? `Si te va bien, no tienes que hacer nada. Si no, escríbenos por WhatsApp al ${telefono}: ${enlace}`
+    : "Si te va bien, no tienes que hacer nada. Si no, avisa al salón cuanto antes.";
+  const p = (t: string) => `<p style="font-family:sans-serif;font-size:16px;line-height:1.5">${t}</p>`;
+  const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const htmlPie = telefono
+    ? `Si te va bien, no tienes que hacer nada. Si no, <a href="${esc(enlace)}">escríbenos por WhatsApp</a> (${esc(telefono)}).`
+    : esc(pie);
+  return { asunto: `Tu cita en ${d.salonName} ha cambiado: ${fecha(d.nuevaISO)}`, texto: [principal, pie].join("\n\n"), html: p(esc(principal)) + p(htmlPie) };
+}
