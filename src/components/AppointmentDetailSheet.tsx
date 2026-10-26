@@ -1,4 +1,5 @@
 import { VentanaCobrar } from "@/components/VentanaCobrar";
+import { duracionDeClienta } from "@/lib/derive";
 import { importeACobrar } from "@/lib/cobro-panel";
 import { avisar, conCambio, deshacerConAviso, marcarAvisoDeCita } from "@/lib/deshacer-maqueta";
 import { useEffect, useState } from "react";
@@ -234,10 +235,14 @@ export function AppointmentDetailSheet({
         : [...actual.serviceIds, id];
       const elegidos = serviceIds.map((serviceId) => carta[serviceId]).filter(Boolean);
       const suma = sumServices(elegidos, lavadoDe(profile, services));
+      // 26-oct: con «Su tiempo» de la clienta, se propone su duración, no la de la carta.
+      const suya = appointment
+        ? duracionDeClienta(profile.duracionClientas, appointment.clientId, serviceIds, Object.fromEntries(services.map((x) => [x.id, x.durationMin])))
+        : null;
       return {
         ...actual,
         serviceIds,
-        duration: suma.durationMin || actual.duration,
+        duration: suya?.minutos || suma.durationMin || actual.duration,
         priceEur: elegidos.length === serviceIds.length ? suma.priceEur : actual.priceEur,
       };
     });
