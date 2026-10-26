@@ -1679,6 +1679,18 @@ export const syncAppointment = createServerFn({ method: "POST" })
         return { synced: false as const, reason: ERROR_DEMASIADAS_RESERVAS };
       }
     }
+    // Cita del panel con una clienta sin teléfono (26-oct): se engancha a su
+    // ficha si hay UNA sola con ese nombre y sin teléfono (si no, sin enlazar).
+    if (manda && !clientId && !data.importedFromTpv && !key && data.clientName?.trim()) {
+      const { data: porNombre } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("salon_slug", data.slug)
+        .is("phone", null)
+        .eq("name", data.clientName.trim())
+        .limit(2);
+      if ((porNombre ?? []).length === 1) clientId = (porNombre as Array<{ id: string }>)[0].id;
+    }
     if (manda && data.importedFromTpv && !key && data.clientName) {
       const { data: previa, error: buscarError } = await supabase
         .from("clients")

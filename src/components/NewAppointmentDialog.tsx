@@ -470,6 +470,11 @@ function FormularioNuevaCita({
         const created = conCambio(() => addClient({ name: clientName, phone: phone.trim() })).r;
         clientId = created.id;
         clientPhone = phone.trim();
+      } else if (clientName) {
+        // 26-oct: con nombre y sin teléfono también queda una ficha real (antes
+        // era «walkin-…» y la fórmula del color no llegaba a ninguna ficha).
+        const created = conCambio(() => addClient({ name: clientName, phone: "" })).r;
+        clientId = created.id;
       } else {
         clientId = `walkin-${Date.now()}`;
       }
