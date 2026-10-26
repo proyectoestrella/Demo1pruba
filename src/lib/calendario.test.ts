@@ -7,6 +7,7 @@ import {
   debeMostrarHojaCalendarioMovil,
   diaBaldosaCalendario,
   esDispositivoApple,
+  tipoCalendarioDispositivo,
   type DatosCita,
 } from "@/lib/calendario";
 
@@ -163,6 +164,10 @@ describe("esDispositivoApple", () => {
     expect(esDispositivoApple("Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)")).toBe(true);
   });
 
+  it("detecta Mac", () => {
+    expect(esDispositivoApple("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")).toBe(true);
+  });
+
   it("no detecta Android", () => {
     expect(
       esDispositivoApple("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36"),
@@ -173,6 +178,23 @@ describe("esDispositivoApple", () => {
     expect(
       esDispositivoApple("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"),
     ).toBe(false);
+  });
+});
+
+describe("tipoCalendarioDispositivo", () => {
+  it("prioriza el archivo .ics en iPhone, iPad y Mac", () => {
+    expect(tipoCalendarioDispositivo("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0)")).toBe("apple");
+    expect(tipoCalendarioDispositivo("Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X)")).toBe("apple");
+    expect(tipoCalendarioDispositivo("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")).toBe("apple");
+  });
+
+  it("prioriza Google Calendar en Android", () => {
+    expect(tipoCalendarioDispositivo("Mozilla/5.0 (Linux; Android 15; Pixel 9)")).toBe("android");
+  });
+
+  it("ofrece ambos calendarios en el resto de escritorios", () => {
+    expect(tipoCalendarioDispositivo("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")).toBe("escritorio");
+    expect(tipoCalendarioDispositivo("Mozilla/5.0 (X11; Linux x86_64)")).toBe("escritorio");
   });
 });
 
@@ -192,7 +214,7 @@ describe("diaBaldosaCalendario", () => {
 });
 
 describe("claveHojaCalendarioMovil", () => {
-  const base = { service: "corte", employeeId: "mario", date: "2026-09-25", time: "10:00", name: "Ana" };
+  const base = { service: "corte", employeeId: "mario", date: "2026-09-25", time: "10:00" };
 
   it("es determinista para los mismos datos", () => {
     expect(claveHojaCalendarioMovil(base)).toBe(claveHojaCalendarioMovil({ ...base }));
@@ -207,27 +229,21 @@ describe("claveHojaCalendarioMovil", () => {
 });
 
 describe("debeMostrarHojaCalendarioMovil", () => {
-  it("solo se muestra en móvil estrecho, con datos de cita y sin cerrar antes", () => {
+  it("se muestra con datos de cita si aún no apareció en la sesión", () => {
     expect(
-      debeMostrarHojaCalendarioMovil({ esMovilAngosto: true, hayDatosCita: true, yaCerrada: false }),
+      debeMostrarHojaCalendarioMovil({ hayDatosCita: true, yaMostrada: false }),
     ).toBe(true);
-  });
-
-  it("no se muestra en escritorio aunque haya datos y no se haya cerrado", () => {
-    expect(
-      debeMostrarHojaCalendarioMovil({ esMovilAngosto: false, hayDatosCita: true, yaCerrada: false }),
-    ).toBe(false);
   });
 
   it("no se muestra sin datos de cita", () => {
     expect(
-      debeMostrarHojaCalendarioMovil({ esMovilAngosto: true, hayDatosCita: false, yaCerrada: false }),
+      debeMostrarHojaCalendarioMovil({ hayDatosCita: false, yaMostrada: false }),
     ).toBe(false);
   });
 
-  it("no vuelve a mostrarse si ya se cerró para esa cita", () => {
+  it("no vuelve a mostrarse si ya apareció para esa cita", () => {
     expect(
-      debeMostrarHojaCalendarioMovil({ esMovilAngosto: true, hayDatosCita: true, yaCerrada: true }),
+      debeMostrarHojaCalendarioMovil({ hayDatosCita: true, yaMostrada: true }),
     ).toBe(false);
   });
 });

@@ -1,5 +1,11 @@
 import { expect, it } from "bun:test";
-import { hojaDelDia, recordatoriosPendientesManana, vistaHoja } from "./hoja-del-dia";
+import {
+  fechaDeVistaHoja,
+  hojaDelDia,
+  recordatoriosPendientesManana,
+  sumarDiasFecha,
+  vistaHoja,
+} from "./hoja-del-dia";
 import type { Appointment } from "./mock/types";
 
 const a = (id: string, employeeId: Appointment["employeeId"], start: string, colorFormula?: string, status: Appointment["status"] = "confirmed"): Appointment => ({
@@ -8,6 +14,8 @@ const a = (id: string, employeeId: Appointment["employeeId"], start: string, col
 
 it("abre la vista pedida y cuenta solo recordatorios pendientes de mañana", () => {
   expect(vistaHoja({ dia: "manana" })).toBe("manana");
+  expect(vistaHoja({ dia: "2026-10-26" })).toBe("2026-10-26");
+  expect(vistaHoja({ dia: "2026-02-30" })).toBe("hoy");
   expect(vistaHoja({ dia: "cualquier-cosa" })).toBe("hoy");
   expect(vistaHoja({})).toBe("hoy");
   const hoy = new Date(2026, 8, 24, 12);
@@ -19,6 +27,21 @@ it("abre la vista pedida y cuenta solo recordatorios pendientes de mañana", () 
   ];
   expect(recordatoriosPendientesManana(citas, hoy)).toBe(1);
   expect(recordatoriosPendientesManana(citas.filter((c) => c.id !== "pendiente"), hoy)).toBe(0);
+});
+
+it("resuelve hoy y mañana en la zona del salón y suma fechas sin depender del proceso", () => {
+  const instante = new Date("2026-10-26T00:30:00.000Z");
+  expect(fechaDeVistaHoja("hoy", instante, "Atlantic/Canary")).toBe("2026-10-26");
+  expect(fechaDeVistaHoja("hoy", instante, "America/New_York")).toBe("2026-10-25");
+  expect(fechaDeVistaHoja("manana", instante, "America/New_York")).toBe("2026-10-26");
+  expect(fechaDeVistaHoja("2027-03-14", instante, "America/New_York")).toBe("2027-03-14");
+  expect(sumarDiasFecha("2026-12-31", 1)).toBe("2027-01-01");
+});
+
+it("filtra citas por la zona horaria del salón", () => {
+  const citas = [a("limite", "mario", "2026-10-26T00:30:00.000Z")];
+  expect(hojaDelDia(citas, "2026-10-26", "Europe/Madrid")).toHaveLength(1);
+  expect(hojaDelDia(citas, "2026-10-25", "America/New_York")).toHaveLength(1);
 });
 
 it("agrupa por profesional, ordena horas y recupera el último color anterior", () => {
