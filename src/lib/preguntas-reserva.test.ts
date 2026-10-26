@@ -1,5 +1,5 @@
-import { describe, expect, it } from "bun:test";
-import { preguntasDelSalon, preguntasPorDefecto } from "./preguntas-reserva";
+import { describe, expect, it, test } from "bun:test";
+import { limpiarRespuestas, preguntasDelSalon, preguntasPorDefecto } from "./preguntas-reserva";
 import { bookingAnswersComplete, parseBookingNote, serializeBookingNote } from "./booking-answers";
 
 describe("compatibilidad: un salón sin lista propia no nota nada", () => {
@@ -129,4 +129,10 @@ describe("opción «Otro»", () => {
       { id: "ocasion", pregunta: "Ocasión", respuesta: "Boda" },
     ]);
   });
+});
+
+test("texto libre junto a una pregunta de opciones sin «¿cuál?» (26-oct)", () => {
+  const p = { id: "mechas", texto: "¿Llevas color, tintes o mechas ahora?", tipo: "opcion", opciones: ["Tinte", "Mechas", "No"], obligatoria: false, activa: true } as never;
+  expect(limpiarRespuestas([p], { mechas: "Mechas", mechasNota: " rubias " })).toEqual({ mechas: "Mechas", mechasNota: "rubias" });
+  expect(limpiarRespuestas([p], { mechas: "No", mechasNota: "x" })).toEqual({ mechas: "No" });
 });

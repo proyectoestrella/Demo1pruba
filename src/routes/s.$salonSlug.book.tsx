@@ -38,6 +38,8 @@ import type {
 import { serializeBookingNote } from "@/lib/booking-answers";
 import {
   idDetalleOtro,
+  idNotaLibre,
+  admiteNotaLibre,
   limpiarRespuestas,
   obligatoriasSinResponder,
   preguntasAplicables,
@@ -2607,7 +2609,9 @@ function PreguntaDelFormulario({
             onChange(
               p.detalle && e.target.value !== "Sí"
                 ? { [p.id]: e.target.value, [p.detalle.id]: undefined }
-                : { [p.id]: e.target.value },
+                : admiteNotaLibre(p, e.target.value)
+                  ? { [p.id]: e.target.value }
+                  : { [p.id]: e.target.value, [idNotaLibre(p)]: undefined },
             )
           }
         >
@@ -2638,6 +2642,16 @@ function PreguntaDelFormulario({
           maxLength={120}
           value={respuestas?.[p.detalle.id] ?? ""}
           onChange={(e) => onChange({ [p.detalle!.id]: e.target.value })}
+        />
+      )}
+      {admiteNotaLibre(p, valor) && (
+        <Input
+          aria-label={`Cuéntanos cuál (opcional): ${p.texto}`}
+          placeholder="Cuéntanos cuál, si quieres (p. ej. mechas rubias, tinte 7.1)"
+          className="h-11 text-[15px]"
+          maxLength={120}
+          value={respuestas?.[idNotaLibre(p)] ?? ""}
+          onChange={(e) => onChange({ [idNotaLibre(p)]: e.target.value })}
         />
       )}
       {p.permiteOtro && valor === "Otro" && (

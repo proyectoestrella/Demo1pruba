@@ -57,6 +57,17 @@ export function idDetalleOtro(pregunta: Pick<PreguntaReserva, "id">): string {
   return `${pregunta.id}Otro`;
 }
 
+/**
+ * Texto libre opcional junto a una pregunta de opciones o sí/no sin «¿cuál?»
+ * propio (26-oct, Tomás: «¿llevas tinte o mechas?» no dejaba decir cuál).
+ */
+export function idNotaLibre(pregunta: Pick<PreguntaReserva, "id">): string {
+  return `${pregunta.id}Nota`;
+}
+export function admiteNotaLibre(p: Pick<PreguntaReserva, "tipo" | "detalle">, valor: string | undefined): boolean {
+  return (p.tipo === "opcion" || p.tipo === "si_no") && !p.detalle && !!valor && valor !== "No" && valor !== "Otro";
+}
+
 /** Valor válido para esa pregunta, o `undefined`. */
 function valorValido(p: PreguntaReserva, valor: string | undefined): string | undefined {
   const v = (valor ?? "").trim();
@@ -95,6 +106,10 @@ export function limpiarRespuestas(preguntas: PreguntaReserva[], respuestas: Book
       const idOtro = idDetalleOtro(p);
       const d = (respuestas[idOtro] ?? "").trim().slice(0, MAX_DETALLE);
       if (d) out[idOtro] = d;
+    }
+    if (admiteNotaLibre(p, v)) {
+      const d = (respuestas[idNotaLibre(p)] ?? "").trim().slice(0, MAX_DETALLE);
+      if (d) out[idNotaLibre(p)] = d;
     }
   }
   return Object.keys(out).length ? out : undefined;
@@ -144,11 +159,12 @@ export function respuestasLegibles(
     vistas.add(p.id);
     if (p.detalle) vistas.add(p.detalle.id);
     if (p.permiteOtro) vistas.add(idDetalleOtro(p));
+    vistas.add(idNotaLibre(p));
     const v = (respuestas[p.id] ?? "").trim();
     if (!v) continue;
     const detalle = v === "Otro" && p.permiteOtro
       ? (respuestas[idDetalleOtro(p)] ?? "").trim()
-      : p.detalle ? (respuestas[p.detalle.id] ?? "").trim() : "";
+      : p.detalle ? (respuestas[p.detalle.id] ?? "").trim() : (respuestas[idNotaLibre(p)] ?? "").trim();
     out.push({ id: p.id, pregunta: p.texto, respuesta: detalle ? `${v} · ${detalle}` : v });
   }
   for (const [id, valor] of Object.entries(respuestas)) {
