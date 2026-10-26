@@ -187,9 +187,18 @@ export function construirEnlaceGoogleCalendar(datos: DatosCita): string {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
-/** true si el user-agent es de un dispositivo Apple (iPhone/iPad/iPod). */
+export type TipoCalendarioDispositivo = "apple" | "android" | "escritorio";
+
+/** Decide qué acceso al calendario priorizar a partir del user-agent. */
+export function tipoCalendarioDispositivo(userAgent: string): TipoCalendarioDispositivo {
+  if (/iPhone|iPad|Macintosh/i.test(userAgent)) return "apple";
+  if (/Android/i.test(userAgent)) return "android";
+  return "escritorio";
+}
+
+/** true si el user-agent es de un dispositivo Apple. */
 export function esDispositivoApple(userAgent: string): boolean {
-  return /iPhone|iPad|iPod/i.test(userAgent);
+  return tipoCalendarioDispositivo(userAgent) === "apple";
 }
 
 const DIAS_SEMANA_ABREV = ["DOM", "LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB"] as const;
@@ -208,9 +217,9 @@ export function diaBaldosaCalendario(fecha: string): { diaSemana: string; diaMes
 }
 
 /**
- * Clave estable para recordar, por cita concreta, si ya se cerró la hoja
- * móvil de "añadir al calendario" de la confirmación (no debe volver a
- * aparecer para la misma cita). Pura: solo junta los campos que ya
+ * Clave estable para recordar, por cita concreta, si ya se mostró la hoja
+ * de "añadir al calendario" de la confirmación (no debe volver a
+ * aparecer en esta sesión). Pura: solo junta los campos que ya
  * identifican la reserva en la URL de confirmación.
  */
 export function claveHojaCalendarioMovil(p: {
@@ -218,20 +227,17 @@ export function claveHojaCalendarioMovil(p: {
   employeeId: string;
   date: string;
   time: string;
-  name: string;
 }): string {
-  return [p.service, p.employeeId, p.date, p.time, p.name].join("|");
+  return [p.service, p.employeeId, p.date, p.time].join("|");
 }
 
 /**
- * ¿Toca abrir la hoja móvil de "añadir al calendario"? Pura: recibe ya
- * resueltos si el viewport es de móvil estrecho, si hay datos de cita que
- * ofrecer y si esta cita concreta ya la cerró antes (no vuelve a aparecer).
+ * ¿Toca abrir la hoja de "añadir al calendario"? Pura: recibe ya resueltos
+ * si hay datos de cita y si esta cita concreta ya se mostró en la sesión.
  */
 export function debeMostrarHojaCalendarioMovil(p: {
-  esMovilAngosto: boolean;
   hayDatosCita: boolean;
-  yaCerrada: boolean;
+  yaMostrada: boolean;
 }): boolean {
-  return p.esMovilAngosto && p.hayDatosCita && !p.yaCerrada;
+  return p.hayDatosCita && !p.yaMostrada;
 }

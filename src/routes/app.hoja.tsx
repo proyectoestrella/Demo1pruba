@@ -1,6 +1,5 @@
 import { useCitasVisibles, useEquipoVisible } from "@/lib/accesos-panel";
 import { useFichas } from "@/lib/use-fichas";
-import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, Clock3, History, Printer, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -9,13 +8,14 @@ import { whatsappUrl } from "@/lib/campanas";
 import { mensajeRecordatorioDe } from "@/lib/plantillas-whatsapp";
 import { employeeMap } from "@/lib/mock/salon";
 import { useEquipo } from "@/lib/use-equipo";
-import { hojaDelDia, fechaLocal, vistaHoja } from "@/lib/hoja-del-dia";
+import { fechaDeVistaHoja, hojaDelDia, vistaHoja } from "@/lib/hoja-del-dia";
 import { serviceLabelOf } from "@/lib/appointment-services";
 import { BookingAnswersSummary } from "@/components/BookingAnswersSummary";
 import { Button } from "@/components/ui/button";
 import { fichaDeClienta } from "@/lib/ficha-clienta";
 import type { Appointment, Client } from "@/lib/mock/types";
 import { franjasProfesional } from "@/lib/horario-equipo";
+import { horaEnZona, zonaDelSalon } from "@/lib/zona-horaria";
 
 export const Route = createFileRoute("/app/hoja")({
   validateSearch: (search: Record<string, unknown>) => ({ dia: vistaHoja(search) }),
@@ -31,14 +31,19 @@ function HojaDelDia() {
   const equipo = useEquipoVisible();
   const { dia } = Route.useSearch();
   const navigate = useNavigate({ from: "/app/hoja" });
-  const manana = dia === "manana";
+  const zona = zonaDelSalon(salon);
+  const ahora = new Date();
+  const hoy = fechaDeVistaHoja("hoy", ahora, zona);
+  const fechaManana = fechaDeVistaHoja("manana", ahora, zona);
+  const fechaSeleccionada = fechaDeVistaHoja(dia, ahora, zona);
+  const esHoy = fechaSeleccionada === hoy;
+  const manana = fechaSeleccionada === fechaManana;
   const { abrirCita, abrirClienta } = useFichas();
   const setSelected = (a: Appointment | null) => {
     if (a) abrirCita(a.id);
   };
-  const fecha = new Date();
-  if (manana) fecha.setDate(fecha.getDate() + 1);
-  const hoja = hojaDelDia(citas, fechaLocal(fecha));
+  const fecha = new Date(`${fechaSeleccionada}T12:00:00.000Z`);
+  const hoja = hojaDelDia(citas, fechaSeleccionada, zona);
   const grupos = equipo.map((p) => ({
     profesional: p,
     visitas: hoja.filter((v) => v.cita.employeeId === p.id),
@@ -66,6 +71,7 @@ function HojaDelDia() {
               day: "numeric",
               month: "long",
               year: "numeric",
+              timeZone: "UTC",
             })}
           </p>
         </div>
@@ -78,8 +84,8 @@ function HojaDelDia() {
             <button
               type="button"
               role="tab"
-              aria-selected={!manana}
-              className={segmento(!manana)}
+              aria-selected={esHoy}
+              className={segmento(esHoy)}
               onClick={() => navigate({ search: { dia: "hoy" } })}
             >
               Hoy
@@ -94,6 +100,15 @@ function HojaDelDia() {
               Mañana
             </button>
           </div>
+          <input
+            type="date"
+            aria-label="Fecha de la hoja"
+            value={fechaSeleccionada}
+            onChange={(event) => {
+              if (event.target.value) navigate({ search: { dia: event.target.value } });
+            }}
+            className="h-11 rounded-xl border border-input bg-card px-3 text-sm font-semibold text-foreground tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="size-[18px]" strokeWidth={1.6} />
             Imprimir
@@ -126,10 +141,7 @@ function HojaDelDia() {
                   className="flex flex-wrap items-center gap-3 border-t border-border px-[var(--relleno-tarjeta)] py-3"
                 >
                   <span className="w-[46px] shrink-0 font-extrabold tabular-nums">
-                    {new Date(cita.start).toLocaleTimeString("es-ES", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {horaEnZona(cita.start, zona)}
                   </span>
                   <span className="min-w-0 flex-1">
                     <b className="block truncate">{cita.clientName}</b>
@@ -202,7 +214,7 @@ function HojaDelDia() {
         </p>
       )}
       {grupos.map(({ profesional, visitas }) => {
-        const jornadas = franjasProfesional(profesional, fecha.getDay()).map(
+        const jornadas = franjasProfesional(profesional, fecha.getUTCDay()).map(
           (r) => `${hhmm(r.start)}–${hhmm(r.end)}`,
         );
         return (
@@ -251,10 +263,7 @@ function HojaDelDia() {
                         className="grid min-h-10 min-w-[60px] shrink-0 place-items-center rounded-xl bg-nata px-2 text-base font-extrabold text-cafe tabular-nums"
                         dateTime={cita.start}
                       >
-                        {new Date(cita.start).toLocaleTimeString("es-ES", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {horaEnZona(cita.start, zona)}
                       </time>
                       <button
                         type="button"
@@ -378,6 +387,7 @@ function HojaDelDia() {
                                     day: "numeric",
                                     month: "short",
                                     year: "numeric",
+                                    timeZone: zona,
                                   })}
                                 </time>
                                 <div>

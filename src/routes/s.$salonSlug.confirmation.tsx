@@ -22,8 +22,9 @@ import {
   construirIcs,
   construirIcsDataUri,
   diaBaldosaCalendario,
-  esDispositivoApple,
+  tipoCalendarioDispositivo,
   type DatosCita,
+  type TipoCalendarioDispositivo,
 } from "@/lib/calendario";
 import { IconoCalendarioApple, IconoCalendarioGoogle } from "@/components/IconosCalendario";
 import { HojaCalendarioMovil } from "@/components/HojaCalendarioMovil";
@@ -100,13 +101,14 @@ function Confirmation() {
   // abre una confirmación antigua sin ese dato, conserva el catálogo.
   const durationReserva = duration ?? totalMin;
   const employee = employeeMap[employeeId];
-  // Solo para ordenar los dos botones de calendario: en iPhone/iPad, Apple
-  // primero; en el resto (Android incluido), Google primero. Los dos se ven
-  // siempre. Se calcula en el cliente porque depende de navigator.userAgent.
-  const [esApple, setEsApple] = useState(false);
+  // En la hoja inmediata, Apple recibe .ics, Android Google y el resto
+  // ambos accesos. En el bloque fijo solo cambia el orden. Se calcula en el
+  // cliente porque depende de navigator.userAgent.
+  const [tipoCalendario, setTipoCalendario] = useState<TipoCalendarioDispositivo | null>(null);
   useEffect(() => {
-    setEsApple(esDispositivoApple(navigator.userAgent));
+    setTipoCalendario(tipoCalendarioDispositivo(navigator.userAgent));
   }, []);
+  const esApple = tipoCalendario === "apple";
 
   // Personalización de demo pura (no vive en SalonProfile): se lee del mismo
   // enlace `?d=`, igual que en el asistente de reserva.
@@ -314,11 +316,11 @@ function Confirmation() {
         </div>
       )}
 
-      {datosCita && (
+      {datosCita && tipoCalendario && (
         <HojaCalendarioMovil
           datosCita={datosCita}
-          clave={claveHojaCalendarioMovil({ service: sid, employeeId, date, time, name })}
-          esApple={esApple}
+          clave={claveHojaCalendarioMovil({ service: sid, employeeId, date, time })}
+          tipoDispositivo={tipoCalendario}
           enlaceGoogle={enlaceGoogle!}
           enlaceAppleDataUri={enlaceAppleDataUri!}
           dateLabel={dateLabel}

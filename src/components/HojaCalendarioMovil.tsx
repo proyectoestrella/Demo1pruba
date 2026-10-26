@@ -6,44 +6,26 @@ import {
   debeMostrarHojaCalendarioMovil,
   diaBaldosaCalendario,
   type DatosCita,
+  type TipoCalendarioDispositivo,
 } from "@/lib/calendario";
 import { IconoCalendarioApple, IconoCalendarioGoogle } from "@/components/IconosCalendario";
 
-/** Retraso antes de abrir la hoja, para no interrumpir el pintado inicial. */
-const RETRASO_MS = 600;
-/** Mismo punto de corte que pide la tarea: 640 px, no el `useIsMobile` (768). */
-const CONSULTA_MOVIL_ANGOSTO = "(max-width: 640px)";
-const CLAVE_PREFIJO = "sishow.hojaCalendarioMovil.cerrada.";
+const CLAVE_PREFIJO = "sishow.hojaCalendario.mostrada.";
 
-/** ¿El viewport actual es de móvil estrecho (≤640 px)? Falso durante el SSR
- * y el primer render del cliente, hasta que el efecto mide de verdad. */
-function useEsMovilAngosto(): boolean {
-  const [esMovil, setEsMovil] = useState(false);
-  useEffect(() => {
-    const mql = window.matchMedia(CONSULTA_MOVIL_ANGOSTO);
-    const onChange = () => setEsMovil(mql.matches);
-    onChange();
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
-  return esMovil;
-}
-
-function leerCerrada(clave: string): boolean {
+function leerMostrada(clave: string): boolean {
   try {
-    return window.localStorage.getItem(CLAVE_PREFIJO + clave) === "1";
+    return window.sessionStorage.getItem(CLAVE_PREFIJO + clave) === "1";
   } catch {
-    // Modo privado, cuota agotada, etc.: en el peor caso vuelve a aparecer
-    // la próxima vez, no rompe nada.
+    // Modo privado o almacenamiento bloqueado: no impide guardar la cita.
     return false;
   }
 }
 
-function marcarCerrada(clave: string): void {
+function marcarMostrada(clave: string): void {
   try {
-    window.localStorage.setItem(CLAVE_PREFIJO + clave, "1");
+    window.sessionStorage.setItem(CLAVE_PREFIJO + clave, "1");
   } catch {
-    // Ver leerCerrada: fallo silencioso, no crítico.
+    // Ver leerMostrada: fallo silencioso, no crítico.
   }
 }
 
@@ -51,8 +33,7 @@ export interface HojaCalendarioMovilProps {
   datosCita: DatosCita;
   /** Clave estable de esta cita — ver `claveHojaCalendarioMovil`. */
   clave: string;
-  /** true si el dispositivo es Apple: decide qué botón va primero y cuál recibe el foco. */
-  esApple: boolean;
+  tipoDispositivo: TipoCalendarioDispositivo;
   enlaceGoogle: string;
   enlaceAppleDataUri: string;
   /** Fecha ya formateada en es-ES ("lunes, 5 de octubre"), la misma que usa la tarjeta de arriba. */
@@ -60,49 +41,39 @@ export interface HojaCalendarioMovilProps {
 }
 
 /**
- * Hoja inferior (bottom sheet) que aparece una sola vez, ~0,6 s después de
- * llegar a la confirmación de reserva, SOLO en móvil estrecho (≤640 px):
- * ofrece guardar la cita en el calendario con los mismos enlaces que ya
- * genera `@/lib/calendario`, sin cambiar cómo se construyen. En escritorio
- * no se monta contenido nunca (el bloque de botones de siempre sigue ahí,
- * con los iconos nuevos). No vuelve a aparecer para la misma cita una vez
- * cerrada, la haya cerrado como sea (Ahora no, Esc, fuera, o eligiendo un
- * calendario).
+ * Hoja inferior que aparece una sola vez por cita y sesión al llegar a la
+ * confirmación. Ofrece los mismos enlaces de calendario que ya genera la
+ * página y adapta la acción principal al sistema operativo.
  */
 export function HojaCalendarioMovil({
   datosCita,
   clave,
-  esApple,
+  tipoDispositivo,
   enlaceGoogle,
   enlaceAppleDataUri,
   dateLabel,
 }: HojaCalendarioMovilProps) {
-  const esMovilAngosto = useEsMovilAngosto();
-  const [yaCerrada, setYaCerrada] = useState(false);
   const [abierta, setAbierta] = useState(false);
   const primarioRef = useRef<HTMLAnchorElement>(null);
   const antesRef = useRef<HTMLElement | null>(null);
 
-  // La lectura de localStorage es I/O: se resuelve en un efecto, no durante
-  // el render, para no divergir entre servidor y cliente.
   useEffect(() => {
-    setYaCerrada(leerCerrada(clave));
+    const yaMostrada = leerMostrada(clave);
+    if (!debeMostrarHojaCalendarioMovil({ hayDatosCita: true, yaMostrada })) return;
+    marcarMostrada(clave);
+    setAbierta(true);
   }, [clave]);
-
-  useEffect(() => {
-    if (!debeMostrarHojaCalendarioMovil({ esMovilAngosto, hayDatosCita: true, yaCerrada })) return;
-    const id = window.setTimeout(() => setAbierta(true), RETRASO_MS);
-    return () => window.clearTimeout(id);
-  }, [esMovilAngosto, yaCerrada, clave]);
 
   function cerrar() {
     setAbierta(false);
-    marcarCerrada(clave);
-    setYaCerrada(true);
   }
 
   const { diaSemana, diaMes } = diaBaldosaCalendario(datosCita.fecha);
-  const orden = esApple ? (["apple", "google"] as const) : (["google", "apple"] as const);
+  const orden = tipoDispositivo === "apple"
+    ? (["apple"] as const)
+    : tipoDispositivo === "android"
+      ? (["google"] as const)
+      : (["google", "apple"] as const);
 
   return (
     <DialogPrimitive.Root open={abierta} onOpenChange={(siguiente) => { if (!siguiente) cerrar(); }}>
@@ -126,7 +97,7 @@ export function HojaCalendarioMovil({
           <ApuntarFoco destino={antesRef} />
           <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-moca/40" aria-hidden="true" />
           <DialogPrimitive.Title className="text-[17px] font-extrabold leading-snug text-foreground">
-            ¿La guardas en tu calendario?
+            ¿La añadimos a tu calendario?
           </DialogPrimitive.Title>
           <DialogPrimitive.Description className="mt-1 text-[13px] text-muted-foreground">
             {datosCita.servicio} · {dateLabel} · {datosCita.hora}
@@ -142,7 +113,7 @@ export function HojaCalendarioMovil({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={cerrar}
-                  className="flex h-16 items-center gap-3 rounded-2xl border border-input bg-card px-4 text-[15px] font-semibold text-foreground transition-colors hover:bg-nata focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex min-h-12 items-center gap-3 rounded-2xl border border-primary bg-primary px-4 text-[15px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <IconoCalendarioGoogle diaMes={diaMes} className="h-10 w-10 shrink-0" />
                   Google Calendar
@@ -153,7 +124,7 @@ export function HojaCalendarioMovil({
                   ref={i === 0 ? primarioRef : undefined}
                   href={enlaceAppleDataUri}
                   onClick={cerrar}
-                  className="flex h-16 items-center gap-3 rounded-2xl border border-input bg-card px-4 text-[15px] font-semibold text-foreground transition-colors hover:bg-nata focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex min-h-12 items-center gap-3 rounded-2xl border border-primary bg-primary px-4 text-[15px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <IconoCalendarioApple diaSemana={diaSemana} diaMes={diaMes} className="h-10 w-10 shrink-0" />
                   Calendario de Apple
@@ -162,10 +133,19 @@ export function HojaCalendarioMovil({
             )}
           </div>
 
+          <a
+            href={enlaceAppleDataUri}
+            download="cita.ics"
+            onClick={cerrar}
+            className="mx-auto mt-3 flex min-h-11 items-center justify-center rounded-full px-4 text-[15px] font-semibold text-cafe-medio underline underline-offset-2 hover:bg-beige"
+          >
+            Otro calendario
+          </a>
+
           <button
             type="button"
             onClick={cerrar}
-            className="mx-auto mt-3 flex h-11 items-center justify-center rounded-full px-4 text-[15px] font-medium text-cafe-medio hover:bg-beige"
+            className="mx-auto flex min-h-11 items-center justify-center rounded-full px-4 text-[15px] font-medium text-cafe-medio hover:bg-beige"
           >
             Ahora no
           </button>
