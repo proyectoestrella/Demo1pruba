@@ -357,6 +357,10 @@ function HojaDelDia() {
                         </div>
                       )}
 
+                      {ficha.notasGenerales && (
+                        <p className="text-[12.5px] leading-snug text-muted-foreground">{ficha.notasGenerales}</p>
+                      )}
+
                       {anteriores.length > 0 && (
                         <details className="rounded-xl bg-nata/60 px-3 py-2">
                           <summary className="flex min-h-6 cursor-pointer list-none items-center gap-2 text-[13px] font-semibold text-cafe-medio [&::-webkit-details-marker]:hidden">

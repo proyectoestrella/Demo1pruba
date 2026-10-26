@@ -1,5 +1,5 @@
-import { describe, expect, it } from "bun:test";
-import { fichaDeClienta, ultimaVisitaParaFicha } from "./ficha-clienta";
+import { describe, expect, it, test } from "bun:test";
+import { fichaDeClienta, separarNotas, ultimaVisitaParaFicha } from "./ficha-clienta";
 import type { Appointment, Client, Employee, Service } from "./mock/types";
 
 const clienta: Client = { id: "c1", name: "Marta Martín", phone: "600 123 456", createdAt: "2025-01-01" };
@@ -66,4 +66,12 @@ describe("fichaDeClienta", () => {
     expect(ficha.resumen.gastoTotal).toBe(65);
     expect(ficha.resumen.gastoUltimos12Meses).toBe(40);
   });
+});
+
+test("«Recomendada por» e «Importada de TPV 123» no son alertas (26-oct)", () => {
+  expect(separarNotas("Importada de TPV 123 (código 1) · Recomendada por: Ana · Alérgica al amoniaco")).toEqual({
+    aTenerEnCuenta: "Alérgica al amoniaco",
+    informativas: "Importada de TPV 123 (código 1) · Recomendada por: Ana",
+  });
+  expect(separarNotas("Recomendada por: Ana").aTenerEnCuenta).toBe("");
 });

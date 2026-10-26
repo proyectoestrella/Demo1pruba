@@ -88,7 +88,11 @@ export function fichaDeClienta(clientId: string, datos: DatosFicha) {
     ultimaNotaTecnica: ultimaConNotaTecnica ? { texto: ultimaConNotaTecnica.technicalNotes!.trim(), fecha: ultimaConNotaTecnica.fecha } : undefined,
   };
   const avisos: string[] = [];
-  if (cliente?.notes?.trim()) avisos.push(`Observaciones: ${cliente.notes.trim()}`);
+  // 26-oct (Tomás): «Recomendada por», «Importada de TPV 123» o «Comparte
+  // teléfono» son información general, nunca una alerta. Solo lo demás de las
+  // notas va a «Ten en cuenta»; lo informativo sale aparte y discreto.
+  const { aTenerEnCuenta, informativas } = separarNotas(cliente?.notes);
+  if (aTenerEnCuenta) avisos.push(`Observaciones: ${aTenerEnCuenta}`);
   if (cliente?.manualBlock) avisos.push("Reserva por internet bloqueada a mano");
   if (proxima) {
     const senal = depositState(proxima, datos.ahora);
@@ -103,5 +107,16 @@ export function fichaDeClienta(clientId: string, datos: DatosFicha) {
       avisos.push(`Hace más de ${SEMANAS_SIN_COLOR} semanas que no se hace el color`);
     }
   }
-  return { visitas, resumen, avisos };
+  return { visitas, resumen, avisos, notasGenerales: informativas };
+}
+
+const NOTA_INFORMATIVA = /^(recomendada por|importada de tpv 123|comparte tel[eé]fono|tel[eé]fono compartido)/i;
+
+/** Parte las notas en lo que hay que tener en cuenta y lo meramente informativo. */
+export function separarNotas(notas: string | null | undefined): { aTenerEnCuenta: string; informativas: string } {
+  const partes = (notas ?? "").split(/\s·\s|\n+/).map((x) => x.trim()).filter(Boolean);
+  return {
+    aTenerEnCuenta: partes.filter((x) => !NOTA_INFORMATIVA.test(x)).join(" · "),
+    informativas: partes.filter((x) => NOTA_INFORMATIVA.test(x)).join(" · "),
+  };
 }
