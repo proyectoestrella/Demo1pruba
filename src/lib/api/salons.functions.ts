@@ -1,4 +1,5 @@
 import { leerTodasLasFilas } from "./paginar";
+import { duracionDeClienta } from "../derive";
 import { proveedorDeCorreo } from "../email.server";
 import { emailCitaCambiada } from "../recordatorio-email";
 import { lavadoDe } from "../appointment-services";
@@ -1522,6 +1523,26 @@ export const syncAppointment = createServerFn({ method: "POST" })
         Math.round(data.priceEur * 100) !== Math.round(datosRecalculados.priceEur * 100)
       ) {
         return { synced: false as const, reason: ERROR_DATOS_RESERVA };
+      }
+      // «Su tiempo» (26-oct): si el teléfono es de una clienta conocida (la misma
+      // persona), su duración propia manda para comprobar y guardar el hueco.
+      // A la clienta no se le enseña nada: si ya no cabe, «hueco ocupado».
+      const keyTiempo = phoneKey(data.clientPhone ?? "");
+      if (perfil?.duracionClientas && keyTiempo.length >= 9 && data.clientName) {
+        const { data: conocida } = await supabase
+          .from("clients")
+          .select("id, name")
+          .eq("salon_slug", data.slug)
+          .eq("phone_key", keyTiempo)
+          .maybeSingle();
+        const c = conocida as { id: string; name: string } | null;
+        if (c && mismaPersonaPorNombre(c.name, data.clientName)) {
+          const carta = servicesForType(inferBusinessType(perfil.tagline, perfil.name), perfil.menu);
+          const suya = duracionDeClienta(perfil.duracionClientas, c.id, data.serviceIds, Object.fromEntries(carta.map((x) => [x.id, x.durationMin])));
+          if (suya && suya.minutos > datosRecalculados.durationMin) {
+            datosRecalculados = { ...datosRecalculados, durationMin: suya.minutos };
+          }
+        }
       }
       if (
         perfil &&

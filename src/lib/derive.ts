@@ -754,6 +754,9 @@ export function trendsForPeriod(
  * propio o el de la carta. `null` si su ficha no dice nada de ninguno de ellos
  * o si el total coincide con la carta.
  */
+/** Clave de `duracionClientas[clienta]` para el extra general en cualquier servicio. */
+export const EXTRA_GENERAL = "*";
+
 export function duracionDeClienta(
   duraciones: Record<string, Record<string, number>> | undefined,
   clientId: string | undefined,
@@ -762,7 +765,9 @@ export function duracionDeClienta(
 ): { minutos: number } | null {
   if (!clientId || serviceIds.length === 0) return null;
   const propias = duraciones?.[clientId];
-  if (!propias || !serviceIds.some((id) => Number(propias[id]) > 0)) return null;
+  // «*» = «tarda más en cualquier servicio: +N min» (26-oct, lo de Olga).
+  const extra = Math.max(0, Number(propias?.[EXTRA_GENERAL]) || 0);
+  if (!propias || (!extra && !serviceIds.some((id) => Number(propias[id]) > 0))) return null;
   let total = 0;
   let carta = 0;
   for (const id of serviceIds) {
@@ -771,6 +776,7 @@ export function duracionDeClienta(
     carta += base;
     total += suya > 0 ? suya : base;
   }
+  total += extra;
   return total > 0 && total !== carta ? { minutos: Math.round(total) } : null;
 }
 

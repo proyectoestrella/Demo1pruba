@@ -28,6 +28,7 @@ export function DuracionClienta({ clientId, editable }: { clientId: string; edit
   const min = Math.round(Number(minutos));
   const valido = !!servicioId && Number.isFinite(min) && min >= 5 && min <= 600;
   const elegibles = services.filter((s) => s.active !== false && !(s.id in propias));
+  const extra = Number(propias["*"]) || 0;
 
   if (!editable && filas.length === 0) return null;
   return (
@@ -61,6 +62,24 @@ export function DuracionClienta({ clientId, editable }: { clientId: string; edit
           ))}
         </ul>
       )}
+      <label className="mb-2 flex min-h-11 flex-wrap items-center gap-2 text-sm">
+        <span>Tarda más en cualquier servicio: +</span>
+        <input
+          aria-label="Minutos de más en cualquier servicio"
+          inputMode="numeric"
+          disabled={!editable}
+          defaultValue={extra || ""}
+          placeholder="0"
+          onBlur={(e) => {
+            const n = Math.min(240, Math.max(0, Math.round(Number(e.target.value.replace(/\D/g, "")) || 0)));
+            if (n === extra) return;
+            const { ["*"]: _quitado, ...resto } = propias;
+            guardar(n ? { ...resto, "*": n } : resto);
+          }}
+          className="h-11 w-20 rounded-xl border border-border bg-background px-3 text-sm tabular-nums"
+        />
+        <span>min</span>
+      </label>
       {editable && (
         <div className="flex flex-wrap items-center gap-2">
           <select

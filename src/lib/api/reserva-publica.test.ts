@@ -214,6 +214,29 @@ describe("Teléfono compartido en familia (25-oct noche)", () => {
   });
 });
 
+describe("«Su tiempo» en la web (26-oct)", () => {
+  it("la clienta conocida por su teléfono guarda la cita con su duración (extra general)", async () => {
+    doble = crearDobleSupabase({
+      salons: [{ slug: "real", profile: { ...perfil, duracionClientas: { c1: { "*": 20 } } } }],
+      clients: [{ id: "c1", salon_slug: "real", name: "Marta Pérez", phone: "600 111 222", phone_key: "600111222" }],
+    });
+    const r = await llamar<{ synced: boolean }>(S.syncAppointment, reserva({ clientName: "Marta Pérez", clientPhone: "600111222", clientEmail: undefined }));
+    expect(r.synced).toBe(true);
+    const cita = doble.escrituras.find((e) => e.tabla === "appointments" && e.op === "upsert");
+    expect(cita?.datos).toMatchObject({ duration_min: datos.durationMin + 20 });
+  });
+  it("si con su duración ya no cabe, hueco ocupado", async () => {
+    const inicio = proximoDia(2);
+    doble = crearDobleSupabase({
+      salons: [{ slug: "real", profile: { ...perfil, duracionClientas: { c1: { "*": 20 } } } }],
+      clients: [{ id: "c1", salon_slug: "real", name: "Marta Pérez", phone: "600 111 222", phone_key: "600111222" }],
+      appointments: [{ id: "o", salon_slug: "real", local_id: "o", employee_id: employees[0].id, start_at: new Date(Date.parse(inicio) + datos.durationMin * 60_000 + 5 * 60_000).toISOString(), duration_min: 30, status: "confirmed", created_at: "2026-10-01T00:00:00Z" }],
+    });
+    const r = await llamar<{ synced: boolean; reason?: string }>(S.syncAppointment, reserva({ clientName: "Marta Pérez", clientPhone: "600111222", clientEmail: undefined, startISO: inicio }));
+    expect(r).toEqual({ synced: false, reason: "RESERVA_HUECO_OCUPADO" });
+  });
+});
+
 describe("M5: doble reserva simultánea", () => {
   const HUECO = proximoDia(2);
   const solape = (created_at: string, local_id: string) => ({

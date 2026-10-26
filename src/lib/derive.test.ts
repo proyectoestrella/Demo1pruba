@@ -228,3 +228,8 @@ describe("duracionDeClienta (22-oct)", () => {
     expect(duracionDeClienta({ olga: { corte: 35 } }, "olga", ["color"], carta)).toBeNull();
   });
 });
+
+it("duracionDeClienta: el extra general «*» se suma a cualquier servicio (26-oct)", () => {
+  expect(duracionDeClienta({ olga: { "*": 15 } }, "olga", ["corte"], { corte: 30 })).toEqual({ minutos: 45 });
+  expect(duracionDeClienta({ olga: { corte: 35, "*": 10 } }, "olga", ["corte"], { corte: 30 })).toEqual({ minutos: 45 });
+});
