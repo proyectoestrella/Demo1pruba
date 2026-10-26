@@ -1,7 +1,7 @@
 import { leerTodasLasFilas } from "./paginar";
 import { duracionDeClienta } from "../derive";
 import { proveedorDeCorreo } from "../email.server";
-import { emailCitaCambiada } from "../recordatorio-email";
+import { debeAvisarCambioDeCita, emailCitaCambiada } from "../recordatorio-email";
 import { lavadoDe } from "../appointment-services";
 import { randomUUID } from "node:crypto";
 /**
@@ -1358,6 +1358,8 @@ export const syncAppointment = createServerFn({ method: "POST" })
         .optional(),
       origen: z.enum(["sishow", "tpv123"]).optional(),
       /** Solo el panel, y solo tras confirmar el aviso de solape (ver lib/solape.ts). */
+      /** El panel deshace un cambio (no se avisa a la clienta de lo que no supo). */
+      deshacer: z.boolean().optional(),
       permitirSolape: z.boolean().optional(),
     }),
   )
@@ -1803,21 +1805,9 @@ export const syncAppointment = createServerFn({ method: "POST" })
     if (clientId) fila.client_id = clientId;
 
     // ¿El salón está cambiando la fecha u hora de una cita que ya existía?
-    // Entonces se avisa a la clienta (26-oct) y el recordatorio vuelve a salir.
-    let cambioDeHora: { antes: string; clientId: string | null } | null = null;
-    if (manda && data.status !== "cancelled") {
-      const { data: previa } = await supabase
-        .from("appointments")
-        .select("start_at, client_id, status")
-        .eq("salon_slug", data.slug)
-        .eq("local_id", data.localId)
-        .maybeSingle();
-      const p = previa as { start_at?: string; client_id?: string | null; status?: string } | null;
-      if (p?.start_at && Date.parse(p.start_at) !== Date.parse(data.startISO) && p.status !== "cancelled") {
-        cambioDeHora = { antes: p.start_at, clientId: p.client_id ?? clientId ?? null };
-        fila.reminder_sent_at = null;
-      }
-    }
+    // Se lee cómo estaba para decidir el aviso tras guardar (26-oct tarde).
+    const previaAviso = manda ? await leerPreviaParaAviso(supabase, data.slug, data.localId) : null;
+    if (previaAviso && Date.parse(previaAviso.start_at) !== Date.parse(data.startISO)) fila.reminder_sent_at = null;
 
     try {
       await escribirCita(supabase, fila);
@@ -1831,8 +1821,8 @@ export const syncAppointment = createServerFn({ method: "POST" })
       throw error;
     }
 
-    if (cambioDeHora && cambioDeHora.clientId && Date.parse(data.startISO) > Date.now()) {
-      await avisarCambioDeCita(supabase, data.slug, cambioDeHora.clientId, cambioDeHora.antes, data.startISO, data.clientName ?? "").catch((e) =>
+    if (previaAviso) {
+      await quizaAvisarCambio(supabase, data.slug, data.localId, previaAviso, data.startISO, data.status, data.deshacer === true, previaAviso.client_id ?? clientId ?? null, data.clientName ?? "").catch((e) =>
         console.warn("syncAppointment (aviso de cambio):", e instanceof Error ? e.message : e),
       );
     }
@@ -2215,6 +2205,11 @@ export const syncAppointmentPatch = createServerFn({ method: "POST" })
     }
     let columnas = columnasDeParche(data.patch as Partial<Appointment>);
     if (!Object.keys(columnas).length) return { synced: true as const };
+    // Mover de hora desde el panel: se recuerda cómo estaba para avisar a la clienta (26-oct tarde).
+    const previaAvisoParche = "start_at" in columnas ? await leerPreviaParaAviso(supabase, data.slug, data.localId) : null;
+    if (previaAvisoParche && Date.parse(previaAvisoParche.start_at) !== Date.parse(String(columnas.start_at))) {
+      columnas = { ...columnas, reminder_sent_at: null };
+    }
     // Mover de hora, cambiar la duración o la profesional puede crear un
     // solape: se comprueba con la fila actual completada por el parche.
     if (
@@ -2292,6 +2287,12 @@ export const syncAppointmentPatch = createServerFn({ method: "POST" })
         // Lote 11: la señal aplicada al cobrar crea (o borra) su pago. No
         // bloquea la respuesta: la cita ya está guardada pase lo que pase aquí.
         await sincronizarPagoDeSenal(supabase, data.slug, data.localId, data.patch);
+        if (previaAvisoParche) {
+          const fila0 = filas[0] as { start_at?: string; status?: string; client_id?: string | null; client_name?: string | null };
+          await quizaAvisarCambio(supabase, data.slug, data.localId, previaAvisoParche, fila0.start_at ?? String(columnas.start_at), fila0.status, data.origen === "deshacer", fila0.client_id ?? previaAvisoParche.client_id ?? null, fila0.client_name ?? "").catch((e) =>
+            console.warn("syncAppointmentPatch (aviso de cambio):", e instanceof Error ? e.message : e),
+          );
+        }
         return { synced: true as const };
       }
       if (!faltaEsquema(error) || nivel === NIVELES_CITA.length)
@@ -2897,6 +2898,48 @@ function fichaMinimaDeBloqueo(c: Client, telefonoPedido: string): Client {
 
 
 /** Correo de «tu cita ha cambiado». Nunca hace fallar el guardado. */
+interface PreviaAviso {
+  start_at: string;
+  client_id?: string | null;
+  status?: string;
+  aviso_hora_enviada?: string | null;
+}
+
+/** Cómo estaba la cita (y de qué hora se avisó ya), con o sin la columna nueva. */
+async function leerPreviaParaAviso(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  slug: string,
+  localId: string,
+): Promise<PreviaAviso | null> {
+  for (const columnas of ["start_at, client_id, status, aviso_hora_enviada", "start_at, client_id, status"]) {
+    const { data, error } = await supabase.from("appointments").select(columnas).eq("salon_slug", slug).eq("local_id", localId).maybeSingle();
+    const fila = data as unknown as PreviaAviso | null;
+    if (!error) return fila?.start_at ? { ...fila } : null;
+    if (!faltaEsquema(error)) return null;
+  }
+  return null;
+}
+
+/** Decide y, si toca, manda «Tu cita ha cambiado»; luego apunta la hora avisada. */
+async function quizaAvisarCambio(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  slug: string,
+  localId: string,
+  previa: PreviaAviso,
+  nuevaISO: string,
+  estado: string | undefined,
+  deshacer: boolean,
+  clientId: string | null,
+  nombreCita: string,
+): Promise<void> {
+  if (!clientId || previa.status === "cancelled") return;
+  if (!debeAvisarCambioDeCita({ antesISO: previa.start_at, nuevaISO, avisadaISO: previa.aviso_hora_enviada, deshacer, estado })) return;
+  const enviado = await avisarCambioDeCita(supabase, slug, clientId, previa.aviso_hora_enviada || previa.start_at, nuevaISO, nombreCita);
+  if (!enviado) return;
+  const { error } = await supabase.from("appointments").update({ aviso_hora_enviada: nuevaISO }).eq("salon_slug", slug).eq("local_id", localId);
+  if (error && !faltaEsquema(error)) console.warn(`aviso de cambio (hora avisada): ${error.message}`);
+}
+
 async function avisarCambioDeCita(
   supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
   slug: string,
@@ -2904,19 +2947,20 @@ async function avisarCambioDeCita(
   antesISO: string,
   nuevaISO: string,
   nombreCita: string,
-): Promise<void> {
+): Promise<boolean> {
   const proveedor = proveedorDeCorreo();
-  if (!proveedor) return;
+  if (!proveedor) return false;
   const { data: cliente } = await supabase.from("clients").select("name, email").eq("id", clientId).maybeSingle();
   const email = (cliente as { email?: string | null } | null)?.email?.trim();
-  if (!email) return;
+  if (!email) return false;
   const { data: salon } = await supabase.from("salons").select("profile").eq("slug", slug).maybeSingle();
   const perfil = (salon as { profile?: SalonProfile } | null)?.profile;
-  if (!perfil) return;
+  if (!perfil) return false;
   const correo = emailCitaCambiada(
     { clientName: (cliente as { name?: string }).name ?? nombreCita, salonName: perfil.name, antesISO, nuevaISO },
     zonaDelSalon(perfil),
     perfil.whatsapp || perfil.phone,
   );
   await proveedor.enviar({ para: email, ...correo });
+  return true;
 }

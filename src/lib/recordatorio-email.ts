@@ -129,3 +129,27 @@ export function emailCitaCambiada(
     : esc(pie);
   return { asunto: `Tu cita en ${d.salonName} ha cambiado: ${fecha(d.nuevaISO)}`, texto: [principal, pie].join("\n\n"), html: p(esc(principal)) + p(htmlPie) };
 }
+
+/**
+ * ¿Hay que mandar «Tu cita ha cambiado»? (26-oct tarde)
+ * - Al deshacer, solo si a la clienta ya se le avisó de la hora que se
+ *   deshace (si no, nunca supo del cambio y no hay nada que contarle).
+ * - Nunca si la hora nueva es la que ya conoce (la última avisada o, si no
+ *   se ha avisado nunca, la que tenía la cita).
+ * - Solo citas futuras y no canceladas.
+ */
+export function debeAvisarCambioDeCita(d: {
+  antesISO: string;
+  nuevaISO: string;
+  avisadaISO?: string | null;
+  deshacer?: boolean;
+  estado?: string;
+  ahora?: Date;
+}): boolean {
+  if (d.estado === "cancelled" || d.estado === "no-show") return false;
+  const nueva = Date.parse(d.nuevaISO);
+  if (!Number.isFinite(nueva) || nueva <= (d.ahora ?? new Date()).getTime()) return false;
+  if (d.deshacer) return !!d.avisadaISO && Date.parse(d.avisadaISO) !== nueva;
+  const conocida = Date.parse(d.avisadaISO || d.antesISO);
+  return !Number.isFinite(conocida) || conocida !== nueva;
+}

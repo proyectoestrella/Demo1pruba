@@ -258,6 +258,7 @@ function appointmentPayload(
   return {
     slug,
     permitirSolape: opciones.permitirSolape === true,
+    ...(opciones.origen === "deshacer" ? { deshacer: true } : {}),
     localId: appt.id,
     clientName: cliente?.name ?? appt.clientName ?? undefined,
     clientPhone: cliente?.phone,
