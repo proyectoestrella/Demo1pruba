@@ -57,7 +57,6 @@ import { columnasDeParche, filaSinLote3 } from "../cita-parche";
 import {
   cabeCitaEnAgenda,
   ERROR_SOLAPE_PANEL,
-  tramosActivosEnMinutos,
   type CitaParaSolape,
   type ContextoSolape,
 } from "../solape";
@@ -1108,23 +1107,8 @@ export const listSalonData = createServerFn({ method: "GET" })
       };
       // Vista de panel: cada rol recibe solo lo suyo (lote 8). Las campañas
       // se calculan en servidor y se recortan por plan antes de la respuesta.
-      if (publica) {
-        // Las citas viajan sin servicios (B5), pero con sus tramos activos:
-        // así la web sabe cuándo la profesional está en exposición del color.
-        const perfilWeb = await perfilDelSalon(supabase, data.slug).catch(() => undefined);
-        if (perfilWeb) {
-          const contexto = contextoSolapeDePerfil(perfilWeb);
-          (citas.data ?? []).forEach((fila, i) => {
-            const r = fila as unknown as { service_id?: string | null; start_at: string; duration_min: number };
-            const tramos = tramosActivosEnMinutos(
-              { start: r.start_at, duration: r.duration_min, serviceIds: (r.service_id ?? "").split(",").filter(Boolean) },
-              contexto,
-            );
-            if (tramos) todo.appointments[i] = { ...todo.appointments[i], tramosActivos: tramos };
-          });
-        }
-        return todo;
-      }
+      // Web pública: citas sin servicios (B5) y sin exposición (ver ContextoSolape.sinExposicion).
+      if (publica) return todo;
       const porRol = recortarDatosPanel(quien, todo);
       const perfilSeguro = perfil!;
       const tipo = inferBusinessType(perfilSeguro.tagline, perfilSeguro.name);
@@ -1990,11 +1974,8 @@ function citaDeFilaSolape(fila: FilaSolapeServidor): CitaParaSolape {
   };
 }
 
-function contextoSolapeDePerfil(perfil: SalonProfile | undefined, _web = false): ContextoSolape {
-  // 26-oct: la web vuelve a aprovechar la exposición del color (lo pidió el
-  // salón). Requiere retirar la exclusión SQL antigua (SQL del 26-oct); si aún
-  // existe, el insert choca y se responde «hueco ocupado» (nunca 500).
-  if (!perfil) return {};
+function contextoSolapeDePerfil(perfil: SalonProfile | undefined, web = false): ContextoSolape {
+  if (!perfil) return web ? { sinExposicion: true } : {};
   const carta = servicesForType(
     inferBusinessType(perfil.tagline, perfil.name),
     perfil.menu,
@@ -2003,6 +1984,7 @@ function contextoSolapeDePerfil(perfil: SalonProfile | undefined, _web = false):
   return {
     servicios: Object.fromEntries(carta.map((servicio) => [servicio.id, servicio])),
     perfil,
+    ...(web ? { sinExposicion: true } : {}),
   };
 }
 

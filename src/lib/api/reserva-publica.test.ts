@@ -305,7 +305,7 @@ describe("reserva pública durante la exposición", () => {
     created_at: "2026-10-18T10:00:00.000Z",
   };
 
-  it("la web acepta otra cita corta durante la exposición del color (26-oct)", async () => {
+  it("la web NO acepta otra cita en la exposición (la exclusión SQL de producción la rechazaría)", async () => {
     doble = crearDobleSupabase({
       salons: [{ slug: "real", profile: perfilColor }],
       appointments: [colorGuardado],
@@ -321,17 +321,7 @@ describe("reserva pública durante la exposición", () => {
         clientPhone: "699888777",
       }),
     );
-    expect(r).toEqual({ synced: true });
-  });
-
-  it("dos reservas a la vez en la misma exposición: solo una se queda (26-oct)", async () => {
-    doble = crearDobleSupabase({ salons: [{ slug: "real", profile: perfilColor }], appointments: [colorGuardado], clients: [] });
-    const enExposicion = new Date(Date.parse(inicioColor) + 15 * 60_000).toISOString();
-    const una = (tel: string, nombre: string) =>
-      llamar<{ synced: boolean; reason?: string }>(S.syncAppointment, reserva({ serviceIds: ["corte"], startISO: enExposicion, durationMin: datosCorte.durationMin, priceEur: datosCorte.priceEur, clientPhone: tel, clientName: nombre, clientEmail: undefined }));
-    const [r1, r2] = await Promise.all([una("699000001", "Ana Uno"), una("699000002", "Bea Dos")]);
-    expect([r1.synced, r2.synced].filter(Boolean)).toHaveLength(1);
-    expect((doble.tablas.appointments ?? []).filter((c) => c.start_at === enExposicion)).toHaveLength(1);
+    expect(r).toEqual({ synced: false, reason: "RESERVA_HUECO_OCUPADO" });
   });
 
   it("fuera de la exposición devuelve RESERVA_HUECO_OCUPADO", async () => {
