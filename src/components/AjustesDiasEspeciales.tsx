@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { CalendarPlus, Pencil, Trash2 } from "lucide-react";
 import { guardarPerfil } from "@/lib/deshacer-maqueta";
 import { useSalonStore } from "@/lib/store";
@@ -62,15 +63,25 @@ export function AjustesDiasEspeciales() {
     };
     const anteriores = (perfil.diasEspeciales ?? []).filter((d) => d.fecha !== (editando ?? form.fecha));
     guardarPerfil({ diasEspeciales: [...anteriores, siguiente].sort((a, b) => a.fecha.localeCompare(b.fecha)) });
+    // 26-oct: que se vea que se ha guardado y cómo queda.
+    toast.success("Día especial guardado", {
+      description: `${new Date(`${siguiente.fecha}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}: ${siguiente.cerrado ? "cerrado" : siguiente.franjas?.length ? textoFranjas(siguiente.franjas) : "horario especial"}. Está en la lista de abajo.`,
+    });
     setForm(vacio());
     setEditando(null);
   };
   const editar = (d: DiaEspecial) => { setForm(aForm(d)); setEditando(d.fecha); };
-  const borrar = (fecha: string) => guardarPerfil({ diasEspeciales: (perfil.diasEspeciales ?? []).filter((d) => d.fecha !== fecha) });
+  const borrar = (fecha: string) => {
+    guardarPerfil({ diasEspeciales: (perfil.diasEspeciales ?? []).filter((d) => d.fecha !== fecha) });
+    toast.success("Día especial quitado");
+  };
   const cargarFestivos = () => {
     const existentes = new Set((perfil.diasEspeciales ?? []).map((d) => d.fecha));
     const nuevos = FESTIVOS_MADRID_2026.filter((fecha) => !existentes.has(fecha)).map((fecha) => ({ fecha, cerrado: true as const, nota: "Festivo" }));
-    if (nuevos.length) guardarPerfil({ diasEspeciales: [...(perfil.diasEspeciales ?? []), ...nuevos].sort((a, b) => a.fecha.localeCompare(b.fecha)) });
+    if (nuevos.length) {
+      guardarPerfil({ diasEspeciales: [...(perfil.diasEspeciales ?? []), ...nuevos].sort((a, b) => a.fecha.localeCompare(b.fecha)) });
+      toast.success(`${nuevos.length} festivos añadidos`);
+    } else toast("Los festivos ya estaban cargados");
   };
   const campo = "h-10 rounded-xl border border-input bg-blanco px-3 text-sm";
 
