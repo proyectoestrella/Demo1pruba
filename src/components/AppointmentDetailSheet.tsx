@@ -447,30 +447,12 @@ export function AppointmentDetailSheet({
                     )}
                     <fieldset className="space-y-2">
                       <legend className="text-[12.5px] font-bold text-cafe-medio">Servicios</legend>
-                      <div className="flex flex-wrap gap-2">
-                        {services.filter((service) => service.active !== false || borrador.serviceIds.includes(service.id)).map((service) => {
-                          const elegido = borrador.serviceIds.includes(service.id);
-                          return (
-                            <button
-                              key={service.id}
-                              type="button"
-                              aria-pressed={elegido}
-                              onClick={() => alternarServicio(service.id)}
-                              className={cn(
-                                "min-h-11 rounded-2xl border px-3 py-2 text-left text-[13px] font-bold transition-colors",
-                                elegido ? "border-transparent bg-salvia-clara text-hoja-tinta" : "border-input bg-blanco text-cafe-medio hover:bg-nata",
-                              )}
-                            >
-                              {service.name}
-                            </button>
-                          );
-                        })}
-                        {borrador.serviceIds.filter((id) => !carta[id]).map((id) => (
-                          <button key={id} type="button" aria-pressed="true" onClick={() => alternarServicio(id)} className="min-h-11 rounded-2xl border border-transparent bg-salvia-clara px-3 py-2 text-left text-[13px] font-bold text-hoja-tinta">
-                            {serviceNamesOf({ serviceIds: [id] }, carta)[0]}
-                          </button>
-                        ))}
-                      </div>
+                      <SelectorServiciosEdicion
+                        seleccionados={borrador.serviceIds}
+                        services={services}
+                        nombre={(id) => serviceNamesOf({ serviceIds: [id] }, carta)[0]}
+                        alternar={alternarServicio}
+                      />
                     </fieldset>
                     <div className="grid grid-cols-2 gap-2">
                       <label className="grid gap-1.5 text-[12.5px] font-bold text-cafe-medio">
@@ -893,5 +875,74 @@ function accionSecundaria(activa: boolean) {
   return cn(
     "inline-flex h-11 items-center gap-1.5 rounded-full border px-4 text-[13px] font-bold transition-colors focus-visible:outline-2 focus-visible:outline-primary",
     activa ? "border-moca bg-nata text-cafe" : "border-input bg-card text-cafe-medio hover:bg-nata",
+  );
+}
+
+
+/**
+ * Servicios en «Editar cita» (26-oct): los elegidos arriba y un buscador, en
+ * vez de los 57 botones de la carta seguidos.
+ */
+function SelectorServiciosEdicion({
+  seleccionados,
+  services,
+  nombre,
+  alternar,
+}: {
+  seleccionados: string[];
+  services: Array<{ id: string; name: string; active?: boolean; durationMin: number }>;
+  nombre: (id: string) => string;
+  alternar: (id: string) => void;
+}) {
+  const [q, setQ] = useState("");
+  const norm = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const resultados = q.trim()
+    ? services.filter((s) => s.active !== false && !seleccionados.includes(s.id) && norm(s.name).includes(norm(q.trim()))).slice(0, 8)
+    : [];
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {seleccionados.map((id) => (
+          <button
+            key={id}
+            type="button"
+            aria-label={`Quitar ${nombre(id)}`}
+            onClick={() => alternar(id)}
+            className="min-h-11 rounded-2xl border border-transparent bg-salvia-clara px-3 py-2 text-left text-[13px] font-bold text-hoja-tinta"
+          >
+            {nombre(id)} ✕
+          </button>
+        ))}
+        {seleccionados.length === 0 && <p className="text-[13px] text-muted-foreground">Ningún servicio elegido.</p>}
+      </div>
+      <input
+        type="search"
+        aria-label="Buscar un servicio para añadir"
+        placeholder="Buscar un servicio para añadir…"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        className="h-11 w-full rounded-xl border border-input bg-blanco px-3 text-sm"
+      />
+      {resultados.length > 0 && (
+        <ul className="divide-y divide-border/60 rounded-xl border border-input bg-blanco">
+          {resultados.map((s) => (
+            <li key={s.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  alternar(s.id);
+                  setQ("");
+                }}
+                className="flex min-h-11 w-full items-center justify-between px-3 text-left text-[13px] font-semibold hover:bg-nata"
+              >
+                <span>{s.name}</span>
+                <span className="text-muted-foreground tabular-nums">{s.durationMin} min</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {q.trim() && resultados.length === 0 && <p className="text-[13px] text-muted-foreground">Ningún servicio con ese nombre.</p>}
+    </div>
   );
 }
