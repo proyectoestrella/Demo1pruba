@@ -8,13 +8,13 @@ import { cargarDemoRegistrada } from "./demos/aplicar";
 const carta = servicesForType("peluqueria", PELUCHIC.menu, textosDeCarta(PELUCHIC));
 
 describe("la carta del panel por secciones", () => {
-  it("agrupa los 57 servicios de PeluChic en sus siete secciones, en orden", () => {
+  it("agrupa los 55 servicios de PeluChic en sus siete secciones, en orden", () => {
     const grupos = agruparCarta(carta);
     expect(grupos.map((g) => g.categoria)).toEqual([
       "Trabajos Cotidianos Peluquería", "Tratamientos Cuero Cabelludo", "Tratamientos Cabello",
-      "Trabajos de la Mirada", "Trabajos Faciales", "Trabajos Corporales", "Trabajos de Cámara y Foco",
+      "Trabajos de la Mirada", "Trabajos Faciales", "Trabajos Corporales", "Novias",
     ]);
-    expect(grupos.reduce((t, g) => t + g.servicios.length, 0)).toBe(57);
+    expect(grupos.reduce((t, g) => t + g.servicios.length, 0)).toBe(55);
     expect(grupos[0]).toMatchObject({ desde: 10, hasta: 116.5 });
   });
 
@@ -31,9 +31,9 @@ describe("la carta del panel por secciones", () => {
   });
 
   it("filtra por sección", () => {
-    const g = agruparCarta(carta, { categoria: "Trabajos de Cámara y Foco" });
+    const g = agruparCarta(carta, { categoria: "Novias" });
     expect(g).toHaveLength(1);
-    expect(g[0].servicios.map((s) => s.name)).toEqual(["Maquillaje de Correccion", "Peluqueria focos", "Novias"]);
+    expect(g[0].servicios.map((s) => s.name)).toEqual(["Novias"]);
   });
 
   it("una carta sin secciones queda en un solo grupo", () => {

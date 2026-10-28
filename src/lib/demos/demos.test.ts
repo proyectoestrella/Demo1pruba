@@ -41,12 +41,12 @@ describe("perfil de PeluChic", () => {
     expect(inferBusinessType(PELUCHIC.tagline, PELUCHIC.name)).toBe("peluqueria");
   });
 
-  it("lleva la carta aprobada: 57 servicios válidos, con id estable y nombre sin cortar", () => {
-    expect(PELUCHIC.menu).toHaveLength(57);
+  it("lleva la carta aprobada: 55 servicios válidos, con id estable y nombre sin cortar", () => {
+    expect(PELUCHIC.menu).toHaveLength(55);
     const entradas = (PELUCHIC.menu ?? []).map(parseMenuEntry);
     expect(entradas.every((e) => e !== null)).toBe(true);
     expect(entradas.map((e) => e?.id)).toEqual(SERVICIOS_PELUCHIC.map((s) => s.id));
-    expect(new Set(entradas.map((e) => e?.id)).size).toBe(57);
+    expect(new Set(entradas.map((e) => e?.id)).size).toBe(55);
     // El nombre más largo de su carta (71 caracteres) llega entero.
     expect(entradas.map((e) => e?.name)).toContain(
       "Linfting pestañas +tinte de pestañas +laminado de cejas+tinte de cejas",
@@ -63,7 +63,7 @@ describe("perfil de PeluChic", () => {
 
   it("cada servicio tiene su descripción, y el precio literal cuando no es un importe único", () => {
     const servicios = servicesForType("peluqueria", PELUCHIC.menu, textosDeCarta(PELUCHIC));
-    expect(servicios).toHaveLength(57);
+    expect(servicios).toHaveLength(55);
     expect(servicios.every((s) => s.description.length > 0)).toBe(true);
     const peinar = servicios.find((s) => s.id === "peinar");
     expect(peinar?.priceEur).toBe(24);
@@ -241,7 +241,7 @@ describe("cargar la demo registrada en la store", () => {
     const st = useSalonStore.getState();
     expect(st.salonProfile.name).toBe("PeluChic");
     expect(st.salonProfile.slug).toBe("peluchic");
-    expect(st.services).toHaveLength(57);
+    expect(st.services).toHaveLength(55);
     expect(st.services.find((s) => s.id === "mechas")?.priceText).toBe("46,50 € / 106,50 €");
     expect(st.appointments.length).toBeGreaterThan(1000);
     expect(st.payments).toEqual([]);
@@ -292,7 +292,7 @@ describe("el ?d= lleva lo del lote 18 (vista previa de Mi página)", () => {
   it("ida y vuelta: enlaces, WhatsApp, boletín, galería, logo y textos de la carta", async () => {
     const { encodeDemoProfile, decodeDemoProfile } = await import("../demo-profile");
     const vuelta = decodeDemoProfile(encodeDemoProfile(PELUCHIC, { cartaCompleta: true }));
-    expect(vuelta?.menu).toHaveLength(57);
+    expect(vuelta?.menu).toHaveLength(55);
     expect(vuelta?.enlaces).toEqual(PELUCHIC.enlaces);
     expect(vuelta?.whatsapp).toBe(PELUCHIC.whatsapp);
     expect(vuelta?.boletin).toEqual(PELUCHIC.boletin);
