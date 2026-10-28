@@ -42,12 +42,12 @@ describe("SQL de PeluChic generado desde la demo", () => {
     expect(JSON.stringify(p.diasEspeciales)).not.toContain("nota");
   });
 
-  test("la carta, leída con parseMenuEntry, da los 57 ids de la demo", () => {
+  test("la carta, leída con parseMenuEntry, da los 55 ids de la demo", () => {
     const p = perfilDelSql(leer("seed-peluchic.sql"));
     const ids = p.menu.map((e: string) => parseMenuEntry(e)?.id);
     const demo = PELUCHIC.menu!.map((e) => parseMenuEntry(e)?.id);
-    expect(ids).toHaveLength(57);
-    expect(new Set(ids).size).toBe(57);
+    expect(ids).toHaveLength(55);
+    expect(new Set(ids).size).toBe(55);
     expect(ids).toEqual(demo);
     expect(ids.every(Boolean)).toBe(true);
   });

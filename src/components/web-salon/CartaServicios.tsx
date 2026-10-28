@@ -4,6 +4,13 @@ import { ArrowRight, ChevronDown, Clock } from "lucide-react";
 import type { Service } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import { precioDeCarta } from "@/lib/web-publica";
+import {
+  agruparCartaDosNiveles,
+  enlaceConsulta,
+  esSoloConsulta,
+  tituloDeBloque,
+  type BloqueCarta,
+} from "@/lib/carta-publica";
 
 type ServicioCarta = Service & { priceText?: string };
 
@@ -19,16 +26,25 @@ export function CartaServicios({
   categorias,
   descripciones,
   conSenal,
+  contacto,
 }: {
   salonSlug: string;
   servicios: ServicioCarta[];
   categorias: string[];
   descripciones?: Record<string, string>;
   conSenal: (s: Service) => boolean;
+  /** Datos del salón para «Consultar» en los servicios solo consulta. */
+  contacto: Parameters<typeof enlaceConsulta>[0];
 }) {
-  const grupos = categorias
-    .map((cat) => ({ cat, items: servicios.filter((s) => (s.category ?? "Otros") === cat) }))
-    .filter((g) => g.items.length > 0);
+  // Dos niveles: grupo → subcategoría → servicios. Sin grupo, un bloque por
+  // categoría, exactamente como antes. `categorias` fija el orden de los
+  // bloques sin grupo; los servicios ya vienen en el orden de la carta.
+  void categorias;
+  const grupos = agruparCartaDosNiveles(servicios).map((b: BloqueCarta) => ({
+    cat: tituloDeBloque(b),
+    bloque: b,
+    items: b.subcategorias.flatMap((x) => x.servicios) as ServicioCarta[],
+  }));
   const [activa, setActiva] = useState(0);
   const pestanas = useRef<(HTMLButtonElement | null)[]>([]);
   const id = useId();
@@ -38,6 +54,45 @@ export function CartaServicios({
     <ul className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-3">
       {items.map((s) => {
         const descripcion = descripciones?.[s.id]?.trim() || s.description?.trim();
+        if (esSoloConsulta(s)) {
+          const href = enlaceConsulta(contacto, s);
+          return (
+            <li key={s.id}>
+              <div
+                data-testid="carta-solo-consulta"
+                className="tarjeta-secundaria flex h-full min-h-[76px] flex-col border border-dashed border-lino-fuerte bg-card px-4 py-3.5 sm:px-5"
+              >
+                <span className="flex items-start justify-between gap-4">
+                  <span className="min-w-0 font-semibold leading-snug text-foreground">{s.name}</span>
+                  <span className="max-w-[48%] shrink-0 text-right font-extrabold leading-snug tabular-nums text-foreground">
+                    {precioDeCarta(s)}
+                  </span>
+                </span>
+                {descripcion ? (
+                  <span className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                    {descripcion}
+                  </span>
+                ) : null}
+                <span className="mt-auto flex items-center justify-between gap-3 pt-2.5 text-[13px]">
+                  <span className="text-cafe-suave">Solo con consulta previa</span>
+                  {href ? (
+                    <a
+                      href={href}
+                      target={href.startsWith("http") ? "_blank" : undefined}
+                      rel="noopener noreferrer"
+                      className="inline-flex min-h-9 items-center gap-1 rounded-full border border-primary px-3 font-semibold text-primary hover:bg-primary/5"
+                    >
+                      Consultar
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    </a>
+                  ) : (
+                    <span className="font-semibold text-cafe-suave">Consultar</span>
+                  )}
+                </span>
+              </div>
+            </li>
+          );
+        }
         return (
           <li key={s.id}>
             <Link
@@ -77,7 +132,24 @@ export function CartaServicios({
     </ul>
   );
 
-  if (grupos.length === 1) return lista(grupos[0].items);
+  // Un bloque con grupo muestra sus subcategorías con título; sin grupo, la lista a secas.
+  const contenido = (g: (typeof grupos)[number]) =>
+    g.bloque.grupo ? (
+      <div className="space-y-6">
+        {g.bloque.subcategorias.map((sub) => (
+          <div key={sub.categoria}>
+            <h3 className="mb-2.5 text-sm font-bold uppercase tracking-[0.06em] text-cafe-suave">
+              {sub.categoria}
+            </h3>
+            {lista(sub.servicios as ServicioCarta[])}
+          </div>
+        ))}
+      </div>
+    ) : (
+      lista(g.items)
+    );
+
+  if (grupos.length === 1) return contenido(grupos[0]);
 
   // Pestañas propias (patrón WAI-ARIA, flechas, Inicio y Fin) con UN panel
   // que siempre existe: las de Radix desmontan los paneles ocultos y su
@@ -181,7 +253,7 @@ export function CartaServicios({
         tabIndex={0}
         className="mt-5 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        {lista(grupos[actual].items)}
+        {contenido(grupos[actual])}
       </div>
     </div>
   );

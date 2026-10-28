@@ -26,11 +26,11 @@ describe("el asistente contesta con la carta real de PeluChic", () => {
     expect(texto("cuánto cuesta un balayage")).toBe("precio-servicio · Mechas* **46,50 € / 106,50 €** y Mechas + Matiz **116,50 €**.");
   });
 
-  it("qué servicios de novia tenéis → Novias y el maquillaje que también hace novias", () => {
+  it("qué servicios de novia tenéis → Novias (el maquillaje de cámara y foco ya no está en la carta)", () => {
     const t = texto("qué servicios de novia tenéis");
-    expect(t).toStartWith("carta · Para «novia» tienes **2 servicios**");
+    expect(t).toStartWith("carta · Para «novia» tienes **1 servicio**");
     expect(t).toContain("Novias desde 150 € (sin IVA)");
-    expect(t).toContain("Maquillaje de Correccion");
+    expect(t).not.toContain("Maquillaje de Correccion");
   });
 
   it("cuánto dura la keratina → la keratina, no otro tratamiento capilar", () => {

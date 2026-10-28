@@ -12,6 +12,7 @@ import {
   Info,
   PhoneCall,
   Repeat,
+  Search,
   X,
   Zap,
 } from "lucide-react";
@@ -50,7 +51,19 @@ import { useSalonStore } from "@/lib/store";
 import { duracionDeAgenda, duracionFlexibleActiva } from "@/lib/duracion-flexible";
 import { recargoActivo } from "@/lib/recargo-activo";
 import { useBusinessType, useDisplayProfile } from "@/lib/use-display-profile";
-import { categoryOrderOf, professionalWord, type BusinessType } from "@/lib/business-type";
+import { professionalWord, type BusinessType } from "@/lib/business-type";
+import {
+  agruparCartaDosNiveles,
+  enlaceConsulta,
+  esSoloConsulta,
+  tituloDeBloque,
+} from "@/lib/carta-publica";
+import {
+  correoAvisoFestivos,
+  esDomingoOFestivo,
+  festivoEn,
+  textoAvisoFestivo,
+} from "@/lib/festivos-madrid";
 import { findClientByPhone, isBookingBlocked } from "@/lib/no-show";
 import { PAISES_TELEFONO, PAIS_OTRO, validarTelefono } from "@/lib/telefono";
 import { profesionalesParaServicios } from "@/lib/servicios-profesional";
@@ -207,7 +220,8 @@ function parseServiceIds(param: string | undefined, serviceMap: Record<string, S
   return (param ?? "")
     .split(",")
     .map((id) => id.trim())
-    .filter((id) => id && serviceMap[id]);
+    // Un servicio «solo consulta» no se reserva: no se preselecciona por enlace.
+    .filter((id) => id && serviceMap[id] && !esSoloConsulta(serviceMap[id]));
 }
 
 /* --------------------------------------------------------------------------
@@ -669,6 +683,7 @@ function BookingWizard() {
   }
 
   function toggleService(id: string) {
+    if (serviceMap[id] && esSoloConsulta(serviceMap[id])) return;
     const serviceIds = data.serviceIds.includes(id)
       ? data.serviceIds.filter((serviceId) => serviceId !== id)
       : [...data.serviceIds, id];
@@ -1063,6 +1078,7 @@ function BookingWizard() {
                 tipo={tipo}
                 services={services}
                 reglaSenal={reglaSen}
+                contacto={profile}
               />
               {sinProfesionalParaServicios && (
                 <p
@@ -1106,6 +1122,11 @@ function BookingWizard() {
               serviceIds={data.serviceIds}
               serviciosPorProfesional={profile.serviciosPorProfesional}
               contextoSolape={contextoSolape}
+              avisoFestivos={
+                profile.avisoDomingosFestivos
+                  ? { correo: correoAvisoFestivos(profile) }
+                  : undefined
+              }
             />
           )}
 
@@ -1514,6 +1535,7 @@ function ServiceStep({
   tipo,
   services,
   reglaSenal: reglaSenalSalon,
+  contacto,
 }: {
   selected: string[];
   selectedServices: Service[];
@@ -1529,9 +1551,109 @@ function ServiceStep({
   services: Service[];
   /** Regla de señal del salón, para la etiqueta «con señal» de cada servicio. */
   reglaSenal: ReglaSenal;
+  /** Datos del salón para el botón «Consultar» de los servicios solo consulta. */
+  contacto: Parameters<typeof enlaceConsulta>[0];
 }) {
   const count = selected.length;
-  const categoryOrder = categoryOrderOf(services);
+  const [busqueda, setBusqueda] = useState("");
+  const bloques = useMemo(
+    () => agruparCartaDosNiveles(services, { texto: busqueda }),
+    [services, busqueda],
+  );
+  const buscando = busqueda.trim().length > 0;
+  const claveBloque = (b: (typeof bloques)[number]) => tituloDeBloque(b);
+  // Un servicio de la carta: reservable (botón) o solo consulta («Consultar»).
+  const renderServicio = (s: Service) => {
+    const isSelected = selected.includes(s.id);
+    const precio = mostrarPrecio && (
+      <span className="max-w-[9rem] text-right text-base font-extrabold leading-snug tabular-nums">
+        {s.priceText?.trim() || eur(s.priceEur)}
+      </span>
+    );
+    if (esSoloConsulta(s)) {
+      const href = enlaceConsulta(contacto, s);
+      return (
+        <div
+          key={s.id}
+          data-testid="servicio-solo-consulta"
+          className="flex min-h-16 w-full items-center justify-between gap-4 rounded-2xl border border-dashed border-border/80 bg-card px-4 py-3.5"
+        >
+          <div className="min-w-0">
+            <p className="font-medium">{s.name}</p>
+            <p className="text-sm text-muted-foreground">Solo con consulta previa</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {precio}
+            {href ? (
+              <a
+                href={href}
+                target={href.startsWith("http") ? "_blank" : undefined}
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 items-center rounded-full border border-primary px-4 text-sm font-bold text-primary hover:bg-primary/5"
+              >
+                Consultar
+              </a>
+            ) : (
+              <span className="rounded-full border border-border px-3 py-1 text-sm font-bold text-muted-foreground">
+                Consultar
+              </span>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return (
+      <button
+        key={s.id}
+        type="button"
+        aria-pressed={isSelected}
+        onClick={() => onToggle(s.id)}
+        className={cn(
+          "flex min-h-16 w-full items-center justify-between gap-4 rounded-2xl border bg-card px-4 py-3.5 text-left transition-colors",
+          isSelected
+            ? "border-2 border-salvia bg-salvia-clara"
+            : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
+        )}
+      >
+        <div className="min-w-0">
+          <p className="font-medium">{s.name}</p>
+          <p className="text-sm text-muted-foreground">
+            {s.durationMin} min
+            {servicioLlevaSenal(reglaSenalSalon, s) ? " · con fianza" : ""}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {precio}
+          {isSelected && (
+            <span
+              className="grid size-6 place-items-center rounded-full bg-hoja-tinta text-white"
+              aria-hidden="true"
+            >
+              <Check className="size-4" strokeWidth={2.5} />
+            </span>
+          )}
+        </div>
+      </button>
+    );
+  };
+  // Contenido de un bloque: con grupo, cada subcategoría con su título; sin
+  // grupo, solo la lista de servicios como siempre.
+  const renderBloque = (b: (typeof bloques)[number]) => (
+    <div className="space-y-4 pb-2">
+      {b.subcategorias.map((sub) => (
+        <div key={sub.categoria}>
+          {b.grupo && (
+            <h3 className="mb-2 text-sm font-bold uppercase tracking-[0.06em] text-muted-foreground">
+              {sub.categoria}
+            </h3>
+          )}
+          {/* Desde 1536 px, dos columnas: con el contenedor fluido
+              (18.1) una sola fila de 1200 px separaba nombre y precio. */}
+          <div className="grid gap-2 2xl:grid-cols-2">{sub.servicios.map(renderServicio)}</div>
+        </div>
+      ))}
+    </div>
+  );
   return (
     <Step title="Elige uno o varios servicios">
       <p
@@ -1594,80 +1716,64 @@ function ServiceStep({
           )}
         </div>
       )}
-      {/* `key`: cuando la carta llega del enlace después del primer render, las
-          categorías cambian («Cortes» → «Servicios») y un defaultValue ya
-          montado dejaría el acordeón cerrado sin ningún servicio a la vista. */}
-      <Accordion
-        key={categoryOrder.join("|")}
-        type="single"
-        collapsible
-        defaultValue={categoryOrder[0]}
-        className="divide-y divide-border/40"
-      >
-        {categoryOrder.map((cat) => {
-          const items = services.filter(
-            (s) => s.active !== false && (s.category ?? "Otros") === cat,
-          );
-          if (!items.length) return null;
-          return (
-            <AccordionItem key={cat} value={cat} className="border-b-0">
+      <div className="mb-4">
+        <Label htmlFor="buscar-servicio" className="sr-only">
+          Buscar un servicio
+        </Label>
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            id="buscar-servicio"
+            type="search"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar un servicio (p. ej. depilación, tinte…)"
+            className="h-11 rounded-full pl-10"
+            autoComplete="off"
+          />
+        </div>
+      </div>
+      {buscando && bloques.length === 0 && (
+        <p role="status" className="py-6 text-sm text-muted-foreground">
+          No hay servicios que coincidan con «{busqueda.trim()}».
+        </p>
+      )}
+      {buscando ? (
+        <div className="space-y-5">
+          {bloques.map((b) => (
+            <section key={claveBloque(b)} aria-label={tituloDeBloque(b)}>
+              <h2 className="mb-2 text-base font-bold">{tituloDeBloque(b)}</h2>
+              {renderBloque(b)}
+            </section>
+          ))}
+        </div>
+      ) : (
+        /* `key`: cuando la carta llega del enlace después del primer render, las
+           categorías cambian («Cortes» → «Servicios») y un defaultValue ya
+           montado dejaría el acordeón cerrado sin ningún servicio a la vista. */
+        <Accordion
+          key={bloques.map(claveBloque).join("|")}
+          type="single"
+          collapsible
+          defaultValue={bloques[0] ? claveBloque(bloques[0]) : undefined}
+          className="divide-y divide-border/40"
+        >
+          {bloques.map((b) => (
+            <AccordionItem key={claveBloque(b)} value={claveBloque(b)} className="border-b-0">
               <AccordionTrigger
                 headingLevel={2}
                 className="min-h-12 py-3 text-base font-bold hover:no-underline"
               >
-                {cat}
+                {tituloDeBloque(b)}
               </AccordionTrigger>
-              <AccordionContent>
-                {/* Desde 1536 px, dos columnas: con el contenedor fluido
-                    (18.1) una sola fila de 1200 px separaba nombre y precio. */}
-                <div className="grid gap-2 pb-2 2xl:grid-cols-2">
-                  {items.map((s) => {
-                    const label = { name: s.name, description: s.description };
-                    const isSelected = selected.includes(s.id);
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        aria-pressed={isSelected}
-                        onClick={() => onToggle(s.id)}
-                        className={cn(
-                          "flex min-h-16 w-full items-center justify-between gap-4 rounded-2xl border bg-card px-4 py-3.5 text-left transition-colors",
-                          isSelected
-                            ? "border-2 border-salvia bg-salvia-clara"
-                            : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
-                        )}
-                      >
-                        <div className="min-w-0">
-                          <p className="font-medium">{label.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {s.durationMin} min
-                            {servicioLlevaSenal(reglaSenalSalon, s) ? " · con fianza" : ""}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          {mostrarPrecio && (
-                            <span className="max-w-[9rem] text-right text-base font-extrabold leading-snug tabular-nums">
-                              {s.priceText?.trim() || eur(s.priceEur)}
-                            </span>
-                          )}
-                          {isSelected && (
-                            <span
-                              className="grid size-6 place-items-center rounded-full bg-hoja-tinta text-white"
-                              aria-hidden="true"
-                            >
-                              <Check className="size-4" strokeWidth={2.5} />
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </AccordionContent>
+              <AccordionContent>{renderBloque(b)}</AccordionContent>
             </AccordionItem>
-          );
-        })}
-      </Accordion>
+          ))}
+        </Accordion>
+      )}
     </Step>
   );
 }
@@ -1696,7 +1802,7 @@ function StylistStep({
           )}
         >
           <div>
-            <p className="font-bold">Cualquiera disponible</p>
+            <p className="font-bold">Primer hueco libre (cualquier profesional)</p>
             <p className="mt-0.5 text-xs text-muted-foreground">Más rápido</p>
           </div>
         </button>
@@ -1805,7 +1911,13 @@ function DateTimeStep({
   serviciosPorProfesional,
   contextoSolape,
   espera,
+  avisoFestivos,
 }: {
+  /**
+   * Domingos y festivos clicables con aviso en vez de horas. `undefined` =
+   * función apagada (los días cerrados no se pueden pulsar, como siempre).
+   */
+  avisoFestivos?: { correo?: string };
   /** Lista de espera de la web (solo salones reales): se ofrece al no haber hueco. */
   espera?: { salonSlug: string; salonName: string };
   /** Preferencia opcional: filtra los huecos, pero no sustituye la elección del paso 3. */
@@ -1874,8 +1986,13 @@ function DateTimeStep({
 
   function isDayDisabled(date: Date) {
     const dateKey = toDateKey(date);
-    return dateKey < todayKey || !salonAbreEnFecha(employees, dateKey, diasEspeciales);
+    if (dateKey < todayKey) return true;
+    if (avisoFestivos && esDomingoOFestivo(dateKey)) return false;
+    return !salonAbreEnFecha(employees, dateKey, diasEspeciales);
   }
+  // Día pulsado que es domingo o festivo con el aviso activo: sin horas.
+  const esDiaConAviso = (dateKey: string | undefined) =>
+    !!avisoFestivos && !!dateKey && esDomingoOFestivo(dateKey);
 
   // La tarjeta de sugerencia es del día que se está mirando: cambiar de día
   // sin cerrarla dejaría una sugerencia de ayer sobre una franja de hoy.
@@ -1908,6 +2025,7 @@ function DateTimeStep({
   const slots = useMemo((): PrioritySlot[] => {
     if (!activeDate) return [];
     const dateKey = toDateKey(activeDate);
+    if (avisoFestivos && esDomingoOFestivo(dateKey)) return [];
     const opens = scheduleForDate(dateKey);
     if (opens.length === 0) return [];
     const start = Math.min(...opens.map((o) => o.start));
@@ -1983,6 +2101,7 @@ function DateTimeStep({
     bloqueosAgenda,
     serviceIds,
     serviciosPorProfesional,
+    avisoFestivos,
   ]);
 
   const groups = useMemo(() => {
@@ -2057,7 +2176,8 @@ function DateTimeStep({
     franjasProfesionalEnFecha(preferredEmployee, activeDateKey, diasEspeciales).length > 0;
   const preferredHasFreeSlot =
     !!preferredEmployee && slots.some((slot) => slot.preferredAvailable && slot.available);
-  const showPreferredUnavailable = !!preferredEmployee && !!activeDateKey && !preferredHasFreeSlot;
+  const showPreferredUnavailable =
+    !!preferredEmployee && !!activeDateKey && !preferredHasFreeSlot && !esDiaConAviso(activeDateKey);
   const nextDateForPreferred = useMemo(() => {
     if (!preferredEmployee || !activeDateKey) return undefined;
     return proximoDiaConProfesional({
@@ -2122,7 +2242,7 @@ function DateTimeStep({
               )
             }
           >
-            <option value="any">Me da igual</option>
+            <option value="any">Primer hueco libre (cualquier profesional)</option>
             {employees.map((employee) => (
               <option key={employee.id} value={employee.id}>
                 {employee.name}
@@ -2259,7 +2379,30 @@ function DateTimeStep({
                 </div>
               )}
 
-              {groups.length === 0 && (
+              {esDiaConAviso(activeDateKey) && (
+                <div
+                  role="status"
+                  data-testid="aviso-domingo-festivo"
+                  className="mb-5 rounded-xl border border-melocoton-borde bg-melocoton p-4 text-sm text-melocoton-tinta"
+                >
+                  <p className="font-bold">
+                    {textoAvisoFestivo(avisoFestivos?.correo)}
+                  </p>
+                  {activeDateKey && festivoEn(activeDateKey) && (
+                    <p className="mt-1 text-xs">{festivoEn(activeDateKey)?.nombre.replace(" — TODO verificar", "")}</p>
+                  )}
+                  {avisoFestivos?.correo && (
+                    <a
+                      href={`mailto:${avisoFestivos.correo}?subject=${encodeURIComponent("Cita en domingo o festivo")}&body=${encodeURIComponent(`Hola, quería pedir precio y hora para el ${activeDateKey}.`)}`}
+                      className="mt-3 inline-flex min-h-11 items-center rounded-full bg-primary px-5 font-semibold text-primary-foreground hover:bg-primary/90"
+                    >
+                      Escribir a {avisoFestivos.correo}
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {groups.length === 0 && !esDiaConAviso(activeDateKey) && (
                 <p className="text-sm text-muted-foreground">
                   No hay horas disponibles este día. Prueba con otra fecha.
                 </p>

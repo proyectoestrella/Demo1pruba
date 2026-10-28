@@ -63,6 +63,7 @@ import {
   seccionResenasPublicas,
 } from "@/lib/web-publica";
 import { CartaServicios } from "@/components/web-salon/CartaServicios";
+import { enlaceConsulta, esSoloConsulta } from "@/lib/carta-publica";
 import { NotaQueSube, TrazoTitulo } from "@/components/web-salon/Movimiento";
 import { BloqueComunidad, FUERA, IconoWhatsApp } from "@/components/web-salon/EnlacesSalon";
 import { eur } from "@/lib/copy";
@@ -676,14 +677,15 @@ function SalonHome() {
               {featuredIds.map((id, i) => {
                 const s = serviceMap[id];
                 if (!s) return null;
+                const consulta = esSoloConsulta(s);
                 return (
                   <Reveal key={id} delay={i * 60} className="h-full">
-                    <Link
-                      to="/s/$salonSlug/book"
-                      params={{ salonSlug }}
-                      search={(prev) => ({ ...prev, service: id })}
-                      className="elevar tarjeta-secundaria group flex h-full min-w-0 flex-col border border-lino bg-card p-5 sm:min-h-[148px]"
-                    >
+                    {consulta ? (
+                      <a
+                        href={enlaceConsulta(profile, s)}
+                        data-testid="destacado-solo-consulta"
+                        className="elevar tarjeta-secundaria group flex h-full min-w-0 flex-col border border-lino bg-card p-5 sm:min-h-[148px]"
+                      >
                       <div className="flex min-w-0 items-start justify-between gap-3">
                         <h3 className="min-w-0 break-words text-base font-bold leading-snug text-foreground">
                           {s.name}
@@ -702,14 +704,48 @@ function SalonHome() {
                           <Clock className="h-3.5 w-3.5" aria-hidden="true" /> {s.durationMin} min
                         </span>
                         <span className="inline-flex items-center gap-1 font-semibold text-primary">
-                          Reservar{" "}
+                          {consulta ? "Consultar" : "Reservar"}{" "}
                           <ArrowRight
                             className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
                             aria-hidden="true"
                           />
                         </span>
                       </div>
-                    </Link>
+                      </a>
+                    ) : (
+                      <Link
+                        to="/s/$salonSlug/book"
+                        params={{ salonSlug }}
+                        search={(prev) => ({ ...prev, service: id })}
+                        className="elevar tarjeta-secundaria group flex h-full min-w-0 flex-col border border-lino bg-card p-5 sm:min-h-[148px]"
+                      >
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <h3 className="min-w-0 break-words text-base font-bold leading-snug text-foreground">
+                          {s.name}
+                        </h3>
+                        <p className="max-w-[45%] shrink-0 break-words text-right text-lg font-extrabold leading-snug tabular-nums text-foreground">
+                          {precioDeCarta(s)}
+                        </p>
+                      </div>
+                      {(profile.descripcionesServicios?.[s.id] ?? s.description)?.trim() ? (
+                        <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
+                          {(profile.descripcionesServicios?.[s.id] ?? s.description).trim()}
+                        </p>
+                      ) : null}
+                      <div className="mt-auto flex items-center justify-between gap-3 pt-4 text-sm">
+                        <span className="inline-flex items-center gap-1.5 text-cafe-suave tabular-nums">
+                          <Clock className="h-3.5 w-3.5" aria-hidden="true" /> {s.durationMin} min
+                        </span>
+                        <span className="inline-flex items-center gap-1 font-semibold text-primary">
+                          {consulta ? "Consultar" : "Reservar"}{" "}
+                          <ArrowRight
+                            className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+                            aria-hidden="true"
+                          />
+                        </span>
+                      </div>
+                      </Link>
+                    )}
                   </Reveal>
                 );
               })}
@@ -733,6 +769,7 @@ function SalonHome() {
               categorias={categoryOrder}
               descripciones={profile.descripcionesServicios}
               conSenal={(s) => servicioLlevaSenal(reglaDeSenal, s)}
+              contacto={profile}
             />
           </Reveal>
           <div className="mx-auto mt-7 max-w-2xl space-y-1 text-center text-sm text-muted-foreground">

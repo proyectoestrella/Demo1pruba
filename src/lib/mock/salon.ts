@@ -314,6 +314,8 @@ export function servicesForType(type: BusinessType, menu?: string[], textos?: Te
       priceEur: entry.priceEur,
       category: entry.category ?? "Servicios",
       active: entry.active !== false,
+      ...(entry.grupo ? { grupo: entry.grupo } : {}),
+      ...(entry.soloConsulta ? { soloConsulta: true } : {}),
       ...(priceText ? { priceText } : {}),
     };
   });

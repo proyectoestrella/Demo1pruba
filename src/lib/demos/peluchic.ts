@@ -49,6 +49,8 @@ export interface ServicioPeluChic {
   /** `true`: su web no da la duración y es una estimación nuestra, editable en Servicios. */
   estimada: boolean;
   descripcion: string;
+  /** Solo consulta: sale en la carta con «Consultar» y no se reserva por la web. */
+  soloConsulta?: boolean;
 }
 
 /** Las siete secciones de su página de precios, en su orden. */
@@ -59,11 +61,11 @@ export const CATEGORIAS_PELUCHIC = [
   "Trabajos de la Mirada",
   "Trabajos Faciales",
   "Trabajos Corporales",
-  "Trabajos de Cámara y Foco",
+  "Novias",
 ] as const;
 export type CategoriaPeluChic = (typeof CATEGORIAS_PELUCHIC)[number];
 
-const [COTIDIANOS, CUERO, CABELLO, MIRADA, FACIALES, CORPORALES, CAMARA] = CATEGORIAS_PELUCHIC;
+const [COTIDIANOS, CUERO, CABELLO, MIRADA, FACIALES, CORPORALES, NOVIAS] = CATEGORIAS_PELUCHIC;
 
 const HIDROFACE =
   "Higiene con el equipo hidroface de 7 cabezales (galvánica, radiofrecuencia, infrarrojo…): no invasiva, indolora y con resultados inmediatos.";
@@ -625,32 +627,12 @@ export const SERVICIOS_PELUCHIC: ServicioPeluChic[] = [
     descripcion: "Tratamiento corporal Dermapen.",
   },
 
-  // ---- Trabajos de Cámara y Foco (su web: «Precios sin IVA») ----
-  {
-    id: "maquillaje-correccion",
-    nombre: "Maquillaje de Correccion",
-    categoria: CAMARA,
-    precio: 65,
-    precioLiteral: "65 € (sin IVA)",
-    duracionMin: 45,
-    estimada: false,
-    descripcion:
-      "Maquillaje para cámara y foco: cine, TV, teatro y publicidad. También maquillaje para novias.",
-  },
-  {
-    id: "peluqueria-focos",
-    nombre: "Peluqueria focos",
-    categoria: CAMARA,
-    precio: 65,
-    precioLiteral: "desde 65 € / 150 € (sin IVA)",
-    duracionMin: 45,
-    estimada: false,
-    descripcion: "Peluquería de plató, preparada para cine, TV, teatro y publicidad.",
-  },
+  // ---- Novias (solo consulta: se pide precio y fecha por WhatsApp o correo) ----
   {
     id: "novias",
     nombre: "Novias",
-    categoria: CAMARA,
+    categoria: NOVIAS,
+    soloConsulta: true,
     precio: 150,
     precioLiteral: "desde 150 € (sin IVA)",
     duracionMin: 90,
@@ -703,7 +685,7 @@ const BLOQUEOS_COMIDA_PROVISIONALES = (["maria", "anca", "patricia"] as const).m
   }),
 );
 
-const CATEGORIAS_PELUQUERIA: CategoriaPeluChic[] = [COTIDIANOS, CUERO, CABELLO, CAMARA];
+const CATEGORIAS_PELUQUERIA: CategoriaPeluChic[] = [COTIDIANOS, CUERO, CABELLO, NOVIAS];
 const CATEGORIAS_ESTETICA: CategoriaPeluChic[] = [MIRADA, FACIALES, CORPORALES];
 const IDS_PELUQUERIA = SERVICIOS_PELUCHIC.filter((s) =>
   CATEGORIAS_PELUQUERIA.includes(s.categoria),
@@ -763,7 +745,6 @@ const PREGUNTAS = [
   "¿Y si encuentro la puerta cerrada?~Será que estamos atendiendo a domicilio o en otro trabajo de exterior. Escríbenos por WhatsApp y te contestamos.",
   "¿Venís a domicilio?~Sí, con desplazamiento nacional e internacional desde nuestro estudio de Madrid. El coste del desplazamiento va por kilometraje: pregúntanos por WhatsApp.",
   "¿Hacéis novias y eventos?~Sí: peluquería y maquillaje de novia, ceremonias y eventos, desde 150 € (sin IVA). Escríbenos y te contamos.",
-  "¿Trabajáis para cine, TV o publicidad?~Sí: peluquería y maquillaje de cámara y foco para producciones, también por horas (150 €/h sin IVA). Consúltanos.",
   "¿Tenéis tratamientos corporales?~Sí, en cabina: masajes, model shape, radiofrecuencia y «Activación» (drenaje, reductor, reafirmante, anticelulítico y presoterapia). Pregúntanos el precio.",
 ];
 
@@ -838,14 +819,10 @@ export const MEZCLA_PELUCHIC: MezclaSemilla = {
       ["dermapen-corporal", 3],
     ],
     novia: [["novias", 1]],
-    camara: [
-      ["maquillaje-correccion", 55],
-      ["peluqueria-focos", 45],
-    ],
   },
-  tiposEvento: ["novia", "camara"],
+  tiposEvento: ["novia"],
   porProfesional: [
-    // María: peinados, color y trabajos de cámara entre semana; el sábado, las novias.
+    // María: peinados y color entre semana; el sábado, las novias.
     {
       semana: {
         corte: 38,
@@ -854,9 +831,8 @@ export const MEZCLA_PELUCHIC: MezclaSemilla = {
         tratamiento: 10,
         mirada: 8,
         estetica: 4,
-        camara: 3,
       },
-      sabado: { corte: 42, color: 15, novia: 24, camara: 5, mirada: 8, tratamiento: 5 },
+      sabado: { corte: 42, color: 15, novia: 24, mirada: 8, tratamiento: 5 },
     },
     // Sara: la colorista.
     {
@@ -896,6 +872,9 @@ function carta(): string[] {
       durationMin: s.duracionMin,
       priceEur: s.precio,
       category: s.categoria,
+      // Dos niveles para la clienta: Peluquería / Estética → sección → servicios.
+      grupo: CATEGORIAS_ESTETICA.includes(s.categoria) ? "Estética" : "Peluquería",
+      ...(s.soloConsulta ? { soloConsulta: true } : {}),
     }),
   );
 }
@@ -971,7 +950,7 @@ export const PELUCHIC: SalonProfile = {
   // «peluquería» (ver `inferBusinessType`), que es la semilla que le toca.
   tagline: "Peluquería y maquillaje",
   about:
-    "Peluquería y maquillaje profesional en Sanchinarro, en el salón o a domicilio. Años de experiencia en teatro, televisión y publicidad: peinados y maquillaje de cámara y foco, novias, ceremonias y eventos.",
+    "Peluquería y maquillaje profesional en Sanchinarro, en el salón o a domicilio. Peinados y maquillaje profesional, novias, ceremonias y eventos.",
   // Su web no publica el código postal: 28050 es el de Sanchinarro (y el de
   // la entrega en 48 h de su tienda online).
   address:
@@ -1077,7 +1056,7 @@ export const PELUCHIC: SalonProfile = {
   // Cuatro y sin «y» al final: la web las junta en una frase («…, color orgánico y tratamientos capilares»).
   specialties: [
     "novias y eventos",
-    "maquillaje de cámara",
+    "maquillaje profesional",
     "color orgánico",
     "tratamientos capilares",
   ],

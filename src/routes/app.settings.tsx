@@ -19,6 +19,7 @@ import { AjustesMensajes } from "@/components/AjustesMensajes";
 import { AjustesColores } from "@/components/AjustesColores";
 import { AjustesSenal } from "@/components/AjustesSenal";
 import { AjustesPrivacidad } from "@/components/AjustesPrivacidad";
+import { AjustesFestivos } from "@/components/AjustesFestivos";
 import { AjustesPreguntas } from "@/components/AjustesPreguntas";
 import { AjustesDiasEspeciales } from "@/components/AjustesDiasEspeciales";
 import { GuiaUso } from "@/components/GuiaUso";
@@ -635,6 +636,7 @@ function Settings() {
               </div>
             )}
             <AjustesPrivacidad />
+            <AjustesFestivos />
           </SeccionAjustes>
 
           <SeccionAjustes

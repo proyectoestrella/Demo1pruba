@@ -566,6 +566,10 @@ export interface MenuOverrideEntry {
    * salón real lo escribe siempre (menuDesdeServicios).
    */
   id?: string;
+  /** Grupo de primer nivel de la carta (séptimo campo). Ausente = sin grupo. */
+  grupo?: string;
+  /** Solo consulta (octavo campo, literal «consulta»). Ausente = reservable. */
+  soloConsulta?: boolean;
 }
 
 /** "Nombre" o "Nombre~Especialidad" → entrada válida, o `null` si no hay nombre. */
@@ -605,6 +609,8 @@ export function parseMenuEntry(raw: string): MenuOverrideEntry | null {
   const category = parts[3]?.trim().slice(0, MENU_CATEGORY_MAX);
   const apagado = parts[4]?.trim().toLowerCase() === "off";
   const id = parts[5]?.trim();
+  const grupo = parts[6]?.trim().slice(0, MENU_CATEGORY_MAX);
+  const soloConsulta = parts[7]?.trim().toLowerCase() === "consulta";
   return {
     name,
     durationMin,
@@ -612,12 +618,20 @@ export function parseMenuEntry(raw: string): MenuOverrideEntry | null {
     category: category || undefined,
     ...(apagado ? { active: false } : {}),
     ...(id && MENU_ID_VALIDO.test(id) ? { id } : {}),
+    ...(grupo ? { grupo } : {}),
+    ...(soloConsulta ? { soloConsulta: true } : {}),
   };
 }
 
 /** Cadena canónica de una entrada de carta, para guardar en el perfil/enlace. */
 export function formatMenuEntry(entry: MenuOverrideEntry): string {
   const base = `${entry.name}~${entry.durationMin}~${entry.priceEur}`;
+  // Campos nuevos (grupo, solo consulta): solo se escriben si existen, así una
+  // carta sin ellos se serializa byte a byte igual que antes y una lectura
+  // antigua (que ignora lo que sobra del sexto campo) sigue entendiéndola.
+  if (entry.grupo || entry.soloConsulta) {
+    return `${base}~${entry.category ?? ""}~${entry.active === false ? "off" : ""}~${entry.id ?? ""}~${entry.grupo ?? ""}~${entry.soloConsulta ? "consulta" : ""}`;
+  }
   if (entry.id)
     return `${base}~${entry.category ?? ""}~${entry.active === false ? "off" : ""}~${entry.id}`;
   if (entry.active === false) return `${base}~${entry.category ?? ""}~off`;
@@ -639,6 +653,8 @@ export function menuDesdeServicios(
     priceEur: number;
     category?: string;
     active?: boolean;
+    grupo?: string;
+    soloConsulta?: boolean;
   }>,
 ): string[] {
   // Nada de recortar en silencio: si el panel tiene más servicios de los
@@ -656,6 +672,8 @@ export function menuDesdeServicios(
       priceEur: s.priceEur,
       category: s.category && s.category !== "Servicios" ? s.category : undefined,
       active: s.active === false ? false : undefined,
+      grupo: s.grupo?.trim() || undefined,
+      soloConsulta: s.soloConsulta ? true : undefined,
     }),
   );
 }

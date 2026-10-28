@@ -37,6 +37,10 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
     () => categoryOrderOf(services).filter((c) => c !== "Servicios" && c !== "Otros"),
     [services],
   );
+  const gruposExistentes = useMemo(
+    () => [...new Set(services.map((x) => x.grupo?.trim()).filter((g): g is string => !!g))],
+    [services],
+  );
   const isEdit = !!service;
 
   const [name, setName] = useState("");
@@ -45,6 +49,9 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
   const [priceEur, setPriceEur] = useState("40");
   const [active, setActive] = useState(true);
   const [category, setCategory] = useState("");
+  // Grupo de primer nivel de la carta pública («Peluquería», «Estética») y «solo consulta».
+  const [grupoCarta, setGrupoCarta] = useState("");
+  const [soloConsulta, setSoloConsulta] = useState(false);
   const [priceText, setPriceText] = useState("");
   const [aplicacionMin, setAplicacionMin] = useState("");
   const [exposicionMin, setExposicionMin] = useState("");
@@ -64,6 +71,8 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
     setActive(service?.active ?? true);
     setCategory(service?.category && service.category !== "Servicios" ? service.category : "");
     setPriceText(service?.priceText ?? "");
+    setGrupoCarta(service?.grupo ?? "");
+    setSoloConsulta(service?.soloConsulta === true);
     const perfilActual = useSalonStore.getState().salonProfile;
     const exposicion = service ? exposicionDe(service, perfilActual) : undefined;
     setAplicacionMin(exposicion ? String(exposicion.aplicacionMin) : "");
@@ -98,6 +107,8 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
       return;
     }
     const grupo = category.trim() || undefined;
+    // «~» separa los campos de la carta serializada: no puede ir en el grupo.
+    const grupoNivel1 = grupoCarta.replace(/~/g, " ").trim().slice(0, 40) || undefined;
     let id: string;
     if (isEdit && service) {
       id = service.id;
@@ -108,6 +119,8 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
         priceEur: price,
         active,
         category: grupo ?? service.category,
+        grupo: grupoNivel1,
+        soloConsulta: soloConsulta ? true : undefined,
       });
       toast.success("Servicio actualizado", { description: name });
     } else {
@@ -118,6 +131,8 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
         priceEur: price,
         active,
         ...(grupo ? { category: grupo } : {}),
+        ...(grupoNivel1 ? { grupo: grupoNivel1 } : {}),
+        ...(soloConsulta ? { soloConsulta: true } : {}),
       }).id;
       toast.success("Servicio creado", { description: name });
     }
@@ -282,6 +297,39 @@ export function ServiceFormSheet({ open, onOpenChange, service }: ServiceFormShe
                   <option key={c} value={c} />
                 ))}
               </datalist>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="svc-grupo">Grupo de la carta (opcional)</Label>
+              <Input
+                id="svc-grupo"
+                list="svc-grupos"
+                value={grupoCarta}
+                onChange={(e) => setGrupoCarta(e.target.value)}
+                placeholder="Peluquería, Estética…"
+              />
+              <datalist id="svc-grupos">
+                {gruposExistentes.map((g) => (
+                  <option key={g} value={g} />
+                ))}
+              </datalist>
+              <p className="text-xs text-muted-foreground">
+                Si lo pones, la clienta ve primero el grupo y dentro la sección de arriba. Vacío:
+                como siempre.
+              </p>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">Solo consulta</p>
+                <p className="text-xs text-muted-foreground">
+                  En la web sale con «Consultar» y no se puede reservar. Tú sí puedes agendarlo
+                  desde el panel.
+                </p>
+              </div>
+              <Switch
+                aria-label="Servicio solo consulta"
+                checked={soloConsulta}
+                onCheckedChange={setSoloConsulta}
+              />
             </div>
             <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
               <div>

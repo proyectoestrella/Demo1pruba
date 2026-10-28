@@ -35,6 +35,18 @@ export interface Service {
    * `SalonProfile.preciosLiterales`; ausente = el precio es `priceEur` y ya.
    */
   priceText?: string;
+  /**
+   * Grupo de primer nivel de la carta pública («Peluquería», «Estética»): la
+   * `category` pasa a ser la subcategoría dentro de él. Opcional: sin grupo, la
+   * carta se ve como siempre. Viaja en la entrada de `menu` (séptimo campo).
+   */
+  grupo?: string;
+  /**
+   * Servicio «solo consulta» (p. ej. Novias): sale en la carta y en la reserva
+   * con «Consultar» pero la clienta no puede reservarlo por la web. El panel
+   * sí puede agendarlo. Viaja en la entrada de `menu` (octavo campo).
+   */
+  soloConsulta?: boolean;
 }
 
 /** Tiempos en los que un servicio deja libre a la profesional mientras actúa. */
@@ -339,6 +351,15 @@ export interface SalonProfile {
   nifResponsable?: string;
   /** Correo al que las clientas pueden ejercer sus derechos de protección de datos. */
   correoPrivacidad?: string;
+  /**
+   * Domingos y festivos en la reserva web: si es `true`, esos días se pueden
+   * pulsar en el calendario pero, en vez de horas, enseñan un aviso de costes
+   * especiales con el correo del salón. Ausente = como siempre (días cerrados
+   * sin pulsar). Vive en el JSON del perfil: sin migración.
+   */
+  avisoDomingosFestivos?: boolean;
+  /** Correo del aviso de domingos y festivos. Ausente: `correoPrivacidad`. */
+  correoDomingosFestivos?: string;
   /** El salón fija la duración al aceptar cada solicitud. */
   duracionFlexible?: boolean;
   /** Oculta los importes a la clienta durante la reserva pública. Ausente = se muestran como siempre. */

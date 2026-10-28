@@ -34,7 +34,7 @@ export const NOMBRE_CAMPO: Record<string, string> = {
   logoUrl: "el logo", logotipoClaroUrl: "el logo para fondo claro", logotipoOscuroUrl: "el logo para fondo oscuro",
   plan: "el plan", calendario: "las preferencias del calendario",
   terminoProfesional: "cómo se llama a las profesionales", nifResponsable: "el NIF del responsable",
-  correoPrivacidad: "el correo de privacidad", ocultarPrecioReserva: "si se ve el precio al reservar",
+  correoPrivacidad: "el correo de privacidad", avisoDomingosFestivos: "el aviso de domingos y festivos", correoDomingosFestivos: "el correo del aviso de festivos", ocultarPrecioReserva: "si se ve el precio al reservar",
   rating: "la nota de Google", reviewCount: "el número de reseñas", enlaces: "los enlaces a redes, blog y tienda",
   destacados: "«Lo más pedido»", whatsapp: "el WhatsApp", boletin: "el boletín", galeriaPropia: "la galería de fotos",
   descripcionesServicios: "las descripciones de los servicios", preciosLiterales: "los precios de la carta",
