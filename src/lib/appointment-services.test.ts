@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { lavadoDe, serviceLabelOf, textoPrecioServicio, textoTotalServicios } from "./appointment-services";
+import { lavadoDe, serviceLabelOf, sumServices, textoPrecioServicio, textoTotalServicios } from "./appointment-services";
 
 describe("serviceLabelOf", () => {
   it("con la carta viva del panel dice el nombre actual; sin ella cae al catálogo de ejemplo", () => {
@@ -85,5 +85,23 @@ describe("lavadoDe (por defecto, 25-oct)", () => {
   });
   it("sin servicio de lavado suelto no hay nada", () => {
     expect(lavadoDe({}, carta.slice(1))).toBeUndefined();
+  });
+});
+
+describe("interruptor del lavado incluido", () => {
+  const carta = [
+    { id: "lavado", name: "Lavado personalizado", description: "" },
+    { id: "color-1", name: "Color orgánico", description: "" },
+  ];
+  const sv = (id: string, durationMin: number, priceEur: number) => ({ id, durationMin, priceEur }) as never;
+  const lista = [sv("lavado", 10, 10), sv("color-1", 60, 40)];
+  it("por defecto el color lleva el lavado y este no suma", () => {
+    expect(sumServices(lista, lavadoDe({}, carta))).toEqual({ durationMin: 60, priceEur: 40 });
+  });
+  it("apagado (servicioId vacío) el lavado suma siempre aparte", () => {
+    expect(sumServices(lista, lavadoDe({ lavado: { servicioId: "", incluidoEn: [] } }, carta))).toEqual({ durationMin: 70, priceEur: 50 });
+  });
+  it("encendido otra vez (null) vuelve a lo deducido de la carta", () => {
+    expect(sumServices(lista, lavadoDe({ lavado: null }, carta))).toEqual({ durationMin: 60, priceEur: 40 });
   });
 });

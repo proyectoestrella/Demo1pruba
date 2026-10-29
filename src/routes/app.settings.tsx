@@ -22,6 +22,7 @@ import { AjustesPrivacidad } from "@/components/AjustesPrivacidad";
 import { AjustesFestivos } from "@/components/AjustesFestivos";
 import { AjustesPreguntas } from "@/components/AjustesPreguntas";
 import { AjustesDiasEspeciales } from "@/components/AjustesDiasEspeciales";
+import { ListaBloqueos } from "@/components/ListaBloqueos";
 import { GuiaUso } from "@/components/GuiaUso";
 import { AjustesAccesos } from "@/components/AjustesAccesos";
 import { FilaInstalar } from "@/components/InstalarPanel";
@@ -384,6 +385,15 @@ function Settings() {
             </div>
             <div className={fila}>
               <AjustesDiasEspeciales />
+            </div>
+            <div className={fila}>
+              <div>
+                <h3 className="text-[15px] font-extrabold">Bloqueos de la agenda</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Las horas bloqueadas con «Bloquear tiempo». Aquí puedes ver todas y quitar las que no hagan falta, una o varias a la vez.
+                </p>
+              </div>
+              <ListaBloqueos />
             </div>
             <div className={fila}>
               <div>

@@ -45,6 +45,7 @@ import { cn } from "@/lib/utils";
 import { AppointmentDetailSheet } from "@/components/AppointmentDetailSheet";
 import { NewAppointmentDialog } from "@/components/NewAppointmentDialog";
 import { BloquearTiempoDialog } from "@/components/BloquearTiempoDialog";
+import { BloqueosDialog } from "@/components/ListaBloqueos";
 import {
   IconoEstado,
   RejillaCalendario,
@@ -225,6 +226,7 @@ export function CalendarioArena({
   const [prefill, setPrefill] = useState<{ date: Date; employeeId: EmployeeId } | null>(null);
   const [nuevaAbierta, setNuevaAbierta] = useState(!!inicio?.nueva);
   const [bloqueoAbierto, setBloqueoAbierto] = useState(false);
+  const [listaBloqueosAbierta, setListaBloqueosAbierta] = useState(false);
   /** Huecos libres y ocupación del día, plegados bajo la rejilla. */
   const [verPie, setVerPie] = useState(false);
   /** Ensancha la rejilla para enseñar las citas fuera de las horas visibles. */
@@ -402,6 +404,9 @@ export function CalendarioArena({
           </button>
           <button type="button" onClick={() => setBloqueoAbierto(true)} className="ml-1 h-11 rounded-full bg-[#F3F2EE] px-3 text-[13px] font-bold text-[#5A5A56] hover:bg-[#ECEBE6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-10">
             Bloquear tiempo
+          </button>
+          <button type="button" onClick={() => setListaBloqueosAbierta(true)} className="h-11 rounded-full bg-[#F3F2EE] px-3 text-[13px] font-bold text-[#5A5A56] hover:bg-[#ECEBE6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-10">
+            Ver bloqueos
           </button>
         </div>
         <div className="order-last w-full min-w-0 lg:order-2 lg:w-auto lg:flex-1">
@@ -637,6 +642,11 @@ export function CalendarioArena({
       {seleccionada?.id.startsWith("bloqueo:") ? (
         <div className="fixed right-4 bottom-4 z-20 rounded-2xl border border-lino bg-card p-4 shadow-lg">
           <p className="text-sm font-bold">{seleccionada.note || "Tiempo bloqueado"}</p>
+          <p className="text-xs text-muted-foreground">
+            {(profile.bloqueosAgenda ?? []).find((b) => b.id === seleccionada.id.split(":")[1])?.recurrente
+              ? "Se repite cada semana: al quitarlo se quitan todas."
+              : "Al quitarlo, esas horas vuelven a estar libres."}
+          </p>
           <button
             type="button"
             className="mt-2 text-sm font-bold text-melocoton-tinta underline"
@@ -648,7 +658,10 @@ export function CalendarioArena({
               setSeleccionada(null);
             }}
           >
-            Eliminar bloqueo
+            Quitar bloqueo
+          </button>
+          <button type="button" className="mt-2 ml-4 text-sm text-muted-foreground underline" onClick={() => setSeleccionada(null)}>
+            Cerrar
           </button>
         </div>
       ) : seleccionada ? (
@@ -659,6 +672,7 @@ export function CalendarioArena({
         />
       ) : null}
       {dialogoNueva}
+      <BloqueosDialog open={listaBloqueosAbierta} onOpenChange={setListaBloqueosAbierta} />
       <BloquearTiempoDialog
         open={bloqueoAbierto}
         onOpenChange={setBloqueoAbierto}
@@ -793,11 +807,12 @@ function BloqueCita({
   );
 }
 
-function BloquePausa({ style, texto = "Comida" }: { style: CSSProperties; texto?: string }) {
+function BloquePausa({ style, texto = "Comida", onClick }: { style: CSSProperties; texto?: string; onClick?: () => void }) {
   return (
     <div
-      className="absolute grid place-items-center rounded-xl border border-k-linea text-[11px] font-semibold text-k-gris"
+      className={cn("absolute grid place-items-center rounded-xl border border-k-linea text-[11px] font-semibold text-k-gris", onClick && "cursor-pointer")}
       style={{ ...style, background: RAYADO }}
+      {...(onClick ? { onClick, role: "button", tabIndex: 0, "aria-label": `${texto}: pulsa para quitar el bloqueo`, onKeyDown: (e: import("react").KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") onClick(); } } : {})}
     >
       {texto}
     </div>
@@ -999,7 +1014,7 @@ function Cronograma({
                 ))}
                 {mias.map((a) =>
                   a.status === "blocked" ? (
-                    <BloquePausa key={a.id} texto={a.note || "Bloqueado"} style={posCita(a)} />
+                    <BloquePausa key={a.id} texto={a.note || "Bloqueado"} style={posCita(a)} onClick={a.id.startsWith("bloqueo:") ? () => onCita(a) : undefined} />
                   ) : (
                     <BloqueCita
                       key={a.id}

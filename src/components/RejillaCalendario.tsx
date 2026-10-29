@@ -551,9 +551,12 @@ const ColumnaDia = memo(function ColumnaDia({
             <div
               key={a.id}
               data-cita
-              className="absolute z-[4] grid place-items-center overflow-hidden rounded-md border border-cafe/60 bg-beige text-[11px] font-semibold text-cafe-suave"
+              className={cn("absolute z-[4] grid place-items-center overflow-hidden rounded-md border border-cafe/60 bg-beige text-[11px] font-semibold text-cafe-suave", a.id.startsWith("bloqueo:") && "cursor-pointer hover:brightness-95")}
               // 14c: lo ocupado en un calendario externo va rayado, como la pausa.
               style={esBloqueExterno(a) ? { ...style, background: "repeating-linear-gradient(135deg,#ECEBE6 0 7px,#F5F4F0 7px 14px)" } : style}
+              {...(a.id.startsWith("bloqueo:")
+                ? { onClick: () => onCita(a), role: "button", tabIndex: 0, "aria-label": `${a.note || "Bloqueado"}: pulsa para quitar el bloqueo`, onKeyDown: (e: import("react").KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") onCita(a); } }
+                : {})}
             >
               {a.note || "Bloqueado"}
             </div>

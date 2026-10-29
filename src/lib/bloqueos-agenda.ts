@@ -77,3 +77,35 @@ export function bloqueosComoCitas(
   }
   return resultado;
 }
+
+/**
+ * Bloqueos que todavía cuentan para la lista «Bloqueos»: los puntuales que no
+ * han terminado y todos los semanales (se repiten cada semana). Se pueden
+ * filtrar por profesional (`"salon"` = los de todo el salón). Orden: puntuales
+ * por fecha y, al final, los semanales por día de la semana.
+ */
+export function bloqueosFuturos(
+  bloqueos: BloqueoAgenda[] | undefined,
+  ahoraISO: string,
+  profesionalId: string = "todos",
+): BloqueoAgenda[] {
+  const ahora = Date.parse(ahoraISO);
+  return (bloqueos ?? [])
+    .filter((b) => b.recurrente || Date.parse(b.fin) >= ahora)
+    .filter((b) => profesionalId === "todos" || b.profesionalId === profesionalId)
+    .sort((a, b) => {
+      if (!!a.recurrente !== !!b.recurrente) return a.recurrente ? 1 : -1;
+      if (a.recurrente && b.recurrente) return a.recurrente.diaSemana - b.recurrente.diaSemana || horaDelDia(a) - horaDelDia(b);
+      return Date.parse(a.inicio) - Date.parse(b.inicio);
+    });
+}
+
+function horaDelDia(b: BloqueoAgenda): number {
+  return Date.parse(b.inicio) % 86_400_000;
+}
+
+/** Quita estos bloqueos (por id) y deja los demás como estaban. */
+export function quitarBloqueos(bloqueos: BloqueoAgenda[] | undefined, ids: Iterable<string>): BloqueoAgenda[] {
+  const fuera = new Set(ids);
+  return (bloqueos ?? []).filter((b) => !fuera.has(b.id));
+}

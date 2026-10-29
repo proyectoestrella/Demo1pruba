@@ -16,6 +16,7 @@ import { CampoFiltro } from "@/components/CampoFiltro";
 import { EmptyState } from "@/components/EmptyState";
 import { ColumnasServicios } from "@/components/ColumnasServicios";
 import { ServiceFormSheet } from "@/components/ServiceFormSheet";
+import { AjusteLavadoIncluido } from "@/components/AjusteLavadoIncluido";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -128,6 +129,8 @@ function ServicesPage() {
           ) : undefined
         }
       />
+
+      {edita && services.length > 0 && <AjusteLavadoIncluido />}
 
       {services.length === 0 ? (
         <div className="flex-1 tarjeta-principal bg-card">
