@@ -20,11 +20,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const DIAS_PLURAL = ["domingos", "lunes", "martes", "miércoles", "jueves", "viernes", "sábados"];
 
 function cuando(b: BloqueoAgenda, zona: string): string {
   const horas = `${horaEnZona(b.inicio, zona)}–${horaEnZona(b.fin, zona)}`;
-  if (b.recurrente) return `Todos los ${DIAS[b.recurrente.diaSemana]}s · ${horas}`;
+  if (b.recurrente) return `Todos los ${DIAS_PLURAL[b.recurrente.diaSemana]} · ${horas}`;
   const [a, m, d] = fechaEnZona(b.inicio, zona).split("-").map(Number);
   const dia = new Date(Date.UTC(a, m - 1, d)).toLocaleDateString("es-ES", { weekday: "short", timeZone: "UTC" }).replace(".", "");
   return `${dia} ${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${a} · ${horas}`;
@@ -62,8 +62,8 @@ export function ListaBloqueos({ ahoraISO }: { ahoraISO?: string }) {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="min-w-0 space-y-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <label className="flex items-center gap-2 text-sm font-bold">
           Ver los de
           <select aria-label="Filtrar bloqueos por profesional" className="h-10 rounded-xl border border-input bg-blanco px-3 font-normal" value={filtro} onChange={(e) => setFiltro(e.target.value)}>
@@ -117,7 +117,7 @@ export function ListaBloqueos({ ahoraISO }: { ahoraISO?: string }) {
 export function BloqueosDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[85vh] overflow-x-hidden overflow-y-auto sm:max-w-lg [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle>Bloqueos</DialogTitle>
           <DialogDescription>Las horas que están cerradas en la agenda. Marca las que ya no hagan falta y quítalas.</DialogDescription>
