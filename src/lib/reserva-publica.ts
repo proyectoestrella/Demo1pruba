@@ -97,6 +97,8 @@ export function datosReservaPublicaDesdeCarta(
   const porId = new Map(carta.map((servicio) => [servicio.id, servicio]));
   const elegidos = serviceIds.map((id) => porId.get(id));
   if (elegidos.some((servicio) => !servicio || servicio.active === false)) return null;
+  // «Solo consulta»: se pregunta al salón, no se reserva online (el servidor no se fía del navegador).
+  if (elegidos.some((servicio) => servicio?.soloConsulta === true)) return null;
   const servicios = elegidos as Service[];
   const { durationMin, priceEur } = sumServices(servicios, lavadoDe(perfil, carta));
   if (durationMin <= 0 || !Number.isFinite(priceEur)) return null;

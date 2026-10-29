@@ -147,6 +147,13 @@ describe("datos de una reserva pública", () => {
     expect(datosReservaPublicaDesdeCarta({ ...perfil, duracionFlexible: true }, ["corte", "color"])).toEqual({ durationMin: 135, priceEur: 60 });
   });
 
+  it("rechaza una reserva web de un servicio «solo consulta» (sola o junto a otros)", () => {
+    const conNovias = { ...perfil, menu: [...perfil.menu, "Novias~90~150~~~novias~Peluquería~consulta"] };
+    expect(datosReservaPublicaDesdeCarta(conNovias, ["novias"])).toBeNull();
+    expect(datosReservaPublicaDesdeCarta(conNovias, ["corte", "novias"])).toBeNull();
+    expect(datosReservaPublicaDesdeCarta(conNovias, ["corte"])).toEqual({ durationMin: 30, priceEur: 20 });
+  });
+
   it("rechaza ids ausentes o servicios inactivos en vez de creer al navegador", () => {
     expect(datosReservaPublicaDesdeCarta(perfil, ["inventado"])).toBeNull();
     expect(datosReservaPublicaDesdeCarta({ ...perfil, menu: ["Corte~30~20~~off~corte"] }, ["corte"])).toBeNull();
