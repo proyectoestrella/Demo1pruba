@@ -163,6 +163,21 @@ describe("matriz de permisos", () => {
     );
   });
 
+  test("editarAgendaAjena: solo eleva a la estilista; ausente/false no cambia nada", () => {
+    const base = permisosDe("estilista");
+    expect(permisosDe("estilista", { editarAgendaAjena: false })).toBe(base);
+    expect(permisosDe("estilista", {})).toBe(base);
+    const p = permisosDe("estilista", { editarAgendaAjena: true });
+    for (const a of ["cita.editar", "cita.mover", "cita.cancelar", "cita.crear-para-otra", "cita.ver-todas"] as const)
+      expect(puede(p, a)).toBe(true);
+    expect(puede(p, "dinero.crear")).toBe(false);
+    expect(puede(p, "plan.gestionar")).toBe(false);
+    expect(p.paginas).toEqual(base.paginas);
+    expect(permisosDe("gerente", { editarAgendaAjena: true })).toBe(permisosDe("gerente"));
+    expect(permisosDe("recepcion", { editarAgendaAjena: true })).toBe(permisosDe("recepcion"));
+    expect(permisosExtraDe({ editarAgendaAjena: true, x: 1 })).toEqual({ editarAgendaAjena: true });
+  });
+
   test("plan: reparto de roles del 28-sep — Básico dos, Estándar tres, Embajador cuatro", () => {
     expect(rolesPermitidosPorPlan("reservas")).toBe(2);
     expect(rolesPermitidosPorPlan("reservas-asistente")).toBe(3);

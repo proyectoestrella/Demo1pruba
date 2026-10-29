@@ -111,6 +111,13 @@ export interface PermisosExtra {
   verAgendaCompleta?: boolean;
   accesoWeb?: boolean;
   accesoReservas?: boolean;
+  /**
+   * Estilista que puede ver y modificar la agenda de las demás profesionales
+   * (ver todas, crear para otra, editar, mover y cancelar). Solo `true` actúa:
+   * `false` o ausente deja el rol tal cual. Vive en el mismo JSON
+   * `permisos_extra` ya existente: no hace falta columna nueva.
+   */
+  editarAgendaAjena?: boolean;
 }
 
 /** Lee con seguridad el JSON de `salon_members.permisos_extra`. */
@@ -118,7 +125,7 @@ export function permisosExtraDe(valor: unknown): PermisosExtra {
   if (!valor || typeof valor !== "object" || Array.isArray(valor)) return {};
   const fila = valor as Record<string, unknown>;
   const extra: PermisosExtra = {};
-  for (const clave of ["verAgendaCompleta", "accesoWeb", "accesoReservas"] as const) {
+  for (const clave of ["verAgendaCompleta", "accesoWeb", "accesoReservas", "editarAgendaAjena"] as const) {
     if (typeof fila[clave] === "boolean") extra[clave] = fila[clave];
   }
   return extra;
@@ -220,7 +227,8 @@ export function permisosDe(rol: Rol, extras?: PermisosExtra | null): Permisos {
   if (
     extra.verAgendaCompleta === undefined &&
     extra.accesoWeb === undefined &&
-    extra.accesoReservas === undefined
+    extra.accesoReservas === undefined &&
+    !(rol === "estilista" && extra.editarAgendaAjena === true)
   ) {
     // Sin excepciones (o solo claves ausentes), la instancia compartida evita
     // cambiar el comportamiento y las referencias de todo el panel actual.
@@ -243,6 +251,20 @@ export function permisosDe(rol: Rol, extras?: PermisosExtra | null): Permisos {
   if (extra.accesoWeb === false) paginas.delete("mi-pagina");
 
   aplicar("reservas.editar", extra.accesoReservas);
+  // Agenda ajena: solo eleva a una estilista, y solo las acciones de agenda.
+  // Nada de dinero, cobro, plan ni accesos.
+  if (rol === "estilista" && extra.editarAgendaAjena === true) {
+    for (const accion of [
+      "cita.ver-todas",
+      "clienta.ver-todas",
+      "cita.crear",
+      "cita.crear-para-otra",
+      "cita.editar",
+      "cita.mover",
+      "cita.cancelar",
+    ] as const)
+      aplicar(accion, true);
+  }
   // Para una estilista, este es el único camino a Ajustes: dentro verá solo
   // la sección de reservas. Una subencargada conserva el resto de Ajustes que
   // ya tenía por rol aunque se le quite esta excepción concreta.
