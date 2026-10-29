@@ -208,10 +208,22 @@ export async function cambiarRol(
     return {
       ok: false,
       codigo: "ULTIMA_GERENTE",
-      motivo: "Tiene que quedar al menos una gerente.",
+      motivo:
+        "No se puede bajar de rol: es la única gerente del salón. Nombra antes a otra persona gerente.",
     };
-  if (nuevo.rol === "estilista" && !nuevo.employeeId)
-    return { ok: false, codigo: "DATOS", motivo: "Elige qué profesional es." };
+  // Sin profesional indicada, se conserva la que ya tuviera vinculada.
+  const employeeId = nuevo.employeeId || m.employeeId || null;
+  if (nuevo.rol === "estilista" && !employeeId)
+    return {
+      ok: false,
+      codigo: "DATOS",
+      motivo: "Elige qué profesional del equipo es para pasarla a estilista.",
+    };
+  if (
+    nuevo.rol === "estilista" &&
+    miembros.some((x) => x.userId !== userId && x.estado === "activa" && x.employeeId === employeeId)
+  )
+    return { ok: false, codigo: "DATOS", motivo: "Esa profesional ya tiene un acceso vinculado." };
   const otros = miembros.filter((x) => x.userId !== userId);
   const plan = await deps.plan();
   if (!cabeRol(nuevo.rol, rolesEnUso(otros, await deps.invitaciones()), plan))
@@ -223,7 +235,7 @@ export async function cambiarRol(
   await deps.guardarMiembro({
     ...m,
     rol: nuevo.rol,
-    employeeId: nuevo.rol === "estilista" ? (nuevo.employeeId ?? null) : null,
+    employeeId: nuevo.rol === "estilista" ? employeeId : null,
   });
   return { ok: true };
 }

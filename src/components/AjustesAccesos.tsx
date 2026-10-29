@@ -169,6 +169,9 @@ export function AjustesAccesos() {
   // dejar pulsar dos veces y para enseñar que se está esperando al servidor.
   const [ocupado, setOcupado] = useState<string | null>(null);
 
+  // Pasar a estilista a quien no tiene profesional vinculada: se pregunta cuál es.
+  const [elegirProf, setElegirProf] = useState<{ m: Miembro; employeeId: string } | null>(null);
+
   const [confirmacion, setConfirmacion] = useState<{ texto: string; pregunta?: string; peligro?: boolean; accion: () => Promise<void> } | null>(null);
   const [confirmando, setConfirmando] = useState(false);
 
@@ -217,6 +220,57 @@ export function AjustesAccesos() {
     <div className="space-y-4">
       {/* 22-oct: aviso en ventana (antes salía arriba del bloque, fuera de la vista
           si la persona estaba más abajo) y con la pregunta de cada acción. */}
+      <AlertDialog open={!!elegirProf} onOpenChange={(abierto) => !abierto && setElegirProf(null)}>
+        <AlertDialogContent aria-label="Elegir profesional">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              ¿Qué profesional es {elegirProf?.m.displayName ?? elegirProf?.m.email}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Para pasarla a estilista hay que vincularla a una profesional del equipo: así verá su
+              propia agenda. Seguirá entrando con el mismo correo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <select
+            aria-label="Profesional del equipo"
+            value={elegirProf?.employeeId ?? ""}
+            onChange={(e) =>
+              setElegirProf((p) => (p ? { ...p, employeeId: e.target.value } : p))
+            }
+            className="h-10 w-full rounded-xl border border-input bg-blanco px-3 text-[14px]"
+          >
+            <option value="">Elige una profesional</option>
+            {sinCuenta.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.name}
+              </option>
+            ))}
+          </select>
+          {sinCuenta.length === 0 && (
+            <p className="text-[13px] text-cafe-medio">
+              Todas las profesionales del equipo ya tienen un acceso vinculado.
+            </p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!elegirProf?.employeeId}
+              onClick={() => {
+                if (!elegirProf?.employeeId) return;
+                const { m, employeeId } = elegirProf;
+                ejecutar(
+                  m.userId,
+                  () => acc.cambiarRol(m, "estilista", employeeId),
+                  `${m.displayName ?? m.email} ahora es ${NOMBRE_ROL.estilista.toLowerCase()}`,
+                  () => ejecutar(m.userId, () => acc.restaurar(m), "Deshecho"),
+                );
+              }}
+            >
+              Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={!!confirmacion} onOpenChange={(abierto) => !abierto && !confirmando && setConfirmacion(null)}>
         <AlertDialogContent aria-label="Confirmar cambio">
           <AlertDialogHeader>
@@ -357,6 +411,10 @@ export function AjustesAccesos() {
                           value={m.rol}
                           onValueChange={(v) => {
                             const rol = v as Rol;
+                            if (rol === "estilista" && !m.employeeId) {
+                              setElegirProf({ m, employeeId: "" });
+                              return;
+                            }
                             ejecutar(
                               m.userId,
                               () => acc.cambiarRol(m, rol),

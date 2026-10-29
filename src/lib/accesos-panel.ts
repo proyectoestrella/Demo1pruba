@@ -154,7 +154,7 @@ export interface AccesosAPI {
     employeeId: string | null;
     displayName: string | null;
   }) => Promise<ResultadoAccesosPanel>;
-  cambiarRol: (m: Miembro, rol: Rol) => Promise<ResultadoAccesosPanel>;
+  cambiarRol: (m: Miembro, rol: Rol, employeeId?: string | null) => Promise<ResultadoAccesosPanel>;
   vincular: (m: Miembro, employeeId: string | null) => Promise<ResultadoAccesosPanel>;
   cambiarPermisosExtra: (
     m: Miembro,
@@ -281,8 +281,12 @@ export function useAccesos(): AccesosAPI {
   );
 
   const cambiarRol = useCallback<AccesosAPI["cambiarRol"]>(
-    async (m, rol) => {
-      if (esDemo) return deDemo(accesosDemo.cambiarRol(m.userId, rol, plan));
+    async (m, rol, employeeId) => {
+      if (esDemo) {
+        if (rol === "estilista" && employeeId && !m.employeeId)
+          accesosDemo.vincular(m.userId, employeeId);
+        return deDemo(accesosDemo.cambiarRol(m.userId, rol, plan));
+      }
       if (!slug) return { ok: false, codigo: "OTRO", mensaje: "No se sabe a qué salón." };
       const r = await llamarServidor(() =>
         cambiarRolMiembro({
@@ -290,7 +294,7 @@ export function useAccesos(): AccesosAPI {
             slug,
             userId: m.userId,
             rol,
-            employeeId: rol === "estilista" ? m.employeeId : undefined,
+            employeeId: rol === "estilista" ? (employeeId ?? m.employeeId) : undefined,
           },
         }),
       );
