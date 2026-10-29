@@ -89,6 +89,7 @@ function PermisosPorPersona({
     verAgendaCompleta: puede(efectivos, "cita.ver-todas"),
     accesoWeb: puede(efectivos, "web.editar"),
     accesoReservas: puede(efectivos, "reservas.editar"),
+    editarAgendaAjena: miembro.permisosExtra?.editarAgendaAjena === true,
   };
   const opciones: Array<{
     clave: keyof PermisosExtra;
@@ -117,6 +118,15 @@ function PermisosPorPersona({
       activo: permisos.accesoReservas,
     },
   ];
+  if (miembro.rol === "estilista")
+    opciones.push({
+      clave: "editarAgendaAjena",
+      titulo: "Puede modificar la agenda de las demás",
+      ayuda: permisos.editarAgendaAjena
+        ? "Ahora puede ver, crear, mover, editar y cancelar citas de cualquier profesional."
+        : "Ahora solo modifica sus propias citas.",
+      activo: permisos.editarAgendaAjena,
+    });
 
   return (
     <div
@@ -124,7 +134,7 @@ function PermisosPorPersona({
       aria-label={`Accesos configurables de ${miembro.displayName ?? miembro.email}`}
     >
       <p className="mb-1 text-[12.5px] font-bold text-cafe-medio">Accesos configurables</p>
-      <div className="grid gap-1.5 lg:grid-cols-3">
+      <div className="grid gap-1.5 lg:grid-cols-2">
         {opciones.map((opcion) => (
           <label
             key={opcion.clave}

@@ -349,6 +349,37 @@ describe("roles (lote 8)", () => {
     ).rejects.toBeInstanceOf(PermisoDenegado);
   });
 
+  it("editarAgendaAjena: estilista sin flag o sin columna = igual que hoy; con flag edita ajenas; gerente igual", async () => {
+    const f = (permisosExtra?: unknown, rol = "estilista") => async () => ({
+      rol, employeeId: "noelia", displayName: "Noelia", estado: "activa", permisosExtra,
+    });
+    const acciones = ["cita.editar", "cita.mover", "cita.cancelar", "cita.crear"] as const;
+    // Sin columna (undefined), JSON vacío o flag false: solo lo propio.
+    for (const extra of [undefined, null, {}, { editarAgendaAjena: false }]) {
+      const a = await resolverAcceso("salon-a", conFicha(f(extra)));
+      for (const x of acciones) {
+        expect(tienePermiso(a, x, "otra")).toBe(false);
+        expect(tienePermiso(a, x, "noelia")).toBe(true);
+      }
+      expect(tienePermiso(a, "cita.ver-todas")).toBe(false);
+      expect(tienePermiso(a, "cita.crear-para-otra")).toBe(false);
+    }
+    // Con flag: edita, mueve, cancela y crea para otras; sigue sin dinero ni accesos.
+    const a = await resolverAcceso("salon-a", conFicha(f({ editarAgendaAjena: true })));
+    for (const x of acciones) expect(tienePermiso(a, x, "otra")).toBe(true);
+    expect(tienePermiso(a, "cita.ver-todas")).toBe(true);
+    expect(tienePermiso(a, "cita.crear-para-otra")).toBe(true);
+    expect(tienePermiso(a, "dinero.ver-global")).toBe(false);
+    expect(tienePermiso(a, "accesos.gestionar")).toBe(false);
+    await expect(exigirPermiso("salon-a", "cita.editar", conFicha(f({ editarAgendaAjena: true })))).resolves.toBeDefined();
+    // Gerente: sin cambios con o sin flag.
+    for (const extra of [undefined, { editarAgendaAjena: true }]) {
+      const g = await resolverAcceso("salon-a", conFicha(f(extra, "gerente")));
+      expect(tienePermiso(g, "cita.editar", "otra")).toBe(true);
+      expect(tienePermiso(g, "accesos.gestionar")).toBe(true);
+    }
+  });
+
   it("dada de baja o solo invitada: no entra aunque tenga fila", async () => {
     for (const estado of ["baja", "invitada"]) {
       const a = await resolverAcceso(

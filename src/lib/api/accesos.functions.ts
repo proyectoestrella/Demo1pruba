@@ -281,6 +281,7 @@ export const cambiarPermisosExtraMiembro = createServerFn({ method: "POST" })
           verAgendaCompleta: z.boolean().optional(),
           accesoWeb: z.boolean().optional(),
           accesoReservas: z.boolean().optional(),
+          editarAgendaAjena: z.boolean().optional(),
         })
         .strict(),
     }),
