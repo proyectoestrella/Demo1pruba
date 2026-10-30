@@ -4,21 +4,29 @@
  * festivo» de la reserva web.
  *
  * Fechas «YYYY-MM-DD». Los domingos NO se listan: se detectan aparte.
+ * Verificado el 30-10-2026 contra fuentes oficiales.
  *
  * FUENTES
- * - 2026, Comunidad de Madrid: Decreto 75/2025, de 24 de septiembre (BOCM de
- *   25-09-2025). Texto leído del anexo. Incluye los traslados del 2 de noviembre
- *   y del 7 de diciembre.
- * - 2027, Comunidad de Madrid: Decreto 82/2026, de 30 de septiembre (BOCM de
- *   01-10-2026). Fechas tomadas de una nota de prensa (Time Out Madrid) que
- *   resume el decreto; el texto del decreto NO se ha leído directamente.
- *   TODO(verificar con el BOCM del 01-10-2026) antes de fiarse del todo.
- * - Locales de Madrid capital 2026: San Isidro (15 mayo) y La Almudena
- *   (9 noviembre). TODO(verificar): salen de fuentes secundarias que los dan
- *   como los de siempre; no se ha leído el acuerdo del Pleno.
- * - Locales de Madrid capital 2027: el Pleno del 29-09-2026 aprobó los dos,
- *   pero NO se ha podido confirmar qué días son. TODO: añadirlos aquí (no se
- *   inventan). Mientras tanto no hay locales de 2027 en la lista.
+ * - 2026, nacionales y Comunidad de Madrid: Resolución de 17-10-2025 de la
+ *   Dirección General de Trabajo (BOE-A-2025-21667,
+ *   https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-21667) y Decreto
+ *   75/2025, de 24 de septiembre (BOCM de 25-09-2025,
+ *   https://www.bocm.es/boletin/CM_Orden_BOCM/2025/09/25/BOCM-20250925-16.PDF).
+ *   Incluye los traslados del 2 de noviembre y del 7 de diciembre.
+ * - 2027, nacionales y Comunidad de Madrid: Resolución de 8-10-2026 de la
+ *   Dirección General de Trabajo (BOE-A-2026-21254, BOE de 13-10-2026,
+ *   https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-21254) y Decreto
+ *   82/2026, de 30 de septiembre (BOCM de 01-10-2026). El 2 de mayo de 2027
+ *   cae en domingo y no se traslada; el 15 de agosto (domingo) se traslada
+ *   al lunes 16.
+ * - Locales de Madrid capital 2026 (15 mayo San Isidro, 9 noviembre La
+ *   Almudena) y 2027 (sábado 15 mayo San Isidro, martes 9 noviembre La
+ *   Almudena; Pleno de 29-09-2026): calendario oficial del Ayuntamiento,
+ *   https://www.madrid.es/portales/munimadrid/es/Inicio/Actividad-economica-y-hacienda/Empresa-y-comercio/Calendario-oficial-laboral-y-de-dias-inhabiles-y-festivos-2027-para-Madrid/
+ *   TODO: el texto del acuerdo del Pleno y la Resolución de la D.G. de
+ *   Trabajo con las fiestas locales del BOCM no se han leído directamente
+ *   (la web del Ayuntamiento sí las da). El BOCM de 2027 aún no está
+ *   publicado a esta fecha.
  */
 
 export interface Festivo {
@@ -35,24 +43,26 @@ export const FESTIVOS_MADRID: Festivo[] = [
   { fecha: "2026-04-03", nombre: "Viernes Santo", ambito: "nacional" },
   { fecha: "2026-05-01", nombre: "Fiesta del Trabajo", ambito: "nacional" },
   { fecha: "2026-05-02", nombre: "Fiesta de la Comunidad de Madrid", ambito: "comunidad" },
-  { fecha: "2026-05-15", nombre: "San Isidro (local Madrid) — TODO verificar", ambito: "local" },
+  { fecha: "2026-05-15", nombre: "San Isidro (local Madrid)", ambito: "local" },
   { fecha: "2026-08-15", nombre: "Asunción de la Virgen", ambito: "nacional" },
   { fecha: "2026-10-12", nombre: "Fiesta Nacional de España", ambito: "nacional" },
   { fecha: "2026-11-02", nombre: "Traslado de Todos los Santos", ambito: "comunidad" },
-  { fecha: "2026-11-09", nombre: "La Almudena (local Madrid) — TODO verificar", ambito: "local" },
+  { fecha: "2026-11-09", nombre: "La Almudena (local Madrid)", ambito: "local" },
   { fecha: "2026-12-07", nombre: "Traslado del Día de la Constitución", ambito: "comunidad" },
   { fecha: "2026-12-08", nombre: "Inmaculada Concepción", ambito: "nacional" },
   { fecha: "2026-12-25", nombre: "Natividad del Señor", ambito: "nacional" },
-  // 2027 — Decreto 82/2026 (ver TODO arriba)
+  // 2027 — Resolución 8-10-2026 (BOE) y Decreto 82/2026
   { fecha: "2027-01-01", nombre: "Año Nuevo", ambito: "nacional" },
   { fecha: "2027-01-06", nombre: "Epifanía del Señor", ambito: "nacional" },
   { fecha: "2027-03-19", nombre: "San José", ambito: "comunidad" },
   { fecha: "2027-03-25", nombre: "Jueves Santo", ambito: "comunidad" },
   { fecha: "2027-03-26", nombre: "Viernes Santo", ambito: "nacional" },
   { fecha: "2027-05-01", nombre: "Fiesta del Trabajo", ambito: "nacional" },
+  { fecha: "2027-05-15", nombre: "San Isidro (local Madrid)", ambito: "local" },
   { fecha: "2027-08-16", nombre: "Traslado de la Asunción", ambito: "comunidad" },
   { fecha: "2027-10-12", nombre: "Fiesta Nacional de España", ambito: "nacional" },
   { fecha: "2027-11-01", nombre: "Todos los Santos", ambito: "nacional" },
+  { fecha: "2027-11-09", nombre: "La Almudena (local Madrid)", ambito: "local" },
   { fecha: "2027-12-06", nombre: "Día de la Constitución", ambito: "nacional" },
   { fecha: "2027-12-08", nombre: "Inmaculada Concepción", ambito: "nacional" },
   { fecha: "2027-12-25", nombre: "Natividad del Señor", ambito: "nacional" },
