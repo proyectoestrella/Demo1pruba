@@ -1,4 +1,8 @@
 import { conRegistroEnPausa } from "@/lib/store";
+import { getSalonProfile } from "@/lib/api/salons.functions";
+import { dominioRaiz, slugAdmiteSubdominio } from "@/lib/host";
+import { jsonLdSalon, metaSalon } from "@/lib/seo-salon";
+import type { SalonProfile } from "@/lib/mock/types";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useSalonStore } from "@/lib/store";
 import { useRealSalon, useRealSalonSlug } from "@/lib/use-real-salon";
@@ -31,7 +35,41 @@ import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 
 export const Route = createFileRoute("/s/$salonSlug")({
-  head: ({ match }) => {
+  // SEO del salón real (26-oct): el perfil público se lee en el servidor para
+  // que el HTML sin JavaScript ya traiga su título, descripción, canónica y
+  // JSON-LD. Un fallo aquí no rompe la página: queda el título neutro.
+  loader: async ({ params }) => {
+    try {
+      const r = await getSalonProfile({ data: { slug: params.salonSlug } });
+      return { perfilSeo: r.profile ?? null };
+    } catch {
+      return { perfilSeo: null };
+    }
+  },
+  head: ({ match, loaderData }) => {
+    const perfilSeo = (loaderData as { perfilSeo?: SalonProfile | null } | undefined)?.perfilSeo;
+    if (perfilSeo?.name) {
+      const origen = slugAdmiteSubdominio(match.params.salonSlug)
+        ? `https://${match.params.salonSlug}.${dominioRaiz()}`
+        : `https://${dominioRaiz()}/s/${match.params.salonSlug}`;
+      const ruta = match.pathname.endsWith("/book") || /\/book\/?$/.test(String((match as { fullPath?: string }).fullPath ?? "")) ? "/book" : "/";
+      const m = metaSalon(perfilSeo, origen, ruta);
+      return {
+        meta: [
+          { title: m.titulo },
+          { name: "description", content: m.descripcion },
+          { property: "og:title", content: m.titulo },
+          { property: "og:description", content: m.descripcion },
+          { property: "og:url", content: m.canonica },
+          { property: "og:site_name", content: perfilSeo.name },
+          ...(m.imagen ? [{ property: "og:image", content: m.imagen }, { name: "twitter:image", content: m.imagen }] : []),
+          { name: "twitter:title", content: m.titulo },
+          { name: "twitter:description", content: m.descripcion },
+        ],
+        links: [{ rel: "canonical", href: m.canonica }],
+        scripts: [{ type: "application/ld+json", children: JSON.stringify(jsonLdSalon(perfilSeo, origen)) }],
+      };
+    }
     // El título y la vista previa del enlace (WhatsApp, iMessage) se generan en
     // el servidor, antes de que el navegador aplique la demo: hay que leer el
     // salón del propio enlace, o todas las demos se compartían como el salón de
