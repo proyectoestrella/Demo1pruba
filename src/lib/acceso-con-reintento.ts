@@ -10,6 +10,10 @@
  * salón ya no la reconoce) es una baja. Cualquier otra negativa se reintenta
  * UNA vez tras forzar `refreshSession()`; si sigue sin ser una baja, se lanza
  * `AccesoNoVerificable` y quien llama decide no tocar la sesión.
+ *
+ * Excepción: `sin_sesion` tras el reintento SIN sesión guardada en el
+ * navegador es una negativa firme (nunca entró, o auth-js ya la descartó):
+ * se devuelve para que se vaya a /login. No hay nada que perder.
  */
 export type RespuestaAcceso = { real: boolean; permitido: boolean; motivo?: string };
 
@@ -28,6 +32,7 @@ export function esRevocacion(r: RespuestaAcceso): boolean {
 export async function accesoConReintento<T extends RespuestaAcceso>(
   preguntar: () => Promise<T>,
   refrescar: () => Promise<unknown>,
+  haySesionLocal: () => boolean = () => true,
 ): Promise<T> {
   const noEsNegativaDudosa = (r: T) => !r.real || r.permitido || r.motivo === "revocado";
   let primera: T | null = null;
@@ -44,5 +49,6 @@ export async function accesoConReintento<T extends RespuestaAcceso>(
   }
   const segunda = await preguntar().catch(() => null);
   if (segunda && noEsNegativaDudosa(segunda)) return segunda;
+  if (segunda && segunda.motivo === "sin_sesion" && !haySesionLocal()) return segunda;
   throw new AccesoNoVerificable();
 }

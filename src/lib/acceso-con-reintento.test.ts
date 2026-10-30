@@ -59,4 +59,20 @@ describe("accesoConReintento", () => {
     expect(esRevocacion({ real: true, permitido: false })).toBe(false); // servidor viejo sin motivo
     expect(esRevocacion(OK)).toBe(false);
   });
+
+  test("sin sesión local y sin_sesion tras reintentar: devuelve la negativa (va a /login)", async () => {
+    const m = montar([SIN_SESION, SIN_SESION]);
+    const r = await accesoConReintento(m.preguntar, m.refrescar, () => false);
+    expect(r.permitido).toBe(false);
+    expect(esRevocacion(r)).toBe(false);
+  });
+  test("con sesión local y sin_sesion persistente: no devuelve negativa, lanza (no borra)", async () => {
+    const m = montar([SIN_SESION, SIN_SESION]);
+    await expect(accesoConReintento(m.preguntar, m.refrescar, () => true)).rejects.toBeInstanceOf(AccesoNoVerificable);
+    expect(m.cuenta().refrescos).toBe(1);
+  });
+  test("sin sesión local pero el servidor no responde (no_verificable): sigue lanzando", async () => {
+    const m = montar([NO_VERIF, NO_VERIF]);
+    await expect(accesoConReintento(m.preguntar, m.refrescar, () => false)).rejects.toBeInstanceOf(AccesoNoVerificable);
+  });
 });

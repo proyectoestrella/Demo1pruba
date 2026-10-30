@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { cerrarSesion } from "./sesion";
 import { accesoConReintento, esRevocacion } from "./acceso-con-reintento";
-import { refrescarSesion, tokenDeAcceso } from "./supabase-browser";
+import { haySesionLocal, refrescarSesion, tokenDeAcceso } from "./supabase-browser";
 import { accesoAlPanel, listSalonData } from "./api/salons.functions";
 import { useSalonStore } from "./store";
 import { sincronizacionPendiente } from "./salon-sync";
@@ -29,7 +29,7 @@ export function usePanelRefresh(slug: string | null) {
         // Acceso y agenda a la vez (antes en serie). Si el acceso cae, los
         // datos se descartan: el servidor ya los habría recortado igualmente.
         const [entrada, datos] = await Promise.all([
-          accesoConReintento(() => accesoAlPanel({ data: { slug } }), refrescarSesion),
+          accesoConReintento(() => accesoAlPanel({ data: { slug } }), refrescarSesion, haySesionLocal),
           listSalonData({ data: { slug, vista: "panel" } }),
         ]);
         // Solo una baja explícita (el servidor verificó quién eres y el salón ya

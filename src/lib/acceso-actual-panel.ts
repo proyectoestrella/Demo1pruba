@@ -1,7 +1,7 @@
 import { accesoAlPanel } from "@/lib/api/salons.functions";
 import { crearCacheAcceso } from "@/lib/acceso-cache-panel";
 import { accesoConReintento } from "@/lib/acceso-con-reintento";
-import { refrescarSesion } from "@/lib/supabase-browser";
+import { haySesionLocal, refrescarSesion } from "@/lib/supabase-browser";
 import { permisosDe, vePagina, type MiembroActual } from "@/lib/permisos";
 import { paginaDeRutaPanel } from "@/lib/ruta-panel-permiso";
 
@@ -11,7 +11,7 @@ import { paginaDeRutaPanel } from "@/lib/ruta-panel-permiso";
  * salón y minuto (stale-while-revalidate), en vez de una o dos por clic.
  */
 export const accesoPanel = crearCacheAcceso((slug: string) =>
-  accesoConReintento(() => accesoAlPanel({ data: { slug } }), refrescarSesion),
+  accesoConReintento(() => accesoAlPanel({ data: { slug } }), refrescarSesion, haySesionLocal),
 );
 
 /** Una revalidación de fondo dijo que ya no entra: fuera, al acceso. */

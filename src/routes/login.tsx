@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Lock, ArrowLeft, Loader2, MailCheck } from "lucide-react";
 import { useSalonStore } from "@/lib/store";
 import { accesoConReintento } from "@/lib/acceso-con-reintento";
-import { refrescarSesion } from "@/lib/supabase-browser";
+import { haySesionLocal, refrescarSesion } from "@/lib/supabase-browser";
 import { useSesion, pedirEnlaceMagico, verificarCodigo } from "@/lib/sesion";
 import { esSalonRealPublico, accesoAlPanel } from "@/lib/api/salons.functions";
 import { BUSINESS_LABEL, inferBusinessType } from "@/lib/business-type";
@@ -133,7 +133,7 @@ function LoginPage() {
     let vivo = true;
     setEntrando(true);
     aceptarMisInvitaciones({ data: { slug } })
-      .then(() => accesoConReintento(() => accesoAlPanel({ data: { slug } }), refrescarSesion))
+      .then(() => accesoConReintento(() => accesoAlPanel({ data: { slug } }), refrescarSesion, haySesionLocal))
       .then((r) => {
         if (!vivo) return;
         if (r.permitido) window.location.replace(`/app?s=${encodeURIComponent(slug)}`);

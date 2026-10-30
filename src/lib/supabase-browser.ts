@@ -15,6 +15,11 @@ export function hayAuthConfigurada(): boolean {
   return Boolean(URL_SUPABASE && CLAVE_PUBLICA);
 }
 
+/** ¿Hay sesión guardada (o enlace de entrada) en este navegador? Solo mira, no toca nada. */
+export function haySesionLocal(): boolean {
+  return puedeHaberSesion();
+}
+
 function puedeHaberSesion(): boolean {
   if (typeof window === "undefined") return false;
   try {

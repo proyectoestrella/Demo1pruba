@@ -32,6 +32,8 @@ import { precargarDatosDelSalon, precargarPerfilDelSalon } from "@/lib/precarga-
 import { DEMO_PARAM, decodeDemoProfile } from "@/lib/demo-profile";
 import { DemoLoadingScreen } from "@/components/DemoLoadingScreen";
 
+export const MAX_REINTENTOS_GUARDIA = 12;
+
 type Estado = "comprobando" | "adelante" | "fuera";
 
 /**
@@ -55,6 +57,7 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
   // Si no se puede VERIFICAR el acceso (portátil recién despertado, sin red,
   // token sin renovar) no se echa a nadie: se reintenta cada pocos segundos.
   const [reintento, setReintento] = useState(0);
+  const [sinVerificar, setSinVerificar] = useState(false);
   // Móvil (22-oct): este efecto vuelve a correr en CADA cambio de sección
   // (depende de `pathname`). Las precargas solo sirven para la entrada: la
   // consume `useRealSalon` una vez por salón. Repetidas, cada navegación pedía
@@ -79,6 +82,7 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
       .obtener(slug, () => salirPorRevocacion(slug))
       .then((acc) => {
         if (!vivo) return;
+        setSinVerificar(false);
         if (acc.real && !acc.permitido) { setEstado("fuera"); return; }
         if (!permitidoEnRuta(acc, pathname) && pathname !== "/app") {
           void navigate({ to: "/app", search: { s: slug }, replace: true });
@@ -93,9 +97,15 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
         console.error("No se pudo comprobar el acceso al panel:", err);
         if (!vivo) return;
         if (err instanceof AccesoNoVerificable) {
-          temporizador = window.setTimeout(() => setReintento((n) => n + 1), 5000);
+          setSinVerificar(true);
+          // Tope: ~1 min de reintentos automáticos; después, botón y evento
+          // `online`. Nunca se manda a /login con una sesión guardada.
+          if (reintento < MAX_REINTENTOS_GUARDIA) {
+            temporizador = window.setTimeout(() => setReintento((n) => n + 1), 5000);
+          }
           return;
         }
+        setSinVerificar(false);
         setEstado("fuera");
       });
     return () => {
@@ -103,6 +113,13 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
       if (temporizador !== undefined) window.clearTimeout(temporizador);
     };
   }, [slug, pathname, navigate, reintento]);
+
+  useEffect(() => {
+    if (!sinVerificar) return;
+    const alVolverLaRed = () => setReintento((n) => n + 1);
+    window.addEventListener("online", alVolverLaRed);
+    return () => window.removeEventListener("online", alVolverLaRed);
+  }, [sinVerificar]);
 
   useEffect(() => {
     if (estado !== "fuera") return;
@@ -122,8 +139,21 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
       <IconoSiShow size={64} />
       <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       <p className="text-sm text-muted-foreground">
-        {estado === "fuera" ? "Llevándote a la pantalla de acceso…" : "Comprobando tu acceso…"}
+        {estado === "fuera"
+          ? "Llevándote a la pantalla de acceso…"
+          : sinVerificar
+            ? "Sin conexión con el servidor, reintentando…"
+            : "Comprobando tu acceso…"}
       </p>
+      {sinVerificar && reintento >= MAX_REINTENTOS_GUARDIA && (
+        <button
+          type="button"
+          className="text-sm underline"
+          onClick={() => setReintento((n) => n + 1)}
+        >
+          Reintentar ahora
+        </button>
+      )}
     </div>
   );
 }
