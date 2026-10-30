@@ -114,6 +114,34 @@ export function extraerBearer(cabecera: string | null | undefined): string | nul
  * —que es justo lo que necesita la web pública de reservas de un salón real.
  */
 export async function resolverAcceso(slug: string, deps: DepsAutorizacion): Promise<Acceso> {
+  return (await resolverAccesoConMotivo(slug, deps)).acceso;
+}
+
+/**
+ * Por qué se le niega el acceso a alguien (sesión caducada, 5xx o red caída no
+ * son una baja). El cliente SOLO cierra la sesión del navegador con `revocado`.
+ *
+ *   - `revocado`: la identidad está verificada y el salón ya no la reconoce
+ *     (sin fila de miembro, rol retirado o estado distinto de «activa»).
+ *   - `sin_sesion`: no hay token, o Supabase dice (4xx) que el token no vale.
+ *     Un token caducado cae aquí: el cliente debe refrescar y reintentar.
+ *   - `no_verificable`: Supabase o la base de datos no han respondido bien.
+ */
+export type MotivoNegado = "revocado" | "sin_sesion" | "no_verificable";
+
+/** Lanzar desde una dependencia cuando el fallo es transitorio (red, 5xx, RPC). */
+export class VerificacionNoDisponible extends Error {
+  constructor(mensaje: string) {
+    super(mensaje);
+    this.name = "VerificacionNoDisponible";
+  }
+}
+
+export async function resolverAccesoConMotivo(
+  slug: string,
+  deps: DepsAutorizacion,
+): Promise<{ acceso: Acceso; motivo?: MotivoNegado }> {
+  const ajeno = (motivo: MotivoNegado) => ({ acceso: { tipo: "ajeno" } as Acceso, motivo });
   // Si NO se puede saber si el salón es real (Supabase caído o con error), no
   // se asume "demo": una demo manda sobre el salón, y un fallo transitorio
   // daría mando a cualquiera sobre un salón de pago. Se trata como ajeno.
@@ -122,12 +150,12 @@ export async function resolverAcceso(slug: string, deps: DepsAutorizacion): Prom
     esReal = await deps.esSalonReal(slug);
   } catch (err) {
     console.error("No se pudo saber si el salón es real:", err);
-    return { tipo: "ajeno" };
+    return ajeno("no_verificable");
   }
-  if (!esReal) return { tipo: "demo" };
+  if (!esReal) return { acceso: { tipo: "demo" } };
 
   const token = deps.tokenDeLaPeticion();
-  if (!token) return { tipo: "ajeno" };
+  if (!token) return ajeno("sin_sesion");
 
   let userId: string | null = null;
   try {
@@ -136,34 +164,43 @@ export async function resolverAcceso(slug: string, deps: DepsAutorizacion): Prom
     // Un token caducado, manipulado o un Supabase que no responde son todos
     // el mismo caso desde aquí: no se ha demostrado nada.
     console.error("No se pudo verificar la sesión de quien llama:", err);
-    return { tipo: "ajeno" };
+    return ajeno("no_verificable");
   }
-  if (!userId) return { tipo: "ajeno" };
+  if (!userId) return ajeno("sin_sesion");
 
   // Tener sesión no es tener acceso. Un usuario del salón A tiene una sesión
   // perfectamente válida y aquí es exactamente igual de ajeno al salón B.
-  if (!(await deps.esMiembro(userId, slug))) return { tipo: "ajeno" };
+  let esMiembro: boolean;
+  try {
+    esMiembro = await deps.esMiembro(userId, slug);
+  } catch (err) {
+    console.error("No se pudo comprobar la pertenencia:", err);
+    return ajeno("no_verificable");
+  }
+  if (!esMiembro) return ajeno("revocado");
 
   let f: FichaMiembro | null = null;
   try {
     f = deps.ficha ? await deps.ficha(userId, slug) : null;
   } catch (err) {
     console.error("No se pudo leer el rol del miembro:", err);
-    return { tipo: "ajeno" };
+    return ajeno("no_verificable");
   }
   // Dada de baja o aún invitada: la fila existe, pero no da acceso.
-  if (deps.ficha && (!f || (!esRol(f.rol) && f.rol !== "dueno" && f.rol !== "encargado"))) return { tipo: "ajeno" };
-  if (f?.estado && f.estado !== "activa") return { tipo: "ajeno" };
+  if (deps.ficha && (!f || (!esRol(f.rol) && f.rol !== "dueno" && f.rol !== "encargado"))) return ajeno("revocado");
+  if (f?.estado && f.estado !== "activa") return ajeno("revocado");
   const rol = rolVigente(f?.rol);
   // Una estilista sin profesional vinculada no puede ver «lo suyo»: se le deja
   // entrar, pero su alcance propio no casa con ninguna cita.
   return {
-    tipo: "miembro",
-    userId,
-    rol,
-    employeeId: f?.employeeId ?? null,
-    displayName: f?.displayName ?? null,
-    permisosExtra: permisosExtraDe(f?.permisosExtra),
+    acceso: {
+      tipo: "miembro",
+      userId,
+      rol,
+      employeeId: f?.employeeId ?? null,
+      displayName: f?.displayName ?? null,
+      permisosExtra: permisosExtraDe(f?.permisosExtra),
+    },
   };
 }
 

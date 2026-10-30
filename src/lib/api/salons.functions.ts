@@ -22,7 +22,7 @@ import { validarTelefono, normalizarTelefonoSiValido } from "../telefono";
 import process from "node:process";
 import { z } from "zod";
 
-import { acceso, exigirAcceso } from "./autorizacion.server";
+import { acceso, accesoConMotivo, exigirAcceso } from "./autorizacion.server";
 import {
   accionesDeParcheCita,
   accionesDeParchePerfil,
@@ -45,7 +45,7 @@ import {
 } from "../resumen-perfil";
 import { CAMPOS_PERFIL_SIN_REGISTRO } from "../registro-cambios";
 import { PermisoDenegado, tienePermiso } from "./autorizacion";
-import { tieneMando, vistaEfectiva } from "./autorizacion";
+import { tieneMando, vistaEfectiva, type MotivoNegado } from "./autorizacion";
 import { conSesion } from "./sesion.middleware";
 import { getSupabaseServerClient } from "../supabase.server";
 import { admiteReservaPublicaPorIp } from "./limite-reserva.server";
@@ -420,8 +420,17 @@ export const accesoAlPanel = createServerFn({ method: "GET" })
   .handler(
     async ({
       data,
-    }): Promise<{ real: boolean; permitido: boolean; miembro: MiembroActual | null }> => {
-      const quien = await acceso(data.slug);
+    }): Promise<{
+      real: boolean;
+      permitido: boolean;
+      miembro: MiembroActual | null;
+      /**
+       * Solo si `permitido` es false. Clientes viejos lo ignoran. El navegador
+       * cierra la sesión ÚNICAMENTE con `"revocado"`.
+       */
+      motivo?: MotivoNegado;
+    }> => {
+      const { acceso: quien, motivo } = await accesoConMotivo(data.slug);
       // El miembro que entra (lote 8): rol, profesional vinculada y nombre para
       // el saludo. null en una demo o para quien no pertenece al salón.
       const miembro =
@@ -442,6 +451,7 @@ export const accesoAlPanel = createServerFn({ method: "GET" })
             !miembro ||
             vePagina(permisosDe(miembro.rol, miembro.permisosExtra), data.pagina)),
         miembro,
+        ...(quien.tipo === "ajeno" && motivo ? { motivo } : {}),
       };
     },
   );

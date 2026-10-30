@@ -18,8 +18,10 @@ import {
   exigirPermiso,
   extraerBearer,
   resolverAcceso,
+  resolverAccesoConMotivo,
   type Acceso,
   type DepsAutorizacion,
+  VerificacionNoDisponible,
 } from "./autorizacion";
 import type { AccionId } from "../permisos";
 import { getSupabaseServerClient } from "../supabase.server";
@@ -133,7 +135,14 @@ function depsReales(): DepsAutorizacion {
       // se decodifica el token aquí a mano: un token se puede escribir, lo que
       // no se puede es firmarlo.
       const { data, error } = await supabase.auth.getUser(token);
-      if (error) return null;
+      if (error) {
+        // 4xx (salvo 429): Supabase dice que el token no vale (caducado,
+        // sesión borrada) → sin sesión. Red caída, 5xx o 429: no se sabe, y
+        // no es lo mismo que una baja.
+        const st = (error as { status?: number }).status;
+        if (typeof st === "number" && st >= 400 && st < 500 && st !== 429) return null;
+        throw new VerificacionNoDisponible(`getUser: ${error.message}`);
+      }
       if (!data.user) return null;
       // Solo se leen claims DESPUÉS de validar la firma con Auth.
       try {
@@ -142,13 +151,14 @@ function depsReales(): DepsAutorizacion {
         const { data: vigente, error: fallo } = await supabase.rpc("sesion_usuario_vigente", {
           usuario: data.user.id, sesion: claims.session_id,
         });
-        if (fallo || vigente !== true) return null;
+        if (fallo) throw new VerificacionNoDisponible(`sesion_usuario_vigente: ${fallo.message}`);
+        if (vigente !== true) return null;
         // Nunca más allá de la caducidad del propio token.
         const exp = typeof claims.exp === "number" ? claims.exp * 1000 : 0;
         const hasta = Math.min(Date.now() + SESION_TTL_MS, exp || Date.now() + SESION_TTL_MS);
         recordar(sesiones, h, { userId: data.user.id, hasta });
         return data.user.id;
-      } catch { return null; }
+      } catch (err) { if (err instanceof VerificacionNoDisponible) throw err; return null; }
     },
 
     esMiembro: async (userId, slug) => {
@@ -161,7 +171,10 @@ function depsReales(): DepsAutorizacion {
         // "pues pasa": sin la tabla no se puede demostrar pertenencia, y sin
         // demostrarla no se entra.
         console.error("esMiembro:", err instanceof Error ? err.message : err);
-        return false;
+        // Se lanza (no `false`): «no se pudo leer» no es «ya no es miembro».
+        // `resolverAccesoConMotivo` lo traduce a `no_verificable` (sigue sin
+        // dar acceso, pero el cliente no lo toma por una baja).
+        throw new VerificacionNoDisponible("esMiembro");
       }
     },
 
@@ -190,6 +203,11 @@ function depsReales(): DepsAutorizacion {
 /** Qué es quien llama respecto a este salón. No lanza nunca. */
 export function acceso(slug: string): Promise<Acceso> {
   return resolverAcceso(slug, depsReales());
+}
+
+/** Como `acceso`, con el motivo de la negativa (solo lo usa `accesoAlPanel`). */
+export function accesoConMotivo(slug: string) {
+  return resolverAccesoConMotivo(slug, depsReales());
 }
 
 /**

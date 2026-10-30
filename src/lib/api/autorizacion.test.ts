@@ -21,6 +21,7 @@ import {
   exigirMando,
   extraerBearer,
   resolverAcceso,
+  resolverAccesoConMotivo,
   tieneMando,
   vistaEfectiva,
   type Acceso,
@@ -424,4 +425,34 @@ it("una ficha desaparecida o un rol desconocido nunca se convierten en gerente",
   for (const ficha of [null, { rol: "inventado", employeeId: null, displayName: null, estado: "activa" }]) {
     expect(await resolverAcceso("salon-a", deps("Bearer token-de-ana", { ficha: async () => ficha }))).toEqual({ tipo: "ajeno" });
   }
+});
+
+describe("motivo de la negativa: revocado solo cuando la identidad está verificada", () => {
+  const motivo = async (cab: string | null, extra: Partial<DepsAutorizacion> = {}) =>
+    (await resolverAccesoConMotivo("salon-a", deps(cab, extra))).motivo;
+
+  it("sin token o con token que no vale: sin_sesion (nunca revocado)", async () => {
+    expect(await motivo(null)).toBe("sin_sesion");
+    expect(await motivo("Bearer token-caducado")).toBe("sin_sesion");
+  });
+  it("Supabase caído (getUser lanza): no_verificable", async () => {
+    expect(await motivo("Bearer token-de-ana", { usuarioDelToken: async () => { throw new Error("5xx"); } })).toBe("no_verificable");
+  });
+  it("no se sabe si el salón es real: no_verificable", async () => {
+    expect(await motivo("Bearer token-de-ana", { esSalonReal: async () => { throw new Error("x"); } })).toBe("no_verificable");
+  });
+  it("fallo al leer la membresía o la ficha: no_verificable, no revocado", async () => {
+    expect(await motivo("Bearer token-de-ana", { esMiembro: async () => { throw new Error("db"); } })).toBe("no_verificable");
+    expect(await motivo("Bearer token-de-ana", { ficha: async () => { throw new Error("db"); } })).toBe("no_verificable");
+  });
+  it("dada de baja (estado distinto de activa): revocado", async () => {
+    expect(await motivo("Bearer token-de-ana", { ficha: async () => ({ rol: "gerente", employeeId: null, displayName: null, estado: "baja" }) })).toBe("revocado");
+  });
+  it("sin fila de miembro: revocado", async () => {
+    expect(await motivo("Bearer token-de-ana", { esMiembro: async () => false })).toBe("revocado");
+    expect(await motivo("Bearer token-de-ana", { ficha: async () => null })).toBe("revocado");
+  });
+  it("con acceso, no hay motivo", async () => {
+    expect(await motivo("Bearer token-de-ana")).toBeUndefined();
+  });
 });

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { cerrarSesion } from "./sesion";
+import { accesoConReintento, esRevocacion } from "./acceso-con-reintento";
+import { refrescarSesion, tokenDeAcceso } from "./supabase-browser";
 import { accesoAlPanel, listSalonData } from "./api/salons.functions";
 import { useSalonStore } from "./store";
 import { sincronizacionPendiente } from "./salon-sync";
@@ -27,10 +29,14 @@ export function usePanelRefresh(slug: string | null) {
         // Acceso y agenda a la vez (antes en serie). Si el acceso cae, los
         // datos se descartan: el servidor ya los habría recortado igualmente.
         const [entrada, datos] = await Promise.all([
-          accesoAlPanel({ data: { slug } }),
+          accesoConReintento(() => accesoAlPanel({ data: { slug } }), refrescarSesion),
           listSalonData({ data: { slug, vista: "panel" } }),
         ]);
-        if (!entrada.permitido) { await cerrarSesion(); return; }
+        // Solo una baja explícita (el servidor verificó quién eres y el salón ya
+        // no te reconoce) cierra la sesión. Una sesión sin renovar o un fallo de
+        // red lanzan AccesoNoVerificable arriba y caen en el catch sin tocar nada.
+        if (esRevocacion(entrada)) { await cerrarSesion(); return; }
+        if (!entrada.permitido) return;
         useSalonStore.getState().setMiembro(entrada.miembro);
         if (activo && useSalonStore.getState().realSalonSlug === slug &&
           !debeAplazarRefresco(document.visibilityState === "visible", editando(), sincronizacionPendiente())) {
@@ -46,11 +52,17 @@ export function usePanelRefresh(slug: string | null) {
         console.error("No se pudo actualizar la agenda:", error);
       } finally { consultando = false; }
     };
-    const alVolver = () => { if (document.visibilityState === "visible") void refrescar(); };
+    // Al volver (pestaña visible, foco, red recuperada) primero se asegura un
+    // token vigente —getSession renueva si está por caducar— y luego se pide.
+    const alVolver = () => {
+      if (document.visibilityState !== "visible") return;
+      void tokenDeAcceso().finally(() => { void refrescar(); });
+    };
     document.addEventListener("visibilitychange", alVolver);
     window.addEventListener("focus", alVolver);
+    window.addEventListener("online", alVolver);
     const intervalo = window.setInterval(() => { setAhora(Date.now()); void refrescar(); }, 60_000);
-    return () => { activo = false; document.removeEventListener("visibilitychange", alVolver); window.removeEventListener("focus", alVolver); window.clearInterval(intervalo); };
+    return () => { activo = false; document.removeEventListener("visibilitychange", alVolver); window.removeEventListener("focus", alVolver); window.removeEventListener("online", alVolver); window.clearInterval(intervalo); };
   }, [slug]);
 
   return slug && actualizado ? `Actualizado ${haceCuanto(actualizado, ahora)}` : null;

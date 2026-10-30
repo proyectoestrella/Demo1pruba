@@ -69,3 +69,19 @@ export async function tokenDeAcceso(): Promise<string | null> {
     return null;
   }
 }
+
+/**
+ * Fuerza la renovación del token. Devuelve `true` si ahora hay una sesión
+ * utilizable. NUNCA cierra ni borra nada: si falla (sin red, por ejemplo), la
+ * sesión guardada se queda como estaba.
+ */
+export async function refrescarSesion(): Promise<boolean> {
+  const sb = supabaseNavegador();
+  if (!sb) return false;
+  try {
+    const { data } = await sb.auth.refreshSession();
+    return Boolean(data.session);
+  } catch {
+    return false;
+  }
+}

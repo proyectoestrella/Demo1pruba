@@ -26,6 +26,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 
+import { AccesoNoVerificable } from "@/lib/acceso-con-reintento";
 import { accesoPanel, permitidoEnRuta, salirPorRevocacion } from "@/lib/acceso-actual-panel";
 import { precargarDatosDelSalon, precargarPerfilDelSalon } from "@/lib/precarga-salon";
 import { DEMO_PARAM, decodeDemoProfile } from "@/lib/demo-profile";
@@ -51,6 +52,9 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
   // Así no existe ni un instante en el que el panel esté en pantalla sin que
   // se haya comprobado nada.
   const [estado, setEstado] = useState<Estado>(estadoInicialGuardia);
+  // Si no se puede VERIFICAR el acceso (portátil recién despertado, sin red,
+  // token sin renovar) no se echa a nadie: se reintenta cada pocos segundos.
+  const [reintento, setReintento] = useState(0);
   // Móvil (22-oct): este efecto vuelve a correr en CADA cambio de sección
   // (depende de `pathname`). Las precargas solo sirven para la entrada: la
   // consume `useRealSalon` una vez por salón. Repetidas, cada navegación pedía
@@ -64,6 +68,7 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
       return;
     }
     let vivo = true;
+    let temporizador: number | undefined;
     const primeraVez = precargado.current !== slug;
     precargado.current = slug;
     // El perfil es público: se pide a la vez que el acceso, no después.
@@ -86,12 +91,18 @@ export function GuardiaDelPanel({ slug, children }: { slug?: string; children: R
       })
       .catch((err) => {
         console.error("No se pudo comprobar el acceso al panel:", err);
-        if (vivo) setEstado("fuera");
+        if (!vivo) return;
+        if (err instanceof AccesoNoVerificable) {
+          temporizador = window.setTimeout(() => setReintento((n) => n + 1), 5000);
+          return;
+        }
+        setEstado("fuera");
       });
     return () => {
       vivo = false;
+      if (temporizador !== undefined) window.clearTimeout(temporizador);
     };
-  }, [slug, pathname, navigate]);
+  }, [slug, pathname, navigate, reintento]);
 
   useEffect(() => {
     if (estado !== "fuera") return;

@@ -31,3 +31,10 @@ export async function tokenDeAcceso(): Promise<string | null> {
   const { tokenDeAcceso: leer } = await import("./supabase-cliente");
   return leer();
 }
+
+/** Renueva el token a la fuerza (carga Supabase solo si puede haber sesión). Nunca cierra sesión. */
+export async function refrescarSesion(): Promise<boolean> {
+  if (!puedeHaberSesion()) return false;
+  const { refrescarSesion: r } = await import("./supabase-cliente");
+  return r();
+}

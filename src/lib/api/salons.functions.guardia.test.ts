@@ -103,7 +103,8 @@ describe("la guarda está puesta en todas las funciones de servidor", () => {
 
   for (const nombre of RECORTADAS) {
     it(`${nombre} mira quién llama para decidir qué entrega`, () => {
-      expect(cuerpoDe(nombre)).toContain("acceso(data.slug)");
+      // `accesoConMotivo` es el mismo `acceso` más el porqué de la negativa.
+      expect(cuerpoDe(nombre)).toMatch(/(acceso|accesoConMotivo)\(data\.slug\)/);
     });
   }
 
